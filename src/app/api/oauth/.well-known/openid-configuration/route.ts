@@ -27,7 +27,7 @@ const ID_TOKEN_SIGNING_ALG_VALUES = process.env.JWT_ID_TOKEN_PUBLIC_KEY
   : ["HS256"];
 
 /** 支持的 token_endpoint_auth_method */
-const TOKEN_ENDPOINT_AUTH_METHODS = ["client_secret_post", "none"];
+const TOKEN_ENDPOINT_AUTH_METHODS = ["client_secret_basic", "client_secret_post", "none"];
 
 /** OpenID Connect issuer / 公开 base URL（生产环境必须是 https://nihplod.cn） */
 function getIssuer(): string {

@@ -229,8 +229,14 @@ async function validateIdToken(
     if (!valid) throw new Error("ID Token 签名验证失败");
   }
 
-  // HS256：对称密钥不应通过 JWKS 暴露给 BFF，Confidential Client 应迁移到 RS256
+  // HS256：对称密钥无法在 BFF 侧安全验证签名，若 SSO 已配置 RS256 则拒绝 HS256
   if (alg === "HS256") {
+    // 仅当 SSO 尚未配置 RS256 时才接受 HS256（兼容过渡期）
+    const jwks = await fetchJwks(expectedIssuer);
+    const hasRs256 = jwks?.keys?.some((k) => k.alg === "RS256" && k.use === "sig");
+    if (hasRs256) {
+      throw new Error("SSO 已配置 RS256，拒绝 HS256 ID Token");
+    }
     // eslint-disable-next-line no-console
     console.warn(
       "[SSO SDK/Next] ID Token 使用 HS256 签名。建议主站启用 RS256 以获得完整签名验证。"

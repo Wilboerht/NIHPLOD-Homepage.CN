@@ -294,6 +294,7 @@ export async function POST(request: NextRequest) {
         scope: scopeStr,
         at_hash: computeAtHash(accessToken),
       };
+      if (codeData.nonce) idTokenClaims.nonce = codeData.nonce;
       if (scopeStr.includes("phone")) idTokenClaims.phone = maskPhone(user.phone);
       if (scopeStr.includes("profile")) {
         if (user.nickname) idTokenClaims.nickname = user.nickname;
@@ -469,8 +470,24 @@ export async function POST(request: NextRequest) {
       // 查询用户信息用于 ID Token
       const user = await prisma.user.findUnique({
         where: { id: refreshPayload.id },
-        select: { id: true, phone: true, nickname: true, avatar: true, membershipLevel: true, totalPoints: true },
+        select: { id: true, phone: true, nickname: true, avatar: true, membershipLevel: true, totalPoints: true, status: true },
       });
+
+      if (!user || user.status !== "ACTIVE") {
+        recordSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "user_inactive" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "用户账户不可用" },
+          400
+        );
+      }
 
       // 签发新的 ID Token（含 at_hash）
       const idTokenClaims: IdTokenClaims = {

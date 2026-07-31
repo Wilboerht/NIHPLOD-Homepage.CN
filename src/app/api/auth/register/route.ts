@@ -43,25 +43,25 @@ const registerSchema = z
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  if (!validateCSRFToken(request)) {
-    return csrfForbiddenResponse();
+  // 1. 项目级速率限制（防止垃圾注册）
+  const clientIP = getRateLimitClientIP(request);
+  const ipLimit = await rateLimit(clientIP, "form");
+  if (!ipLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "请求过于频繁，请稍后再试",
+        },
+      },
+      { status: 429 }
+    );
   }
 
   try {
-    // 1. 项目级速率限制（防止垃圾注册）
-    const clientIP = getRateLimitClientIP(request);
-    const ipLimit = await rateLimit(clientIP, "form");
-    if (!ipLimit.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOO_MANY_REQUESTS",
-            message: "请求过于频繁，请稍后再试",
-          },
-        },
-        { status: 429 }
-      );
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const body = await request.json();
@@ -223,6 +223,22 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     apiConsole.error("[Register] 异常:", error);
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      ((error as { code?: string }).code === "P2002")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PHONE_EXISTS",
+            message: "该手机号已注册，请直接登录",
+          },
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       {
         success: false,

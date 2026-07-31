@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import {
@@ -887,7 +887,7 @@ export function ProductDetailContent({
                             <div
                               className="text-left text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 md:text-base md:tracking-[0.08em] [&_p+p]:mt-3"
                               dangerouslySetInnerHTML={{
-                                __html: DOMPurify.sanitize(tabContent[tab.key]!),
+                                __html: sanitizeHtml(tabContent[tab.key]!),
                               }}
                             />
                           ) : (

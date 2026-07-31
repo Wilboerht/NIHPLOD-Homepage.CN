@@ -64,16 +64,26 @@ export async function GET(request: NextRequest) {
         take: 10000,
       });
 
+      const escapeCSV = (val: string): string => {
+        // 防公式注入：以 = + - @ 开头的单元格加单引号前缀
+        const sanitized = /^[=+\-@]/.test(val) ? `'${val}` : val;
+        // 包含逗号、双引号或换行时用双引号包裹
+        if (/[",\n\r]/.test(sanitized)) {
+          return `"${sanitized.replace(/"/g, '""')}"`;
+        }
+        return sanitized;
+      };
+
       const csvHeaders = "id,event,userId,clientId,clientName,ip,success,createdAt\n";
       const csvRows = items.map((item) =>
         [
-          item.id,
-          item.event,
-          item.userId || "",
-          item.clientId || "",
-          item.clientName || "",
-          item.ip || "",
-          item.success,
+          escapeCSV(item.id),
+          escapeCSV(item.event),
+          escapeCSV(item.userId || ""),
+          escapeCSV(item.clientId || ""),
+          escapeCSV(item.clientName || ""),
+          escapeCSV(item.ip || ""),
+          String(item.success),
           item.createdAt.toISOString(),
         ].join(",")
       ).join("\n");

@@ -457,7 +457,7 @@ export async function atomicallyRotateRefreshToken(
     return result;
   } catch (error) {
     apiConsole.error("[AtomicallyRotateRefreshToken] 失败:", error);
-    return { valid: false, reason: "missing" };
+    return { valid: false, reason: "error" };
   }
 }
 

@@ -21,7 +21,11 @@ function validateEmail(email: string): boolean {
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/admin";
+  const rawRedirect = searchParams.get("redirect");
+  const redirectTo =
+    rawRedirect && (rawRedirect.startsWith("/admin") || rawRedirect === "/")
+      ? rawRedirect
+      : "/admin";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

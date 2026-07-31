@@ -118,7 +118,8 @@ export async function apiRequest<T = unknown>(
     }
 
     // 非安全方法自动附加 CSRF Token
-    const needsCSRF = method !== "GET";
+    const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+    const needsCSRF = !CSRF_SAFE_METHODS.has(method);
     if (needsCSRF) {
       const csrfToken = await getCSRFToken();
       if (csrfToken) {

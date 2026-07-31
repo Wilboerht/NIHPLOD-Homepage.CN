@@ -160,7 +160,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        client: result.client,
+        // 排除 clientSecret 字段，明文 secret 仅通过 plainSecret 返回
+        client: (({ clientSecret: _, ...rest }) => rest)(result.client),
         // 明文 secret 仅在创建时返回一次
         plainSecret: result.plainSecret,
       },

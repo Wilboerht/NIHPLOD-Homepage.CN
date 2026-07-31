@@ -13,6 +13,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { getOAuthClientByClientId, verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 
@@ -326,6 +327,21 @@ export async function POST(request: NextRequest) {
 
     const allPassed = steps.every((s) => s.status === "passed");
     const failedSteps = steps.filter((s) => s.status === "failed");
+
+    await createAuditLog({
+      action: "oauth_client_test",
+      targetType: "oauth_client",
+      targetId: client?.id || clientId,
+      detail: {
+        clientId,
+        redirectUri,
+        allPassed,
+        failedSteps: failedSteps.map((s) => s.step),
+        totalDurationMs: steps.reduce((sum, s) => sum + s.durationMs, 0),
+      },
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json({
       success: allPassed,

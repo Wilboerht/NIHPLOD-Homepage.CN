@@ -81,6 +81,10 @@ export default function AccountPage() {
   const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/user/profile");
+      if (res.status === 401 || res.status === 403) {
+        router.push("/login?return_to=/account");
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setUser(data.data.user);

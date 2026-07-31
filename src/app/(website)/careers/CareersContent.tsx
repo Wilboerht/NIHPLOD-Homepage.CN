@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, m } from "framer-motion";
 import { MapPin, Briefcase, X, Upload, FileText, Send, Loader2, Home, Menu, ChevronDown } from "lucide-react";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiPost, ApiError } from "@/lib/api-client";
 
 // ============================================
@@ -688,7 +688,7 @@ function JobModal({
             <div
               className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
               dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(descriptionHtml),
+                __html: sanitizeHtml(descriptionHtml),
               }}
             />
           </div>
@@ -700,7 +700,7 @@ function JobModal({
               <div
                 className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(requirementsHtml),
+                  __html: sanitizeHtml(requirementsHtml),
                 }}
               />
             </div>

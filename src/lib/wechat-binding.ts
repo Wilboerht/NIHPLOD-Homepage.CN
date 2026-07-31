@@ -8,6 +8,7 @@
  * 统一处理：短信验证码校验、账户冲突解决、用户创建/更新、双 Token 签发。
  */
 import { prisma } from "@/lib/prisma";
+import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import {
   signUserToken,
   signRefreshToken,
@@ -117,7 +118,7 @@ export async function resolveWechatBinding(
 
       // 4. 处理账户冲突
       if (oldWechatUser) {
-        if (oldWechatUser.phone.startsWith("wx_")) {
+        if (oldWechatUser.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
           if (foundUser && foundUser.id !== oldWechatUser.id) {
             // 旧临时账户与新手机号账户冲突，清理旧账户
             await tx.user.update({
@@ -137,7 +138,7 @@ export async function resolveWechatBinding(
                 phone,
                 phoneVerified: true,
                 password: hashedPassword,
-                nickname: oldWechatUser.nickname?.startsWith("wx_")
+                nickname: oldWechatUser.nickname?.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)
                   ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
                   : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
                 avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
@@ -159,7 +160,7 @@ export async function resolveWechatBinding(
       // 需要更新的场景：无旧微信账户 或 旧账户为临时账户 或 同账户重新绑定
       const shouldUpdate =
         !oldWechatUser ||
-        oldWechatUser.phone.startsWith("wx_") ||
+        oldWechatUser.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX) ||
         foundUser?.id === oldWechatUser.id;
 
       if (foundUser && shouldUpdate) {

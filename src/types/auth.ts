@@ -66,6 +66,9 @@ export const COOKIE_OPTIONS = {
 // 使用 Lax 而非 Strict：微信 OAuth 回调是跨站 top-level navigation，
 // Strict Cookie 不会被携带，用 Lax 确保 nonce 能在回调验证时被读取
 export const WECHAT_NONCE_COOKIE_NAME = "__Host-wechat_oauth_nonce";
+
+// 微信占位手机号前缀：微信登录创建账户时若未绑定手机号，使用此前缀
+export const WECHAT_PLACEHOLDER_PHONE_PREFIX = "wx_";
 export const WECHAT_NONCE_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,

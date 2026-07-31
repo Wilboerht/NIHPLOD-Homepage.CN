@@ -469,6 +469,146 @@ export class SsoClient {
   }
 
   /**
+   * 弹窗模式 SSO 登录
+   *
+   * 打开一个小窗口进行登录，认证完成后窗口自动关闭，
+   * 主页面不丢失状态（适用于 SPA 中需要保持表单/浏览上下文的场景）。
+   *
+   * 流程：
+   * 1. window.open() 打开授权 URL 到弹窗
+   * 2. 用户在弹窗中完成登录
+   * 3. 弹窗加载 CallbackPage 时检测到 window.opener，通过 postMessage 回传回调 URL
+   * 4. 主页面收到消息后调用 handleCallback() 交换 token
+   * 5. 弹窗自动关闭
+   *
+   * @param options - 弹窗配置
+   * @param options.returnUrl - 登录成功后的返回地址
+   * @param options.width - 弹窗宽度（默认 480）
+   * @param options.height - 弹窗高度（默认 640）
+   * @returns TokenData
+   *
+   * @example
+   * ```typescript
+   * const client = new SsoClient({ clientId: "xxx", redirectUri: "https://myapp.com/callback", ssoBaseUrl: "https://nihplod.cn" });
+   * try {
+   *   const tokenData = await client.loginPopup({ returnUrl: "/dashboard" });
+   *   console.log("登录成功", tokenData);
+   * } catch (err) {
+   *   if (err instanceof SsoError && err.code === "popup_blocked") {
+   *     // 弹窗被拦截，回退到同页重定向
+   *     await client.login("/dashboard");
+   *   }
+   * }
+   * ```
+   */
+  async loginPopup(
+    options: { returnUrl?: string; width?: number; height?: number } = {}
+  ): Promise<TokenData> {
+    const verifier = generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
+    const state = generateState();
+
+    savePkceVerifier(this.config.clientId, verifier);
+    saveOAuthState(state, this.config.clientId);
+
+    if (options.returnUrl) {
+      saveReturnUrl(options.returnUrl);
+    }
+
+    const authorizeEndpoint = await this._getAuthorizeEndpoint();
+    const params = new URLSearchParams();
+    params.set("response_type", "code");
+    params.set("client_id", this.config.clientId);
+    params.set("redirect_uri", this.config.redirectUri);
+    params.set("scope", this.config.scopes || "openid profile");
+    params.set("state", state);
+    params.set("code_challenge", challenge);
+    params.set("code_challenge_method", "S256");
+
+    const width = options.width || 480;
+    const height = options.height || 640;
+    const left = Math.max(0, (window.screen.width - width) / 2);
+    const top = Math.max(0, (window.screen.height - height) / 2);
+
+    const popupFeatures = [
+      `width=${width}`,
+      `height=${height}`,
+      `left=${Math.round(left)}`,
+      `top=${Math.round(top)}`,
+      "resizable=yes",
+      "scrollbars=yes",
+      "status=yes",
+    ].join(",");
+
+    const popup = window.open(
+      `${authorizeEndpoint}?${params.toString()}`,
+      "nihplod_sso_popup",
+      popupFeatures
+    );
+
+    if (!popup) {
+      removePkceVerifier(this.config.clientId);
+      removeOAuthState(this.config.clientId);
+      throw new SsoError(
+        "popup_blocked",
+        "弹窗被浏览器拦截，请允许弹窗后重试"
+      );
+    }
+
+    try {
+      // 聚焦弹窗
+      popup.focus();
+
+      return await new Promise<TokenData>((resolve, reject) => {
+        let completed = false;
+
+        const handleMessage = (event: MessageEvent) => {
+          if (completed) return;
+          if (!event.data || event.data.type !== "nihplod_sso_popup_callback") return;
+          if (!event.data.callbackUrl) return;
+
+          completed = true;
+          cleanup();
+
+          if (popup && !popup.closed) {
+            popup.close();
+          }
+
+          this.handleCallback(event.data.callbackUrl)
+            .then(resolve)
+            .catch(reject);
+        };
+
+        const pollTimer = setInterval(() => {
+          if (popup.closed) {
+            if (!completed) {
+              completed = true;
+              cleanup();
+              reject(
+                new SsoError(
+                  "popup_closed",
+                  "登录窗口已关闭"
+                )
+              );
+            }
+          }
+        }, 500);
+
+        const cleanup = () => {
+          clearInterval(pollTimer);
+          window.removeEventListener("message", handleMessage);
+        };
+
+        window.addEventListener("message", handleMessage);
+      });
+    } catch (err) {
+      removePkceVerifier(this.config.clientId);
+      removeOAuthState(this.config.clientId);
+      throw err;
+    }
+  }
+
+  /**
    * 处理 OAuth 回调
    *
    * 解析回调 URL，校验 state 参数，用授权码交换 token。

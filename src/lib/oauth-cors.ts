@@ -12,6 +12,9 @@ import { prisma } from "./prisma";
 const ALLOWED_METHODS = "POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Authorization";
 const MAX_AGE = "86400";
+const ORIGINS_CACHE_TTL_MS = 60_000;
+
+let cachedOrigins: { origins: Set<string>; timestamp: number } | null = null;
 
 /**
  * 判断 origin 是否匹配已注册 redirect_uri 的 origin
@@ -33,9 +36,14 @@ function isRegisteredOrigin(origin: string, redirectUris: string[]): boolean {
 
 /**
  * 异步查询所有活跃 OAuthClient 的 redirectUris，构建 origin 白名单。
- * 生产环境可改为 Redis 缓存。
+ * 60 秒 TTL 缓存，避免每次 preflight 都全表扫描。
  */
 async function getAllowedOrigins(): Promise<Set<string>> {
+  const now = Date.now();
+  if (cachedOrigins && now - cachedOrigins.timestamp < ORIGINS_CACHE_TTL_MS) {
+    return cachedOrigins.origins;
+  }
+
   const clients = await prisma.oAuthClient.findMany({
     where: { isActive: true },
     select: { redirectUris: true },
@@ -50,6 +58,7 @@ async function getAllowedOrigins(): Promise<Set<string>> {
       }
     }
   }
+  cachedOrigins = { origins, timestamp: now };
   return origins;
 }
 

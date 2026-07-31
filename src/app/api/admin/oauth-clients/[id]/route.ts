@@ -28,6 +28,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
+    if (admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" } },
+        { status: 403 }
+      );
+    }
+
     const { id } = await context.params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
@@ -180,7 +187,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
-    await deleteOAuthClient(id);
+    const deleted = await deleteOAuthClient(id);
+
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "Client 不存在或已删除" } },
+        { status: 404 }
+      );
+    }
 
     await createAuditLog({
       action: "oauth_client_delete",

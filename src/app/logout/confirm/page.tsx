@@ -20,23 +20,31 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 
-function isSafeRedirectUri(uri: string | null): uri is string {
-  if (!uri) return false;
-  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
-  try {
-    const url = new URL(uri);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function LogoutConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawRedirectUri = searchParams.get("post_logout_redirect_uri");
-  const redirectUri = isSafeRedirectUri(rawRedirectUri) ? rawRedirectUri : null;
+  const [redirectUri, setRedirectUri] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!rawRedirectUri) {
+      setRedirectUri(null);
+      return;
+    }
+
+    if (rawRedirectUri.startsWith("/") && !rawRedirectUri.startsWith("//")) {
+      setRedirectUri(rawRedirectUri);
+      return;
+    }
+
+    fetch(`/api/oauth/check-post-logout-uri?post_logout_redirect_uri=${encodeURIComponent(rawRedirectUri)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setRedirectUri(data.valid ? rawRedirectUri : null);
+      })
+      .catch(() => setRedirectUri(null));
+  }, [rawRedirectUri]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

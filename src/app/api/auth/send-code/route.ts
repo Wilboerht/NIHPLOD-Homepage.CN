@@ -29,26 +29,27 @@ const MAX_SEND_PER_HOUR = 5;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  if (!validateCSRFToken(request)) {
-    return csrfForbiddenResponse();
+  // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
+  const ip = getClientIPFromRateLimit(request);
+  const ipLimit = await rateLimit(ip, "form"); // 使用 form 级别的限制 (1分钟10次)
+  if (!ipLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "请求过于频繁，请稍后再试",
+        },
+      },
+      { status: 429 }
+    );
   }
 
   try {
-    // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
-    const ip = getClientIPFromRateLimit(request);
-    const ipLimit = await rateLimit(ip, "form"); // 使用 form 级别的限制 (1分钟10次)
-    if (!ipLimit.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOO_MANY_REQUESTS",
-            message: "请求过于频繁，请稍后再试",
-          },
-        },
-        { status: 429 }
-      );
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
+
     const body = await request.json();
 
     // 参数验证
@@ -126,37 +127,28 @@ export async function POST(request: NextRequest) {
     if (type === "register" && userExists) {
       return NextResponse.json(
         {
-          success: false,
-          error: {
-            code: "PHONE_EXISTS",
-            message: "该手机号已注册，请直接登录",
-          },
+          success: true,
+          data: { message: "验证码已发送" },
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
     if (type === "login" && !userExists) {
       return NextResponse.json(
         {
-          success: false,
-          error: {
-            code: "USER_NOT_FOUND",
-            message: "该手机号未注册，请先注册账户",
-          },
+          success: true,
+          data: { message: "验证码已发送" },
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
     if (type === "reset" && !userExists) {
       return NextResponse.json(
         {
-          success: false,
-          error: {
-            code: "SMS_SENT_MASKED",
-            message: "如该手机号已注册，验证码将发送至手机",
-          },
+          success: true,
+          data: { message: "验证码已发送" },
         },
         { status: 200 }
       );

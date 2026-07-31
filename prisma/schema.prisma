@@ -321,6 +321,7 @@ model OAuthAuthorizationCode {
   scopes              String[]              // 请求的权限范围
   codeChallenge       String?               // PKCE code_challenge
   codeChallengeMethod String?               // PKCE method（S256）
+  nonce               String?               // OIDC nonce（防重放）
   expiresAt           DateTime              // 过期时间（5 分钟）
   used                Boolean   @default(false)
   createdAt           DateTime  @default(now())
@@ -621,6 +622,7 @@ model RateLimitRecord {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
+  @@unique([key, windowStart])
   @@index([key, windowStart])
 }
 

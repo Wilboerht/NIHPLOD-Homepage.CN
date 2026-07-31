@@ -27,6 +27,16 @@ export function CallbackPage() {
   const [processing, setProcessing] = useState(true);
 
   useEffect(() => {
+    // 弹窗模式：通过 postMessage 将回调 URL 传回主窗口，不自行处理
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(
+        { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href },
+        "*"
+      );
+      setProcessing(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function handleCallback() {

@@ -20,6 +20,7 @@ import {
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
   WECHAT_NONCE_COOKIE_NAME,
+  WECHAT_PLACEHOLDER_PHONE_PREFIX,
   WECHAT_NONCE_COOKIE_OPTIONS,
   WECHAT_BIND_COOKIE_NAME,
   WECHAT_BIND_COOKIE_OPTIONS,
@@ -29,6 +30,7 @@ import { signWechatBindToken, signWechatExchangeToken } from "@/lib/jwt";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { rateLimit } from "@/lib/ratelimit";
 import { checkUserStatus } from "@/lib/auth";
 
 // 强制动态渲染，禁止静态预渲染
@@ -75,6 +77,15 @@ function isSubsiteCallback(callbackBase: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const ip = getClientIP(request);
+  const limitResult = await rateLimit(ip, "wechat-callback");
+  if (!limitResult.success) {
+    return NextResponse.json(
+      { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁" } },
+      { status: 429 }
+    );
+  }
+
   // 获取重定向地址（从 state 解析或默认）并校验 CSRF nonce
   let redirectUrl = "/";
   let stateCallback: string | undefined;
@@ -184,7 +195,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 情况1：已有账户且已绑定微信 → 直接登录
-    if (user && !user.phone.startsWith("wx_")) {
+    if (user && !user.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
       // 先校验账号状态，避免冻结/封禁用户通过微信直接登录
       const statusCheck = await checkUserStatus(user.id);
       if (!statusCheck.valid) {

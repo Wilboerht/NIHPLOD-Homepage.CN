@@ -34,6 +34,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可查看 SSO 审计日志" } },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = request.nextUrl;
     const raw = Object.fromEntries(searchParams.entries());
     const parsed = querySchema.safeParse(raw);

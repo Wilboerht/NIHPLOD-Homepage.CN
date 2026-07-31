@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
@@ -325,7 +325,7 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                       <div
                         className="text-justify text-[15px] leading-[1.8] text-brand-charcoal/70"
                         dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(product.description),
+                          __html: sanitizeHtml(product.description),
                         }}
                       />
                     </section>
@@ -365,7 +365,7 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                                 <div
                                   className="pb-4 text-[15px] leading-[1.8] text-brand-charcoal/60"
                                   dangerouslySetInnerHTML={{
-                                    __html: DOMPurify.sanitize(product.ingredients),
+                                    __html: sanitizeHtml(product.ingredients),
                                   }}
                                 />
                               </m.div>
@@ -402,7 +402,7 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                                 <div
                                   className="pb-4 text-[15px] leading-[1.8] text-brand-charcoal/60"
                                   dangerouslySetInnerHTML={{
-                                    __html: DOMPurify.sanitize(product.usage),
+                                    __html: sanitizeHtml(product.usage),
                                   }}
                                 />
                               </m.div>
@@ -583,7 +583,7 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                         <div
                           className="mb-4 text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(product.description),
+                            __html: sanitizeHtml(product.description),
                           }}
                         />
                         <XiaohongshuLink categoryName={product.category.name} />
@@ -594,7 +594,7 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                         <div
                           className="text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(product.ingredients),
+                            __html: sanitizeHtml(product.ingredients),
                           }}
                         />
                       ) : (
@@ -604,7 +604,7 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                       (product.usage ? (
                         <div
                           className="text-[13px] leading-[1.8] text-brand-charcoal/70"
-                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.usage) }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.usage) }}
                         />
                       ) : (
                         <p className="py-4 text-[13px] text-brand-charcoal/40">暂无使用方法</p>

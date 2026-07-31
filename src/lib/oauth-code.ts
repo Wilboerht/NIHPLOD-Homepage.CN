@@ -34,6 +34,7 @@ export interface AuthorizationCodeData {
   scopes: string[];
   codeChallenge: string | null;
   codeChallengeMethod: string | null;
+  nonce: string | null;
   expiresAt: Date;
 }
 
@@ -55,6 +56,7 @@ export async function createAuthorizationCode(params: {
   scopes: string[];
   codeChallenge?: string;
   codeChallengeMethod?: string;
+  nonce?: string;
 }): Promise<AuthorizationCodeData> {
   const rawCode = generateCode();
   const codeHash = hashCode(rawCode);
@@ -69,6 +71,7 @@ export async function createAuthorizationCode(params: {
       scopes: params.scopes,
       codeChallenge: params.codeChallenge || null,
       codeChallengeMethod: params.codeChallengeMethod || null,
+      nonce: params.nonce || null,
       expiresAt,
     },
   });
@@ -82,6 +85,7 @@ export async function createAuthorizationCode(params: {
     scopes: record.scopes,
     codeChallenge: record.codeChallenge,
     codeChallengeMethod: record.codeChallengeMethod,
+    nonce: record.nonce,
     expiresAt: record.expiresAt,
   };
 }
@@ -125,6 +129,7 @@ export async function consumeAuthorizationCode(
     scopes: record.scopes,
     codeChallenge: record.codeChallenge,
     codeChallengeMethod: record.codeChallengeMethod,
+    nonce: record.nonce,
     expiresAt: record.expiresAt,
   };
 }

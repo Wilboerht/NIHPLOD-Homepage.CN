@@ -24,6 +24,13 @@ export interface RequireAuthProps {
 
   /** 是否在检测到未登录时自动发起登录跳转 */
   autoLogin?: boolean;
+
+  /**
+   * 是否使用弹窗模式登录（保持当前页面状态不丢失）
+   *
+   * 仅在 autoLogin=true 时生效。弹窗被拦截时自动回退到同页重定向。
+   */
+  usePopup?: boolean;
 }
 
 /**
@@ -33,7 +40,8 @@ export interface RequireAuthProps {
  *
  * @example
  * ```tsx
- * <RequireAuth>
+ * // 弹窗模式：不中断用户当前操作
+ * <RequireAuth autoLogin usePopup>
  *   <Dashboard />
  * </RequireAuth>
  * ```
@@ -42,17 +50,28 @@ export function RequireAuth({
   children,
   fallback,
   autoLogin = true,
+  usePopup = false,
 }: RequireAuthProps) {
-  const { isAuthenticated, isLoading, login } = useSso();
+  const { isAuthenticated, isLoading, login, loginPopup } = useSso();
   const loginTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && autoLogin && !loginTriggeredRef.current) {
       loginTriggeredRef.current = true;
       const currentPath = window.location.pathname + window.location.search;
-      login(currentPath);
+
+      if (usePopup) {
+        loginPopup({ returnUrl: currentPath }).catch((err) => {
+          // 弹窗被拦截时回退到同页重定向
+          if ((err as { code?: string }).code === "popup_blocked") {
+            login(currentPath);
+          }
+        });
+      } else {
+        login(currentPath);
+      }
     }
-  }, [isLoading, isAuthenticated, autoLogin, login]);
+  }, [isLoading, isAuthenticated, autoLogin, usePopup, login, loginPopup]);
 
   if (isLoading) {
     return (

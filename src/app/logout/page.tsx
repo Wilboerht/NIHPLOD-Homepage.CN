@@ -64,6 +64,7 @@ function LogoutContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [trustedUri, setTrustedUri] = useState<string | null>(null);
+  const [trustCheckDone, setTrustCheckDone] = useState(false);
 
   useEffect(() => {
     ensureCsrfToken().catch(() => {});
@@ -72,6 +73,7 @@ function LogoutContent() {
   useEffect(() => {
     checkTrustedLogoutUri(postLogoutRedirectUri, clientId || null).then((trusted) => {
       setTrustedUri(trusted ? postLogoutRedirectUri : null);
+      setTrustCheckDone(true);
     });
   }, [postLogoutRedirectUri, clientId]);
 
@@ -147,10 +149,10 @@ function LogoutContent() {
           </button>
           <button
             onClick={handleLogout}
-            disabled={loading}
+            disabled={loading || !trustCheckDone}
             className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
           >
-            {loading ? "处理中..." : "确认退出"}
+            {!trustCheckDone ? "验证中..." : loading ? "处理中..." : "确认退出"}
           </button>
         </div>
       </div>

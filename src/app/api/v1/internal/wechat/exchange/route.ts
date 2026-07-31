@@ -28,6 +28,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
@@ -200,7 +201,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. 未提供手机号：检查该微信是否已绑定有效账户
-    if (!oldWechatUser || oldWechatUser.phone.startsWith("wx_")) {
+    if (!oldWechatUser || oldWechatUser.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
       return NextResponse.json(
         {
           success: true,

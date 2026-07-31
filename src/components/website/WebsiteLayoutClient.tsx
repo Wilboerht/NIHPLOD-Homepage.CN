@@ -63,8 +63,7 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
     } else if (wechatAuth === "binding_required") {
       redirectToWechatBind();
     } else if (wechatAuth === "error") {
-      const message = params.get("message") || "微信授权失败";
-      toast.error(decodeURIComponent(message));
+      toast.error("微信授权失败，请重试");
     }
   }, [refreshUser, openUserCenter, redirectToWechatBind, toast]);
 

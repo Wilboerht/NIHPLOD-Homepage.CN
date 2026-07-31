@@ -65,6 +65,7 @@ export async function GET(request: Request) {
         headers: {
           "Content-Type": "application/json",
           "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+          "Access-Control-Allow-Origin": "*",
         },
       });
     }
@@ -100,19 +101,6 @@ export async function GET(request: Request) {
       });
     }
 
-    // 兼容期：仍保留 HS256 kid 占位，但不暴露 k 值
-    keys.push({
-      kty: "oct",
-      kid: "access-token-v1",
-      alg: "HS256",
-      use: "sig",
-      // ⚠️ k 值（对称签名密钥）不通过 JWKS 公开。
-      // HS256 对称密钥无法安全分发，因此：
-      // 1. 子项目应使用 Introspection 端点验证 token：POST /api/oauth/introspect
-      // 2. 如需本地验证，配置 JWT_ACCESS_PUBLIC_KEY 启用 RS256
-      // 详见本文件顶部注释中的迁移路线图
-    });
-
     const jwks = { keys };
 
     const body = JSON.stringify(jwks);
@@ -122,6 +110,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        "Access-Control-Allow-Origin": "*",
       },
     });
   } catch {

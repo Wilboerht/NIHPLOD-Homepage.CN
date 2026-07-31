@@ -39,11 +39,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // 0. CSRF 校验：防止跨站请求伪造
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
-    }
-
     // 1. 速率限制：IP 维度每 5 分钟最多 10 次刷新
     const ip = getClientIP(request);
     const ipLimit = await rateLimit(ip, "refresh", { maxRequests: 10, windowMs: 5 * 60 * 1000 });
@@ -52,6 +47,11 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
         { status: 429 }
       );
+    }
+
+    // 0. CSRF 校验：防止跨站请求伪造
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     // 2. 从 httpOnly Cookie 中读取 Refresh Token

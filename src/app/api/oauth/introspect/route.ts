@@ -17,7 +17,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyOAuthAccessToken } from "@/lib/jwt";
-import { isTokenBlacklisted } from "@/lib/token-blacklist";
+import { isTokenBlacklisted, isAccessTokenRevoked } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
@@ -117,6 +117,20 @@ export async function POST(request: NextRequest) {
         ip,
         success: true,
         detail: { active: false, reason: "blacklisted" },
+      });
+      return resJson({ active: false });
+    }
+
+    // 检查 JTI 级令牌撤销
+    if (payload.jti && await isAccessTokenRevoked(payload.jti as string)) {
+      recordSsoEvent({
+        event: "introspect",
+        userId: payload.id,
+        clientId: client_id,
+        clientName: client.name,
+        ip,
+        success: true,
+        detail: { active: false, reason: "token_revoked" },
       });
       return resJson({ active: false });
     }

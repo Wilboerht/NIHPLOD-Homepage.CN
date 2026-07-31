@@ -31,25 +31,25 @@ const bindSchema = z.object({
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  if (!validateCSRFToken(request)) {
-    return csrfForbiddenResponse();
+  // IP 速率限制（防爆破）
+  const clientIP = getClientIP(request);
+  const ipLimit = await rateLimit(clientIP, "form");
+  if (!ipLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "请求过于频繁，请稍后再试",
+        },
+      },
+      { status: 429 }
+    );
   }
 
   try {
-    // IP 速率限制（防爆破）
-    const clientIP = getClientIP(request);
-    const ipLimit = await rateLimit(clientIP, "form");
-    if (!ipLimit.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOO_MANY_REQUESTS",
-            message: "请求过于频繁，请稍后再试",
-          },
-        },
-        { status: 429 }
-      );
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const body = await request.json();

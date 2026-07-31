@@ -20,6 +20,7 @@ import React, {
 } from "react";
 import { SsoClient } from "../core/SsoClient";
 import { getTokenData, removeTokenData } from "../core/storage";
+import type { TokenData } from "../core/storage";
 import type { SsoClientConfig, SsoUser } from "../core/SsoClient";
 
 // ============================================
@@ -36,8 +37,11 @@ export interface SsoContextValue {
   /** 是否正在加载（初始化/刷新中） */
   isLoading: boolean;
 
-  /** 发起登录 */
+  /** 发起登录（同页重定向） */
   login: (returnUrl?: string) => Promise<void>;
+
+  /** 弹窗模式登录（保持当前页面状态不丢失） */
+  loginPopup: (options?: { returnUrl?: string; width?: number; height?: number }) => Promise<TokenData>;
 
   /** 登出 */
   logout: (redirectToSso?: boolean) => Promise<void>;
@@ -277,6 +281,16 @@ export function SsoProvider({
     [client]
   );
 
+  // 弹窗模式登录
+  const loginPopup = useCallback(
+    async (options?: { returnUrl?: string; width?: number; height?: number }) => {
+      const tokenData = await client.loginPopup(options);
+      await loadUser();
+      return tokenData;
+    },
+    [client, loadUser]
+  );
+
   // 登出
   const logout = useCallback(
     async (redirectToSso: boolean = false) => {
@@ -302,6 +316,7 @@ export function SsoProvider({
     isAuthenticated,
     isLoading,
     login,
+    loginPopup,
     logout,
     refreshUser,
     getAccessToken,

@@ -431,6 +431,8 @@ export interface IdTokenClaims {
   membership_level?: string;
   total_points?: number;
   scope?: string;
+  /** OIDC Core 3.1.3.6: nonce 参数回显，绑定 ID Token 到客户端原始 session */
+  nonce?: string;
   /** OIDC Core 3.3.2.11: Access Token 的 SHA-256 左半 base64url */
   at_hash?: string;
 }
@@ -491,9 +493,13 @@ export async function verifyIdToken(token: string, audience: string): Promise<Id
         const result = await jwtVerify(token, publicKey, { ...verifyOptions, algorithms: ["RS256"] });
         payload = result.payload;
       } catch {
-        // RS256 验证失败，尝试 HS256（兼容旧 token）
-        const result = await jwtVerify(token, encodeSecret(idTokenSecret), { ...verifyOptions, algorithms: ["HS256"] });
-        payload = result.payload;
+        // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
+        if (process.env.ALLOW_HS256_FALLBACK === "true") {
+          const result = await jwtVerify(token, encodeSecret(idTokenSecret), { ...verifyOptions, algorithms: ["HS256"] });
+          payload = result.payload;
+        } else {
+          return null;
+        }
       }
     } else {
       const result = await jwtVerify(token, encodeSecret(idTokenSecret), verifyOptions);
@@ -643,9 +649,13 @@ export async function verifyOAuthAccessToken(
         const result = await jwtVerify(token, publicKey, verifyOptions);
         payload = result.payload;
       } catch {
-        // RS256 验证失败，尝试 HS256（兼容旧 token）
-        const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
-        payload = result.payload;
+        // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
+        if (process.env.ALLOW_HS256_FALLBACK === "true") {
+          const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+          payload = result.payload;
+        } else {
+          return null;
+        }
       }
     } else {
       const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);

@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
       data: { revokedAt: new Date() },
     });
 
+    // 撤销用户同意记录，防止下次授权时 auto-consent 跳过同意页
+    await prisma.userConsent.updateMany({
+      where: { userId: user.id, clientId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
     // 同步撤销该 client 对应的所有 Refresh Token，防止旧 refresh_token 继续换发 access_token
     await revokeRefreshToken(user.id, undefined, clientId);
 

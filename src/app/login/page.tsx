@@ -13,7 +13,7 @@ import { useState, useEffect, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { X, ArrowLeft, ChevronLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -113,7 +113,13 @@ function LoginPageContent() {
       router.push("/");
       return;
     }
-    const decoded = decodeURIComponent(rawReturnTo);
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(rawReturnTo);
+    } catch {
+      router.push("/");
+      return;
+    }
     if (!isSafeReturnTo(decoded)) {
       router.push("/");
       return;
@@ -206,7 +212,12 @@ function LoginPageContent() {
   }, [isMobile]);
 
   const handleAuthSuccess = async () => {
-    await refreshUser(true);
+    try {
+      await refreshUser(true);
+    } catch {
+      // refreshUser 失败时仍然继续导航——认证 Cookie 已由服务端设置，
+      // 用户在目标页面仍可以看到已登录状态，后端 API 会返回最新用户信息。
+    }
     restorePendingCheckout();
     navigateToReturnTo(returnTo);
   };
@@ -441,7 +452,7 @@ function LoginPageContent() {
       const params = new URLSearchParams(oauthParams);
       const csrfMatch =
         typeof document !== "undefined"
-          ? document.cookie.match(/(?:^|;\\s*)__Host-csrf_token=([^;]*)/)
+          ? document.cookie.match(/(?:^|;\s*)__Host-csrf_token=([^;]*)/)
           : null;
       const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : "";
       const res = await fetch("/api/oauth/authorize", {
@@ -458,6 +469,7 @@ function LoginPageContent() {
           state: params.get("state"),
           code_challenge: params.get("code_challenge"),
           code_challenge_method: params.get("code_challenge_method"),
+          nonce: params.get("nonce"),
         }),
         redirect: "manual",
       });
@@ -644,6 +656,11 @@ function LoginPageContent() {
             <p className="text-sm text-brand-charcoal/80">
               <strong>{clientName}</strong> 请求访问您的账户信息
             </p>
+            {params.get("client_id") && (
+              <p className="mt-1 text-xs text-brand-charcoal/40">
+                应用 ID: <code className="text-brand-charcoal/50">{params.get("client_id")}</code>
+              </p>
+            )}
             <ul className="mt-2 space-y-1">
               {requestedScopes.map((scope) => (
                 <li key={scope} className="flex items-start gap-2 text-xs text-brand-charcoal/70">
@@ -696,7 +713,6 @@ function LoginPageContent() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              onClick={mode === "wechat-bind" ? undefined : handleClose}
               className="fixed inset-0 z-[99998] bg-black/20 backdrop-blur-md"
             />
           )}
@@ -711,25 +727,6 @@ function LoginPageContent() {
               transition={{ duration: 0.8, ease: [0.8, 0, 0.13, 1] }}
               className="fixed inset-y-0 right-0 z-[99999] hidden w-full flex-col bg-white md:flex"
             >
-              {/* Close / Cancel button */}
-              {mode === "wechat-bind" ? (
-                <button
-                  onClick={handleClose}
-                  disabled={loading}
-                  className="absolute right-8 top-8 z-20 flex items-center gap-1.5 px-4 py-2 text-sm tracking-wider text-brand-charcoal/50 transition-colors hover:text-brand-charcoal/70"
-                >
-                  取消绑定
-                </button>
-              ) : (
-                <button
-                  onClick={handleClose}
-                  disabled={loading}
-                  className="absolute right-8 top-8 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-brand-charcoal/5 text-brand-charcoal/40 backdrop-blur-sm transition-all hover:bg-brand-charcoal/10 hover:text-brand-charcoal/70"
-                >
-                  <X size={20} strokeWidth={1.5} />
-                </button>
-              )}
-
               {/* Back button (non-login, non-wechat-bind, non-consent) */}
               {mode !== "login" && mode !== "wechat-bind" && mode !== "consent" && (
                 <button

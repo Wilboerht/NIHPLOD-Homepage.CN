@@ -170,6 +170,7 @@ export async function GET(request: NextRequest) {
     const scope = searchParams.get("scope") || "";
     const code_challenge = searchParams.get("code_challenge") || "";
     const code_challenge_method = searchParams.get("code_challenge_method") || "";
+    const nonce = searchParams.get("nonce");
 
     if (response_type !== "code") {
       return buildErrorRedirect(
@@ -268,14 +269,26 @@ export async function GET(request: NextRequest) {
 
     if (alreadyConsented) {
       // 已授权且 scope 未扩大：直接签发授权码并跳转回回调地址
-      const codeData = await createAuthorizationCode({
-        clientId: client_id,
-        userId: userPayload.id,
-        redirectUri: redirect_uri,
-        scopes: requestedScopes,
-        codeChallenge: code_challenge,
-        codeChallengeMethod: code_challenge_method,
-      });
+      let codeData;
+      try {
+        codeData = await createAuthorizationCode({
+          clientId: client_id,
+          userId: userPayload.id,
+          redirectUri: redirect_uri,
+          scopes: requestedScopes,
+          codeChallenge: code_challenge,
+          codeChallengeMethod: code_challenge_method,
+          nonce: nonce || undefined,
+        });
+      } catch (codeErr) {
+        apiConsole.error("[OAuth Authorize GET] 创建授权码失败:", codeErr);
+        return buildErrorRedirect(
+          safeRedirectUri,
+          "server_error",
+          "服务器内部错误",
+          state
+        );
+      }
 
       const redirectUrl = new URL(redirect_uri);
       redirectUrl.searchParams.set("code", codeData.code);
@@ -430,6 +443,7 @@ export async function POST(request: NextRequest) {
     const scope = typeof body.scope === "string" ? body.scope : "";
     const code_challenge = typeof body.code_challenge === "string" ? body.code_challenge : "";
     const code_challenge_method = typeof body.code_challenge_method === "string" ? body.code_challenge_method : "";
+    const nonce = typeof body.nonce === "string" ? body.nonce : undefined;
 
     // 构建重定向 URL（成功或错误都用它）
     const redirectUrl = new URL(safeRedirectUri);
@@ -502,14 +516,26 @@ export async function POST(request: NextRequest) {
     await ensureUserConsent(userPayload.id, client_id, requestedScopes);
 
     // 创建授权码
-    const codeData = await createAuthorizationCode({
-      clientId: client_id,
-      userId: userPayload.id,
-      redirectUri: redirect_uri,
-      scopes: requestedScopes,
-      codeChallenge: code_challenge,
-      codeChallengeMethod: code_challenge_method,
-    });
+    let codeData;
+    try {
+      codeData = await createAuthorizationCode({
+        clientId: client_id,
+        userId: userPayload.id,
+        redirectUri: redirect_uri,
+        scopes: requestedScopes,
+        codeChallenge: code_challenge,
+        codeChallengeMethod: code_challenge_method,
+        nonce,
+      });
+    } catch (codeErr) {
+      apiConsole.error("[OAuth Authorize POST] 创建授权码失败:", codeErr);
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "server_error",
+        "服务器内部错误",
+        state
+      );
+    }
 
     redirectUrl.searchParams.set("code", codeData.code);
 

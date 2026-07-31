@@ -16,6 +16,7 @@ import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { blacklistUserTokens } from "@/lib/token-blacklist";
 
 // 请求参数验证
 const resetPasswordSchema = z
@@ -214,8 +215,11 @@ export async function POST(request: NextRequest) {
       await sendBackchannelLogout(user.id, clientIds, { includeInactive: true });
     }
 
-    // 清除当前类型的失败记录
-    await clearLoginAttempts(phone, "sms");
+    // 使所有 access_token 立即失效（15 分钟窗口期内不能继续使用）
+    await blacklistUserTokens(user.id, "password_reset");
+
+    // 清除所有类型的失败记录（短信 + 密码）
+    await clearLoginAttempts(phone);
 
     // 向用户发送安全通知：密码已被重置
     sendPasswordChangedNotification(phone).catch((err) => {

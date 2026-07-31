@@ -14,6 +14,8 @@ export type SsoErrorCode =
   | "not_authenticated"
   | "sso_server_error"
   | "network_error"
+  | "popup_blocked"
+  | "popup_closed"
   | "id_token_invalid"
   | "id_token_unsupported_alg"
   | "id_token_missing_secret"

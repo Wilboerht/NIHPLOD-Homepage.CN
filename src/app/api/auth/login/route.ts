@@ -40,10 +40,6 @@ const loginSchema = z.object({
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  if (!validateCSRFToken(request)) {
-    return csrfForbiddenResponse();
-  }
-
   // 1. 项目级速率限制（防止滥用，在 body 解析之前，避免大 payload 绕过限流）
   const clientIP = getRateLimitClientIP(request);
   const ipLimit = await rateLimit(clientIP, "login");
@@ -58,6 +54,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 429 }
     );
+  }
+
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
   }
 
   try {

@@ -64,11 +64,12 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
 
 class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
   async revokeAccessToken(jti: string, expiresAtMs = Date.now() + ACCESS_TOKEN_BLACKLIST_TTL_MS): Promise<void> {
+    const key = `at:${jti}`;
     await prisma.tokenBlacklist.upsert({
-      where: { key: jti },
+      where: { key },
       create: {
         type: "access_token",
-        key: jti,
+        key,
         expiresAt: new Date(expiresAtMs),
       },
       update: {
@@ -79,7 +80,7 @@ class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
 
   async isAccessTokenRevoked(jti: string): Promise<boolean> {
     const entry = await prisma.tokenBlacklist.findUnique({
-      where: { key: jti },
+      where: { key: `at:${jti}` },
     });
     if (!entry) return false;
     if (entry.expiresAt < new Date()) {
@@ -94,11 +95,12 @@ class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
     reason: string,
     expiresAtMs = Date.now() + USER_BLACKLIST_TTL_MS
   ): Promise<void> {
+    const key = `user:${userId}`;
     await prisma.tokenBlacklist.upsert({
-      where: { key: userId },
+      where: { key },
       create: {
         type: "user",
-        key: userId,
+        key,
         reason,
         expiresAt: new Date(expiresAtMs),
       },
@@ -111,7 +113,7 @@ class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
 
   async isUserBlacklisted(userId: string): Promise<{ reason: string } | null> {
     const entry = await prisma.tokenBlacklist.findUnique({
-      where: { key: userId },
+      where: { key: `user:${userId}` },
     });
     if (!entry || entry.expiresAt < new Date() || entry.type !== "user") {
       return null;
@@ -121,7 +123,7 @@ class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
 
   async removeUserBlacklist(userId: string): Promise<void> {
     await prisma.tokenBlacklist.deleteMany({
-      where: { type: "user", key: userId },
+      where: { type: "user", key: `user:${userId}` },
     });
   }
 }

@@ -353,7 +353,10 @@ export function withUserAuth<T extends NextRequest>(
 ): (request: T) => Promise<Response> {
   return async (request: T) => {
     const method = request.method?.toUpperCase() ?? "";
-    if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+    const authHeader = request.headers.get("authorization");
+    const isBearerAuth = authHeader?.startsWith("Bearer ") ?? false;
+
+    if (!CSRF_SAFE_METHODS.has(method) && !isBearerAuth && !validateCSRFToken(request)) {
       return csrfForbiddenResponse();
     }
 

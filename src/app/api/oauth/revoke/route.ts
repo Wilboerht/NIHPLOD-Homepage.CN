@@ -126,8 +126,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 如果 hint 是 access_token，验证 token 并把 jti 加入撤销列表
-    if (token_type_hint === "access_token") {
+    // 如果 hint 是 access_token 或未指定，尝试撤销 access_token
+    if (!token_type_hint || token_type_hint === "access_token") {
       const accessPayload = await verifyOAuthAccessToken(token);
       if (accessPayload) {
         // 所有权校验：client 只能撤销颁发给自己的 access_token
