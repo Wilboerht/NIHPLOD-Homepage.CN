@@ -121,9 +121,10 @@ export function LoginForm({
               type="tel"
               required
               value={loginPhone}
-              onChange={(e) => onLoginPhoneChange(e.target.value)}
+              onChange={(e) => onLoginPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
               className={pcInputClass}
               maxLength={11}
+              autoComplete="tel"
               placeholder="手机号"
             />
           </div>
@@ -135,14 +136,15 @@ export function LoginForm({
                 required
                 maxLength={6}
                 value={loginCode}
-                onChange={(e) => onLoginCodeChange(e.target.value)}
+                onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 className={`${pcInputClass} flex-1`}
+                autoComplete="one-time-code"
                 placeholder="验证码"
               />
               <button
                 type="button"
                 onClick={onSendLoginCode}
-                disabled={loginCodeSending || loginCodeCountdown > 0 || !loginPhone}
+                disabled={loginCodeSending || loginCodeCountdown > 0 || loginPhone.length !== 11}
                 className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
               >
                 {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
@@ -159,6 +161,7 @@ export function LoginForm({
                 onChange={(e) => onLoginPasswordChange(e.target.value)}
                 className={`${pcInputClass} pr-10`}
                 maxLength={64}
+                autoComplete="current-password"
                 placeholder="密码"
               />
               <button
@@ -290,16 +293,23 @@ export function LoginForm({
         )}
 
         {loginMethod === "password" && (
-          <div className="animate-fade-scale-in">
+          <div className="animate-fade-scale-in relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               value={loginPassword}
               onChange={(e) => onLoginPasswordChange(e.target.value)}
               placeholder="密码"
               maxLength={64}
-              className={mobileInputClass}
+              className={`${mobileInputClass} pr-10`}
             />
+            <button
+              type="button"
+              onClick={onShowPasswordToggle}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         )}
 

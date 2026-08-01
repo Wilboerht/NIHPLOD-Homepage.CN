@@ -4,6 +4,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import {
   processAndSaveImage,
+  uploadFile,
   validateUploadServer,
   validateFileBuffer,
   validateFolder,
@@ -88,8 +89,12 @@ export async function POST(request: NextRequest) {
       .replace(/_{2,}/g, "_") // 压缩连续下划线
       .substring(0, 200); // 限制长度
 
-    // 处理并保存图片
-    const result = await processAndSaveImage(buffer, safeName || "upload", folder);
+    // PDF 无法通过 sharp 处理，走原样保存管线；图片走压缩处理管线
+    const mimeType = file.type;
+    const result =
+      mimeType === "application/pdf"
+        ? await uploadFile(buffer, safeName || "upload", mimeType, "files", ["application/pdf"])
+        : await processAndSaveImage(buffer, safeName || "upload", folder);
 
     return NextResponse.json({
       success: true,

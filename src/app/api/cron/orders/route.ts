@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "@/lib/order";
+import { queryAndFulfillExpiredPendingOrders } from "@/lib/payment-query";
 import { autoExpireUserCoupons } from "@/lib/coupon";
 import { healStuckNotifications, cleanupOldNotifications } from "@/lib/notification-idempotency";
 import { cleanupExpiredRefreshTokens } from "@/lib/auth-security";
@@ -7,15 +9,26 @@ import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic"; // 不缓存，每次都执行
 
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
+
 export async function GET(request: NextRequest) {
-  // 校验 Cron Secret，防止被外部恶意调用
+  // 校验 Cron Secret，防止被外部恶意调用（timing-safe 比较）
   const cronSecret = request.headers.get("x-cron-secret");
-  if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+  const expected = process.env.CRON_SECRET;
+  if (!cronSecret || !expected || !safeEqual(cronSecret, expected)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     if (process.env.NODE_ENV === "development") apiConsole.debug("[Cron] 开始执行订单定时任务...");
+
+    // 0. 取消前先主动查询支付状态，避免误取消已付款订单
+    const queryResult = await queryAndFulfillExpiredPendingOrders(25);
 
     // 1. 30分钟未支付自动取消 (时间可以调整)
     const cancelResult = await autoCancelExpiredOrders(30);
@@ -38,6 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        paymentQueried: queryResult,
         cancelled: cancelResult,
         completed: completeResult,
         couponsExpired: expireResult,

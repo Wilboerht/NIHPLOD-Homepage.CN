@@ -16,6 +16,7 @@ import {
 import { cleanupExpiredCodes } from "./oauth-code";
 import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { cleanupRateLimitRecords } from "./ratelimit";
+import { cleanupOldTransactionRawData } from "./transaction";
 import { apiConsole } from "@/lib/logger";
 
 interface ScheduledTask {
@@ -165,6 +166,19 @@ const tasks: ScheduledTask[] = [
         apiConsole.info(`[Cron] 过期授权码清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Old Transaction RawData",
+    cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理过期交易原始数据...");
+        const count = await cleanupOldTransactionRawData();
+        apiConsole.info(`[Cron] 过期交易原始数据清理完成: ${count} 条`);
+      } catch (error) {
+        apiConsole.error("[Cron] 交易原始数据清理失败:", error);
       }
     },
   },

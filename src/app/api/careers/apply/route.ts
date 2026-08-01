@@ -143,7 +143,8 @@ export async function POST(request: NextRequest) {
       const wecomMsg = formatJobApplicationToWecom({
         name,
         phone,
-        position: jobTitle,
+        // 使用数据库中的职位标题，而非用户提交的 jobTitle（防篡改）
+        position: job.title,
         resumeUrl: uploadResult.url,
       });
       const result = await sendWecomNotification(wecomMsg, "job");

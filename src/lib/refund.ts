@@ -4,6 +4,7 @@ import { applyWechatRefund, generateRefundNo } from "./wechat-pay";
 import { refundAlipayOrder } from "./alipay";
 import { ensureMoneyPrecision } from "./money";
 import { recordTransaction } from "./transaction";
+import { refundPointsForOrder } from "./points";
 import { apiConsole } from "@/lib/logger";
 
 /**
@@ -94,6 +95,14 @@ export async function finalizeRefund(
         data: { status: "UNUSED", usedAt: null, orderId: null },
       });
     }
+
+    // 扣回该订单发放的积分（防刷：买→赚积分→退款→保留积分）
+    await refundPointsForOrder({
+      tx,
+      orderId,
+      userId: order.userId,
+      orderNo: order.orderNo,
+    });
   });
 
   // 记录退款流水（失败不阻断）

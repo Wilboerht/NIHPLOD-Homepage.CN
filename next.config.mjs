@@ -24,12 +24,14 @@ const securityHeaders = [
       "default-src 'self'",
       // TODO: 'unsafe-inline' 暂时保留。Next.js 与高德地图均依赖内联脚本，
       // 完全移除需配合 middleware 实现 per-request nonce，当前未改造，故保留并加说明。
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:",
+      // 'unsafe-eval' 已移除：生产构建无需动态求值。
+      "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
       // 收紧 img-src：禁止任意 https: 通配，只允许已知域名，并统一使用 https
       "img-src 'self' data: blob: https://**.nihplod.cn https://**.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://api.openai.com https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
+      // connect-src 仅允许浏览器端实际需要的域；AI 调用（DeepSeek/OpenAI）均为服务端发起
+      "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
       "worker-src 'self' blob:",
       "frame-ancestors 'self'",
       "form-action 'self'",

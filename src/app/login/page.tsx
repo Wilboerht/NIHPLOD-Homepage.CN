@@ -40,7 +40,7 @@ function buildLoginUrl(mode: AuthMode, returnTo: string | null, extra: Record<st
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const _isMobile = useIsMobile();
+  const isMobile = useIsMobile();
   const toast = useToast();
   const { refreshUser, restorePendingCheckout } = useAuth();
 
@@ -89,8 +89,6 @@ function LoginPageContent() {
 
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentError, setConsentError] = useState("");
-
-  const isMobile = useIsMobile();
 
   const isSafeReturnTo = useCallback((url: string): boolean => {
     if (!url) return false;
@@ -161,6 +159,22 @@ function LoginPageContent() {
     setLoginCodeCountdown(0);
     setLoginCodeSending(false);
     setConsentError("");
+    setShowPassword(false);
+  }, [mode]);
+
+  useEffect(() => {
+    // 模式切换时清除表单字段数据（防止跨模式数据残留）
+    setLoginPhone("");
+    setLoginPassword("");
+    setRegName("");
+    setRegPhone("");
+    setRegCode("");
+    setRegPassword("");
+    setRegConfirmPassword("");
+    setForgotPhone("");
+    setResetCode("");
+    setResetNewPassword("");
+    setResetConfirmPassword("");
   }, [mode]);
 
   // Countdown timers
@@ -215,10 +229,13 @@ function LoginPageContent() {
     try {
       await refreshUser(true);
     } catch {
-      // refreshUser 失败时仍然继续导航——认证 Cookie 已由服务端设置，
-      // 用户在目标页面仍可以看到已登录状态，后端 API 会返回最新用户信息。
+      // refreshUser 失败时仍然继续导航——认证 Cookie 已由服务端设置
     }
-    restorePendingCheckout();
+    // OAuth 授权端点的重定向是全页面跳转，React state 会丢失；
+    // 此时不清除 pending checkout，让它留在 sessionStorage 等跳转回来再恢复
+    if (!returnTo?.startsWith("/api/oauth/authorize")) {
+      restorePendingCheckout();
+    }
     navigateToReturnTo(returnTo);
   };
 
@@ -296,7 +313,6 @@ function LoginPageContent() {
         password: regPassword,
       });
       toast.success("绑定成功！");
-      await refreshUser(true);
       await handleAuthSuccess();
     } catch (error) {
       toast.error(getErrorMessage(error, "绑定失败，请稍后重试"));
@@ -689,7 +705,7 @@ function LoginPageContent() {
       {mounted && (
         <>
           {/* Backdrop (PC only) */}
-          {!_isMobile && (
+          {!isMobile && (
             <m.div
               key="backdrop"
               initial={{ opacity: 0 }}
@@ -701,7 +717,7 @@ function LoginPageContent() {
           )}
 
           {/* PC Panel */}
-          {!_isMobile && (
+          {!isMobile && (
             <m.div
               key="pc-panel"
               initial={{ x: "100%" }}
@@ -740,10 +756,10 @@ function LoginPageContent() {
                   <AnimatePresence mode="wait">
                     <m.div
                       key={mode}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 }}
                     >
                       {mode === "consent" ? renderConsent("pc") : renderForm("pc")}
                     </m.div>
@@ -754,7 +770,7 @@ function LoginPageContent() {
           )}
 
           {/* Mobile Panel */}
-          {_isMobile && (
+          {isMobile && (
             <m.div
               key="mobile-panel"
               initial={{ y: "100%" }}
@@ -798,10 +814,10 @@ function LoginPageContent() {
                   <AnimatePresence mode="wait">
                     <m.div
                       key={mode}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 }}
                     >
                       {mode === "consent" ? renderConsent("mobile") : renderForm("mobile")}
                     </m.div>

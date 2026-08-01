@@ -402,6 +402,7 @@ describe("POST /api/oauth/token", () => {
         avatar: null,
         membershipLevel: null,
         totalPoints: null,
+        status: "ACTIVE",
       });
 
       const refreshToken = await signRefreshToken({

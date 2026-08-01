@@ -30,18 +30,6 @@ export const dynamic = "force-dynamic";
 let cachedJWKS: { body: string; timestamp: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 小时
 
-/**
- * 获取 JWKS 的 kid 标识符（不暴露 k 值）
- */
-function getAccessKid(): string {
-  const secret = process.env.JWT_ACCESS_SECRET;
-  if (!secret) {
-    throw new Error("JWT_ACCESS_SECRET 未配置");
-  }
-  // 使用 SHA-256 生成稳定的 kid（不暴露原始密钥）
-  return `access-token-v1`;
-}
-
 export async function GET(request: Request) {
   try {
     // 速率限制：JWKS 暴露签名密钥，按 IP 限制访问频率

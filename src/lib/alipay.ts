@@ -8,6 +8,7 @@ import { OrderStatus } from "@/generated/prisma/client";
 import { formatMoney, moneyStrictEqual, ensureMoneyPrecision } from "./money";
 import { formatKey, validateKeyFormat, toPrivateKeyPem, toPublicKeyPem } from "./crypto-utils";
 import { fetchWithTimeout } from "./fetch-utils";
+import { autoRefundCancelledOrder } from "./auto-refund";
 import { apiConsole } from "@/lib/logger";
 
 // 支付宝配置（延迟校验）
@@ -355,6 +356,21 @@ export async function handleAlipayNotify(
       return { success: false, message: "签名验证失败" };
     }
 
+    // 校验 app_id：防止跨应用通知串扰
+    if (params.app_id && params.app_id !== ALIPAY_CONFIG.appId) {
+      apiConsole.error(`[Alipay] app_id 不匹配: ${params.app_id}`);
+      return { success: false, message: "app_id 不匹配" };
+    }
+
+    // 校验 notify_time 新鲜度（±15 分钟），防重放
+    if (params.notify_time) {
+      const notifyTime = new Date(params.notify_time);
+      if (isNaN(notifyTime.getTime()) || Math.abs(Date.now() - notifyTime.getTime()) > 15 * 60 * 1000) {
+        apiConsole.error(`[Alipay] notify_time 过期: ${params.notify_time}`);
+        return { success: false, message: "通知时间无效" };
+      }
+    }
+
     // 检查交易状态
     if (params.trade_status !== "TRADE_SUCCESS" && params.trade_status !== "TRADE_FINISHED") {
       return { success: false, message: "交易未成功" };
@@ -367,6 +383,7 @@ export async function handleAlipayNotify(
     let capturedOrderId: string | undefined;
     let capturedPayAmount: number | undefined;
     let shouldRecordTransaction = false;
+    let cancelledOrderRefund: { orderId: string; orderNo: string; payAmount: number } | null = null;
 
     // 使用事务更新订单状态
     await prisma.$transaction(async (tx) => {
@@ -392,9 +409,14 @@ export async function handleAlipayNotify(
         throw new Error("AMOUNT_MISMATCH");
       }
 
-      // 终态拦截：已取消/已退款/退款中/已完成 的订单不应再被支付激活
+      // 已取消但支付成功：触发自动退款，避免用户被扣款
+      if (order.status === OrderStatus.CANCELLED) {
+        cancelledOrderRefund = { orderId: order.id, orderNo: order.orderNo, payAmount: Number(order.payAmount) };
+        return;
+      }
+
+      // 终态拦截：已退款/退款中/已完成/已发货 的订单不应再被支付激活
       const terminalStatuses: OrderStatus[] = [
-        OrderStatus.CANCELLED,
         OrderStatus.REFUNDED,
         OrderStatus.REFUNDING,
         OrderStatus.COMPLETED,
@@ -463,6 +485,19 @@ export async function handleAlipayNotify(
     });
 
     apiConsole.info(`[Alipay] 订单支付成功: ${orderNo}`);
+
+    // 订单已取消但支付成功：自动发起退款（事务外，避免回调阻塞）
+    // TS 无法感知事务闭包内的赋值，此处做类型断言
+    const refundTarget = cancelledOrderRefund as { orderId: string; orderNo: string; payAmount: number } | null;
+    if (refundTarget) {
+      await autoRefundCancelledOrder({
+        orderId: refundTarget.orderId,
+        orderNo: refundTarget.orderNo,
+        payAmount: refundTarget.payAmount,
+        paymentMethod: "alipay",
+      });
+    }
+
     return { success: true };
   } catch (error) {
     apiConsole.error("[Alipay] 处理回调失败:", error);

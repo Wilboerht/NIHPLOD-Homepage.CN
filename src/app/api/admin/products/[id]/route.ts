@@ -412,6 +412,23 @@ export async function DELETE(
       await deleteUploadedFile(image.url);
     }
 
+    // 检查是否被订单引用（有历史订单的商品禁止物理删除，返回友好提示）
+    const orderItemCount = await prisma.orderItem.count({
+      where: { productId: id },
+    });
+    if (orderItemCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "HAS_ORDERS",
+            message: `该商品已被 ${orderItemCount} 个订单引用，无法删除。建议将商品下架而非删除，以保留历史订单数据。`,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // 删除产品（级联删除关联的图片数据库记录）
     await prisma.product.delete({ where: { id } });
 

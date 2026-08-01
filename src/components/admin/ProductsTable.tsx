@@ -51,6 +51,9 @@ interface ProductsTableProps {
   };
   onPageChange: (page: number) => void;
   onRefresh: () => void;
+  onSort?: (key: string, order: "asc" | "desc") => void;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export function ProductsTable({
@@ -59,6 +62,9 @@ export function ProductsTable({
   pagination,
   onPageChange,
   onRefresh,
+  onSort,
+  sortBy,
+  sortOrder,
 }: ProductsTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -194,6 +200,7 @@ export function ProductsTable({
       key: "price",
       title: "价格",
       align: "right",
+      sortable: true,
       render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
     },
     {
@@ -306,6 +313,7 @@ export function ProductsTable({
         loading={loading}
         rowKey="id"
         emptyText="暂无产品数据"
+        onSort={onSort}
         pagination={{
           page: pagination.page,
           pageSize: pagination.pageSize,

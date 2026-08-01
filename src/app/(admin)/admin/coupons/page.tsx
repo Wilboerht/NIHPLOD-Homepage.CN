@@ -43,6 +43,7 @@ interface Coupon {
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
   const [modalCoupon, setModalCoupon] = useState<Coupon | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
@@ -90,8 +91,12 @@ export default function AdminCouponsPage() {
         "/api/admin/coupons",
         { page, pageSize: 20 }
       );
+      setLoadError("");
       setCoupons(data.coupons);
       setPagination(data.pagination);
+    } catch {
+      console.error("获取优惠券失败");
+      setLoadError("列表加载失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -117,6 +122,55 @@ export default function AdminCouponsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalCoupon) return;
+
+    // 客户端校验（与服务端 zod 规则对齐，提供即时反馈）
+    if (!modalCoupon.name.trim()) {
+      error("请填写优惠券名称");
+      return;
+    }
+    if (modalCoupon.type === "DISCOUNT_AMOUNT") {
+      if (!(Number(modalCoupon.value) > 0)) {
+        error("满减金额必须大于 0");
+        return;
+      }
+    } else if (modalCoupon.type === "DISCOUNT_PERCENT") {
+      const rate = Number(modalCoupon.value);
+      if (!(rate > 0 && rate < 1)) {
+        error("折扣率需为 0 到 1 之间的小数，例如 0.9 表示九折");
+        return;
+      }
+    }
+    if (!(Number(modalCoupon.minAmount) >= 0)) {
+      error("使用门槛不能为负数");
+      return;
+    }
+    if (!(Number(modalCoupon.userLimit) >= 1)) {
+      error("每人限领数量至少为 1");
+      return;
+    }
+    if (modalCoupon.totalLimit !== null && !(Number(modalCoupon.totalLimit) >= 1)) {
+      error("发行总量至少为 1");
+      return;
+    }
+    if (modalCoupon.daysValid && !(Number(modalCoupon.daysValid) >= 1)) {
+      error("有效天数至少为 1");
+      return;
+    }
+    // 固定日期范围校验
+    if (
+      !modalCoupon.daysValid &&
+      modalCoupon.startDate &&
+      modalCoupon.endDate &&
+      new Date(modalCoupon.endDate) <= new Date(modalCoupon.startDate)
+    ) {
+      error("结束日期必须晚于开始日期");
+      return;
+    }
+    // 范围券必须指定 scopeIds
+    if (modalCoupon.scopeType !== "ALL" && modalCoupon.scopeIds.length === 0) {
+      error("范围券必须至少选择一个适用商品或品类");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -190,6 +244,14 @@ export default function AdminCouponsPage() {
 
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+        {loadError && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <p className="text-red-500 text-sm">{loadError}</p>
+            <button onClick={() => fetchCoupons(pagination.page)} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+              重试
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />

@@ -59,9 +59,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 验签通过且处理成功后，再记录幂等性
     try {
-      const amount = Math.round(
-        parseFloat(params.receipt_amount || params.total_amount || "0") * 100
-      );
+      const amount = parseFloat(params.receipt_amount || params.total_amount || "0"); // 元
       const recordResult = await recordNotification("alipay", notifyId, tradeNo, amount, params);
       if (recordResult.success && recordResult.recordId) {
         await markNotificationSuccess(recordResult.recordId);

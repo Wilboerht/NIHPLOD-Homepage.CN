@@ -113,8 +113,8 @@ function OAuthSessionsPage() {
 
   // 加载 Client 下拉选项
   useEffect(() => {
-    apiGet<{ data: { clients: ClientOption[] } }>("/api/admin/oauth-clients?pageSize=100")
-      .then((res) => setClientOptions(res.data.clients))
+    apiGet<{ clients: ClientOption[] }>("/api/admin/oauth-clients?pageSize=100")
+      .then((res) => setClientOptions(res.clients))
       .catch(() => setClientOptions([]));
   }, []);
 
@@ -394,7 +394,7 @@ function OAuthSessionsPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-500">用户 ID</span>
                       <Link
-                        href={`/admin/users/${detailSession.userId}`}
+                        href={`/admin/users?search=${encodeURIComponent(detailSession.userId)}`}
                         className="text-blue-600 hover:underline font-mono"
                       >
                         {detailSession.userId}

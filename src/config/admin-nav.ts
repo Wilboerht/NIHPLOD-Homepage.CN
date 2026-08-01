@@ -19,6 +19,7 @@ import {
   UserCog,
   MonitorStop,
   FileSearch,
+  Activity,
   LucideIcon,
 } from "lucide-react";
 
@@ -28,26 +29,32 @@ export interface NavItem {
   icon: LucideIcon;
   badge?: number; // 可选的徽章数字（如未读消息数）
   roles?: string[]; // 允许访问的角色，不填则全部允许
+  group?: string; // 导航分组（sidebar 渲染分组标题）
 }
 
 export const adminNavItems: NavItem[] = [
   { title: "仪表盘", href: "/admin", icon: LayoutDashboard, roles: ["owner", "admin"] },
-  { title: "订单管理", href: "/admin/orders", icon: ShoppingCart, roles: ["owner", "admin"] },
-  { title: "用户管理", href: "/admin/users", icon: Users, roles: ["owner", "admin"] },
-  { title: "产品管理", href: "/admin/products", icon: Package, roles: ["owner", "admin"] },
-  { title: "分类管理", href: "/admin/categories", icon: FolderTree, roles: ["owner", "admin"] },
-  { title: "优惠券管理", href: "/admin/coupons", icon: Ticket, roles: ["owner", "admin"] },
-  { title: "会员管理", href: "/admin/vip", icon: Crown, roles: ["owner", "admin"] },
-  { title: "职位管理", href: "/admin/jobs", icon: Briefcase, roles: ["owner", "admin"] },
-  { title: "简历管理", href: "/admin/applications", icon: UserCheck, roles: ["owner", "admin"] },
-  { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"] },
-  { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"] },
-  { title: "安全设置", href: "/admin/settings/totp", icon: ShieldCheck, roles: ["owner", "admin"] },
-  { title: "审计日志", href: "/admin/audit-logs", icon: ScrollText, roles: ["owner", "admin"] },
-  { title: "SSO 客户端", href: "/admin/oauth-clients", icon: Key, roles: ["owner"] },
-  { title: "SSO 授权管理", href: "/admin/oauth/consents", icon: UserCog, roles: ["owner"] },
-  { title: "SSO 会话管理", href: "/admin/oauth/sessions", icon: MonitorStop, roles: ["owner"] },
-  { title: "SSO 审计日志", href: "/admin/oauth/audit", icon: FileSearch, roles: ["owner"] },
+  // 商城管理
+  { title: "订单管理", href: "/admin/orders", icon: ShoppingCart, roles: ["owner", "admin"], group: "商城管理" },
+  { title: "用户管理", href: "/admin/users", icon: Users, roles: ["owner", "admin"], group: "商城管理" },
+  { title: "产品管理", href: "/admin/products", icon: Package, roles: ["owner", "admin"], group: "商城管理" },
+  { title: "分类管理", href: "/admin/categories", icon: FolderTree, roles: ["owner", "admin"], group: "商城管理" },
+  { title: "优惠券管理", href: "/admin/coupons", icon: Ticket, roles: ["owner", "admin"], group: "商城管理" },
+  { title: "会员管理", href: "/admin/vip", icon: Crown, roles: ["owner", "admin"], group: "商城管理" },
+  // 招聘管理
+  { title: "职位管理", href: "/admin/jobs", icon: Briefcase, roles: ["owner", "admin"], group: "招聘管理" },
+  { title: "简历管理", href: "/admin/applications", icon: UserCheck, roles: ["owner", "admin"], group: "招聘管理" },
+  { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"], group: "招聘管理" },
+  // 系统管理
+  { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"], group: "系统管理" },
+  { title: "安全设置", href: "/admin/settings/totp", icon: ShieldCheck, roles: ["owner", "admin"], group: "系统管理" },
+  { title: "审计日志", href: "/admin/audit-logs", icon: ScrollText, roles: ["owner", "admin"], group: "系统管理" },
+  // SSO 管理
+  { title: "SSO 客户端", href: "/admin/oauth-clients", icon: Key, roles: ["owner"], group: "SSO 管理" },
+  { title: "SSO 授权管理", href: "/admin/oauth/consents", icon: UserCog, roles: ["owner"], group: "SSO 管理" },
+  { title: "SSO 会话管理", href: "/admin/oauth/sessions", icon: MonitorStop, roles: ["owner"], group: "SSO 管理" },
+  { title: "SSO 审计日志", href: "/admin/oauth/audit", icon: FileSearch, roles: ["owner"], group: "SSO 管理" },
+  { title: "SSO 统计概览", href: "/admin/oauth/stats", icon: Activity, roles: ["owner"], group: "SSO 管理" },
 ];
 
 /**

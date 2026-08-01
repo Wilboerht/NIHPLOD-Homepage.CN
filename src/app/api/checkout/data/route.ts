@@ -275,13 +275,15 @@ export async function GET(request: NextRequest) {
     const filteredCoupons = availableCoupons.filter((uc) => {
       const coupon = uc.coupon;
       if (coupon.scopeType === "ALL" || !coupon.scopeType) return true;
+      // 配置错误：范围券未指定适用商品，下单时也会被拒绝，这里直接隐藏
+      if (coupon.scopeIds.length === 0) return false;
       if (coupon.scopeType === "CATEGORY") {
         return categoryIds.some((cid) => coupon.scopeIds.includes(cid));
       }
       if (coupon.scopeType === "PRODUCT") {
         return itemProductIds.some((pid) => coupon.scopeIds.includes(pid));
       }
-      return true;
+      return false;
     });
 
     const coupons = filteredCoupons.map((uc) => ({

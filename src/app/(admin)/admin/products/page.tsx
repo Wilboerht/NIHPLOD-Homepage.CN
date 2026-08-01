@@ -47,6 +47,7 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 10,
@@ -59,6 +60,8 @@ export default function AdminProductsPage() {
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
   const search = searchParams.get("search") || "";
+  const sortBy = searchParams.get("sortBy") || "";
+  const sortOrder = searchParams.get("sortOrder") || "desc";
 
   // 搜索输入框状态
   const [searchInput, setSearchInput] = useState(search);
@@ -89,16 +92,20 @@ export default function AdminProductsPage() {
           categoryId,
           status: status === "all" ? undefined : status,
           search,
+          sortBy: sortBy || undefined,
+          sortOrder: sortOrder || undefined,
         }
       );
+      setLoadError("");
       setProducts(data.products);
       setPagination(data.pagination);
     } catch (error) {
       console.error("获取产品列表失败:", error);
+      setLoadError("列表加载失败，请重试");
     } finally {
       setLoading(false);
     }
-  }, [page, categoryId, status, search]);
+  }, [page, categoryId, status, search, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchProducts();
@@ -203,6 +210,16 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
+      {/* 加载失败错误态 */}
+      {loadError && (
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <p className="text-red-500 text-sm">{loadError}</p>
+          <button onClick={fetchProducts} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+            重试
+          </button>
+        </div>
+      )}
+
       {/* 产品表格 */}
       <ProductsTable
         products={products}
@@ -210,6 +227,9 @@ export default function AdminProductsPage() {
         pagination={pagination}
         onPageChange={(p) => updateParams({ page: String(p) })}
         onRefresh={fetchProducts}
+        onSort={(key, order) =>
+          updateParams({ sortBy: key, sortOrder: order })
+        }
       />
     </div>
   );

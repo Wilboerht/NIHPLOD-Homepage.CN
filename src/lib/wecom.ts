@@ -85,6 +85,14 @@ function getBaseUrl() {
 }
 
 /**
+ * 转义 WeCom Markdown 特殊字符，防止用户输入注入链接/格式
+ * 转义字符：\ ` * [ ] ( ) # + - . ! ~ > |
+ */
+export function escapeWecomMarkdown(text: string): string {
+  return String(text).replace(/([\\`*[\]()#+\-.!~>|])/g, "\\$1");
+}
+
+/**
  * 格式化联系表单消息为 WeCom Markdown 格式
  */
 export function formatContactToWecom(data: {
@@ -94,13 +102,16 @@ export function formatContactToWecom(data: {
   content: string;
   location?: string;
 }) {
-  const lines = [`> **留言人**: ${data.name}`, `> **咨询类型**: ${data.type || "通用"}`];
+  const lines = [
+    `> **留言人**: ${escapeWecomMarkdown(data.name)}`,
+    `> **咨询类型**: ${escapeWecomMarkdown(data.type || "通用")}`,
+  ];
 
   if (data.location) {
-    lines.push(`> **所在地**: ${data.location}`);
+    lines.push(`> **所在地**: ${escapeWecomMarkdown(data.location)}`);
   }
   if (data.phone) {
-    lines.push(`> **手机号**: ${data.phone}`);
+    lines.push(`> **手机号**: ${escapeWecomMarkdown(data.phone)}`);
   }
 
   lines.push(`> **时间**: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`);
@@ -111,7 +122,7 @@ export function formatContactToWecom(data: {
 ${lines.join("\n")}
 
 **留言内容**:
-${data.content}
+${escapeWecomMarkdown(data.content)}
 
 [点击后台查看](${baseUrl}/admin/messages)`;
 }
@@ -128,9 +139,9 @@ export function formatJobApplicationToWecom(data: {
   const baseUrl = getBaseUrl();
 
   return `### 💼 NIHPLOD 新求职申请
-> **申请人**: ${data.name}
-> **应聘职位**: ${data.position}
-> **手机号**: ${data.phone}
+> **申请人**: ${escapeWecomMarkdown(data.name)}
+> **应聘职位**: ${escapeWecomMarkdown(data.position)}
+> **手机号**: ${escapeWecomMarkdown(data.phone)}
 > **提交时间**: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
 
 **简历详情**: [点击查看简历](${data.resumeUrl})

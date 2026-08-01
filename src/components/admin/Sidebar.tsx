@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { adminNavItems, type NavItem } from "@/config/admin-nav";
 import { cn } from "@/lib/utils";
-import { apiPost } from "@/lib/api-client";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -30,6 +31,21 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [unreadMessages, setUnreadMessages] = useState<number | undefined>(undefined);
+
+  // 加载未读留言数（badge）
+  useEffect(() => {
+    if (!userRole) return;
+    let cancelled = false;
+    apiGet<{ unreadCount: number }>("/api/admin/messages?pageSize=1&status=unread")
+      .then((data) => {
+        if (!cancelled) setUnreadMessages(data.unreadCount);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [userRole, pathname]);
 
   // 处理登出
   const handleLogout = async () => {
@@ -107,37 +123,67 @@ export function Sidebar({
                   </div>
                 </li>
               ))
-            : adminNavItems
-                .filter((item) => !item.roles || item.roles.includes(userRole))
-                .map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item);
+            : (() => {
+                // 按 group 分组渲染，组间显示标题（折叠时隐藏标题）
+                const filtered = adminNavItems.filter(
+                  (item) => !item.roles || item.roles.includes(userRole)
+                );
+                const groups: { label: string | null; items: typeof filtered }[] = [];
+                for (const item of filtered) {
+                  const label = item.group ?? null;
+                  const last = groups[groups.length - 1];
+                  if (last && last.label === label) last.items.push(item);
+                  else groups.push({ label, items: [item] });
+                }
 
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={isMobile ? onClose : undefined}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                          active
-                            ? "bg-brand-primary/10 text-brand-primary"
-                            : "text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal",
-                          isCollapsed && !isMobile && "justify-center px-2"
-                        )}
-                        title={isCollapsed && !isMobile ? item.title : undefined}
-                      >
-                        <Icon className="h-5 w-5 flex-shrink-0" />
-                        {(!isCollapsed || isMobile) && <span>{item.title}</span>}
-                        {(!isCollapsed || isMobile) && item.badge !== undefined && (
-                          <span className="ml-auto rounded-full bg-red-400 px-2 py-0.5 text-xs text-white">
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
+                return groups.map((group, gi) => (
+                  <li key={group.label || `group-${gi}`}>
+                    {group.label && (!isCollapsed || isMobile) && (
+                      <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/30">
+                        {group.label}
+                      </p>
+                    )}
+                    <ul className="space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const active = isActive(item);
+                        // 留言管理：显示未读数 badge（0 时不显示）
+                        const badge =
+                          item.href === "/admin/messages"
+                            ? unreadMessages && unreadMessages > 0
+                              ? unreadMessages
+                              : undefined
+                            : item.badge;
+
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              onClick={isMobile ? onClose : undefined}
+                              className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                                active
+                                  ? "bg-brand-primary/10 text-brand-primary"
+                                  : "text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal",
+                                isCollapsed && !isMobile && "justify-center px-2"
+                              )}
+                              title={isCollapsed && !isMobile ? item.title : undefined}
+                            >
+                              <Icon className="h-5 w-5 flex-shrink-0" />
+                              {(!isCollapsed || isMobile) && <span>{item.title}</span>}
+                              {(!isCollapsed || isMobile) && badge !== undefined && (
+                                <span className="ml-auto rounded-full bg-red-400 px-2 py-0.5 text-xs text-white">
+                                  {badge > 99 ? "99+" : badge}
+                                </span>
+                              )}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ));
+              })()}
         </ul>
       </nav>
 

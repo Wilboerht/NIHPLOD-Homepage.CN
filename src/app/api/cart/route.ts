@@ -13,7 +13,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 // 添加购物车参数验证
 const addCartSchema = z.object({
   productId: z.string().min(1, "商品ID不能为空"),
-  quantity: z.number().int().min(1, "数量至少为1").default(1),
+  quantity: z.number().int().min(1, "数量至少为1").max(999, "单次添加数量不能超过999").default(1),
 });
 
 // 获取购物车
@@ -165,6 +165,12 @@ export async function POST(request: NextRequest) {
         const existing = await tx.cartItem.findUnique({
           where: { userId_productId: { userId: payload.id, productId } },
         });
+
+        // 累积数量校验：已有数量 + 新增数量不得超过库存
+        const totalQuantity = (existing?.quantity || 0) + quantity;
+        if (totalQuantity > currentProduct.stock) {
+          throw new Error("INSUFFICIENT_STOCK");
+        }
 
         if (existing) {
           return tx.cartItem.update({

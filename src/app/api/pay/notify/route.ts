@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         "wechat",
         notifyId,
         result.transactionId || "",
-        result.amount || 0,
+        (result.amount || 0) / 100, // result.amount 为分，统一转为元
         notifyData
       );
       if (recordResult.success && recordResult.recordId) {

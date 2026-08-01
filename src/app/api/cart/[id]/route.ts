@@ -15,7 +15,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 // 更新参数验证
 const updateSchema = z.object({
-  quantity: z.number().int().min(1).optional(),
+  quantity: z.number().int().min(1).max(999, "购物车单商品数量不能超过999").optional(),
 });
 
 // 更新购物车项

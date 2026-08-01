@@ -61,6 +61,7 @@ export default function AdminOrdersPage() {
 
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -79,10 +80,12 @@ export default function AdminOrdersPage() {
           search,
         }
       );
+      setLoadError("");
       setOrders(data.orders);
       setPagination(data.pagination);
     } catch {
       console.error("获取订单失败");
+      setLoadError("列表加载失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -144,6 +147,14 @@ export default function AdminOrdersPage() {
 
       {/* 订单列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+        {loadError && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <p className="text-red-500 text-sm">{loadError}</p>
+            <button onClick={fetchOrders} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+              重试
+            </button>
+          </div>
+        )}
         {loading ? (
           <table className="w-full text-sm">
             <thead>

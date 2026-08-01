@@ -21,7 +21,6 @@ export async function GET(_req: NextRequest) {
       select: {
         id: true,
         name: true,
-        code: true,
         type: true,
         value: true,
         minAmount: true,
@@ -32,6 +31,7 @@ export async function GET(_req: NextRequest) {
         userLimit: true,
         scopeType: true,
         scopeIds: true,
+        // 注意：不返回 code——兑换码是领取凭证，公开暴露会被枚举/滥用
       },
     });
 

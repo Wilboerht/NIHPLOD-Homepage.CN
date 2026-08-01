@@ -81,6 +81,7 @@ export default function AdminApplicationsPage() {
   const [total, setTotal] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
   const [jobFilter, setJobFilter] = useState("all");
   const [folderFilter, setFolderFilter] = useState("all");
@@ -135,7 +136,7 @@ export default function AdminApplicationsPage() {
         page: page.toString(),
         pageSize: "20",
       });
-      if (search) params.set("search", search);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (jobFilter !== "all") params.set("jobId", jobFilter);
       if (folderFilter !== "all") params.set("folderId", folderFilter);
@@ -163,7 +164,7 @@ export default function AdminApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, jobFilter, folderFilter, showError]);
+  }, [page, debouncedSearch, statusFilter, jobFilter, folderFilter, showError]);
 
   useEffect(() => {
     fetchApplications();
@@ -172,6 +173,7 @@ export default function AdminApplicationsPage() {
   // 搜索防抖
   useEffect(() => {
     const timer = setTimeout(() => {
+      setDebouncedSearch(search);
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);

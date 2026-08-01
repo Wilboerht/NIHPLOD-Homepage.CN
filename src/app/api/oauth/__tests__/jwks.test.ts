@@ -28,16 +28,13 @@ describe("GET /api/oauth/jwks", () => {
     mockGetIdTokenPublicKey.mockResolvedValue(null);
   });
 
-  it("未配置 RS256 公钥时返回 HS256 kid 占位", async () => {
+  it("未配置 RS256 公钥时返回空 keys（不暴露 HS256 占位，避免破坏标准 JWKS 客户端）", async () => {
     const { GET } = await import("../jwks/route");
     const req = new NextRequest("http://localhost/api/oauth/jwks");
     const res = await GET(req);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.keys).toHaveLength(1);
-    expect(body.keys[0].kid).toBe("access-token-v1");
-    expect(body.keys[0].alg).toBe("HS256");
-    expect(body.keys[0].k).toBeUndefined();
+    expect(body.keys).toHaveLength(0);
   });
 
   it("配置 RS256 公钥时公开公钥 JWK", async () => {

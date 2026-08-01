@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { confirmReceipt } from "@/lib/logistics";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
@@ -15,6 +16,15 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "order-create", { maxRequests: 20 });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
+    }
+
     const payload = await verifyUserAuth(request);
     if (!payload) {
       return NextResponse.json(

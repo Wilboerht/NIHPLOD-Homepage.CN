@@ -21,7 +21,7 @@ export interface ForgotPasswordFormProps {
   onResetNewPasswordChange: (v: string) => void;
   onResetConfirmPasswordChange: (v: string) => void;
   onShowPasswordToggle: () => void;
-  onSendResetLink: (e: React.FormEvent) => void;
+  onSendResetLink: (e: React.SyntheticEvent) => void;
   onMobileSendResetCode: () => void;
   onResetPassword: (e: React.FormEvent) => void;
   onMobileResetPassword: (e: React.FormEvent) => void;
@@ -74,7 +74,7 @@ export function ForgotPasswordForm({
             </p>
             <input type="text" required maxLength={6} value={resetCode} onChange={(e) => onResetCodeChange(e.target.value)} className={pcInputClass} placeholder="6位验证码" />
             <div className="relative">
-              <input type={showPassword ? "text" : "password"} required minLength={PASSWORD_MIN_LENGTH} value={resetNewPassword} onChange={(e) => onResetNewPasswordChange(e.target.value)} className={`${pcInputClass} pr-10`} maxLength={64} placeholder="新密码（8位且含大写/小写/数字）" />
+              <input type={showPassword ? "text" : "password"} required minLength={PASSWORD_MIN_LENGTH} value={resetNewPassword} onChange={(e) => onResetNewPasswordChange(e.target.value)} className={`${pcInputClass} pr-10`} maxLength={64} autoComplete="new-password" placeholder="新密码（8位且含大写/小写/数字）" />
               <button type="button" onClick={onShowPasswordToggle} className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70">
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -150,8 +150,8 @@ export function ForgotPasswordForm({
               <input type="text" required maxLength={6} value={resetCode} onChange={(e) => onResetCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6位验证码" className={mobileInputFlexClass} />
             </div>
             <div className="flex gap-3">
-              <button type="button" onClick={onSwitchToLogin} className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]">
-                返回登录
+              <button type="button" onClick={() => onMobileForgotStepChange("phone")} className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]">
+                修改手机号
               </button>
               <button type="button" onClick={() => { if (!/^\d{6}$/.test(resetCode)) { toast.error("请输入6位验证码"); return; } onMobileForgotStepChange("password"); }} disabled={resetCode.length !== 6} className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40">
                 下一步
@@ -169,11 +169,26 @@ export function ForgotPasswordForm({
 
         {mobileForgotStep === "password" && (
           <form onSubmit={onMobileResetPassword} className="space-y-6">
-            <div><input type="password" required minLength={PASSWORD_MIN_LENGTH} value={resetNewPassword} onChange={(e) => onResetNewPasswordChange(e.target.value)} placeholder="新密码（8位且含大写/小写/数字）" maxLength={64} className={mobileInputClass} /></div>
-            <div><input type="password" required minLength={PASSWORD_MIN_LENGTH} value={resetConfirmPassword} onChange={(e) => onResetConfirmPasswordChange(e.target.value)} placeholder="确认密码" maxLength={64} className={mobileInputClass} /></div>
-            <button type="submit" disabled={loading} className={mobileBtnClass}>
-              {loading ? "重置中..." : "重置密码"}
-            </button>
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} required minLength={PASSWORD_MIN_LENGTH} value={resetNewPassword} onChange={(e) => onResetNewPasswordChange(e.target.value)} placeholder="新密码（8位且含大写/小写/数字）" maxLength={64} className={`${mobileInputClass} pr-10`} />
+              <button type="button" onClick={onShowPasswordToggle} className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70">
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} required minLength={PASSWORD_MIN_LENGTH} value={resetConfirmPassword} onChange={(e) => onResetConfirmPasswordChange(e.target.value)} placeholder="确认密码" maxLength={64} className={`${mobileInputClass} pr-10`} />
+              <button type="button" onClick={onShowPasswordToggle} className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70">
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => onMobileForgotStepChange("code")} className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]">
+                返回上一步
+              </button>
+              <button type="submit" disabled={loading} className={`${mobileBtnClass} flex-1`}>
+                {loading ? "重置中..." : "重置密码"}
+              </button>
+            </div>
           </form>
         )}
 

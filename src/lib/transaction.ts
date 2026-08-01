@@ -40,3 +40,26 @@ export async function recordTransaction(data: TransactionRecord): Promise<void> 
     apiConsole.error("[Transaction] 记录交易流水失败:", error);
   }
 }
+
+/**
+ * 清理过期的交易原始数据（rawData 字段置空，保留流水记录）
+ * 防止网关原始响应明文无限增长
+ * @param days 保留天数（默认 180 天）
+ */
+export async function cleanupOldTransactionRawData(days = 180): Promise<number> {
+  try {
+    const deadline = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const result = await prisma.transaction.updateMany({
+      where: {
+        createdAt: { lt: deadline },
+        rawData: { not: null },
+      },
+      data: { rawData: null },
+    });
+    apiConsole.info(`[Transaction] 已清理 ${result.count} 条过期交易原始数据`);
+    return result.count;
+  } catch (error) {
+    apiConsole.error("[Transaction] 清理过期交易原始数据失败:", error);
+    return 0;
+  }
+}

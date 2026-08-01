@@ -11,7 +11,8 @@ import { apiConsole } from "@/lib/logger";
 
 /**
  * 生成订单号
- * 格式: yyyyMMddHHmmss + 6位随机数
+ * 格式: yyyyMMddHHmmss + 8位随机数
+ * 8位随机数将碰撞概率从 1/90万 降至 1/9000万
  */
 export function generateOrderNo(): string {
   const now = new Date();
@@ -19,7 +20,7 @@ export function generateOrderNo(): string {
     .toISOString()
     .replace(/[-:T.Z]/g, "")
     .slice(0, 14);
-  const randomPart = randomInt(100000, 1000000).toString();
+  const randomPart = randomInt(10000000, 100000000).toString();
   return `${datePart}${randomPart}`;
 }
 
@@ -162,34 +163,51 @@ export async function createOrder(
         }
 
         // 校验适用范围
-        if (coupon.scopeType && coupon.scopeType !== "ALL" && coupon.scopeIds.length > 0) {
-          const orderProductIds = items.map((i) => i.productId);
+        // 规则：范围券（CATEGORY/PRODUCT）只对匹配的商品行生效，折扣金额不得作用于不匹配商品
+        let eligibleAmount = totalAmount; // 参与折扣的金额基数
+
+        if (coupon.scopeType && coupon.scopeType !== "ALL") {
+          // 拒绝配置错误：范围券必须指定 scopeIds，空数组视同全场券会扩大优惠范围
+          if (coupon.scopeIds.length === 0) {
+            throw new Error("优惠券配置错误：范围券未指定适用商品");
+          }
+
+          const orderProductIds = orderItems.map((i) => i.productId);
           if (coupon.scopeType === "CATEGORY") {
             const products = await tx.product.findMany({
               where: { id: { in: orderProductIds } },
-              select: { categoryId: true },
+              select: { id: true, categoryId: true },
             });
-            const categoryIds = products.map((p) => p.categoryId);
-            const hasMatch = categoryIds.some((cid) => coupon.scopeIds.includes(cid));
-            if (!hasMatch) {
+            const productCategoryMap = new Map(products.map((p) => [p.id, p.categoryId]));
+            // 匹配的商品行金额之和
+            eligibleAmount = orderItems.reduce((sum, item) => {
+              const categoryId = productCategoryMap.get(item.productId);
+              return categoryId && coupon.scopeIds.includes(categoryId) ? sum + item.subtotal : sum;
+            }, 0);
+            if (eligibleAmount <= 0) {
               throw new Error("优惠券不适用于当前商品品类");
             }
           } else if (coupon.scopeType === "PRODUCT") {
-            const hasMatch = orderProductIds.some((pid) => coupon.scopeIds.includes(pid));
-            if (!hasMatch) {
+            eligibleAmount = orderItems.reduce(
+              (sum, item) => (coupon.scopeIds.includes(item.productId) ? sum + item.subtotal : sum),
+              0
+            );
+            if (eligibleAmount <= 0) {
               throw new Error("优惠券不适用于当前商品");
             }
+          } else {
+            throw new Error(`优惠券范围类型无效: ${coupon.scopeType}`);
           }
         }
 
         // 计算优惠
         if (coupon.type === "DISCOUNT_AMOUNT") {
-          // 满减券：直接减去固定金额
+          // 满减券：直接减去固定金额，但不能超过参与折扣的金额基数
           discountAmount = Number(coupon.value);
-          // 零元购防护：满减券金额必须严格小于订单金额（不允许完全免费）
-          if (discountAmount >= totalAmount) {
+          // 零元购防护：满减券金额必须严格小于参与折扣金额（不允许完全免费）
+          if (discountAmount >= eligibleAmount) {
             throw new Error(
-              `优惠券金额异常：优惠金额 (${discountAmount}元) 不能超过订单金额 (${totalAmount}元)`
+              `优惠券金额异常：优惠金额 (${discountAmount}元) 不能超过参与折扣商品金额 (${eligibleAmount}元)`
             );
           }
         } else if (coupon.type === "DISCOUNT_PERCENT") {
@@ -205,7 +223,8 @@ export async function createOrder(
               `优惠券折扣比例无效 (value=${discountRate})，应为 0 到 1 之间的小数，例如 0.8 表示八折`
             );
           }
-          discountAmount = totalAmount * (1 - discountRate);
+          // 折扣仅作用于匹配商品金额（范围券）或全场金额（全场券）
+          discountAmount = eligibleAmount * (1 - discountRate);
         }
 
         // 防止负数

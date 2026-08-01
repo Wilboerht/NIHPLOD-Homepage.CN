@@ -81,12 +81,17 @@ export function WechatBindForm({
       <form onSubmit={onSubmit} className="w-full space-y-6">
         <div><input type="tel" inputMode="numeric" pattern="[0-9]*" autoComplete="tel" required value={regPhone} onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))} maxLength={11} placeholder="手机号" className={mobileInputClass} /></div>
         <div className="relative flex gap-2">
-          <input type="text" required maxLength={6} value={regCode} onChange={(e) => onRegCodeChange(e.target.value)} placeholder="验证码" className={mobileInputFlexClass} />
-          <button type="button" onClick={onSendRegCode} disabled={regCodeSending || regCountdown > 0 || !regPhone} className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all disabled:opacity-30">
+          <input type="text" required maxLength={6} value={regCode} onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="验证码" className={mobileInputFlexClass} />
+          <button type="button" onClick={onSendRegCode} disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11} className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all disabled:opacity-30">
             {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
           </button>
         </div>
-        <div><input type="password" required minLength={PASSWORD_MIN_LENGTH} value={regPassword} onChange={(e) => onRegPasswordChange(e.target.value)} placeholder="密码（8位且含大写/小写/数字）" maxLength={64} className={mobileInputClass} /></div>
+        <div className="relative">
+          <input type={showPassword ? "text" : "password"} required minLength={PASSWORD_MIN_LENGTH} value={regPassword} onChange={(e) => onRegPasswordChange(e.target.value)} placeholder="密码（8位且含大写/小写/数字）" maxLength={64} className={`${mobileInputClass} pr-10`} />
+          <button type="button" onClick={onShowPasswordToggle} className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70">
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         <div className="pt-2">
           <button type="submit" disabled={loading} className={mobileBtnClass}>
             <span className="relative z-10 flex items-center justify-center gap-2">

@@ -51,6 +51,13 @@ const ACTION_LABELS: Record<string, string> = {
   update_coupon: "更新优惠券",
   delete_coupon: "删除优惠券",
   run_cron_task: "执行定时任务",
+  oauth_client_create: "创建 SSO 客户端",
+  oauth_client_update: "更新 SSO 客户端",
+  oauth_client_delete: "删除 SSO 客户端",
+  oauth_client_rotate_secret: "轮换 SSO 客户端密钥",
+  oauth_client_test: "测试 SSO 客户端",
+  oauth_consent_revoke: "撤销 SSO 授权",
+  oauth_session_terminate: "终止 SSO 会话",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
@@ -63,6 +70,7 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   application: "简历",
   coupon: "优惠券",
   system: "系统",
+  oauth_client: "SSO 客户端",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -197,7 +205,7 @@ export default function AuditLogsPage() {
       </div>
 
       {/* 日志列表 */}
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">

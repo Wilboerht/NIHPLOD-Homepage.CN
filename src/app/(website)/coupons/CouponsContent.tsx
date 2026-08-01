@@ -75,7 +75,6 @@ export function CouponsContent() {
     try {
       await apiPost("/api/coupons/acquire", {
         couponId: coupon.id,
-        ...(coupon.code && { code: coupon.code }),
       });
       setAcquiredIds((prev) => new Set(prev).add(coupon.id));
     } catch (error) {

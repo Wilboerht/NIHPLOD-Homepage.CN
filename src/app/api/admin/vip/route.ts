@@ -174,6 +174,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 资金/权益操作：仅超级管理员可手动调整积分
+    if (admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可调整用户积分" } },
+        { status: 403 }
+      );
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request, "vip:write");
     if (rateLimitResponse) return rateLimitResponse;
 

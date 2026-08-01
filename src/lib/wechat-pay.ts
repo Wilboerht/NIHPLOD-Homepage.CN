@@ -10,6 +10,7 @@ import { yuanToFen, moneyStrictEqual, fenToYuan } from "./money";
 import { formatKey, validateKeyFormat } from "./crypto-utils";
 import { recordTransaction } from "./transaction";
 import { creditPointsForOrder } from "./points";
+import { autoRefundCancelledOrder } from "./auto-refund";
 import { apiConsole } from "@/lib/logger";
 
 interface WechatPlatformCert {
@@ -450,6 +451,7 @@ export async function handlePaymentNotify(
     let capturedOrderId: string | undefined;
     let capturedPayAmount: number | undefined;
     let shouldRecordTransaction = false;
+    let cancelledOrderRefund: { orderId: string; orderNo: string; payAmount: number } | null = null;
 
     await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
@@ -466,9 +468,14 @@ export async function handlePaymentNotify(
         throw new Error("AMOUNT_MISMATCH");
       }
 
-      // 终态拦截：已取消/已退款/退款中/已完成 的订单不应再被支付激活
+      // 已取消但支付成功：触发自动退款，避免用户被扣款
+      if (order.status === OrderStatus.CANCELLED) {
+        cancelledOrderRefund = { orderId: order.id, orderNo: order.orderNo, payAmount: Number(order.payAmount) };
+        return;
+      }
+
+      // 终态拦截：已退款/退款中/已完成/已发货 的订单不应再被支付激活
       const terminalStatuses: OrderStatus[] = [
-        OrderStatus.CANCELLED,
         OrderStatus.REFUNDED,
         OrderStatus.REFUNDING,
         OrderStatus.COMPLETED,
@@ -539,6 +546,18 @@ export async function handlePaymentNotify(
         status: "SUCCESS",
         gatewayTrxId: transactionId,
         rawData: JSON.stringify(data),
+      });
+    }
+
+    // 订单已取消但支付成功：自动发起退款（事务外，避免回调阻塞）
+    // TS 无法感知事务闭包内的赋值，此处做类型断言
+    const refundTarget = cancelledOrderRefund as { orderId: string; orderNo: string; payAmount: number } | null;
+    if (refundTarget) {
+      await autoRefundCancelledOrder({
+        orderId: refundTarget.orderId,
+        orderNo: refundTarget.orderNo,
+        payAmount: refundTarget.payAmount,
+        paymentMethod: "wechat",
       });
     }
 

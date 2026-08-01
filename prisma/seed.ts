@@ -9,8 +9,10 @@ import pg from "pg";
 import bcrypt from "bcryptjs";
 import { parseSeedAdmins, validatePassword } from "./seed-admin-utils";
 
-// 加载环境变量
-config({ path: ".env.local" });
+// 加载环境变量（优先 .env.local，其次 .env，兼容 CI 环境）
+import { existsSync } from "fs";
+import { join } from "path";
+config({ path: existsSync(join(process.cwd(), ".env.local")) ? ".env.local" : ".env" });
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -19,6 +21,20 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  // 生产环境守卫：种子脚本会清空目录数据，禁止在非开发环境执行
+  const nodeEnv = process.env.NODE_ENV || "development";
+  const force = process.argv.includes("--force");
+  if (nodeEnv === "production" && !force) {
+    console.error(
+      "🚫 拒绝执行：检测到 NODE_ENV=production。种子脚本会清空商品/用户等数据，\n" +
+      "如需强行执行请显式传入 --force 参数（风险自负）。"
+    );
+    process.exit(1);
+  }
+  if (nodeEnv === "production" && force) {
+    console.warn("⚠️  收到 --force 参数，在生产环境强行执行种子脚本！");
+  }
+
   console.log("🌱 开始初始化种子数据...\n");
 
   // 1. 创建管理员账号（所有凭证从环境变量读取，不再硬编码）
@@ -450,9 +466,9 @@ async function main() {
   await prisma.address.deleteMany({});
   await prisma.user.deleteMany({});
 
-  // 9. 创建测试用户（密码从环境变量读取）
+  // 9. 创建测试用户（密码从环境变量读取；生产环境不创建测试用户）
   const seedTestPassword = process.env.SEED_TEST_USER_PASSWORD;
-  if (seedTestPassword) {
+  if (seedTestPassword && nodeEnv !== "production") {
     const testUserPasswordHash = await bcrypt.hash(seedTestPassword, 10);
     const testUser = await prisma.user.create({
       data: {

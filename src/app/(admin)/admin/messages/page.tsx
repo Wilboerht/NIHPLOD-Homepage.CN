@@ -42,6 +42,7 @@ export default function AdminMessagesPage() {
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -51,6 +52,7 @@ export default function AdminMessagesPage() {
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
 
   // 获取留言列表
   const fetchMessages = useCallback(async () => {
@@ -63,7 +65,7 @@ export default function AdminMessagesPage() {
       }>("/api/admin/messages", {
         page,
         pageSize: 20,
-        search,
+        search: debouncedSearch,
         status: statusFilter === "all" ? undefined : statusFilter,
       });
       setMessages(data.items);
@@ -74,7 +76,7 @@ export default function AdminMessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchMessages();
@@ -83,6 +85,7 @@ export default function AdminMessagesPage() {
   // 搜索防抖
   useEffect(() => {
     const timer = setTimeout(() => {
+      setDebouncedSearch(search);
       setPage(1);
     }, 300);
     return () => clearTimeout(timer);
@@ -235,7 +238,7 @@ export default function AdminMessagesPage() {
               size="sm"
               variant="outline"
               className="text-red-600 hover:bg-red-50"
-              onClick={() => handleBatchAction("delete")}
+              onClick={() => setShowBatchDeleteConfirm(true)}
             >
               批量删除
             </Button>
@@ -453,6 +456,20 @@ export default function AdminMessagesPage() {
         description={`确定要删除来自「${deleteTarget?.name}」的留言吗？此操作无法撤销。`}
         confirmText="删除"
         loading={deleting}
+        type="danger"
+      />
+
+      {/* 批量删除确认 */}
+      <ConfirmDialog
+        open={showBatchDeleteConfirm}
+        onClose={() => setShowBatchDeleteConfirm(false)}
+        onConfirm={async () => {
+          await handleBatchAction("delete");
+          setShowBatchDeleteConfirm(false);
+        }}
+        title="批量删除"
+        description={`确定要删除选中的 ${selectedIds.size} 项？此操作不可恢复。`}
+        confirmText="确定删除"
         type="danger"
       />
     </div>

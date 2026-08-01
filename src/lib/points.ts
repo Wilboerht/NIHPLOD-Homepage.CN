@@ -148,3 +148,96 @@ export async function creditPointsForOrder(params: {
     return null;
   }
 }
+
+/**
+ * 订单退款时扣回该订单发放的积分
+ * 调用时机：退款最终确认（finalizeRefund）后
+ *
+ * 扣回范围：
+ * - ORDER_REWARD（订单消费奖励，含生日双倍）
+ * - LEVEL_UP_BONUS（reference 为该订单的升级奖励）
+ *
+ * 积分不会扣成负数；等级按剩余积分重新计算。
+ * 幂等：已扣回过（reference 为 `REFUND:${orderNo}`）则跳过。
+ */
+export async function refundPointsForOrder(params: {
+  tx?: Prisma.TransactionClient;
+  orderId: string;
+  userId: string;
+  orderNo: string;
+}): Promise<{ deductedPoints: number } | null> {
+  const { tx, orderId, userId, orderNo } = params;
+  const db = tx ?? prisma;
+
+  try {
+    // 幂等检查：该订单退款积分是否已扣回
+    const existing = await db.pointTransaction.findFirst({
+      where: { userId, type: "ORDER_REWARD_REVERSAL", reference: orderNo },
+    });
+    if (existing) {
+      apiConsole.debug(`[Points] 订单 ${orderNo} 退款积分已扣回，跳过`);
+      return null;
+    }
+
+    // 汇总该订单发放的积分（消费奖励 + 升级奖励）
+    const earnedTransactions = await db.pointTransaction.findMany({
+      where: {
+        userId,
+        OR: [
+          { type: "ORDER_REWARD", reference: orderNo },
+          { type: "LEVEL_UP_BONUS", reference: orderNo },
+        ],
+      },
+      select: { points: true },
+    });
+
+    const totalEarned = earnedTransactions.reduce((sum, t) => sum + t.points, 0);
+    if (totalEarned <= 0) return null;
+
+    // 获取用户当前积分，扣回但不下穿 0
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { totalPoints: true },
+    });
+    if (!user) return null;
+
+    const deducted = Math.min(totalEarned, user.totalPoints);
+    const newTotalPoints = user.totalPoints - deducted;
+    const newLevel = calculateLevel(newTotalPoints);
+
+    // 写入扣回记录
+    await db.pointTransaction.create({
+      data: {
+        userId,
+        points: -deducted,
+        type: "ORDER_REWARD_REVERSAL",
+        reference: orderNo,
+        note: `订单 ${orderNo} 退款，扣回消费奖励积分`,
+      },
+    });
+
+    // 更新用户积分和等级
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        totalPoints: newTotalPoints,
+        membershipLevel: newLevel,
+      },
+    });
+
+    apiConsole.info(`[Points] 订单 ${orderNo} 退款，扣回 ${deducted} 积分 (总 ${newTotalPoints})`);
+
+    // 失效 profile 缓存
+    try {
+      revalidateTag("user-profile", "max");
+    } catch {
+      // 忽略
+    }
+
+    return { deductedPoints: deducted };
+  } catch (error) {
+    apiConsole.error("[Points] 退款扣回积分失败:", error);
+    // 扣回失败不应阻塞退款流程，但记录日志供人工处理
+    return null;
+  }
+}

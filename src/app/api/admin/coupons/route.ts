@@ -49,6 +49,13 @@ export async function POST(req: NextRequest) {
     if (!admin)
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
+    // 资金/权益操作：仅超级管理员可创建优惠券
+    if (admin.role !== "owner")
+      return NextResponse.json(
+        { success: false, error: "仅超级管理员可创建优惠券" },
+        { status: 403 }
+      );
+
     const rateLimitResponse = await checkAdminRateLimit(req);
     if (rateLimitResponse) return rateLimitResponse;
 

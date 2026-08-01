@@ -226,11 +226,16 @@ model User {
   auditLogs        AuditLog[]
   pointTransactions PointTransaction[]
 
+  oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
+  oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
+  oauthConsents UserConsent[]            @relation("UserConsentUser")
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([status])
   @@index([membershipLevel])
+  @@index([wechatUnionId])
   // phone 和 wechatOpenId 已有 @unique 索引，无需重复 @@index
 }
 
@@ -308,6 +313,10 @@ model OAuthClient {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
 
+  authorizationCodes OAuthAuthorizationCode[] @relation("OAuthCodeClient")
+  sessions           OAuthSession[]          @relation("OAuthSessionClient")
+  consents           UserConsent[]           @relation("UserConsentClient")
+
   @@index([isActive])
   @@index([tenantId])
 }
@@ -326,7 +335,9 @@ model OAuthAuthorizationCode {
   used                Boolean   @default(false)
   createdAt           DateTime  @default(now())
 
-  @@index([code])
+  client OAuthClient @relation("OAuthCodeClient", fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation("OAuthCodeUser", fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, createdAt(sort: Desc)])
   @@index([expiresAt])
   @@index([clientId, used, expiresAt])
@@ -343,8 +354,10 @@ model OAuthSession {
   expiresAt            DateTime
   revokedAt            DateTime?
 
+  client OAuthClient @relation("OAuthSessionClient", fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation("OAuthSessionUser", fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, clientId])
-  @@index([sessionId])
   @@index([userId, revokedAt])
 }
 
@@ -355,6 +368,9 @@ model UserConsent {
   scopes    String[]
   grantedAt DateTime  @default(now())
   revokedAt DateTime?
+
+  client OAuthClient @relation("UserConsentClient", fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation("UserConsentUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, clientId])
   @@index([userId])
@@ -385,7 +401,7 @@ model PaymentNotification {
   gateway          String            // "wechat" 或 "alipay"
   notificationId   String            // 通知ID（微信: out_trade_no, 支付宝: trade_no）
   transactionId    String            // 交易ID（微信: transaction_id, 支付宝: trade_no）
-  amount           Int               // 金额（分）— 注意：支付网关返回单位为分，与项目其他字段的 Decimal(10,2)/元 不同
+  amount           Decimal           @db.Decimal(10, 2) // 金额（元），与 Order.payAmount 等单位一致
   status           String            @default("PENDING") // "PENDING" | "SUCCESS" | "FAILED"
   rawData          String            @db.Text // 原始通知数据（JSON）
   errorMessage     String?           // 错误信息
@@ -623,7 +639,6 @@ model RateLimitRecord {
   updatedAt   DateTime @default(now()) @updatedAt
 
   @@unique([key, windowStart])
-  @@index([key, windowStart])
 }
 
 // ============================================
@@ -766,7 +781,6 @@ model UserCoupon {
 
   @@index([userId, status])
   @@index([expiresAt])
-  @@index([orderId])
 }
 
 // ============================================

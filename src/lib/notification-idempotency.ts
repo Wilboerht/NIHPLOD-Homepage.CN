@@ -70,7 +70,7 @@ export async function isNotificationProcessed(
  * @param gateway 支付网关
  * @param notificationId 通知ID
  * @param transactionId 交易ID
- * @param amount 金额（分）
+ * @param amount 金额（元，Decimal）
  * @param rawData 原始数据
  */
 export async function recordNotification(

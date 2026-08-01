@@ -8,6 +8,7 @@
  * 使用前：在百度站长平台 -> 数据引入 -> 链接提交 -> 找到 token
  */
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { apiConsole } from "@/lib/logger";
 
 const BAIDU_PUSH_TOKEN = process.env.BAIDU_PUSH_TOKEN;
@@ -21,7 +22,13 @@ export async function POST(request: NextRequest) {
   // 只允许服务端调用（Cron job 或 admin）
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const presented = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!cronSecret || !presented) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
+  }
+  const bufA = Buffer.from(presented);
+  const bufB = Buffer.from(cronSecret);
+  if (bufA.length !== bufB.length || !timingSafeEqual(bufA, bufB)) {
     return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 

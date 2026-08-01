@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { verifyUserAuth } from "@/lib/auth";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 
@@ -19,6 +20,16 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // 防滥用：IP 级限流（领取券是高频滥用目标）
+    const ip = getClientIP(req);
+    const limitResult = await rateLimit(ip, "form", { maxRequests: 20 });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: "操作过于频繁，请稍后再试" },
+        { status: 429 }
+      );
+    }
+
     const user = await verifyUserAuth(req);
     if (!user) {
       return NextResponse.json(

@@ -50,6 +50,11 @@ interface ClientsResponse {
   pagination: { page: number; pageSize: number; total: number };
 }
 
+interface TestResultData {
+  steps: Array<{ step: string; status: string; durationMs: number; detail?: string }>;
+  summary?: string;
+}
+
 interface CreateClientResponse {
   client: OAuthClient;
   plainSecret: string;
@@ -135,6 +140,13 @@ function OAuthClientsPage() {
 
   // Detail drawer
   const [detailClient, setDetailClient] = useState<OAuthClient | null>(null);
+
+  // Online test modal
+  const [testClient, setTestClient] = useState<OAuthClient | null>(null);
+  const [testSecret, setTestSecret] = useState("");
+  const [testRedirectUri, setTestRedirectUri] = useState("");
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<TestResultData | null>(null);
 
   // Form
   const [formName, setFormName] = useState("");
@@ -333,6 +345,41 @@ function OAuthClientsPage() {
     setShowEdit(true);
   };
 
+  const openTest = (client: OAuthClient) => {
+    setTestClient(client);
+    setTestSecret("");
+    setTestRedirectUri(client.redirectUris[0] || "");
+    setTestResult(null);
+  };
+
+  const handleRunTest = async () => {
+    if (!testClient || !testSecret.trim()) {
+      toast.error("请填写 Client Secret");
+      return;
+    }
+    if (!testRedirectUri.trim()) {
+      toast.error("请填写回调地址");
+      return;
+    }
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const data = await apiPost<TestResultData>("/api/admin/oauth-clients/test", {
+        clientId: testClient.clientId,
+        clientSecret: testSecret.trim(),
+        redirectUri: testRedirectUri.trim(),
+      });
+      setTestResult(data);
+      const allPassed = data.steps.every((s) => s.status === "passed");
+      if (allPassed) toast.success("连接测试全部通过！");
+      else toast.warning("连接测试未完全通过，请检查配置");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "测试请求失败");
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
   const openCreate = () => {
     setFormError(null);
     resetForm();
@@ -444,7 +491,7 @@ if (!payload) {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
@@ -540,6 +587,13 @@ if (!payload) {
                         title="生成接入配置"
                       >
                         <Code className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => openTest(c)}
+                        className="p-1.5 text-gray-400 hover:text-green-600 rounded"
+                        title="在线测试"
+                      >
+                        <Shield className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEdit(c)}
@@ -793,6 +847,77 @@ if (!payload) {
           <div className="flex justify-end">
             <Button onClick={() => { setShowRotatedSecret(false); setRotatedSecret(null); fetchClients(); }}>
               关闭
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Online Test Modal */}
+      <Modal
+        open={!!testClient}
+        onClose={() => setTestClient(null)}
+        title={`在线测试：${testClient?.name || ""}`}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500">
+            输入 Client Secret 与回调地址，验证凭据、JWKS、authorize、token、userinfo、introspect 全链路连通性。
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Client Secret</label>
+              <Input
+                type="password"
+                value={testSecret}
+                onChange={(e) => setTestSecret(e.target.value)}
+                placeholder="请输入 Client Secret"
+                className="font-mono text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">回调地址</label>
+              <Input
+                value={testRedirectUri}
+                onChange={(e) => setTestRedirectUri(e.target.value)}
+                placeholder="https://your-app.com/callback"
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+
+          {testResult && (
+            <div className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "bg-green-50 border border-green-200" : "bg-yellow-50 border border-yellow-200"}`}>
+              <p className={`text-sm font-medium mb-2 ${testResult.steps.every((s) => s.status === "passed") ? "text-green-800" : "text-yellow-800"}`}>
+                {testResult.steps.every((s) => s.status === "passed") ? "✅ 连接测试全部通过" : "⚠️ 测试未完全通过"}
+              </p>
+              <div className="space-y-1">
+                {testResult.steps.map((s, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className={s.status === "passed" ? "text-green-600" : "text-red-500"}>
+                      {s.status === "passed" ? "✓" : "✗"}
+                    </span>
+                    <span className="text-gray-700">
+                      {s.step}
+                      {s.durationMs !== undefined && (
+                        <span className="ml-1 text-gray-400">({s.durationMs}ms)</span>
+                      )}
+                      {s.detail && <span className="ml-1 text-gray-500">— {s.detail}</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setTestClient(null)}>
+              关闭
+            </Button>
+            <Button
+              onClick={handleRunTest}
+              disabled={testLoading}
+              leftIcon={<Shield className="w-4 h-4" />}
+            >
+              {testLoading ? "测试中..." : "开始测试"}
             </Button>
           </div>
         </div>

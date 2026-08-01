@@ -202,7 +202,7 @@ function OAuthConsentsPage() {
                 <tr key={c.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm">
                     <Link
-                      href={`/admin/users/${c.userId}`}
+                      href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
                       className="text-blue-600 hover:underline"
                       title="查看用户详情"
                     >

@@ -259,9 +259,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 设置 HttpOnly Cookie
-    apiConsole.debug(
-      `[Login Debug] setting cookie: name=${AUTH_COOKIE_NAME}, token prefix=${token.slice(0, 20)}, options=${JSON.stringify(COOKIE_OPTIONS)}`
-    );
+    // 注意：绝不记录 token 内容（含前缀），防止认证凭据泄露到日志
     response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
 
     // 记录登录审计日志

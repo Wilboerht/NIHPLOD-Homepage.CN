@@ -37,6 +37,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 资金操作：仅超级管理员可审核退款
+    if (admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可审核退款" } },
+        { status: 403 }
+      );
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 

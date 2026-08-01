@@ -210,6 +210,23 @@ export async function DELETE(
       );
     }
 
+    // 有候选人申请的职位禁止删除（防止级联删除候选人 PII 数据）
+    const applicationCount = await prisma.jobApplication.count({
+      where: { jobId: id },
+    });
+    if (applicationCount > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "HAS_APPLICATIONS",
+            message: `该职位已有 ${applicationCount} 份候选人申请，无法删除。建议改为下架以保留候选人数据。`,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // 删除职位
     await prisma.job.delete({ where: { id } });
 

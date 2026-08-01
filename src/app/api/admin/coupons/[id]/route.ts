@@ -48,6 +48,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     if (!admin)
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
+    // 资金/权益操作：仅超级管理员可修改优惠券
+    if (admin.role !== "owner")
+      return NextResponse.json(
+        { success: false, error: "仅超级管理员可修改优惠券" },
+        { status: 403 }
+      );
+
     const rateLimitResponse = await checkAdminRateLimit(req);
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -128,6 +135,13 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     const admin = await verifyAuth(req);
     if (!admin)
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+    // 资金/权益操作：仅超级管理员可删除优惠券
+    if (admin.role !== "owner")
+      return NextResponse.json(
+        { success: false, error: "仅超级管理员可删除优惠券" },
+        { status: 403 }
+      );
 
     const rateLimitResponse = await checkAdminRateLimit(req);
     if (rateLimitResponse) return rateLimitResponse;

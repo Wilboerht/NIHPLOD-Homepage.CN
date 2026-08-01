@@ -44,11 +44,11 @@ export async function GET(request: Request) {
       status: "ok",
       latency: Date.now() - dbStart,
     };
-  } catch (error) {
+  } catch {
+    // 不暴露原始 DB 错误信息（可能含连接字符串片段），仅返回通用状态
     checks.database = {
       status: "error",
       latency: Date.now() - dbStart,
-      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 
