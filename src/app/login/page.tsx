@@ -491,22 +491,6 @@ function LoginPageContent() {
     }
   };
 
-  const handleWechatLogin = async () => {
-    if (!mobileAgreed) {
-      setAgreementShake((n) => n + 1);
-      return;
-    }
-    setLoading(true);
-    try {
-      const decoded = returnTo ? decodeURIComponent(returnTo) : "/";
-      const redirect = isSafeReturnTo(decoded) ? decoded : "/";
-      window.location.href = `/api/auth/wechat?redirect=${encodeURIComponent(redirect)}`;
-    } catch {
-      toast.error("网络错误，请重试");
-      setLoading(false);
-    }
-  };
-
   const handleSwitchToLogin = () => switchMode("login");
   const handleSwitchToRegister = () => switchMode("register");
 
@@ -540,7 +524,6 @@ function LoginPageContent() {
             onSendLoginCode={handleSendLoginCode}
             onSwitchToRegister={handleSwitchToRegister}
             onForgotPassword={handleForgotPassword}
-            onWechatLogin={handleWechatLogin}
           />
         );
       case "register":
@@ -712,7 +695,7 @@ function LoginPageContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
               className="fixed inset-0 z-[99998] bg-black/20 backdrop-blur-md"
             />
           )}
@@ -724,8 +707,9 @@ function LoginPageContent() {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ duration: 0.8, ease: [0.8, 0, 0.13, 1] }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
               className="fixed inset-y-0 right-0 z-[99999] hidden w-full flex-col bg-white md:flex"
+              style={{ willChange: "transform" }}
             >
               {/* Back button (non-login, non-wechat-bind, non-consent) */}
               {mode !== "login" && mode !== "wechat-bind" && mode !== "consent" && (
@@ -753,7 +737,17 @@ function LoginPageContent() {
                     />
                   </div>
 
-                  {mode === "consent" ? renderConsent("pc") : renderForm("pc")}
+                  <AnimatePresence mode="wait">
+                    <m.div
+                      key={mode}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      {mode === "consent" ? renderConsent("pc") : renderForm("pc")}
+                    </m.div>
+                  </AnimatePresence>
                 </div>
               </div>
             </m.div>
@@ -763,11 +757,12 @@ function LoginPageContent() {
           {_isMobile && (
             <m.div
               key="mobile-panel"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.8, ease: [0.8, 0, 0.13, 1] }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               className="fixed inset-0 z-[99999] flex flex-col bg-[#F8F7F3] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pl-4 pr-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] md:hidden"
+              style={{ willChange: "transform" }}
             >
               {/* Mobile top bar */}
               <div className="relative flex h-[56px] w-full flex-shrink-0 items-center justify-center">
@@ -800,7 +795,17 @@ function LoginPageContent() {
 
               <div className="scrollbar-hide flex flex-1 flex-col overflow-y-auto">
                 <div className="flex min-h-full flex-col px-6 before:flex-[1_0_0] before:content-[''] after:flex-[1_0_0] after:content-['']">
-                  {mode === "consent" ? renderConsent("mobile") : renderForm("mobile")}
+                  <AnimatePresence mode="wait">
+                    <m.div
+                      key={mode}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                      {mode === "consent" ? renderConsent("mobile") : renderForm("mobile")}
+                    </m.div>
+                  </AnimatePresence>
                 </div>
               </div>
 
