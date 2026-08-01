@@ -27,8 +27,10 @@ import { Switch } from "@/components/ui/Switch";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { RequireAdminRole } from "@/components/admin";
 
 interface OAuthClient {
   id: string;
@@ -530,13 +532,14 @@ if (!payload) {
                   <td className="px-4 py-3 text-sm font-mono text-gray-600">
                     <div className="flex items-center gap-2">
                       <span className="truncate max-w-[120px]" title={c.clientId}>{c.clientId}</span>
-                      <button
-                        onClick={() => copyToClipboard(c.clientId)}
-                        className="text-gray-400 hover:text-gray-600"
-                        title="复制 Client ID"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
+                      <Tooltip content="复制 Client ID" side="top">
+                        <button
+                          onClick={() => copyToClipboard(c.clientId)}
+                          className="inline-flex text-gray-400 hover:text-gray-600"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -574,55 +577,62 @@ if (!payload) {
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(c.createdAt)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setDetailClient(c)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
-                        title="查看详情"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openSdkConfig(c)}
-                        className="p-1.5 text-gray-400 hover:text-green-600 rounded"
-                        title="生成接入配置"
-                      >
-                        <Code className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openTest(c)}
-                        className="p-1.5 text-gray-400 hover:text-green-600 rounded"
-                        title="在线测试"
-                      >
-                        <Shield className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openEdit(c)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
-                        title="编辑"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => { setRotateClientId(c.id); setShowRotateConfirm(true); }}
-                        className="p-1.5 text-gray-400 hover:text-purple-600 rounded"
-                        title="轮换密钥"
-                      >
-                        <RotateCw className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(c)}
-                        className="p-1.5 text-gray-400 hover:text-orange-600 rounded"
-                        title={c.isActive ? "禁用" : "启用"}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => { setDeleteClientId(c.id); setShowDeleteConfirm(true); }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                        title="删除 Client"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Tooltip content="查看详情" side="top">
+                        <button
+                          onClick={() => setDetailClient(c)}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="生成接入配置" side="top">
+                        <button
+                          onClick={() => openSdkConfig(c)}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-green-600 rounded"
+                        >
+                          <Code className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="在线测试" side="top">
+                        <button
+                          onClick={() => openTest(c)}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-green-600 rounded"
+                        >
+                          <Shield className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="编辑" side="top">
+                        <button
+                          onClick={() => openEdit(c)}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="轮换密钥" side="top">
+                        <button
+                          onClick={() => { setRotateClientId(c.id); setShowRotateConfirm(true); }}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-purple-600 rounded"
+                        >
+                          <RotateCw className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content={c.isActive ? "禁用" : "启用"} side="top">
+                        <button
+                          onClick={() => handleToggleActive(c)}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-orange-600 rounded"
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="删除 Client" side="top">
+                        <button
+                          onClick={() => { setDeleteClientId(c.id); setShowDeleteConfirm(true); }}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-red-600 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
@@ -885,8 +895,8 @@ if (!payload) {
           </div>
 
           {testResult && (
-            <div className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "bg-green-50 border border-green-200" : "bg-yellow-50 border border-yellow-200"}`}>
-              <p className={`text-sm font-medium mb-2 ${testResult.steps.every((s) => s.status === "passed") ? "text-green-800" : "text-yellow-800"}`}>
+            <div className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"}`}>
+              <p className={`text-sm font-medium mb-2 ${testResult.steps.every((s) => s.status === "passed") ? "text-emerald-800" : "text-amber-800"}`}>
                 {testResult.steps.every((s) => s.status === "passed") ? "✅ 连接测试全部通过" : "⚠️ 测试未完全通过"}
               </p>
               <div className="space-y-1">
@@ -965,13 +975,16 @@ if (!payload) {
             <pre className="bg-gray-900 text-green-400 rounded-lg p-4 text-xs overflow-x-auto max-h-80">
               <code>{sdkConfigCode}</code>
             </pre>
-            <button
-              onClick={() => copyToClipboard(sdkConfigCode)}
-              className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded"
-              title="复制代码"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
+            <span className="absolute top-2 right-2">
+              <Tooltip content="复制代码" side="top">
+                <button
+                  onClick={() => copyToClipboard(sdkConfigCode)}
+                  className="inline-flex p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+            </span>
           </div>
           <p className="text-xs text-gray-500">
             将代码复制到子项目中即可快速接入。详情请参考{" "}
@@ -1105,8 +1118,10 @@ if (!payload) {
 
 export default function OAuthClientsPageWrapper() {
   return (
-    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
-      <OAuthClientsPage />
-    </Suspense>
+    <RequireAdminRole role="owner">
+      <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+        <OAuthClientsPage />
+      </Suspense>
+    </RequireAdminRole>
   );
 }

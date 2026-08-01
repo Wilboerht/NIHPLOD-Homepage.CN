@@ -1,9 +1,10 @@
 "use client";
 
 import { m } from "framer-motion";
-import { Eye, EyeOff, Check } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { pcInputClass, pcBtnClass, mobileInputClass, mobileInputFlexClass, mobileBtnClass } from "./auth-styles";
 import { PASSWORD_MIN_LENGTH } from "./auth-utils";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 export interface RegisterFormProps {
   variant: "pc" | "mobile";
@@ -62,31 +63,23 @@ export function RegisterForm({
       animate={{ x: [-5, 5, -5, 5, -3, 3, 0] }}
       transition={{ duration: 0.4 }}
     >
-      <label className="group/agreement flex cursor-pointer items-center gap-2.5">
-        <div className="relative flex-shrink-0">
-          <input
-            type="checkbox"
-            checked={mobileAgreed}
-            onChange={(e) => onMobileAgreedChange(e.target.checked)}
-            className="peer sr-only"
-          />
-          <div className={`h-4 w-4 rounded border border-brand-charcoal/25 bg-transparent transition-all peer-checked:border-brand-charcoal/50 peer-checked:bg-brand-charcoal/50 ${variant === "mobile" ? "peer-checked:border-brand-primary peer-checked:bg-brand-primary" : ""}`} />
-          <Check
-            className="absolute inset-0 m-auto h-3 w-3 scale-0 text-white transition-transform peer-checked:scale-100"
-            strokeWidth={3}
-          />
-        </div>
-        <span className="text-xs tracking-wide text-brand-charcoal/50">
-          我已阅读并同意
-          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal">
-            《用户协议》
-          </a>
-          和
-          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal">
-            《隐私政策》
-          </a>
-        </span>
-      </label>
+      <Checkbox
+        id="register-agreement"
+        checked={mobileAgreed}
+        onChange={onMobileAgreedChange}
+        label={
+          <span className="text-xs tracking-wide text-brand-charcoal/50">
+            我已阅读并同意
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal">
+              《用户协议》
+            </a>
+            和
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal">
+              《隐私政策》
+            </a>
+          </span>
+        }
+      />
     </m.div>
   );
 

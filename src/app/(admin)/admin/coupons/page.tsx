@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Users, Pencil, Trash2, Power } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, Users, Pencil, Trash2, Power, Download, CheckCircle, XCircle, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -11,6 +12,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
 const formatDate = (dateStr: string) => {
@@ -41,6 +44,8 @@ interface Coupon {
 }
 
 export default function AdminCouponsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -48,9 +53,15 @@ export default function AdminCouponsPage() {
   const [modalCoupon, setModalCoupon] = useState<Coupon | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [productSearch, setProductSearch] = useState("");
+  const [productResults, setProductResults] = useState<{ id: string; name: string }[]>([]);
+  const [productSearching, setProductSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchAction, setBatchAction] = useState<{ isActive: boolean } | null>(null);
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
   const { success, error } = useToast();
 
   const defaultCoupon: Coupon = {
@@ -84,12 +95,14 @@ export default function AdminCouponsPage() {
 
   const closeModal = () => setModalCoupon(null);
 
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
+
   const fetchCoupons = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const data = await apiGet<{ coupons: Coupon[]; pagination: typeof pagination }>(
         "/api/admin/coupons",
-        { page, pageSize: 20 }
+        { page, pageSize }
       );
       setLoadError("");
       setCoupons(data.coupons);
@@ -100,7 +113,7 @@ export default function AdminCouponsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     fetchCoupons(1);
@@ -109,6 +122,26 @@ export default function AdminCouponsPage() {
       .catch(() => error("加载分类列表失败"));
   }, [fetchCoupons]);
 
+  // 商品搜索（用于 PRODUCT 范围选择器）
+  const searchProducts = async (keyword: string) => {
+    if (!keyword.trim()) {
+      setProductResults([]);
+      return;
+    }
+    setProductSearching(true);
+    try {
+      const data = await apiGet<{ products: { id: string; name: string }[] }>(
+        "/api/admin/products",
+        { search: keyword.trim(), pageSize: 10, status: "all" }
+      );
+      setProductResults(data.products);
+    } catch {
+      setProductResults([]);
+    } finally {
+      setProductSearching(false);
+    }
+  };
+
   const handleToggleActive = async (id: string, current: boolean) => {
     try {
       await apiPatch(`/api/admin/coupons/${id}`, { isActive: !current });
@@ -116,6 +149,35 @@ export default function AdminCouponsPage() {
       fetchCoupons(pagination.page);
     } catch (err) {
       error(err instanceof Error ? err.message : "操作失败");
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) setSelectedIds(new Set(coupons.map((c) => c.id)));
+    else setSelectedIds(new Set());
+  };
+
+  const isAllSelected = coupons.length > 0 && selectedIds.size === coupons.length;
+
+  const handleBatchToggleActive = async () => {
+    if (!batchAction || selectedIds.size === 0) return;
+    setBatchSubmitting(true);
+    try {
+      await apiPost("/api/admin/coupons", {
+        batch: { ids: Array.from(selectedIds), isActive: batchAction.isActive },
+      });
+      success(
+        batchAction.isActive
+          ? `已上架 ${selectedIds.size} 张优惠券`
+          : `已下架 ${selectedIds.size} 张优惠券`
+      );
+      setBatchAction(null);
+      setSelectedIds(new Set());
+      fetchCoupons(pagination.page);
+    } catch (err) {
+      error(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setBatchSubmitting(false);
     }
   };
 
@@ -220,7 +282,12 @@ export default function AdminCouponsPage() {
       await apiDelete(`/api/admin/coupons/${deleteTarget.id}`);
       success("删除成功");
       setDeleteTarget(null);
-      fetchCoupons(pagination.page);
+      // 删光当前页最后一条时回退一页
+      if (coupons.length === 1 && pagination.page > 1) {
+        fetchCoupons(pagination.page - 1);
+      } else {
+        fetchCoupons(pagination.page);
+      }
     } catch (err) {
       error(err instanceof Error ? err.message : "删除失败");
     } finally {
@@ -237,10 +304,43 @@ export default function AdminCouponsPage() {
             管理所有优惠券{!loading && pagination.total > 0 ? `，共 ${pagination.total} 张` : ""}
           </p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
-          创建优惠券
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            leftIcon={<Download className="h-4 w-4" />}
+            onClick={() => window.open("/api/admin/coupons?export=csv", "_blank")}
+          >
+            导出 CSV
+          </Button>
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={openCreateModal}>
+            创建优惠券
+          </Button>
+        </div>
       </div>
+
+      {/* 批量操作栏 */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
+          <span className="text-sm text-brand-charcoal/60">已选 {selectedIds.size} 张优惠券</span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              leftIcon={<CheckCircle className="h-4 w-4" />}
+              onClick={() => setBatchAction({ isActive: true })}
+            >
+              上架
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={<XCircle className="h-4 w-4" />}
+              onClick={() => setBatchAction({ isActive: false })}
+            >
+              下架
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
@@ -257,15 +357,20 @@ export default function AdminCouponsPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : coupons.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
-            <p className="text-lg font-medium text-brand-charcoal/60">暂无优惠券</p>
-            <p className="mt-1 text-sm">点击上方按钮创建第一张优惠券</p>
-          </div>
+          <Empty className="h-64" title="暂无优惠券" description="点击上方按钮创建第一张优惠券" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                  <th className="w-10 px-5 py-3.5">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="h-4 w-4 rounded border-brand-charcoal/20"
+                    />
+                  </th>
                   <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">名称/代码</th>
                   <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">类型/面值</th>
                   <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">门槛</th>
@@ -278,6 +383,19 @@ export default function AdminCouponsPage() {
               <tbody className="divide-y divide-brand-charcoal/[0.06]">
                 {coupons.map((coupon) => (
                   <tr key={coupon.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
+                    <td className="px-5 py-3.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(coupon.id)}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedIds);
+                          if (e.target.checked) newSelected.add(coupon.id);
+                          else newSelected.delete(coupon.id);
+                          setSelectedIds(newSelected);
+                        }}
+                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                      />
+                    </td>
                     <td className="px-5 py-3.5">
                       <div className="font-medium text-brand-charcoal">{coupon.name}</div>
                       {coupon.code && (
@@ -326,29 +444,32 @@ export default function AdminCouponsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEditModal(coupon)}
-                          className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-primary"
-                          title="编辑"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(coupon.id, coupon.isActive)}
-                          className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                          title={coupon.isActive ? "下架" : "上架"}
-                        >
-                          <Power className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setDeleteTarget({ id: coupon.id, name: coupon.name })
-                          }
-                          className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
-                          title="删除"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <Tooltip content="编辑" side="top">
+                          <button
+                            onClick={() => openEditModal(coupon)}
+                            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-primary"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content={coupon.isActive ? "下架" : "上架"} side="top">
+                          <button
+                            onClick={() => handleToggleActive(coupon.id, coupon.isActive)}
+                            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                          >
+                            <Power className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="删除" side="top">
+                          <button
+                            onClick={() =>
+                              setDeleteTarget({ id: coupon.id, name: coupon.name })
+                            }
+                            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </td>
                   </tr>
@@ -366,6 +487,12 @@ export default function AdminCouponsPage() {
           pageSize={pagination.pageSize}
           total={pagination.total}
           onChange={(p) => fetchCoupons(p)}
+          onPageSizeChange={(size) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("pageSize", String(size));
+            router.push(`/admin/coupons?${params.toString()}`);
+            fetchCoupons(1);
+          }}
         />
       </div>
 
@@ -532,16 +659,76 @@ export default function AdminCouponsPage() {
                 </div>
               )}
               {modalCoupon.scopeType === "PRODUCT" && (
-                <Input
-                  placeholder="适用商品ID（逗号分隔），例如：abc123,def456"
-                  value={modalCoupon.scopeIds.join(",")}
-                  onChange={(e) =>
-                    setModalCoupon({
-                      ...modalCoupon,
-                      scopeIds: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                    })
-                  }
-                />
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+                    <Input
+                      placeholder="搜索商品名称..."
+                      value={productSearch}
+                      onChange={(e) => {
+                        setProductSearch(e.target.value);
+                        searchProducts(e.target.value);
+                      }}
+                      className="pl-10"
+                    />
+                  </div>
+                  {productSearching && (
+                    <p className="text-xs text-brand-charcoal/50">搜索中...</p>
+                  )}
+                  {productResults.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto rounded-lg border border-brand-charcoal/10">
+                      {productResults.map((p) => {
+                        const checked = modalCoupon.scopeIds.includes(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-brand-charcoal/[0.03] ${
+                              checked ? "bg-brand-primary/5" : ""
+                            }`}
+                          >
+                            <span className="flex-1 truncate">{p.name}</span>
+                            <input
+                              type="checkbox"
+                              className="ml-2 h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary"
+                              checked={checked}
+                              onChange={(e) => {
+                                const ids = new Set(modalCoupon.scopeIds);
+                                if (e.target.checked) ids.add(p.id);
+                                else ids.delete(p.id);
+                                setModalCoupon({ ...modalCoupon, scopeIds: Array.from(ids) });
+                              }}
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* 已选商品列表 */}
+                  {modalCoupon.scopeIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {modalCoupon.scopeIds.map((pid) => (
+                        <span
+                          key={pid}
+                          className="inline-flex items-center gap-1 rounded-lg border border-brand-primary/20 bg-brand-primary/10 px-2 py-1 text-xs text-brand-primary"
+                        >
+                          {pid.slice(0, 8)}...
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setModalCoupon({
+                                ...modalCoupon,
+                                scopeIds: modalCoupon.scopeIds.filter((id) => id !== pid),
+                              })
+                            }
+                            className="text-brand-primary/60 hover:text-brand-primary"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -602,6 +789,17 @@ export default function AdminCouponsPage() {
         confirmText="删除"
         loading={deleting}
         type="danger"
+      />
+
+      {/* 批量上下架确认 */}
+      <ConfirmDialog
+        open={!!batchAction}
+        onClose={() => setBatchAction(null)}
+        onConfirm={handleBatchToggleActive}
+        title={batchAction?.isActive ? "批量上架" : "批量下架"}
+        description={`确定${batchAction?.isActive ? "上架" : "下架"}选中的 ${selectedIds.size} 张优惠券？`}
+        confirmText={batchAction?.isActive ? "上架" : "下架"}
+        loading={batchSubmitting}
       />
     </div>
   );

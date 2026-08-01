@@ -30,7 +30,7 @@ const variantStyles: Record<BadgeVariant, string> = {
 };
 
 const sizeStyles = {
-  sm: "px-2.5 py-0.5 text-sm",
+  sm: "px-2.5 py-0.5 text-xs",
   md: "px-2.5 py-1 text-sm",
 };
 
@@ -66,14 +66,14 @@ export function DotBadge({
 }) {
   const dotColors = {
     gray: "bg-brand-charcoal/40",
-    green: "bg-green-500",
-    yellow: "bg-yellow-500",
+    green: "bg-emerald-500",
+    yellow: "bg-amber-500",
     red: "bg-red-500",
     primary: "bg-brand-primary",
   };
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-sm", className)}>
+    <span className={cn("inline-flex items-center gap-1.5 text-xs", className)}>
       <span className={cn("h-2 w-2 rounded-full", dotColors[color])} />
       {children}
     </span>

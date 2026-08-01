@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, m } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 
 type ToastType = "success" | "error" | "warning" | "info" | "loading";
 
@@ -43,17 +43,17 @@ const iconMap = {
 };
 
 const typeStyles = {
-  success: "bg-green-50 border-green-200 text-green-800",
+  success: "bg-emerald-50 border-emerald-200 text-emerald-800",
   error: "bg-red-50 border-red-200 text-red-800",
-  warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
+  warning: "bg-amber-50 border-amber-200 text-amber-800",
   info: "bg-blue-50 border-blue-200 text-blue-800",
   loading: "bg-[#FBF8F0] border-brand-beige text-brand-charcoal",
 };
 
 const iconStyles = {
-  success: "text-green-500",
+  success: "text-emerald-500",
   error: "text-red-500",
-  warning: "text-yellow-500",
+  warning: "text-amber-500",
   info: "text-blue-500",
   loading: "text-brand-primary animate-spin",
 };
@@ -64,21 +64,26 @@ const iconStyles = {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const reduceMotion = useReducedMotion();
 
-  const removeToast = useCallback((id: string) => {
-    const timer = timersRef.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      timersRef.current.delete(id);
-    }
-    // 标记为退出动画，300ms 后真正移除
-    setToasts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, duration: -1 } : t))
-    );
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 300);
-  }, []);
+  const removeToast = useCallback(
+    (id: string) => {
+      const timer = timersRef.current.get(id);
+      if (timer) {
+        clearTimeout(timer);
+        timersRef.current.delete(id);
+      }
+      // 标记为退出动画；reduceMotion 时立即移除，否则 300ms 后移除
+      setToasts((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, duration: -1 } : t))
+      );
+      const delay = reduceMotion ? 0 : 300;
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, delay);
+    },
+    [reduceMotion]
+  );
 
   const addToast = useCallback(
     (options: ToastOptions): string => {
@@ -177,12 +182,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             return (
               <m.div
                 key={toast.id}
-                initial={{ opacity: 0, y: -16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                initial={reduceMotion ? false : { opacity: 0, y: -16, scale: 0.96 }}
+                animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -8, scale: 0.96 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
-                  "flex min-w-[280px] max-w-[400px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg",
+                  "flex w-[min(280px,calc(100vw-2rem))] max-w-[400px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg",
                   typeStyles[toast.type]
                 )}
                 role="alert"

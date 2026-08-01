@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus, Inbox } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,7 @@ interface PaginationConfig {
   pageSize: number;
   total: number;
   onChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 // 排序配置接口
@@ -183,7 +184,7 @@ export function DataTable<T extends object>({
               <tr>
                 <td colSpan={columns.length} className="px-6 py-16 text-center text-brand-charcoal/50">
                   <div className="flex flex-col items-center gap-3">
-                    <span className="text-4xl">📭</span>
+                    <Inbox className="h-10 w-10 text-brand-charcoal/25" />
                     <span>{emptyText}</span>
                     {emptyAction && (
                       <Button
@@ -241,6 +242,7 @@ export function DataTable<T extends object>({
             pageSize={pagination.pageSize}
             total={pagination.total}
             onChange={pagination.onChange}
+            onPageSizeChange={pagination.onPageSizeChange}
           />
         </div>
       )}

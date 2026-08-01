@@ -40,6 +40,7 @@ export type AuditAction =
   | "create_coupon"
   | "update_coupon"
   | "delete_coupon"
+  | "batch_coupon"
   | "run_cron_task"
   | "user_login"
   | "user_logout"

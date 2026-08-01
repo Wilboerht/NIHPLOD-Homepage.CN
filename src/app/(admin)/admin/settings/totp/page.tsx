@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost } from "@/lib/api-client";
 
 interface TOTPSetupData {
@@ -116,11 +117,11 @@ export default function TOTPSettingsPage() {
 
       <div className="rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
         <div className="flex items-start gap-4">
-          <div className={cn("rounded-full p-3", totpEnabled ? "bg-green-100" : "bg-yellow-100")}>
+          <div className={cn("rounded-full p-3", totpEnabled ? "bg-emerald-100" : "bg-amber-100")}>
             {totpEnabled ? (
-              <ShieldCheck className="h-6 w-6 text-green-600" />
+              <ShieldCheck className="h-6 w-6 text-emerald-600" />
             ) : (
-              <Shield className="h-6 w-6 text-yellow-600" />
+              <Shield className="h-6 w-6 text-amber-600" />
             )}
           </div>
           <div className="flex-1">
@@ -168,24 +169,26 @@ export default function TOTPSettingsPage() {
                 <code className="rounded bg-brand-charcoal/8 px-2 py-1 text-xs text-brand-charcoal/80">
                   {showTotpSecret ? setupData.secret : "••••••••••••••••"}
                 </code>
-                <button
-                  onClick={() => setShowTotpSecret(!showTotpSecret)}
-                  className="text-brand-charcoal/50 hover:text-brand-charcoal"
-                  title={showTotpSecret ? "隐藏密钥" : "显示密钥"}
-                >
-                  {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-                <button
-                  onClick={() => copyToClipboard(setupData.secret, "secret")}
-                  className="text-brand-charcoal/50 hover:text-brand-charcoal"
-                  title="复制密钥"
-                >
-                  {copied === "secret" ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
+                <Tooltip content={showTotpSecret ? "隐藏密钥" : "显示密钥"} side="top">
+                  <button
+                    onClick={() => setShowTotpSecret(!showTotpSecret)}
+                    className="inline-flex text-brand-charcoal/50 hover:text-brand-charcoal"
+                  >
+                    {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </Tooltip>
+                <Tooltip content="复制密钥" side="top">
+                  <button
+                    onClick={() => copyToClipboard(setupData.secret, "secret")}
+                    className="inline-flex text-brand-charcoal/50 hover:text-brand-charcoal"
+                  >
+                    {copied === "secret" ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </Tooltip>
               </div>
             </div>
 

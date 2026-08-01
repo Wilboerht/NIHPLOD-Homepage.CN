@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       startDate: searchParams.get("startDate"),
       endDate: searchParams.get("endDate"),
     });
+    const isExport = searchParams.get("export") === "csv";
 
     // 构建查询条件
     const where: Record<string, unknown> = {};
@@ -95,16 +96,49 @@ export async function GET(request: NextRequest) {
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
         where,
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip: isExport ? undefined : (params.page - 1) * params.pageSize,
+        take: isExport ? 10000 : params.pageSize,
         orderBy: { createdAt: "desc" },
         include: {
           user: { select: { id: true, nickname: true, phone: true, avatar: true } },
-          items: { take: 1, select: { productName: true } },
+          items: { select: { productName: true, quantity: true, price: true } },
         },
       }),
       prisma.order.count({ where }),
     ]);
+
+    // CSV 导出（财务数据，按当前筛选条件导出全部）
+    if (isExport) {
+      const escapeCSV = (val: string): string => {
+        const sanitized = /^[=+\-@]/.test(val) ? `'${val}` : val;
+        if (/[",\n\r]/.test(sanitized)) {
+          return `"${sanitized.replace(/"/g, '""')}"`;
+        }
+        return sanitized;
+      };
+
+      const csvHeaders =
+        "订单号,状态,实付金额,商品,用户昵称,手机号,创建时间,发货时间\n";
+      const csvRows = orders.map((order) =>
+        [
+          escapeCSV(order.orderNo),
+          escapeCSV(order.status),
+          Number(order.payAmount).toFixed(2),
+          escapeCSV(order.items.map((i) => `${i.productName}x${i.quantity}`).join("; ")),
+          escapeCSV(order.user?.nickname || ""),
+          escapeCSV(order.user?.phone || ""),
+          order.createdAt.toISOString(),
+          order.shippedAt?.toISOString() || "",
+        ].join(",")
+      ).join("\n");
+
+      return new NextResponse(csvHeaders + csvRows, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="orders-${new Date().toISOString().slice(0, 10)}.csv"`,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

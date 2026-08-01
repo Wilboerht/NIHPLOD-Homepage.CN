@@ -27,6 +27,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           type="button"
           role="switch"
           aria-checked={checked}
+          aria-label={label}
           disabled={disabled}
           onClick={handleChange}
           className={cn(
@@ -44,7 +45,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           />
         </button>
 
-        {/* 隐藏的原生 input 用于表单提交 */}
+        {/* 隐藏的原生 input 用于表单提交（不参与 Tab 聚焦，避免幽灵焦点） */}
         <input
           ref={ref}
           type="checkbox"
@@ -52,6 +53,8 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           checked={checked}
           onChange={() => onChange?.(!checked)}
           disabled={disabled}
+          tabIndex={-1}
+          aria-hidden="true"
           className="sr-only"
           {...props}
         />

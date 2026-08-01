@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Users, KeyRound, RefreshCw, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 import { StatsCard } from "@/components/admin/StatsCard";
+import { RequireAdminRole } from "@/components/admin";
 
 interface OAuthStats {
   activeClients: number;
@@ -60,15 +61,17 @@ export default function OAuthStatsPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <p className="text-red-500 text-sm">{error}</p>
-        <button
-          onClick={fetchStats}
-          className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          重试
-        </button>
-      </div>
+      <RequireAdminRole role="owner">
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <p className="text-red-500 text-sm">{error}</p>
+          <button
+            onClick={fetchStats}
+            className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            重试
+          </button>
+        </div>
+      </RequireAdminRole>
     );
   }
 
@@ -77,6 +80,7 @@ export default function OAuthStatsPage() {
     : 1;
 
   return (
+    <RequireAdminRole role="owner">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -175,5 +179,6 @@ export default function OAuthStatsPage() {
         )}
       </div>
     </div>
+    </RequireAdminRole>
   );
 }

@@ -9,6 +9,7 @@ import { Badge, DotBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { formatPrice } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ interface ProductsTableProps {
     totalPages: number;
   };
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
   onRefresh: () => void;
   onSort?: (key: string, order: "asc" | "desc") => void;
   sortBy?: string;
@@ -61,6 +63,7 @@ export function ProductsTable({
   loading = false,
   pagination,
   onPageChange,
+  onPageSizeChange,
   onRefresh,
   onSort,
   sortBy,
@@ -114,7 +117,15 @@ export function ProductsTable({
       } else if (id) {
         await apiDelete(`/api/admin/products/${id}`);
       }
-      onRefresh();
+      // 删光当前页最后一条时回退一页
+      const emptiedCurrentPage = batch
+        ? selectedIds.length >= products.length
+        : products.length === 1;
+      if (emptiedCurrentPage && pagination.page > 1) {
+        onPageChange(pagination.page - 1);
+      } else {
+        onRefresh();
+      }
     } catch (error) {
       showError("删除失败，请重试");
     } finally {
@@ -237,28 +248,31 @@ export function ProductsTable({
       align: "right",
       render: (_, record) => (
         <div className="flex items-center justify-end gap-1">
-          <button
-            onClick={() => handleTogglePublish(record.id, record.published)}
-            disabled={actionLoading === record.id}
-            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-            title={record.published ? "取消发布" : "发布"}
-          >
-            {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-          <Link
-            href={`/admin/products/${record.id}/edit`}
-            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-            title="编辑"
-          >
-            <Pencil className="h-4 w-4" />
-          </Link>
-          <button
-            onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
-            className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
-            title="删除"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
+            <button
+              onClick={() => handleTogglePublish(record.id, record.published)}
+              disabled={actionLoading === record.id}
+              className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+            >
+              {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </Tooltip>
+          <Tooltip content="编辑" side="top">
+            <Link
+              href={`/admin/products/${record.id}/edit`}
+              className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+            >
+              <Pencil className="h-4 w-4" />
+            </Link>
+          </Tooltip>
+          <Tooltip content="删除" side="top">
+            <button
+              onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
+              className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </Tooltip>
         </div>
       ),
     },
@@ -319,6 +333,7 @@ export function ProductsTable({
           pageSize: pagination.pageSize,
           total: pagination.total,
           onChange: onPageChange,
+          onPageSizeChange,
         }}
       />
 

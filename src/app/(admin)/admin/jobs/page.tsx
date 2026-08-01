@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Briefcase, MapPin } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -10,6 +11,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 interface Job {
@@ -31,12 +34,15 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function AdminJobsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
 
   // 状态
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(parseInt(searchParams.get("pageSize") || "10"));
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -56,7 +62,7 @@ export default function AdminJobsPage() {
         "/api/admin/jobs",
         {
           page,
-          pageSize: 10,
+          pageSize,
           search: debouncedSearch,
           status: statusFilter === "all" ? undefined : statusFilter,
         }
@@ -69,7 +75,7 @@ export default function AdminJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, pageSize, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchJobs();
@@ -104,7 +110,12 @@ export default function AdminJobsPage() {
       await apiDelete(`/api/admin/jobs/${deleteTarget.id}`);
       success("职位已删除");
       setDeleteTarget(null);
-      fetchJobs();
+      // 删光当前页最后一条时回退一页
+      if (jobs.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchJobs();
+      }
     } catch {
       showError("删除失败");
     } finally {
@@ -124,7 +135,12 @@ export default function AdminJobsPage() {
 
       success(data.message);
       setSelectedIds(new Set());
-      fetchJobs();
+      // 批量删光当前页时回退一页
+      if (action === "delete" && selectedIds.size >= jobs.length && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchJobs();
+      }
     } catch (error) {
       showError(error instanceof Error ? error.message : "操作失败");
     }
@@ -203,10 +219,7 @@ export default function AdminJobsPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : jobs.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
-            <Briefcase className="mb-2 h-12 w-12" />
-            <p className="text-lg">暂无职位</p>
-          </div>
+          <Empty className="h-64" title="暂无职位" />
         ) : (
           <div className="divide-y divide-brand-charcoal/8">
             {jobs.map((job) => (
@@ -262,13 +275,14 @@ export default function AdminJobsPage() {
                       <Edit className="h-4 w-4" />
                     </button>
                   </Link>
-                  <button
-                    onClick={() => togglePublish(job)}
-                    className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                    title={job.published ? "取消发布" : "发布"}
-                  >
-                    {job.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
+                    <button
+                      onClick={() => togglePublish(job)}
+                      className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                    >
+                      {job.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </Tooltip>
                   <button
                     onClick={() => setDeleteTarget(job)}
                     className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
@@ -283,9 +297,21 @@ export default function AdminJobsPage() {
       </div>
 
       {/* 分页 */}
-      {total > 10 && (
+      {total > pageSize && (
         <div className="flex justify-center">
-          <Pagination page={page} pageSize={10} total={total} onChange={setPage} />
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("pageSize", String(size));
+              router.push(`/admin/jobs?${params.toString()}`);
+            }}
+          />
         </div>
       )}
 

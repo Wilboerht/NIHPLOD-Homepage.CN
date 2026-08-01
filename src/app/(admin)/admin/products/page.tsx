@@ -57,6 +57,7 @@ export default function AdminProductsPage() {
 
   // 从 URL 获取筛选参数
   const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "10");
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
   const search = searchParams.get("search") || "";
@@ -79,7 +80,7 @@ export default function AdminProductsPage() {
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
-      params.set("pageSize", "10");
+      params.set("pageSize", String(pageSize));
       if (categoryId) params.set("categoryId", categoryId);
       if (status && status !== "all") params.set("status", status);
       if (search) params.set("search", search);
@@ -88,7 +89,7 @@ export default function AdminProductsPage() {
         "/api/admin/products",
         {
           page,
-          pageSize: 10,
+          pageSize,
           categoryId,
           status: status === "all" ? undefined : status,
           search,
@@ -105,7 +106,7 @@ export default function AdminProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, categoryId, status, search, sortBy, sortOrder]);
+  }, [page, pageSize, categoryId, status, search, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchProducts();
@@ -184,7 +185,8 @@ export default function AdminProductsPage() {
             <button
               type="button"
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
+              aria-label="清除搜索"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
             >
               <X className="h-4 w-4" />
             </button>
@@ -194,6 +196,7 @@ export default function AdminProductsPage() {
         {/* 分类筛选 */}
         <div className="w-40">
           <Select
+            aria-label="按分类筛选"
             options={categoryOptions}
             value={categoryId}
             onChange={(e) => updateParams({ categoryId: e.target.value })}
@@ -203,6 +206,7 @@ export default function AdminProductsPage() {
         {/* 状态筛选 */}
         <div className="w-32">
           <Select
+            aria-label="按状态筛选"
             options={statusOptions}
             value={status}
             onChange={(e) => updateParams({ status: e.target.value })}
@@ -214,9 +218,9 @@ export default function AdminProductsPage() {
       {loadError && (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <p className="text-red-500 text-sm">{loadError}</p>
-          <button onClick={fetchProducts} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+          <Button variant="outline" size="sm" onClick={fetchProducts}>
             重试
-          </button>
+          </Button>
         </div>
       )}
 
@@ -226,6 +230,7 @@ export default function AdminProductsPage() {
         loading={loading}
         pagination={pagination}
         onPageChange={(p) => updateParams({ page: String(p) })}
+        onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
         onRefresh={fetchProducts}
         onSort={(key, order) =>
           updateParams({ sortBy: key, sortOrder: order })

@@ -11,7 +11,9 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import { RequireAdminRole } from "@/components/admin";
 
 interface Session {
   id: string;
@@ -296,23 +298,25 @@ function OAuthSessionsPage() {
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(s.expiresAt)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setDetailSession(s)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded"
-                        title="查看详情"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTerminateTarget({ id: s.id, userId: s.userId, clientId: s.clientId });
-                          setShowTerminate(true);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                        title="终止会话"
-                      >
-                        <LogOut className="w-4 h-4" />
-                      </button>
+                      <Tooltip content="查看详情" side="top">
+                        <button
+                          onClick={() => setDetailSession(s)}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="终止会话" side="top">
+                        <button
+                          onClick={() => {
+                            setTerminateTarget({ id: s.id, userId: s.userId, clientId: s.clientId });
+                            setShowTerminate(true);
+                          }}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-red-600 rounded"
+                        >
+                          <LogOut className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
@@ -485,8 +489,10 @@ function OAuthSessionsPage() {
 
 export default function OAuthSessionsPageWrapper() {
   return (
-    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
-      <OAuthSessionsPage />
-    </Suspense>
+    <RequireAdminRole role="owner">
+      <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+        <OAuthSessionsPage />
+      </Suspense>
+    </RequireAdminRole>
   );
 }

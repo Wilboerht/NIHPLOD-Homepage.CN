@@ -217,8 +217,8 @@ export default function OrderDetailPage() {
   return (
     <div className="space-y-6">
       {/* 头部 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <Link href="/admin/orders">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-1 h-4 w-4" /> 返回
@@ -229,7 +229,7 @@ export default function OrderDetailPage() {
             {STATUS_MAP[order.status]?.label || order.status}
           </Badge>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(order.status === "PAID" || order.status === "PROCESSING") && (
             <Button onClick={() => setShowShipModal(true)}>
               <Truck className="mr-1 h-4 w-4" /> 发货

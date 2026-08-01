@@ -10,7 +10,11 @@ interface PaginationProps {
   onChange: (page: number) => void;
   showTotal?: boolean;
   className?: string;
+  /** 每页条数选择（可选）。传了 onPageSizeChange 才显示选择器 */
+  onPageSizeChange?: (pageSize: number) => void;
 }
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 /**
  * 分页控件组件
@@ -22,10 +26,36 @@ export function Pagination({
   onChange,
   showTotal = true,
   className,
+  onPageSizeChange,
 }: PaginationProps) {
   const totalPages = Math.ceil(total / pageSize);
 
-  if (totalPages <= 1) return null;
+  // 单页时仍显示"共 N 条 + 每页条数选择器"（只有一页时隐藏页码）
+  if (totalPages <= 1) {
+    if (!onPageSizeChange && !showTotal) return null;
+    return (
+      <div className={cn("flex items-center gap-2", className)}>
+        {showTotal && <span className="mr-2 text-sm text-brand-charcoal/50">共 {total} 条</span>}
+        {onPageSizeChange && (
+          <label className="mr-2 flex items-center gap-1 text-sm text-brand-charcoal/50">
+            每页
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="rounded-lg border border-brand-charcoal/20 bg-white px-2 py-1 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            条
+          </label>
+        )}
+      </div>
+    );
+  }
 
   // 生成页码数组
   const getPageNumbers = () => {
@@ -72,8 +102,25 @@ export function Pagination({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {/* 总数显示 */}
-      {showTotal && <span className="mr-4 text-sm text-brand-charcoal/50">共 {total} 条</span>}
+      {/* 总数显示 + 每页条数选择 */}
+      {showTotal && <span className="mr-2 text-sm text-brand-charcoal/50">共 {total} 条</span>}
+      {onPageSizeChange && (
+        <label className="mr-2 flex items-center gap-1 text-sm text-brand-charcoal/50">
+          每页
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="rounded-lg border border-brand-charcoal/20 bg-white px-2 py-1 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none"
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          条
+        </label>
+      )}
 
       {/* 上一页 */}
       <button
@@ -95,6 +142,7 @@ export function Pagination({
           item === "ellipsis" ? (
             <span
               key={`ellipsis-${index}`}
+              aria-hidden="true"
               className="flex h-9 w-9 items-center justify-center text-brand-charcoal/50"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -103,6 +151,8 @@ export function Pagination({
             <button
               key={item}
               onClick={() => onChange(item)}
+              aria-current={page === item ? "page" : undefined}
+              aria-label={`第 ${item} 页`}
               className={cn(
                 buttonBaseStyles,
                 "px-3",

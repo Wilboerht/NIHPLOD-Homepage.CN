@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CategoryForm } from "@/components/admin/CategoryForm";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 
@@ -125,7 +127,6 @@ export default function AdminCategoriesPage() {
     const draggedItem = newCategories[dragItem];
     newCategories.splice(dragItem, 1);
     newCategories.splice(dragOverItem, 0, draggedItem);
-
     // 更新本地状态
     const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
     setCategories(updated);
@@ -138,6 +139,29 @@ export default function AdminCategoriesPage() {
         items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
       });
 
+      success("排序已保存");
+    } catch {
+      showError("保存排序失败");
+      fetchCategories(); // 恢复原数据
+    }
+  };
+
+  // 上移/下移（移动端/键盘替代拖拽）
+  const moveCategory = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= categories.length) return;
+
+    const newCategories = [...categories];
+    const [moved] = newCategories.splice(index, 1);
+    newCategories.splice(target, 0, moved);
+
+    const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
+    setCategories(updated);
+
+    try {
+      await apiPut("/api/admin/categories/order", {
+        items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
+      });
       success("排序已保存");
     } catch {
       showError("保存排序失败");
@@ -171,10 +195,7 @@ export default function AdminCategoriesPage() {
       {/* 分类列表 */}
       <div className="rounded-xl bg-white shadow-sm">
         {categories.length === 0 ? (
-          <div className="flex h-48 flex-col items-center justify-center text-brand-charcoal/50">
-            <p className="text-lg">暂无分类</p>
-            <p className="mt-1 text-sm">点击上方按钮创建第一个分类</p>
-          </div>
+          <Empty className="h-48" title="暂无分类" description="点击上方按钮创建第一个分类" />
         ) : (
           <div className="divide-y divide-brand-charcoal/8">
             {/* 表头 */}
@@ -201,11 +222,34 @@ export default function AdminCategoriesPage() {
                   "hover:bg-brand-charcoal/[0.03]"
                 )}
               >
-                {/* 拖拽手柄 */}
-                <div className="col-span-1 flex items-center">
-                  <button className="cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal">
+                {/* 拖拽手柄 + 移动端排序按钮 */}
+                <div className="col-span-1 flex items-center gap-1">
+                  <button
+                    className="hidden cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal md:block"
+                    title="拖拽排序"
+                  >
                     <GripVertical className="h-5 w-5" />
                   </button>
+                  <div className="flex md:hidden">
+                    <Tooltip content="上移" side="top">
+                      <button
+                        onClick={() => moveCategory(index, -1)}
+                        disabled={index === 0}
+                        className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-30"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                    <Tooltip content="下移" side="top">
+                      <button
+                        onClick={() => moveCategory(index, 1)}
+                        disabled={index === categories.length - 1}
+                        className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-30"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
                 </div>
 
                 {/* 名称 */}
@@ -230,44 +274,47 @@ export default function AdminCategoriesPage() {
 
                 {/* 前台展示开关 */}
                 <div className="col-span-1 flex items-center">
-                  <button
-                    onClick={() => handleToggleVisible(category)}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
-                      category.visible
-                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06]"
-                    )}
-                    title={category.visible ? "点击隐藏" : "点击显示"}
-                  >
-                    {category.visible ? (
-                      <>
-                        <Eye className="h-3.5 w-3.5" /> 显示
-                      </>
-                    ) : (
-                      <>
-                        <EyeOff className="h-3.5 w-3.5" /> 隐藏
-                      </>
-                    )}
-                  </button>
+                  <Tooltip content={category.visible ? "点击隐藏" : "点击显示"} side="top">
+                    <button
+                      onClick={() => handleToggleVisible(category)}
+                      className={cn(
+                        "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
+                        category.visible
+                          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          : "bg-brand-charcoal/8 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06]"
+                      )}
+                    >
+                      {category.visible ? (
+                        <>
+                          <Eye className="h-3.5 w-3.5" /> 显示
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-3.5 w-3.5" /> 隐藏
+                        </>
+                      )}
+                    </button>
+                  </Tooltip>
                 </div>
 
                 {/* 操作 */}
                 <div className="col-span-3 flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => handleEdit(category)}
-                    className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                    title="编辑"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm({ open: true, category })}
-                    className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
-                    title="删除"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="编辑" side="top">
+                    <button
+                      onClick={() => handleEdit(category)}
+                      className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="删除" side="top">
+                    <button
+                      onClick={() => setDeleteConfirm({ open: true, category })}
+                      className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             ))}

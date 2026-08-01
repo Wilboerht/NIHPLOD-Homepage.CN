@@ -26,6 +26,8 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 
@@ -405,26 +407,28 @@ export default function AdminApplicationsPage() {
                 </span>
               </button>
               <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 gap-0.5 group-hover:flex">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openFolderModal(folder);
-                  }}
-                  className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-brand-charcoal/60"
-                  title="编辑"
-                >
-                  <Edit2 className="h-3 w-3" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteFolderTarget(folder);
-                  }}
-                  className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-red-500"
-                  title="删除"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                <Tooltip content="编辑" side="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openFolderModal(folder);
+                    }}
+                    className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-brand-charcoal/60"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                </Tooltip>
+                <Tooltip content="删除" side="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteFolderTarget(folder);
+                    }}
+                    className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-red-500"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           ))}
@@ -487,10 +491,7 @@ export default function AdminApplicationsPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : applications.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
-            <FileText className="mb-2 h-12 w-12" />
-            <p className="text-lg">暂无简历申请</p>
-          </div>
+          <Empty className="h-64" title="暂无简历申请" />
         ) : (
           <>
             {/* 表头 */}
@@ -554,27 +555,30 @@ export default function AdminApplicationsPage() {
 
                     {/* 操作 */}
                     <div className="col-span-2 flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => viewDetail(application)}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/8 hover:text-brand-charcoal/60"
-                        title="查看详情"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => downloadResume(application)}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
-                        title="下载简历"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(application)}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
-                        title="删除"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <Tooltip content="查看详情" side="top">
+                        <button
+                          onClick={() => viewDetail(application)}
+                          className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/8 hover:text-brand-charcoal/60"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="下载简历" side="top">
+                        <button
+                          onClick={() => downloadResume(application)}
+                          className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="删除" side="top">
+                        <button
+                          onClick={() => setDeleteTarget(application)}
+                          className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
                 );

@@ -350,6 +350,16 @@
   background-size: 200% 100%;
 }
 
+/* 骨架屏 wave 渐变背景（animate-shimmer 需要配合此背景才可见） */
+.shimmer-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.05) 25%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(0, 0, 0, 0.05) 75%
+  );
+}
+
 /* 图片淡入动画 */
 @keyframes image-fade-in {
   from {

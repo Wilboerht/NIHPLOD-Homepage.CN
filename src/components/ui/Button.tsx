@@ -31,14 +31,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center gap-2 rounded-lg font-medium tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+      "inline-flex items-center justify-center gap-2 rounded-lg font-medium tracking-wider transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
 
     const variantStyles = {
       primary: "bg-brand-primary text-white hover:bg-brand-primary/90",
       secondary: "bg-brand-charcoal/8 text-brand-charcoal hover:bg-brand-charcoal/15",
       outline: "border border-brand-charcoal/20 text-brand-charcoal/80 bg-white hover:bg-brand-charcoal/[0.03]",
       ghost: "text-brand-charcoal/80 hover:bg-brand-charcoal/[0.06]",
-      danger: "bg-red-600 text-white hover:bg-red-700",
+      danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
     };
 
     const sizeStyles = {
@@ -52,6 +52,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type="button"
         disabled={disabled || loading}
+        aria-busy={loading || undefined}
         className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
         {...props}
       >

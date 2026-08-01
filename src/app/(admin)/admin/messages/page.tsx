@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Mail, MailOpen, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -10,6 +11,8 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 
@@ -33,12 +36,15 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function AdminMessagesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
 
   // 状态
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(parseInt(searchParams.get("pageSize") || "20"));
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [search, setSearch] = useState("");
@@ -64,7 +70,7 @@ export default function AdminMessagesPage() {
         unreadCount: number;
       }>("/api/admin/messages", {
         page,
-        pageSize: 20,
+        pageSize,
         search: debouncedSearch,
         status: statusFilter === "all" ? undefined : statusFilter,
       });
@@ -76,7 +82,7 @@ export default function AdminMessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, pageSize, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchMessages();
@@ -132,7 +138,12 @@ export default function AdminMessagesPage() {
       await apiDelete(`/api/admin/messages/${deleteTarget.id}`);
       success("留言已删除");
       setDeleteTarget(null);
-      fetchMessages();
+      // 删光当前页最后一条时回退一页
+      if (messages.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchMessages();
+      }
     } catch {
       showError("删除失败");
     } finally {
@@ -152,7 +163,12 @@ export default function AdminMessagesPage() {
 
       success(data.message);
       setSelectedIds(new Set());
-      fetchMessages();
+      // 批量删光当前页时回退一页
+      if (action === "delete" && selectedIds.size >= messages.length && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchMessages();
+      }
     } catch (error) {
       showError(error instanceof Error ? error.message : "操作失败");
     }
@@ -253,10 +269,7 @@ export default function AdminMessagesPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
-            <Mail className="mb-2 h-12 w-12" />
-            <p className="text-lg">暂无留言</p>
-          </div>
+          <Empty className="h-64" title="暂无留言" />
         ) : (
           <>
             {/* 表头 */}
@@ -355,24 +368,26 @@ export default function AdminMessagesPage() {
 
                   {/* 操作按钮 */}
                   <div className="flex w-24 items-center gap-1">
-                    <button
-                      onClick={() => toggleRead(message)}
-                      className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                      title={message.read ? "标记为未读" : "标记为已读"}
-                    >
-                      {message.read ? (
-                        <Mail className="h-4 w-4" />
-                      ) : (
-                        <MailOpen className="h-4 w-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(message)}
-                      className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
-                      title="删除"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
+                      <button
+                        onClick={() => toggleRead(message)}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                      >
+                        {message.read ? (
+                          <Mail className="h-4 w-4" />
+                        ) : (
+                          <MailOpen className="h-4 w-4" />
+                        )}
+                      </button>
+                    </Tooltip>
+                    <Tooltip content="删除" side="top">
+                      <button
+                        onClick={() => setDeleteTarget(message)}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
               ))}
@@ -382,9 +397,21 @@ export default function AdminMessagesPage() {
       </div>
 
       {/* 分页 */}
-      {total > 20 && (
+      {total > pageSize && (
         <div className="flex justify-center">
-          <Pagination page={page} pageSize={20} total={total} onChange={setPage} />
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("pageSize", String(size));
+              router.push(`/admin/messages?${params.toString()}`);
+            }}
+          />
         </div>
       )}
 

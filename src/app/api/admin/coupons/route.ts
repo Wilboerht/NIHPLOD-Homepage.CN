@@ -60,6 +60,31 @@ export async function POST(req: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await req.json();
+
+    // 批量上下架：{ batch: { ids, isActive } }
+    if (body && body.batch && Array.isArray(body.batch.ids)) {
+      const { ids, isActive } = body.batch;
+      if (ids.length === 0 || typeof isActive !== "boolean") {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+          { status: 400 }
+        );
+      }
+      const result = await prisma.coupon.updateMany({
+        where: { id: { in: ids } },
+        data: { isActive },
+      });
+      await createAuditLog({
+        action: "batch_coupon",
+        targetType: "coupon",
+        targetId: ids[0],
+        detail: { ids, isActive, count: result.count },
+        adminId: admin.id,
+        request: req,
+      });
+      return NextResponse.json({ success: true, data: { updated: result.count } });
+    }
+
     const data = createSchema.parse(body);
 
     const coupon = await prisma.coupon.create({
@@ -126,6 +151,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "20", 10)));
+    const isExport = searchParams.get("export") === "csv";
 
     const [coupons, total] = await Promise.all([
       prisma.coupon.findMany({
@@ -142,11 +168,52 @@ export async function GET(req: NextRequest) {
         },
         // scopeIds 是数组，直接包含在查询结果中
         orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: isExport ? undefined : (page - 1) * pageSize,
+        take: isExport ? 10000 : pageSize,
       }),
       prisma.coupon.count(),
     ]);
+
+    // CSV 导出
+    if (isExport) {
+      const escapeCSV = (val: string): string => {
+        const sanitized = /^[=+\-@]/.test(val) ? `'${val}` : val;
+        if (/[",\n\r]/.test(sanitized)) {
+          return `"${sanitized.replace(/"/g, '""')}"`;
+        }
+        return sanitized;
+      };
+
+      const csvHeaders = "名称,兑换码,类型,面值,门槛,总发行,已发放,已使用,有效期至,状态\n";
+      const csvRows = coupons
+        .map((c) => {
+          const typeLabel = c.type === "DISCOUNT_AMOUNT" ? "满减" : "折扣";
+          const valueText =
+            c.type === "DISCOUNT_AMOUNT"
+              ? `¥${c.value}`
+              : `${(Number(c.value) * 10).toFixed(1)}折`;
+          return [
+            escapeCSV(c.name),
+            escapeCSV(c.code || ""),
+            typeLabel,
+            valueText,
+            Number(c.minAmount).toFixed(2),
+            c.totalLimit !== null ? c.totalLimit : "不限",
+            c._count.userCoupons,
+            c.userCoupons.length,
+            c.endDate ? new Date(c.endDate).toISOString().slice(0, 10) : "领取后N天",
+            c.isActive ? "上架" : "下架",
+          ].join(",");
+        })
+        .join("\n");
+
+      return new NextResponse(csvHeaders + csvRows, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="coupons-${new Date().toISOString().slice(0, 10)}.csv"`,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

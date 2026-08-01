@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
+import { RequireAdminRole } from "@/components/admin";
 
 interface AuditEntry {
   id: string;
@@ -242,18 +244,16 @@ function OAuthAuditPage() {
             />
           </div>
           <div className="w-36">
-            <Input
-              type="date"
+            <DatePicker
               value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              onChange={(v) => { setDateFrom(v); setPage(1); }}
               placeholder="开始日期"
             />
           </div>
           <div className="w-36">
-            <Input
-              type="date"
+            <DatePicker
               value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              onChange={(v) => { setDateTo(v); setPage(1); }}
               placeholder="结束日期"
             />
           </div>
@@ -376,8 +376,10 @@ function OAuthAuditPage() {
 
 export default function OAuthAuditPageWrapper() {
   return (
-    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
-      <OAuthAuditPage />
-    </Suspense>
+    <RequireAdminRole role="owner">
+      <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+        <OAuthAuditPage />
+      </Suspense>
+    </RequireAdminRole>
   );
 }

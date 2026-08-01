@@ -509,8 +509,8 @@ const user = await userRes.json();`;
           </div>
 
           {testResult && (
-            <div className={`rounded-lg p-4 ${testResult.steps.every(s => s.status === "passed") ? "bg-green-50 border border-green-200" : "bg-yellow-50 border border-yellow-200"}`}>
-              <p className={`text-sm font-medium mb-2 ${testResult.steps.every(s => s.status === "passed") ? "text-green-800" : "text-yellow-800"}`}>
+            <div className={`rounded-lg p-4 ${testResult.steps.every(s => s.status === "passed") ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"}`}>
+              <p className={`text-sm font-medium mb-2 ${testResult.steps.every(s => s.status === "passed") ? "text-emerald-800" : "text-amber-800"}`}>
                 {testResult.steps.every(s => s.status === "passed") ? "✅ 连接测试全部通过" : "⚠️ 测试未完全通过"}
               </p>
               {testResult.summary && (

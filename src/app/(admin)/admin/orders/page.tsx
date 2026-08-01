@@ -6,7 +6,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, RefreshCw, Eye, Package } from "lucide-react";
+import { Search, RefreshCw, Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import type { SelectOption } from "@/components/ui/Select";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
+import { Empty } from "@/components/ui/Empty";
 import { apiGet } from "@/lib/api-client";
 
 interface OrderItem {
@@ -65,6 +66,7 @@ export default function AdminOrdersPage() {
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
   const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
   const status = searchParams.get("status") || "all";
   const search = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(search);
@@ -76,6 +78,7 @@ export default function AdminOrdersPage() {
         "/api/admin/orders",
         {
           page,
+          pageSize,
           status,
           search,
         }
@@ -89,7 +92,7 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, search]);
+  }, [page, pageSize, status, search]);
 
   useEffect(() => {
     fetchOrders();
@@ -115,14 +118,29 @@ export default function AdminOrdersPage() {
             管理所有客户订单{!loading && pagination.total > 0 ? `，共 ${pagination.total} 条` : ""}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="h-4 w-4" />}
-          onClick={fetchOrders}
-        >
-          刷新
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Download className="h-4 w-4" />}
+            onClick={() => {
+              // 按当前筛选条件导出 CSV（新窗口触发下载）
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("export", "csv");
+              window.open(`/api/admin/orders?${params.toString()}`, "_blank");
+            }}
+          >
+            导出 CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={fetchOrders}
+          >
+            刷新
+          </Button>
+        </div>
       </div>
 
       {/* 筛选栏 */}
@@ -175,11 +193,7 @@ export default function AdminOrdersPage() {
             </tbody>
           </table>
         ) : orders.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
-            <Package className="mb-3 h-12 w-12 text-brand-charcoal/20" />
-            <p className="text-base font-medium text-brand-charcoal/60">暂无订单</p>
-            <p className="mt-1 text-sm">当前筛选条件下没有匹配的订单</p>
-          </div>
+          <Empty className="h-64" title="暂无订单" description="当前筛选条件下没有匹配的订单" />
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -245,6 +259,7 @@ export default function AdminOrdersPage() {
                 pageSize={pagination.pageSize}
                 total={pagination.total}
                 onChange={(p) => updateParams({ page: String(p) })}
+                onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
               />
             </div>
           </>

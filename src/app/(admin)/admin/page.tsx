@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  Package,
-  FolderTree,
   MessageSquare,
   Briefcase,
   Plus,
@@ -17,6 +15,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { StatsCard } from "@/components/admin";
+import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
 import { getAdminStats, getSsoStats } from "@/lib/admin-stats";
@@ -46,7 +45,7 @@ const quickActions = [
 
 // 订单状态徽章
 const ORDER_STATUS_MAP: Record<string, { label: string; className: string }> = {
-  PENDING: { label: "待支付", className: "bg-yellow-50 text-yellow-600 border-yellow-200" },
+  PENDING: { label: "待支付", className: "bg-amber-50 text-amber-600 border-amber-200" },
   PAYING: { label: "支付中", className: "bg-blue-50 text-blue-600 border-blue-200" },
   PAID: { label: "已支付", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   PROCESSING: { label: "处理中", className: "bg-blue-50 text-blue-600 border-blue-200" },
@@ -203,7 +202,7 @@ export default async function AdminDashboard() {
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-sm text-brand-charcoal/50">暂无订单</div>
+            <Empty title="暂无订单" />
           )}
         </div>
 
@@ -258,7 +257,7 @@ export default async function AdminDashboard() {
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-sm text-brand-charcoal/50">暂无留言</div>
+            <Empty title="暂无留言" />
           )}
         </div>
 

@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   RefreshCw,
+  Download,
   Eye,
   User,
   Loader2,
@@ -25,12 +26,13 @@ import {
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
-import { apiGet, apiPatch } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
@@ -136,8 +138,15 @@ export default function AdminUsersPage() {
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
   const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
   const search = searchParams.get("search") || "";
+  const status = searchParams.get("status") || "";
   const [searchInput, setSearchInput] = useState(search);
+
+  // 批量操作状态
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchTarget, setBatchTarget] = useState<{ status: UserStatus } | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // 模态框状态
   const [detailOpen, setDetailOpen] = useState(false);
@@ -153,7 +162,9 @@ export default function AdminUsersPage() {
         "/api/admin/users",
         {
           page,
+          pageSize,
           search,
+          status: status || undefined,
         }
       );
       setLoadError("");
@@ -165,7 +176,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, pageSize, search, status]);
 
   useEffect(() => {
     fetchUsers();
@@ -205,6 +216,52 @@ export default function AdminUsersPage() {
     router.push(`/admin/users?${params.toString()}`);
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(users.map((u) => u.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const isAllSelected = users.length > 0 && selectedIds.size === users.length;
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmBatchChange = async () => {
+    if (!batchTarget || selectedIds.size === 0) return;
+    const { status: targetStatus } = batchTarget;
+    setBatchLoading(true);
+    try {
+      await apiPost<{ message: string }>("/api/admin/users", {
+        ids: Array.from(selectedIds),
+        status: targetStatus,
+      });
+      toast.success(`已将选中的 ${selectedIds.size} 个用户设置为「${userStatusMap[targetStatus].label}」`);
+      setBatchTarget(null);
+      setSelectedIds(new Set());
+      await fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "批量操作失败");
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const exportCsv = () => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (status) params.set("status", status);
+    window.open(`/api/admin/users?export=csv&${params.toString()}`, "_blank");
+  };
+
   const openDetail = async (id: string) => {
     setDetailOpen(true);
     setDetailLoading(true);
@@ -239,13 +296,18 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-medium text-brand-charcoal">用户管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">管理注册用户</p>
         </div>
-        <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchUsers}>
-          刷新
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" leftIcon={<Download className="h-4 w-4" />} onClick={exportCsv}>
+            导出 CSV
+          </Button>
+          <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchUsers}>
+            刷新
+          </Button>
+        </div>
       </div>
 
       {/* 搜索栏 */}
-      <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
           <Input
@@ -255,6 +317,39 @@ export default function AdminUsersPage() {
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
             className="pl-10"
           />
+        </div>
+        <div className="flex items-center gap-4">
+          <Select
+            options={[
+              { value: "", label: "全部状态" },
+              { value: "ACTIVE", label: "正常" },
+              { value: "SUSPENDED", label: "冻结" },
+              { value: "BANNED", label: "封禁" },
+            ]}
+            value={status}
+            onChange={(e) => updateParams({ status: e.target.value })}
+            className="w-32"
+          />
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
+              <Button size="sm" variant="outline" leftIcon={<CheckCircle className="h-4 w-4" />} onClick={() => setBatchTarget({ status: "ACTIVE" })}>
+                恢复正常
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                leftIcon={<Lock className="h-4 w-4" />}
+                onClick={() => setBatchTarget({ status: "SUSPENDED" })}
+              >
+                冻结
+              </Button>
+              <Button size="sm" variant="danger" leftIcon={<Ban className="h-4 w-4" />} onClick={() => setBatchTarget({ status: "BANNED" })}>
+                封禁
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -273,6 +368,15 @@ export default function AdminUsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="h-4 w-4 rounded border-brand-charcoal/20"
+                  aria-label="全选"
+                />
+              </th>
               <th scope="col" className="px-4 py-3">用户</th>
               <th scope="col" className="px-4 py-3">手机号</th>
               <th scope="col" className="px-4 py-3">会员等级</th>
@@ -286,17 +390,26 @@ export default function AdminUsersPage() {
           <tbody className="divide-y">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={8} />
+                <TableRowSkeleton key={i} columns={9} />
               ))
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-brand-charcoal/50">
+                <td colSpan={9} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无用户
                 </td>
               </tr>
             ) : (
               users.map((user) => (
                 <tr key={user.id} className="hover:bg-brand-charcoal/[0.03]">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(user.id)}
+                      onChange={() => toggleSelect(user.id)}
+                      className="h-4 w-4 rounded border-brand-charcoal/20"
+                      aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
@@ -362,6 +475,7 @@ export default function AdminUsersPage() {
           pageSize={pagination.pageSize}
           total={pagination.total}
           onChange={(p) => updateParams({ page: String(p) })}
+          onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
         />
       </div>
 
@@ -670,6 +784,21 @@ export default function AdminUsersPage() {
         }
         confirmText="确认修改"
         loading={statusLoading}
+      />
+
+      {/* 批量状态变更确认 */}
+      <ConfirmDialog
+        open={!!batchTarget}
+        onClose={() => setBatchTarget(null)}
+        onConfirm={confirmBatchChange}
+        title="批量修改用户状态"
+        description={
+          batchTarget
+            ? `确定要将选中的 ${selectedIds.size} 个用户状态设置为「${userStatusMap[batchTarget.status].label}」吗？${userStatusMap[batchTarget.status].description}`
+            : ""
+        }
+        confirmText={`确认${batchTarget ? userStatusMap[batchTarget.status].label : ""}`}
+        loading={batchLoading}
       />
     </div>
   );

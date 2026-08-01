@@ -12,8 +12,10 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
+import { RequireAdminRole } from "@/components/admin";
 
 interface AdminItem {
   id: string;
@@ -143,6 +145,7 @@ export default function AdminAdminsPage() {
   };
 
   return (
+    <RequireAdminRole role="owner">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -192,13 +195,16 @@ export default function AdminAdminsPage() {
               ))
             ) : admins.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-12 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <span className="text-brand-charcoal/50">暂无管理员</span>
-                    <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-                      新增管理员
-                    </Button>
-                  </div>
+                <td colSpan={5} className="px-5 py-8">
+                  <Empty
+                    title="暂无管理员"
+                    className="py-6"
+                    action={
+                      <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+                        新增管理员
+                      </Button>
+                    }
+                  />
                 </td>
               </tr>
             ) : (
@@ -302,5 +308,6 @@ export default function AdminAdminsPage() {
         loading={deleting}
       />
     </div>
+    </RequireAdminRole>
   );
 }

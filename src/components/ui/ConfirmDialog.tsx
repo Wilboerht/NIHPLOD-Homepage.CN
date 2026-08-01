@@ -62,7 +62,11 @@ export function ConfirmDialog({
   const Icon = iconMap[type];
 
   const handleConfirm = async () => {
-    await onConfirm();
+    try {
+      await onConfirm();
+    } catch {
+      // 错误由调用方处理，这里防止未处理 Promise rejection
+    }
   };
 
   return (
@@ -92,6 +96,7 @@ export function ConfirmDialog({
           onClick={handleConfirm}
           loading={loading}
           disabled={confirmDisabled}
+          autoFocus
         >
           {confirmText}
         </Button>

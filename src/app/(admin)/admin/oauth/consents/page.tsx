@@ -11,7 +11,9 @@ import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { RequireAdminRole } from "@/components/admin";
 
 interface Consent {
   id: string;
@@ -201,22 +203,24 @@ function OAuthConsentsPage() {
               consents.map((c) => (
                 <tr key={c.id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm">
-                    <Link
-                      href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
-                      className="text-blue-600 hover:underline"
-                      title="查看用户详情"
-                    >
-                      {c.phone || c.userId}
-                    </Link>
+                    <Tooltip content="查看用户详情" side="top">
+                      <Link
+                        href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
+                        className="inline-flex text-blue-600 hover:underline"
+                      >
+                        {c.phone || c.userId}
+                      </Link>
+                    </Tooltip>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    <Link
-                      href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
-                      className="text-blue-600 hover:underline font-mono"
-                      title="查看 Client"
-                    >
-                      {c.clientName || c.clientId}
-                    </Link>
+                    <Tooltip content="查看 Client" side="top">
+                      <Link
+                        href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
+                        className="inline-flex text-blue-600 hover:underline font-mono"
+                      >
+                        {c.clientName || c.clientId}
+                      </Link>
+                    </Tooltip>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 flex-wrap">
@@ -235,16 +239,17 @@ function OAuthConsentsPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {c.status === "active" ? (
-                      <button
-                        onClick={() => {
-                          setRevokeTarget({ userId: c.userId, clientId: c.clientId });
-                          setShowRevoke(true);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded"
-                        title="撤销授权"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
+                      <Tooltip content="撤销授权" side="top">
+                        <button
+                          onClick={() => {
+                            setRevokeTarget({ userId: c.userId, clientId: c.clientId });
+                            setShowRevoke(true);
+                          }}
+                          className="inline-flex p-1.5 text-gray-400 hover:text-red-600 rounded"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     ) : (
                       <span className="text-xs text-gray-400" title="用户下次访问该 Client 时需要重新授权">
                         需重新授权
@@ -286,8 +291,10 @@ function OAuthConsentsPage() {
 
 export default function OAuthConsentsPageWrapper() {
   return (
-    <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
-      <OAuthConsentsPage />
-    </Suspense>
+    <RequireAdminRole role="owner">
+      <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+        <OAuthConsentsPage />
+      </Suspense>
+    </RequireAdminRole>
   );
 }
