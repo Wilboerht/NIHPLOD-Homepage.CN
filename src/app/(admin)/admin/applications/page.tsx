@@ -182,10 +182,10 @@ export default function AdminApplicationsPage() {
   }, [search]);
 
   // 更新状态
-  const updateStatus = async (application: Application, newStatus: string) => {
+  const updateStatus = async (application: Application, newStatus: string, toastMsg?: string) => {
     try {
       await apiPatch(`/api/admin/applications/${application.id}`, { status: newStatus });
-      success("状态已更新");
+      success(toastMsg || "状态已更新");
       fetchApplications();
       if (detailApplication?.id === application.id) {
         setDetailApplication({ ...application, status: newStatus });
@@ -232,7 +232,7 @@ export default function AdminApplicationsPage() {
     setEditingNotes(application.notes || "");
     // 自动标记为已查看
     if (application.status === "pending") {
-      updateStatus(application, "reviewed");
+      updateStatus(application, "reviewed", "已将申请标记为已查看");
     }
   };
 

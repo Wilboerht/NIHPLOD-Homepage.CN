@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
@@ -146,6 +146,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     timersRef.current.forEach((timer) => clearTimeout(timer));
     timersRef.current.clear();
     setToasts([]);
+  }, []);
+
+  // 组件卸载时清理所有定时器（防止内存泄漏 + setState on unmounted 警告）
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((timer) => clearTimeout(timer));
+      timersRef.current.clear();
+    };
   }, []);
 
   const dismiss = useCallback(

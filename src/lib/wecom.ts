@@ -30,7 +30,8 @@ export async function sendWecomNotification(
       : process.env.WECOM_BOT_WEBHOOK;
 
   if (!webhookUrl) {
-    // 未配置 Webhook 时静默跳过
+    // 记录日志告警：生产环境不应静默丢失通知
+    apiConsole.warn(`[WeCom] ${type === "job" ? "招聘" : "联系表单"}机器人 Webhook 未配置，通知不会发送`);
     return { success: false, error: "WECOM_BOT_WEBHOOK not configured" };
   }
 
@@ -146,5 +147,5 @@ export function formatJobApplicationToWecom(data: {
 
 **简历详情**: [点击查看简历](${data.resumeUrl})
 
-[点击进入后台](${baseUrl}/admin/jobs)`;
+[点击进入后台](${baseUrl}/admin/applications)`;
 }

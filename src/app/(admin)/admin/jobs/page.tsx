@@ -13,7 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 
 interface Job {
   id: string;
@@ -93,7 +93,7 @@ export default function AdminJobsPage() {
   // 切换发布状态
   const togglePublish = async (job: Job) => {
     try {
-      await apiPut(`/api/admin/jobs/${job.id}`, { published: !job.published });
+      await apiPatch(`/api/admin/jobs/${job.id}`, { published: !job.published });
       success(job.published ? "已取消发布" : "已发布");
       fetchJobs();
     } catch {
@@ -116,8 +116,8 @@ export default function AdminJobsPage() {
       } else {
         fetchJobs();
       }
-    } catch {
-      showError("删除失败");
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "删除失败");
     } finally {
       setDeleting(false);
     }

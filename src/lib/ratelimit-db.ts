@@ -94,14 +94,18 @@ export async function rateLimitDB(
               where: { key: identifier, windowStart: { gte: windowStart } },
               orderBy: { windowStart: "desc" },
             });
-            if (existing && existing.count >= options.maxRequests) {
+            if (!existing) {
+              // 极限情况：create P2002 后记录被删除（如清理任务），重新抛出让外层 catch 走 fallback
+              throw err;
+            }
+            if (existing.count >= options.maxRequests) {
               return { success: false, remaining: 0, reset, limit: options.maxRequests };
             }
             await tx.rateLimitRecord.update({
-              where: { id: existing!.id },
-              data: { count: (existing?.count || 0) + 1 },
+              where: { id: existing.id },
+              data: { count: existing.count + 1 },
             });
-            return { success: true, remaining: options.maxRequests - (existing?.count || 0) - 1, reset, limit: options.maxRequests };
+            return { success: true, remaining: options.maxRequests - existing.count - 1, reset, limit: options.maxRequests };
           }
           throw err;
         }

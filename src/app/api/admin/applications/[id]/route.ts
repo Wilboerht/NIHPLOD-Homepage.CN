@@ -6,6 +6,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog, type AuditAction } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -87,6 +88,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
 
     const body = await request.json();
     const parsed = patchSchema.safeParse(body);
@@ -189,6 +192,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const rateLimitResponse2 = await checkAdminRateLimit(request);
     if (rateLimitResponse2) return rateLimitResponse2;
+
+    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
 
     // 先获取申请记录以删除关联的简历文件
     const application = await prisma.jobApplication.findUnique({

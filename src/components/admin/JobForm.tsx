@@ -9,7 +9,6 @@ import { Select } from "@/components/ui/Select";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AmapLocationPicker } from "@/components/admin/AmapLocationPicker";
 
 // 职位类型选项
@@ -49,7 +48,6 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   const [formData, setFormData] = useState<Partial<Job>>({
     title: "",
@@ -82,6 +80,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     if (!formData.title?.trim()) newErrors.title = "请输入中文职位名称";
     if (!formData.location?.trim()) newErrors.location = "请输入工作地点";
     if (!formData.description?.trim()) newErrors.description = "请输入职位描述";
+    if (!formData.requirements?.trim()) newErrors.requirements = "请输入任职要求";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -189,17 +188,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       return;
     }
 
-    if (!formData.published) {
-      setShowPublishConfirm(true);
-      return;
-    }
-
     await doSave();
-  };
-
-  const handleConfirmPublish = async () => {
-    setShowPublishConfirm(false);
-    await doSave(true);
   };
 
   return (
@@ -307,17 +296,6 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           </Button>
         </div>
       </section>
-
-      {/* 发布确认弹窗 */}
-      <ConfirmDialog
-        open={showPublishConfirm}
-        onClose={() => setShowPublishConfirm(false)}
-        title="发布职位"
-        description="您当前选择不立即发布此职位。您可以选择将其保存为草稿，或者立即发布。"
-        confirmText="立即发布"
-        cancelText="保存草稿"
-        onConfirm={handleConfirmPublish}
-      />
     </form>
   );
 }

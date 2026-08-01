@@ -44,8 +44,8 @@ export const adminNavItems: NavItem[] = [
   // 招聘管理
   { title: "职位管理", href: "/admin/jobs", icon: Briefcase, roles: ["owner", "admin"], group: "招聘管理" },
   { title: "简历管理", href: "/admin/applications", icon: UserCheck, roles: ["owner", "admin"], group: "招聘管理" },
-  { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"], group: "招聘管理" },
   // 系统管理
+  { title: "留言管理", href: "/admin/messages", icon: MessageSquare, roles: ["owner", "admin"], group: "系统管理" },
   { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"], group: "系统管理" },
   { title: "安全设置", href: "/admin/settings/totp", icon: ShieldCheck, roles: ["owner", "admin"], group: "系统管理" },
   { title: "审计日志", href: "/admin/audit-logs", icon: ScrollText, roles: ["owner", "admin"], group: "系统管理" },

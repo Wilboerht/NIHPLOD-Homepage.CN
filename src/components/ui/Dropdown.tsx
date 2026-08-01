@@ -9,7 +9,7 @@
  * @example
  * ```tsx
  * <Dropdown
- *   trigger={<Button>更多操作</Button>}
+ *   trigger={<span className="...">更多操作</span>}
  *   items={[
  *     { label: "编辑", onClick: () => {} },
  *     { label: "删除", danger: true, onClick: () => {} },

@@ -15,7 +15,7 @@
  * />
  * ```
  */
-import { InputHTMLAttributes, ReactNode, forwardRef } from "react";
+import { InputHTMLAttributes, ReactNode, forwardRef, useId } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     { className, label, description, error, checked = false, onChange, disabled, id, ...props },
     ref
   ) => {
-    const inputId = id || (typeof label === "string" ? `checkbox-${label.replace(/\s+/g, "-")}` : undefined);
+    const autoId = useId();
+    const inputId = id || autoId;
 
     return (
       <div className="w-full">

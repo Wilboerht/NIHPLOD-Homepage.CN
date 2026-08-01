@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { uploadFile } from "@/lib/upload";
+import { uploadFile, deleteUploadedFile } from "@/lib/upload";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { fileTypeFromBuffer } from "file-type";
@@ -126,15 +126,21 @@ export async function POST(request: NextRequest) {
 
     // 保存申请记录到数据库
     if (process.env.NODE_ENV === "development") apiConsole.debug("💾 [Apply API] Creating DB record");
-    await prisma.jobApplication.create({
-      data: {
-        jobId,
-        name,
-        phone,
-        resumePath: uploadResult.url,
-      },
-    });
-    if (process.env.NODE_ENV === "development") apiConsole.debug("✅ [Apply API] DB record created");
+    try {
+      await prisma.jobApplication.create({
+        data: {
+          jobId,
+          name,
+          phone,
+          resumePath: uploadResult.url,
+        },
+      });
+      if (process.env.NODE_ENV === "development") apiConsole.debug("✅ [Apply API] DB record created");
+    } catch (dbError) {
+      // 数据库写入失败，清理已上传的文件
+      deleteUploadedFile(uploadResult.url).catch(() => {});
+      throw dbError;
+    }
 
     // 发送通知
     if (process.env.NODE_ENV === "development") apiConsole.debug("📢 [Apply API] Sending notifications");

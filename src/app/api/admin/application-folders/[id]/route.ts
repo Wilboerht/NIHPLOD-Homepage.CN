@@ -5,6 +5,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -88,6 +89,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+
     const body = await request.json();
     const validated = UpdateFolderSchema.parse(body);
 
@@ -104,14 +107,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       data: validated,
     });
 
-    await createAuditLog({
+    createAuditLog({
       action: "update_application_folder",
       targetType: "application_folder",
       targetId: id,
       detail: validated,
       adminId: admin.id,
       request,
-    });
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
@@ -156,6 +159,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const rateLimitResponse2 = await checkAdminRateLimit(request);
     if (rateLimitResponse2) return rateLimitResponse2;
 
+    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+
     const existing = await prisma.applicationFolder.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json(
@@ -174,7 +179,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       detail: { name: existing.name },
       adminId: admin.id,
       request,
-    });
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

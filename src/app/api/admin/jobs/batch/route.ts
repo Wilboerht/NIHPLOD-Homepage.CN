@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -28,6 +29,8 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
 
     const body = await request.json();
     const { ids, action } = BatchSchema.parse(body);

@@ -512,9 +512,24 @@ function JobModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isDesktop, setIsDesktop] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const typeInfo = jobTypeMap[job.type] || { label: job.type, color: "bg-gray-100 text-gray-700" };
+
+  const PHONE_REGEX = /^1[3-9]\d{9}$/;
+
+  const validateField = (name: string, value: string): string | null => {
+    if (name === "name") {
+      if (!value || value.trim().length < 2) return "姓名至少2个字符";
+      if (value.trim().length > 50) return "姓名最多50个字符";
+    }
+    if (name === "phone") {
+      if (!value || !PHONE_REGEX.test(value)) return "请输入有效的手机号";
+    }
+    return null;
+  };
 
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
@@ -596,22 +611,61 @@ function JobModal({
     return () => clearTimeout(timer);
   }, [job.id, job.location, job.longitude, job.latitude]);
 
+  // 弹窗打开时锁定背景滚动，关闭时恢复
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
+
+  // 焦点陷阱 + Escape 关闭
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+      return;
+    }
+    if (e.key === "Tab") {
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone) {
-      setErrorMessage("请填写姓名和电话");
-      return;
-    }
-    if (!resumeFile) {
-      setErrorMessage("请上传简历");
-      return;
-    }
+
+    // 客户端字段校验
+    const errors: Record<string, string> = {};
+    const nameErr = validateField("name", formData.name);
+    const phoneErr = validateField("phone", formData.phone);
+    if (nameErr) errors.name = nameErr;
+    if (phoneErr) errors.phone = phoneErr;
+    if (!resumeFile) errors.resume = "请上传简历";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
     setSubmitStatus("idle");
     setErrorMessage(null);
 
     try {
+      if (!resumeFile) return;
       const data = new FormData();
       data.append("jobId", job.id);
       data.append("jobTitle", job.title);
@@ -623,9 +677,25 @@ function JobModal({
       setSubmitStatus("success");
       setFormData({ name: "", phone: "" });
       setResumeFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setSubmitStatus("error");
-      setErrorMessage(err instanceof ApiError ? err.message : "投递失败，请稍后重试");
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message);
+        // 提取服务端返回的字段级错误信息
+        if (err.details && typeof err.details === "object") {
+          const serverFieldErrors: Record<string, string> = {};
+          const details = err.details as Record<string, string[]>;
+          for (const [key, msgs] of Object.entries(details)) {
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              serverFieldErrors[key] = msgs[0];
+            }
+          }
+          setFieldErrors(serverFieldErrors);
+        }
+      } else {
+        setErrorMessage("投递失败，请稍后重试");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -636,12 +706,14 @@ function JobModal({
 
   return (
     <m.div
+      ref={modalRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
       style={{ willChange: "opacity" }}
       className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:p-4"
+      onKeyDown={handleKeyDown}
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <m.div
@@ -724,20 +796,30 @@ function JobModal({
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) => setFormData((d) => ({ ...d, name: e.target.value }))}
+                      onChange={(e) => { setFormData((d) => ({ ...d, name: e.target.value })); setFieldErrors((prev) => ({ ...prev, name: "" })); }}
+                      onBlur={() => {
+                        const err = validateField("name", formData.name);
+                        setFieldErrors((prev) => (err ? { ...prev, name: err } : prev));
+                      }}
                       className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                       placeholder="您的姓名"
                     />
+                    {fieldErrors.name && <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>}
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">电话 *</label>
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData((d) => ({ ...d, phone: e.target.value }))}
+                      onChange={(e) => { setFormData((d) => ({ ...d, phone: e.target.value })); setFieldErrors((prev) => ({ ...prev, phone: "" })); }}
+                      onBlur={() => {
+                        const err = validateField("phone", formData.phone);
+                        setFieldErrors((prev) => (err ? { ...prev, phone: err } : prev));
+                      }}
                       className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                       placeholder="您的手机号"
                     />
+                    {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
                   </div>
                 </div>
 
@@ -746,7 +828,7 @@ function JobModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf"
                     onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
                     className="hidden"
                   />
@@ -757,13 +839,25 @@ function JobModal({
                   >
                     {resumeFile ? (
                       <>
-                        <FileText className="h-5 w-5 text-brand-charcoal" />
-                        <span className="text-brand-charcoal">{resumeFile.name}</span>
+                        <FileText className="h-5 w-5 shrink-0 text-brand-charcoal" />
+                        <span className="flex-1 truncate text-left text-brand-charcoal">{resumeFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setResumeFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                          className="ml-auto shrink-0 rounded-full p-0.5 transition-colors hover:bg-zinc-200"
+                          aria-label="移除文件"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       </>
                     ) : (
                       <>
                         <Upload className="h-5 w-5" />
-                        <span>上传简历 (PDF, DOC, DOCX)</span>
+                        <span>上传简历 (PDF)</span>
                       </>
                     )}
                   </button>

@@ -303,15 +303,37 @@ interface JobPostingJsonLdProps {
 }
 
 export function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
+  const salary =
+    job.salary && !["面议", "Negotiable"].includes(job.salary) && !/\dK-\dK/i.test(job.salary)
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: "CNY",
+            value: {
+              "@type": "QuantitativeValue",
+              value: job.salary,
+              unitText: "MONTH",
+            },
+          },
+        }
+      : {};
+
+  const cityMatch = job.location.match(/^(北京|上海|天津|重庆)/);
+  const cityExtract = cityMatch
+    ? cityMatch[1]
+    : job.location.match(/^(?:.*?省|.*?自治区)?(.*?市)/)?.[1]?.replace(/市$/, "") ||
+      job.location.split(/[区县]/)[0]?.replace(/市$/, "") ||
+      job.location;
+
   const data = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: job.title,
-    description: job.description,
+    description: job.description.replace(/<[^>]*>/g, ""),
     datePosted: new Date().toISOString().split("T")[0],
     validThrough: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     employmentType:
-      job.type === "full-time" ? "FULL_TIME" : job.type === "part-time" ? "PART_TIME" : "OTHER",
+      job.type === "fulltime" ? "FULL_TIME" : job.type === "parttime" ? "PART_TIME" : "OTHER",
     hiringOrganization: {
       "@type": "Organization",
       name: "NIHPLOD 旎柏",
@@ -321,21 +343,11 @@ export function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        addressLocality: job.location,
+        addressLocality: cityExtract,
         addressCountry: "CN",
       },
     },
-    ...(job.salary && {
-      baseSalary: {
-        "@type": "MonetaryAmount",
-        currency: "CNY",
-        value: {
-          "@type": "QuantitativeValue",
-          value: job.salary,
-          unitText: "MONTH",
-        },
-      },
-    }),
+    ...salary,
   };
 
   return <JsonLdScript data={data} />;
