@@ -200,8 +200,8 @@ export function KineticBackground() {
           }}
         >
           <div className="kinetic-btn-group pointer-events-none">
-            <div className="mb-2 flex w-full items-center justify-center">
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
+            <div className="mb-0 flex w-full items-center justify-center sm:mb-2">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
                 {user?.avatar ? (
                   <Image
                     src={user.avatar}
@@ -210,7 +210,7 @@ export function KineticBackground() {
                     className="rounded-full object-cover"
                   />
                 ) : (
-                  <div className="relative h-5 w-5 opacity-50 sm:h-7 sm:w-7">
+                  <div className="relative h-5 w-5 opacity-70 sm:h-7 sm:w-7 sm:opacity-50">
                     <Image
                       src="/images/profile-icon.svg"
                       alt="用户头像"
@@ -222,12 +222,12 @@ export function KineticBackground() {
               </div>
             </div>
             {user ? (
-              <div className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal shadow-sm backdrop-blur-sm">
+              <div className="group flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal shadow-sm backdrop-blur-sm sm:h-11">
                 <span>进入会员中心</span>
                 <ChevronRight className="h-4 w-4 opacity-70" />
               </div>
             ) : (
-              <div className="group flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-white/40 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
+              <div className="group flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/10 bg-white/70 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80 sm:h-11 sm:border-0 sm:bg-white/40 sm:text-brand-charcoal/70">
                 <span>会员登录</span>
               </div>
             )}

@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 自托管 Futura LT（woff2，仅拉丁字符生效，中文继续走系统苹方/雅黑）
+   Light 承接 200/300 细体需求（解决 iOS 本地 Futura 无 Light 字面导致英文偏粗的问题），
+   Medium 承接 400+ 常规字重。font-family 栈已以 "Futura LT" 开头，无需改动。 */
+@font-face {
+  font-family: "Futura LT";
+  src: url("/fonts/futura-lt-light.woff2") format("woff2");
+  font-weight: 200 300;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-024F, U+2000-20CF, U+2100-21FF;
+}
+
+@font-face {
+  font-family: "Futura LT";
+  src: url("/fonts/futura-lt-medium.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-024F, U+2000-20CF, U+2100-21FF;
+}
+
 @keyframes orbit-spin {
   from {
     transform: rotate(0deg);
@@ -1565,6 +1586,11 @@
     .kinetic-cell:active {
       transform: scale(0.98) !important;
       box-shadow: 0 4px 12px -6px rgba(120, 90, 50, 0.1) !important;
+    }
+
+    /* 登录卡内容瘦身配合紧凑容器，防止矮屏/iPad mini 上按钮被 overflow:hidden 裁切 */
+    .kinetic-login-cell {
+      padding: 8px 10px !important;
     }
 
     /* 低矮设备容错（折叠屏半开/矮屏）：收紧定位与间距，避开底部 Dock */
