@@ -884,6 +884,15 @@
   .home-container .footer-beian > span[aria-hidden="true"] {
     display: none;
   }
+
+  /* 版权与备案信息大小深浅对齐：两行统一减浅减细，消除拉丁/中文及行间视觉重量差 */
+  .home-container .footer-copyright,
+  .home-container .footer-beian a,
+  .home-container .footer-beian span,
+  .home-container .footer-latin {
+    font-weight: 200;
+    color: rgba(0, 38, 62, 0.32);
+  }
 }
 
 /* 响应式 - 将断点提升至包含 iPad mini (820px) */
@@ -1035,7 +1044,7 @@
   align-items: center;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 819px) {
   .kinetic-watermark {
     position: absolute;
     inset: 0;
@@ -1050,14 +1059,16 @@
   }
 }
 
-/* 响应式调整 - 移动端缩小 Logo */
+/* 响应式调整 - 移动端缩小 Logo（降低视觉权重，避免与便当盒卡片争主角） */
 @media (max-width: 768px) {
   .kinetic-logo {
-    top: -48px;
+    top: -40px;
   }
 
   .kinetic-logo-image {
-    height: 36px;
+    /* 与首页主视觉 Logo（.logo）尺寸保持一致 */
+    width: clamp(130px, 16vw, 185px);
+    height: auto;
   }
 
   /* 移动端关闭卡片过渡动画，防止地址栏收缩时触发残影 */
@@ -1518,10 +1529,10 @@
   /* 只有 iPad mini (768px) 及手机保持极简 4 卡片 */
   @media (max-width: 819px) {
     .kinetic-container {
-      /* 针对精简 4 卡片布局，宽度可以放宽到 40vh，总高度约为 60vh */
-      width: min(86vw, 40vh);
+      /* 收紧为悬浮展台比例：总高约 56vh，上下留出呼吸空间，左右边距更从容 */
+      width: min(82vw, 36vh);
       max-width: 420px;
-      gap: 16px;
+      gap: 14px;
       top: 55%;
     }
 
@@ -1548,6 +1559,21 @@
     .kinetic-cell-skin {
       order: 5;
       grid-column: span 2;
+    }
+
+    /* 触控反馈：按压轻微收缩 + 阴影收敛（对齐全站 active 规范，仅手机端生效） */
+    .kinetic-cell:active {
+      transform: scale(0.98) !important;
+      box-shadow: 0 4px 12px -6px rgba(120, 90, 50, 0.1) !important;
+    }
+
+    /* 低矮设备容错（折叠屏半开/矮屏）：收紧定位与间距，避开底部 Dock */
+    @media (max-height: 600px) {
+      .kinetic-container {
+        width: min(86vw, 32vh);
+        top: 50%;
+        gap: 10px;
+      }
     }
   }
 
@@ -1633,11 +1659,9 @@
     gap: 8px;
   }
 
-  /* 移动端彻底禁用所有卡片的悬浮/点击位移和偏移白边 */
+  /* 彻底禁用卡片的悬浮位移和偏移白边（:active 触控反馈由 ≤819px 规则单独提供） */
   .kinetic-cell:hover,
-  .kinetic-cell:active,
-  .kinetic-login-cell:not(.no-hover-effect):hover,
-  .kinetic-login-cell:not(.no-hover-effect):active {
+  .kinetic-login-cell:not(.no-hover-effect):hover {
     transform: none !important;
     box-shadow: 0 10px 25px -5px rgba(120, 90, 50, 0.08) !important;
   }
@@ -1656,6 +1680,25 @@
   .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
     color: inherit !important;
     letter-spacing: inherit !important;
+  }
+}
+
+/* 水印端切换与便当盒移动端断点对齐（820px），避免 Tailwind md=768px 区间混搭 */
+.kinetic-watermark-pc {
+  display: none;
+}
+
+.kinetic-watermark-mobile {
+  display: block;
+}
+
+@media (min-width: 820px) {
+  .kinetic-watermark-pc {
+    display: block;
+  }
+
+  .kinetic-watermark-mobile {
+    display: none;
   }
 }
 

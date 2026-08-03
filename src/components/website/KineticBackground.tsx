@@ -59,9 +59,9 @@ export function KineticBackground() {
       <div className="kinetic-bg-base" />
       <div className="kinetic-dot-pattern" />
       <div className="kinetic-watermark">
-        {/* PC 端水印 */}
+        {/* PC 端水印（≥820px 断点切换见 globals.css，与便当盒移动端断点对齐） */}
         <div
-          className="relative hidden md:block"
+          className="kinetic-watermark-pc relative"
           style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}
         >
           <Image
@@ -76,7 +76,7 @@ export function KineticBackground() {
         </div>
         {/* 移动端水印 - 竖版，深色水印在浅色背景上形成品牌纹理 */}
         <div
-          className="kinetic-watermark-mobile absolute inset-0 block md:hidden"
+          className="kinetic-watermark-mobile absolute inset-0"
           style={{ filter: "brightness(0)" }}
         >
           <Image
@@ -110,7 +110,7 @@ export function KineticBackground() {
             fill
             className="kinetic-cell-image"
             style={{ objectPosition: "center 30%" }}
-            sizes="(max-width: 600px) 100vw, 30vw"
+            sizes="(max-width: 819px) 43vw, 30vw"
             priority
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#D4C4A8]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
@@ -146,7 +146,7 @@ export function KineticBackground() {
             fill
             className="kinetic-cell-image"
             style={{ objectPosition: "center 40%" }}
-            sizes="(max-width: 600px) 100vw, 50vw"
+            sizes="(max-width: 819px) 86vw, 50vw"
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
             <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">

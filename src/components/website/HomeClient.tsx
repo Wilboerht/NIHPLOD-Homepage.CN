@@ -426,7 +426,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                 {/* 版权文本 & 备案信息 */}
                 <footer className="home-footer">
                   <p className="footer-copyright relative z-10">
-                    &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    <span className="footer-latin">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </span>
                   </p>
                   <div className="footer-beian">
                     <Link
@@ -435,7 +437,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                       rel="noopener noreferrer"
                       className="flex !min-h-0 !min-w-0 items-center transition-colors hover:text-brand-primary"
                     >
-                      沪ICP备2026014764号-1
+                      沪<span className="footer-latin">ICP</span>备
+                      <span className="footer-latin">2026014764</span>号
+                      <span className="footer-latin">-1</span>
                     </Link>
                     <span className="text-brand-charcoal/20" aria-hidden="true">
                       |
@@ -453,7 +457,9 @@ export default function HomeClient({ content: _content }: HomeClientProps) {
                         height={12}
                         className="shrink-0 opacity-80"
                       />
-                      <span>沪公网安备31010702010178号</span>
+                      <span>
+                        沪公网安备<span className="footer-latin">31010702010178</span>号
+                      </span>
                     </Link>
                   </div>
                 </footer>
