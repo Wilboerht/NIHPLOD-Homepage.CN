@@ -107,6 +107,8 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
   const title = content?.title || { en: "JOIN US", zh: "加入我们" };
   const description =
     content?.description || "我们正在寻找那些希望将想法转化为创新体验和解决方案的人";
+  // 手机端两行显示：在“转化为”处语义断行（md+ 隐藏 br，PC 保持单行）；文案不含该词时自动降级为单行
+  const [descLine1, descLine2] = description.split("转化为");
   const contactEmail = content?.contactEmail || "hr@nihplod.com";
   const submitTip = content?.submitTip || {
     title: "简历投递",
@@ -336,7 +338,15 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             {title.zh}
           </h1>
           <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
-          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light tracking-[0.06em] leading-[1.8] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">{description}</p>
+          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light tracking-[0.06em] leading-[1.8] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
+            {descLine1}
+            {descLine2 !== undefined && (
+              <>
+                <br className="md:hidden" />
+                {`转化为${descLine2}`}
+              </>
+            )}
+          </p>
         </div>
 
         {/* Filter Tabs */}

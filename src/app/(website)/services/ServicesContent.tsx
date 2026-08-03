@@ -330,7 +330,9 @@ export function ServicesContent({ content }: ServicesContentProps) {
         </h1>
         <div className="mb-4 w-[70px] border-b border-brand-primary md:hidden" />
         <p className="mb-10 text-center text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60 md:mb-16 md:text-base md:leading-normal md:tracking-[0.12em]">
-          NIHPLOD 旎柏以卓越品质与全方位服务，为您呈献逆转时光的奢华体验
+          NIHPLOD 旎柏以卓越品质与全方位服务，
+          <br className="md:hidden" />
+          为您呈献逆转时光的奢华体验
         </p>
         <div className="container mx-auto px-0 md:px-8 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-4xl">

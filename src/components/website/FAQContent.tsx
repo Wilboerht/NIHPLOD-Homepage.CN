@@ -17,7 +17,7 @@ function FooterCopyright() {
 
 const FAQS = [
   {
-    question: "什么是 NIHPLOD ?",
+    question: "什么是 NIHPLOD？",
     answer: (
       <div className="space-y-3">
         <p>
@@ -35,7 +35,7 @@ const FAQS = [
     ),
   },
   {
-    question: "NIHPLOD 和其它护肤品牌有什么不一样的地方 ?",
+    question: "NIHPLOD 和其它护肤品牌有什么不一样的地方？",
     answer: (
       <div className="space-y-3">
         <p>随着现代科学技术的不断发展，越来越多的活性成分被应用于化妆品领域。</p>
@@ -53,7 +53,7 @@ const FAQS = [
     ),
   },
   {
-    question: "使用 NIHPLOD 的产品多久可以看到效果 ?",
+    question: "使用 NIHPLOD 的产品多久可以看到效果？",
     answer: (
       <div className="space-y-3">
         <p>
@@ -66,7 +66,7 @@ const FAQS = [
     ),
   },
   {
-    question: "NIHPLOD 主张的「精简护肤」对我有什么好处 ?",
+    question: "NIHPLOD 主张的「精简护肤」对我有什么好处？",
     answer: (
       <div className="space-y-3">
         <p>
@@ -86,7 +86,7 @@ const FAQS = [
     ),
   },
   {
-    question: "敏感肌可以使用 NIHPLOD 的产品吗 ?",
+    question: "敏感肌可以使用 NIHPLOD 的产品吗？",
     answer: (
       <div className="space-y-3">
         <p>
@@ -119,7 +119,7 @@ const FAQS = [
     ),
   },
   {
-    question: "孕妇或 (产后) 月子期可以使用吗 ?",
+    question: "孕妇或（产后）月子期可以使用吗？",
     answer: (
       <div className="space-y-3">
         <p>
