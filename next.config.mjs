@@ -135,11 +135,20 @@ const nextConfig = {
   },
 
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+
+    // 开发环境跳过安全头，避免 CSP 拦截 webpack HMR / eval
+    const productionHeaders = isDev
+      ? []
+      : [
+          {
+            source: '/(.*)',
+            headers: securityHeaders,
+          },
+        ];
+
     return [
-      {
-        source: '/(.*)',
-        headers: securityHeaders,
-      },
+      ...productionHeaders,
       // 静态资源缓存
       {
         source: '/uploads/:path*',
