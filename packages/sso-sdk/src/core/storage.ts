@@ -1,9 +1,9 @@
 /**
  * Token 存储抽象层
  *
- * 默认使用 localStorage，以支持多 Tab 间自动同步 token 并避免并发刷新。
- * 对 XSS 敏感的子项目可通过 setTokenStorage() 注入更安全的自定义实现
- *（如内存存储、Service Worker 封装、或带加密的 storage）。
+ * 默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，XSS 无法窃取长期凭证。
+ * 对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，可通过 setTokenStorage() 注入
+ * localStorage 实现（如 createSecureStorage({ persist: true })）或自定义存储。
  *
  * 多 client 隔离：
  * - token / state / return_url 均支持按 clientId 隔离 key

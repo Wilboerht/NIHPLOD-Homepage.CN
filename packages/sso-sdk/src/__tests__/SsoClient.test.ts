@@ -8,10 +8,8 @@ import { SsoClient } from "../core/SsoClient";
 import {
   saveTokenData,
   getTokenData,
-  removeTokenData,
   saveOAuthState,
   savePkceVerifier,
-  clearAllSsoData,
   setTokenStorage,
 } from "../core/storage";
 import type { TokenData } from "../core/storage";

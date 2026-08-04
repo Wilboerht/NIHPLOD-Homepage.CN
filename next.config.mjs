@@ -18,27 +18,9 @@ const securityHeaders = [
     key: 'Referrer-Policy',
     value: 'origin-when-cross-origin',
   },
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      // TODO: 'unsafe-inline' 暂时保留。Next.js 与高德地图均依赖内联脚本，
-      // 完全移除需配合 middleware 实现 per-request nonce，当前未改造，故保留并加说明。
-      // 'unsafe-eval' 已移除：生产构建无需动态求值。
-      "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
-      // 收紧 img-src：禁止任意 https: 通配，只允许已知域名，并统一使用 https
-      "img-src 'self' data: blob: https://**.nihplod.cn https://**.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      // connect-src 仅允许浏览器端实际需要的域；AI 调用（DeepSeek/OpenAI）均为服务端发起
-      "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
-      "worker-src 'self' blob:",
-      "frame-ancestors 'self'",
-      "form-action 'self'",
-      "base-uri 'self'",
-      "upgrade-insecure-requests",
-    ].join('; '),
-  },
+  // Content-Security-Policy 已迁移到 src/middleware.ts，使用 per-request nonce
+  // 为内联脚本（Google Analytics / 百度统计 / JSON-LD）放行，同时移除 script-src 'unsafe-inline'。
+  // style-src 'unsafe-inline' 仍作为已知债务保留。
   {
     key: 'Strict-Transport-Security',
     value: 'max-age=63072000; includeSubDomains; preload',

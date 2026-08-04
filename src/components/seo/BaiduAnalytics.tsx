@@ -6,16 +6,20 @@
  * 获取 ID：百度统计 -> 管理 -> 代码获取 -> 找到 hm.src 中的 ? 后面的字符串
  */
 import Script from "next/script";
+import { getNonce } from "@/lib/nonce";
 
 const BAIDU_TONGJI_ID = process.env.NEXT_PUBLIC_BAIDU_TONGJI_ID;
 
-export function BaiduAnalytics() {
+export async function BaiduAnalytics() {
   if (!BAIDU_TONGJI_ID) return null;
+
+  const nonce = await getNonce();
 
   return (
     <Script
       id="baidu-tongji"
       strategy="afterInteractive"
+      nonce={nonce}
       dangerouslySetInnerHTML={{
         __html: `
           var _hmt = _hmt || [];

@@ -19,6 +19,40 @@ interface LogEntry {
 }
 
 /**
+ * 安全 JSON.stringify，遇到循环引用时不会崩溃，而是保留可序列化部分。
+ */
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (err) {
+    // 循环引用或 BigInt 等不可序列化值：使用容错 replacer
+    try {
+      return JSON.stringify(
+        value,
+        (_key, val) => {
+          if (val === value) return "[Circular]";
+          if (val instanceof Error) {
+            return {
+              name: val.name,
+              message: val.message,
+              stack: val.stack?.split("\n").slice(0, 3).join("\n"),
+            };
+          }
+          if (typeof val === "bigint") return val.toString();
+          return val;
+        },
+        2
+      );
+    } catch {
+      // 最终兜底：返回序列化错误本身，避免日志系统抛异常导致主流程中断
+      return JSON.stringify({
+        serializationError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
+
+/**
  * 格式化日志条目
  */
 function formatLogEntry(entry: LogEntry): string {
@@ -35,7 +69,7 @@ function formatLogEntry(entry: LogEntry): string {
   if (context && Object.keys(context).length > 0) {
     // 处理 Error 对象后再脱敏
     const serialized = serializeContext(context);
-    log += `\n   ${JSON.stringify(serialized, null, 2).replace(/\n/g, "\n   ")}`;
+    log += `\n   ${safeStringify(serialized).replace(/\n/g, "\n   ")}`;
   }
 
   return log;
@@ -97,7 +131,7 @@ function createLogger(module: string) {
 
     // 生产环境下使用 JSON 格式，以便被日志服务（如 PM2 + ELK、CloudWatch）自动解析
     if (process.env.NODE_ENV === "production") {
-      const jsonLog = JSON.stringify({
+      const jsonLog = safeStringify({
         ...entry,
         // 确保 context 中的 Error 对象被正确序列化
         context: entry.context ? serializeContext(entry.context) : undefined,

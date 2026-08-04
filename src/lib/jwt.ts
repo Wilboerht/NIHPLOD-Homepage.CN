@@ -23,6 +23,13 @@ import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, OAuthAccessT
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 const MIN_SECRET_LENGTH = 32;
 
+// 已处理的 logout_token jti 缓存（主站自身验证入口）
+// TTL 10 分钟：logout token 本身有效期 5 分钟，留足时钟偏移余量。
+const processedLogoutJtis = new LRUCache<string, number>({
+  max: 10000,
+  ttl: 10 * 60 * 1000,
+});
+
 function validateSecret(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(`[JWT] ${name} 环境变量未设置，请配置后再启动应用`);
@@ -66,10 +73,6 @@ const logoutSecret = new TextEncoder().encode(
 let cachedAccessPrivateKey: CryptoKey | null = null;
 let cachedAccessPublicKey: CryptoKey | null = null;
 
-function hasRS256AccessKeys(): boolean {
-  return Boolean(process.env.JWT_ACCESS_PRIVATE_KEY && process.env.JWT_ACCESS_PUBLIC_KEY);
-}
-
 async function getAccessPrivateKey(): Promise<CryptoKey | null> {
   if (!process.env.JWT_ACCESS_PRIVATE_KEY) return null;
   if (cachedAccessPrivateKey) return cachedAccessPrivateKey;
@@ -90,10 +93,6 @@ export async function getAccessPublicKey(): Promise<CryptoKey | null> {
 
 let cachedIdTokenPrivateKey: CryptoKey | null = null;
 let cachedIdTokenPublicKey: CryptoKey | null = null;
-
-function hasRS256IdTokenKeys(): boolean {
-  return Boolean(process.env.JWT_ID_TOKEN_PRIVATE_KEY && process.env.JWT_ID_TOKEN_PUBLIC_KEY);
-}
 
 async function getIdTokenPrivateKey(): Promise<CryptoKey | null> {
   if (!process.env.JWT_ID_TOKEN_PRIVATE_KEY) return null;
@@ -555,7 +554,18 @@ export async function verifyLogoutToken(token: string, audience: string): Promis
     if ((payload as { type?: string }).type !== "logout_token") {
       return null;
     }
-    return payload as unknown as LogoutTokenClaims;
+
+    const claims = payload as unknown as LogoutTokenClaims;
+    if (!claims.jti || typeof claims.jti !== "string") {
+      return null;
+    }
+    // jti 重放检查：同一 logout_token 仅处理一次
+    if (processedLogoutJtis.has(claims.jti)) {
+      return null;
+    }
+    processedLogoutJtis.set(claims.jti, Date.now());
+
+    return claims;
   } catch {
     return null;
   }

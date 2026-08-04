@@ -118,6 +118,10 @@ export const AUDIT_ACTIONS = [
   "oauth_client_create",
   "oauth_client_update",
   "oauth_client_delete",
+  "oauth_client_rotate_secret",
+  "oauth_client_test",
+  "oauth_consent_revoke",
+  "oauth_session_terminate",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
@@ -133,6 +137,8 @@ export const AUDIT_TARGET_TYPES = [
   "system",
   "application_folder",
   "oauth_client",
+  "oauth_consent",
+  "oauth_session",
 ] as const;
 
 interface AuditLogInput {

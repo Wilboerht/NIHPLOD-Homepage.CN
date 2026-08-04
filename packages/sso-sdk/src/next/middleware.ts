@@ -136,23 +136,6 @@ function matchesPath(pathname: string, paths: string[]): boolean {
 }
 
 /**
- * 从 JWT 中解码 payload（不验证签名，仅用于 Edge Runtime 快速检查 exp）
- */
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1];
-    // base64url decode (Edge Runtime 兼容)
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(base64);
-    return JSON.parse(decoded) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * 通过主站 Introspection 端点校验 access_token 是否仍有效。
  * Confidential Client（BFF）应配置 clientSecret，防止伪造 Cookie 绕过。
  */

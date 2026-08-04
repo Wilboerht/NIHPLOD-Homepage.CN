@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withUserAuth } from "@/lib/auth";
-import { hashPassword } from "@/lib/password";
+import { passwordSchema } from "@/lib/password";
 import { verifyCode } from "@/lib/sms";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -23,17 +23,12 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
+import { updateUserPassword } from "@/lib/password-policy";
 
 const setPasswordSchema = z
   .object({
     code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
-    password: z
-      .string()
-      .min(8, "密码至少8位")
-      .max(32, "密码最多32位")
-      .regex(/[A-Z]/, "密码需包含大写字母")
-      .regex(/[a-z]/, "密码需包含小写字母")
-      .regex(/[0-9]/, "密码需包含数字"),
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -144,11 +139,19 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const hashedPassword = await hashPassword(password);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
+    const updateResult = await updateUserPassword(user.id, password);
+    if (!updateResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: updateResult.errorCode,
+            message: updateResult.errorMessage,
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     sendPasswordChangedNotification(user.phone).catch((err) => {
       apiConsole.error("[SetPassword] 安全通知发送失败:", err);

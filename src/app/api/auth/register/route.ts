@@ -20,10 +20,11 @@ import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit"
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
-import { hashPassword, passwordSchema } from "@/lib/password";
+import { hashPassword, passwordSchema, getPasswordExpiryDate } from "@/lib/password";
 import { verifyCode } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { recordPasswordHistory } from "@/lib/password-policy";
 
 // 请求参数验证
 const registerSchema = z
@@ -170,9 +171,14 @@ export async function POST(request: NextRequest) {
         phone,
         phoneVerified: true,
         password: hashedPassword,
+        passwordChangedAt: new Date(),
+        passwordExpiresAt: getPasswordExpiryDate(),
         ...(name ? { nickname: name } : {}),
       },
     });
+
+    // 记录初始密码历史
+    await recordPasswordHistory(user.id, hashedPassword);
 
     logAuthEvent("user_register", {
       userId: user.id,

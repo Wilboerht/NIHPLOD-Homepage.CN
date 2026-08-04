@@ -1,9 +1,9 @@
 /**
  * Next.js Middleware
- * 保护管理后台路由和 API，验证认证状态
+ * 保护管理后台路由和 API，验证认证状态，并为所有 HTML 响应生成 CSP nonce。
  *
  * 中间件在 Edge Runtime 中运行，早于所有 API 路由和页面渲染，
- * 提供纵深防御层：token 校验 / admin 页面重定向 / 支付回调方法限制 / 敏感 API 拦截。
+ * 提供纵深防御层：token 校验 / admin 页面重定向 / 支付回调方法限制 / 敏感 API 拦截 / CSP nonce。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
@@ -84,7 +84,7 @@ const OAUTH_PATH_PREFIXES = [
  * 由于中间件在 Edge Runtime 运行，无法实时查询数据库，
  * 此处回显请求的 origin（token/userinfo 端点自身已通过
  * client_secret / Bearer token 进行身份认证）。
- * 仅在 origin 为 null 时回退为 "*"。
+ * 仅在 origin 为 null 时回退为 "*".
  */
 function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
   response.headers.set("Access-Control-Allow-Origin", origin || "*");
@@ -100,10 +100,95 @@ function addCorsHeaders(response: NextResponse, origin: string | null): NextResp
   return response;
 }
 
+// ================= CSP nonce 配置 =================
+
+/** 静态资源/无需 CSP 的路径前缀 */
+const STATIC_PATH_PREFIXES = [
+  "/_next/",
+  "/favicon",
+  "/fonts/",
+  "/images/",
+  "/manifest.json",
+  "/robots.txt",
+  "/sitemap.xml",
+];
+
+function isStaticPath(pathname: string): boolean {
+  return STATIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith("/api/") || pathname.startsWith("/.well-known/");
+}
+
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function buildCspHeader(nonce: string): string {
+  const isDev = process.env.NODE_ENV !== "production";
+  return [
+    "default-src 'self'",
+    // script-src 已移除 'unsafe-inline'；通过 per-request nonce 放行受控内联脚本
+    // 'strict-dynamic' 允许受信脚本加载后续脚本（如 GTM/GA/高德）
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${
+      isDev ? "'unsafe-eval'" : ""
+    } https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:`,
+    // style-src 仍保留 'unsafe-inline'：项目中存在少量动态生成的内联样式与高德地图样式，
+    // 完全移除需逐步重构，当前作为已知债务保留并单独标注
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
+    "img-src 'self' data: blob: https://**.nihplod.cn https://**.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'self'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "upgrade-insecure-requests",
+  ]
+    .join(";")
+    .replace(/;+/g, ";")
+    .replace(/;\s*$/, "");
+}
+
+/**
+ * 为 HTML 响应注入 CSP nonce。
+ * 仅对非静态、非 API 的 GET/HEAD 请求设置，避免影响 API/静态资源。
+ */
+function applyCspNonce(request: NextRequest, response: NextResponse): NextResponse {
+  const { pathname } = request.nextUrl;
+  const method = request.method;
+
+  if (isStaticPath(pathname) || isApiPath(pathname)) {
+    return response;
+  }
+  if (method !== "GET" && method !== "HEAD") {
+    return response;
+  }
+
+  const nonce = generateNonce();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  // 必须同时改写 request 头，服务端组件才能通过 headers() 读取 nonce
+  const rewritten = NextResponse.next({ request: { headers: requestHeaders } });
+  rewritten.headers.set("x-nonce", nonce);
+  rewritten.headers.set("Content-Security-Policy", buildCspHeader(nonce));
+
+  return rewritten;
+}
+
 export async function middleware(request: NextRequest) {
-  const { pathname, origin: requestOrigin } = request.nextUrl;
+  const { pathname } = request.nextUrl;
   const method = request.method;
   const origin = request.headers.get("origin");
+
+  // 对静态资源直接放行，不附加 CSP 或认证逻辑
+  if (isStaticPath(pathname)) {
+    return NextResponse.next();
+  }
 
   // CORS 预检：对 OAuth 路径的 OPTIONS 请求直接返回 204
   const isOAuthPath = matchesPath(pathname, OAUTH_PATH_PREFIXES);
@@ -130,7 +215,7 @@ export async function middleware(request: NextRequest) {
     if (token && (await checkAuth())) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
-    return NextResponse.next();
+    return applyCspNonce(request, NextResponse.next());
   }
 
   // 1.2 未登录访问后台 → 重定向到登录页
@@ -138,15 +223,15 @@ export async function middleware(request: NextRequest) {
     if (!token || !(await checkAuth())) {
       const loginUrl = new URL("/admin-login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+      return applyCspNonce(request, NextResponse.redirect(loginUrl));
     }
-    return NextResponse.next();
+    return applyCspNonce(request, NextResponse.next());
   }
 
   // ================= 2. API 路由保护 =================
 
   if (!pathname.startsWith("/api")) {
-    return NextResponse.next();
+    return applyCspNonce(request, NextResponse.next());
   }
 
   // 2.1 显式公开的 API → 放行
@@ -195,8 +280,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/admin-login",
-    "/api/:path*",
+    "/:path*",
   ],
 };

@@ -6,11 +6,14 @@
  * 获取 ID：Google Analytics -> 管理 -> 数据流 -> 复制测量 ID
  */
 import Script from "next/script";
+import { getNonce } from "@/lib/nonce";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
-export function GoogleAnalytics() {
+export async function GoogleAnalytics() {
   if (!GA_ID) return null;
+
+  const nonce = await getNonce();
 
   return (
     <>
@@ -18,10 +21,12 @@ export function GoogleAnalytics() {
         id="google-analytics"
         strategy="afterInteractive"
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+        nonce={nonce}
       />
       <Script
         id="google-analytics-config"
         strategy="afterInteractive"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `
             window.dataLayer = window.dataLayer || [];

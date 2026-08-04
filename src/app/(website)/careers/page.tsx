@@ -40,6 +40,7 @@ export const metadata: Metadata = {
 };
 
 import Script from "next/script";
+import { getNonce } from "@/lib/nonce";
 
 // 高德地图 Key 与 安全密钥从环境变量读取（服务端环境变量，不会暴露到客户端 JS bundle）
 const AMAP_KEY = process.env.AMAP_KEY;
@@ -72,6 +73,7 @@ async function getJobs(): Promise<Job[]> {
 
 export default async function CareersPage() {
   const jobs = await getJobs();
+  const nonce = await getNonce();
   const breadcrumbs = [
     { name: "首页", url: "/" },
     { name: "加入我们", url: "/careers" },
@@ -87,6 +89,7 @@ export default async function CareersPage() {
       <Script
         id="amap-security-config"
         strategy="afterInteractive"
+        nonce={nonce}
         dangerouslySetInnerHTML={{
           __html: `
             window._AMapSecurityConfig = {
@@ -99,6 +102,7 @@ export default async function CareersPage() {
       <Script
         src={`https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geocoder`}
         strategy="afterInteractive"
+        nonce={nonce}
       />
       <CareersContent jobs={jobs} content={undefined} />
     </>

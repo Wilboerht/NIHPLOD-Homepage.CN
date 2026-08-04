@@ -25,6 +25,7 @@ export default defineConfig({
       TOTP_ENCRYPTION_KEY: "test-totp-encryption-key-at-least-32-chars",
       DATABASE_URL: "postgresql://test:test@localhost:5432/test",
       TZ: "Asia/Shanghai",
+      ALLOW_HS256_FALLBACK: "true",
     },
     coverage: {
       provider: "v8",
@@ -35,12 +36,16 @@ export default defineConfig({
         "src/generated/**",
         "**/*.d.ts",
       ],
-      // 全局阈值（当前 ~30% 因大量 lib 文件尚无测试，随测试补全逐步上调至 60%）
+      // 全局阈值目标：60%（中长期目标）。当前覆盖率约 35% statements/lines，
+      // 因大量非 SSO 业务模块（支付、上传、OSS、微信等）尚无测试，短期无法直接达标。
+      // 新增 SSO 核心模块测试后，functions/branches 已接近/超过 60%。
+      // 后续应优先为 ali-oss.ts、api-client.ts、payment-config.ts、upload.ts、wechat*.ts、wecom.ts 等补充测试。
       thresholds: {
-        statements: 28,
-        branches: 25,
-        functions: 28,
-        lines: 28,
+        statements: 35,
+        branches: 60,
+        functions: 60,
+        lines: 35,
+        // 60% 是下一里程碑；statements/lines 因大量非 SSO 业务模块暂无测试暂保持 35%。
       },
     },
   },

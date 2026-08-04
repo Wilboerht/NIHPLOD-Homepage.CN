@@ -3,16 +3,20 @@
  * 用于 SEO 优化，帮助搜索引擎理解页面内容
  */
 
+import { getNonce } from "@/lib/nonce";
+
 // 基础 URL
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
 /**
  * 通用 JSON-LD 脚本组件
  */
-function JsonLdScript({ data }: { data: object }) {
+async function JsonLdScript({ data }: { data: object }) {
+  const nonce = await getNonce();
   return (
     <script
       type="application/ld+json"
+      nonce={nonce}
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
     />
   );
@@ -22,7 +26,7 @@ function JsonLdScript({ data }: { data: object }) {
  * Organization Schema - 品牌组织信息
  * 用于根布局，定义品牌基本信息
  */
-export function OrganizationJsonLd() {
+export async function OrganizationJsonLd() {
   const data = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -91,7 +95,7 @@ export function OrganizationJsonLd() {
  * WebSite Schema - 网站信息
  * 用于根布局，定义网站搜索功能
  */
-export function WebSiteJsonLd() {
+export async function WebSiteJsonLd() {
   const data = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -134,7 +138,7 @@ interface ProductJsonLdProps {
   };
 }
 
-export function ProductJsonLd({ product }: ProductJsonLdProps) {
+export async function ProductJsonLd({ product }: ProductJsonLdProps) {
   const productUrl = `${baseUrl}/products/${product.slug}`;
 
   const data = {
@@ -198,7 +202,7 @@ interface BreadcrumbJsonLdProps {
   items: BreadcrumbItem[];
 }
 
-export function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
+export async function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
   const data = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -225,7 +229,7 @@ interface FAQJsonLdProps {
   items: FAQItem[];
 }
 
-export function FAQJsonLd({ items }: FAQJsonLdProps) {
+export async function FAQJsonLd({ items }: FAQJsonLdProps) {
   const data = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -258,7 +262,7 @@ interface LocalBusinessJsonLdProps {
   openingHours?: string[];
 }
 
-export function LocalBusinessJsonLd({
+export async function LocalBusinessJsonLd({
   name = "NIHPLOD 旎柏",
   address,
   telephone,
@@ -302,7 +306,7 @@ interface JobPostingJsonLdProps {
   };
 }
 
-export function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
+export async function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
   const salary =
     job.salary && !["面议", "Negotiable"].includes(job.salary) && !/\dK-\dK/i.test(job.salary)
       ? {
@@ -369,7 +373,7 @@ interface HowToGuide {
   steps: HowToGuideStep[];
 }
 
-export function GuideHowToJsonLd({ guides }: { guides: HowToGuide[] }) {
+export async function GuideHowToJsonLd({ guides }: { guides: HowToGuide[] }) {
   const data = {
     "@context": "https://schema.org",
     "@graph": guides.map((guide) => ({

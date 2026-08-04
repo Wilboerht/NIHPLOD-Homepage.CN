@@ -1,12 +1,11 @@
 /**
- * 密码加密工具
+ * 密码加密工具与密码策略
  * 使用 bcryptjs 进行密码哈希和验证
  *
- * TODO: 密码策略增强
- * - 密码历史检查：防止用户重复使用最近 N 个密码
- * - 密码过期策略：定期强制用户更换密码
- * - 弱密码黑名单：拒绝常见弱密码（123456, password 等）
- * - 以上功能需额外 schema 变更（PasswordHistory 表等）
+ * 已实现策略：
+ * - 弱密码黑名单：拒绝常见弱密码与连续/重复字符
+ * - 密码历史检查：防止用户重复使用最近 N 个密码（依赖 PasswordHistory 表）
+ * - 密码过期策略：支持按用户 passwordExpiresAt 判断是否需要强制修改密码
  */
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -16,12 +15,59 @@ import { randomInt } from "./random";
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 
+// 密码策略常量
+/** 默认保留最近密码历史数量 */
+export const PASSWORD_HISTORY_LIMIT = 5;
+/** 默认密码过期天数（可通过环境变量覆盖） */
+export const PASSWORD_EXPIRY_DAYS = Math.max(
+  1,
+  Number(process.env.PASSWORD_EXPIRY_DAYS || 90)
+);
+
+/** 常见弱密码黑名单（小写比较） */
+export const WEAK_PASSWORD_BLACKLIST = new Set([
+  "123456", "12345678", "123456789", "1234567890", "password",
+  "qwerty", "abc123", "111111", "000000", "iloveyou", "admin123",
+  "password123", "letmein", "welcome", "monkey", "dragon", "master",
+  "sunshine", "princess", "football", "baseball", "superman", "batman",
+]);
+
+/**
+ * 判断是否为弱密码
+ * - 在常见弱密码黑名单中
+ * - 全为相同字符
+ * - 连续 6 位以上升序/降序数字
+ * - 连续 6 位以上升序/降序字母
+ */
+export function isWeakPassword(password: string): boolean {
+  if (!password) return true;
+
+  const lower = password.toLowerCase();
+  if (WEAK_PASSWORD_BLACKLIST.has(lower)) return true;
+
+  // 全相同字符
+  if (/^(.)\1+$/.test(password)) return true;
+
+  // 连续 6 位以上数字
+  if (/(012345|123456|234567|345678|456789|567890|098765|987654|876543|765432|654321|543210)/.test(password)) {
+    return true;
+  }
+
+  // 连续 6 位以上字母（abcd... / zyx...）
+  if (/(abcdef|bcdefg|cdefgh|defghi|efghij|fghijk|ghijkl|hijklm|ijklmn|jklmno|klmnop|lmnopq|mnopqr|nopqrs|opqrst|pqrstu|qrstuv|rstuvw|stuvwx|tuvwxy|uvwxyz|zyxwvu|yxwvut|xwvuts|wvutsr|vutsrq|utsrqp|tsrqpo|srqpon|rqponm|qponml|ponmlk|onmlkj|nmlkji|mlkjih|lkjihg|kjihgf|jihgfe|ihgfed|hgfedc|gfedcb|fedcba)/.test(lower)) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * 校验密码强度
  * - 至少 8 位，最多 32 位
  * - 包含至少一个大写字母
  * - 包含至少一个小写字母
  * - 包含至少一个数字
+ * - 不在弱密码黑名单中
  * 返回 { valid, message }，valid 为 true 时表示符合要求
  */
 export function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -40,6 +86,9 @@ export function validatePasswordStrength(password: string): { valid: boolean; me
   if (!/[0-9]/.test(password)) {
     return { valid: false, message: "密码需包含数字" };
   }
+  if (isWeakPassword(password)) {
+    return { valid: false, message: "密码过于简单，请避免使用常见弱密码或连续字符" };
+  }
   return { valid: true };
 }
 
@@ -49,6 +98,7 @@ export function validatePasswordStrength(password: string): { valid: boolean; me
  * - 包含至少一个大写字母
  * - 包含至少一个小写字母
  * - 包含至少一个数字
+ * - 不为弱密码
  */
 export const passwordSchema = z
   .string()
@@ -56,7 +106,10 @@ export const passwordSchema = z
   .max(PASSWORD_MAX_LENGTH, "密码最多32位")
   .regex(/[A-Z]/, "密码需包含大写字母")
   .regex(/[a-z]/, "密码需包含小写字母")
-  .regex(/[0-9]/, "密码需包含数字");
+  .regex(/[0-9]/, "密码需包含数字")
+  .refine((val) => !isWeakPassword(val), {
+    message: "密码过于简单，请避免使用常见弱密码或连续字符",
+  });
 
 // 盐的轮数 - 12 是一个良好的安全性与性能平衡点
 const SALT_ROUNDS = 12;
@@ -78,6 +131,25 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   return bcrypt.compare(password, hashedPassword);
+}
+
+/**
+ * 计算密码默认过期时间
+ */
+export function getPasswordExpiryDate(): Date {
+  return new Date(Date.now() + PASSWORD_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * 判断密码是否已过期
+ * 当 user.passwordExpiresAt 存在且小于当前时间时返回 true。
+ */
+export function isPasswordExpired(user: {
+  passwordExpiresAt?: Date | null;
+  passwordChangedAt?: Date | null;
+}): boolean {
+  if (!user.passwordExpiresAt) return false;
+  return new Date() > user.passwordExpiresAt;
 }
 
 /**

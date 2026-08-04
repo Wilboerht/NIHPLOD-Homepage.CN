@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, passwordSchema } from "@/lib/password";
+import { passwordSchema } from "@/lib/password";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -17,6 +17,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
+import { updateUserPassword } from "@/lib/password-policy";
 
 // 请求参数验证
 const resetPasswordSchema = z
@@ -184,12 +185,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 重置密码
-    const hashedPassword = await hashPassword(password);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
+    // 重置密码（含密码历史检查与过期策略）
+    const updateResult = await updateUserPassword(user.id, password);
+    if (!updateResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: updateResult.errorCode,
+            message: updateResult.errorMessage,
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     // 密码重置后撤销该用户所有 Refresh Token，强制所有设备重新登录
     await prisma.refreshToken.updateMany({

@@ -206,6 +206,10 @@ model User {
   avatar        String?                         // 头像 URL
   status        UserStatus @default(ACTIVE)     // 账号状态
 
+  // 密码策略
+  passwordChangedAt DateTime?                   // 上次密码修改时间
+  passwordExpiresAt DateTime?                   // 密码过期时间（null 表示未启用过期策略）
+
   // 多租户预留：如需租户隔离，添加 tenantId String? 字段，并在所有查询中添加 WHERE tenantId = ? 条件
 
   // 微信登录
@@ -225,6 +229,7 @@ model User {
   refreshTokens    RefreshToken[]
   auditLogs        AuditLog[]
   pointTransactions PointTransaction[]
+  passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -237,6 +242,7 @@ model User {
   @@index([membershipLevel])
   @@index([wechatUnionId])
   // phone 和 wechatOpenId 已有 @unique 索引，无需重复 @@index
+  @@index([passwordExpiresAt])
 }
 
 // ============================================
@@ -292,6 +298,22 @@ model LoginAttempt {
   @@index([identifier, createdAt(sort: Desc)])
   @@index([identifier, success, createdAt(sort: Desc)])
   @@index([clientId, createdAt(sort: Desc)])
+}
+
+/**
+ * 密码历史
+ * 记录用户最近 N 个密码哈希，用于防止重复使用历史密码。
+ * 应用层负责限制历史数量（默认 5 条）。
+ */
+model PasswordHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  password  String   // 密码哈希（bcrypt）
+  createdAt DateTime @default(now())
+
+  user User @relation("UserPasswordHistory", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ============================================
