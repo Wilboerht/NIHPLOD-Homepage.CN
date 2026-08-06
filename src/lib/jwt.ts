@@ -81,7 +81,12 @@ const logoutSecret = new TextEncoder().encode(
 );
 
 // RS256 ID Token 密钥对：SSO SDK v2+ 拒绝 HS256 ID Token，生产环境必须配置
-if (process.env.NODE_ENV === "production" && (!process.env.JWT_ID_TOKEN_PRIVATE_KEY || !process.env.JWT_ID_TOKEN_PUBLIC_KEY)) {
+// 跳过构建阶段（NEXT_PHASE 存在时）的校验
+if (
+  process.env.NODE_ENV === "production" &&
+  !process.env.NEXT_PHASE &&
+  (!process.env.JWT_ID_TOKEN_PRIVATE_KEY || !process.env.JWT_ID_TOKEN_PUBLIC_KEY)
+) {
   throw new Error(
     "[JWT] 生产环境必须配置 JWT_ID_TOKEN_PRIVATE_KEY 和 JWT_ID_TOKEN_PUBLIC_KEY。" +
     "SSO SDK 已拒绝 HS256 签名的 ID Token，缺少 RS256 密钥对将导致所有 SDK 客户端登录失败。"
