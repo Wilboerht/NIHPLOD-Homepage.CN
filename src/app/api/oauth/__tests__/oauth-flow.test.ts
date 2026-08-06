@@ -96,6 +96,8 @@ vi.mock("@/lib/prisma", () => {
       $transaction: vi.fn(
         (cb: (tx: typeof _flowPrismaClient) => unknown) => cb(_flowPrismaClient)
       ),
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      $executeRawUnsafe: vi.fn().mockResolvedValue(1),
     },
   };
 });

@@ -57,17 +57,18 @@ async function ensureUserConsent(
   clientId: string,
   scopes: string[]
 ): Promise<void> {
-  // 使用 upsert 原子化合并 scope，消除 read-then-write 竞态
-  const existing = await prisma.userConsent.findUnique({
-    where: { userId_clientId: { userId, clientId } },
-    select: { scopes: true },
-  });
-  const merged = Array.from(new Set([...(existing?.scopes || []), ...scopes]));
-  await prisma.userConsent.upsert({
-    where: { userId_clientId: { userId, clientId } },
-    update: { scopes: merged, revokedAt: null, grantedAt: new Date() },
-    create: { userId, clientId, scopes },
-  });
+  // 使用原生 SQL upsert 原子化合并 scope（PostgreSQL array_cat + DISTINCT unnest），
+  // 消除 read-then-write 竞态。scopes 已通过 SUPPORTED_SCOPES 白名单校验，安全拼接。
+  const scopesLiteral = `{${scopes.map((s) => `"${s}"`).join(",")}}`;
+  await prisma.$executeRawUnsafe(`
+    INSERT INTO "UserConsent" ("id", "userId", "clientId", "scopes", "grantedAt")
+    VALUES (gen_random_uuid(), '${userId}', '${clientId}', '${scopesLiteral}'::text[], NOW())
+    ON CONFLICT ("userId", "clientId")
+    DO UPDATE SET
+      "scopes" = ARRAY(SELECT DISTINCT unnest(array_cat("UserConsent"."scopes", '${scopesLiteral}'::text[]))),
+      "revokedAt" = NULL,
+      "grantedAt" = NOW()
+  `);
 }
 
 /**
