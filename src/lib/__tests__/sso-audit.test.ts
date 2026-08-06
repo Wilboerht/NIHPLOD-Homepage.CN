@@ -13,7 +13,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/logger", () => ({
-  apiConsole: { error: vi.fn() },
+  apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
 import { recordSsoEvent, cleanupOldSsoAuditEvents } from "@/lib/sso-audit";

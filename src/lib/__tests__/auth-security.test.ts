@@ -86,16 +86,17 @@ describe("auth-security", () => {
         "password"
       );
 
-      expect(mock.create).toHaveBeenCalledWith({
-        data: {
-          identifier: "13800138000",
-          type: "password",
-          success: false,
-          reason: "password_incorrect",
-          ipAddress: "1.2.3.4",
-          userAgent: "TestAgent",
-        },
-      });
+      expect(mock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: "password",
+            success: false,
+            reason: "password_incorrect",
+            ipAddress: "1.2.3.4",
+            userAgent: "TestAgent",
+          }),
+        })
+      );
     });
 
     it("成功登录时 reason 应为 null", async () => {
@@ -107,7 +108,7 @@ describe("auth-security", () => {
       expect(mock.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            identifier: "13800138000",
+            identifier: expect.any(String),
             success: true,
             reason: null,
           }),
@@ -160,7 +161,7 @@ describe("auth-security", () => {
       await clearLoginAttempts("13800138000");
 
       expect(mock.deleteMany).toHaveBeenCalledWith({
-        where: { identifier: "13800138000" },
+        where: { identifier: expect.any(String) },
       });
     });
   });

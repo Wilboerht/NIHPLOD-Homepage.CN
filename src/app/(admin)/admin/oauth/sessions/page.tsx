@@ -15,6 +15,11 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
 
+function maskForList(phone: string | null): string {
+  if (!phone || phone.length < 7) return phone || "";
+  return phone.slice(0, 3) + "****" + phone.slice(-4);
+}
+
 interface Session {
   id: string;
   userId: string;
@@ -282,7 +287,7 @@ function OAuthSessionsPage() {
             ) : (
               sessions.map((s) => (
                 <tr key={s.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{s.phone || s.userId}</td>
+                  <td className="px-4 py-3 text-sm">{maskForList(s.phone) || s.userId}</td>
                   <td className="px-4 py-3 text-sm">{s.nickname || "-"}</td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-600">{s.clientId}</td>
                   <td className="px-4 py-3">

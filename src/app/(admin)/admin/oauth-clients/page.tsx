@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -85,8 +85,11 @@ const validateRedirectUris = (uris: string): { valid: boolean; error?: string; p
   for (const line of lines) {
     try {
       const url = new URL(line);
-      if (url.protocol !== "https:" && url.protocol !== "http:") {
-        return { valid: false, error: `回调 URL 必须使用 http:// 或 https:// 协议：${line}`, parsed: [] };
+      if (url.protocol === "http:") {
+        return { valid: false, error: `生产环境必须使用 https:// 协议：${line}`, parsed: [] };
+      }
+      if (url.protocol !== "https:") {
+        return { valid: false, error: `回调 URL 必须使用 https:// 协议：${line}`, parsed: [] };
       }
       if (url.hash) {
         return { valid: false, error: `回调 URL 不能包含 hash 片段：${line}`, parsed: [] };

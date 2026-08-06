@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, Download, RotateCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -94,7 +94,7 @@ const getEventBadgeVariant = (type: string): "primary" | "secondary" | "success"
     backchannel_logout: "outline",
     login: "primary",
   };
-  return map[type] || "default";
+  return map[type] || "secondary";
 };
 
 function OAuthAuditPage() {
@@ -196,7 +196,7 @@ function OAuthAuditPage() {
       if (dateTo) params.set("endDate", dateTo);
       if (successFilter) params.set("success", successFilter);
       const w = window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
-      if (w) w.opener = null;
+      if (!w) { toast.error("导出被浏览器拦截，请允许弹出窗口"); return; }
     } catch {
       toast.error("导出失败");
     } finally {
@@ -312,7 +312,7 @@ function OAuthAuditPage() {
               </tr>
             ) : (
               entries.map((entry) => (
-                <>
+                <React.Fragment key={entry.id}>
                   <tr key={entry.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Badge variant={getEventBadgeVariant(entry.event)}>
@@ -345,7 +345,7 @@ function OAuthAuditPage() {
                       )}
                     </td>
                   </tr>
-                  {expandedId === entry.id && entry.detail && (
+                  {expandedId === entry.id && entry.detail != null && (
                     <tr key={`${entry.id}-detail`} className="bg-gray-50 border-b">
                       <td colSpan={8} className="px-4 py-3">
                         <pre className="text-xs text-gray-600 bg-gray-100 rounded p-3 overflow-x-auto max-h-40">
@@ -354,7 +354,7 @@ function OAuthAuditPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))
             )}
           </tbody>

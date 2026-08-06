@@ -105,8 +105,10 @@ function buildCspHeader(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${
       isDev ? "'unsafe-eval'" : ""
     } https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:`,
-    // Trusted Types：阻止 DOM XSS（innerHTML / document.write 注入）
-    "require-trusted-types-for 'script'",
+    // Trusted Types 暂不启用：React 内部依赖 innerHTML（如 <style>/<title> 渲染），
+    // 当前 React 对 Trusted Types 支持不完整，启用会导致 GlobalError 崩溃。
+    // 待 React 完整支持后可重新评估。
+    // "require-trusted-types-for 'script'",
     // style-src 仍保留 'unsafe-inline'：项目中存在少量动态生成的内联样式与高德地图样式，
     // 完全移除需逐步重构，当前作为已知债务保留并单独标注
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",

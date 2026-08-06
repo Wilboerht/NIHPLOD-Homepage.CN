@@ -15,6 +15,11 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
 
+function maskForList(phone: string | null): string {
+  if (!phone || phone.length < 7) return phone || "";
+  return phone.slice(0, 3) + "****" + phone.slice(-4);
+}
+
 interface Consent {
   id: string;
   userId: string;
@@ -208,7 +213,7 @@ function OAuthConsentsPage() {
                         href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
                         className="inline-flex text-blue-600 hover:underline"
                       >
-                        {c.phone || c.userId}
+                        {maskForList(c.phone) || c.userId}
                       </Link>
                     </Tooltip>
                   </td>

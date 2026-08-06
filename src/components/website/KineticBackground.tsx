@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
@@ -48,11 +48,24 @@ export function KineticBackground() {
     };
   }, []);
 
-  const handleLoginClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    redirectToLogin();
-  };
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1280px)");
+    setIsDesktop(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  const handleLoginClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      redirectToLogin();
+    },
+    [redirectToLogin],
+  );
 
   return (
     <div ref={wrapperRef} className="kinetic-background-wrapper">
@@ -70,7 +83,6 @@ export function KineticBackground() {
             width={2800}
             height={800}
             style={{ objectFit: "contain" }}
-            priority
             unoptimized
           />
         </div>
@@ -83,7 +95,6 @@ export function KineticBackground() {
             src="/images/watermark-mobile.webp"
             alt="NIHPLOD 品牌水印"
             fill
-            priority
             style={{ objectFit: "cover" }}
           />
         </div>
@@ -105,13 +116,12 @@ export function KineticBackground() {
         <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes no-hover-effect group relative cursor-pointer">
           <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
           <Image
-            src="/images/kinetic-product-hero.jpeg"
+            src="/images/kinetic-product-hero.webp"
             alt="NIHPLOD 产品系列"
             fill
             className="kinetic-cell-image"
             style={{ objectPosition: "center 30%" }}
             sizes="(max-width: 819px) 43vw, 30vw"
-            priority
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#D4C4A8]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
             <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
@@ -157,22 +167,23 @@ export function KineticBackground() {
 
         <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin no-hover-effect group relative cursor-pointer">
           <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
-          {/* Desktop Image */}
-          <Image
-            src="/images/kinetic-desktop.webp?v=2"
-            alt="旎柏品牌故事 - 桌面端展示"
-            fill
-            className="kinetic-cell-image hidden xl:block"
-            sizes="(max-width: 1280px) 100vw, 25vw"
-          />
-          {/* Mobile Image */}
-          <Image
-            src="/images/kinetic-mobile.webp?v=2"
-            alt="旎柏品牌故事 - 移动端展示"
-            fill
-            className="kinetic-cell-image block xl:hidden"
-            sizes="100vw"
-          />
+          {isDesktop ? (
+            <Image
+              src="/images/kinetic-desktop.webp?v=2"
+              alt="旎柏品牌故事 - 桌面端展示"
+              fill
+              className="kinetic-cell-image"
+              sizes="25vw"
+            />
+          ) : (
+            <Image
+              src="/images/kinetic-mobile.webp?v=2"
+              alt="旎柏品牌故事 - 移动端展示"
+              fill
+              className="kinetic-cell-image"
+              sizes="100vw"
+            />
+          )}
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#DECCB0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
             <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
               品牌故事

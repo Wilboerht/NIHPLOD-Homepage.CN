@@ -5,16 +5,22 @@ const mockFindUnique = vi.fn();
 const mockUpdateMany = vi.fn();
 const mockDeleteMany = vi.fn();
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const _codePrismaClient = {
     oAuthAuthorizationCode: {
       create: (...args: unknown[]) => mockCreate(...args),
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       updateMany: (...args: unknown[]) => mockUpdateMany(...args),
       deleteMany: (...args: unknown[]) => mockDeleteMany(...args),
     },
-  },
-}));
+  };
+  return {
+    prisma: {
+      ..._codePrismaClient,
+      $transaction: vi.fn((cb: (tx: typeof _codePrismaClient) => unknown) => cb(_codePrismaClient)),
+    },
+  };
+});
 
 import {
   createAuthorizationCode,

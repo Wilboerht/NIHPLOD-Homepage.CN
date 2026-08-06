@@ -23,15 +23,21 @@ const { mockCreate, mockFindMany, mockDeleteMany } = vi.hoisted(() => ({
   mockDeleteMany: vi.fn(),
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const _pwdPrismaClient = {
     passwordHistory: {
       create: mockCreate,
       findMany: mockFindMany,
       deleteMany: mockDeleteMany,
     },
-  },
-}));
+  };
+  return {
+    prisma: {
+      ..._pwdPrismaClient,
+      $transaction: vi.fn((cb: (tx: typeof _pwdPrismaClient) => unknown) => cb(_pwdPrismaClient)),
+    },
+  };
+});
 
 describe("密码工具", () => {
   describe("hashPassword / verifyPassword", () => {

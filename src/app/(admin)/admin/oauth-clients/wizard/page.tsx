@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost } from "@/lib/api-client";
+import { apiPost, apiGet } from "@/lib/api-client";
 import {
   Check,
   Copy,
@@ -60,9 +60,8 @@ export default function OAuthWizardPage() {
   const [availableScopes, setAvailableScopes] = useState<ScopeDef[]>([]);
 
   useEffect(() => {
-    fetch("/api/admin/oauth/scopes")
-      .then((r) => r.json())
-      .then((d) => { if (d.data?.scopes) setAvailableScopes(d.data.scopes); })
+    apiGet<{ scopes: ScopeDef[] }>("/api/admin/oauth/scopes")
+      .then((d) => { if (d.scopes) setAvailableScopes(d.scopes); })
       .catch(() => {});
   }, []);
 
