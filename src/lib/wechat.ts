@@ -5,6 +5,28 @@
 
 import crypto from "crypto";
 
+/** WeChat API 请求超时（毫秒） */
+const WECHAT_API_TIMEOUT_MS = 10_000;
+
+/** 带超时的 WeChat API fetch（appSecret 在 query string 中是微信 API 设计要求） */
+async function wechatFetch(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WECHAT_API_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function validateExpiresIn(expiresIn: unknown, context: string): number {
+  const n = Number(expiresIn);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(`[WeChat] ${context}: expires_in 无效 (${expiresIn})，无法缓存`);
+  }
+  return n;
+}
+
 // ============================================
 // 类型定义
 // ============================================
@@ -71,7 +93,7 @@ export async function getWechatAccessToken(): Promise<string> {
       // 请求新的 Access Token
       const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
 
-      const response = await fetch(url);
+      const response = await wechatFetch(url);
       if (!response.ok) {
         throw new Error(`Access Token 请求失败: HTTP ${response.status}`);
       }
@@ -81,10 +103,10 @@ export async function getWechatAccessToken(): Promise<string> {
         throw new Error(`获取 Access Token 失败: ${data.errmsg}`);
       }
 
-      // 缓存 (提前 5 分钟过期，确保安全)
+      const expiresIn = validateExpiresIn(data.expires_in, "access_token");
       cachedAccessToken = {
         accessToken: data.access_token,
-        expiresAt: now + (data.expires_in - 300) * 1000,
+        expiresAt: now + (expiresIn - 300) * 1000,
       };
 
       return data.access_token;
@@ -121,7 +143,7 @@ async function getJsApiTicket(): Promise<string> {
       // 请求 JSApi Ticket
       const url = `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${accessToken}&type=jsapi`;
 
-      const response = await fetch(url);
+      const response = await wechatFetch(url);
       if (!response.ok) {
         throw new Error(`JSApi Ticket 请求失败: HTTP ${response.status}`);
       }
@@ -131,10 +153,10 @@ async function getJsApiTicket(): Promise<string> {
         throw new Error(`获取 JSApi Ticket 失败: ${data.errmsg}`);
       }
 
-      // 缓存 (提前 5 分钟过期)
+      const expiresIn = validateExpiresIn(data.expires_in, "jsapi_ticket");
       cachedJsApiTicket = {
         ticket: data.ticket,
-        expiresAt: now + (data.expires_in - 300) * 1000,
+        expiresAt: now + (expiresIn - 300) * 1000,
       };
 
       return data.ticket;
@@ -298,7 +320,7 @@ export async function getWechatOAuthToken(
 
   const url = `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${appId}&secret=${appSecret}&code=${code}&grant_type=authorization_code`;
 
-  const response = await fetch(url);
+  const response = await wechatFetch(url);
   if (!response.ok) {
     throw new Error(`微信 OAuth Token 请求失败: HTTP ${response.status}`);
   }
@@ -327,7 +349,7 @@ export async function getWechatUserInfo(
 ): Promise<WechatUserInfo> {
   const url = `https://api.weixin.qq.com/sns/userinfo?access_token=${accessToken}&openid=${openid}&lang=zh_CN`;
 
-  const response = await fetch(url);
+  const response = await wechatFetch(url);
   if (!response.ok) {
     throw new Error(`微信用户信息请求失败: HTTP ${response.status}`);
   }

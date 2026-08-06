@@ -7,6 +7,11 @@ import { getClientIP } from "./ratelimit";
 import { Prisma } from "@/generated/prisma/client";
 import { apiConsole } from "@/lib/logger";
 
+function sanitizeUserAgent(ua: string | null): string | null {
+  if (!ua) return null;
+  return ua.replace(/[<>]/g, "").slice(0, 500);
+}
+
 export type AuditAction =
   | "login"
   | "logout"
@@ -56,7 +61,11 @@ export type AuditAction =
   | "oauth_client_rotate_secret"
   | "oauth_client_test"
   | "oauth_consent_revoke"
-  | "oauth_session_terminate";
+  | "oauth_session_terminate"
+  | "user_set_password"
+  | "admin_login"
+  | "admin_logout"
+  | "refresh_token_reuse_detected";
 
 export type AuditTargetType =
   | "order"
@@ -122,6 +131,10 @@ export const AUDIT_ACTIONS = [
   "oauth_client_test",
   "oauth_consent_revoke",
   "oauth_session_terminate",
+  "user_set_password",
+  "admin_login",
+  "admin_logout",
+  "refresh_token_reuse_detected",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
@@ -171,7 +184,7 @@ export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
         adminId: input.adminId,
         userId: input.userId,
         ipAddress: input.request ? getClientIP(input.request) : null,
-        userAgent: input.request?.headers.get("user-agent") ?? null,
+        userAgent: sanitizeUserAgent(input.request?.headers.get("user-agent") ?? null),
       },
     });
     return true;
@@ -194,7 +207,8 @@ export async function listAuditLogs(options: {
   startDate?: Date;
   endDate?: Date;
 }) {
-  const { page, pageSize, action, targetType, adminId, startDate, endDate } = options;
+  const { page, pageSize: rawPageSize, action, targetType, adminId, startDate, endDate } = options;
+  const pageSize = Math.min(rawPageSize, 100);
 
   const where: Record<string, unknown> = {};
   if (action) where.action = action;

@@ -38,6 +38,37 @@ const rateLimitCache = new LRUCache<string, RequestRecord>({
   ttl: 60 * 60 * 1000, // 1 小时
 });
 
+/** 每个 key 的互斥锁，防止 TOCTOU 竞态 */
+const mutexMap = new Map<string, Promise<void>>();
+
+let _warnedMemoryMode = false;
+
+function checkProductionRateLimitStorage(): void {
+  if (_warnedMemoryMode) return;
+  _warnedMemoryMode = true;
+  if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_STORAGE !== "database") {
+    console.error(
+      "[RateLimit] ⚠️ 生产环境未设置 RATE_LIMIT_STORAGE=database，" +
+      "多实例部署时限流不共享，存在被绕过风险。"
+    );
+  }
+}
+
+async function withMutex<T>(key: string, fn: () => T | Promise<T>): Promise<T> {
+  while (mutexMap.has(key)) {
+    await mutexMap.get(key);
+  }
+  let resolve: () => void;
+  const promise = new Promise<void>((r) => { resolve = r; });
+  mutexMap.set(key, promise);
+  try {
+    return await fn();
+  } finally {
+    mutexMap.delete(key);
+    resolve!();
+  }
+}
+
 /** 默认配置 */
 const DEFAULT_OPTIONS: RateLimitOptions = {
   maxRequests: 100,
@@ -84,6 +115,10 @@ export const RATE_LIMIT_PRESETS = {
   refresh: { maxRequests: 10, windowMs: 5 * 60 * 1000 },
   /** 密码重置限制 - 每 15 分钟 5 次 */
   "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** 管理员登录限制 - 每 15 分钟 5 次（独立桶，不与 C 端 login 共享） */
+  "admin-login": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** 管理员 TOTP 二次验证限制 - 每 5 分钟 3 次 */
+  "admin-totp": { maxRequests: 3, windowMs: 5 * 60 * 1000 },
   /** 结算数据查询 - IP 级 - 每分钟 30 次（含地址/优惠券敏感信息） */
   "checkout-data": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 结算数据查询 - 用户级 - 每分钟 15 次 */
@@ -102,6 +137,8 @@ export const RATE_LIMIT_PRESETS = {
   "oauth-revoke": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 微信 OAuth 回调 - 每分钟 30 次 */
   "wechat-callback": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** 微信绑定 - 每分钟 5 次 */
+  "wechat-bind": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 健康检查 - 每分钟 10 次 */
   "health": { maxRequests: 10, windowMs: 60 * 1000 },
 } as const;
@@ -122,6 +159,7 @@ export async function rateLimit(
   type: keyof typeof RATE_LIMIT_PRESETS = "default",
   options?: Partial<RateLimitOptions>
 ): Promise<RateLimitResult> {
+  checkProductionRateLimitStorage();
   // 合并配置
   const preset = RATE_LIMIT_PRESETS[type] || DEFAULT_OPTIONS;
   const opts: RateLimitOptions = { ...preset, ...options };
@@ -133,48 +171,58 @@ export async function rateLimit(
     return rateLimitDB(dbKey, opts);
   }
 
+  if (process.env.NODE_ENV === "production" && !_warnedMemoryMode) {
+    _warnedMemoryMode = true;
+    console.warn(
+      "[RateLimit] 生产环境建议设置 RATE_LIMIT_STORAGE=database，" +
+        "当前使用内存模式，多实例部署时限流不共享。"
+    );
+  }
+
   const now = Date.now();
   const cacheKey = `${type}:${identifier}`;
 
-  // 获取或创建请求记录
-  let record = rateLimitCache.get(cacheKey);
+  return withMutex(cacheKey, () => {
+    // 获取或创建请求记录
+    let record = rateLimitCache.get(cacheKey);
 
-  if (!record) {
-    record = {
-      timestamps: [],
-      windowStart: now,
-    };
-    rateLimitCache.set(cacheKey, record);
-  }
+    if (!record) {
+      record = {
+        timestamps: [],
+        windowStart: now,
+      };
+      rateLimitCache.set(cacheKey, record);
+    }
 
-  // 清理过期的请求记录
-  const windowStart = now - opts.windowMs;
-  record.timestamps = record.timestamps.filter((t) => t > windowStart);
-  record.windowStart = now;
+    // 清理过期的请求记录
+    const windowStart = now - opts.windowMs;
+    record.timestamps = record.timestamps.filter((t) => t > windowStart);
+    record.windowStart = now;
 
-  // 检查是否超过限制
-  const currentCount = record.timestamps.length;
-  const remaining = Math.max(0, opts.maxRequests - currentCount);
-  const reset = now + opts.windowMs;
+    // 检查是否超过限制
+    const currentCount = record.timestamps.length;
+    const remaining = Math.max(0, opts.maxRequests - currentCount);
+    const reset = now + opts.windowMs;
 
-  if (currentCount >= opts.maxRequests) {
+    if (currentCount >= opts.maxRequests) {
+      return {
+        success: false,
+        remaining: 0,
+        reset,
+        limit: opts.maxRequests,
+      };
+    }
+
+    // 记录本次请求
+    record.timestamps.push(now);
+
     return {
-      success: false,
-      remaining: 0,
+      success: true,
+      remaining: remaining - 1,
       reset,
       limit: opts.maxRequests,
     };
-  }
-
-  // 记录本次请求
-  record.timestamps.push(now);
-
-  return {
-    success: true,
-    remaining: remaining - 1,
-    reset,
-    limit: opts.maxRequests,
-  };
+  });
 }
 
 export { cleanupRateLimitRecords };

@@ -34,5 +34,5 @@ export {
 } from "./core/storage";
 export type { TokenData, TokenStorage } from "./core/storage";
 
-export { SsoError, OAuthError } from "./core/errors";
-export type { SsoErrorCode, OAuthErrorCode } from "./core/errors";
+export { SsoError, mapOAuthErrorToSsoCode } from "./core/errors";
+export type { SsoErrorCode } from "./core/errors";

@@ -44,7 +44,8 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
   }
 
   async isAccessTokenRevoked(jti: string): Promise<boolean> {
-    return this.tokenCache.has(jti);
+    // get() 对过期条目返回 undefined，has() 对过期条目仍返回 true
+    return this.tokenCache.get(jti) !== undefined;
   }
 
   async blacklistUser(userId: string, reason: string): Promise<void> {
@@ -52,6 +53,7 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
   }
 
   async isUserBlacklisted(userId: string): Promise<{ reason: string } | null> {
+    // get() 对过期条目返回 undefined，has() 对过期条目仍返回 true
     const entry = this.userCache.get(userId);
     if (!entry) return null;
     return { reason: entry.reason };
@@ -131,6 +133,12 @@ class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
 function createStore(): TokenBlacklistStore {
   if (process.env.TOKEN_BLACKLIST_STORAGE === "database") {
     return new DatabaseTokenBlacklistStore();
+  }
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      "[TokenBlacklist] 生产环境建议设置 TOKEN_BLACKLIST_STORAGE=database，" +
+        "当前使用内存模式，多实例部署时黑名单不共享。"
+    );
   }
   return new MemoryTokenBlacklistStore();
 }

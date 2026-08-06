@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OAuth 2.0 / OIDC 端到端集成测试
  *
  * 完整流程：authorize(approve) -> 提取 code -> token(authorization_code + PKCE) ->
@@ -29,9 +29,9 @@ const mockStore = vi.hoisted(() => ({
 // 统一 mock 外部依赖
 // ============================================
 
-// === Prisma：内存化授权码记录，使 create/consume 能自洽 ===
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+// === Prisma：内存化授权码记录，使 create/consume 能自�?===
+vi.mock("@/lib/prisma", () => {
+  const _flowPrismaClient = {
     oAuthAuthorizationCode: {
       create: vi.fn().mockImplementation(async (args: any) => {
         const record = {
@@ -70,13 +70,35 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn().mockResolvedValue(null),
     },
     userConsent: {
-      findUnique: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue({
+        scopes: ["openid", "phone", "profile"],
+        revokedAt: null,
+      }),
       update: vi.fn().mockResolvedValue({}),
       create: vi.fn().mockResolvedValue({}),
       upsert: vi.fn().mockResolvedValue({}),
     },
-  },
-}));
+    refreshToken: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({}),
+      findFirst: vi.fn(),
+    },
+    oAuthClient: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  };
+
+  return {
+    prisma: {
+      ..._flowPrismaClient,
+      $transaction: vi.fn(
+        (cb: (tx: typeof _flowPrismaClient) => unknown) => cb(_flowPrismaClient)
+      ),
+    },
+  };
+});
 
 // === OAuth Client：authorize / token / revoke 均使用同一个合法 client ===
 vi.mock("@/lib/oauth-client", () => ({
@@ -212,7 +234,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     mockRevokeRefreshToken.mockResolvedValue(1);
 
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
   });
 
   it("完整授权码流程：authorize -> token -> userinfo -> revoke -> userinfo 401", async () => {

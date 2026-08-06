@@ -84,25 +84,6 @@ export async function POST(request: NextRequest) {
 
     const { name, phone, code, password } = result.data;
 
-    // 检查手机号是否已注册
-    const existingUser = await prisma.user.findUnique({
-      where: { phone },
-    });
-
-    if (existingUser) {
-      await recordLoginAttempt(phone, false, request, "phone_exists", "sms");
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "PHONE_EXISTS",
-            message: "该手机号已注册，请直接登录",
-          },
-        },
-        { status: 400 }
-      );
-    }
-
     // 查找验证码
     const smsCode = await prisma.smsCode.findFirst({
       where: {
@@ -165,17 +146,59 @@ export async function POST(request: NextRequest) {
     // 加密密码（使用项目统一的 salt rounds）
     const hashedPassword = await hashPassword(password);
 
-    // 创建用户
-    const user = await prisma.user.create({
-      data: {
-        phone,
-        phoneVerified: true,
-        password: hashedPassword,
-        passwordChangedAt: new Date(),
-        passwordExpiresAt: getPasswordExpiryDate(),
-        ...(name ? { nickname: name } : {}),
-      },
-    });
+    // 在事务中完成：检查手机号 → 创建用户 → 记录密码历史
+    // 防止并发请求绕过手机号重复检查
+    let user;
+    try {
+      user = await prisma.$transaction(async (tx) => {
+        const existing = await tx.user.findUnique({ where: { phone } });
+        if (existing) {
+          return null; // 手机号已存在
+        }
+        return tx.user.create({
+          data: {
+            phone,
+            phoneVerified: true,
+            password: hashedPassword,
+            passwordChangedAt: new Date(),
+            passwordExpiresAt: getPasswordExpiryDate(),
+            ...(name ? { nickname: name } : {}),
+          },
+        });
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        ((error as { code?: string }).code === "P2002")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "PHONE_EXISTS",
+              message: "该手机号已注册，请直接登录",
+            },
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+
+    if (!user) {
+      await recordLoginAttempt(phone, false, request, "phone_exists", "sms");
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PHONE_EXISTS",
+            message: "该手机号已注册，请直接登录",
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     // 记录初始密码历史
     await recordPasswordHistory(user.id, hashedPassword);
@@ -234,6 +257,7 @@ export async function POST(request: NextRequest) {
       error !== null &&
       ((error as { code?: string }).code === "P2002")
     ) {
+      // 事务内未捕获的 P2002（旧版 saveRefreshToken 可能触发）
       return NextResponse.json(
         {
           success: false,

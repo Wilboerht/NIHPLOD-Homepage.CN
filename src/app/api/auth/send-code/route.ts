@@ -125,6 +125,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (type === "register" && userExists) {
+      // 模拟短信发送耗时，防止时序泄露用户存在性
+      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
       return NextResponse.json(
         {
           success: true,
@@ -135,6 +137,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === "login" && !userExists) {
+      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
       return NextResponse.json(
         {
           success: true,
@@ -145,6 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === "reset" && !userExists) {
+      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
       return NextResponse.json(
         {
           success: true,

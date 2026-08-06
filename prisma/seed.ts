@@ -469,7 +469,7 @@ async function main() {
   // 9. 创建测试用户（密码从环境变量读取；生产环境不创建测试用户）
   const seedTestPassword = process.env.SEED_TEST_USER_PASSWORD;
   if (seedTestPassword && nodeEnv !== "production") {
-    const testUserPasswordHash = await bcrypt.hash(seedTestPassword, 10);
+    const testUserPasswordHash = await bcrypt.hash(seedTestPassword, 13);
     const testUser = await prisma.user.create({
       data: {
         phone: "13800138000",

@@ -64,8 +64,12 @@ function mapEventToAuditAction(event: AuthEventType): string | null {
     user_logout: "user_logout",
     user_register: "user_register",
     user_reset_password: "user_reset_password",
+    user_set_password: "user_set_password",
     wechat_bind: "user_wechat_bind",
     user_oauth_revoke: "user_oauth_revoke",
+    admin_login: "admin_login",
+    admin_logout: "admin_logout",
+    refresh_token_reuse_detected: "refresh_token_reuse_detected",
   };
   return mapping[event] || null;
 }
@@ -105,8 +109,12 @@ export function logAuthEvent(event: AuthEventType, context: AuthLogContext): voi
     "user_logout",
     "user_register",
     "user_reset_password",
+    "user_set_password",
     "wechat_bind",
     "user_oauth_revoke",
+    "admin_login",
+    "admin_logout",
+    "refresh_token_reuse_detected",
   ];
 
   if (persistentEvents.includes(event)) {

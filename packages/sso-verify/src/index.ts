@@ -391,6 +391,61 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
     async verifyLogoutToken(token: string): Promise<LogoutTokenPayload | null> {
+      // 辅助：通用 payload 校验（type / events / jti 防重放）
+      const validateLogoutPayload = (
+        payload: Record<string, unknown>
+      ): LogoutTokenPayload | null => {
+        if ((payload as { type?: string }).type !== "logout_token") {
+          return null;
+        }
+        const events = (payload as { events?: Record<string, unknown> }).events;
+        if (
+          !events ||
+          !events["http://schemas.openid.net/event/backchannel-logout"]
+        ) {
+          return null;
+        }
+        const jti = (payload as { jti?: string }).jti;
+        if (!jti || typeof jti !== "string") {
+          return null;
+        }
+        if (processedLogoutJtis.has(jti)) {
+          return null;
+        }
+        processedLogoutJtis.set(jti, Date.now());
+        return payload as unknown as LogoutTokenPayload;
+      };
+
+      // 1. 优先 RS256 本地验证（直接公钥或 JWKS 远程获取）
+      const directKey = await getRS256PublicKey();
+      if (directKey) {
+        try {
+          const { payload } = await jwtVerify(token, directKey, {
+            issuer,
+            audience,
+            algorithms: ["RS256"],
+          });
+          return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+        } catch {
+          // RS256 直接公钥验证失败 → 继续尝试其他方式
+        }
+      }
+
+      const jwks = getJwksKeySet();
+      if (jwks) {
+        try {
+          const { payload } = await jwtVerify(token, jwks, {
+            issuer,
+            audience,
+            algorithms: ["RS256"],
+          });
+          return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+        } catch {
+          // JWKS 验证失败 → 继续回退 HS256
+        }
+      }
+
+      // 2. 回退 HS256（使用 logoutTokenSecret 或 accessTokenSecret）
       const secret = logoutTokenSecret || accessTokenSecret;
       if (!secret) return null;
 
@@ -401,32 +456,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           audience,
           algorithms: ["HS256"],
         });
-
-        // 必须 type === "logout_token"
-        if ((payload as { type?: string }).type !== "logout_token") {
-          return null;
-        }
-
-        // 必须有 events
-        const events = (payload as { events?: Record<string, unknown> }).events;
-        if (
-          !events ||
-          !events["http://schemas.openid.net/event/backchannel-logout"]
-        ) {
-          return null;
-        }
-
-        // jti 重放检查
-        const jti = (payload as { jti?: string }).jti;
-        if (!jti || typeof jti !== "string") {
-          return null;
-        }
-        if (processedLogoutJtis.has(jti)) {
-          return null;
-        }
-        processedLogoutJtis.set(jti, Date.now());
-
-        return payload as unknown as LogoutTokenPayload;
+        return validateLogoutPayload(payload as unknown as Record<string, unknown>);
       } catch {
         return null;
       }

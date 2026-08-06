@@ -351,6 +351,28 @@ SSO 中心不会直接返回 JSON 400，而是按 OAuth 2.0 规范 302 重定向
 
 ---
 
+## Cookie 策略
+
+### Session 共享
+
+SSO 中心使用 `__Host-user_token` Cookie 维持用户登录状态：
+
+| 属性 | 值 | 说明 |
+|------|-----|------|
+| `HttpOnly` | `true` | JS 不可读取 |
+| `Secure` | `true` | 仅 HTTPS |
+| `SameSite` | `Lax` | 顶级导航自动携带 |
+| `Path` | `/` | 全站可用 |
+| `__Host-` 前缀 | 是 | 强制 Secure + Path=/ |
+
+子域名间（如 `advisor.nihplod.cn`→`nihplod.cn`）的顶级导航会携带 Cookie，用户无需重复登录。
+
+## 跨域（CORS）
+
+Token/UserInfo/Introspect 端点白名单由已注册 `redirectUris` 自动推导（提取 origin）。子项目 origin 需与任一 `redirectUri` 的 origin 匹配。新增 Client 后最多 10 秒生效。
+
+---
+
 ## 常见问题
 
 ### Q: 回调页面报 "State 参数不匹配" 错误？

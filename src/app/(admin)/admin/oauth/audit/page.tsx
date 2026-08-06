@@ -195,7 +195,8 @@ function OAuthAuditPage() {
       if (dateFrom) params.set("startDate", dateFrom);
       if (dateTo) params.set("endDate", dateTo);
       if (successFilter) params.set("success", successFilter);
-      window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
+      const w = window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
+      if (w) w.opener = null;
     } catch {
       toast.error("导出失败");
     } finally {

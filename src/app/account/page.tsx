@@ -15,7 +15,7 @@ import Link from "next/link";
 function getCsrfToken(): string {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/(?:^|;\s*)__Host-csrf_token=([^;]*)/);
-  return match ? match[1] : "";
+  return match ? decodeURIComponent(match[1]) : "";
 }
 
 /** 生成带 CSRF header 的请求头 */
@@ -72,6 +72,15 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // Toast 自动消失
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
 
   // 数据状态
   const [sessions, setSessions] = useState<OAuthSession[]>([]);
@@ -114,7 +123,7 @@ export default function AccountPage() {
       const data = await res.json();
       if (data.success) {
         setUser((prev) => (prev ? { ...prev, nickname } : prev));
-        alert("保存成功");
+        setToast({ message: "保存成功", type: "success" });
       } else {
         setError(data.error?.message || "保存失败");
       }
@@ -146,7 +155,7 @@ export default function AccountPage() {
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        alert("密码修改成功");
+        setToast({ message: "密码修改成功", type: "success" });
       } else {
         setError(data.error?.message || "修改失败");
       }
@@ -210,8 +219,10 @@ export default function AccountPage() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
-    router.push("/");
+    const res = await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
+    if (res.ok) {
+      router.push("/");
+    }
   };
 
   // 切换 Tab 时加载对应数据
@@ -404,7 +415,11 @@ export default function AccountPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => handleRevoke(s.clientId)}
+                        onClick={() => {
+                          if (window.confirm(`确定要撤销 ${s.clientName || s.clientId} 的授权吗？`)) {
+                            handleRevoke(s.clientId);
+                          }
+                        }}
                         className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
                       >
                         撤销授权
@@ -485,6 +500,12 @@ export default function AccountPage() {
           )}
         </div>
       </div>
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in"
+          style={{ background: toast.type === "success" ? "#065f46" : "#991b1b", color: "#fff" }}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

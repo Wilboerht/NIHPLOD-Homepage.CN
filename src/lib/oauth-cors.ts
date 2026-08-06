@@ -11,8 +11,8 @@ import { prisma } from "./prisma";
 
 const ALLOWED_METHODS = "POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Authorization";
-const MAX_AGE = "86400";
-const ORIGINS_CACHE_TTL_MS = 60_000;
+const MAX_AGE = "3600"; // 1 小时，与 origin 缓存 10s TTL 保持合理差异
+const ORIGINS_CACHE_TTL_MS = 10_000; // 10 秒，降低新增/禁用 client 后的延迟
 
 let cachedOrigins: { origins: Set<string>; timestamp: number } | null = null;
 

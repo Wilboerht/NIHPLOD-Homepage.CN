@@ -200,28 +200,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 密码重置后撤销该用户所有 Refresh Token，强制所有设备重新登录
-    await prisma.refreshToken.updateMany({
-      where: { userId: user.id, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-
-    // 撤销所有 OAuth Session 与关联 refresh token，并通知子项目登出
-    const activeSessions = await prisma.oAuthSession.findMany({
-      where: { userId: user.id, revokedAt: null },
-      select: { clientId: true },
-    });
-    if (activeSessions.length > 0) {
-      await prisma.oAuthSession.updateMany({
+    // 密码重置后撤销所有 session，在事务中完成保证一致性
+    // 若撤销失败则整体回滚，防止"密码已改但 session 仍有效"的半成功状态
+    await prisma.$transaction(async (tx) => {
+      // 撤销所有 Refresh Token
+      await tx.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-      await prisma.refreshToken.updateMany({
-        where: { userId: user.id, clientId: { not: null }, revokedAt: null },
-        data: { revokedAt: new Date() },
+
+      // 撤销所有 OAuth Session
+      const sessions = await tx.oAuthSession.findMany({
+        where: { userId: user.id, revokedAt: null },
+        select: { clientId: true },
       });
-      const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-      await sendBackchannelLogout(user.id, clientIds, { includeInactive: true });
+      if (sessions.length > 0) {
+        await tx.oAuthSession.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        await tx.refreshToken.updateMany({
+          where: { userId: user.id, clientId: { not: null }, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+    });
+
+    // 事务外：Backchannel Logout（非阻塞，失败不影响密码已重置的事实）
+    const activeSessionsForSlo = await prisma.oAuthSession.findMany({
+      where: { userId: user.id },
+      select: { clientId: true },
+    });
+    const uniqueSloClientIds = [...new Set(activeSessionsForSlo.map((s) => s.clientId))];
+    if (uniqueSloClientIds.length > 0) {
+      sendBackchannelLogout(user.id, uniqueSloClientIds, { includeInactive: true });
+      // Backchannel logout 中的失败由 sendBackchannelLogout 内部 catch 处理
     }
 
     // 使所有 access_token 立即失效（15 分钟窗口期内不能继续使用）

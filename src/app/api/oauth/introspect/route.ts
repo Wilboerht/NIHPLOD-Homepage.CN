@@ -59,17 +59,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证 client：Public Client 允许不传 secret
-    const client = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
-    if (!client) {
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
+    if (!verifyResult.client) {
       recordSsoEvent({
         event: "introspect",
         clientId: client_id,
         ip,
         success: false,
-        detail: { reason: "invalid_client" },
+        detail: { reason: verifyResult.reason },
       });
       return resJson({ error: "invalid_client" }, 401);
     }
+    const client = verifyResult.client;
 
     const token = body.token;
     if (!token) {

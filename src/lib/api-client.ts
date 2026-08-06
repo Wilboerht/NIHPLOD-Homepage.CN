@@ -68,7 +68,12 @@ async function refreshCSRFToken(): Promise<string | null> {
       headers: { Accept: "application/json" },
     });
     const data = (await response.json()) as ApiResponse<{ token: string }>;
-    return data.data?.token ?? null;
+    const token = data.data?.token ?? null;
+    // 同步写入客户端 Cookie，避免后续请求重复 fetch
+    if (token && typeof document !== "undefined") {
+      document.cookie = `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; secure; samesite=strict`;
+    }
+    return token;
   } catch {
     return null;
   }
@@ -124,6 +129,8 @@ export async function apiRequest<T = unknown>(
       const csrfToken = await getCSRFToken();
       if (csrfToken) {
         headers[CSRF_HEADER_NAME] = csrfToken;
+      } else {
+        console.warn("[apiClient] CSRF token 不可用，请求可能被服务器拒绝");
       }
     }
 

@@ -30,6 +30,8 @@ export const WEAK_PASSWORD_BLACKLIST = new Set([
   "qwerty", "abc123", "111111", "000000", "iloveyou", "admin123",
   "password123", "letmein", "welcome", "monkey", "dragon", "master",
   "sunshine", "princess", "football", "baseball", "superman", "batman",
+  "password1", "qwerty123", "1q2w3e4r", "passw0rd", "changeme",
+  "123456789a", "abc123456", "adminadmin", "testtest", "guestguest",
 ]);
 
 /**
@@ -112,7 +114,7 @@ export const passwordSchema = z
   });
 
 // 盐的轮数 - 12 是一个良好的安全性与性能平衡点
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = 13;
 
 /**
  * 对密码进行哈希

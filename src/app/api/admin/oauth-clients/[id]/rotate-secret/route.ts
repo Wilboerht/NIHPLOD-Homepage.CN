@@ -13,8 +13,10 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { cacheOldSecret } from "@/lib/oauth-client";
+import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,10 @@ export async function POST(
     if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
     const body = await request.json();
     const parsed = rotateSchema.safeParse(body);
     if (!parsed.success) {
@@ -74,9 +80,9 @@ export async function POST(
       );
     }
 
-    // 生成新 secret
+    // 生成新 secret（64 字节随机 base64url，~86 字符，远优于 UUID 格式）
+    const newPlainSecret = randomBytes(64).toString("base64url");
     const bcrypt = await import("bcryptjs");
-    const newPlainSecret = crypto.randomUUID() + crypto.randomUUID();
     const newHash = await bcrypt.hash(newPlainSecret, 12);
 
     // 缓存旧 hash（5 分钟过渡期）

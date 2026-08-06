@@ -97,11 +97,14 @@ const localStorageAdapter: TokenStorage = {
 };
 
 /**
- * 创建安全存储实现
+ * 创建存储实现
  *
  * @param options.persist 是否持久化到 localStorage。默认 false（内存存储）。
+ *   ⚠️ 安全警告：persist=true 会将 refresh_token 明文写入 localStorage，
+ *   任何 XSS 均可在不被检测的情况下读取。仅在 BFF/Confidential Client
+ *   且 refresh_token 不直接暴露给浏览器的场景下使用。
  *   - Confidential/BFF 子项目可设为 true。
- *   - Public Client 在浏览器中建议保持 false。
+ *   - Public Client 在浏览器中应保持 false（默认）。
  */
 export function createSecureStorage(options: { persist?: boolean } = {}): TokenStorage {
   return options.persist ? localStorageAdapter : memoryStorageAdapter;
@@ -135,7 +138,13 @@ export function getTokenData(clientId?: string): TokenData | null {
   const raw = _storage.get(buildKey(TOKEN_KEY, clientId));
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as TokenData;
+    const data = JSON.parse(raw) as TokenData;
+    // 自动清理已过期的 token（防止 localStorage 积攒过期数据）
+    if (data.expires_at && Date.now() >= data.expires_at) {
+      _storage.remove(buildKey(TOKEN_KEY, clientId));
+      return null;
+    }
+    return data;
   } catch {
     return null;
   }

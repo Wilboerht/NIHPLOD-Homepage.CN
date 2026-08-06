@@ -109,6 +109,7 @@ export interface UserJWTPayload extends JWTPayload {
   id: string;
   phone: string;
   type: "user"; // 区分管理员和普通用户
+  jti?: string; // token 唯一标识，用于单条 token 级别撤销
 }
 
 /**

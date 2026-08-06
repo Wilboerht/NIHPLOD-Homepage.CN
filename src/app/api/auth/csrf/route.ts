@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_request: NextRequest) {
   const token = generateCSRFToken();
-  const response = NextResponse.json({ success: true, data: { token } });
+  // token 仅通过 Set-Cookie 返回（httpOnly: false 但仍不应暴露在 JSON body 中）
+  // 防止 XSS 读取
+  const response = NextResponse.json({ success: true });
   setCSRFCookie(response, token);
   return response;
 }

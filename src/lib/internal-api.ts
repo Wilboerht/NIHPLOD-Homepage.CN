@@ -13,6 +13,7 @@
 
 import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { LRUCache } from "lru-cache";
+import { prisma } from "./prisma";
 import { apiConsole } from "@/lib/logger";
 
 // 时间戳容差：5 分钟（秒）
@@ -149,16 +150,42 @@ export function isTimestampValid(timestamp: number): boolean {
   return Math.abs(now - timestamp) <= TIMESTAMP_TOLERANCE_SECONDS;
 }
 
+const NONCE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * 检查并记录 nonce，防止重放攻击
+ * 优先使用 DB 存储（多实例安全），回退到内存缓存
  * @returns true 表示 nonce 可用，false 表示已使用
  */
-export function checkAndRecordNonce(nonce: string): boolean {
+export async function checkAndRecordNonce(nonce: string): Promise<boolean> {
+  // 内存快速检查
   if (nonceCache.has(nonce)) {
     return false;
   }
-  nonceCache.set(nonce, true);
-  return true;
+
+  // DB 持久化（多实例共享）
+  try {
+    await prisma.tokenBlacklist.upsert({
+      where: { key: `nonce:${nonce}` },
+      create: {
+        type: "internal_api_nonce",
+        key: `nonce:${nonce}`,
+        expiresAt: new Date(Date.now() + NONCE_TTL_MS),
+      },
+      update: { expiresAt: new Date(Date.now() + NONCE_TTL_MS) },
+    });
+    nonceCache.set(nonce, true);
+    return true;
+  } catch (error) {
+    // 唯一约束冲突 = nonce 已被使用
+    if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "P2002") {
+      nonceCache.set(nonce, true);
+      return false;
+    }
+    // DB 不可用，回退到内存
+    nonceCache.set(nonce, true);
+    return true;
+  }
 }
 
 /**

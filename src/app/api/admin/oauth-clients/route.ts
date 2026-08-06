@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { createOAuthClient, listOAuthClients } from "@/lib/oauth-client";
+import { createOAuthClient, listOAuthClients, toSafeClientResponse } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -160,8 +160,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        // 排除 clientSecret 字段，明文 secret 仅通过 plainSecret 返回
-        client: (({ clientSecret: _, ...rest }) => rest)(result.client),
+        client: toSafeClientResponse(result.client),
         // 明文 secret 仅在创建时返回一次
         plainSecret: result.plainSecret,
       },

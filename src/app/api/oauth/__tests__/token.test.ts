@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OAuth Token 端点单元测试
  * POST /api/oauth/token
  */
@@ -6,8 +6,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // === Mock Prisma（factory 内联，避免 hoisting 引用问题）===
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const mockPrismaClient = {
     oAuthAuthorizationCode: {
       updateMany: vi.fn(),
       findUnique: vi.fn(),
@@ -22,8 +22,23 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(),
       findFirst: vi.fn(),
     },
-  },
-}));
+    userConsent: {
+      findUnique: vi.fn(),
+    },
+    refreshToken: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+  };
+  return {
+    prisma: {
+      ...mockPrismaClient,
+      $transaction: vi.fn((cb: (tx: typeof mockPrismaClient) => unknown) => cb(mockPrismaClient)),
+    },
+  };
+});
 
 // === Mock oauth-client ===
 vi.mock("@/lib/oauth-client", () => ({
@@ -104,7 +119,7 @@ function validClient() {
 describe("POST /api/oauth/token", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(null);
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: null, reason: "not_found" });
   });
 
   describe("client 认证", () => {
@@ -117,7 +132,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("client_secret 不匹配应返回 401", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(null);
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: null, reason: "not_found" });
       const req = createRequest({
         grant_type: "authorization_code",
         client_id: "bad-client",
@@ -132,7 +147,7 @@ describe("POST /api/oauth/token", () => {
 
   describe("grant_type=authorization_code", () => {
     it("缺少 authorization code 应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       const req = createRequest({
         grant_type: "authorization_code",
         client_id: "test-client",
@@ -145,7 +160,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("授权码已使用或不存在应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // consumeAuthorizationCode 返回 null（已使用/不存在）
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 0 });
 
@@ -162,7 +177,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("授权码过期应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
@@ -190,8 +205,11 @@ describe("POST /api/oauth/token", () => {
 
     it("client_id 与授权码不匹配应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
-        ...validClient(),
-        clientId: "other-client",
+        client: {
+          ...validClient(),
+          clientId: "other-client",
+        },
+        reason: "ok",
       });
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -219,7 +237,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("缺少 redirect_uri 应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
@@ -247,7 +265,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("redirect_uri 与授权请求不一致应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
@@ -276,7 +294,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("PKCE code_verifier 缺失应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
@@ -305,7 +323,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("授权码未携带 PKCE 应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
@@ -337,7 +355,7 @@ describe("POST /api/oauth/token", () => {
 
   describe("grant_type=refresh_token", () => {
     it("缺少 refresh_token 应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       const req = createRequest({
         grant_type: "refresh_token",
         client_id: "test-client",
@@ -350,7 +368,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("refresh token 无效应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // verifyRefreshToken 会尝试验证 JWT，mock 返回 null 即无效
       const req = createRequest({
         grant_type: "refresh_token",
@@ -365,7 +383,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("refresh token 的 client_id 与请求不一致应返回 400", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // 签发属于 other-client 的 refresh token
       const refreshToken = await signRefreshToken({
         id: "user-1",
@@ -388,7 +406,7 @@ describe("POST /api/oauth/token", () => {
     });
 
     it("refresh token 携带匹配 client_id 时应进入轮换流程", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // atomicallyRotateRefreshToken 默认返回 undefined，会导致轮换失败；
       // 这里 mock 为成功，验证 client_id 校验通过
       vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({ valid: true } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
@@ -428,9 +446,9 @@ describe("POST /api/oauth/token", () => {
   });
 
   it("不支持的 grant_type 应返回 400", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validClient());
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
     const req = createRequest({
-      grant_type: "client_credentials",
+      grant_type: "password",
       client_id: "test-client",
       client_secret: "secret",
     });

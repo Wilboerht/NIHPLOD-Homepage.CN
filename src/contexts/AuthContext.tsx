@@ -229,7 +229,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async (force?: boolean) => {
-    // 如果没有前端认证提示且非强制刷新，跳过请求（避免未登录用户产生 401）
+    // auth_hint 仅用于 UI 优化（减少不必要的 /api/user/profile 请求），
+    // 不含任何凭据，被篡改/删除不会导致安全问题，仅影响用户体验。
     if (!force && typeof window !== "undefined" && !localStorage.getItem("auth_hint")) {
       setIsLoading(false);
       return;

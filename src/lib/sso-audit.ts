@@ -32,7 +32,11 @@ export interface SsoEventContext {
  * 记录 SSO 事件（异步写入，不阻塞主流程）
  */
 export function recordSsoEvent(context: SsoEventContext): void {
-  // 异步执行，失败不阻塞主流程
+  // 先写 console（DB 宕机时仍有冗余日志），
+  // 再异步写数据库（不阻塞主流程）
+  const info = { event: context.event, userId: context.userId, clientId: context.clientId, ip: context.ip, success: context.success ?? true };
+  apiConsole.info(`[SsoAudit] ${context.event}`, info);
+
   prisma.ssoAuditEvent
     .create({
       data: {
@@ -47,7 +51,7 @@ export function recordSsoEvent(context: SsoEventContext): void {
       },
     })
     .catch((error) => {
-      apiConsole.error(`[SsoAudit] 写入失败 (${context.event}):`, error);
+      apiConsole.error(`[SsoAudit] 持久化失败 (${context.event}):`, error);
     });
 }
 

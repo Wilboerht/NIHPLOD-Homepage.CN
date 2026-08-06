@@ -43,10 +43,17 @@ export async function isTrustedPostLogoutRedirectUri(
   });
 
   for (const client of clients) {
-    for (const registered of [...client.redirectUris, ...client.postLogoutRedirectUris]) {
-      if (getOrigin(registered) === uriOrigin) {
-        return true;
-      }
+    const registered = [...client.redirectUris, ...client.postLogoutRedirectUris];
+    for (const url of registered) {
+      try {
+        const reg = new URL(url);
+        if (reg.origin !== uriOrigin) continue;
+        // 严格匹配：注册 URL 完全相同，或注册 URL 为前缀且后接 "/" 再加子路径
+        // 防止 https://a.com/app 匹配 https://a.com/app-evil
+        if (uri === url || (uri.startsWith(url + "/") && uri.length > url.length + 1)) {
+          return true;
+        }
+      } catch { /* skip */ }
     }
   }
 

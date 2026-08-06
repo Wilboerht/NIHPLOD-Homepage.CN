@@ -18,10 +18,19 @@ import { createHash } from "crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 import { LRUCache } from "lru-cache";
 import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
+import { prisma } from "./prisma";
 import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, OAuthAccessTokenPayload, AdminRole } from "@/types/auth";
 
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 const MIN_SECRET_LENGTH = 32;
+
+// 生产环境保护：NEXT_PUBLIC_APP_URL 必须是公网地址，否则子项目发现端点失效
+if (process.env.NODE_ENV === "production" && (!process.env.NEXT_PUBLIC_APP_URL || new URL(ISSUER).hostname === "localhost")) {
+  throw new Error(
+    "[JWT] 生产环境必须设置 NEXT_PUBLIC_APP_URL 为公网地址（如 https://nihplod.cn），" +
+    "OIDC Discovery 端点依赖此值生成 issuer 和端点 URL。"
+  );
+}
 
 // 已处理的 logout_token jti 缓存（主站自身验证入口）
 // TTL 10 分钟：logout token 本身有效期 5 分钟，留足时钟偏移余量。
@@ -65,6 +74,14 @@ const idTokenSecret = new TextEncoder().encode(
 const logoutSecret = new TextEncoder().encode(
   validateSecret("JWT_LOGOUT_SECRET", process.env.JWT_LOGOUT_SECRET)
 );
+
+// RS256 ID Token 密钥对：SSO SDK v2+ 拒绝 HS256 ID Token，生产环境必须配置
+if (process.env.NODE_ENV === "production" && (!process.env.JWT_ID_TOKEN_PRIVATE_KEY || !process.env.JWT_ID_TOKEN_PUBLIC_KEY)) {
+  throw new Error(
+    "[JWT] 生产环境必须配置 JWT_ID_TOKEN_PRIVATE_KEY 和 JWT_ID_TOKEN_PUBLIC_KEY。" +
+    "SSO SDK 已拒绝 HS256 签名的 ID Token，缺少 RS256 密钥对将导致所有 SDK 客户端登录失败。"
+  );
+}
 
 // ============================================
 // OAuth Access Token RS256 迁移支持（可选）
@@ -125,10 +142,6 @@ const wechatExchangeExpiresIn = "10m"; // 子站微信 exchange Token 10分钟
 const idTokenExpiresIn = "1h"; // OAuth ID Token 1小时
 const logoutTokenExpiresIn = "5m"; // Logout Token 5分钟
 
-function encodeSecret(secret: Uint8Array): Uint8Array {
-  return secret;
-}
-
 // ============================================
 // 管理员 Token
 // ============================================
@@ -148,7 +161,7 @@ export async function signToken(payload: {
     .setIssuer(ISSUER)
     .setAudience("admin")
     .setExpirationTime(adminExpiresIn)
-    .sign(encodeSecret(adminSecret));
+    .sign((adminSecret));
 
   return token;
 }
@@ -158,7 +171,7 @@ export async function signToken(payload: {
  */
 export async function verifyToken(token: string): Promise<AdminJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(adminSecret), {
+    const { payload } = await jwtVerify(token, (adminSecret), {
       issuer: ISSUER,
       audience: "admin",
     });
@@ -194,7 +207,7 @@ export async function signUserToken(payload: { id: string; phone: string }): Pro
     .setIssuer(ISSUER)
     .setAudience("user")
     .setExpirationTime(accessTokenExpiresIn)
-    .sign(encodeSecret(accessSecret));
+    .sign((accessSecret));
 
   return token;
 }
@@ -211,7 +224,7 @@ export async function verifyUserToken(
   options?: { checkStatus?: (userId: string) => Promise<boolean> }
 ): Promise<UserJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(accessSecret), {
+    const { payload } = await jwtVerify(token, (accessSecret), {
       issuer: ISSUER,
       audience: "user",
     });
@@ -269,7 +282,7 @@ export async function signRefreshToken(payload: {
     .setIssuer(ISSUER)
     .setAudience("refresh")
     .setExpirationTime(refreshTokenExpiresIn)
-    .sign(encodeSecret(refreshSecret));
+    .sign((refreshSecret));
 
   return token;
 }
@@ -279,7 +292,7 @@ export async function signRefreshToken(payload: {
  */
 export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(refreshSecret), {
+    const { payload } = await jwtVerify(token, (refreshSecret), {
       issuer: ISSUER,
       audience: "refresh",
     });
@@ -317,7 +330,7 @@ export async function signWechatBindToken(
     .setIssuer(ISSUER)
     .setAudience("wechat-bind")
     .setExpirationTime(wechatBindExpiresIn)
-    .sign(encodeSecret(wechatBindSecret));
+    .sign((wechatBindSecret));
 
   return token;
 }
@@ -343,12 +356,44 @@ function hashWechatExchangeToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
-export function isWechatExchangeTokenUsed(token: string): boolean {
-  return usedWechatExchangeTokens.has(hashWechatExchangeToken(token));
+const WECHAT_EXCHANGE_TOKEN_TTL_MS = 15 * 60 * 1000;
+
+export async function isWechatExchangeTokenUsed(token: string): Promise<boolean> {
+  const hash = hashWechatExchangeToken(token);
+  // 优先检查数据库（多实例安全），回退到内存缓存
+  try {
+    const existing = await prisma.tokenBlacklist.findUnique({
+      where: { key: `we:${hash}` },
+    });
+    if (existing) {
+      if (existing.expiresAt > new Date()) return true;
+      // 已过期，视为未使用
+      return false;
+    }
+  } catch {
+    // DB 不可用时回退内存
+    return usedWechatExchangeTokens.has(hash);
+  }
+  return usedWechatExchangeTokens.has(hash);
 }
 
-export function markWechatExchangeTokenUsed(token: string): void {
-  usedWechatExchangeTokens.set(hashWechatExchangeToken(token), Date.now());
+export async function markWechatExchangeTokenUsed(token: string): Promise<void> {
+  const hash = hashWechatExchangeToken(token);
+  // 同时写入数据库和内存（DB 优先，内存兜底）
+  usedWechatExchangeTokens.set(hash, Date.now());
+  try {
+    await prisma.tokenBlacklist.upsert({
+      where: { key: `we:${hash}` },
+      create: {
+        type: "wechat_exchange_token",
+        key: `we:${hash}`,
+        expiresAt: new Date(Date.now() + WECHAT_EXCHANGE_TOKEN_TTL_MS),
+      },
+      update: { expiresAt: new Date(Date.now() + WECHAT_EXCHANGE_TOKEN_TTL_MS) },
+    });
+  } catch {
+    // DB 写入失败，内存缓存仍然有效
+  }
 }
 
 export interface WechatExchangePayload {
@@ -371,7 +416,7 @@ export async function signWechatExchangeToken(
     .setIssuer(ISSUER)
     .setAudience("wechat-exchange")
     .setExpirationTime(wechatExchangeExpiresIn)
-    .sign(encodeSecret(wechatExchangeSecret));
+    .sign((wechatExchangeSecret));
 
   return token;
 }
@@ -383,14 +428,14 @@ export async function verifyWechatExchangeToken(
   token: string
 ): Promise<WechatExchangePayload | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(wechatExchangeSecret), {
+    const { payload } = await jwtVerify(token, (wechatExchangeSecret), {
       issuer: ISSUER,
       audience: "wechat-exchange",
     });
     if ((payload as { type?: string }).type !== "wechat_exchange") {
       return null;
     }
-    if (isWechatExchangeTokenUsed(token)) {
+    if (await isWechatExchangeTokenUsed(token)) {
       return null;
     }
     return payload as unknown as WechatExchangePayload;
@@ -404,7 +449,7 @@ export async function verifyWechatExchangeToken(
  */
 export async function verifyWechatBindToken(token: string): Promise<WechatBindPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(wechatBindSecret), {
+    const { payload } = await jwtVerify(token, (wechatBindSecret), {
       issuer: ISSUER,
       audience: "wechat-bind",
     });
@@ -468,7 +513,7 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
   }
 
   jwt.setProtectedHeader({ alg: "HS256" });
-  return jwt.sign(encodeSecret(idTokenSecret));
+  return jwt.sign((idTokenSecret));
 }
 
 /**
@@ -494,14 +539,14 @@ export async function verifyIdToken(token: string, audience: string): Promise<Id
       } catch {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, encodeSecret(idTokenSecret), { ...verifyOptions, algorithms: ["HS256"] });
+          const result = await jwtVerify(token, (idTokenSecret), { ...verifyOptions, algorithms: ["HS256"] });
           payload = result.payload;
         } else {
           return null;
         }
       }
     } else {
-      const result = await jwtVerify(token, encodeSecret(idTokenSecret), verifyOptions);
+      const result = await jwtVerify(token, (idTokenSecret), verifyOptions);
       payload = result.payload;
     }
 
@@ -515,6 +560,39 @@ export async function verifyIdToken(token: string, audience: string): Promise<Id
 }
 
 // ============================================
+// OAuth Logout Token RS256 迁移支持（可选）
+// ============================================
+
+let cachedLogoutTokenPrivateKey: CryptoKey | null = null;
+let cachedLogoutTokenPublicKey: CryptoKey | null = null;
+
+async function getLogoutTokenPrivateKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY) return null;
+  if (cachedLogoutTokenPrivateKey) return cachedLogoutTokenPrivateKey;
+  try {
+    cachedLogoutTokenPrivateKey = await importPKCS8(process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY, "RS256");
+  } catch {
+    throw new Error(
+      `[JWT] JWT_LOGOUT_TOKEN_PRIVATE_KEY 不是有效的 PKCS#8 PEM，请确认格式正确`
+    );
+  }
+  return cachedLogoutTokenPrivateKey;
+}
+
+export async function getLogoutTokenPublicKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_LOGOUT_TOKEN_PUBLIC_KEY) return null;
+  if (cachedLogoutTokenPublicKey) return cachedLogoutTokenPublicKey;
+  try {
+    cachedLogoutTokenPublicKey = await importSPKI(process.env.JWT_LOGOUT_TOKEN_PUBLIC_KEY, "RS256");
+  } catch {
+    throw new Error(
+      `[JWT] JWT_LOGOUT_TOKEN_PUBLIC_KEY 不是有效的 SPKI PEM，请确认格式正确`
+    );
+  }
+  return cachedLogoutTokenPublicKey;
+}
+
+// ============================================
 // OAuth Logout Token (Backchannel Logout)
 // ============================================
 
@@ -523,23 +601,35 @@ export interface LogoutTokenClaims {
   aud: string;
   events: Record<string, unknown>;
   jti: string;
+  sid?: string;
 }
 
 /**
  * 签发 Logout Token（5分钟，用于 backchannel logout）
  */
 export async function signLogoutToken(claims: LogoutTokenClaims): Promise<string> {
-  const token = await new SignJWT({ ...claims, type: "logout_token" as const })
-    .setProtectedHeader({ alg: "HS256" })
+  const jwtPayload: Record<string, unknown> = {
+    ...claims,
+    type: "logout_token" as const,
+  };
+  if (claims.sid) jwtPayload.sid = claims.sid;
+
+  const jwt = new SignJWT(jwtPayload)
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(claims.aud)
     .setSubject(claims.sub)
     .setJti(claims.jti || crypto.randomUUID())
-    .setExpirationTime(logoutTokenExpiresIn)
-    .sign(encodeSecret(logoutSecret));
+    .setExpirationTime(logoutTokenExpiresIn);
 
-  return token;
+  const rs256PrivateKey = await getLogoutTokenPrivateKey();
+  if (rs256PrivateKey) {
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: "logout-token-rs256-v1" });
+    return jwt.sign(rs256PrivateKey);
+  }
+
+  jwt.setProtectedHeader({ alg: "HS256" });
+  return jwt.sign((logoutSecret));
 }
 
 /**
@@ -547,10 +637,32 @@ export async function signLogoutToken(claims: LogoutTokenClaims): Promise<string
  */
 export async function verifyLogoutToken(token: string, audience: string): Promise<LogoutTokenClaims | null> {
   try {
-    const { payload } = await jwtVerify(token, encodeSecret(logoutSecret), {
+    const verifyOptions: { issuer: string; audience: string; algorithms?: string[] } = {
       issuer: ISSUER,
       audience,
-    });
+      algorithms: ["HS256", "RS256"],
+    };
+
+    const publicKey = await getLogoutTokenPublicKey();
+    let payload: import("jose").JWTPayload;
+
+    if (publicKey) {
+      try {
+        const result = await jwtVerify(token, publicKey, { ...verifyOptions, algorithms: ["RS256"] });
+        payload = result.payload;
+      } catch {
+        if (process.env.ALLOW_HS256_FALLBACK === "true") {
+          const result = await jwtVerify(token, (logoutSecret), { ...verifyOptions, algorithms: ["HS256"] });
+          payload = result.payload;
+        } else {
+          return null;
+        }
+      }
+    } else {
+      const result = await jwtVerify(token, (logoutSecret), verifyOptions);
+      payload = result.payload;
+    }
+
     if ((payload as { type?: string }).type !== "logout_token") {
       return null;
     }
@@ -621,7 +733,7 @@ export async function signOAuthAccessToken(payload: {
   }
 
   jwt.setProtectedHeader({ alg: "HS256" });
-  return jwt.sign(encodeSecret(accessSecret));
+  return jwt.sign((accessSecret));
 }
 
 /**
@@ -661,14 +773,14 @@ export async function verifyOAuthAccessToken(
       } catch {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+          const result = await jwtVerify(token, (accessSecret), verifyOptions);
           payload = result.payload;
         } else {
           return null;
         }
       }
     } else {
-      const result = await jwtVerify(token, encodeSecret(accessSecret), verifyOptions);
+      const result = await jwtVerify(token, (accessSecret), verifyOptions);
       payload = result.payload;
     }
 

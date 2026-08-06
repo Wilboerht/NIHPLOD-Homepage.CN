@@ -47,10 +47,24 @@ function LoginPageContent() {
   const returnTo = searchParams.get("return_to");
   const rawMode = searchParams.get("mode");
   const mode: AuthMode = VALID_MODES.includes(rawMode as AuthMode) ? (rawMode as AuthMode) : "login";
-  const clientName = searchParams.get("client_name") || "第三方应用";
-  const oauthParams = searchParams.get("oauth_params") || "";
+  const clientName = (searchParams.get("client_name") || "第三方应用").replace(/[<>"'&`\/\\;]/g, "").slice(0, 50);
+  const oauthId = searchParams.get("oauth_id") || "";
+  const oauthParamsFromUrl = searchParams.get("oauth_params") || "";
 
   const [mounted, setMounted] = useState(false);
+  const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
+
+  // 新格式（oauth_id）：从服务端取回 OAuth 参数；旧格式（oauth_params）：直接使用 URL 值
+  useEffect(() => {
+    if (oauthParams) return;
+    if (!oauthId) return;
+    fetch(`/api/oauth/authorize?oauth_id=${encodeURIComponent(oauthId)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.data?.params) setOauthParams(d.data.params as string);
+      })
+      .catch(() => {});
+  }, [oauthId, oauthParams]);
   useEffect(() => { setMounted(true); }, []);
 
   const [loading, setLoading] = useState(false);
@@ -140,9 +154,12 @@ function LoginPageContent() {
       if (mode === "consent" && oauthParams) {
         extra.oauth_params = oauthParams;
       }
+      if (mode === "consent" && oauthId) {
+        extra.oauth_id = oauthId;
+      }
       router.replace(buildLoginUrl(nextMode, returnTo, extra));
     },
-    [mode, oauthParams, returnTo, router]
+    [mode, oauthParams, oauthId, returnTo, router]
   );
 
   // Reset form states when mode changes (mirrors modal open/close reset)
@@ -630,6 +647,15 @@ function LoginPageContent() {
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {
+    // oauth_id 参数仍在加载中
+    if (oauthId && !oauthParams) {
+      return (
+        <div className={variant === "mobile" ? "flex flex-col items-center justify-center py-20" : "flex items-center justify-center py-20"}>
+          <p className="text-gray-400">正在加载授权信息...</p>
+        </div>
+      );
+    }
+
     const params = new URLSearchParams(oauthParams);
     const requestedScopes = (params.get("scope") || "openid")
       .split(" ")

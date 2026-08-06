@@ -877,6 +877,7 @@ if (!payload) {
               <label className="mb-1 block text-xs font-medium text-gray-600">Client Secret</label>
               <Input
                 type="password"
+                autoComplete="off"
                 value={testSecret}
                 onChange={(e) => setTestSecret(e.target.value)}
                 placeholder="请输入 Client Secret"

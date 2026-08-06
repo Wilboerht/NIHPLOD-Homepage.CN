@@ -10,7 +10,7 @@
  * - isAuthenticated(): 检查认证状态
  */
 
-import { SsoError } from "./errors";
+import { SsoError, mapOAuthErrorToSsoCode } from "./errors";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -58,6 +58,9 @@ export interface SsoClientConfig {
 
   /** 请求的 scope（空格分隔），如 "openid profile phone" */
   scopes?: string;
+
+  /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
+  postLogoutRedirectUri?: string;
 }
 
 /** 用户信息 */
@@ -358,6 +361,8 @@ export class SsoClient {
 
         const handleMessage = (event: MessageEvent) => {
           if (completed) return;
+          // 校验消息来源：必须来自 SSO 中心
+          if (event.origin !== this.config.ssoBaseUrl) return;
           if (!event.data || event.data.type !== "nihplod_sso_popup_callback") return;
           if (!event.data.callbackUrl) return;
 
@@ -478,8 +483,9 @@ export class SsoClient {
     if (!res.ok) {
       let errData: Record<string, unknown> = {};
       try { errData = await res.json(); } catch { /* ignore */ }
+      const serverError = (errData.error as string) || "";
       throw new SsoError(
-        "token_request_failed",
+        mapOAuthErrorToSsoCode(serverError),
         (errData.error_description as string) || `Token 请求失败: HTTP ${res.status}`
       );
     }
@@ -552,14 +558,23 @@ export class SsoClient {
     }
 
     let res: Response;
-    try {
-      res = await fetch(tokenEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
-      });
-    } catch (err) {
-      throw new SsoError("network_error", "刷新 Token 网络请求失败", err);
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        res = await fetch(tokenEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString(),
+        });
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 1) await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    if (lastErr) {
+      throw new SsoError("network_error", "刷新 Token 网络请求失败", lastErr);
     }
 
     if (!res.ok) {
@@ -571,7 +586,7 @@ export class SsoClient {
         removeTokenData(this.config.clientId);
       }
       throw new SsoError(
-        errorCode === "invalid_grant" ? "session_expired" : "token_request_failed",
+        errorCode === "invalid_grant" ? "session_expired" : mapOAuthErrorToSsoCode(errorCode),
         (errData.error_description as string) || `刷新 Token 失败: HTTP ${res.status}`
       );
     }
@@ -711,10 +726,11 @@ export class SsoClient {
         discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/logout`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", this.config.clientId);
-      if (this.config.redirectUri) {
+      const postLogoutUri = this.config.postLogoutRedirectUri || this.config.redirectUri;
+      if (postLogoutUri) {
         logoutUrl.searchParams.set(
           "post_logout_redirect_uri",
-          this.config.redirectUri
+          postLogoutUri
         );
       }
       if (idTokenHint) {

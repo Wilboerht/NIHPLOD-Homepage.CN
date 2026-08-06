@@ -313,7 +313,7 @@ export async function GET(request: NextRequest) {
         },
         TokenRequest: {
           type: "object",
-          required: ["grant_type", "client_id", "client_secret"],
+          required: ["grant_type", "client_id"],
           properties: {
             grant_type: {
               type: "string",

@@ -69,37 +69,6 @@ function matchesPath(pathname: string, paths: string[]): boolean {
   );
 }
 
-// ================= CORS 配置 =================
-
-/** OAuth 路径前缀（需要跨域支持） */
-const OAUTH_PATH_PREFIXES = [
-  "/api/oauth/",
-  "/.well-known/",
-];
-
-/**
- * 为 OAuth 端点添加 CORS 响应头
- *
- * 允许已注册子项目的 origin 进行跨域请求。
- * 由于中间件在 Edge Runtime 运行，无法实时查询数据库，
- * 此处回显请求的 origin（token/userinfo 端点自身已通过
- * client_secret / Bearer token 进行身份认证）。
- * 仅在 origin 为 null 时回退为 "*".
- */
-function addCorsHeaders(response: NextResponse, origin: string | null): NextResponse {
-  response.headers.set("Access-Control-Allow-Origin", origin || "*");
-  response.headers.set(
-    "Access-Control-Allow-Methods",
-    "GET, POST, OPTIONS"
-  );
-  response.headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
-  response.headers.set("Access-Control-Max-Age", "86400");
-  return response;
-}
-
 // ================= CSP nonce 配置 =================
 
 /** 静态资源/无需 CSP 的路径前缀 */
@@ -136,6 +105,8 @@ function buildCspHeader(nonce: string): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${
       isDev ? "'unsafe-eval'" : ""
     } https://static.cloudflareinsights.com https://*.amap.com https://www.googletagmanager.com https://hm.baidu.com blob:`,
+    // Trusted Types：阻止 DOM XSS（innerHTML / document.write 注入）
+    "require-trusted-types-for 'script'",
     // style-src 仍保留 'unsafe-inline'：项目中存在少量动态生成的内联样式与高德地图样式，
     // 完全移除需逐步重构，当前作为已知债务保留并单独标注
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
@@ -183,19 +154,15 @@ function applyCspNonce(request: NextRequest, response: NextResponse): NextRespon
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
-  const origin = request.headers.get("origin");
 
   // 对静态资源直接放行，不附加 CSP 或认证逻辑
   if (isStaticPath(pathname)) {
     return NextResponse.next();
   }
 
-  // CORS 预检：对 OAuth 路径的 OPTIONS 请求直接返回 204
-  const isOAuthPath = matchesPath(pathname, OAUTH_PATH_PREFIXES);
-  if (method === "OPTIONS" && isOAuthPath) {
-    const corsResponse = new NextResponse(null, { status: 204 });
-    return addCorsHeaders(corsResponse, origin);
-  }
+  // CORS 预检：OAuth 路径的 OPTIONS 由各 route handler 自行处理
+  // （route handler 中的 OPTIONS 处理器使用 getOAuthCorsHeaders 校验白名单，
+  //   不再在此处反射任意 origin，避免预检绕过白名单）
 
   if (process.env.NODE_ENV !== "production") {
     console.log(
@@ -246,11 +213,7 @@ export async function middleware(request: NextRequest) {
       console.warn(`[Middleware] 支付回调 ${pathname} 收到非 POST 请求 (${method})，已拦截`);
       return new NextResponse("Method Not Allowed", { status: 405 });
     }
-    // 对 OAuth 路径添加 CORS 响应头
-    if (matchesPath(pathname, OAUTH_PATH_PREFIXES)) {
-      const response = NextResponse.next();
-      return addCorsHeaders(response, origin);
-    }
+    // OAuth 路径的 CORS 由各 route handler 自行处理（getOAuthCorsHeaders 白名单校验）
     return NextResponse.next();
   }
 

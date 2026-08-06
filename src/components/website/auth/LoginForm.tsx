@@ -153,7 +153,7 @@ export function LoginForm({
                 value={loginPassword}
                 onChange={(e) => onLoginPasswordChange(e.target.value)}
                 className={`${pcInputClass} pr-10`}
-                maxLength={64}
+                maxLength={128}
                 autoComplete="current-password"
                 placeholder="密码"
               />
@@ -293,8 +293,8 @@ export function LoginForm({
               value={loginPassword}
               onChange={(e) => onLoginPasswordChange(e.target.value)}
               placeholder="密码"
-              maxLength={64}
               className={`${mobileInputClass} pr-10`}
+              maxLength={128}
             />
             <button
               type="button"

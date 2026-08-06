@@ -11,6 +11,7 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { getInternalApiKeys } from "@/lib/internal-api";
 import { sendWechatTemplateMessage } from "@/lib/wechat-template";
 import { z } from "zod";
+import { createHmac, timingSafeEqual } from "crypto";
 import { apiConsole } from "@/lib/logger";
 
 const sendTemplateSchema = z.object({
@@ -45,11 +46,26 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 认证校验（INTERNAL_API_KEYS 多项目密钥映射）
+    // ⚠️ 此端点使用 plain secret 比对，非 HMAC 签名。已弃用，请迁移到 /api/v1/internal/wechat/send-template。
     const secret = request.headers.get("x-internal-api-secret");
     const { secrets } = getInternalApiKeys();
     const matchedConfig = secret ? secrets.get(secret) : null;
 
-    if (!secret || !matchedConfig) {
+    // 时序安全比较：即使 secret 不匹配也进行固定时间比较，防止旁路攻击
+    const dummy = "00000000-0000-0000-0000-000000000000";
+    let valid = false;
+    if (secret && matchedConfig) {
+      try {
+        valid = timingSafeEqual(Buffer.from(secret), Buffer.from(matchedConfig.secret));
+      } catch {
+        valid = false;
+      }
+    } else {
+      // dummy 比较，防止 secret 存在性/长度差异泄漏
+      try { timingSafeEqual(Buffer.from(secret || dummy), Buffer.from(dummy)); } catch { /* ignore */ }
+    }
+
+    if (!valid) {
       apiConsole.warn("[WechatInternal] 认证失败，secret 不匹配");
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权的请求" } },

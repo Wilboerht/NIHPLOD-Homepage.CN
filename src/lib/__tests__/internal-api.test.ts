@@ -108,13 +108,13 @@ describe("internal-api", () => {
   });
 
   describe("checkAndRecordNonce", () => {
-    it("新 nonce 应可用", () => {
-      expect(checkAndRecordNonce("nonce-1")).toBe(true);
+    it("新 nonce 应可用", async () => {
+      expect(await checkAndRecordNonce("nonce-1")).toBe(true);
     });
 
-    it("重复 nonce 应被拒绝", () => {
-      checkAndRecordNonce("nonce-2");
-      expect(checkAndRecordNonce("nonce-2")).toBe(false);
+    it("重复 nonce 应被拒绝", async () => {
+      await checkAndRecordNonce("nonce-2");
+      expect(await checkAndRecordNonce("nonce-2")).toBe(false);
     });
   });
 

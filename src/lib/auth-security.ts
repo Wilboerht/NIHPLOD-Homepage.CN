@@ -10,6 +10,19 @@ import { getClientIP } from "./client-ip";
 import { logAuthEvent } from "./auth-logger";
 
 // ============================================
+// 标识符哈希（LoginAttempt 表中不存储明文手机号）
+// ============================================
+
+/**
+ * 对登录标识符进行单向哈希（SHA-256 前 64 字符 hex）
+ * LoginAttempt 表中仅存储哈希值，防止明文手机号泄露。
+ * 查询/计数时对输入同样哈希后比对。
+ */
+function hashIdentifier(identifier: string): string {
+  return createHash("sha256").update(identifier, "utf8").digest("hex");
+}
+
+// ============================================
 // 防爆破配置
 // ============================================
 
@@ -73,7 +86,7 @@ export async function recordLoginAttempt(
   try {
     await prisma.loginAttempt.create({
       data: {
-        identifier,
+        identifier: hashIdentifier(identifier),
         type,
         success,
         reason: success ? null : reason,
@@ -115,7 +128,7 @@ export async function checkAccountLockout(
 
     const failedAttempts = await prisma.loginAttempt.count({
       where: {
-        identifier,
+        identifier: hashIdentifier(identifier),
         success: false,
         createdAt: { gte: windowStart },
       },
@@ -125,7 +138,7 @@ export async function checkAccountLockout(
       // 账户已锁定，计算剩余锁定时间
       const lastFailedAttempt = await prisma.loginAttempt.findFirst({
         where: {
-          identifier,
+          identifier: hashIdentifier(identifier),
           success: false,
           createdAt: { gte: windowStart },
         },
@@ -162,7 +175,7 @@ export async function checkAccountLockout(
 export async function clearLoginAttempts(identifier: string, type?: string): Promise<void> {
   try {
     await prisma.loginAttempt.deleteMany({
-      where: { identifier, ...(type ? { type } : {}) },
+      where: { identifier: hashIdentifier(identifier), ...(type ? { type } : {}) },
     });
   } catch (error) {
     apiConsole.error("[ClearLoginAttempts] 清除失败:", error);
@@ -563,5 +576,29 @@ export async function cleanupExpiredSmsCodes(): Promise<number> {
   } catch (error) {
     apiConsole.error("[CleanupSmsCodes] 清理失败:", error);
     return 0;
+  }
+}
+
+/**
+ * 清理已撤销的 OAuth Session 和 Refresh Token（30 天后物理删除）
+ */
+export async function cleanupRevokedSessionsAndTokens(): Promise<{ sessions: number; tokens: number }> {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [sessions, tokens] = await Promise.all([
+      prisma.oAuthSession.deleteMany({
+        where: { revokedAt: { lt: thirtyDaysAgo } },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { revokedAt: { lt: thirtyDaysAgo } },
+      }),
+    ]);
+    apiConsole.info(
+      `[CleanupRevoked] 清理了 ${sessions.count} 个已撤销会话, ${tokens.count} 个已撤销 Token`
+    );
+    return { sessions: sessions.count, tokens: tokens.count };
+  } catch (error) {
+    apiConsole.error("[CleanupRevoked] 清理失败:", error);
+    return { sessions: 0, tokens: 0 };
   }
 }

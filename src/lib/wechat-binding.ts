@@ -65,7 +65,7 @@ async function verifyAndConsumeSmsCode(phone: string, code: string) {
 
   // 原子核销验证码（updateMany + used:false 防止并发重用）
   const consumeResult = await prisma.smsCode.updateMany({
-    where: { id: smsCode.id, used: false },
+    where: { id: smsCode.id, used: false, expiresAt: { gte: new Date() } },
     data: { used: true },
   });
   if (consumeResult.count === 0) {

@@ -95,6 +95,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 3.1 拒绝携带 client_id 的 OAuth Refresh Token 在内部刷新端点使用
+    if (payload.client_id) {
+      logAuthEvent("user_refresh_token", {
+        userId: payload.id,
+        identifier: payload.phone,
+        success: false,
+        reason: "oauth_token_on_internal_endpoint",
+        ip: getClientIP(request),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TOKEN",
+            message: "刷新令牌无效或已过期",
+          },
+        },
+        { status: 401 }
+      );
+    }
+
     // 4. 检查账号状态
     const statusCheck = await checkUserStatus(payload.id);
     if (!statusCheck.valid) {

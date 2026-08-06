@@ -6,11 +6,16 @@
  */
 import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
 
+const clientSecret = process.env.SSO_CLIENT_SECRET;
+if (!clientSecret && process.env.NODE_ENV === "production") {
+  throw new Error("SSO_CLIENT_SECRET is required for Confidential Client in production");
+}
+
 const SSO_CONFIG = {
   clientId: process.env.SSO_CLIENT_ID || "your-client-id",
-  clientSecret: process.env.SSO_CLIENT_SECRET,
+  clientSecret,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
-  redirectUri: process.env.SSO_REDIRECT_URI || "https://localhost:3002/api/auth/callback",
+  redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
   scopes: "openid profile phone",
   publicPaths: ["/", "/login", "/api/auth/logout"],
 };

@@ -136,7 +136,7 @@ describe("GET /api/oauth/authorize", () => {
     const res = await GET(req);
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("unauthorized_client");
+    expect(body.error).toBe("invalid_request");
   });
 
   it("redirect_uri 不在允许列表应返回 400", async () => {
@@ -254,7 +254,7 @@ describe("POST /api/oauth/authorize", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("unauthorized_client");
+    expect(body.error).toBe("invalid_request");
   });
 
   it("redirect_uri 不在允许列表时应返回 400", async () => {

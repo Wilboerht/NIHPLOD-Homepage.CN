@@ -33,6 +33,38 @@ import { getClientIP } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/ratelimit";
 import { checkUserStatus } from "@/lib/auth";
 
+// ============================================
+// stateCallback 白名单校验（防开放重定向）
+// ============================================
+
+let _whitelistCache: { origins: Set<string>; ts: number } | null = null;
+
+async function getOAuthWhitelistOrigins(): Promise<Set<string>> {
+  const now = Date.now();
+  if (_whitelistCache && now - _whitelistCache.ts < 60_000) return _whitelistCache.origins;
+  const clients = await prisma.oAuthClient.findMany({
+    where: { isActive: true },
+    select: { redirectUris: true },
+  });
+  const origins = new Set<string>();
+  for (const c of clients) {
+    for (const uri of c.redirectUris) {
+      try { origins.add(new URL(uri).origin); } catch { /* skip */ }
+    }
+  }
+  _whitelistCache = { origins, ts: now };
+  return origins;
+}
+
+async function resolveSafeCallback(cb: string | undefined): Promise<string> {
+  const def = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+  if (!cb) return def;
+  try { if (new URL(cb).origin === new URL(def).origin) return cb; } catch { return def; }
+  const wl = await getOAuthWhitelistOrigins();
+  try { if (wl.has(new URL(cb).origin)) return cb; } catch { return def; }
+  return def;
+}
+
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
@@ -89,6 +121,7 @@ export async function GET(request: NextRequest) {
   // 获取重定向地址（从 state 解析或默认）并校验 CSRF nonce
   let redirectUrl = "/";
   let stateCallback: string | undefined;
+  let safeCallback: string = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 
   try {
     const { searchParams } = new URL(request.url);
@@ -102,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     if (state) {
       try {
-        const stateData = JSON.parse(Buffer.from(state, "base64").toString());
+        const stateData = JSON.parse(Buffer.from(state, "base64url").toString());
         // 校验 CSRF nonce
         if (stateData.nonce && stateData.nonce === nonceCookie) {
           stateValid = true;
@@ -119,9 +152,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 将 stateCallback 解析为安全值（白名单校验，不在白名单中的回退默认域名）
+    safeCallback = await resolveSafeCallback(stateCallback);
+
     // state 校验失败，拒绝处理
     if (!stateValid) {
-      const targetUrl = new URL(buildRedirectUrl(stateCallback, redirectUrl));
+      const targetUrl = new URL(buildRedirectUrl(safeCallback, redirectUrl));
       targetUrl.searchParams.set("wechat_auth", "error");
       targetUrl.searchParams.set("code", "INVALID_STATE");
       targetUrl.searchParams.set("message", encodeURIComponent("授权状态验证失败，请重试"));
@@ -133,7 +169,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    const baseRedirectUrl = buildRedirectUrl(stateCallback, redirectUrl);
+    const baseRedirectUrl = buildRedirectUrl(safeCallback, redirectUrl);
 
     // 用户拒绝授权
     if (error) {
@@ -204,7 +240,7 @@ export async function GET(request: NextRequest) {
         disabledUrl.searchParams.set("code", "WECHAT_AUTH_FAILED");
         disabledUrl.searchParams.set(
           "message",
-          encodeURIComponent("微信登录失败，请重试")
+          encodeURIComponent("您的账户暂时无法使用微信登录，请使用手机号登录或联系客服")
         );
         const response = NextResponse.redirect(disabledUrl, 302);
         response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
@@ -226,7 +262,7 @@ export async function GET(request: NextRequest) {
       });
 
       // 子站场景：通过 URL 传递一次性 exchange token，由子站完成本地 Cookie/session 写入
-      if (stateCallback && isSubsiteCallback(stateCallback)) {
+      if (safeCallback && isSubsiteCallback(safeCallback)) {
         const exchangeToken = await signWechatExchangeToken({
           openid: wechatUser.openid,
           unionid: wechatUser.unionid,
@@ -300,17 +336,17 @@ export async function GET(request: NextRequest) {
     });
 
     // 子站场景：通过 URL 传递一次性 exchange token，避免 __Host- Cookie 无法跨域
-    if (stateCallback && isSubsiteCallback(stateCallback)) {
-      const exchangeToken = await signWechatExchangeToken({
-        openid: wechatUser.openid,
-        unionid: wechatUser.unionid,
-        nickname: wechatUser.nickname,
-        avatar: wechatUser.headimgurl,
-      });
+    if (safeCallback && isSubsiteCallback(safeCallback)) {
+        const exchangeToken = await signWechatExchangeToken({
+          openid: wechatUser.openid,
+          unionid: wechatUser.unionid,
+          nickname: wechatUser.nickname,
+          avatar: wechatUser.headimgurl,
+        });
 
-      const subsiteRedirect = new URL(baseRedirectUrl);
-      subsiteRedirect.searchParams.set("wechat_auth", "binding_required");
-      subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
+        const subsiteRedirect = new URL(baseRedirectUrl);
+        subsiteRedirect.searchParams.set("wechat_auth", "binding_required");
+        subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
 
       const response = NextResponse.redirect(subsiteRedirect, 302);
       // 清除 CSRF nonce Cookie
@@ -348,7 +384,7 @@ export async function GET(request: NextRequest) {
       process.env.NODE_ENV === "development" && error instanceof Error
         ? error.message
         : "服务器错误";
-    const fallbackUrl = new URL(buildRedirectUrl(stateCallback, redirectUrl));
+    const fallbackUrl = new URL(buildRedirectUrl(safeCallback, redirectUrl));
     fallbackUrl.searchParams.set("wechat_auth", "error");
     fallbackUrl.searchParams.set("code", "INTERNAL_ERROR");
     fallbackUrl.searchParams.set("message", encodeURIComponent(message));

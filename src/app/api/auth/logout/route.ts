@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { revokeRefreshToken } from "@/lib/auth-security";
+import { revokeAccessToken } from "@/lib/token-blacklist";
 import {
   USER_COOKIE_NAME,
   USER_ACCESS_COOKIE_OPTIONS,
@@ -48,6 +49,11 @@ export async function POST(request: NextRequest) {
         await revokeRefreshToken(user.id);
       }
 
+      // 撤销当前 access token 的 jti（防止登出后仍被使用）
+      if (user.jti) {
+        await revokeAccessToken(user.jti);
+      }
+
       logAuthEvent("user_logout", {
         userId: user.id,
         identifier: user.phone,
@@ -78,13 +84,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 构建响应：已登录用户正常登出，未登录用户仅清除 Cookie
-    const wasAuthenticated = !!user;
+    // 构建响应：未登录用户仍返回成功（幂等登出），不区分是否曾登录防止信息泄漏
     const response = NextResponse.json({
       success: true,
       data: {
         message: "已退出登录",
-        wasAuthenticated,
       },
     });
 

@@ -17,6 +17,15 @@ import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 
+/** 测试请求超时（10 秒） */
+const TEST_TIMEOUT_MS = 10_000;
+
+function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+}
+
 export const dynamic = "force-dynamic";
 
 interface TestStep {
@@ -71,7 +80,13 @@ export async function POST(request: NextRequest) {
 
     const { clientId, clientSecret, redirectUri } = parsed.data;
     const steps: TestStep[] = [];
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin).replace(/\/$/, "");
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+    if (!baseUrl) {
+      return NextResponse.json(
+        { success: false, error: { code: "SERVER_ERROR", message: "未配置 NEXT_PUBLIC_APP_URL" } },
+        { status: 500 }
+      );
+    }
 
     // Step 1: 验证 Client 凭据
     const t1 = performance.now();
@@ -86,15 +101,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, data: { steps, summary: "客户端不存在" } });
     }
 
-    const secretValid = await verifyOAuthClientSecret(clientId, clientSecret);
+    const verifyResult = await verifyOAuthClientSecret(clientId, clientSecret);
     steps.push({
       step: "客户端凭据验证",
-      status: secretValid ? "passed" : "failed",
+      status: verifyResult.client ? "passed" : "failed",
       durationMs: Math.round(performance.now() - t1),
-      detail: secretValid ? `Client "${client.name}" 凭据有效` : "clientSecret 不匹配",
+      detail: verifyResult.client ? `Client "${verifyResult.client.name}" 凭据有效` : "clientSecret 不匹配或 Client 已停用",
     });
 
-    if (!secretValid) {
+    if (!verifyResult.client) {
       return NextResponse.json({ success: false, data: { steps, summary: "客户端凭据无效" } });
     }
 
@@ -146,7 +161,7 @@ export async function POST(request: NextRequest) {
       authUrl.searchParams.set("client_id", clientId);
       authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("scope", client.scopes.join(" "));
-      authUrl.searchParams.set("state", "test-state-value");
+      authUrl.searchParams.set("state", randomBytes(32).toString("hex"));
       authUrl.searchParams.set("code_challenge", pkce.challenge);
       authUrl.searchParams.set("code_challenge_method", "S256");
 
@@ -203,7 +218,7 @@ export async function POST(request: NextRequest) {
         code_verifier: pkce.verifier,
       });
 
-      const tokenRes = await fetch(`${baseUrl}/api/oauth/token`, {
+      const tokenRes = await fetchWithTimeout(`${baseUrl}/api/oauth/token`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: tokenBody.toString(),

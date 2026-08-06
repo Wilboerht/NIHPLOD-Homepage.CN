@@ -35,6 +35,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
+import { OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
 
@@ -51,17 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     const ip = getClientIP(request);
 
-    // 限流（IP 级 + client_id 级）
-    // 多租户：限流 key 应为 {tenantId}:oauth-token:{ip}，当前使用 "" 作为默认 tenantId
-    const limitResult = await rateLimit(ip, "oauth-token");
-    if (!limitResult.success) {
-      return resJson(
-        { error: "rate_limited", error_description: "请求过于频繁" },
-        429
-      );
-    }
-
-    // 读取 body（支持 JSON 和 form-urlencoded）
+    // 读取 body（支持 JSON 和 form-urlencoded）— 提前解析以满足 client 级限流需要
     const contentType = request.headers.get("content-type") || "";
     let body: Record<string, string>;
 
@@ -74,6 +65,26 @@ export async function POST(request: NextRequest) {
       formData.forEach((v, k) => { body[k] = v.toString(); });
     }
 
+    // 限流：client_id 级优先，IP 级兜底（避免同 IP 下多子项目互相影响）
+    const client_id_from_req = body.client_id || getClientCredentials(request, body).client_id;
+    if (client_id_from_req) {
+      const clientLimitResult = await rateLimit(`client:${client_id_from_req}`, "oauth-token");
+      if (!clientLimitResult.success) {
+        return resJson(
+          { error: "rate_limited", error_description: "子项目请求过于频繁" },
+          429
+        );
+      }
+    }
+
+    const limitResult = await rateLimit(ip, "oauth-token");
+    if (!limitResult.success) {
+      return resJson(
+        { error: "rate_limited", error_description: "请求过于频繁" },
+        429
+      );
+    }
+
     const grant_type = body.grant_type;
     const { client_id, client_secret } = getClientCredentials(request, body);
 
@@ -84,30 +95,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // client_id 级限流
-    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-token");
-    if (!clientLimitResult.success) {
-      return resJson(
-        { error: "rate_limited", error_description: "子项目请求过于频繁" },
-        429
-      );
-    }
-
     // 验证 client（Public Client 可不传 client_secret）
-    const client = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
-    if (!client) {
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
+    if (!verifyResult.client) {
+      const reason = verifyResult.reason;
       recordSsoEvent({
         event: "token",
         clientId: client_id,
         ip,
         success: false,
-        detail: { grant_type, reason: "invalid_client_secret" },
+        detail: { grant_type, reason: reason },
       });
+      if (reason === "disabled") {
+        return resJson(
+          { error: "unauthorized_client", error_description: "Client 已被停用" },
+          401
+        );
+      }
       return resJson(
         { error: "invalid_client", error_description: "Client 认证失败" },
         401
       );
     }
+    const client = verifyResult.client;
 
     // Confidential Client 必须提供 client_secret
     if (!client.isPublic && !client_secret) {
@@ -266,6 +276,46 @@ export async function POST(request: NextRequest) {
 
       const scopeStr = codeData.scopes.join(" ");
 
+      // 二次校验 scope：用户 consent 未被撤销且仍覆盖所有请求 scope
+      // （防止授权码签发后 consent 被撤销，token 仍被签发的窗口）
+      const consent = await prisma.userConsent.findUnique({
+        where: { userId_clientId: { userId: user.id, clientId: client_id } },
+      });
+      if (consent && consent.revokedAt) {
+        recordSsoEvent({
+          event: "token",
+          userId: user.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "consent_revoked" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "用户已撤销对该应用的授权" },
+          400
+        );
+      }
+      const grantedScopes = consent && !consent.revokedAt ? consent.scopes : [];
+      const allScopesCovered = codeData.scopes.every(
+        (s) => OIDC_IMPLICIT_SCOPES.includes(s) || grantedScopes.includes(s)
+      );
+      if (!allScopesCovered) {
+        recordSsoEvent({
+          event: "token",
+          userId: user.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "scope_not_consented" },
+        });
+        return resJson(
+          { error: "invalid_scope", error_description: "用户尚未授权所有请求的 scope" },
+          400
+        );
+      }
+
       // 签发 Access Token（OAuth 类型）
       const accessToken = await signOAuthAccessToken({
         id: user.id,
@@ -308,16 +358,22 @@ export async function POST(request: NextRequest) {
       const idToken = await signIdToken(idTokenClaims);
 
       // 记录 OAuth Session（关联授权码用于追溯）
-      await prisma.oAuthSession.create({
-        data: {
-          userId: user.id,
-          clientId: client_id,
-          sessionId: crypto.randomUUID(),
-          authorizationCodeId: codeData.id,
-          scopes: codeData.scopes,
-          expiresAt: refreshExpiresAt,
-        },
+      // 确保同一 authorizationCode 不会创建重复 session
+      const existingSession = await prisma.oAuthSession.findFirst({
+        where: { authorizationCodeId: codeData.id },
       });
+      if (!existingSession) {
+        await prisma.oAuthSession.create({
+          data: {
+            userId: user.id,
+            clientId: client_id,
+            sessionId: crypto.randomUUID(),
+            authorizationCodeId: codeData.id,
+            scopes: codeData.scopes,
+            expiresAt: refreshExpiresAt,
+          },
+        });
+      }
 
       // 审计日志
       recordSsoEvent({
@@ -423,6 +479,26 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: "desc" },
         });
         scopeStr = session?.scopes?.join(" ") || "openid";
+      }
+
+      // 检查用户是否仍授权了该 client（consent 撤销后拒绝刷新）
+      const consent = await prisma.userConsent.findUnique({
+        where: { userId_clientId: { userId: refreshPayload.id, clientId: client_id } },
+      });
+      if (consent?.revokedAt) {
+        recordSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "consent_revoked" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "用户已撤销对该应用的授权" },
+          400
+        );
       }
 
       const newAccessToken = await signOAuthAccessToken({
@@ -537,6 +613,55 @@ export async function POST(request: NextRequest) {
       }
 
       return resJson(refreshResponse);
+    }
+
+    // === grant_type: client_credentials ===
+    if (grant_type === "client_credentials") {
+      // M2M 场景：Confidential Client 必须提供 client_secret
+      if (!client_secret) {
+        return resJson(
+          { error: "invalid_client", error_description: "client_credentials 需要 client_secret" },
+          401
+        );
+      }
+
+      const scopeRaw = body.scope || "";
+      const requestedScopes = scopeRaw.split(" ").filter(Boolean);
+      // 校验 scope
+      for (const s of requestedScopes) {
+        if (!client.scopes.includes(s)) {
+          return resJson(
+            { error: "invalid_scope", error_description: `Scope '${s}' not allowed` },
+            400
+          );
+        }
+      }
+
+      // 签发 Access Token（sub = client_id，无用户身份）
+      const accessToken = await signOAuthAccessToken({
+        id: `client:${client_id}`,
+        phone: "",
+        clientId: client_id,
+        scope: scopeRaw || "openid",
+      });
+
+      const expiresIn = getExpiresInFromToken(accessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
+
+      recordSsoEvent({
+        event: "token",
+        clientId: client_id,
+        clientName: client.name,
+        ip,
+        success: true,
+        detail: { grant_type: "client_credentials", scope: scopeRaw },
+      });
+
+      return resJson({
+        access_token: accessToken,
+        token_type: "Bearer",
+        expires_in: expiresIn,
+        scope: scopeRaw || "openid",
+      });
     }
 
     // 不支持的 grant_type

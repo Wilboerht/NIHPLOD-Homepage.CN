@@ -12,6 +12,11 @@ export type SsoErrorCode =
   | "no_refresh_token"
   | "userinfo_failed"
   | "not_authenticated"
+  | "authorization_code_expired"
+  | "authorization_code_used"
+  | "client_disabled"
+  | "user_denied_authorization"
+  | "account_disabled"
   | "sso_server_error"
   | "network_error"
   | "popup_blocked"
@@ -26,17 +31,27 @@ export type SsoErrorCode =
   | "id_token_missing_sub"
   | "id_token_at_hash_mismatch";
 
-/** OAuth 2.0 标准错误码 */
-export type OAuthErrorCode =
-  | "invalid_request"
-  | "invalid_client"
-  | "invalid_grant"
-  | "unauthorized_client"
-  | "unsupported_grant_type"
-  | "invalid_scope"
-  | "access_denied"
-  | "server_error"
-  | "rate_limited";
+/** 将 OAuth 2.0 服务端 error 字段映射到 SsoErrorCode */
+export function mapOAuthErrorToSsoCode(oauthError: string): SsoErrorCode {
+  switch (oauthError) {
+    case "invalid_grant":
+      return "authorization_code_expired";
+    case "invalid_client":
+      return "client_disabled";
+    case "access_denied":
+      return "user_denied_authorization";
+    case "server_error":
+      return "sso_server_error";
+    case "rate_limited":
+      return "network_error";
+    case "invalid_scope":
+    case "invalid_request":
+    case "unauthorized_client":
+    case "unsupported_grant_type":
+    default:
+      return "token_request_failed";
+  }
+}
 
 /**
  * SSO SDK 自定义错误
@@ -52,26 +67,5 @@ export class SsoError extends Error {
     this.code = code;
     this.description = description;
     this.cause = cause;
-  }
-}
-
-/**
- * OAuth 2.0 服务端返回的错误
- */
-export class OAuthError extends Error {
-  public readonly code: OAuthErrorCode;
-  public readonly description: string;
-  public readonly uri?: string;
-
-  constructor(
-    code: OAuthErrorCode,
-    description: string,
-    uri?: string
-  ) {
-    super(`[OAuth] ${code}: ${description}`);
-    this.name = "OAuthError";
-    this.code = code;
-    this.description = description;
-    this.uri = uri;
   }
 }

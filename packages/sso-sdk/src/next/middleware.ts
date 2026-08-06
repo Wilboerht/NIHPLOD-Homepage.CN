@@ -138,13 +138,32 @@ function matchesPath(pathname: string, paths: string[]): boolean {
 /**
  * 通过主站 Introspection 端点校验 access_token 是否仍有效。
  * Confidential Client（BFF）应配置 clientSecret，防止伪造 Cookie 绕过。
+ *
+ * 附带进程级缓存（key = token SHA-256 前 16 字节 + clientId），
+ * 减少同一用户 session 在短时间内对 SSO 中心的重复 introspection 调用。
  */
+const introspectionCache = new Map<string, { active: boolean; until: number }>();
+const INTROSPECT_CACHE_TTL_MS = 30_000; // 30 秒
+
+function introspectCacheKey(token: string, clientId: string): string {
+  // token 本身作为 key 的一部分（token 已过期会自动 fail）
+  const prefix = token.length > 32 ? token.slice(0, 32) : token;
+  return `${prefix}|${clientId}`;
+}
+
 async function introspectAccessToken(
   token: string,
   ssoBaseUrl: string,
   clientId: string,
   clientSecret?: string
 ): Promise<boolean> {
+  const now = Date.now();
+  const cacheKey = introspectCacheKey(token, clientId);
+  const cached = introspectionCache.get(cacheKey);
+  if (cached && cached.until > now) {
+    return cached.active;
+  }
+
   try {
     const body = new URLSearchParams({
       token,
@@ -161,10 +180,16 @@ async function introspectAccessToken(
       body: body.toString(),
     });
 
-    if (!res.ok) return false;
+    if (!res.ok) {
+      introspectionCache.set(cacheKey, { active: false, until: now + INTROSPECT_CACHE_TTL_MS });
+      return false;
+    }
     const data = (await res.json()) as { active?: boolean };
-    return data.active === true;
+    const active = data.active === true;
+    introspectionCache.set(cacheKey, { active, until: now + INTROSPECT_CACHE_TTL_MS });
+    return active;
   } catch {
+    introspectionCache.set(cacheKey, { active: false, until: now + INTROSPECT_CACHE_TTL_MS });
     return false;
   }
 }
@@ -267,8 +292,9 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     // 使用 __Secure- 前缀，允许写入 callbackPath
     response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath));
 
-    // Set return URL cookie
-    response.cookies.set(returnUrlCookieName, request.url, getHostCookieOptions(600));
+    // Set return URL cookie（仅存储 pathname + search，截断至安全长度）
+    const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
+    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600));
 
     // 如果存在过期的 access_token cookie，立即清除
     if (accessTokenCookie?.value) {

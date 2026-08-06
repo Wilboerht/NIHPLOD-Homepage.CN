@@ -6,7 +6,7 @@
  * 消费时使用原子化 updateMany + used=false 乐观锁保证一次性使用。
  */
 import { prisma } from "./prisma";
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
 // 授权码有效期：5 分钟
 const CODE_TTL_MS = 5 * 60 * 1000;
@@ -104,19 +104,20 @@ export async function consumeAuthorizationCode(
 ): Promise<Omit<AuthorizationCodeData, "code"> | null> {
   const codeHash = hashCode(rawCode);
 
-  // 原子化消费：仅当 used=false 时才更新
-  const result = await prisma.oAuthAuthorizationCode.updateMany({
-    where: { code: codeHash, used: false },
-    data: { used: true },
-  });
+  // 在事务中原子化完成：标记 used → 读取记录，保证读后写一致性
+  const record = await prisma.$transaction(async (tx) => {
+    const result = await tx.oAuthAuthorizationCode.updateMany({
+      where: { code: codeHash, used: false },
+      data: { used: true },
+    });
 
-  if (result.count === 0) {
-    return null; // 已使用或不存在
-  }
+    if (result.count === 0) {
+      return null;
+    }
 
-  // 获取完整记录
-  const record = await prisma.oAuthAuthorizationCode.findUnique({
-    where: { code: codeHash },
+    return tx.oAuthAuthorizationCode.findUnique({
+      where: { code: codeHash },
+    });
   });
 
   if (!record) return null;
@@ -176,10 +177,15 @@ export function verifyPKCE(
     return false;
   }
 
-  // S256: SHA-256(code_verifier) → base64url
+  // S256: SHA-256(code_verifier) → base64url, timing-safe 比较
   const expected = createHash("sha256")
     .update(codeVerifier)
     .digest("base64url");
 
-  return expected === codeChallenge;
+  if (expected.length !== codeChallenge.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(codeChallenge));
+  } catch {
+    return false;
+  }
 }

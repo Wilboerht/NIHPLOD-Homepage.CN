@@ -15,23 +15,24 @@ export async function recordPasswordHistory(
   hashedPassword: string,
   limit = PASSWORD_HISTORY_LIMIT
 ): Promise<void> {
-  await prisma.passwordHistory.create({
-    data: { userId, password: hashedPassword },
-  });
-
-  // 清理超出限制的旧记录
-  const histories = await prisma.passwordHistory.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
-  });
-
-  if (histories.length > limit) {
-    const idsToDelete = histories.slice(limit).map((h) => h.id);
-    await prisma.passwordHistory.deleteMany({
-      where: { id: { in: idsToDelete } },
+  await prisma.$transaction(async (tx) => {
+    await tx.passwordHistory.create({
+      data: { userId, password: hashedPassword },
     });
-  }
+
+    const histories = await tx.passwordHistory.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+
+    if (histories.length > limit) {
+      const idsToDelete = histories.slice(limit).map((h) => h.id);
+      await tx.passwordHistory.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+    }
+  });
 }
 
 /**

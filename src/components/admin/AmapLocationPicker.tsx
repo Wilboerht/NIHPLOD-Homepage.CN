@@ -3,10 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { MapPin, Search } from "lucide-react";
 
-// 高德地图 Key 与安全密钥从环境变量读取
-const AMAP_KEY = process.env.NEXT_PUBLIC_AMAP_KEY;
-const AMAP_SECRET = process.env.NEXT_PUBLIC_AMAP_SECRET;
-
 export interface AmapLocationPickerProps {
   value: string;
   onChange: (val: string) => void;
@@ -24,8 +20,23 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
   const wrapperRef = useRef<HTMLDivElement>(null);
   const autoCompleteRef = useRef<AMap.Autocomplete | null>(null);
 
+  // Amap 密钥从服务端 API 获取，不通过 NEXT_PUBLIC_ 编入客户端 bundle
+  const [amapKey, setAmapKey] = useState("");
+  const [amapSecret, setAmapSecret] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/amap-config", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.data?.key) setAmapKey(d.data.key);
+        if (d?.data?.secret) setAmapSecret(d.data.secret);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined" || window.AMap) return;
+    if (!amapKey || !amapSecret) return;
 
     // 防止重复插入脚本
     const existing = document.querySelector('script[src*="webapi.amap.com"]');
@@ -33,21 +44,20 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
 
     // 配置安全密钥
     window._AMapSecurityConfig = {
-      securityJsCode: AMAP_SECRET,
+      securityJsCode: amapSecret,
     };
 
     const script = document.createElement("script");
     script.type = "text/javascript";
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Autocomplete,AMap.PlaceSearch,AMap.Geocoder`;
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}&plugin=AMap.Autocomplete,AMap.PlaceSearch,AMap.Geocoder`;
     document.head.appendChild(script);
 
     return () => {
-      // 清理：仅移除当前组件添加的脚本
       if (script.parentNode) {
         script.parentNode.removeChild(script);
       }
     };
-  }, []);
+  }, [amapKey, amapSecret]);
 
   // 搜索建议逻辑
   const handleSearch = (keyword: string) => {

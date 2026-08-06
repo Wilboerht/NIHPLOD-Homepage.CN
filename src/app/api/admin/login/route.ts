@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get("origin");
     const referer = request.headers.get("referer");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
-    const isValidOrigin = origin && (origin === appUrl || origin.endsWith(".nihplod.cn"));
+    const isValidOrigin = origin && origin === appUrl;
     const isValidReferer = referer && referer.startsWith(appUrl);
     if (!isValidOrigin && !isValidReferer) {
       return NextResponse.json(
@@ -120,9 +120,9 @@ export async function POST(request: NextRequest) {
 
     const { email, password, totpCode } = result.data;
 
-    // 2. IP 级速率限制（零成本内存操作优先）
+    // 2. IP 级速率限制（管理后台专用桶，避免与 C 端 login 共享被用户爆破影响）
     const ip = getClientIP(request);
-    const limitResult = await rateLimit(ip, "login");
+    const limitResult = await rateLimit(ip, "admin-login");
     if (!limitResult.success) {
       return NextResponse.json(
         {
@@ -195,11 +195,25 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // TOTP 专用速率限制：防止暴力猜测 6 位验证码
+      const totpLimit = await rateLimit(`totp:${email}`, "admin-totp");
+      if (!totpLimit.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "TOTP_RATE_LIMITED", message: "二次验证尝试过于频繁，请 5 分钟后再试" },
+            data: { totpRequired: true },
+          },
+          { status: 429 }
+        );
+      }
+
       let totpValid = false;
       try {
         const secret = decryptTOTPSecret(admin.totpSecret);
         totpValid = verifyTOTP(totpCode, secret);
-      } catch {
+      } catch (err) {
+        apiConsole.error("[AdminLogin] TOTP解密失败:", err);
         totpValid = false;
       }
 

@@ -17,15 +17,25 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 function LogoutConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawRedirectUri = searchParams.get("post_logout_redirect_uri");
+  const state = searchParams.get("state");
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  const getFinalRedirectUrl = useCallback(() => {
+    if (redirectUri) {
+      const finalUrl = new URL(redirectUri, window.location.origin);
+      if (state) finalUrl.searchParams.set("state", state);
+      return finalUrl.toString();
+    }
+    return null;
+  }, [redirectUri, state]);
 
   useEffect(() => {
     if (!rawRedirectUri) {
@@ -49,14 +59,15 @@ function LogoutConfirmContent() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDone(true);
-      if (redirectUri) {
-        window.location.href = redirectUri;
+      const finalUrl = getFinalRedirectUrl();
+      if (finalUrl) {
+        window.location.href = finalUrl;
       } else {
         router.push("/");
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, [redirectUri, router]);
+  }, [redirectUri, router, getFinalRedirectUrl]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -70,8 +81,9 @@ function LogoutConfirmContent() {
 
         <button
           onClick={() => {
-            if (redirectUri) {
-              window.location.href = redirectUri;
+            const finalUrl = getFinalRedirectUrl();
+            if (finalUrl) {
+              window.location.href = finalUrl;
             } else {
               router.push("/");
             }

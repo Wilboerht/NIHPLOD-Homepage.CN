@@ -13,10 +13,38 @@ import { checkUserStatus } from "@/lib/auth";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
 import { prisma } from "@/lib/prisma";
+import { randomBytes } from "crypto";
+
+// OAuth 参数临时存储（server-side，避免完整参数暴露在 URL 中）
+// key: 随机 ID, value: { params: string, expiresAt: number }
+const oauthParamsStore = new Map<string, { params: string; expiresAt: number }>();
+const PARAMS_STORE_TTL_MS = 10 * 60 * 1000; // 10 分钟
+
+function storeOAuthParams(params: string): string {
+  // 清理过期条目
+  const now = Date.now();
+  for (const [id, entry] of oauthParamsStore) {
+    if (now > entry.expiresAt) oauthParamsStore.delete(id);
+  }
+  const id = randomBytes(16).toString("hex");
+  oauthParamsStore.set(id, { params, expiresAt: now + PARAMS_STORE_TTL_MS });
+  return id;
+}
+
+function getOAuthParams(id: string): string | null {
+  const entry = oauthParamsStore.get(id);
+  if (!entry || Date.now() > entry.expiresAt) {
+    oauthParamsStore.delete(id);
+    return null;
+  }
+  oauthParamsStore.delete(id); // 一次性使用
+  return entry.params;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -29,24 +57,17 @@ async function ensureUserConsent(
   clientId: string,
   scopes: string[]
 ): Promise<void> {
+  // 使用 upsert 原子化合并 scope，消除 read-then-write 竞态
   const existing = await prisma.userConsent.findUnique({
     where: { userId_clientId: { userId, clientId } },
+    select: { scopes: true },
   });
-  if (existing) {
-    const merged = Array.from(new Set([...existing.scopes, ...scopes]));
-    await prisma.userConsent.update({
-      where: { id: existing.id },
-      data: {
-        scopes: merged,
-        revokedAt: null,
-        grantedAt: new Date(),
-      },
-    });
-  } else {
-    await prisma.userConsent.create({
-      data: { userId, clientId, scopes },
-    });
-  }
+  const merged = Array.from(new Set([...(existing?.scopes || []), ...scopes]));
+  await prisma.userConsent.upsert({
+    where: { userId_clientId: { userId, clientId } },
+    update: { scopes: merged, revokedAt: null, grantedAt: new Date() },
+    create: { userId, clientId, scopes },
+  });
 }
 
 /**
@@ -76,8 +97,7 @@ function getPublicOrigin(request: NextRequest): string {
   );
 }
 
-// 支持的 scope 列表
-const SUPPORTED_SCOPES = ["openid", "profile", "phone", "membership"];
+// 支持的 scope 列表（从共享常量导入）
 
 /**
  * 构造 OAuth 2.0 错误重定向响应。
@@ -113,6 +133,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
 
+    // OAuth 参数检索模式（consent 页通过 oauth_id 取回参数）
+    const oauthId = searchParams.get("oauth_id");
+    if (oauthId) {
+      const params = getOAuthParams(oauthId);
+      if (!params) {
+        return NextResponse.json(
+          { error: "invalid_request", error_description: "参数已过期或不存在" },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({ success: true, data: { params } });
+    }
+
     // 先提取关键参数，用于判断是否可以安全地重定向错误
     const client_id = searchParams.get("client_id") || "";
     const redirect_uri = searchParams.get("redirect_uri") || "";
@@ -139,7 +172,7 @@ export async function GET(request: NextRequest) {
     const client = await getOAuthClientByClientId(client_id);
     if (!client) {
       return NextResponse.json(
-        { error: "unauthorized_client", error_description: "Client not found" },
+        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
         { status: 400 }
       );
     }
@@ -147,7 +180,7 @@ export async function GET(request: NextRequest) {
     // 3. redirect_uri 精确匹配
     if (!client.redirectUris.includes(redirect_uri)) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "redirect_uri not allowed" },
+        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
         { status: 400 }
       );
     }
@@ -225,7 +258,7 @@ export async function GET(request: NextRequest) {
           state
         );
       }
-      if (!client.scopes.includes(s) && s !== "openid") {
+      if (!client.scopes.includes(s) && !OIDC_IMPLICIT_SCOPES.includes(s)) {
         return buildErrorRedirect(
           safeRedirectUri,
           "invalid_scope",
@@ -307,11 +340,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // 否则展示 consent 页
+    // 否则展示 consent 页：OAuth 参数服务端存储，URL 仅传递随机 ID
+    const storedId = storeOAuthParams(searchParams.toString());
     const consentUrl = new URL("/login", getPublicOrigin(request));
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
-    consentUrl.searchParams.set("oauth_params", searchParams.toString());
+    consentUrl.searchParams.set("oauth_id", storedId);
 
     return NextResponse.redirect(consentUrl);
   } catch (error) {
@@ -404,7 +438,7 @@ export async function POST(request: NextRequest) {
     const client = await getOAuthClientByClientId(client_id);
     if (!client) {
       return NextResponse.json(
-        { error: "unauthorized_client", error_description: "Client not found" },
+        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
         { status: 400 }
       );
     }
@@ -412,7 +446,7 @@ export async function POST(request: NextRequest) {
     // redirect_uri 精确匹配
     if (!client.redirectUris.includes(redirect_uri)) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "redirect_uri not allowed" },
+        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
         { status: 400 }
       );
     }
@@ -502,7 +536,7 @@ export async function POST(request: NextRequest) {
           state
         );
       }
-      if (!client.scopes.includes(s) && s !== "openid") {
+      if (!client.scopes.includes(s) && !OIDC_IMPLICIT_SCOPES.includes(s)) {
         return buildErrorRedirect(
           safeRedirectUri,
           "invalid_scope",

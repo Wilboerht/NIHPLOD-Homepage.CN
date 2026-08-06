@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 内部 API v1：子站微信授权信息兑换（跨域场景）
  * POST /api/v1/internal/wechat/exchange
  *
@@ -13,7 +13,7 @@
  *   phone?: string              （可选，手机号）
  *   code?: string               （可选，短信验证码）
  *   password?: string           （可选，绑定手机号时使用的密码）
- *   allowAutoPassword?: boolean （可选，未提供密码时是否自动生成，默认 true）
+ *   allowAutoPassword?: boolean （可选，未提供密码时是否自动生成，默认 false，需前端显式传 true）
  *
  * 响应：
  *   success: true
@@ -61,7 +61,7 @@ const exchangeSchema = z.object({
     .regex(/^\d{6}$/, "验证码为6位数字")
     .optional(),
   password: passwordSchema.optional(),
-  allowAutoPassword: z.boolean().default(true),
+  allowAutoPassword: z.boolean().default(false),
 });
 
 export const dynamic = "force-dynamic";
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!checkAndRecordNonce(nonce)) {
+    if (!(await checkAndRecordNonce(nonce))) {
       return NextResponse.json(
         { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
         { status: 401 }
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      markWechatExchangeTokenUsed(wechatExchangeToken);
+      await markWechatExchangeTokenUsed(wechatExchangeToken);
       return NextResponse.json({
         success: true,
         data: {
@@ -289,7 +289,7 @@ async function finalizeLogin(
   });
 
   if (exchangeToken) {
-    markWechatExchangeTokenUsed(exchangeToken);
+    await markWechatExchangeTokenUsed(exchangeToken);
   }
 
   return NextResponse.json({

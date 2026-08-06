@@ -7,7 +7,7 @@
  * 权限：仅 owner 角色可操作
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
@@ -22,6 +22,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin || admin.role !== "owner") {
       return NextResponse.json(
@@ -132,7 +135,7 @@ export async function GET(request: NextRequest) {
           return {
             id: s.id,
             userId: s.userId,
-            phone: u?.phone ? u.phone.slice(0, 3) + "****" + u.phone.slice(-4) : null,
+            phone: u?.phone && u.phone.length >= 7 ? u.phone.slice(0, 3) + "****" + u.phone.slice(-4) : (u?.phone || null),
             nickname: u?.nickname || null,
             clientId: s.clientId,
             clientName: clientMap.get(s.clientId) || s.clientId,
@@ -309,6 +312,19 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作" } },
         { status: 403 }
+      );
+    }
+
+    // 速率限制：批量终止所有会话属高风险操作
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    // 确认操作：要求请求体携带 confirm: true 防止误操作
+    const body = await request.json().catch(() => ({}));
+    if (!body.confirm) {
+      return NextResponse.json(
+        { success: false, error: { code: "CONFIRM_REQUIRED", message: "请确认此操作" } },
+        { status: 400 }
       );
     }
 

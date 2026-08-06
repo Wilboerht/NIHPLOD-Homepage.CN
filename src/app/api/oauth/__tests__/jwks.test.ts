@@ -14,9 +14,11 @@ vi.mock("@/lib/ratelimit", () => ({
 // === Mock jwt public key ===
 const mockGetAccessPublicKey = vi.fn();
 const mockGetIdTokenPublicKey = vi.fn();
+const mockGetLogoutTokenPublicKey = vi.fn();
 vi.mock("@/lib/jwt", () => ({
   getAccessPublicKey: () => mockGetAccessPublicKey(),
   getIdTokenPublicKey: () => mockGetIdTokenPublicKey(),
+  getLogoutTokenPublicKey: () => mockGetLogoutTokenPublicKey(),
 }));
 
 describe("GET /api/oauth/jwks", () => {
@@ -26,6 +28,7 @@ describe("GET /api/oauth/jwks", () => {
     vi.unstubAllGlobals();
     mockGetAccessPublicKey.mockResolvedValue(null);
     mockGetIdTokenPublicKey.mockResolvedValue(null);
+    mockGetLogoutTokenPublicKey.mockResolvedValue(null);
   });
 
   it("未配置 RS256 公钥时返回空 keys（不暴露 HS256 占位，避免破坏标准 JWKS 客户端）", async () => {

@@ -25,7 +25,7 @@ const bindSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   code: z.string().length(6, "验证码为6位数字"),
   password: passwordSchema.optional(),
-  allowAutoPassword: z.boolean().default(true),
+  allowAutoPassword: z.boolean().default(false),
 });
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   // IP 速率限制（防爆破）
   const clientIP = getClientIP(request);
-  const ipLimit = await rateLimit(clientIP, "form");
+  const ipLimit = await rateLimit(clientIP, "wechat-bind");
   if (!ipLimit.success) {
     return NextResponse.json(
       {
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: {
           code: "INTERNAL_ERROR",
-          message: error instanceof Error ? error.message : "服务器错误",
+          message: "服务器内部错误",
         },
       },
       { status: 500 }

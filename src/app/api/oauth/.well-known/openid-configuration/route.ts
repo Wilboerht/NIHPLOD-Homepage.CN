@@ -6,17 +6,15 @@
  * SDK 初始化时自动 fetch 此端点获取完整配置。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { SUPPORTED_SCOPES } from "@/lib/oauth-constants";
 
 export const dynamic = "force-dynamic";
-
-/** 支持的作用域 */
-const SUPPORTED_SCOPES = ["openid", "profile", "phone", "membership"];
 
 /** 支持的 response_type */
 const RESPONSE_TYPES = ["code"];
 
-/** 支持的 grant_type */
-const GRANT_TYPES = ["authorization_code", "refresh_token"];
+/** 支持的 grant_type — 必须与 token/route.ts 实际支持保持同步，新增 grant type 时同步更新此处 */
+const GRANT_TYPES = ["authorization_code", "refresh_token", "client_credentials"];
 
 /** 支持的 code_challenge_method */
 const CODE_CHALLENGE_METHODS = ["S256"];
@@ -68,6 +66,8 @@ export async function GET(request: NextRequest) {
     claims_parameter_supported: false,
     request_parameter_supported: false,
     request_uri_parameter_supported: false,
+    backchannel_logout_supported: true,
+    backchannel_logout_session_supported: true,
     // 非标准扩展
     service_documentation: `${origin}/docs/sso-integration`,
   };

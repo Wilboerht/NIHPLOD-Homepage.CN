@@ -71,20 +71,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证 client：Public Client 允许不传 secret；Confidential Client 必须验证 secret
-    const client = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
-    if (!client) {
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
+    if (!verifyResult.client) {
       recordSsoEvent({
         event: "logout",
         clientId: client_id,
         ip,
         success: false,
-        detail: { reason: "invalid_client", action: "revoke" },
+        detail: { reason: verifyResult.reason, action: "revoke" },
       });
       return resJson(
         { error: "invalid_client", error_description: "Client 认证失败" },
         401
       );
     }
+    const client = verifyResult.client;
 
     // 如果 hint 是 refresh_token 或未指定，尝试撤销 refresh_token
     if (!token_type_hint || token_type_hint === "refresh_token") {

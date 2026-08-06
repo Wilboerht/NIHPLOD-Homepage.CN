@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 内部 API v1：查询用户状态（供子站同步用）
  * POST /api/v1/internal/user/status
  *
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!checkAndRecordNonce(nonce)) {
+    if (!(await checkAndRecordNonce(nonce))) {
       return NextResponse.json(
         { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
         { status: 401 }

@@ -82,8 +82,13 @@ function LogoutContent() {
     setError("");
     try {
       const csrfToken = await ensureCsrfToken();
+      if (!csrfToken) {
+        setError("安全令牌获取失败，请刷新页面后重试");
+        setLoading(false);
+        return;
+      }
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+      headers["X-CSRF-Token"] = csrfToken;
 
       const res = await fetch("/api/auth/logout", {
         method: "POST",
@@ -135,12 +140,7 @@ function LogoutContent() {
         <div className="flex gap-3 justify-center">
           <button
             onClick={() => {
-              const target = trustedUri || "/";
-              if (target) {
-                window.location.href = target;
-              } else {
-                router.push("/");
-              }
+              window.location.href = "/";
             }}
             disabled={loading}
             className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"

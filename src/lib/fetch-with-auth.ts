@@ -35,6 +35,13 @@ async function ensureCSRFToken(): Promise<string | null> {
   try {
     const res = await fetch("/api/auth/csrf", { credentials: "include" });
     if (res.ok) {
+      // 优先从 JSON 响应体读取（api-client 行为一致），回退到 Cookie
+      try {
+        const data = await res.json();
+        if (data?.data?.token) return data.data.token as string;
+      } catch {
+        // JSON 解析失败，忽略
+      }
       return getCSRFTokenFromCookie();
     }
   } catch {

@@ -12,6 +12,7 @@ import {
   cleanupExpiredRefreshTokens,
   cleanupOldLoginAttempts,
   cleanupExpiredSmsCodes,
+  cleanupRevokedSessionsAndTokens,
 } from "./auth-security";
 import { cleanupExpiredCodes } from "./oauth-code";
 import { cleanupOldSsoAuditEvents } from "./sso-audit";
@@ -166,6 +167,19 @@ const tasks: ScheduledTask[] = [
         apiConsole.info(`[Cron] 过期授权码清理完成: ${count} 条`);
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);
+      }
+    },
+  },
+  {
+    name: "Cleanup Revoked Sessions and Tokens",
+    cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理已撤销的会话和 Token...");
+        const result = await cleanupRevokedSessionsAndTokens();
+        apiConsole.info(`[Cron] 已撤销记录清理完成: ${result.sessions} 个会话, ${result.tokens} 个 Token`);
+      } catch (error) {
+        apiConsole.error("[Cron] 已撤销记录清理失败:", error);
       }
     },
   },

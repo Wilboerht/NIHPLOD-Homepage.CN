@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     const type = isWechat ? "mp" : "open";
     const state = Buffer.from(
       JSON.stringify({ redirect, type, nonce, callback: callbackBase })
-    ).toString("base64");
+    ).toString("base64url");
 
     let authUrl: string;
 

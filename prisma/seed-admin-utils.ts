@@ -69,4 +69,15 @@ export function validatePassword(password: string): void {
   if (!/[0-9]/.test(password)) {
     throw new Error("管理员密码必须包含数字");
   }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    throw new Error("管理员密码必须包含至少一个特殊字符");
+  }
+  const lower = password.toLowerCase();
+  const commonWeak = [
+    "password", "admin123", "qwerty", "123456", "administrator",
+    "letmein", "welcome", "changeme", "nihplod", "superuser",
+  ];
+  if (commonWeak.some((w) => lower.includes(w))) {
+    throw new Error("管理员密码不能包含常见弱密码模式");
+  }
 }

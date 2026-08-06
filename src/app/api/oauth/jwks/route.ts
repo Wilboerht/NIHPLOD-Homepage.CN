@@ -22,7 +22,7 @@
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { getAccessPublicKey, getIdTokenPublicKey } from "@/lib/jwt";
+import { getAccessPublicKey, getIdTokenPublicKey, getLogoutTokenPublicKey } from "@/lib/jwt";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +82,20 @@ export async function GET(request: Request) {
       keys.push({
         kty: jwk.kty,
         kid: "id-token-rs256-v1",
+        alg: "RS256",
+        use: "sig",
+        n: jwk.n,
+        e: jwk.e,
+      });
+    }
+
+    // 若配置了 Logout Token RS256 公钥，公开给子项目本地验证 logout token
+    const logoutTokenPublicKey = await getLogoutTokenPublicKey();
+    if (logoutTokenPublicKey) {
+      const jwk = await crypto.subtle.exportKey("jwk", logoutTokenPublicKey);
+      keys.push({
+        kty: jwk.kty,
+        kid: "logout-token-rs256-v1",
         alg: "RS256",
         use: "sig",
         n: jwk.n,

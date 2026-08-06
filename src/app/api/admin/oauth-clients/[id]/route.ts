@@ -2,17 +2,18 @@
  * 管理端单个 OAuth Client API
  * GET    /api/admin/oauth-clients/[id] — 详情
  * PATCH  /api/admin/oauth-clients/[id] — 更新
- * DELETE /api/admin/oauth-clients/[id] — 软删除
+ * DELETE /api/admin/oauth-clients/[id] — 硬删除（含关联数据级联清理）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { getOAuthClientById, updateOAuthClient, deleteOAuthClient } from "@/lib/oauth-client";
+import { getOAuthClientById, updateOAuthClient, deleteOAuthClient, toSafeClientResponse } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { blacklistUserTokens } from "@/lib/token-blacklist";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    return NextResponse.json({ success: true, data: { client } });
+    return NextResponse.json({ success: true, data: { client: toSafeClientResponse(client) } });
   } catch (error) {
     apiConsole.error("[AdminOAuthClient] 异常:", error);
     return NextResponse.json(
@@ -141,7 +142,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       request,
     });
 
-    return NextResponse.json({ success: true, data: { client } });
+    return NextResponse.json({ success: true, data: { client: toSafeClientResponse(client) } });
   } catch (error: any) {
     if (error?.name === "ZodError") {
       return NextResponse.json(
@@ -185,6 +186,27 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
         { status: 404 }
       );
+    }
+
+    // 级联撤销：通知所有活跃用户并撤销 session，发送 Backchannel Logout
+    const activeSessions = await prisma.oAuthSession.findMany({
+      where: { clientId: client.clientId, revokedAt: null },
+      select: { userId: true },
+    });
+    if (activeSessions.length > 0) {
+      await prisma.oAuthSession.updateMany({
+        where: { clientId: client.clientId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await prisma.refreshToken.updateMany({
+        where: { clientId: client.clientId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      const userIds = [...new Set(activeSessions.map((s) => s.userId))];
+      for (const userId of userIds) {
+        await blacklistUserTokens(userId, "oauth_client_deleted").catch(() => {});
+      }
+      await sendBackchannelLogout("", [client.clientId], { includeInactive: true });
     }
 
     const deleted = await deleteOAuthClient(id);

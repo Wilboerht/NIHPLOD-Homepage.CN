@@ -6,7 +6,7 @@
  * 权限：仅 owner 角色可操作
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 
@@ -19,6 +19,9 @@ const EVENT_TYPES = [
 
 export async function GET(request: NextRequest) {
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin || admin.role !== "owner") {
       return NextResponse.json(
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
     const isExport = searchParams.get("export") === "csv";
 
     const page = isExport ? 1 : Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = isExport ? 10000 : Math.min(parseInt(searchParams.get("pageSize") || "50", 10), 500);
+    const pageSize = isExport ? 5000 : Math.min(parseInt(searchParams.get("pageSize") || "50", 10), 500);
     const event = searchParams.get("event") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const userId = searchParams.get("userId") || undefined;
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
       const items = await prisma.ssoAuditEvent.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        take: 10000,
+        take: 5000,
       });
 
       const escapeCSV = (val: string): string => {

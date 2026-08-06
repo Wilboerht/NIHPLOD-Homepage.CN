@@ -75,15 +75,22 @@ export interface SMSResult {
  * 发送短信
  */
 export async function sendSMS(options: SMSParams): Promise<SMSResult> {
-  const provider = process.env.SMS_PROVIDER || "mock";
+  const provider = process.env.SMS_PROVIDER;
+
+  if (!provider || provider === "mock") {
+    if (process.env.NODE_ENV === "production") {
+      apiConsole.error("[SMS] 生产环境 SMS_PROVIDER 未设置或为 mock，短信功能不可用");
+    }
+    return sendMockSMS(options);
+  }
 
   switch (provider) {
     case "aliyun":
       return sendAliyunSMS(options);
     case "tencent":
       return sendTencentSMS(options);
-    case "mock":
     default:
+      apiConsole.error(`[SMS] 未知的 SMS_PROVIDER: ${provider}，回退 mock`);
       return sendMockSMS(options);
   }
 }
@@ -95,7 +102,7 @@ async function sendMockSMS(options: SMSParams): Promise<SMSResult> {
   apiConsole.info("[Mock SMS] 发送短信:", {
     phone: options.phone,
     template: options.template,
-    params: options.params,
+    // 不记录 params（含明文验证码）
   });
 
   // 模拟延迟
@@ -167,7 +174,7 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
       return { success: true, messageId: result.BizId };
     } else {
       apiConsole.error("[Aliyun SMS] 发送失败:", result);
-      return { success: false, error: result.Message || "短信发送失败" };
+      return { success: false, error: "短信发送失败" };
     }
   } catch (error) {
     apiConsole.error("[Aliyun SMS] 发送异常:", error);
@@ -269,13 +276,12 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
       apiConsole.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);
       return {
         success: false,
-        error: res.SendStatusSet?.[0]?.Message || "发送失败",
+        error: "短信发送失败",
       };
     }
   } catch (error: unknown) {
     apiConsole.error("[Tencent SMS] 发送异常:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: message || "短信发送异常" };
+    return { success: false, error: "短信发送异常" };
   }
 }
 

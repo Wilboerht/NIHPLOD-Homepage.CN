@@ -221,6 +221,7 @@ export function SsoProvider({
       const delayMs = (remainingSec - refreshThreshold) * 1000;
 
       refreshTimerRef.current = setTimeout(() => {
+        if (!active) return;
         const td = getTokenData(client.config.clientId);
         if (!td) return;
 

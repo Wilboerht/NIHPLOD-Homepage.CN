@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockFindMany = vi.fn();
+const mockSessionFindMany = vi.fn();
 const mockSignLogoutToken = vi.fn();
 const mockRecordSsoEvent = vi.fn();
 const globalFetch = vi.fn();
@@ -11,6 +12,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     oAuthClient: {
       findMany: (...args: unknown[]) => mockFindMany(...args),
+    },
+    oAuthSession: {
+      findMany: (...args: unknown[]) => mockSessionFindMany(...args),
     },
   },
 }));
@@ -33,6 +37,7 @@ describe("backchannel-logout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     globalFetch.mockResolvedValue({ ok: true });
+    mockSessionFindMany.mockResolvedValue([]);
   });
 
   it("空 clientIds 时不应查询", async () => {
@@ -66,6 +71,7 @@ describe("backchannel-logout", () => {
         aud: "client-with-logout",
         events: { "http://schemas.openid.net/event/backchannel-logout": {} },
         jti: expect.any(String),
+        sid: undefined,
       })
     );
     expect(globalFetch).toHaveBeenCalledWith(

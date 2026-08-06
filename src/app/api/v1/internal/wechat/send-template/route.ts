@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 内部 API v1：代子站发送微信模板消息
  * POST /api/v1/internal/wechat/send-template
  *
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!checkAndRecordNonce(nonce)) {
+    if (!(await checkAndRecordNonce(nonce))) {
       return NextResponse.json(
         { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
         { status: 401 }

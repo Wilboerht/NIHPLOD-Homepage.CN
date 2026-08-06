@@ -31,7 +31,7 @@ export function CallbackPage() {
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(
         { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href },
-        "*"
+        window.location.origin
       );
       setProcessing(false);
       return;

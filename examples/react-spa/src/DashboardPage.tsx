@@ -25,7 +25,7 @@ function DashboardContent() {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    alert(JSON.stringify(data, null, 2));
+    console.log("API response:", data);
   };
 
   return (

@@ -7,6 +7,22 @@
 
 import { SsoError } from "./errors";
 
+// Node.js <19 兼容：确保 crypto.subtle 可用
+const _crypto: Pick<Crypto, "subtle"> =
+  typeof crypto !== "undefined" && (crypto as Crypto).subtle
+    ? (crypto as Crypto)
+    : (() => {
+        try {
+          return require("crypto").webcrypto as Crypto;
+        } catch {
+          return null as unknown as Crypto;
+        }
+      })();
+
+function getCrypto(): Crypto | null {
+  return _crypto;
+}
+
 export interface JwksKey {
   kty: string;
   kid?: string;
@@ -100,7 +116,10 @@ export async function verifyRs256Signature(token: string, jwk: JwksKey): Promise
     const [headerB64, payloadB64, signature] = token.split(".");
     if (!signature || !jwk.n || !jwk.e) return false;
 
-    const cryptoKey = await crypto.subtle.importKey(
+    const c = getCrypto();
+    if (!c) return false;
+
+    const cryptoKey = await c.subtle.importKey(
       "jwk",
       { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
@@ -110,7 +129,7 @@ export async function verifyRs256Signature(token: string, jwk: JwksKey): Promise
 
     const signatureBytes = base64UrlDecode(signature);
     const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-    return await crypto.subtle.verify(
+    return await c.subtle.verify(
       "RSASSA-PKCS1-v1_5",
       cryptoKey,
       signatureBytes as unknown as BufferSource,
@@ -123,7 +142,9 @@ export async function verifyRs256Signature(token: string, jwk: JwksKey): Promise
 
 /** 计算 OIDC at_hash（access_token SHA-256 前 128bit base64url） */
 export async function computeAtHash(accessToken: string): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(accessToken));
+  const c = getCrypto();
+  if (!c) return "";
+  const hash = await c.subtle.digest("SHA-256", new TextEncoder().encode(accessToken));
   const bytes = new Uint8Array(hash);
   const half = bytes.slice(0, bytes.length / 2);
   let binary = "";
@@ -179,7 +200,7 @@ export async function validateIdToken(
   }
 
   // HS256：对称密钥无法安全分发给 Public Client / BFF。
-  // 若 SSO 中心已配置 RS256，则拒绝 HS256（安全推荐）。
+  // 默认拒绝 HS256，因为 SDK 无法安全验证其签名。
   if (alg === "HS256") {
     if (rejectHs256WhenRs256Available) {
       const jwks = await fetchJwks(normalizedIssuer);
@@ -188,9 +209,9 @@ export async function validateIdToken(
         throw new SsoError("id_token_unsupported_alg", "SSO 已配置 RS256，拒绝 HS256 ID Token");
       }
     }
-    console.warn(
-      "[SSO SDK] ID Token 使用 HS256 签名，Public Client 无法安全验证签名。" +
-        "建议主站配置 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY 启用 RS256。"
+    throw new SsoError(
+      "id_token_unsupported_alg",
+      "ID Token 使用 HS256 签名，SDK 无法安全验证。请主站配置 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY 启用 RS256。"
     );
   }
 

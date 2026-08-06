@@ -11,9 +11,9 @@ import { SsoClient } from "@nihplod/sso-sdk";
  * 2. 客户端 SDK（按需登录，本页面演示）
  */
 const sso = new SsoClient({
-  clientId: "your-client-id", // ← 替换
-  redirectUri: "http://localhost:3002/api/auth/callback",
-  ssoBaseUrl: "https://nihplod.cn",
+  clientId: process.env.NEXT_PUBLIC_SSO_CLIENT_ID || "your-client-id",
+  redirectUri: process.env.NEXT_PUBLIC_SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
+  ssoBaseUrl: process.env.NEXT_PUBLIC_SSO_BASE_URL || "https://nihplod.cn",
   scopes: "openid profile",
 });
 
@@ -39,9 +39,15 @@ export default function Home() {
           <p>已登录: {user.nickname || user.sub}</p>
           <div style={styles.buttons}>
             <a href="/dashboard" style={styles.btnPrimary}>进入控制台</a>
-            <a href="/api/auth/logout" style={styles.btnDanger}>
+            <button
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/";
+              }}
+              style={styles.btnDanger}
+            >
               退出登录
-            </a>
+            </button>
           </div>
         </div>
       ) : (

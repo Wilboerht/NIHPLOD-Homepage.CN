@@ -23,7 +23,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 function getCsrfToken(): string {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/(?:^|;\s*)__Host-csrf_token=([^;]*)/);
-  return match ? match[1] : "";
+  return match ? decodeURIComponent(match[1]) : "";
 }
 
 /** 生成带 CSRF header 的请求头 */

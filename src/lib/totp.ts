@@ -7,6 +7,18 @@
 
 import { generateSecret, generateURI, verifySync, generateSync } from "otplib";
 import { createCipheriv, createDecipheriv, randomBytes, createHash, timingSafeEqual } from "crypto";
+import { LRUCache } from "lru-cache";
+
+// TOTP 重放保护：同一 code 在窗口期内仅允许使用一次
+// TTL = 2 × period (60 秒)，覆盖 30 秒时间步长的前后各一步
+const usedTotpCodes = new LRUCache<string, number>({
+  max: 5000,
+  ttl: 60 * 1000,
+});
+
+function hashTotpPayload(secret: string, token: string): string {
+  return createHash("sha256").update(`${secret}:${token}`).digest("hex");
+}
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
@@ -78,7 +90,12 @@ export function generateTOTPQRCodeUrl(email: string, secret: string, issuer: str
  */
 export function verifyTOTP(token: string, secret: string): boolean {
   const result = verifySync({ token, secret });
-  return result.valid;
+  if (!result.valid) return false;
+  // 重放保护：同一 TOTP code 在窗口期内仅允许使用一次
+  const key = hashTotpPayload(secret, token);
+  if (usedTotpCodes.has(key)) return false;
+  usedTotpCodes.set(key, Date.now());
+  return true;
 }
 
 /**
@@ -94,7 +111,7 @@ export function generateTOTPCode(secret: string): string {
 export function generateBackupCodes(count: number = 10): string[] {
   const codes: string[] = [];
   for (let i = 0; i < count; i++) {
-    codes.push(randomBytes(4).toString("hex").toUpperCase());
+    codes.push(randomBytes(8).toString("hex").toUpperCase());
   }
   return codes;
 }

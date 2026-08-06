@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OAuth Introspect 端点单元测试
  * POST /api/oauth/introspect (RFC 7662)
  */
@@ -49,6 +49,20 @@ function createFormBody(data: Record<string, string>): Request {
   });
 }
 
+function validVerifyResult() {
+  return {
+    client: {
+      id: "1", clientId: "test-client", name: "Test",
+      redirectUris: ["https://example.com/cb"],
+      postLogoutRedirectUris: [],
+      scopes: ["openid"], isActive: true,
+      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+      isPublic: false,
+    },
+    reason: "ok" as const,
+  };
+}
+
 describe("POST /api/oauth/introspect", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,7 +75,7 @@ describe("POST /api/oauth/introspect", () => {
   });
 
   it("client 认证失败应返回 401", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(null);
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: null, reason: "not_found" });
     const req = createFormBody({
       token: "some-token",
       client_id: "bad-client",
@@ -74,14 +88,7 @@ describe("POST /api/oauth/introspect", () => {
   });
 
   it("token 无效应返回 active: false", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
-      id: "1", clientId: "test-client", name: "Test",
-      redirectUris: ["https://example.com/cb"],
-      postLogoutRedirectUris: [],
-      scopes: ["openid"], isActive: true,
-      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
-      isPublic: false,
-    });
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     const req = createFormBody({
       token: "invalid-token",
@@ -95,14 +102,7 @@ describe("POST /api/oauth/introspect", () => {
   });
 
   it("audience 不匹配应返回 active: false", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
-      id: "1", clientId: "test-client", name: "Test",
-      redirectUris: ["https://example.com/cb"],
-      postLogoutRedirectUris: [],
-      scopes: ["openid"], isActive: true,
-      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
-      isPublic: false,
-    });
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());;
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "other-client",
@@ -121,14 +121,7 @@ describe("POST /api/oauth/introspect", () => {
   });
 
   it("token 有效且 audience 匹配应返回完整 introspection", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
-      id: "1", clientId: "test-client", name: "Test",
-      redirectUris: ["https://example.com/cb"],
-      postLogoutRedirectUris: [],
-      scopes: ["openid"], isActive: true,
-      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
-      isPublic: false,
-    });
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());;
     const now = Math.floor(Date.now() / 1000);
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",

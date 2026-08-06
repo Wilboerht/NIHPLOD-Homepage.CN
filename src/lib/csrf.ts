@@ -27,7 +27,7 @@ export function setCSRFCookie(response: NextResponse, token: string): void {
     secure: true,
     sameSite: "strict",
     path: "/",
-    maxAge: 60 * 60 * 24, // 24 小时
+    maxAge: 60 * 60, // 1 小时（缩短 TTL 减少泄漏窗口）
   });
 }
 

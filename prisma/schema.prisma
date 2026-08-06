@@ -812,6 +812,9 @@ model UserCoupon {
 enum TokenBlacklistType {
   access_token
   user
+  logout_jti
+  wechat_exchange_token
+  internal_api_nonce
 }
 
 model TokenBlacklist {

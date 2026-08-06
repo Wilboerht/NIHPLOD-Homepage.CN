@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证 client
-    const client = await verifyOAuthClientSecret(client_id, client_secret);
-    if (!client) {
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret);
+    if (!verifyResult.client) {
       recordSsoEvent({
         event: "backchannel_logout",
         clientId: client_id,
@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+    const client = verifyResult.client;
 
     // 验证 logout_token 签名（aud 必须匹配 client_id）
     const payload = await verifyLogoutToken(logout_token, client_id);

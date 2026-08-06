@@ -8,33 +8,94 @@ import { prisma } from "./prisma";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { getInternalApiKeys } from "./internal-api";
+import { sendBackchannelLogout } from "./backchannel-logout";
 
 // ============================================
 // 参数校验
 // ============================================
 
+const uriSchema = z.string().url().max(500).refine(
+  (u) => {
+    try {
+      const parsed = new URL(u);
+      if (parsed.protocol !== "https:") return false;
+      if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: "必须是 https:// 公网地址" }
+);
+
 const createClientSchema = z.object({
   name: z.string().min(1).max(100),
-  redirectUris: z.array(z.string().url().max(500)).min(1),
-  postLogoutRedirectUris: z.array(z.string().url().max(500)).optional().default([]),
+  redirectUris: z.array(uriSchema).min(1),
+  postLogoutRedirectUris: z.array(uriSchema).optional().default([]),
   scopes: z.array(z.string().min(1).max(50)).min(1),
   isPublic: z.boolean().optional().default(false),
-  backchannelLogoutUri: z.string().url().max(500).optional(),
+  backchannelLogoutUri: z.string().url().max(500).refine(
+    (u) => {
+      try {
+        const parsed = new URL(u);
+        if (parsed.protocol !== "https:") return false;
+        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
+        if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname)) return false;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "必须是 https:// 公网地址" }
+  ).optional(),
 });
 
 const updateClientSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  redirectUris: z.array(z.string().url().max(500)).min(1).optional(),
-  postLogoutRedirectUris: z.array(z.string().url().max(500)).optional(),
+  redirectUris: z.array(uriSchema).min(1).optional(),
+  postLogoutRedirectUris: z.array(uriSchema).optional(),
   scopes: z.array(z.string().min(1).max(50)).min(1).optional(),
   isActive: z.boolean().optional(),
   isPublic: z.boolean().optional(),
-  backchannelLogoutUri: z.string().url().max(500).nullable().optional(),
+  backchannelLogoutUri: z.string().url().max(500).refine(
+    (u) => {
+      try {
+        const parsed = new URL(u);
+        if (parsed.protocol !== "https:") return false;
+        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
+        if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname)) return false;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "必须是 https:// 公网地址" }
+  ).nullable().optional(),
 });
 
 // ============================================
 // 类型定义
 // ============================================
+
+/**
+ * 返回去敏后的 client 数据（不含 clientSecret），用于 API 响应。
+ * 使用显式字段白名单，避免依赖解构排除模式。
+ */
+export function toSafeClientResponse(client: OAuthClientData): Omit<OAuthClientData, "clientSecret"> {
+  return {
+    id: client.id,
+    clientId: client.clientId,
+    name: client.name,
+    redirectUris: client.redirectUris,
+    postLogoutRedirectUris: client.postLogoutRedirectUris,
+    scopes: client.scopes,
+    isActive: client.isActive,
+    isPublic: client.isPublic,
+    backchannelLogoutUri: client.backchannelLogoutUri,
+    createdAt: client.createdAt,
+    updatedAt: client.updatedAt,
+  };
+}
 
 export interface OAuthClientData {
   id: string;
@@ -59,11 +120,25 @@ export interface OAuthClientData {
  * 生成 clientId：nanoid 风格 24 字符
  */
 function generateClientId(): string {
+  const MAX_ITERATIONS = 8;
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const maxValid = Math.floor(256 / chars.length) * chars.length;
   let result = "";
-  const bytes = randomBytes(24);
-  for (let i = 0; i < 24; i++) {
-    result += chars[bytes[i] % chars.length];
+  let iterations = 0;
+  while (iterations < MAX_ITERATIONS && result.length < 24) {
+    iterations++;
+    const bytes = randomBytes(48);
+    for (let i = 0; i < bytes.length && result.length < 24; i++) {
+      if (bytes[i] >= maxValid) continue;
+      result += chars[bytes[i] % chars.length];
+    }
+  }
+  // 兜底：若 rejection sampling 不足（极不可能），使用 fallback 补足
+  if (result.length < 24) {
+    const fallback = randomBytes(48);
+    for (let i = 0; i < fallback.length && result.length < 24; i++) {
+      result += chars[fallback[i] % chars.length];
+    }
   }
   return result;
 }
@@ -166,7 +241,7 @@ export async function getOAuthClientByClientId(
   clientId: string
 ): Promise<OAuthClientData | null> {
   const client = await prisma.oAuthClient.findFirst({
-    where: { clientId, isActive: true },
+    where: { clientId },
   });
   if (!client) return null;
   return {
@@ -184,20 +259,42 @@ export async function getOAuthClientByClientId(
   };
 }
 
+export interface VerifyClientResult {
+  client: OAuthClientData | null;
+  reason: "ok" | "not_found" | "disabled" | "invalid_secret";
+}
+
 /**
  * 按 clientId 验证 client_secret
  * - Confidential Client：必须提供并验证 client_secret
  * - Public Client：当 allowPublic=true 且未提供 secret 时直接通过（用于 token 端点）
+ *
+ * 返回包含详细原因的 result 对象，调用方可根据 reason 返回不同错误码
  */
 export async function verifyOAuthClientSecret(
   clientId: string,
   secret?: string,
   options?: { allowPublic?: boolean }
-): Promise<OAuthClientData | null> {
+): Promise<VerifyClientResult> {
+  // 先查询是否存在（不限制 isActive）
+  const clientExists = await prisma.oAuthClient.findFirst({
+    where: { clientId },
+    select: { isActive: true },
+  });
+
+  if (!clientExists) {
+    return { client: null, reason: "not_found" };
+  }
+
+  if (!clientExists.isActive) {
+    return { client: null, reason: "disabled" };
+  }
+
+  // 重新查询完整记录（确保 isActive 在当前事务中一致）
   const client = await prisma.oAuthClient.findFirst({
     where: { clientId, isActive: true },
   });
-  if (!client) return null;
+  if (!client) return { client: null, reason: "disabled" };
 
   let valid = false;
   if (client.isPublic && options?.allowPublic && !secret) {
@@ -221,20 +318,23 @@ export async function verifyOAuthClientSecret(
     oldSecretCache.delete(clientId);
   }
 
-  if (!valid) return null;
+  if (!valid) return { client: null, reason: "invalid_secret" };
 
   return {
-    id: client.id,
-    clientId: client.clientId,
-    name: client.name,
-    redirectUris: client.redirectUris,
-    postLogoutRedirectUris: client.postLogoutRedirectUris,
-    scopes: client.scopes,
-    isActive: client.isActive,
-    isPublic: client.isPublic,
-    backchannelLogoutUri: client.backchannelLogoutUri,
-    createdAt: client.createdAt,
-    updatedAt: client.updatedAt,
+    client: {
+      id: client.id,
+      clientId: client.clientId,
+      name: client.name,
+      redirectUris: client.redirectUris,
+      postLogoutRedirectUris: client.postLogoutRedirectUris,
+      scopes: client.scopes,
+      isActive: client.isActive,
+      isPublic: client.isPublic,
+      backchannelLogoutUri: client.backchannelLogoutUri,
+      createdAt: client.createdAt,
+      updatedAt: client.updatedAt,
+    },
+    reason: "ok" as const,
   };
 }
 
@@ -300,9 +400,22 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
   try {
     const client = await prisma.oAuthClient.findUnique({
       where: { id },
-      select: { clientId: true },
+      select: { clientId: true, backchannelLogoutUri: true },
     });
     if (!client) return false;
+
+    // 删除前查询活跃用户 → 发送 Backchannel Logout 通知
+    if (client.backchannelLogoutUri) {
+      const activeSessions = await prisma.oAuthSession.findMany({
+        where: { clientId: client.clientId, revokedAt: null },
+        select: { userId: true },
+        distinct: ["userId"],
+      });
+      if (activeSessions.length > 0) {
+        const userIds = activeSessions.map((s) => s.userId);
+        await sendBackchannelLogout(userIds[0] || "", [client.clientId], { includeInactive: true });
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       // 清理关联数据
@@ -310,6 +423,7 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
       await tx.userConsent.deleteMany({ where: { clientId: client.clientId } });
       await tx.refreshToken.deleteMany({ where: { clientId: client.clientId } });
       await tx.oAuthAuthorizationCode.deleteMany({ where: { clientId: client.clientId } });
+      await tx.ssoAuditEvent.deleteMany({ where: { clientId: client.clientId } });
       // 删除 client 本身
       await tx.oAuthClient.delete({ where: { id } });
     });

@@ -100,25 +100,26 @@ export async function POST(request: NextRequest) {
       where: { phone },
     });
 
-    if (!user) {
-      // 记录失败尝试
-      await recordLoginAttempt(phone, false, request, "user_not_found", "password");
+    if (!user || !user.password) {
+      // 统一错误响应：不区分"用户不存在"、"未设置密码"和"密码错误"
+      // 防止攻击者通过不同错误码枚举有效手机号
+      await recordLoginAttempt(phone, false, request, user ? "password_not_set" : "user_not_found", "password");
 
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "USER_NOT_FOUND",
-            message: "用户不存在，请先注册",
+            code: "LOGIN_FAILED",
+            message: "登录失败，请检查手机号和密码",
           },
         },
         { status: 400 }
       );
     }
 
-    // 3.1 检查账号状态
+    // 检查账号状态
     if (user.status !== "ACTIVE") {
-      const statusText = user.status === "SUSPENDED" ? "已被临时冻结" : "已被永久封禁";
+      // 账号被禁用/冻结时也返回统一错误，不暴露状态
       await recordLoginAttempt(
         phone,
         false,
@@ -130,25 +131,8 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: {
-            code: "ACCOUNT_DISABLED",
-            message: `账号${statusText}，请联系客服`,
-          },
-        },
-        { status: 403 }
-      );
-    }
-
-    // 4. 检查是否设置了密码
-    if (!user.password) {
-      // 记录失败尝试
-      await recordLoginAttempt(phone, false, request, "password_not_set", "password");
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "PASSWORD_NOT_SET",
-            message: "该账号未设置密码，请使用验证码登录后，在个人中心设置密码",
+            code: "LOGIN_FAILED",
+            message: "登录失败，请检查手机号和密码",
           },
         },
         { status: 400 }
@@ -158,15 +142,15 @@ export async function POST(request: NextRequest) {
     // 5. 验证密码
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
-      // 记录失败尝试
+      // 记录失败尝试，返回统一错误（已合并到上方 user+password 检查）
       await recordLoginAttempt(phone, false, request, "password_incorrect", "password");
 
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "PASSWORD_INCORRECT",
-            message: "密码错误",
+            code: "LOGIN_FAILED",
+            message: "登录失败，请检查手机号和密码",
           },
         },
         { status: 400 }
@@ -175,6 +159,20 @@ export async function POST(request: NextRequest) {
 
     // 6. 记录成功登录
     await recordLoginAttempt(phone, true, request, undefined, "password", user.id);
+
+    // 6.1 检查密码是否过期（已过期则要求修改密码）
+    if (user.passwordExpiresAt && new Date() > new Date(user.passwordExpiresAt)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PASSWORD_EXPIRED",
+            message: "密码已过期，请修改密码后重新登录",
+          },
+        },
+        { status: 403 }
+      );
+    }
 
     // 7. 清除当前类型的失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone, "password");

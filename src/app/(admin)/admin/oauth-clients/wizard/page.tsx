@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -26,12 +26,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const AVAILABLE_SCOPES = [
-  { value: "openid", label: "OpenID", desc: "基础身份标识（必选）" },
-  { value: "profile", label: "个人信息", desc: "昵称、头像" },
-  { value: "phone", label: "手机号", desc: "脱敏手机号（138****1234）" },
-  { value: "membership", label: "会员信息", desc: "会员等级、积分" },
-];
+interface ScopeDef { value: string; label: string; desc: string }
 
 interface StepResult {
   clientId?: string;
@@ -62,6 +57,14 @@ export default function OAuthWizardPage() {
 
   // Step 2: Scopes
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["openid", "profile"]);
+  const [availableScopes, setAvailableScopes] = useState<ScopeDef[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/oauth/scopes")
+      .then((r) => r.json())
+      .then((d) => { if (d.data?.scopes) setAvailableScopes(d.data.scopes); })
+      .catch(() => {});
+  }, []);
 
   // Step 3: Result
   const [result, setResult] = useState<StepResult>({});
@@ -314,7 +317,7 @@ const user = await userRes.json();`;
             选择你的应用需要获取的用户信息权限。仅选择必需的最小权限。
           </p>
           <div className="space-y-3 max-w-md mb-6">
-            {AVAILABLE_SCOPES.map((s) => (
+            {availableScopes.map((s) => (
               <label
                 key={s.value}
                 className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${

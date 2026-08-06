@@ -32,8 +32,7 @@ export function getClientIP(
 
   const trustProxy =
     options.trustProxy ??
-    (process.env.TRUST_PROXY === "true" ||
-      process.env.NODE_ENV === "development");
+    process.env.TRUST_PROXY === "true";
 
   if (!trustProxy) {
     // 非代理环境：回退到 socket 直连地址，避免所有限流共用 "unknown" 桶
@@ -46,16 +45,22 @@ export function getClientIP(
     const ips = forwardedFor
       .split(",")
       .map((ip) => ip.trim())
-      .filter(Boolean);
+      .filter((ip) => ip && /^[\d.:a-fA-F]+$/.test(ip));
 
-    const hops = options.hops ?? parseInt(process.env.TRUST_PROXY_HOPS || "1", 10);
-    const idx = Math.min(Math.max(0, hops - 1), ips.length - 1);
-    return ips[idx] || "unknown";
+    if (ips.length === 0) return "unknown";
+
+    // 默认取最后一段（最靠近应用），而非第一段（最容易被伪造）
+    // TRUST_PROXY_HOPS 可从后往前数（负值）或从前往后（正值）
+    const hopsRaw = options.hops ?? parseInt(process.env.TRUST_PROXY_HOPS || "0", 10);
+    const idx = hopsRaw <= 0
+      ? ips.length - 1 + hopsRaw  // 负值/0：从尾部倒数
+      : Math.min(hopsRaw - 1, ips.length - 1);  // 正值：从头部往后
+    return ips[Math.max(0, Math.min(idx, ips.length - 1))] || "unknown";
   }
 
   const realIP = headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
+  if (realIP && /^[\d.:a-fA-F]+$/.test(realIP)) {
+    return realIP.trim();
   }
 
   return "unknown";
