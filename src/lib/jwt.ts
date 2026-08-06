@@ -25,7 +25,12 @@ const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 const MIN_SECRET_LENGTH = 32;
 
 // 生产环境保护：NEXT_PUBLIC_APP_URL 必须是公网地址，否则子项目发现端点失效
-if (process.env.NODE_ENV === "production" && (!process.env.NEXT_PUBLIC_APP_URL || new URL(ISSUER).hostname === "localhost")) {
+// 跳过构建阶段（NEXT_PHASE 存在时）的校验，构建产物中该值由部署环境注入
+if (
+  process.env.NODE_ENV === "production" &&
+  !process.env.NEXT_PHASE &&
+  (!process.env.NEXT_PUBLIC_APP_URL || new URL(ISSUER).hostname === "localhost")
+) {
   throw new Error(
     "[JWT] 生产环境必须设置 NEXT_PUBLIC_APP_URL 为公网地址（如 https://nihplod.cn），" +
     "OIDC Discovery 端点依赖此值生成 issuer 和端点 URL。"
