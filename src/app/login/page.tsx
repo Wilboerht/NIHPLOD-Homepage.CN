@@ -53,6 +53,7 @@ function LoginPageContent() {
 
   const [mounted, setMounted] = useState(false);
   const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
+  const [oauthParamsError, setOauthParamsError] = useState(false);
 
   // 新格式（oauth_id）：从服务端取回 OAuth 参数；旧格式（oauth_params）：直接使用 URL 值
   useEffect(() => {
@@ -62,8 +63,9 @@ function LoginPageContent() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.data?.params) setOauthParams(d.data.params as string);
+        else setOauthParamsError(true);
       })
-      .catch(() => {});
+      .catch(() => setOauthParamsError(true));
   }, [oauthId, oauthParams]);
   useEffect(() => { setMounted(true); }, []);
 
@@ -647,8 +649,15 @@ function LoginPageContent() {
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {
-    // oauth_id 参数仍在加载中
+    // oauth_id 参数仍在加载中或已失效
     if (oauthId && !oauthParams) {
+      if (oauthParamsError) {
+        return (
+          <div className={variant === "mobile" ? "flex flex-col items-center justify-center py-20 gap-4" : "flex flex-col items-center justify-center py-20 gap-4"}>
+            <p className="text-red-500 text-sm">授权参数已过期或不存在，请返回应用重新发起授权</p>
+          </div>
+        );
+      }
       return (
         <div className={variant === "mobile" ? "flex flex-col items-center justify-center py-20" : "flex items-center justify-center py-20"}>
           <p className="text-gray-400">正在加载授权信息...</p>

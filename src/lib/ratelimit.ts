@@ -141,6 +141,8 @@ export const RATE_LIMIT_PRESETS = {
   "wechat-bind": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 健康检查 - 每分钟 10 次 */
   "health": { maxRequests: 10, windowMs: 60 * 1000 },
+  /** OIDC Discovery 端点 - 每分钟 30 次（公开可缓存端点） */
+  "oauth-discovery": { maxRequests: 30, windowMs: 60 * 1000 },
 } as const;
 
 /**

@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { SUPPORTED_SCOPES } from "@/lib/oauth-constants";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,13 @@ function getIssuer(): string {
 }
 
 export async function GET(request: NextRequest) {
+  // 公开端点限流：可缓存但需防止流量放大
+  const ip = getClientIP(request);
+  const limitResult = await rateLimit(ip, "oauth-discovery");
+  if (!limitResult.success) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   // 发现文档的 issuer 必须稳定公开，优先使用环境变量中的公网地址，
   // 避免反向代理后 request.nextUrl.origin 变成 localhost:3000
   const origin = getIssuer();

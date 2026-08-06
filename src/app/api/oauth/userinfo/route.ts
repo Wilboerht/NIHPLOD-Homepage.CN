@@ -81,6 +81,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // M2M token（client_credentials grant）：无用户身份，仅返回 sub
+    if (payload.id.startsWith("client:")) {
+      recordSsoEvent({
+        event: "userinfo",
+        clientId: payload.client_id,
+        ip,
+        success: true,
+        detail: { type: "client_credentials" },
+      });
+      return resJson({ sub: payload.id });
+    }
+
     // 从数据库获取最新用户信息
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
