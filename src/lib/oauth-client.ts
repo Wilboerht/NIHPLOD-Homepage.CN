@@ -48,6 +48,8 @@ const createClientSchema = z.object({
     },
     { message: "必须是 https:// 公网地址" }
   ).optional(),
+  codeTtlSeconds: z.number().int().min(60).max(600).optional().default(300),
+  accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional().default(900),
 });
 
 const updateClientSchema = z.object({
@@ -71,6 +73,8 @@ const updateClientSchema = z.object({
     },
     { message: "必须是 https:// 公网地址" }
   ).nullable().optional(),
+  codeTtlSeconds: z.number().int().min(60).max(600).optional(),
+  accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional(),
 });
 
 // ============================================
@@ -92,6 +96,8 @@ export function toSafeClientResponse(client: OAuthClientData): Omit<OAuthClientD
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    codeTtlSeconds: client.codeTtlSeconds,
+    accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };
@@ -108,6 +114,8 @@ export interface OAuthClientData {
   isActive: boolean;
   isPublic: boolean;
   backchannelLogoutUri: string | null;
+  codeTtlSeconds: number;
+  accessTokenTtlSeconds: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -173,6 +181,11 @@ async function verifySecret(secret: string, hash: string): Promise<boolean> {
 /**
  * 旧 secret hash 缓存，用于密钥轮换后的平滑过渡。
  * key: clientId, value: { oldHash, expiresAt }
+ *
+ * ⚠️ 多实例部署注意：此缓存仅在当前进程内存中生效。
+ * 密钥轮换请求仅被一个实例处理，其他实例的缓存中不会存储旧 hash，
+ * 导致 5 分钟过渡期内其他实例立即拒绝旧密钥。
+ * 多实例环境需将旧 hash 存入共享存储（如 Redis）或使用数据库。
  */
 const oldSecretCache = new Map<string, { oldHash: string; expiresAt: number }>();
 
@@ -212,6 +225,8 @@ export async function createOAuthClient(
       scopes: parsed.scopes,
       isPublic: parsed.isPublic,
       backchannelLogoutUri: parsed.backchannelLogoutUri || null,
+      codeTtlSeconds: parsed.codeTtlSeconds,
+      accessTokenTtlSeconds: parsed.accessTokenTtlSeconds,
     },
   });
 
@@ -227,6 +242,8 @@ export async function createOAuthClient(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
+      codeTtlSeconds: client.codeTtlSeconds,
+      accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     },
@@ -254,6 +271,8 @@ export async function getOAuthClientByClientId(
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    codeTtlSeconds: client.codeTtlSeconds,
+    accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };
@@ -331,6 +350,8 @@ export async function verifyOAuthClientSecret(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
+      codeTtlSeconds: client.codeTtlSeconds,
+      accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     },
@@ -354,6 +375,8 @@ export async function getOAuthClientById(id: string): Promise<OAuthClientData | 
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    codeTtlSeconds: client.codeTtlSeconds,
+    accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };
@@ -382,6 +405,8 @@ export async function updateOAuthClient(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
+      codeTtlSeconds: client.codeTtlSeconds,
+      accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     };
@@ -411,9 +436,8 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
         select: { userId: true },
         distinct: ["userId"],
       });
-      if (activeSessions.length > 0) {
-        const userIds = activeSessions.map((s) => s.userId);
-        await sendBackchannelLogout(userIds[0] || "", [client.clientId], { includeInactive: true });
+      for (const uid of new Set(activeSessions.map((s) => s.userId))) {
+        await sendBackchannelLogout(uid, [client.clientId], { includeInactive: true });
       }
     }
 
@@ -474,6 +498,8 @@ export async function listOAuthClients(params?: {
       isActive: c.isActive,
       isPublic: c.isPublic,
       backchannelLogoutUri: c.backchannelLogoutUri,
+      codeTtlSeconds: c.codeTtlSeconds,
+      accessTokenTtlSeconds: c.accessTokenTtlSeconds,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     })),
@@ -487,6 +513,8 @@ export async function listOAuthClients(params?: {
  *
  * 注意：此函数仅从内存配置中查找 project 名称，
  * 实际数据库查询需由调用方异步执行（使用 findClientByName）。
+ * 内部 API Key 在进程启动时从 INTERNAL_API_KEYS 环境变量加载，
+ * 修改密钥后需重启实例才能生效（不支持热更新）。
  *
  * @deprecated 此存根已无调用者，请直接使用 {@link findClientByName}。
  *             保留仅为向后兼容，未来版本将移除。
@@ -520,6 +548,8 @@ export async function findClientByName(name: string): Promise<OAuthClientData | 
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    codeTtlSeconds: client.codeTtlSeconds,
+    accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };

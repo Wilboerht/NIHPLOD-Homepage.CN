@@ -16,6 +16,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
+import { validateDPoPProof, computeDPoPAth, dpopNonceHeader } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -79,6 +80,47 @@ export async function GET(request: NextRequest) {
         { error: "account_disabled", error_description: "账户已被限制" },
         403
       );
+    }
+
+    // DPoP 绑定验证：若 token 包含 cnf.jkt，请求必须携带有效的 DPoP proof
+    const dpopHeader = request.headers.get("DPoP");
+    const tokenCnf = (payload as Record<string, unknown>).cnf as { jkt?: string } | undefined;
+    if (tokenCnf?.jkt) {
+      if (!dpopHeader) {
+        return resJson(
+          { error: "invalid_dpop_proof", error_description: "此 token 需要 DPoP proof" },
+          401,
+          { "WWW-Authenticate": 'Bearer error="invalid_token"' }
+        );
+      }
+      const ath = computeDPoPAth(token);
+      const url = new URL(request.url);
+      const htu = `${url.origin}${url.pathname}`.toLowerCase();
+      const dpopResult = await validateDPoPProof(
+        dpopHeader,
+        "GET",
+        htu,
+        ath,
+        undefined,
+        `${payload.client_id}:${payload.id}`
+      );
+      if (!dpopResult.valid) {
+        const errorHeaders: Record<string, string> = {};
+        if (dpopResult.newNonce) {
+          Object.assign(errorHeaders, dpopNonceHeader(dpopResult.newNonce));
+        }
+        return NextResponse.json(
+          { error: dpopResult.error, error_description: dpopResult.errorDescription },
+          { status: 401, headers: { ...corsHeaders, ...errorHeaders } }
+        );
+      }
+      if (dpopResult.jkt !== tokenCnf.jkt) {
+        return resJson(
+          { error: "invalid_dpop_proof", error_description: "DPoP 密钥与 token 绑定的密钥不匹配" },
+          401,
+          { "WWW-Authenticate": 'Bearer error="invalid_token"' }
+        );
+      }
     }
 
     // M2M token（client_credentials grant）：无用户身份，仅返回 sub

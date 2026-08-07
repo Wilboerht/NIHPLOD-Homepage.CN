@@ -18,32 +18,57 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
 import { prisma } from "@/lib/prisma";
-import { randomBytes } from "crypto";
+import { createHmac, timingSafeEqual, createHash } from "crypto";
 
-// OAuth 参数临时存储（server-side，避免完整参数暴露在 URL 中）
-// key: 随机 ID, value: { params: string, expiresAt: number }
-const oauthParamsStore = new Map<string, { params: string; expiresAt: number }>();
+// OAuth 参数临时存储：HMAC 签名的无状态 token，多实例安全
+// 将 OAuth 参数编码到 oauth_id 中，无需服务端存储
 const PARAMS_STORE_TTL_MS = 10 * 60 * 1000; // 10 分钟
 
+function getOAuthParamsHmacKey(): Buffer {
+  const secret = process.env.JWT_ACCESS_SECRET;
+  if (!secret) throw new Error("[OAuth Authorize] 缺少 JWT_ACCESS_SECRET 用于 OAuth 参数签名");
+  return createHash("sha256").update(`oauth_params_hmac_key:${secret}`).digest();
+}
+
 function storeOAuthParams(params: string): string {
-  // 清理过期条目
-  const now = Date.now();
-  for (const [id, entry] of oauthParamsStore) {
-    if (now > entry.expiresAt) oauthParamsStore.delete(id);
-  }
-  const id = randomBytes(16).toString("hex");
-  oauthParamsStore.set(id, { params, expiresAt: now + PARAMS_STORE_TTL_MS });
-  return id;
+  const expiresAt = Date.now() + PARAMS_STORE_TTL_MS;
+  const payload = `${expiresAt}:${params}`;
+  const encoded = Buffer.from(payload, "utf8").toString("base64url");
+  const sig = createHmac("sha256", getOAuthParamsHmacKey())
+    .update(encoded)
+    .digest("base64url");
+  return `${encoded}.${sig}`;
 }
 
 function getOAuthParams(id: string): string | null {
-  const entry = oauthParamsStore.get(id);
-  if (!entry || Date.now() > entry.expiresAt) {
-    oauthParamsStore.delete(id);
+  const dotIdx = id.indexOf(".");
+  if (dotIdx === -1) return null;
+  const encoded = id.slice(0, dotIdx);
+  const sig = id.slice(dotIdx + 1);
+  const expectedSig = createHmac("sha256", getOAuthParamsHmacKey())
+    .update(encoded)
+    .digest("base64url");
+  try {
+    if (
+      sig.length !== expectedSig.length ||
+      !timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))
+    ) {
+      return null;
+    }
+  } catch {
     return null;
   }
-  oauthParamsStore.delete(id); // 一次性使用
-  return entry.params;
+  let payload: string;
+  try {
+    payload = Buffer.from(encoded, "base64url").toString("utf8");
+  } catch {
+    return null;
+  }
+  const colonIdx = payload.indexOf(":");
+  if (colonIdx === -1) return null;
+  const expiresAt = parseInt(payload.slice(0, colonIdx), 10);
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return null;
+  return payload.slice(colonIdx + 1);
 }
 
 export const dynamic = "force-dynamic";
@@ -57,18 +82,15 @@ async function ensureUserConsent(
   clientId: string,
   scopes: string[]
 ): Promise<void> {
-  // 使用原生 SQL upsert 原子化合并 scope（PostgreSQL array_cat + DISTINCT unnest），
-  // 消除 read-then-write 竞态。scopes 已通过 SUPPORTED_SCOPES 白名单校验，安全拼接。
-  const scopesLiteral = `{${scopes.map((s) => `"${s}"`).join(",")}}`;
-  await prisma.$executeRawUnsafe(`
+  await prisma.$executeRaw`
     INSERT INTO "UserConsent" ("id", "userId", "clientId", "scopes", "grantedAt")
-    VALUES (gen_random_uuid(), '${userId}', '${clientId}', '${scopesLiteral}'::text[], NOW())
+    VALUES (gen_random_uuid(), ${userId}, ${clientId}, ${scopes}::text[], NOW())
     ON CONFLICT ("userId", "clientId")
     DO UPDATE SET
-      "scopes" = ARRAY(SELECT DISTINCT unnest(array_cat("UserConsent"."scopes", '${scopesLiteral}'::text[]))),
+      "scopes" = ARRAY(SELECT DISTINCT unnest(array_cat("UserConsent"."scopes", ${scopes}::text[]))),
       "revokedAt" = NULL,
       "grantedAt" = NOW()
-  `);
+  `;
 }
 
 /**
@@ -78,15 +100,11 @@ async function revokeUserConsent(
   userId: string,
   clientId: string
 ): Promise<void> {
-  const existing = await prisma.userConsent.findUnique({
-    where: { userId_clientId: { userId, clientId } },
+  // 使用 updateMany + revokedAt: null 条件消除 TOCTOU：并发 approve + deny 中 approve 优先
+  await prisma.userConsent.updateMany({
+    where: { userId, clientId, revokedAt: null },
+    data: { revokedAt: new Date() },
   });
-  if (existing && !existing.revokedAt) {
-    await prisma.userConsent.update({
-      where: { id: existing.id },
-      data: { revokedAt: new Date() },
-    });
-  }
 }
 
 /** 获取公网 origin（反向代理后 request.url 可能为 localhost） */
@@ -205,6 +223,9 @@ export async function GET(request: NextRequest) {
     const code_challenge = searchParams.get("code_challenge") || "";
     const code_challenge_method = searchParams.get("code_challenge_method") || "";
     const nonce = searchParams.get("nonce");
+    const prompt = searchParams.get("prompt") || "";
+    const maxAgeRaw = searchParams.get("max_age");
+    const loginHint = searchParams.get("login_hint") || "";
 
     if (response_type !== "code") {
       return buildErrorRedirect(
@@ -246,6 +267,26 @@ export async function GET(request: NextRequest) {
         state
       );
     }
+    if (prompt && !["none", "login", "consent", "select_account"].includes(prompt)) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "invalid_request",
+        "prompt 参数无效，仅支持 none/login/consent/select_account",
+        state
+      );
+    }
+    let maxAge: number | undefined;
+    if (maxAgeRaw !== null) {
+      maxAge = parseInt(maxAgeRaw, 10);
+      if (!Number.isFinite(maxAge) || maxAge < 0) {
+        return buildErrorRedirect(
+          safeRedirectUri,
+          "invalid_request",
+          "max_age 参数无效，必须为非负整数",
+          state
+        );
+      }
+    }
 
     // 5. scope 校验
     // 注意：openid 是 OIDC 核心 scope，所有 client 默认允许，无需在 client.scopes 中显式配置
@@ -272,28 +313,61 @@ export async function GET(request: NextRequest) {
     // 6. 检查用户登录状态
     const userToken = request.cookies.get(USER_COOKIE_NAME)?.value;
     let isLoggedIn = false;
+    let userAuthTime: Date | null = null;
     if (userToken) {
       const payload = await verifyUserToken(userToken);
       if (payload) {
-        // 额外检查：token 黑名单和账号状态
         const statusCheck = await checkUserStatus(payload.id);
         const blacklisted = await isTokenBlacklisted(payload.id);
         isLoggedIn = statusCheck.valid && !blacklisted;
+        if (isLoggedIn && payload.iat) {
+          userAuthTime = new Date(payload.iat * 1000);
+        }
       }
     }
 
-    // 7. 未登录 → 302 到登录页
+    // 7. prompt=none: 用户未登录时返回错误而非重定向
+    if (prompt === "none" && !isLoggedIn) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "login_required",
+        "用户未登录",
+        state
+      );
+    }
+
+    // 8. max_age 校验：用户认证时间超过 maxAge 秒则要求重新登录
+    if (maxAge !== undefined && isLoggedIn && userAuthTime) {
+      const authAgeSeconds = (Date.now() - userAuthTime.getTime()) / 1000;
+      if (authAgeSeconds > maxAge) {
+        isLoggedIn = false;
+      }
+    }
+
+    // 9. 未登录 → 302 到登录页（prompt=none 已在上面处理）
     if (!isLoggedIn) {
-      // 保留所有原始 query 参数
       const returnTo = `/api/oauth/authorize?${searchParams.toString()}`;
       const loginUrl = new URL("/login", getPublicOrigin(request));
       loginUrl.searchParams.set("return_to", returnTo);
       loginUrl.searchParams.set("client_name", client.name);
-      return NextResponse.redirect(loginUrl);
+      if (loginHint) loginUrl.searchParams.set("login_hint", loginHint);
+      return NextResponse.redirect(loginUrl, 302);
     }
 
-    // 8. 已登录 → 查询用户是否已授权过该 client 且 scope 未扩大
     const userPayload = (await verifyUserToken(userToken!))!;
+
+    // 10. prompt=login: 强制重新认证
+    if (prompt === "login") {
+      const returnTo = `/api/oauth/authorize?${searchParams.toString()}`;
+      const loginUrl = new URL("/login", getPublicOrigin(request));
+      loginUrl.searchParams.set("return_to", returnTo);
+      loginUrl.searchParams.set("client_name", client.name);
+      loginUrl.searchParams.set("reauth", "1");
+      if (loginHint) loginUrl.searchParams.set("login_hint", loginHint);
+      return NextResponse.redirect(loginUrl, 302);
+    }
+
+    // 11. 已登录 → 查询用户是否已授权过该 client 且 scope 未扩大
     const existingConsent = await prisma.userConsent.findUnique({
       where: { userId_clientId: { userId: userPayload.id, clientId: client_id } },
     });
@@ -301,7 +375,8 @@ export async function GET(request: NextRequest) {
       existingConsent && !existingConsent.revokedAt ? existingConsent.scopes : [];
     const alreadyConsented = requestedScopes.every((s) => grantedScopes.includes(s));
 
-    if (alreadyConsented) {
+    // 12. prompt=consent 或 select_account: 强制展示 consent 页
+    if (alreadyConsented && prompt !== "consent" && prompt !== "select_account") {
       // 已授权且 scope 未扩大：直接签发授权码并跳转回回调地址
       let codeData;
       try {
@@ -313,6 +388,7 @@ export async function GET(request: NextRequest) {
           codeChallenge: code_challenge,
           codeChallengeMethod: code_challenge_method,
           nonce: nonce || undefined,
+          ttlMs: client.codeTtlSeconds * 1000,
         });
       } catch (codeErr) {
         apiConsole.error("[OAuth Authorize GET] 创建授权码失败:", codeErr);
@@ -338,7 +414,7 @@ export async function GET(request: NextRequest) {
         detail: { scope, scopes: requestedScopes, auto_approved: true },
       });
 
-      return NextResponse.redirect(redirectUrl);
+      return NextResponse.redirect(redirectUrl, 302);
     }
 
     // 否则展示 consent 页：OAuth 参数服务端存储，URL 仅传递随机 ID
@@ -348,7 +424,7 @@ export async function GET(request: NextRequest) {
     consentUrl.searchParams.set("client_name", client.name);
     consentUrl.searchParams.set("oauth_id", storedId);
 
-    return NextResponse.redirect(consentUrl);
+    return NextResponse.redirect(consentUrl, 302);
   } catch (error) {
     apiConsole.error("[OAuth Authorize GET] 异常:", error);
     return NextResponse.json(
@@ -419,6 +495,13 @@ export async function POST(request: NextRequest) {
     const redirect_uri = typeof body.redirect_uri === "string" ? body.redirect_uri : "";
     const state = typeof body.state === "string" ? body.state : undefined;
     const action = body.action;
+
+    if (!state || state.length < 32) {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "state 参数无效或长度不足" },
+        { status: 400 }
+      );
+    }
 
     if (!client_id || !redirect_uri) {
       return NextResponse.json(
@@ -503,7 +586,7 @@ export async function POST(request: NextRequest) {
         detail: { action: "deny", scope },
       });
 
-      return NextResponse.redirect(redirectUrl);
+      return NextResponse.redirect(redirectUrl, 302);
     }
 
     // action === "approve"
@@ -561,6 +644,7 @@ export async function POST(request: NextRequest) {
         codeChallenge: code_challenge,
         codeChallengeMethod: code_challenge_method,
         nonce,
+        ttlMs: client.codeTtlSeconds * 1000,
       });
     } catch (codeErr) {
       apiConsole.error("[OAuth Authorize POST] 创建授权码失败:", codeErr);
@@ -584,7 +668,7 @@ export async function POST(request: NextRequest) {
       detail: { scope, scopes: requestedScopes },
     });
 
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(redirectUrl, 302);
   } catch (error) {
     apiConsole.error("[OAuth Authorize POST] 异常:", error);
     return NextResponse.json(

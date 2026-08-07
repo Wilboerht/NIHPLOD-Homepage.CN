@@ -58,6 +58,8 @@ function validVerifyResult() {
       scopes: ["openid"], isActive: true,
       backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
       isPublic: false,
+      codeTtlSeconds: 300,
+      accessTokenTtlSeconds: 900,
     },
     reason: "ok" as const,
   };

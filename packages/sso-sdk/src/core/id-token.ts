@@ -200,18 +200,20 @@ export async function validateIdToken(
   }
 
   // HS256：对称密钥无法安全分发给 Public Client / BFF。
-  // 默认拒绝 HS256，因为 SDK 无法安全验证其签名。
+  // SDK 拒绝 HS256 ID Token：主站需配置 RS256 密钥对以启用安全验证。
   if (alg === "HS256") {
     if (rejectHs256WhenRs256Available) {
       const jwks = await fetchJwks(normalizedIssuer);
       const hasRs256 = jwks?.keys?.some((k) => k.alg === "RS256" && k.use === "sig");
       if (hasRs256) {
-        throw new SsoError("id_token_unsupported_alg", "SSO 已配置 RS256，拒绝 HS256 ID Token");
+        throw new SsoError("id_token_unsupported_alg", "SSO 中心已配置 RS256，拒绝 HS256 ID Token");
       }
     }
     throw new SsoError(
-      "id_token_unsupported_alg",
-      "ID Token 使用 HS256 签名，SDK 无法安全验证。请主站配置 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY 启用 RS256。"
+      "id_token_hs256_unsupported",
+      "ID Token 使用 HS256 对称签名，SDK 无法安全验证。" +
+      "请联系管理员在主站配置 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY 环境变量启用 RS256 非对称签名。" +
+      "迁移期间可设置 ALLOW_HS256_FALLBACK=true 临时兼容（不推荐用于生产环境）。"
     );
   }
 

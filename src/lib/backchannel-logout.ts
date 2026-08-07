@@ -66,17 +66,11 @@ export async function sendBackchannelLogout(
     if (!sidByClient.has(s.clientId)) sidByClient.set(s.clientId, s.sessionId);
   }
 
-  // 非阻塞通知：每个 client 独立处理，失败不影响其他 client
-  for (const client of clients) {
-      if (!client.backchannelLogoutUri) continue;
-
-      // 防御性校验：仅允许 https:// 且非私有/保留 IP 的 URI
-      if (!isSafeBackchannelUrl(client.backchannelLogoutUri)) {
-        apiConsole.warn(
-          `[SLO] Backchannel logout URI 不安全，已跳过 (${client.clientId}): ${client.backchannelLogoutUri}`
-        );
-        continue;
-      }
+  // 并行通知：每个 client 独立处理，失败不影响其他 client
+  const deliveryTasks = clients
+    .filter((c) => c.backchannelLogoutUri && isSafeBackchannelUrl(c.backchannelLogoutUri))
+    .map(async (client) => {
+      if (!client.backchannelLogoutUri) return;
 
       try {
         const jti = crypto.randomUUID();
@@ -89,7 +83,6 @@ export async function sendBackchannelLogout(
           sid,
         });
 
-        // 最多重试 1 次（共 2 次尝试），间隔 2 秒
         let delivered = false;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
@@ -119,10 +112,12 @@ export async function sendBackchannelLogout(
           });
         }
       } catch (err) {
-      apiConsole.warn(
-        `[SLO] Backchannel logout token 签发失败 (${client.clientId}):`,
-        err
-      );
-    }
-  }
+        apiConsole.warn(
+          `[SLO] Backchannel logout token 签发失败 (${client.clientId}):`,
+          err
+        );
+      }
+    });
+
+  await Promise.allSettled(deliveryTasks);
 }

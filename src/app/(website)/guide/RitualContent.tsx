@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { m, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
   Clock,
@@ -101,34 +101,40 @@ export const DEFAULT_ICONS = [
 /**
  * 护肤仪式页面内容组件
  * 三层级交互式布局：Level 1 模块选择 -> Level 2 方案选择 -> Level 3 详细步骤
+ * 导航使用 window.history 驱动，避免 router.push/back 触发 RSC 重新获取数据导致卡顿
  */
-  // 添加 products 到 props
 interface RitualContentProps {
   products?: ProductData[];
 }
 
-export function RitualContent({ products = [] }: RitualContentProps) {
-  // 层级导航状态由 URL searchParams 驱动，刷新/分享链接/浏览器后退均可恢复
-  // /guide -> Level 1；?module=xx -> Level 2；?module=xx&scheme=xx -> Level 3；&sub=xx -> 子方案 Tab
-  const searchParams = useSearchParams();
-  const moduleParam = searchParams.get("module");
-  const schemeParam = searchParams.get("scheme");
-  const subParam = searchParams.get("sub");
+/** 从浏览器 URL 解析 query 参数（纯客户端，不触发 RSC） */
+function parseQueryParams(): { module: string | null; scheme: string | null; sub: string | null } {
+  if (typeof window === "undefined") return { module: null, scheme: null, sub: null };
+  const sp = new URLSearchParams(window.location.search);
+  return { module: sp.get("module"), scheme: sp.get("scheme"), sub: sp.get("sub") };
+}
 
-  // 选中的模块（非法参数按未选中处理）
-  const selectedModule: ModuleId | null =
-    moduleParam && moduleParam in defaultModuleData ? (moduleParam as ModuleId) : null;
-  // 选中的方案
-  const selectedScheme: Scheme | null = selectedModule
-    ? (defaultModuleData[selectedModule].find((s) => s.id === schemeParam) ?? null)
+/** 将 raw query 参数解析为结构化导航状态 */
+function resolveNav(raw: { module: string | null; scheme: string | null; sub: string | null }) {
+  const module: ModuleId | null =
+    raw.module && raw.module in defaultModuleData ? (raw.module as ModuleId) : null;
+  const scheme: Scheme | null = module
+    ? (defaultModuleData[module].find((s) => s.id === raw.scheme) ?? null)
     : null;
-  // 选中的子方案（Tab），未指定时默认第一个
-  const selectedSubPlan: SubPlan | null =
-    selectedScheme?.subPlans?.find((sp) => sp.id === subParam) ??
-    selectedScheme?.subPlans?.[0] ??
+  const subPlan: SubPlan | null =
+    scheme?.subPlans?.find((sp) => sp.id === raw.sub) ??
+    scheme?.subPlans?.[0] ??
     null;
+  return { module, scheme, subPlan };
+}
+
+export function RitualContent({ products = [] }: RitualContentProps) {
+  // 导航状态：从浏览器 URL 初始化，后续通过 window.history + popstate 驱动
+  const [navRaw, setNavRaw] = useState(parseQueryParams);
+  const nav = resolveNav(navRaw);
+
   // 当前层级: 1=模块选择, 2=方案选择, 3=步骤详情
-  const currentLevel = !selectedModule ? 1 : !selectedScheme ? 2 : 3;
+  const currentLevel = !nav.module ? 1 : !nav.scheme ? 2 : 3;
   // 悬停的模块索引
   const { isDrawerOpen } = useLayout();
   const { user, openCheckout } = useAuth();
@@ -164,10 +170,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   }, [currentLevel]);
 
   // 获取当前应该显示的步骤（优先使用子方案的步骤）
-  const currentSteps = selectedSubPlan?.steps || selectedScheme?.steps || [];
+  const currentSteps = nav.subPlan?.steps || nav.scheme?.steps || [];
   // 获取当前应该显示的产品（优先使用子方案的产品）
   const currentProducts: RitualProductRef[] =
-    selectedSubPlan?.products || selectedScheme?.products || defaultRelatedProducts;
+    nav.subPlan?.products || nav.scheme?.products || defaultRelatedProducts;
 
   // 产品详情弹窗状态
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -276,53 +282,106 @@ export function RitualContent({ products = [] }: RitualContentProps) {
       sessionStorage.removeItem("pendingProductDrawer");
       params.delete("restoreProductDrawer");
       const newQuery = params.toString();
-      router.replace(`/guide${newQuery ? `?${newQuery}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/guide${newQuery ? `?${newQuery}` : ""}`);
     }
-  }, [user, products, addToCart, openCheckout, showSuccess, router]);
+  }, [user, products, addToCart, openCheckout, showSuccess]);
 
   // 使用默认数据
   const moduleData = defaultModuleData;
 
+  // ====== 客户端导航函数（使用 window.history，避免 RSC 重新获取数据） ======
+
+  const navigate = useCallback(
+    (opts: { module?: string | null; scheme?: string | null; sub?: string | null; mode?: "push" | "replace" }) => {
+      const params = new URLSearchParams();
+      if (opts.module) params.set("module", opts.module);
+      if (opts.scheme) params.set("scheme", opts.scheme);
+      if (opts.sub) params.set("sub", opts.sub);
+      const url = `/guide${params.size ? "?" + params.toString() : ""}`;
+      const raw = { module: opts.module ?? null, scheme: opts.scheme ?? null, sub: opts.sub ?? null };
+      setNavRaw(raw);
+      if (opts.mode === "replace") {
+        window.history.replaceState(null, "", url);
+      } else {
+        window.history.pushState(null, "", url);
+      }
+    },
+    []
+  );
+
+  // 监听浏览器前进/后退按钮
+  useEffect(() => {
+    const handler = () => {
+      setNavRaw(parseQueryParams());
+      setCurrentStepIndex(0);
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
+
   // 选择模块：单品好物 (portable)、专业水疗 (professional)、居家仪式 (spa) 直接进入 Level 3 首个方案
-  const selectModule = (moduleId: ModuleId) => {
-    const schemes = moduleData[moduleId];
-    if (
-      (moduleId === "portable" || moduleId === "professional" || moduleId === "spa") &&
-      schemes &&
-      schemes.length > 0
-    ) {
-      router.push(`/guide?module=${moduleId}&scheme=${schemes[0].id}`, { scroll: false });
-    } else {
-      router.push(`/guide?module=${moduleId}`, { scroll: false });
-    }
-  };
+  const selectModule = useCallback(
+    (moduleId: ModuleId) => {
+      const schemes = moduleData[moduleId];
+      if (
+        (moduleId === "portable" || moduleId === "professional" || moduleId === "spa") &&
+        schemes &&
+        schemes.length > 0
+      ) {
+        navigate({ module: moduleId, scheme: schemes[0].id });
+      } else {
+        navigate({ module: moduleId });
+      }
+    },
+    [navigate]
+  );
 
   // 选择方案（情景）
-  const selectScheme = (scheme: Scheme) => {
-    if (!selectedModule) return;
-    setCurrentStepIndex(0); // 重置轮播索引
-    router.push(`/guide?module=${selectedModule}&scheme=${scheme.id}`, { scroll: false });
-  };
+  const selectScheme = useCallback(
+    (scheme: Scheme) => {
+      if (!nav.module) return;
+      setCurrentStepIndex(0);
+      navigate({ module: nav.module, scheme: scheme.id });
+    },
+    [nav.module, navigate]
+  );
 
   // 选择子方案（Tab）：用 replace，避免 Tab 切换堆叠浏览器历史
-  const selectSubPlan = (subPlan: SubPlan) => {
-    if (!selectedModule || !selectedScheme) return;
-    setCurrentStepIndex(0);
-    router.replace(
-      `/guide?module=${selectedModule}&scheme=${selectedScheme.id}&sub=${subPlan.id}`,
-      { scroll: false }
-    );
-  };
+  const selectSubPlan = useCallback(
+    (subPlan: SubPlan) => {
+      if (!nav.module || !nav.scheme) return;
+      setCurrentStepIndex(0);
+      navigate({ module: nav.module, scheme: nav.scheme.id, sub: subPlan.id, mode: "replace" });
+    },
+    [nav.module, nav.scheme, navigate]
+  );
 
-  // 返回上一级（与浏览器后退行为一致）
-  const goBack = () => {
-    router.back();
-  };
+  // 跳过 Level 2 直接到 Level 3 的模块
+  const SKIP_LEVEL2_MODULES: ModuleId[] = ["portable", "professional", "spa"];
+
+  // 返回上一级：使用 navigate + replace，避免 window.history.back() 触发 popstate
+  // 被 Next.js App Router 拦截导致 RSC 重新获取数据造成卡顿
+  const goBack = useCallback(() => {
+    setCurrentStepIndex(0);
+    if (nav.scheme && nav.module) {
+      if (SKIP_LEVEL2_MODULES.includes(nav.module)) {
+        // portable / professional / spa 直接 Level 3 → Level 1
+        navigate({ mode: "replace" });
+      } else {
+        // daily 等模块 Level 3 → Level 2：保留模块，清除方案
+        navigate({ module: nav.module, mode: "replace" });
+      }
+    } else if (nav.module) {
+      // Level 2 → Level 1：清除全部
+      navigate({ mode: "replace" });
+    }
+  }, [nav.module, nav.scheme, navigate]);
 
   // 返回 Level 1 模块选择
-  const goHome = () => {
-    router.push("/guide", { scroll: false });
-  };
+  const goHome = useCallback(() => {
+    setCurrentStepIndex(0);
+    navigate({ mode: "replace" });
+  }, [navigate]);
 
   return (
     <>
@@ -436,27 +495,28 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 )}
 
                 {/* Level 2: 方案选择 - 紧凑型精选列表 */}
-                {currentLevel === 2 && selectedModule && (
+                {currentLevel === 2 && nav.module && (
                   <m.div
                     key="mobile-l2"
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 1.02 }}
+                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-1 flex-col justify-center"
                   >
                     {/* 模块标题 - 与 Level 1 统一风格 */}
                     <div className="mb-8 flex flex-col items-center pt-3">
                       <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                        {modules.find((m) => m.id === selectedModule)?.label}
+                        {modules.find((m) => m.id === nav.module)?.label}
                       </h2>
                       <div className="mt-2 w-[70px] border-b border-brand-primary" />
                       <p className="mt-3 text-[13px] font-light leading-relaxed tracking-[0.06em] text-brand-charcoal/50">
-                        {modules.find((m) => m.id === selectedModule)?.description}
+                        {modules.find((m) => m.id === nav.module)?.description}
                       </p>
                     </div>
 
                     <div className="flex flex-col gap-3">
-                      {moduleData[selectedModule].map((scheme, idx) => (
+                      {moduleData[nav.module].map((scheme, idx) => (
                         <m.button
                           key={scheme.id}
                           initial={{ opacity: 0, x: -20 }}
@@ -494,19 +554,20 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 )}
 
                 {/* Level 3: 步骤详情 - 垂直精修指南 */}
-                {currentLevel === 3 && selectedScheme && (
+                {currentLevel === 3 && nav.scheme && (
                   <m.div
                     key="mobile-l3"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     className="flex flex-col"
                   >
                     {/* 顶部概览信息 (隐藏于 portable) */}
-                    {selectedModule !== "portable" ? (
+                    {nav.module !== "portable" ? (
                       <div className="mb-8 flex flex-col items-center pt-3">
                         <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                          {selectedScheme.name}
+                          {nav.scheme.name}
                         </h2>
                         <div className="mt-2 w-[70px] border-b border-brand-primary" />
 
@@ -551,7 +612,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 预计时长
                               </span>
                               <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
-                                {selectedScheme.totalDuration?.replace("min", "分钟") ||
+                                {nav.scheme.totalDuration?.replace("min", "分钟") ||
                                   "15-20 分钟"}
                               </span>
                             </div>
@@ -569,21 +630,21 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     ) : (
                       <div className="mb-8 flex flex-col items-center pt-3">
                         <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                          {selectedScheme.name}
+                          {nav.scheme.name}
                         </h2>
                         <div className="mt-2 w-[70px] border-b border-brand-primary" />
                       </div>
                     )}
 
                     {/* Content Rendering based on Module */}
-                    {selectedModule === "portable" ? (
+                    {nav.module === "portable" ? (
                       // Portable Module Layout
                       <div className="flex flex-col">
                         {/* Hero Image */}
                         <div className="relative mb-6 aspect-[4/3] w-full overflow-hidden rounded-xl">
                           <Image
-                            src={selectedScheme.heroImage || "/images/portable-hero-update.webp"}
-                            alt={selectedScheme.name}
+                            src={nav.scheme.heroImage || "/images/portable-hero-update.webp"}
+                            alt={nav.scheme.name}
                             fill
                             sizes="100vw"
                             className="object-cover"
@@ -591,7 +652,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           <div className="absolute inset-0 bg-gradient-to-t from-brand-charcoal/70 via-transparent to-transparent opacity-80" />
                           <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-1.5">
                             <div className="flex flex-wrap items-center gap-2">
-                              {selectedScheme.benefits?.slice(0, 3).map((benefit, i) => (
+                              {nav.scheme.benefits?.slice(0, 3).map((benefit, i) => (
                                 <span
                                   key={i}
                                   className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-white/90 backdrop-blur-sm"
@@ -606,12 +667,12 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         {/* Description Content */}
                         <div>
                           <p className="mb-4 text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
-                            {selectedScheme.desc}
+                            {nav.scheme.desc}
                           </p>
 
                           {/* Products Meta - 图标+文字，无框线 */}
                           <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-brand-charcoal/[0.06] pt-4">
-                            {selectedScheme.products?.map((prod, idx) => (
+                            {nav.scheme.products?.map((prod, idx) => (
                               <button
                                 key={prod.name}
                                 type="button"
@@ -639,11 +700,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           </div>
                         </div>
                       </div>
-                    ) : selectedModule === "professional" ? (
+                    ) : nav.module === "professional" ? (
                       <div className="flex w-full flex-col">
                         <div className="mb-3 flex items-center gap-2">
                           <h3 className="text-[17px] font-normal tracking-[0.1em] text-brand-charcoal">
-                            {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
+                            {nav.scheme?.id === "p1" ? "面部方案" : "全身方案"}
                           </h3>
                           <span className="rounded-sm bg-brand-ecru px-1.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-brand-charcoal/60">
                             招牌
@@ -651,13 +712,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         </div>
                         <div className="mb-6">
                           <p className="text-[11px] font-light tracking-[0.12em] text-brand-charcoal/45">
-                            {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
+                            {nav.scheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
                           </p>
                         </div>
 
                         {/* 中间卡片区 - 纵向列表 */}
                         <div className="mb-6 flex flex-col gap-6">
-                          {getProfessionalCards(selectedScheme?.id).map((item) => (
+                          {getProfessionalCards(nav.scheme?.id).map((item) => (
                             <div
                               key={item.image}
                               className="relative aspect-[4/3] w-full overflow-hidden rounded-xl"
@@ -733,29 +794,29 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     )}
 
                     {/* 底部信息收尾 */}
-                    {selectedModule !== "portable" && (
+                    {nav.module !== "portable" && (
                     <div className="mt-10 flex flex-col items-center text-center">
                         <div className="flex flex-col items-center gap-4">
                           {/* 核心优势 - 纯文字 */}
                           <p className="text-[12px] font-light leading-[20px] tracking-[0.06em] text-brand-charcoal/50">
                             {(
-                              selectedSubPlan?.benefits ||
-                              selectedScheme.benefits || ["保湿锁水", "屏障增强"]
+                              nav.subPlan?.benefits ||
+                              nav.scheme.benefits || ["保湿锁水", "屏障增强"]
                             ).join(" · ")}
                           </p>
 
                           {/* 特殊时期 + 认证 - 合并为一行辅助信息 */}
                           {(() => {
                             const supportText =
-                              selectedSubPlan?.specialSupport !== undefined
-                                ? selectedSubPlan.specialSupport
-                                : (selectedScheme.specialSupport ?? "孕期、月子期、轻医美术后");
+                              nav.subPlan?.specialSupport !== undefined
+                                ? nav.subPlan.specialSupport
+                                : (nav.scheme.specialSupport ?? "孕期、月子期、轻医美术后");
                             return supportText ? (
                               <p className={cn(
                                 "text-[11px] font-light leading-[18px] tracking-[0.06em]",
                                 supportText.includes("不支持") ? "text-orange-900/50" : "text-brand-charcoal/45"
                               )}>
-                                {supportText}
+                                {supportText}{supportText.includes("不支持") ? "" : "可用"}
                               </p>
                             ) : null;
                           })()}
@@ -767,7 +828,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           </div>
 
                           {/* 专业门店入驻 - 纯文字 */}
-                          {selectedModule === "professional" && (
+                          {nav.module === "professional" && (
                             <p className="pt-1 text-[12px] font-light leading-[18px] tracking-[0.04em] text-brand-charcoal/50">
                               找不到您所在城市的门店？
                               <br />
@@ -798,14 +859,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
             </div>
 
             {/* Level 3 底部 Tab 栏 - 与 /products 移动端对齐 */}
-            {currentLevel === 3 && selectedModule && selectedScheme &&
-              ((selectedScheme.subPlans && selectedScheme.subPlans.length > 1) ||
-                (["portable", "professional", "spa"].includes(selectedModule) &&
-                  moduleData[selectedModule].length > 1)) && (
+            {currentLevel === 3 && nav.module && nav.scheme &&
+              ((nav.scheme.subPlans && nav.scheme.subPlans.length > 1) ||
+                (["portable", "professional", "spa"].includes(nav.module) &&
+                  moduleData[nav.module].length > 1)) && (
               <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
-                {selectedScheme.subPlans && selectedScheme.subPlans.length > 1
-                  ? selectedScheme.subPlans.map((subPlan) => {
-                      const isActive = selectedSubPlan?.id === subPlan.id;
+                {nav.scheme.subPlans && nav.scheme.subPlans.length > 1
+                  ? nav.scheme.subPlans.map((subPlan) => {
+                      const isActive = nav.subPlan?.id === subPlan.id;
                       const Icon = TAB_ICONS[subPlan.id] || Sun;
                       return (
                         <button
@@ -822,8 +883,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         </button>
                       );
                     })
-                  : moduleData[selectedModule].map((scheme) => {
-                      const isActive = scheme.id === selectedScheme.id;
+                  : moduleData[nav.module].map((scheme) => {
+                      const isActive = scheme.id === nav.scheme!.id;
                       const Icon = TAB_ICONS[scheme.id] || Sun;
                       return (
                         <button
@@ -976,7 +1037,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 )}
 
                 {/* Level 2: 方案选择 - 桌面端 Bento Box 布局 */}
-                {currentLevel === 2 && selectedModule && (
+                {currentLevel === 2 && nav.module && (
                   <m.div
                     key="level2"
                     initial={{ opacity: 0 }}
@@ -986,7 +1047,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                     className="absolute inset-0 flex items-center justify-center overflow-visible p-5"
                   >
                     <div className="flex w-full max-w-5xl items-center justify-center gap-8 lg:gap-12">
-                      {moduleData[selectedModule].map((scheme, index) => (
+                      {moduleData[nav.module].map((scheme, index) => (
                         <m.button
                           key={scheme.id}
                           type="button"
@@ -1053,7 +1114,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 )}
 
                 {/* Level 3: 详细步骤 - 桌面端左右分栏 */}
-                {currentLevel === 3 && selectedScheme && selectedModule && (
+                {currentLevel === 3 && nav.scheme && nav.module && (
                   <m.div
                     key="level3"
                     initial={{ opacity: 0, x: 50 }}
@@ -1068,26 +1129,26 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         {/* 左侧标题组 */}
                         <div className="flex flex-row items-center gap-5">
                           <h2 className="relative pb-4 font-sans text-3xl font-light leading-none tracking-[0.08em] text-brand-charcoal after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:bg-brand-beige/60">
-                            {selectedModule === "portable" || selectedModule === "professional"
-                              ? modules.find((m) => m.id === selectedModule)?.label
-                              : selectedScheme.name}
+                            {nav.module === "portable" || nav.module === "professional"
+                              ? modules.find((m) => m.id === nav.module)?.label
+                              : nav.scheme.name}
                           </h2>
-                          {selectedModule !== "portable" && selectedModule !== "professional" && (
+                          {nav.module !== "portable" && nav.module !== "professional" && (
                             <div className="flex items-center gap-2 text-brand-charcoal/50">
                               <Clock className="h-3.5 w-3.5" />
                               <span className="font-sans text-sm tracking-[0.1em]">
-                                {selectedScheme.totalDuration || "5-10分钟"}
+                                {nav.scheme.totalDuration || "5-10分钟"}
                               </span>
                             </div>
                           )}
                         </div>
 
                         {/* 右侧子方案 Tab */}
-                        {selectedScheme.subPlans && selectedScheme.subPlans.length > 0 ? (
+                        {nav.scheme.subPlans && nav.scheme.subPlans.length > 0 ? (
                           <nav className="ml-auto flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
-                            <LayoutGroup id={`desktop-tab-${selectedModule}`}>
-                              {selectedScheme.subPlans.map((subPlan) => {
-                                const isActive = selectedSubPlan?.id === subPlan.id;
+                            <LayoutGroup id={`desktop-tab-${nav.module}`}>
+                              {nav.scheme.subPlans.map((subPlan) => {
+                                const isActive = nav.subPlan?.id === subPlan.id;
                                 return (
                                   <button
                                     key={subPlan.id}
@@ -1102,7 +1163,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     <span className="relative z-10">{subPlan.name}</span>
                                     {isActive && (
                                       <m.div
-                                        layoutId={`desktop-activeTab-${selectedModule}`}
+                                        layoutId={`desktop-activeTab-${nav.module}`}
                                         className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
                                         initial={false}
                                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -1114,11 +1175,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </LayoutGroup>
                           </nav>
                         ) : (
-                          selectedModule !== "daily" && (
+                          nav.module !== "daily" && (
                             <nav className="ml-auto flex items-center gap-1 rounded-full bg-brand-charcoal/5 p-1">
-                              <LayoutGroup id={`desktop-tab-${selectedModule}`}>
-                                {moduleData[selectedModule].map((scheme) => {
-                                  const isActive = scheme.id === selectedScheme.id;
+                              <LayoutGroup id={`desktop-tab-${nav.module}`}>
+                                {moduleData[nav.module].map((scheme) => {
+                                  const isActive = scheme.id === nav.scheme!.id;
                                   return (
                                     <button
                                       key={scheme.id}
@@ -1133,7 +1194,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       <span className="relative z-10">{scheme.name}</span>
                                       {isActive && (
                                         <m.div
-                                          layoutId={`desktop-activeTab-${selectedModule}`}
+                                          layoutId={`desktop-activeTab-${nav.module}`}
                                           className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
                                           initial={false}
                                           transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -1217,8 +1278,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </h3>
                             <div className="flex flex-wrap gap-x-6 gap-y-3">
                               {(
-                                selectedSubPlan?.benefits ||
-                                selectedScheme.benefits || ["保湿锁水", "屏障增强"]
+                                nav.subPlan?.benefits ||
+                                nav.scheme.benefits || ["保湿锁水", "屏障增强"]
                               ).map((tag) => (
                                 <div key={tag} className="group flex items-center gap-2">
                                   <span className="text-[10px] text-brand-charcoal/25">
@@ -1260,9 +1321,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           {/* Meta Item: Special Support */}
                           {(() => {
                             const supportText =
-                              selectedSubPlan?.specialSupport !== undefined
-                                ? selectedSubPlan.specialSupport
-                                : (selectedScheme.specialSupport ?? "孕期、月子期、轻医美术后");
+                              nav.subPlan?.specialSupport !== undefined
+                                ? nav.subPlan.specialSupport
+                                : (nav.scheme.specialSupport ?? "孕期、月子期、轻医美术后");
                             if (!supportText) return null;
                             const isRestricted = supportText.includes("不支持");
 
@@ -1285,7 +1346,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       isRestricted ? "text-orange-900/70" : "text-brand-charcoal/70"
                                     )}
                                   >
-                                    {supportText}
+                                {supportText}
                                   </p>
                                 </div>
                               </div>
@@ -1295,9 +1356,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                         {/* 右侧：步骤网格 (Steps Grid) - 使用 AnimatePresence 实现交叉淡入淡出 */}
                         <AnimatePresence mode="wait">
-                          {selectedModule === "professional" ? (
+                          {nav.module === "professional" ? (
                             <m.section
-                              key={`${selectedModule}-content`}
+                              key={`${nav.module}-content`}
                               className="flex w-full flex-col pb-8 pt-0"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -1308,7 +1369,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <header className="mb-8">
                                 <div className="mb-1 flex items-center gap-3">
                                   <h3 className="text-3xl font-normal tracking-wide text-brand-charcoal">
-                                    {selectedScheme?.id === "p1" ? "面部方案" : "全身方案"}
+                                    {nav.scheme?.id === "p1" ? "面部方案" : "全身方案"}
                                   </h3>
                                   <span className="rounded-sm bg-brand-ecru px-1.5 py-0.5 text-xs font-medium text-brand-charcoal">
                                     招牌
@@ -1316,7 +1377,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <p className="font-sans text-sm font-light tracking-[0.1em] text-brand-charcoal/60">
-                                    {selectedScheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
+                                    {nav.scheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
                                   </p>
                                   <p className="flex items-center text-[12px] font-normal tracking-wide text-brand-charcoal/70">
                                     <Info className="mr-1.5 h-3.5 w-3.5 text-brand-charcoal/40" />
@@ -1338,7 +1399,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                               {/* 中间卡片区 - Grid Layout */}
                               <div className="mb-8 grid grid-cols-3 gap-x-6 gap-y-10">
-                                {getProfessionalCards(selectedScheme?.id).map((item) => (
+                                {getProfessionalCards(nav.scheme?.id).map((item) => (
                                   <div
                                     key={item.image}
                                     className="group relative flex h-full w-full cursor-pointer flex-col"
@@ -1386,9 +1447,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* 底部 Logo 栏 - 无限滚动 */}
                               <HotelLogoMarquee variant="desktop" />
                             </m.section>
-                          ) : selectedModule === "portable" ? (
+                          ) : nav.module === "portable" ? (
                             <m.section
-                              key={`${selectedModule}-content`}
+                              key={`${nav.module}-content`}
                               className="scrollbar-thin flex h-full w-full flex-col overflow-y-auto pr-4"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -1399,7 +1460,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               <div className="relative mb-8 aspect-[21/10] w-full flex-shrink-0 overflow-hidden rounded-xl bg-brand-charcoal/5">
                                 <Image
                                   src={
-                                    selectedScheme.heroImage || "/images/portable-hero-update.webp"
+                                    nav.scheme.heroImage || "/images/portable-hero-update.webp"
                                   }
                                   alt="Portable Ritual"
                                   fill
@@ -1413,14 +1474,14 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* Text Content */}
                               <div className="relative mt-2 h-[48px] w-full overflow-y-auto pr-2">
                                 <p className="text-sm font-light leading-relaxed tracking-wide text-brand-charcoal/80">
-                                  {selectedScheme.desc}
+                                  {nav.scheme.desc}
                                 </p>
                               </div>
                             </m.section>
                           ) : currentSteps.length <= 3 ? (
                             /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
                             <m.section
-                              key={`${selectedModule}-simple`}
+                              key={`${nav.module}-simple`}
                               className="relative flex h-[530px] w-full items-center justify-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -1472,7 +1533,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </m.section>
                           ) : (
                             <m.section
-                              key={`${selectedModule}-paginated`}
+                              key={`${nav.module}-paginated`}
                               className="relative flex w-full flex-col items-center justify-start"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}

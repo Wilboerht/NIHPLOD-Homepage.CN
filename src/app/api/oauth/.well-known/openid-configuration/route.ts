@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
   const limitResult = await rateLimit(ip, "oauth-discovery");
   if (!limitResult.success) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return NextResponse.json({ error: "rate_limited", error_description: "请求过于频繁" }, { status: 429 });
   }
 
   // 发现文档的 issuer 必须稳定公开，优先使用环境变量中的公网地址，
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     jwks_uri: `${origin}/api/oauth/jwks`,
     introspection_endpoint: `${origin}/api/oauth/introspect`,
     revocation_endpoint: `${origin}/api/oauth/revoke`,
-    end_session_endpoint: `${origin}/logout`,
+    end_session_endpoint: `${origin}/api/oauth/end-session`,
     scopes_supported: SUPPORTED_SCOPES,
     response_types_supported: RESPONSE_TYPES,
     grant_types_supported: GRANT_TYPES,
@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
     request_uri_parameter_supported: false,
     backchannel_logout_supported: true,
     backchannel_logout_session_supported: true,
+    frontchannel_logout_supported: false,
+    frontchannel_logout_session_supported: false,
     // 非标准扩展
     service_documentation: `${origin}/docs/sso-integration`,
   };

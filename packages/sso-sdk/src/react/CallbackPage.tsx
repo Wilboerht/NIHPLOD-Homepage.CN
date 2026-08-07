@@ -29,9 +29,11 @@ export function CallbackPage() {
   useEffect(() => {
     // 弹窗模式：通过 postMessage 将回调 URL 传回主窗口，不自行处理
     if (window.opener && !window.opener.closed) {
+      const nonce = new URL(window.location.href).searchParams.get("popup_nonce");
       window.opener.postMessage(
-        { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href },
-        window.location.origin
+        { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href, nonce: nonce || undefined },
+        // 弹窗与主窗口同源（都在子项目域名下），open 注入的 opener 关系保留 origin 访问能力
+        window.opener.location.origin
       );
       setProcessing(false);
       return;

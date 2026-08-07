@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     const limitResult = await rateLimit(ip, "oauth-jwks");
     if (!limitResult.success) {
       return NextResponse.json(
-        { error: "rate_limited" },
+        { error: "rate_limited", error_description: "请求过于频繁" },
         {
           status: 429,
           headers: { "Retry-After": "60" },
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
     });
   } catch {
     return NextResponse.json(
-      { error: "server_error" },
+      { error: "server_error", error_description: "服务器内部错误" },
       { status: 500 }
     );
   }

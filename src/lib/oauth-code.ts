@@ -57,10 +57,12 @@ export async function createAuthorizationCode(params: {
   codeChallenge?: string;
   codeChallengeMethod?: string;
   nonce?: string;
+  ttlMs?: number;
 }): Promise<AuthorizationCodeData> {
   const rawCode = generateCode();
   const codeHash = hashCode(rawCode);
-  const expiresAt = new Date(Date.now() + CODE_TTL_MS);
+  const ttl = params.ttlMs || CODE_TTL_MS;
+  const expiresAt = new Date(Date.now() + ttl);
 
   const record = await prisma.oAuthAuthorizationCode.create({
     data: {
@@ -107,7 +109,7 @@ export async function consumeAuthorizationCode(
   // 在事务中原子化完成：标记 used → 读取记录，保证读后写一致性
   const record = await prisma.$transaction(async (tx) => {
     const result = await tx.oAuthAuthorizationCode.updateMany({
-      where: { code: codeHash, used: false },
+      where: { code: codeHash, used: false, expiresAt: { gte: new Date() } },
       data: { used: true },
     });
 

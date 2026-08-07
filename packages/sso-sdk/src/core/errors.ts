@@ -23,6 +23,7 @@ export type SsoErrorCode =
   | "popup_closed"
   | "id_token_invalid"
   | "id_token_unsupported_alg"
+  | "id_token_hs256_unsupported"
   | "id_token_missing_secret"
   | "id_token_invalid_signature"
   | "id_token_issuer_mismatch"

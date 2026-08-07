@@ -282,20 +282,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 定时主动刷新 Access Token（每 14 分钟一次，Access Token 15 分钟过期）
   useEffect(() => {
+    const AUTH_HINT_KEY = "auth_hint";
+    const REFRESH_FAIL_COUNT_KEY = "__nihplod_refresh_fail_count";
+    const MAX_REFRESH_FAILURES = 3; // 连续失败 3 次后停止自动刷新
+
     if (!user) {
-      // 即使 user 为 null，如果存在 auth_hint 则仍尝试恢复登录态
-      if (typeof window !== "undefined" && localStorage.getItem("auth_hint")) {
+      if (typeof window !== "undefined" && localStorage.getItem(AUTH_HINT_KEY)) {
         const intervalId = setInterval(
           () => {
-            refreshAccessToken().catch(() => {
-              // 静默刷新失败：token 可能已过期，下次 API 调用时会触发完整登录流程
-            });
+            const failCount = parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10);
+            if (failCount >= MAX_REFRESH_FAILURES) {
+              localStorage.removeItem(AUTH_HINT_KEY);
+              localStorage.removeItem(REFRESH_FAIL_COUNT_KEY);
+              return;
+            }
+            refreshAccessToken()
+              .then((ok) => {
+                if (ok) {
+                  localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
+                } else {
+                  const count = parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10) + 1;
+                  localStorage.setItem(REFRESH_FAIL_COUNT_KEY, String(count));
+                }
+              })
+              .catch(() => {
+                const count = parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10) + 1;
+                localStorage.setItem(REFRESH_FAIL_COUNT_KEY, String(count));
+              });
           },
           14 * 60 * 1000
         );
         return () => clearInterval(intervalId);
       }
       return;
+    }
+
+    // 用户已登录：重置失败计数
+    if (typeof window !== "undefined") {
+      localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
     }
 
     const intervalId = setInterval(

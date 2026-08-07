@@ -62,23 +62,42 @@ export async function POST(request: NextRequest) {
         ip: getClientIP(request),
       });
 
-      // === SLO：仅当选择“退出所有设备”时才撤销 OAuth 子项目会话并触发 Backchannel Logout ===
-      if (allDevices) {
-        // 先查询活跃的 OAuthSession（在撤销之前获取 clientId 列表）
-        const activeSessions = await prisma.oAuthSession.findMany({
-          where: { userId: user.id, revokedAt: null },
-          select: { clientId: true },
-        });
+      // 查询活跃 OAuthSession 并触发 Backchannel Logout
+      // 单设备登出：仅通知当前设备关联的 OAuth client；全设备登出：通知所有活跃 client
+      const activeSessions = await prisma.oAuthSession.findMany({
+        where: { userId: user.id, revokedAt: null },
+        select: { clientId: true },
+      });
 
-        // 撤销所有 OAuthSession
-        await prisma.oAuthSession.updateMany({
-          where: { userId: user.id, revokedAt: null },
-          data: { revokedAt: new Date() },
-        });
-
-        // Backchannel Logout（非阻塞）
-        if (activeSessions.length > 0) {
-          const clientIds = activeSessions.map((s) => s.clientId);
+      if (activeSessions.length > 0) {
+        if (!allDevices && refreshToken) {
+          const { createHash } = await import("crypto");
+          const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+          const refreshRecord = await prisma.refreshToken.findFirst({
+            where: { userId: user.id, token: tokenHash },
+            select: { clientId: true },
+          });
+          const targetClientId = refreshRecord?.clientId;
+          if (targetClientId) {
+            await prisma.oAuthSession.updateMany({
+              where: { userId: user.id, clientId: targetClientId, revokedAt: null },
+              data: { revokedAt: new Date() },
+            });
+            await sendBackchannelLogout(user.id, [targetClientId]);
+          } else {
+            await prisma.oAuthSession.updateMany({
+              where: { userId: user.id, revokedAt: null },
+              data: { revokedAt: new Date() },
+            });
+            const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+            await sendBackchannelLogout(user.id, clientIds);
+          }
+        } else {
+          await prisma.oAuthSession.updateMany({
+            where: { userId: user.id, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
           await sendBackchannelLogout(user.id, clientIds);
         }
       }

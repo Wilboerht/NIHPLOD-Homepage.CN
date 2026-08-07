@@ -137,6 +137,8 @@ export interface OAuthAccessTokenPayload extends JWTPayload {
   type: "access_token";
   client_id: string;
   scope?: string;
+  /** DPoP 绑定：RFC 9449 cnf.jkt (JWK Thumbprint) */
+  cnf?: { jkt?: string };
 }
 
 /**

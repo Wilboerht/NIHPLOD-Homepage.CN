@@ -182,9 +182,9 @@ export async function checkAndRecordNonce(nonce: string): Promise<boolean> {
       nonceCache.set(nonce, true);
       return false;
     }
-    // DB 不可用，回退到内存
-    nonceCache.set(nonce, true);
-    return true;
+    // DB 不可用：fail-closed，拒绝请求以防止重放攻击窗口
+    // 多实例部署时内存缓存不共享，放开可能导致跨实例重放
+    return false;
   }
 }
 

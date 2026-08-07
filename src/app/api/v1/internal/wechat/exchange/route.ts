@@ -40,7 +40,6 @@ import {
   signUserToken,
   signRefreshToken,
   verifyWechatExchangeToken,
-  markWechatExchangeTokenUsed,
 } from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
@@ -190,7 +189,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await markWechatExchangeTokenUsed(wechatExchangeToken);
       return NextResponse.json({
         success: true,
         data: {
@@ -289,7 +287,7 @@ async function finalizeLogin(
   });
 
   if (exchangeToken) {
-    await markWechatExchangeTokenUsed(exchangeToken);
+    // exchangeToken 已在 verifyWechatExchangeToken 中原子化消费，无需重复标记
   }
 
   return NextResponse.json({

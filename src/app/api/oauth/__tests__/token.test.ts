@@ -111,6 +111,8 @@ function validClient() {
     isActive: true,
     isPublic: false,
     backchannelLogoutUri: null,
+    codeTtlSeconds: 300,
+    accessTokenTtlSeconds: 900,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

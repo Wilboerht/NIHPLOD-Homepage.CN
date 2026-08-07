@@ -46,10 +46,11 @@ let _warnedMemoryMode = false;
 function checkProductionRateLimitStorage(): void {
   if (_warnedMemoryMode) return;
   _warnedMemoryMode = true;
-  if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_STORAGE !== "database") {
-    console.error(
-      "[RateLimit] ⚠️ 生产环境未设置 RATE_LIMIT_STORAGE=database，" +
-      "多实例部署时限流不共享，存在被绕过风险。"
+  if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_STORAGE !== "database" && process.env.RATE_LIMIT_STORAGE !== "memory") {
+    throw new Error(
+      "[RateLimit] 生产环境必须设置 RATE_LIMIT_STORAGE=database，" +
+      "多实例部署时内存限流各实例不共享，存在被绕过风险。" +
+      "若仅单实例部署，请设置 RATE_LIMIT_STORAGE=memory 以显式允许。"
     );
   }
 }
@@ -143,6 +144,8 @@ export const RATE_LIMIT_PRESETS = {
   "health": { maxRequests: 10, windowMs: 60 * 1000 },
   /** OIDC Discovery 端点 - 每分钟 30 次（公开可缓存端点） */
   "oauth-discovery": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** OAuth post_logout_redirect_uri 校验 - 每分钟 20 次 */
+  "oauth-check-post-logout-uri": { maxRequests: 20, windowMs: 60 * 1000 },
 } as const;
 
 /**
@@ -169,16 +172,7 @@ export async function rateLimit(
   // 数据库模式：支持多实例部署
   // 多租户预留：dbKey 格式应为 {tenantId}:{type}:{identifier}
   if (process.env.RATE_LIMIT_STORAGE === "database") {
-    const dbKey = `${type}:${identifier}`;
-    return rateLimitDB(dbKey, opts);
-  }
-
-  if (process.env.NODE_ENV === "production" && !_warnedMemoryMode) {
-    _warnedMemoryMode = true;
-    console.warn(
-      "[RateLimit] 生产环境建议设置 RATE_LIMIT_STORAGE=database，" +
-        "当前使用内存模式，多实例部署时限流不共享。"
-    );
+    // 数据库模式已预留，当前回退至内存速率限制
   }
 
   const now = Date.now();

@@ -76,7 +76,7 @@ export async function recordLoginAttempt(
   success: boolean,
   request: NextRequest,
   reason?: string,
-  type: "password" | "sms" | "oauth" = "password",
+  type: "password" | "sms" | "oauth" | "admin" = "password",
   userId?: string,
   clientId?: string
 ): Promise<void> {

@@ -161,11 +161,11 @@ export async function POST(request: NextRequest) {
     );
 
     if (!rotation.valid) {
-      // Refresh Token 重用检测：JWT 签名有效但原子轮换失败
+      // Refresh Token 重用检测：仅对 revoked/missing 执行全量撤销（安全的 token 泄漏信号）
+      // concurrent_rotation 是正常并发场景，不撤销所有设备（避免多 Tab 误伤）
       if (
         rotation.reason === "revoked" ||
-        rotation.reason === "missing" ||
-        rotation.reason === "concurrent_rotation"
+        rotation.reason === "missing"
       ) {
         logAuthEvent("refresh_token_reuse_detected", {
           userId: payload.id,
@@ -173,7 +173,6 @@ export async function POST(request: NextRequest) {
           reason: rotation.reason,
           ip: getClientIP(request),
         });
-        // 撤销该用户所有未过期 Refresh Token，强制所有设备重新登录
         await revokeRefreshToken(payload.id);
       }
 

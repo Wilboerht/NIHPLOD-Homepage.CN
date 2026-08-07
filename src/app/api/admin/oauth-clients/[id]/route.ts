@@ -205,8 +205,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       const userIds = [...new Set(activeSessions.map((s) => s.userId))];
       for (const userId of userIds) {
         await blacklistUserTokens(userId, "oauth_client_deleted").catch(() => {});
+        await sendBackchannelLogout(userId, [client.clientId], { includeInactive: true });
       }
-      await sendBackchannelLogout("", [client.clientId], { includeInactive: true });
     }
 
     const deleted = await deleteOAuthClient(id);

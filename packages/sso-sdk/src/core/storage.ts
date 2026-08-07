@@ -219,13 +219,14 @@ export function clearAllSsoData(clientId?: string): void {
   removeOAuthState();
   removeReturnUrl();
 
-  // 清理所有 PKCE verifier（遍历已知前缀，localStorage key 可枚举）
+  // 清理所有 PKCE verifier：同时从当前存储适配器和 localStorage 中清除
   if (typeof localStorage !== "undefined") {
     const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-    for (let i = 0; i < localStorage.length; i++) {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
       if (key?.startsWith(prefix)) {
         _storage.remove(key.slice(STORAGE_PREFIX.length));
+        localStorage.removeItem(key);
       }
     }
   }

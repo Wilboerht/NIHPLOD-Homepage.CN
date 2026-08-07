@@ -172,6 +172,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-sessions");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin || admin.role !== "owner") {
       return NextResponse.json(

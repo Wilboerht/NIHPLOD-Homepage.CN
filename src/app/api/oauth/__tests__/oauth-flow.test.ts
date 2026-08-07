@@ -205,6 +205,8 @@ function validClient() {
     isActive: true,
     isPublic: false,
     backchannelLogoutUri: null,
+    codeTtlSeconds: 300,
+    accessTokenTtlSeconds: 900,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -267,9 +269,8 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
       }),
     });
     const authorizeRes = await authorizePost(authorizeReq);
-    // 注意：NextResponse.redirect() 在 Next.js 中默认返回 307；
-    // 题目要求 302，但生产代码未显式传入 302，因此按实际行为断言 307。
-    expect(authorizeRes.status).toBe(307);
+    // OAuth 2.0 规范推荐 302 Found 用于授权重定向
+    expect(authorizeRes.status).toBe(302);
 
     const location = authorizeRes.headers.get("location")!;
     expect(location).toContain("code=");

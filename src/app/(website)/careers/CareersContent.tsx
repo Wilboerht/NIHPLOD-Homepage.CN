@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, m } from "framer-motion";
@@ -541,7 +541,7 @@ function JobModal({
     return null;
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
     setIsDesktop(mql.matches);
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);

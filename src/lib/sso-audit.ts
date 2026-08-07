@@ -30,6 +30,9 @@ export interface SsoEventContext {
 
 /**
  * 记录 SSO 事件（异步写入，不阻塞主流程）
+ *
+ * 注意：使用 fire-and-forget 模式写入数据库，若进程在写入前崩溃可能丢失记录。
+ * 对于合规要求严格的场景，考虑使用同步写入或可靠消息队列。
  */
 export function recordSsoEvent(context: SsoEventContext): void {
   // 先写 console（DB 宕机时仍有冗余日志），

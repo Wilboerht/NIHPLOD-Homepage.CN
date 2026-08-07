@@ -24,7 +24,6 @@ import {
   signIdToken,
   signRefreshToken,
   verifyRefreshToken,
-  getRefreshTokenExpiresAt,
   getExpiresInFromToken,
   computeAtHash,
   type IdTokenClaims,
@@ -35,19 +34,20 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
+import { createHash, randomBytes } from "crypto";
 import { OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
+import { validateDPoPProof, computeDPoPAth, dpopNonceHeader } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
-import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-/** Access Token 有效期（秒）：15 分钟 */
-const ACCESS_TOKEN_EXPIRES_IN = 900;
+/** Access Token 默认有效期（秒）：15 分钟，client 可自定义覆盖 */
+const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = 900;
 
 export async function POST(request: NextRequest) {
   const corsHeaders = await getOAuthCorsHeaders(request);
-  const resJson = (body: unknown, status = 200) =>
-    NextResponse.json(body, { status, headers: corsHeaders });
+  const resJson = (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
+    NextResponse.json(body, { status, headers: { ...corsHeaders, ...extraHeaders } });
 
   try {
     const ip = getClientIP(request);
@@ -316,12 +316,41 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 签发 Access Token（OAuth 类型）
+      // DPoP 验证：客户端可选的令牌绑定证明
+      let dpopJkt: string | undefined;
+      const dpopProof = request.headers.get("DPoP");
+      if (dpopProof) {
+        const url = new URL(request.url);
+        const htu = `${url.origin}${url.pathname}`.toLowerCase();
+        const dpopResult = await validateDPoPProof(
+          dpopProof,
+          "POST",
+          htu,
+          undefined,
+          undefined,
+          `${client_id}:${user.id}`
+        );
+        if (!dpopResult.valid) {
+          const errorHeaders: Record<string, string> = {};
+          if (dpopResult.newNonce) {
+            Object.assign(errorHeaders, dpopNonceHeader(dpopResult.newNonce));
+          }
+          return NextResponse.json(
+            { error: dpopResult.error, error_description: dpopResult.errorDescription },
+            { status: 400, headers: { ...corsHeaders, ...errorHeaders } }
+          );
+        }
+        dpopJkt = dpopResult.jkt;
+      }
+
+      // 签发 Access Token（OAuth 类型），使用 client 自定义 TTL
       const accessToken = await signOAuthAccessToken({
         id: user.id,
         phone: user.phone,
         clientId: client_id,
         scope: scopeStr,
+        expiresIn: `${client.accessTokenTtlSeconds}s`,
+        dpopJkt,
       });
 
       // 签发 Refresh Token（携带 client_id / scope，用于所有权校验）
@@ -389,7 +418,7 @@ export async function POST(request: NextRequest) {
       // 记录登录尝试（OAuth 授权码登录）
       await recordLoginAttempt(user.phone, true, request, undefined, "oauth", user.id, client_id);
 
-      const expiresIn = getExpiresInFromToken(accessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
+      const expiresIn = getExpiresInFromToken(accessToken) ?? (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
       const tokenResponse: Record<string, unknown> = {
         access_token: accessToken,
@@ -404,7 +433,12 @@ export async function POST(request: NextRequest) {
         tokenResponse.id_token = idToken;
       }
 
-      return resJson(tokenResponse);
+      const extraHeaders: Record<string, string> = {};
+      if (dpopJkt) {
+        extraHeaders["DPoP-Nonce"] = randomBytes(24).toString("base64url");
+      }
+
+      return resJson(tokenResponse, 200, extraHeaders);
     }
 
     // === grant_type: refresh_token ===
@@ -506,6 +540,7 @@ export async function POST(request: NextRequest) {
         phone: refreshPayload.phone,
         clientId: client_id,
         scope: scopeStr,
+        expiresIn: `${client.accessTokenTtlSeconds}s`,
       });
 
       // 签发新的 Refresh Token 并原子化轮换（继承所有权与 scope）
@@ -597,7 +632,7 @@ export async function POST(request: NextRequest) {
       });
 
       const refreshExpiresIn = 30 * 24 * 60 * 60;
-      const newExpiresIn = getExpiresInFromToken(newAccessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
+      const newExpiresIn = getExpiresInFromToken(newAccessToken) ?? (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
       const refreshResponse: Record<string, unknown> = {
         access_token: newAccessToken,
@@ -637,15 +672,18 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 签发 Access Token（sub = client_id，无用户身份）
+      // 签发 Access Token（M2M 场景，sub = client:xxx，无用户身份）
+      // userinfo 端点通过 payload.id.startsWith("client:") 识别此类型，仅返回 sub
+      const effectiveScope = scopeRaw || "";
       const accessToken = await signOAuthAccessToken({
         id: `client:${client_id}`,
         phone: "",
         clientId: client_id,
-        scope: scopeRaw || "openid",
+        scope: effectiveScope,
+        expiresIn: `${client.accessTokenTtlSeconds}s`,
       });
 
-      const expiresIn = getExpiresInFromToken(accessToken) ?? ACCESS_TOKEN_EXPIRES_IN;
+      const expiresIn = getExpiresInFromToken(accessToken) ?? (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
       recordSsoEvent({
         event: "token",
@@ -660,7 +698,7 @@ export async function POST(request: NextRequest) {
         access_token: accessToken,
         token_type: "Bearer",
         expires_in: expiresIn,
-        scope: scopeRaw || "openid",
+        scope: effectiveScope,
       });
     }
 

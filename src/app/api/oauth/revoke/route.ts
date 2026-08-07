@@ -27,11 +27,12 @@ import { apiConsole } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const corsHeaders = await getOAuthCorsHeaders(request);
+  const resJson = (body: unknown, status = 200) =>
+    NextResponse.json(body, { status, headers: corsHeaders });
+
   try {
-    const ip = getClientIP(request);
-    const corsHeaders = await getOAuthCorsHeaders(request);
-    const resJson = (body: unknown, status = 200) =>
-      NextResponse.json(body, { status, headers: corsHeaders });
 
     // 限流
     const limitResult = await rateLimit(ip, "oauth-revoke");
@@ -162,9 +163,12 @@ export async function POST(request: NextRequest) {
     // RFC 7009: 无论 token 是否有效，总是返回 200
     return resJson({});
   } catch (error) {
-    apiConsole.error("[OAuth Revoke] 异常:", error);
-    // RFC 7009: 即使出错也返回 200（除非是 client 认证失败）
-    return NextResponse.json({});
+    apiConsole.error("[OAuth Revoke] 未预期异常:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.split("\n").slice(0, 3).join("\n") : undefined,
+    });
+    // RFC 7009: 即使出错也返回 200，但记录详细日志用于排查
+    return resJson({});
   }
 }
 

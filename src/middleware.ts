@@ -49,7 +49,12 @@ const PUBLIC_API_PREFIXES = [
 
 async function verifyToken(token: string): Promise<boolean> {
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const issuer = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+    const { payload } = await jwtVerify(token, getSecret(), {
+      issuer,
+      audience: "admin",
+      algorithms: ["HS256"],
+    });
     return (payload as Record<string, unknown>).type === "admin";
   } catch {
     return false;

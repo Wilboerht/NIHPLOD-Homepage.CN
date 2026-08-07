@@ -129,6 +129,13 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
 
+  /**
+   * GET handler: 清除本地 SSO cookies 并可选重定向到 SSO 中心登出页
+   *
+   * ⚠️ CSRF 注意：GET 请求可被跨站触发（如 `<img src="/api/auth/logout">`）。
+   * 推荐做法：在 UI 层使用 POST + CSRF token 触发登出，并仅在用户主动点击时调用。
+   * GET 方法保留仅为兼容 RP-Initiated Logout 规范（OIDC 要求 end_session_endpoint 支持 GET）。
+   */
   return async function GET(request: NextRequest) {
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;

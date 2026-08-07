@@ -297,9 +297,24 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     });
 
     // 设置 id_token cookie，用于 RP-Initiated Logout 的 id_token_hint
+    // 使用 ID Token 自身的过期时间（通常 1 小时），而非 refresh token 的 30 天
     if (tokenData.id_token) {
+      let idTokenMaxAge = 3600; // 默认 1 小时
+      try {
+        const parts = tokenData.id_token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(
+            Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+          ) as { exp?: number };
+          if (payload.exp && typeof payload.exp === "number") {
+            idTokenMaxAge = Math.max(60, payload.exp - Math.floor(Date.now() / 1000));
+          }
+        }
+      } catch {
+        // 解码失败，使用默认值
+      }
       response.cookies.set(idTokenCookieName, tokenData.id_token, {
-        ...getHostCookieOptions(refreshMaxAge),
+        ...getHostCookieOptions(idTokenMaxAge),
       });
     }
 

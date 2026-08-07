@@ -276,6 +276,7 @@ model RefreshToken {
   @@index([token])
   @@index([userId, revokedAt, expiresAt])
   @@index([userId, clientId, revokedAt, expiresAt])
+  @@index([expiresAt])
 }
 
 /**
@@ -331,6 +332,8 @@ model OAuthClient {
   isActive            Boolean  @default(true)
   isPublic            Boolean  @default(false)  // Public Client (SPA/移动端/桌面端不传 client_secret)
   backchannelLogoutUri String?            // Backchannel Logout URI
+  codeTtlSeconds      Int      @default(300)    // 授权码有效期（秒），默认 5 分钟
+  accessTokenTtlSeconds Int    @default(900)    // Access Token 有效期（秒），默认 15 分钟
   tenantId            String?              // 多租户预留：当前为 null 表示全局共享
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
@@ -370,7 +373,7 @@ model OAuthSession {
   userId               String
   clientId             String
   sessionId            String    @unique
-  authorizationCodeId  String?   // 关联的授权码（用于追溯）
+  authorizationCodeId  String?   // 关联的授权码（用于追溯）。无 FK 约束：授权码定期清理，需保留 session 记录
   scopes               String[]
   createdAt            DateTime  @default(now())
   expiresAt            DateTime
@@ -381,6 +384,8 @@ model OAuthSession {
 
   @@index([userId, clientId])
   @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@index([clientId])
 }
 
 model UserConsent {
@@ -731,6 +736,7 @@ model Admin {
 
   @@index([status])
   @@index([deletedAt])
+  @@index([role])
 }
 
 // 系统动态配置存储

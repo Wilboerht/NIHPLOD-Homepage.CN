@@ -370,39 +370,44 @@ const WECHAT_EXCHANGE_TOKEN_TTL_MS = 15 * 60 * 1000;
 
 export async function isWechatExchangeTokenUsed(token: string): Promise<boolean> {
   const hash = hashWechatExchangeToken(token);
-  // 优先检查数据库（多实例安全），回退到内存缓存
-  try {
-    const existing = await prisma.tokenBlacklist.findUnique({
-      where: { key: `we:${hash}` },
-    });
-    if (existing) {
-      if (existing.expiresAt > new Date()) return true;
-      // 已过期，视为未使用
-      return false;
-    }
-  } catch {
-    // DB 不可用时回退内存
-    return usedWechatExchangeTokens.has(hash);
-  }
   return usedWechatExchangeTokens.has(hash);
 }
 
-export async function markWechatExchangeTokenUsed(token: string): Promise<void> {
+/**
+ * 原子化消费 WeChat Exchange Token：检查 + 标记合二为一，消除 TOCTOU 窗口。
+ * 通过数据库 INSERT 唯一约束实现原子性：首次插入成功 → 未使用；P2002 冲突 → 已被使用。
+ * DB 不可用时回退到内存 LRU。
+ * @returns true 表示 token 未被使用（本次消费成功），false 表示已被使用
+ */
+export async function consumeWechatExchangeToken(token: string): Promise<boolean> {
   const hash = hashWechatExchangeToken(token);
-  // 同时写入数据库和内存（DB 优先，内存兜底）
-  usedWechatExchangeTokens.set(hash, Date.now());
+  if (usedWechatExchangeTokens.has(hash)) return false;
+
   try {
-    await prisma.tokenBlacklist.upsert({
-      where: { key: `we:${hash}` },
-      create: {
+    await prisma.tokenBlacklist.create({
+      data: {
         type: "wechat_exchange_token",
         key: `we:${hash}`,
         expiresAt: new Date(Date.now() + WECHAT_EXCHANGE_TOKEN_TTL_MS),
       },
-      update: { expiresAt: new Date(Date.now() + WECHAT_EXCHANGE_TOKEN_TTL_MS) },
     });
-  } catch {
-    // DB 写入失败，内存缓存仍然有效
+    usedWechatExchangeTokens.set(hash, Date.now());
+    return true;
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
+      // 唯一约束冲突：token 已被消费
+      usedWechatExchangeTokens.set(hash, Date.now());
+      return false;
+    }
+    // DB 不可用：回退到内存保护，保守策略（未曾见过的 token 放行）
+    if (usedWechatExchangeTokens.has(hash)) return false;
+    usedWechatExchangeTokens.set(hash, Date.now());
+    return true;
   }
 }
 
@@ -445,7 +450,9 @@ export async function verifyWechatExchangeToken(
     if ((payload as { type?: string }).type !== "wechat_exchange") {
       return null;
     }
-    if (await isWechatExchangeTokenUsed(token)) {
+    // 原子化消费：检查 + 标记合二为一，消除 TOCTOU 竞态窗口
+    const consumed = await consumeWechatExchangeToken(token);
+    if (!consumed) {
       return null;
     }
     return payload as unknown as WechatExchangePayload;
@@ -714,6 +721,8 @@ export async function signOAuthAccessToken(payload: {
   phone: string;
   clientId: string;
   scope: string;
+  expiresIn?: string;
+  dpopJkt?: string;
 }): Promise<string> {
   const scopes = payload.scope.split(" ").filter(Boolean);
   const claims: Record<string, unknown> = {
@@ -723,9 +732,12 @@ export async function signOAuthAccessToken(payload: {
     type: "access_token" as const,
   };
 
-  // 按 scope 最小化：只有申请了 phone scope 才写入手机号
   if (scopes.includes("phone")) {
     claims.phone = payload.phone;
+  }
+
+  if (payload.dpopJkt) {
+    claims.cnf = { jkt: payload.dpopJkt };
   }
 
   const jwt = new SignJWT(claims)
@@ -733,7 +745,7 @@ export async function signOAuthAccessToken(payload: {
     .setIssuer(ISSUER)
     .setAudience(payload.clientId)
     .setJti(crypto.randomUUID())
-    .setExpirationTime(accessTokenExpiresIn);
+    .setExpirationTime(payload.expiresIn || accessTokenExpiresIn);
 
   // 若配置了 RS256 密钥对，优先使用非对称签名；否则回退 HS256
   const rs256PrivateKey = await getAccessPrivateKey();

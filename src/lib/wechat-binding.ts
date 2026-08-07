@@ -169,7 +169,8 @@ export async function resolveWechatBinding(
           data: {
             wechatOpenId: wechatInfo.openid,
             wechatUnionId: wechatInfo.unionid || foundUser.wechatUnionId,
-            password: hashedPassword,
+            // 仅当用户尚无密码时才设置（新用户/临时账户升级）；已有密码的用户不受影响
+            password: foundUser.password || hashedPassword,
             nickname: foundUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
             avatar: foundUser.avatar || wechatInfo.avatar || null,
           },
@@ -195,7 +196,7 @@ export async function resolveWechatBinding(
       return {
         success: false,
         code: "WECHAT_ALREADY_BOUND",
-        message: "此微信已绑定其他账号，请使用绑定的手机号登录",
+        message: "登录信息验证失败，请重试",
       };
     }
     throw error;

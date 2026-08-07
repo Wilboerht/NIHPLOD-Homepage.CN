@@ -35,7 +35,8 @@ export async function isTrustedPostLogoutRedirectUri(
   const uriOrigin = getOrigin(uri);
   if (!uriOrigin) return false;
 
-  // 查询该 client 注册的返回地址（或所有活跃 client 若 clientId 未提供）
+  // 查询该 client 注册的返回地址
+  // 未指定 clientId 时：仅允许所有活跃 client 注册的 URI（用于通用登出场景）
   const where = clientId ? { clientId, isActive: true } : { isActive: true };
   const clients = await prisma.oAuthClient.findMany({
     where,
@@ -43,7 +44,8 @@ export async function isTrustedPostLogoutRedirectUri(
   });
 
   for (const client of clients) {
-    const registered = [...client.redirectUris, ...client.postLogoutRedirectUris];
+    // post_logout_redirect_uri 仅应匹配 postLogoutRedirectUris（OIDC 规范将其与 redirect_uri 区分）
+    const registered = client.postLogoutRedirectUris;
     for (const url of registered) {
       try {
         const reg = new URL(url);

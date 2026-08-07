@@ -200,16 +200,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 使所有 access_token 立即失效（15 分钟窗口期内不能继续使用）
+    // 先于 session 撤销执行：即使此步骤失败，密码已改+session 已撤销，风险窗口仅 15 分钟
+    try {
+      await blacklistUserTokens(user.id, "password_reset");
+    } catch (err) {
+      apiConsole.error("[ResetPassword] blacklistUserTokens 失败，access token 黑名单未更新:", err);
+    }
+
     // 密码重置后撤销所有 session，在事务中完成保证一致性
-    // 若撤销失败则整体回滚，防止"密码已改但 session 仍有效"的半成功状态
     await prisma.$transaction(async (tx) => {
-      // 撤销所有 Refresh Token
       await tx.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
 
-      // 撤销所有 OAuth Session
       const sessions = await tx.oAuthSession.findMany({
         where: { userId: user.id, revokedAt: null },
         select: { clientId: true },
@@ -225,20 +230,6 @@ export async function POST(request: NextRequest) {
         });
       }
     });
-
-    // 事务外：Backchannel Logout（非阻塞，失败不影响密码已重置的事实）
-    const activeSessionsForSlo = await prisma.oAuthSession.findMany({
-      where: { userId: user.id },
-      select: { clientId: true },
-    });
-    const uniqueSloClientIds = [...new Set(activeSessionsForSlo.map((s) => s.clientId))];
-    if (uniqueSloClientIds.length > 0) {
-      sendBackchannelLogout(user.id, uniqueSloClientIds, { includeInactive: true });
-      // Backchannel logout 中的失败由 sendBackchannelLogout 内部 catch 处理
-    }
-
-    // 使所有 access_token 立即失效（15 分钟窗口期内不能继续使用）
-    await blacklistUserTokens(user.id, "password_reset");
 
     // 清除所有类型的失败记录（短信 + 密码）
     await clearLoginAttempts(phone);

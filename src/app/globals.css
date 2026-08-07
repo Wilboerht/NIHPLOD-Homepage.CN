@@ -1158,45 +1158,6 @@
   z-index: 2;
 }
 
-/* 大卡片底部内容区 */
-.kinetic-large-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 40px;
-  background: linear-gradient(
-    to top,
-    rgba(154, 155, 155, 0.8) 0%,
-    rgba(154, 155, 155, 0.4) 50%,
-    transparent 100%
-  );
-  z-index: 5;
-}
-
-.kinetic-large-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--kinetic-text-primary);
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
-  font-family:
-    "Futura LT",
-    "Futura",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-}
-
-.kinetic-large-subtitle {
-  font-size: 1rem;
-  color: var(--kinetic-text-secondary);
-  letter-spacing: 0.2em;
-  font-family: "JetBrains Mono", monospace;
-}
-
 /* 单个卡片基础样式 */
 .kinetic-cell {
   position: relative;
@@ -1234,64 +1195,10 @@
   box-shadow: 0 2px 12px -6px rgba(0, 38, 62, 0.05);
 }
 
-.kinetic-cell-large:not(.no-hover-effect):hover {
-  transform: translateY(-4px);
-  box-shadow: 0 24px 48px -12px rgba(0, 38, 62, 0.18);
-}
-
-.kinetic-cell:not(.kinetic-cell-large):not(.no-hover-effect):hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 36px -10px rgba(0, 38, 62, 0.12);
-}
-
-/* 卡片内发光边框效果 */
-.kinetic-cell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: var(--kinetic-border-radius);
-  padding: 2px;
-  background: linear-gradient(
-    135deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(51, 51, 51, 0) 40%,
-    rgba(51, 51, 51, 0) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-}
-
 /* 禁止文字卡/登录卡的视差倾斜效果 */
 .kinetic-cell.no-hover-effect {
   transform: none !important;
   transition: none;
-}
-
-.kinetic-cell:not(.no-hover-effect):hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -12px rgba(0, 38, 62, 0.15);
-  z-index: 10;
-}
-
-.kinetic-cell:not(.no-hover-effect):hover::before {
-  opacity: 1;
-  background: linear-gradient(
-    135deg,
-    rgba(85, 85, 85, 0.8) 0%,
-    rgba(85, 85, 85, 0.4) 30%,
-    transparent 60%,
-    transparent 100%
-  );
 }
 
 /* ========== 图片卡片样式 ========== */
@@ -1310,11 +1217,6 @@
   transition:
     transform 0.6s var(--kinetic-ease),
     filter 0.6s var(--kinetic-ease);
-}
-
-.kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
-  transform: scale(1.03);
-  filter: saturate(1.03) contrast(1.03);
 }
 
 /* 键盘焦点可访问性 - 白色 outline 适配深色/浅色各类卡片 */
@@ -1346,25 +1248,6 @@
     "Futura",
     "PingFang SC",
     "Source Han Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  position: relative;
-  z-index: 2;
-}
-
-.kinetic-title-lg {
-  font-size: 2.2rem;
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 12px;
-  letter-spacing: -1px;
-  color: var(--kinetic-text-primary);
-  font-family:
-    "Futura LT",
-    "Futura",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -1452,16 +1335,6 @@
   z-index: 2;
 }
 
-.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-description,
-.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
-  color: #c0c0c0;
-  letter-spacing: 2px;
-}
-
-.kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
-  letter-spacing: 0.12em;
-}
-
 /* ========== 登录卡片样式 ========== */
 
 .kinetic-login-cell {
@@ -1482,24 +1355,6 @@
 }
 
 /* ========== 响应式布局 ========== */
-
-/* 平板端 - 2列布局 */
-@media (max-width: 900px) {
-  .kinetic-container {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-    gap: 16px;
-  }
-
-  .kinetic-cell {
-    padding: 30px;
-  }
-
-  .kinetic-name,
-  .kinetic-title-sm {
-    font-size: 1.8rem;
-  }
-}
 
 /* 移动端与平板端 (iPad) - 采用精简布局 */
 @media (max-width: 1024px) {
@@ -1553,7 +1408,7 @@
       /* 收紧为悬浮展台比例：总高约 56vh，上下留出呼吸空间，左右边距更从容 */
       width: min(82vw, 36vh);
       max-width: 420px;
-      gap: 14px;
+      gap: 12px;
       top: 55%;
     }
 
@@ -1588,11 +1443,6 @@
       box-shadow: 0 4px 12px -6px rgba(120, 90, 50, 0.1) !important;
     }
 
-    /* 登录卡内容瘦身配合紧凑容器，防止矮屏/iPad mini 上按钮被 overflow:hidden 裁切 */
-    .kinetic-login-cell {
-      padding: 8px 10px !important;
-    }
-
     /* 低矮设备容错（折叠屏半开/矮屏）：收紧定位与间距，避开底部 Dock */
     @media (max-height: 600px) {
       .kinetic-container {
@@ -1600,6 +1450,13 @@
         top: 50%;
         gap: 10px;
       }
+    }
+  }
+
+  /* 横屏设备：放弃 vh 基准宽度，改用 vw 基准，避免便当盒在 iPad/手机横屏时过窄 */
+  @media (max-height: 700px) {
+    .kinetic-container {
+      width: min(60vw, 440px);
     }
   }
 
@@ -1678,6 +1535,13 @@
   @media (min-width: 601px) {
     .kinetic-login-cell {
       padding: 24px;
+    }
+  }
+
+  /* 矮屏下登录卡进一步紧缩，防止按钮被 overflow 裁切 */
+  @media (max-height: 600px) {
+    .kinetic-login-cell {
+      padding: 8px 10px;
     }
   }
 

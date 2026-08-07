@@ -304,9 +304,12 @@ export class SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    const popupNonce = generateState(); // 独立的 nonce 用于 postMessage 来源验证
 
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    // 保存 popup nonce 到 sessionStorage，用于 postMessage 校验
+    savePkceVerifier(`${this.config.clientId}_popup_nonce`, popupNonce);
 
     if (options.returnUrl) {
       saveReturnUrl(options.returnUrl);
@@ -321,6 +324,8 @@ export class SsoClient {
     params.set("state", state);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
+    // 弹窗 nonce：回调页通过 postMessage 回传，主窗口校验防伪造
+    params.set("popup_nonce", popupNonce);
 
     const width = options.width || 480;
     const height = options.height || 640;
@@ -346,11 +351,15 @@ export class SsoClient {
     if (!popup) {
       removePkceVerifier(this.config.clientId);
       removeOAuthState(this.config.clientId);
+      removePkceVerifier(`${this.config.clientId}_popup_nonce`);
       throw new SsoError(
         "popup_blocked",
         "弹窗被浏览器拦截，请允许弹窗后重试"
       );
     }
+
+    // 计算 redirect_uri 的 origin，用于 postMessage 来源校验
+    const redirectUriOrigin = new URL(this.config.redirectUri).origin;
 
     try {
       // 聚焦弹窗
@@ -361,10 +370,15 @@ export class SsoClient {
 
         const handleMessage = (event: MessageEvent) => {
           if (completed) return;
-          // 校验消息来源：必须来自 SSO 中心
-          if (event.origin !== this.config.ssoBaseUrl) return;
+          // 校验消息来源：必须来自 redirect_uri 对应的子项目 origin（回调页运行位置）
+          if (event.origin !== redirectUriOrigin) return;
           if (!event.data || event.data.type !== "nihplod_sso_popup_callback") return;
           if (!event.data.callbackUrl) return;
+
+          // 校验 popup nonce：防止伪造的 postMessage
+          const savedNonce = getPkceVerifier(`${this.config.clientId}_popup_nonce`);
+          if (savedNonce && event.data.nonce !== savedNonce) return;
+          removePkceVerifier(`${this.config.clientId}_popup_nonce`);
 
           completed = true;
           cleanup();
@@ -396,6 +410,7 @@ export class SsoClient {
         const cleanup = () => {
           clearInterval(pollTimer);
           window.removeEventListener("message", handleMessage);
+          removePkceVerifier(`${this.config.clientId}_popup_nonce`);
         };
 
         window.addEventListener("message", handleMessage);
@@ -403,6 +418,7 @@ export class SsoClient {
     } catch (err) {
       removePkceVerifier(this.config.clientId);
       removeOAuthState(this.config.clientId);
+      removePkceVerifier(`${this.config.clientId}_popup_nonce`);
       throw err;
     }
   }
@@ -445,7 +461,6 @@ export class SsoClient {
         "State 参数不匹配，可能存在 CSRF 攻击"
       );
     }
-    removeOAuthState(this.config.clientId);
 
     // 获取 code_verifier
     const verifier = getPkceVerifier(this.config.clientId);
@@ -455,7 +470,6 @@ export class SsoClient {
         "code_verifier 不存在（可能已过期或来自其他标签页）"
       );
     }
-    removePkceVerifier(this.config.clientId);
 
     // 交换 token
     const tokenEndpoint = await this._getTokenEndpoint();
@@ -489,6 +503,10 @@ export class SsoClient {
         (errData.error_description as string) || `Token 请求失败: HTTP ${res.status}`
       );
     }
+
+    // Token 交换成功后清除 state 和 verifier
+    removeOAuthState(this.config.clientId);
+    removePkceVerifier(this.config.clientId);
 
     const data: TokenResponse = await res.json();
 
@@ -557,7 +575,7 @@ export class SsoClient {
       body.set("client_secret", this.config.clientSecret);
     }
 
-    let res: Response;
+    let res: Response | null = null;
     let lastErr: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -573,7 +591,7 @@ export class SsoClient {
         if (attempt < 1) await new Promise((r) => setTimeout(r, 1000));
       }
     }
-    if (lastErr) {
+    if (lastErr || !res) {
       throw new SsoError("network_error", "刷新 Token 网络请求失败", lastErr);
     }
 
@@ -592,6 +610,21 @@ export class SsoClient {
     }
 
     const data: TokenResponse = await res.json();
+
+    if (data.id_token) {
+      try {
+        await validateIdToken(
+          data.id_token,
+          data.access_token,
+          this.config.ssoBaseUrl,
+          this.config.clientId
+        );
+      } catch (err) {
+        removeTokenData(this.config.clientId);
+        throw err;
+      }
+    }
+
     const now = Date.now();
     const tokenData: TokenData = {
       access_token: data.access_token,
@@ -723,7 +756,7 @@ export class SsoClient {
       // OIDC RP-Initiated Logout：携带 client_id / post_logout_redirect_uri / id_token_hint / state
       const discovery = await this._getDiscovery();
       const endSessionEndpoint =
-        discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/logout`;
+        discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", this.config.clientId);
       const postLogoutUri = this.config.postLogoutRedirectUri || this.config.redirectUri;

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const { client_id, client_secret } = getClientCredentials(request, body);
 
     if (!client_id) {
-      return resJson({ error: "invalid_client" }, 401);
+      return resJson({ error: "invalid_client", error_description: "缺少 client_id" }, 401);
     }
 
     // 验证 client：Public Client 允许不传 secret
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { reason: verifyResult.reason },
       });
-      return resJson({ error: "invalid_client" }, 401);
+      return resJson({ error: "invalid_client", error_description: "Client 认证失败" }, 401);
     }
     const client = verifyResult.client;
 
@@ -107,19 +107,23 @@ export async function POST(request: NextRequest) {
       return resJson({ active: false });
     }
 
-    // 检查黑名单
-    const blacklisted = await isTokenBlacklisted(payload.id);
-    if (blacklisted) {
-      recordSsoEvent({
-        event: "introspect",
-        userId: payload.id,
-        clientId: client_id,
-        clientName: client.name,
-        ip,
-        success: true,
-        detail: { active: false, reason: "blacklisted" },
-      });
-      return resJson({ active: false });
+    const isM2m = payload.id.startsWith("client:");
+
+    // 用户级黑名单检查（M2M token 无需检查，无关联用户）
+    if (!isM2m) {
+      const blacklisted = await isTokenBlacklisted(payload.id);
+      if (blacklisted) {
+        recordSsoEvent({
+          event: "introspect",
+          userId: payload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: true,
+          detail: { active: false, reason: "blacklisted" },
+        });
+        return resJson({ active: false });
+      }
     }
 
     // 检查 JTI 级令牌撤销
@@ -158,9 +162,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     apiConsole.error("[OAuth Introspect] 异常:", error);
+    const corsHeaders = await getOAuthCorsHeaders(request);
     return NextResponse.json(
-      { error: "server_error" },
-      { status: 500 }
+      { error: "server_error", error_description: "服务器内部错误" },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

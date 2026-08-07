@@ -66,6 +66,13 @@ export interface SsoMiddlewareConfig {
    */
   clientSecret?: string;
 
+  /**
+   * 是否对 ssoCookieName 对应的主站 Cookie 进行 Introspection 二次验证。
+   * 默认 false（仅检查 Cookie 存在性以降低延迟）。
+   * 启用后每个请求会额外调用 SSO 中心 Introspection 端点验证 token 有效性。
+   */
+  validateSsoCookie?: boolean;
+
   /** Access Token Cookie 名称，默认 __Host-nihplod_sso_at */
   accessTokenCookieName?: string;
 
@@ -181,6 +188,11 @@ async function introspectAccessToken(
     });
 
     if (!res.ok) {
+      // 仅缓存确定性的"token 无效"结果；网络错误不缓存，下次重试
+      if (res.status !== 401 && res.status !== 403) {
+        // 非认证错误（如 500、网络问题）：不缓存，让下次请求重试
+        return false;
+      }
       introspectionCache.set(cacheKey, { active: false, until: now + INTROSPECT_CACHE_TTL_MS });
       return false;
     }
@@ -189,7 +201,7 @@ async function introspectAccessToken(
     introspectionCache.set(cacheKey, { active, until: now + INTROSPECT_CACHE_TTL_MS });
     return active;
   } catch {
-    introspectionCache.set(cacheKey, { active: false, until: now + INTROSPECT_CACHE_TTL_MS });
+    // 网络异常不缓存：下次请求会重试 introspection
     return false;
   }
 }
@@ -208,6 +220,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     publicPaths = [],
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
+    validateSsoCookie = false,
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
@@ -243,7 +256,21 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     // Check for existing SSO session
     const ssoSession = request.cookies.get(ssoCookieName);
     if (ssoSession?.value) {
-      return NextResponse.next();
+      // 可选：对主站 Cookie 进行 Introspection 二次验证
+      if (validateSsoCookie) {
+        const tokenActive = await introspectAccessToken(
+          ssoSession.value,
+          normalizedBase,
+          clientId,
+          clientSecret
+        );
+        if (tokenActive) {
+          return NextResponse.next();
+        }
+        // Token 无效：继续到 access_token cookie 检查或重定向
+      } else {
+        return NextResponse.next();
+      }
     }
 
     // Check for access_token in cookie (set by callback handler)

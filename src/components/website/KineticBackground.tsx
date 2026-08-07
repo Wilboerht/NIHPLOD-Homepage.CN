@@ -51,7 +51,7 @@ export function KineticBackground() {
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
-    const mql = window.matchMedia("(min-width: 1280px)");
+    const mql = window.matchMedia("(min-width: 1025px)");
     setIsDesktop(mql.matches);
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     mql.addEventListener("change", handler);
@@ -121,7 +121,7 @@ export function KineticBackground() {
             fill
             className="kinetic-cell-image"
             style={{ objectPosition: "center 30%" }}
-            sizes="(max-width: 819px) 43vw, 30vw"
+            sizes="(max-width: 819px) 40vw, (max-width: 1024px) 25vw, 22vw"
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#D4C4A8]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
             <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
@@ -156,7 +156,7 @@ export function KineticBackground() {
             fill
             className="kinetic-cell-image"
             style={{ objectPosition: "center 40%" }}
-            sizes="(max-width: 819px) 86vw, 50vw"
+            sizes="(max-width: 819px) 82vw, (max-width: 1024px) 80vw, 36vw"
           />
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
             <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
@@ -173,7 +173,7 @@ export function KineticBackground() {
               alt="旎柏品牌故事 - 桌面端展示"
               fill
               className="kinetic-cell-image"
-              sizes="25vw"
+              sizes="22vw"
             />
           ) : (
             <Image
@@ -181,7 +181,7 @@ export function KineticBackground() {
               alt="旎柏品牌故事 - 移动端展示"
               fill
               className="kinetic-cell-image"
-              sizes="100vw"
+              sizes="(max-width: 819px) 82vw, (max-width: 1024px) 80vw, 22vw"
             />
           )}
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#DECCB0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
