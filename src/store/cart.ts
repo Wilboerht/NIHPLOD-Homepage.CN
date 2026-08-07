@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 
 export interface CartItem {
   id: string;
@@ -60,30 +60,24 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     set({ isLoading: true });
     try {
-      const res = await fetch("/api/cart");
-      if (res.status === 401) {
-        // 静默处理未授权，清空购物车状态
-        set({ items: [], totalItems: 0 });
-        return;
-      }
-      if (res.ok) {
-        const data: CartResponse = await res.json();
-        if (data.success) {
-          set({
-            items: data.data.items.map((item) => ({
-              id: item.id,
-              productId: item.product.id,
-              name: item.product.name,
-              price: item.price,
-              quantity: item.quantity,
-              image: item.product.featuredImage,
-            })),
-            totalItems: data.data.totalItems,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Fetch cart error:", error);
+      const data = await apiGet<{
+        items: CartResponseItem[];
+        totalItems: number;
+      }>("/api/cart");
+      set({
+        items: data.items.map((item) => ({
+          id: item.id,
+          productId: item.product.id,
+          name: item.product.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.product.featuredImage,
+        })),
+        totalItems: data.totalItems,
+      });
+    } catch {
+      // 401 或网络错误时静默处理，清空购物车状态
+      set({ items: [], totalItems: 0 });
     } finally {
       set({ isLoading: false });
     }

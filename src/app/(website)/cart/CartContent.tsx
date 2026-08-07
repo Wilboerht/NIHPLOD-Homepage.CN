@@ -13,6 +13,7 @@ import { apiPut, apiDelete } from "@/lib/api-client";
 import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/utils";
 import { AdvisorCTA } from "@/components/website";
+import { useCartStore } from "@/store/cart";
 
 interface CartItem {
   id: string;
@@ -45,7 +46,8 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   const toast = useToast();
   const { user, openCheckout, redirectToLogin } = useAuth();
   const [items, setItems] = useState(initialItems);
-  const [loading, _setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const fetchZustandCart = useCartStore((s) => s.fetchCart);
   const autoOpenedRef = useRef(false);
 
   // 计算选中商品总价
@@ -79,22 +81,32 @@ export default function CartContent({ initialItems, autoOpenCheckout = false }: 
   // 更新数量
   const updateQuantity = async (id: string, quantity: number) => {
     if (quantity < 1) return;
-
+    setLoading(true);
     try {
       await apiPut(`/api/cart/${id}`, { quantity });
       setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
+      await fetchZustandCart();
     } catch (e) {
       console.error("更新数量失败:", e);
+      toast.error("更新数量失败，请重试");
+    } finally {
+      setLoading(false);
     }
   };
 
   // 删除商品
   const removeItem = async (id: string) => {
+    setLoading(true);
     try {
       await apiDelete(`/api/cart/${id}`);
       setItems((prev) => prev.filter((i) => i.id !== id));
+      await fetchZustandCart();
+      toast.success("已移出购物车");
     } catch (e) {
       console.error("删除失败:", e);
+      toast.error("删除失败，请重试");
+    } finally {
+      setLoading(false);
     }
   };
 

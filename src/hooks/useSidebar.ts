@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useMediaQuery } from "./useMediaQuery";
+import { useScrollLock } from "./useScrollLock";
 
 interface UseSidebarReturn {
   isOpen: boolean;
@@ -61,17 +62,8 @@ export function useSidebar(): UseSidebarReturn {
     }
   }, [isMobile]);
 
-  // 移动端打开侧边栏时禁止 body 滚动
-  useEffect(() => {
-    if (isMobile && isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobile, isOpen]);
+  // 使用全局共享的滚动锁，与其他弹窗（Modal、CartDrawer）协同，避免互相覆盖
+  useScrollLock(isMobile && isOpen);
 
   return {
     isOpen,

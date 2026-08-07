@@ -10,7 +10,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "./prisma";
 
 const ALLOWED_METHODS = "GET, POST, OPTIONS";
-const ALLOWED_HEADERS = "Content-Type, Authorization";
+const ALLOWED_HEADERS = "Content-Type, Authorization, DPoP";
 const MAX_AGE = "3600"; // 1 小时，与 origin 缓存 10s TTL 保持合理差异
 const ORIGINS_CACHE_TTL_MS = 10_000; // 10 秒，降低新增/禁用 client 后的延迟
 

@@ -286,9 +286,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const relatedProducts = await getRelatedProducts(product.categoryId, product.id);
-  const categories = await getCategories();
-  const navProducts = await getNavProducts();
+  const [relatedProducts, categories, navProducts] = await Promise.all([
+    getRelatedProducts(product.categoryId, product.id),
+    getCategories(),
+    getNavProducts(),
+  ]);
 
   // 面包屑导航数据
   const breadcrumbs = [

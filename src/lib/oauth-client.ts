@@ -8,6 +8,7 @@ import { prisma } from "./prisma";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { getInternalApiKeys } from "./internal-api";
+import { apiConsole } from "@/lib/logger";
 import { sendBackchannelLogout } from "./backchannel-logout";
 
 // ============================================
@@ -402,7 +403,8 @@ export async function updateOAuthClient(
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     };
-  } catch {
+  } catch (err) {
+    apiConsole.error("[OAuthClient] updateOAuthClient 失败:", err);
     return null;
   }
 }
@@ -445,7 +447,8 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
     });
 
     return true;
-  } catch {
+  } catch (err) {
+    apiConsole.error("[OAuthClient] deleteOAuthClient 失败:", err);
     return false;
   }
 }

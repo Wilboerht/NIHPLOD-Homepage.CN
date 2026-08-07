@@ -64,6 +64,9 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`购物袋，共 ${totalItems} 件商品`}
             className="fixed right-0 top-0 z-[101] flex h-full w-full max-w-md flex-col bg-[#FBF8F0] pt-[env(safe-area-inset-top,0px)] shadow-2xl sm:w-[450px]"
           >
             {/* Header */}
@@ -75,6 +78,7 @@ export function CartDrawer() {
               </h2>
               <button
                 onClick={closeCart}
+                aria-label="关闭购物袋"
                 className="text-brand-brown/60 hover:bg-brand-brown/5 hover:text-brand-brown rounded-full p-2 transition-colors"
               >
                 <X className="h-6 w-6" />
@@ -123,6 +127,7 @@ export function CartDrawer() {
                           </div>
                           <button
                             onClick={() => removeItem(item.id)}
+                            aria-label={`删除 ${item.name}`}
                             className="text-brand-brown/40 hover:text-brand-red h-fit p-1 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -132,9 +137,11 @@ export function CartDrawer() {
                         <div className="flex items-center gap-3">
                           <div className="border-brand-brown/20 flex items-center rounded-full border px-2 py-1">
                             <button
+                              type="button"
                               onClick={() =>
                                 updateQuantity(item.id, Math.max(1, item.quantity - 1))
                               }
+                              aria-label="减少数量"
                               className="text-brand-brown/60 hover:text-brand-brown p-1 disabled:opacity-30"
                               disabled={item.quantity <= 1}
                             >
@@ -144,7 +151,9 @@ export function CartDrawer() {
                               {item.quantity}
                             </span>
                             <button
+                              type="button"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              aria-label="增加数量"
                               className="text-brand-brown/60 hover:text-brand-brown p-1"
                             >
                               <Plus className="h-3 w-3" />

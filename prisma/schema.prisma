@@ -344,6 +344,7 @@ model OAuthClient {
 
   @@index([isActive])
   @@index([tenantId])
+  @@index([name])
 }
 
 model OAuthAuthorizationCode {

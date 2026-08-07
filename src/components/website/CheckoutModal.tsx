@@ -212,12 +212,16 @@ export function CheckoutModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="确认订单"
             className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-[#FBF8F0] shadow-2xl"
             style={{ backgroundImage: TEXTURE_BG }}
           >
             {/* 关闭按钮 */}
             <button
               onClick={closeCheckout}
+              aria-label="关闭结算弹窗"
               className="absolute right-4 z-10 rounded-full p-2 text-[#4A6272] transition-colors hover:bg-[#FBF8F0] hover:text-[#00263E]"
               style={{ top: `calc(1rem + env(safe-area-inset-top, 0px))` }}
             >
