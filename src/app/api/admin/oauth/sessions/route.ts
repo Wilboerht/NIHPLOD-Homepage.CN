@@ -322,8 +322,15 @@ export async function DELETE(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    // 确认操作：要求请求体携带 confirm: true 防止误操作
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown> = {};
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请求格式错误" } },
+        { status: 400 }
+      );
+    }
     if (!body.confirm) {
       return NextResponse.json(
         { success: false, error: { code: "CONFIRM_REQUIRED", message: "请确认此操作" } },

@@ -168,6 +168,11 @@ export async function POST(request: NextRequest) {
       description: sanitizeHtml(validated.description),
       ingredients: sanitizeHtml(validated.ingredients),
       usage: sanitizeHtml(validated.usage),
+      purchaseUrl: validated.purchaseUrl ? sanitizeHtml(validated.purchaseUrl) : validated.purchaseUrl,
+      purchaseLinks: validated.purchaseLinks?.map((link) => ({
+        ...link,
+        platform: sanitizeHtml(link.platform),
+      })),
     };
 
     // 检查 slug 是否重复

@@ -75,7 +75,7 @@ export async function shipOrder(
       });
     });
 
-    console.log(`[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ${trackingNo}`);
+    apiConsole.info(`[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ****${trackingNo.slice(-4)}`);
     return { success: true };
   } catch (error) {
     apiConsole.error("[Logistics] 发货失败:", error);

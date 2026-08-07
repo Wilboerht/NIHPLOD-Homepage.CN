@@ -11,6 +11,23 @@ import { unstable_cache } from "next/cache";
 import { OrderStatus } from "@/generated/prisma/client";
 import prisma from "./prisma";
 
+function getTodayUTC8(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), -8, 0, 0, 0)
+  );
+}
+
+function getMonthStartUTC8(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, -8, 0, 0, 0)
+  );
+}
+
+const STATS_REVALIDATE =
+  parseInt(process.env.ADMIN_STATS_CACHE_TTL ?? "", 10) || 300;
+
 export interface AdminStatsData {
   products: number;
   categories: number;
@@ -45,10 +62,11 @@ export interface SsoStatsData {
   successRate: number;
 }
 
+const STATS_CACHE_TAGS = ["admin-stats"];
+
 const getCachedStats = unstable_cache(
   async (dateStr: string) => {
-    const todayStart = new Date(dateStr);
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = getTodayUTC8();
 
     const [
       productsCount,
@@ -76,6 +94,7 @@ const getCachedStats = unstable_cache(
           paymentTime: { gte: todayStart },
           status: {
             in: [
+              OrderStatus.PAYING,
               OrderStatus.PAID,
               OrderStatus.PROCESSING,
               OrderStatus.SHIPPED,
@@ -125,8 +144,8 @@ const getCachedStats = unstable_cache(
       recentOrders,
     };
   },
-  ["admin-dashboard-stats"],
-  { revalidate: 300, tags: ["admin-stats"] }
+  STATS_CACHE_TAGS,
+  { revalidate: STATS_REVALIDATE, tags: [...STATS_CACHE_TAGS] }
 );
 
 const maskPhone = (phone: string) => phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
@@ -136,7 +155,7 @@ const maskPhone = (phone: string) => phone.replace(/(\d{3})\d{4}(\d{4})/, "$1***
  */
 export async function getAdminStats(): Promise<AdminStatsData> {
   const today = new Date();
-  const dateStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  const dateStr = `${today.getUTCFullYear()}-${today.getUTCMonth() + 1}-${today.getUTCDate()}`;
 
   const {
     productsCount,
@@ -179,9 +198,8 @@ export async function getAdminStats(): Promise<AdminStatsData> {
 
 const getCachedSsoStats = unstable_cache(
   async () => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const todayStart = getTodayUTC8();
+    const monthStart = getMonthStartUTC8();
 
     const [
       activeClients,
@@ -209,7 +227,7 @@ const getCachedSsoStats = unstable_cache(
     };
   },
   ["admin-dashboard-sso-stats"],
-  { revalidate: 300, tags: ["admin-sso-stats"] }
+  { revalidate: STATS_REVALIDATE, tags: ["admin-sso-stats"] }
 );
 
 /**

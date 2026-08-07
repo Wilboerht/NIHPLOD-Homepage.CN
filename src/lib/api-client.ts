@@ -71,7 +71,7 @@ async function refreshCSRFToken(): Promise<string | null> {
     const token = data.data?.token ?? null;
     // 同步写入客户端 Cookie，避免后续请求重复 fetch
     if (token && typeof document !== "undefined") {
-      document.cookie = `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; secure; samesite=strict`;
+      document.cookie = `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; secure; samesite=strict; max-age=3600`;
     }
     return token;
   } catch {
@@ -134,7 +134,12 @@ export async function apiRequest<T = unknown>(
       }
     }
 
-    const response = await fetch(url, init);
+    // 30 秒请求超时保护
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    init.signal = controller.signal;
+
+    const response = await fetch(url, init).finally(() => clearTimeout(timeoutId));
 
     // 尝试解析 JSON，即使状态码不是 2xx
     let data: ApiResponse<T> = { success: true };

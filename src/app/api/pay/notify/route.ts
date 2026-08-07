@@ -7,9 +7,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { handlePaymentNotify } from "@/lib/wechat-pay";
-import { isNotificationProcessed, recordNotification, markNotificationSuccess } from "@/lib/notification-idempotency";
+import { isNotificationProcessed, recordNotification } from "@/lib/notification-idempotency";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
+import prisma from "@/lib/prisma";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -42,7 +43,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });
     }
 
-    // 2. 验签 + 处理业务（验签失败直接返回 FAIL，不会创建数据库记录）
+    // 1. 预记录幂等（PENDING 状态），防止并发/重试导致重复处理
+    let notificationRecordId: string | null = null;
+    try {
+      const recordResult = await recordNotification(
+        "wechat",
+        notifyId,
+        "",
+        0,
+        {}
+      );
+      if (recordResult.success && recordResult.recordId) {
+        notificationRecordId = recordResult.recordId;
+      }
+    } catch {
+      // 记录失败不阻塞，业务处理层已有 CAS 防重
+    }
+
+    // 2. 验签 + 处理业务
     const headers = {
       "wechatpay-signature": request.headers.get("wechatpay-signature") || "",
       "wechatpay-timestamp": request.headers.get("wechatpay-timestamp") || "",
@@ -56,21 +74,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ code: "FAIL", message: result.message }, { status: 400 });
     }
 
-    // 3. 业务处理成功后，再记录幂等性
-    try {
-      const recordResult = await recordNotification(
-        "wechat",
-        notifyId,
-        result.transactionId || "",
-        (result.amount || 0) / 100, // result.amount 为分，统一转为元
-        notifyData
-      );
-      if (recordResult.success && recordResult.recordId) {
-        await markNotificationSuccess(recordResult.recordId);
+    // 3. 更新幂等记录为 SUCCESS
+    if (notificationRecordId) {
+      try {
+        await prisma.paymentNotification.update({
+          where: { id: notificationRecordId },
+          data: {
+            transactionId: result.transactionId || "",
+            amount: (result.amount || 0) / 100,
+            rawData: JSON.stringify(notifyData),
+            status: "SUCCESS",
+            processedAt: new Date(),
+          },
+        });
+      } catch (recordError) {
+        apiConsole.warn(`[PayNotify] 幂等记录更新失败 ${notifyId}:`, recordError);
       }
-    } catch (recordError) {
-      console.warn(`[PayNotify] 幂等记录失败 ${notifyId}:`, recordError);
-      // 幂等记录失败不阻塞返回成功，避免微信因幂等表故障重复回调
     }
 
     return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });

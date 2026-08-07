@@ -50,6 +50,7 @@ export default function AdminMessagesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // 详情弹窗
@@ -73,6 +74,7 @@ export default function AdminMessagesPage() {
         pageSize,
         search: debouncedSearch,
         status: statusFilter === "all" ? undefined : statusFilter,
+        type: typeFilter || undefined,
       });
       setMessages(data.items);
       setTotal(data.pagination.total);
@@ -82,7 +84,7 @@ export default function AdminMessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, statusFilter]);
+  }, [page, pageSize, debouncedSearch, statusFilter, typeFilter]);
 
   useEffect(() => {
     fetchMessages();
@@ -235,6 +237,23 @@ export default function AdminMessagesPage() {
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-32"
+          />
+          <Select
+            options={[
+              { value: "", label: "全部类型" },
+              { value: "consultation", label: "产品咨询" },
+              { value: "cooperation", label: "商务合作" },
+              { value: "feedback", label: "使用反馈" },
+              { value: "complaint", label: "投诉建议" },
+              { value: "application", label: "入驻申请" },
+              { value: "other", label: "其他问题" },
+            ]}
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
               setPage(1);
             }}
             className="w-32"

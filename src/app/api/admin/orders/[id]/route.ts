@@ -10,6 +10,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
+import { sanitizeHtml } from "@/lib/html-sanitize";
 
 const adminNoteSchema = z
   .object({
@@ -107,6 +108,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const updateData = parsed.data;
+    if (updateData.adminNote !== undefined) {
+      updateData.adminNote = sanitizeHtml(updateData.adminNote);
+    }
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "无有效更新字段" } },

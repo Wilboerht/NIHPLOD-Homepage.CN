@@ -26,7 +26,7 @@ export function formatPrice(price: number): string {
  * 支持精确匹配和 startsWith 匹配（排除首页 "/" 的误判）
  */
 export function isCurrentPage(pathname: string, href: string): boolean {
-  return href === pathname || (href !== "/" && pathname.startsWith(href));
+  return href === pathname || (href !== "/" && pathname.startsWith(href + "/"));
 }
 
 /**

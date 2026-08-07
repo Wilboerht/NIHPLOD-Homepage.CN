@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.slice(7);
 
-    // 验证 access token
+    // 验证 access token（不限制 audience：OAuth 2.0 Bearer Token 模式中 token 即凭证，
+    //   userinfo 端点不进行 client 认证。通过 DPoP token binding 防止 token 被盗后在不同 client 重用）
     const payload = await verifyOAuthAccessToken(token);
     if (!payload) {
       recordSsoEvent({
@@ -105,7 +106,9 @@ export async function GET(request: NextRequest) {
         `${payload.client_id}:${payload.id}`
       );
       if (!dpopResult.valid) {
-        const errorHeaders: Record<string, string> = {};
+        const errorHeaders: Record<string, string> = {
+          "WWW-Authenticate": `Bearer error="invalid_token", error_description="${dpopResult.errorDescription}"`,
+        };
         if (dpopResult.newNonce) {
           Object.assign(errorHeaders, dpopNonceHeader(dpopResult.newNonce));
         }

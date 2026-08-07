@@ -68,6 +68,10 @@ function LoginPageContent() {
       .catch(() => setOauthParamsError(true));
   }, [oauthId, oauthParams]);
   useEffect(() => { setMounted(true); }, []);
+  // 确保 CSRF Cookie 已设置（首次访问 consent 页时可能缺失）
+  useEffect(() => {
+    fetch("/api/auth/csrf").catch(() => {});
+  }, []);
 
   const [loading, setLoading] = useState(false);
 

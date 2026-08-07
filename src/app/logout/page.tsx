@@ -102,6 +102,9 @@ function LogoutContent() {
         throw new Error(data.error?.message || "登出失败");
       }
 
+      // 清除所有客户端存储数据（auth_hint、购物车、偏好等）
+      try { localStorage.clear(); } catch {}
+
       // 跳转到 frontchannel logout 确认页（仅传递可信的重定向地址）
       const confirmUrl = new URL("/logout/confirm", window.location.origin);
       if (trustedUri) {

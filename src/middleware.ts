@@ -20,7 +20,8 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(jwtSecret);
 }
 
-const PROTECTED_PATHS = ["/admin"];
+// "/admin" matches the dashboard exactly, "/admin/" prefix-matches all subpages
+const PROTECTED_PATHS = ["/admin", "/admin/"];
 const PUBLIC_ADMIN_PATHS = ["/admin-login"];
 
 const SENSITIVE_API_PREFIXES = ["/api/admin/"];

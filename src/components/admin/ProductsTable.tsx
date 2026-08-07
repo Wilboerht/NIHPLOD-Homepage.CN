@@ -215,6 +215,13 @@ export function ProductsTable({
       render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
     },
     {
+      key: "order",
+      title: "排序",
+      align: "right",
+      width: "70px",
+      render: (_, record) => <span className="text-sm text-brand-charcoal/40">{record.order}</span>,
+    },
+    {
       key: "salesCount",
       title: "销量",
       align: "right",

@@ -90,6 +90,8 @@ export default function EmbedAccountPage() {
   useEffect(() => {
     fetchProfile();
     fetchSessions();
+    // 预获取 CSRF Token，确保写操作可用
+    fetch("/api/auth/csrf").catch(() => {});
 
     // 通知父窗口 iframe 已加载完成
     if (window.parent !== window) {
@@ -140,7 +142,8 @@ export default function EmbedAccountPage() {
   };
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
+    const res = await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
+    if (!res.ok) return;
     // 通知父窗口用户已登出
     if (window.parent !== window) {
       window.parent.postMessage({ type: "NIHPLOD_SSO_LOGOUT" }, APP_URL);

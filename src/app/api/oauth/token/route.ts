@@ -165,23 +165,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 检查授权码过期
-      if (new Date() > codeData.expiresAt) {
-        recordSsoEvent({
-          event: "token",
-          userId: codeData.userId,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: { grant_type, reason: "code_expired" },
-        });
-        return resJson(
-          { error: "invalid_grant", error_description: "Authorization code expired" },
-          400
-        );
-      }
-
       // 校验 client_id 与授权码一致
       if (codeData.clientId !== client_id) {
         recordSsoEvent({
@@ -652,6 +635,14 @@ export async function POST(request: NextRequest) {
 
     // === grant_type: client_credentials ===
     if (grant_type === "client_credentials") {
+      // Public Client 不能使用 client_credentials（M2M 场景需要信任客户端）
+      if (client.isPublic) {
+        return resJson(
+          { error: "unauthorized_client", error_description: "Public Client 不能使用 client_credentials 模式" },
+          401
+        );
+      }
+
       // M2M 场景：Confidential Client 必须提供 client_secret
       if (!client_secret) {
         return resJson(

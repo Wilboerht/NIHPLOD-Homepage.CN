@@ -133,7 +133,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
           value={formData.name}
           onChange={(e) => updateField("name", e.target.value)}
           error={errors.name}
-          placeholder="如：护肤精华"
+          placeholder="e.g. Skincare Essence"
           required
         />
         <Input

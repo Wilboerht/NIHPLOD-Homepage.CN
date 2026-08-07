@@ -1,10 +1,11 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 import { AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/Toast";
 
 type DialogType = "info" | "warning" | "danger" | "success";
 
@@ -60,12 +61,14 @@ export function ConfirmDialog({
   confirmDisabled = false,
 }: ConfirmDialogProps) {
   const Icon = iconMap[type];
+  const { error: showError } = useToast();
 
   const handleConfirm = async () => {
     try {
       await onConfirm();
-    } catch {
-      // 错误由调用方处理，这里防止未处理 Promise rejection
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "操作失败，请重试";
+      showError(message);
     }
   };
 

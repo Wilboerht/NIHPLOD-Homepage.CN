@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // 检查退款状态：只有 REFUND_SUCCESS 表示退款成功
     // 注意：支付宝退款通知中通常不包含 refund_status 字段，此检查为防御性逻辑
     if (refundStatus && refundStatus !== "REFUND_SUCCESS") {
-      console.warn(`[AlipayRefundNotify] 退款状态无效: ${refundStatus}`);
+      apiConsole.warn(`[AlipayRefundNotify] 退款状态无效: ${refundStatus}`);
       return new NextResponse("success", { status: 200 });
     }
 
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!order) {
-      console.warn(`[AlipayRefundNotify] 订单不存在: ${tradeNo}`);
+      apiConsole.warn(`[AlipayRefundNotify] 订单不存在: ${tradeNo}`);
       if (recordId) await markNotificationSuccess(recordId);
       return new NextResponse("success", { status: 200 });
     }

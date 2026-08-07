@@ -6,6 +6,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { CategorySchema } from "@/schemas/product";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { createAuditLog } from "@/lib/audit";
 
 // GET /api/admin/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
@@ -56,6 +57,13 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/categories - 创建分类
 export async function POST(request: NextRequest) {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -63,13 +71,6 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
-    }
-
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const validated = CategorySchema.parse(body);
@@ -102,6 +103,15 @@ export async function POST(request: NextRequest) {
         order,
         visible: validated.visible,
       },
+    });
+
+    await createAuditLog({
+      action: "create_category",
+      targetType: "category",
+      targetId: category.id,
+      detail: { name: category.name, slug: category.slug },
+      adminId: admin.id,
+      request,
     });
 
     revalidateTag("admin-stats", "max");

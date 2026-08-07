@@ -35,7 +35,13 @@ export function getClientIP(
     process.env.TRUST_PROXY === "true";
 
   if (!trustProxy) {
-    // 非代理环境：回退到 socket 直连地址，避免所有限流共用 "unknown" 桶
+    // 生产环境必须配置 TRUST_PROXY=true，否则所有 IP 收敛为 "unknown"
+    // 导致全局限流桶共享，DoS 防护全部失效
+    if (process.env.NODE_ENV === "production" && !process.env.NEXT_PHASE) {
+      throw new Error(
+        "[ClientIP] 生产环境必须设置 TRUST_PROXY=true 和 TRUST_PROXY_HOPS。"
+      );
+    }
     const directIP = (request as Request & { socket?: { remoteAddress?: string } }).socket?.remoteAddress;
     return directIP || "unknown";
   }

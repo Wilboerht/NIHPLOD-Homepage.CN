@@ -26,15 +26,35 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    const body = await request.json().catch(() => ({}));
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!password) {
+      return NextResponse.json(
+        { success: false, error: { code: "PASSWORD_REQUIRED", message: "请输入当前密码以验证身份" } },
+        { status: 400 }
+      );
+    }
+
     const admin = await prisma.admin.findUnique({
       where: { id: adminPayload.id },
-      select: { id: true, email: true, totpEnabled: true },
+      select: { id: true, email: true, totpEnabled: true, password: true },
     });
 
     if (!admin) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "管理员不存在" } },
         { status: 404 }
+      );
+    }
+
+    // 必须先验证当前密码
+    const { verifyPassword } = await import("@/lib/password");
+    const passwordValid = await verifyPassword(password, admin.password);
+    if (!passwordValid) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PASSWORD", message: "密码错误" } },
+        { status: 401 }
       );
     }
 

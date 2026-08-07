@@ -267,11 +267,11 @@ export async function GET(request: NextRequest) {
         state
       );
     }
-    if (prompt && !["none", "login", "consent", "select_account"].includes(prompt)) {
+    if (prompt && !["none", "login", "consent"].includes(prompt)) {
       return buildErrorRedirect(
         safeRedirectUri,
         "invalid_request",
-        "prompt 参数无效，仅支持 none/login/consent/select_account",
+        "prompt 参数无效，仅支持 none/login/consent",
         state
       );
     }
@@ -376,7 +376,7 @@ export async function GET(request: NextRequest) {
     const alreadyConsented = requestedScopes.every((s) => grantedScopes.includes(s));
 
     // 12. prompt=consent 或 select_account: 强制展示 consent 页
-    if (alreadyConsented && prompt !== "consent" && prompt !== "select_account") {
+    if (alreadyConsented && prompt !== "consent") {
       // 已授权且 scope 未扩大：直接签发授权码并跳转回回调地址
       let codeData;
       try {

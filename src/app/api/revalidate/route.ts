@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { verifyAuth } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -17,10 +18,17 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     // 验证管理员身份
     const admin = await verifyAuth(request);
     if (!admin) {
-      return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();

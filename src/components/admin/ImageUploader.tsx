@@ -45,6 +45,19 @@ export function ImageUploader({
   const valueRef = useRef(value);
   valueRef.current = value;
 
+  const handleChange = useCallback(
+    (newImages: ImageItem[]) => {
+      const prevIds = new Set(value.map((img) => img.url));
+      value.forEach((img) => {
+        if (img.url?.startsWith("blob:") && !prevIds.has(img.url)) {
+          URL.revokeObjectURL(img.url);
+        }
+      });
+      onChange(newImages);
+    },
+    [value, onChange]
+  );
+
   // 验证文件
   const validateFile = useCallback(
     (file: File): string | null => {
@@ -113,7 +126,7 @@ export function ImageUploader({
       }
 
       if (newImages.length > 0) {
-        onChange([...value, ...newImages]);
+        handleChange([...value, ...newImages]);
       }
       setIsCompressing(false);
     },
@@ -146,7 +159,7 @@ export function ImageUploader({
     }
     const newImages = value.filter((_, i) => i !== index);
     // 重新计算 order（不可变更新）
-    onChange(newImages.map((img, i) => ({ ...img, order: i })));
+    handleChange(newImages.map((img, i) => ({ ...img, order: i })));
   };
 
   // 组件卸载时清理所有 blob URL
@@ -182,7 +195,7 @@ export function ImageUploader({
     newImages.splice(dragItem.current, 1);
     newImages.splice(dragOverIndex, 0, draggedItem);
     // 重新计算 order（不可变更新）
-    onChange(newImages.map((img, i) => ({ ...img, order: i })));
+    handleChange(newImages.map((img, i) => ({ ...img, order: i })));
 
     setDragOverIndex(null);
     dragItem.current = null;

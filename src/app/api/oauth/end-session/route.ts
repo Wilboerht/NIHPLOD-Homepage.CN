@@ -10,12 +10,22 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { isTrustedPostLogoutRedirectUri } from "@/lib/post-logout-redirect";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "oauth-check-post-logout-uri");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { error: "rate_limited", error_description: "请求过于频繁" },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = request.nextUrl;
     const idTokenHint = searchParams.get("id_token_hint");
     const postLogoutRedirectUri = searchParams.get("post_logout_redirect_uri");

@@ -11,7 +11,7 @@
  */
 import { jwtVerify, importJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { LRUCache } from "lru-cache";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 
 const DPOP_PROOF_MAX_AGE_MS = 60_000; // 1 分钟
 const DPOP_NONCE_TTL_MS = 5 * 60_000; // 5 分钟
@@ -97,6 +97,24 @@ function rotateNonce(clientUserId: string): string {
  * @param expectedNonce - 可选的期望 nonce
  * @param clientUserId - 用于 nonce 轮换的标识
  */
+// 每个 jti/nonce 的互斥锁，防止 TOCTOU 竞态下的重放绕过
+const dpopMutexMap = new Map<string, Promise<void>>();
+
+async function withDpopMutex<T>(key: string, fn: () => T | Promise<T>): Promise<T> {
+  while (dpopMutexMap.has(key)) {
+    await dpopMutexMap.get(key);
+  }
+  let resolve: () => void;
+  const promise = new Promise<void>((r) => { resolve = r; });
+  dpopMutexMap.set(key, promise);
+  try {
+    return await fn();
+  } finally {
+    dpopMutexMap.delete(key);
+    resolve!();
+  }
+}
+
 export async function validateDPoPProof(
   dpopHeader: string,
   htm: string,
@@ -138,11 +156,15 @@ export async function validateDPoPProof(
     };
   }
 
-  // jti 不得重放
-  if (usedProofJtis.has(payload.jti)) {
+  // jti 不得重放（互斥锁保护 has→set 原子性）
+  const jtiOk = await withDpopMutex(`jti:${payload.jti}`, () => {
+    if (usedProofJtis.has(payload.jti)) return false;
+    usedProofJtis.set(payload.jti, Date.now());
+    return true;
+  });
+  if (!jtiOk) {
     return { valid: false, error: "invalid_dpop_proof", errorDescription: "DPoP proof jti 已被使用" };
   }
-  usedProofJtis.set(payload.jti, Date.now());
 
   // htm 必须匹配实际 HTTP method
   if (payload.htm !== htm) {
@@ -175,12 +197,17 @@ export async function validateDPoPProof(
     };
   }
 
-  // nonce 不得重放
+  // nonce 不得重放（互斥锁保护 has→set 原子性）
   if (payload.nonce) {
-    if (usedNonces.has(payload.nonce)) {
+    const nonce = payload.nonce;
+    const nonceOk = await withDpopMutex(`nonce:${nonce}`, () => {
+      if (usedNonces.has(nonce)) return false;
+      usedNonces.set(nonce, Date.now());
+      return true;
+    });
+    if (!nonceOk) {
       return { valid: false, error: "invalid_dpop_proof", errorDescription: "DPoP nonce 已被使用" };
     }
-    usedNonces.set(payload.nonce, Date.now());
   }
 
   // 计算 jkt (JWK Thumbprint)
@@ -197,7 +224,6 @@ export async function validateDPoPProof(
  * ath = base64url(SHA-256(access_token))
  */
 export function computeDPoPAth(accessToken: string): string {
-  const { createHash } = require("crypto");
   return createHash("sha256").update(accessToken).digest("base64url");
 }
 

@@ -135,9 +135,10 @@ function createStore(): TokenBlacklistStore {
     return new DatabaseTokenBlacklistStore();
   }
   if (process.env.NODE_ENV === "production") {
-    console.warn(
-      "[TokenBlacklist] 生产环境建议设置 TOKEN_BLACKLIST_STORAGE=database，" +
-        "当前使用内存模式，多实例部署时黑名单不共享。"
+    throw new Error(
+      "[TokenBlacklist] 生产环境必须设置 TOKEN_BLACKLIST_STORAGE=database，" +
+      "多实例部署时内存黑名单不共享，封禁/撤销状态会不一致。" +
+      "若仅单实例部署，请设置 TOKEN_BLACKLIST_STORAGE=memory 以显式允许。"
     );
   }
   return new MemoryTokenBlacklistStore();

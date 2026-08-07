@@ -107,15 +107,19 @@ export async function finalizeRefund(
 
   // 记录退款流水（失败不阻断）
   if (orderPreview) {
-    await recordTransaction({
-      orderId,
-      type: "REFUND",
-      gateway: orderPreview.paymentMethod || "unknown",
-      amount: refundAmount,
-      status: "SUCCESS",
-      gatewayTrxId: orderPreview.paymentNo,
-      gatewayRefundId: refundNo,
-    });
+    try {
+      await recordTransaction({
+        orderId,
+        type: "REFUND",
+        gateway: orderPreview.paymentMethod || "unknown",
+        amount: refundAmount,
+        status: "SUCCESS",
+        gatewayTrxId: orderPreview.paymentNo,
+        gatewayRefundId: refundNo,
+      });
+    } catch (txErr) {
+      apiConsole.error("[Refund] 记录退款流水失败:", txErr);
+    }
   }
 }
 
@@ -156,7 +160,7 @@ export async function applyRefund(
         status: OrderStatus.REFUNDING,
         previousStatus: order.status, // 记录退款前状态
         remark: order.remark
-          ? `${order.remark}\n[退款申请] ${safeReason}`
+          ? `${escapeHtml(order.remark)}\n[退款申请] ${safeReason}`
           : `[退款申请] ${safeReason}`,
       },
     });
@@ -263,11 +267,17 @@ export async function processRefund(
         }
       }
 
-      // 3. 其他支付方式（如模拟支付）：直接 finalize
-      else {
+      // 3. 模拟支付（测试环境）：直接 finalize
+      else if (order.paymentMethod === "mock") {
         refundNo = `MANUAL_${Date.now()}`;
         await finalizeRefund(orderId, refundNo, refundAmount);
         refundInfo = " | 手动退款成功";
+      }
+
+      // 4. 未知的支付方式：拒绝退款
+      else {
+        apiConsole.error(`[Refund] 未知支付方式，无法自动退款: ${order.orderNo} (${order.paymentMethod})`);
+        return { success: false, error: `不支持的支付方式: ${order.paymentMethod}` };
       }
 
       // 更新 adminNote（如果上面没更新的话）

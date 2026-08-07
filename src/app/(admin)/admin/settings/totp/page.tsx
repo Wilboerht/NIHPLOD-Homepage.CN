@@ -6,6 +6,7 @@ import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2, Eye, EyeOff }
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 interface TOTPSetupData {
   qrCode: string;
@@ -272,6 +273,4 @@ export default function TOTPSettingsPage() {
   );
 }
 
-function cn(...classes: (string | false | null | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
-}
+

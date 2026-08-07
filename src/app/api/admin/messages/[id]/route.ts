@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -68,6 +69,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
       );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const { id } = await params;
@@ -145,14 +150,18 @@ export async function DELETE(
       );
     }
 
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const { id } = await params;
 
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
 
-    const rateLimitResponse2 = await checkAdminRateLimit(request);
-    if (rateLimitResponse2) return rateLimitResponse2;
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     // 检查是否存在
     const existing = await prisma.contactMessage.findUnique({ where: { id } });

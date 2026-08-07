@@ -55,6 +55,7 @@ export type AuditAction =
   | "user_oauth_revoke"
   | "user_status_change"
   | "user_deleted"
+  | "user_points_adjust"
   | "oauth_client_create"
   | "oauth_client_update"
   | "oauth_client_delete"

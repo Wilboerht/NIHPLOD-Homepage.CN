@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { OrderStatus } from "@/generated/prisma/client";
+import { maskPhone } from "@/lib/mask-phone";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
           Number(order.payAmount).toFixed(2),
           escapeCSV(order.items.map((i) => `${i.productName}x${i.quantity}`).join("; ")),
           escapeCSV(order.user?.nickname || ""),
-          escapeCSV(order.user?.phone || ""),
+          escapeCSV(order.user?.phone ? maskPhone(order.user.phone) : ""),
           order.createdAt.toISOString(),
           order.shippedAt?.toISOString() || "",
         ].join(",")

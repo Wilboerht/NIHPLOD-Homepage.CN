@@ -17,38 +17,40 @@ const globalForPrisma = globalThis as unknown as {
 
 // 创建连接池（单例）
 const isLocalDb =
-  process.env.DATABASE_URL?.includes("localhost") ||
-  process.env.DATABASE_URL?.includes("127.0.0.1");
+  process.env.DATABASE_URL?.includes("//localhost") ||
+  process.env.DATABASE_URL?.includes("//127.0.0.1");
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
-  // 生产环境强制开启 SSL。必须提供 CA 证书，拒绝不安全的 fallback。
-  // 阿里云 RDS: 下载 CA 证书并设置 DATABASE_SSL_CA=/path/to/rds-ca.pem
   ssl:
     !isLocalDb && process.env.NODE_ENV === "production"
       ? process.env.DATABASE_SSL_CA
-        ? { ca: fs.readFileSync(process.env.DATABASE_SSL_CA) }
+        ? { ca: fs.readFileSync(process.env.DATABASE_SSL_CA), rejectUnauthorized: true }
         : (() => {
             throw new Error(
               "[Prisma] 生产环境必须设置 DATABASE_SSL_CA 环境变量指向 CA 证书路径。"
             );
           })()
       : undefined,
-  // 连接池优化配置：在构建阶段会有高并发的 DB 请求
   max:
     process.env.NEXT_PHASE === "phase-production-build"
       ? 2
       : process.env.DATABASE_MAX_CONNECTIONS
-        ? parseInt(process.env.DATABASE_MAX_CONNECTIONS)
-        : 10, // 降低默认连接数，防止构建时并行进程过载导致数据库连接被服务端断开
-  // 连接空闲 30秒后释放，节省资源
+        ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
+        : 10,
   idleTimeoutMillis: 30000,
-  // 获取连接等待超时 30秒，避免请求长时间卡死
   connectionTimeoutMillis: 30000,
-  // 语句执行超时 30秒，防止慢查询耗尽连接池
-  statement_timeout: 30000,
 };
 
 const pool = globalForPrisma.pool ?? new pg.Pool(poolConfig);
+
+// 为每个新连接设置 statement_timeout，防止慢查询耗尽连接池
+pool.on("connect", async (client) => {
+  try {
+    await client.query("SET statement_timeout = 30000");
+  } catch {
+    // 连接可能在某些模式下不支持 SET，静默失败
+  }
+});
 
 // 创建 adapter
 const adapter = new PrismaPg(pool);

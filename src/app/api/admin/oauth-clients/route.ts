@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { z } from "zod";
 import { createOAuthClient, listOAuthClients, toSafeClientResponse } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
@@ -165,8 +166,8 @@ export async function POST(request: NextRequest) {
         plainSecret: result.plainSecret,
       },
     });
-  } catch (error: any) {
-    if (error?.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误", details: error.issues } },
         { status: 400 }

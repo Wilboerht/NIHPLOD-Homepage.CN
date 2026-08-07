@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, Pencil, Trash2, Plus } from "lucide-react";
+import { Search, RefreshCw, Pencil, Trash2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -46,6 +46,10 @@ export default function AdminAdminsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBatchDelete, setShowBatchDelete] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const page = parseInt(searchParams.get("page") || "1");
   const search = searchParams.get("search") || "";
@@ -144,6 +148,27 @@ export default function AdminAdminsPage() {
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchDeleting(true);
+    try {
+      const res = await apiPost<{ message: string }>("/api/admin/admins", {
+        ids: Array.from(selectedIds),
+        action: "delete",
+      });
+      success(res.message || `已删除 ${selectedIds.size} 名管理员`);
+      setSelectedIds(new Set());
+      setShowBatchDelete(false);
+      fetchAdmins();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "批量删除失败");
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
+  const isAllSelected = admins.length > 0 && selectedIds.size === admins.length;
+
   return (
     <RequireAdminRole role="owner">
     <div className="space-y-6">
@@ -163,7 +188,7 @@ export default function AdminAdminsPage() {
       </div>
 
       {/* 搜索栏 */}
-      <div className="flex gap-4 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
           <Input
@@ -174,6 +199,26 @@ export default function AdminAdminsPage() {
             className="pl-10"
           />
         </div>
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-600 hover:bg-red-50"
+              leftIcon={<Trash2 className="h-4 w-4" />}
+              onClick={() => setShowBatchDelete(true)}
+            >
+              批量删除
+            </Button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="inline-flex p-1.5 text-brand-charcoal/50 hover:text-brand-charcoal/80 rounded"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 列表 */}
@@ -181,6 +226,18 @@ export default function AdminAdminsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="w-10 px-4 py-3.5">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedIds(new Set(admins.map((a) => a.id)));
+                    else setSelectedIds(new Set());
+                  }}
+                  className="h-4 w-4 rounded border-brand-charcoal/20"
+                  aria-label="全选"
+                />
+              </th>
               <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">姓名</th>
               <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">邮箱</th>
               <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">角色</th>
@@ -191,11 +248,11 @@ export default function AdminAdminsPage() {
           <tbody className="divide-y divide-brand-charcoal/[0.06]">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={5} />
+                <TableRowSkeleton key={i} columns={6} />
               ))
             ) : admins.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-8">
+                <td colSpan={6} className="px-5 py-8">
                   <Empty
                     title="暂无管理员"
                     className="py-6"
@@ -210,6 +267,20 @@ export default function AdminAdminsPage() {
             ) : (
               admins.map((admin) => (
                 <tr key={admin.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
+                  <td className="px-4 py-3.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(admin.id)}
+                      onChange={() => {
+                        const next = new Set(selectedIds);
+                        if (next.has(admin.id)) next.delete(admin.id);
+                        else next.add(admin.id);
+                        setSelectedIds(next);
+                      }}
+                      className="h-4 w-4 rounded border-brand-charcoal/20"
+                      aria-label={`选择 ${admin.name}`}
+                    />
+                  </td>
                   <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
                   <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
                   <td className="px-5 py-3.5">
@@ -306,6 +377,18 @@ export default function AdminAdminsPage() {
         type="danger"
         confirmText="删除"
         loading={deleting}
+      />
+
+      {/* 批量删除确认 */}
+      <ConfirmDialog
+        open={showBatchDelete}
+        onClose={() => setShowBatchDelete(false)}
+        onConfirm={handleBatchDelete}
+        title="批量删除管理员"
+        description={`确定要删除选中的 ${selectedIds.size} 名管理员吗？此操作不可撤销。`}
+        type="danger"
+        confirmText="确认删除"
+        loading={batchDeleting}
       />
     </div>
     </RequireAdminRole>

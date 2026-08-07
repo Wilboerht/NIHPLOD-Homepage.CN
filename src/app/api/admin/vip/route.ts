@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { cuidSchema } from "@/lib/validation";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 
@@ -233,6 +234,15 @@ export async function POST(request: NextRequest) {
           membershipLevel: newLevel,
         },
       });
+    });
+
+    await createAuditLog({
+      action: "user_points_adjust",
+      targetType: "user",
+      targetId: userId,
+      detail: { points, newTotal, newLevel, note },
+      adminId: admin.id,
+      request,
     });
 
     return NextResponse.json({

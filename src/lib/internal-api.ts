@@ -164,20 +164,19 @@ export async function checkAndRecordNonce(nonce: string): Promise<boolean> {
   }
 
   // DB 持久化（多实例共享）
+  // 使用 create 而非 upsert：唯一约束冲突 → P2002 → 返回 false（防止并发/跨实例重放）
   try {
-    await prisma.tokenBlacklist.upsert({
-      where: { key: `nonce:${nonce}` },
-      create: {
+    await prisma.tokenBlacklist.create({
+      data: {
         type: "internal_api_nonce",
         key: `nonce:${nonce}`,
         expiresAt: new Date(Date.now() + NONCE_TTL_MS),
       },
-      update: { expiresAt: new Date(Date.now() + NONCE_TTL_MS) },
     });
     nonceCache.set(nonce, true);
     return true;
   } catch (error) {
-    // 唯一约束冲突 = nonce 已被使用
+    // 唯一约束冲突 = nonce 已被使用（含跨实例并发场景）
     if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "P2002") {
       nonceCache.set(nonce, true);
       return false;

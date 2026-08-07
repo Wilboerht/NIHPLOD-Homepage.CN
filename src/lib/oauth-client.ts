@@ -295,25 +295,17 @@ export async function verifyOAuthClientSecret(
   secret?: string,
   options?: { allowPublic?: boolean }
 ): Promise<VerifyClientResult> {
-  // 先查询是否存在（不限制 isActive）
-  const clientExists = await prisma.oAuthClient.findFirst({
+  const client = await prisma.oAuthClient.findFirst({
     where: { clientId },
-    select: { isActive: true },
   });
 
-  if (!clientExists) {
+  if (!client) {
     return { client: null, reason: "not_found" };
   }
 
-  if (!clientExists.isActive) {
+  if (!client.isActive) {
     return { client: null, reason: "disabled" };
   }
-
-  // 重新查询完整记录（确保 isActive 在当前事务中一致）
-  const client = await prisma.oAuthClient.findFirst({
-    where: { clientId, isActive: true },
-  });
-  if (!client) return { client: null, reason: "disabled" };
 
   let valid = false;
   if (client.isPublic && options?.allowPublic && !secret) {

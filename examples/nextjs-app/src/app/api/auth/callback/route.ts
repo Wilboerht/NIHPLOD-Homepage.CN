@@ -17,5 +17,5 @@ export const GET = createCallbackRouteHandler({
   clientId: process.env.SSO_CLIENT_ID || "your-client-id",
   clientSecret: process.env.SSO_CLIENT_SECRET,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
-  redirectUri: process.env.SSO_REDIRECT_URI || "https://localhost:3002/api/auth/callback",
+  redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
 });

@@ -25,19 +25,19 @@ export const dynamic = "force-dynamic";
 
 export async function PUT(request: NextRequest) {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
       );
-    }
-
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
     }
 
     const body = await request.json();

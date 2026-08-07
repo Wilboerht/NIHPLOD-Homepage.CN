@@ -9,7 +9,7 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "./prisma";
 
-const ALLOWED_METHODS = "POST, OPTIONS";
+const ALLOWED_METHODS = "GET, POST, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Authorization";
 const MAX_AGE = "3600"; // 1 小时，与 origin 缓存 10s TTL 保持合理差异
 const ORIGINS_CACHE_TTL_MS = 10_000; // 10 秒，降低新增/禁用 client 后的延迟
@@ -18,7 +18,7 @@ let cachedOrigins: { origins: Set<string>; timestamp: number } | null = null;
 
 /**
  * 异步查询所有活跃 OAuthClient 的 redirectUris，构建 origin 白名单。
- * 60 秒 TTL 缓存，避免每次 preflight 都全表扫描。
+ * 10 秒 TTL 缓存，避免每次 preflight 都全表扫描。新增客户端最多 10 秒后生效。
  */
 async function getAllowedOrigins(): Promise<Set<string>> {
   const now = Date.now();

@@ -96,7 +96,7 @@ export async function recordNotification(
   } catch (error: unknown) {
     // 可能已存在该记录（并发请求）
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
-      console.warn(`[Notification] 通知 ${notificationId} 已被其他请求处理`);
+      apiConsole.warn(`[Notification] 通知 ${notificationId} 已被其他请求处理`);
       return { success: false, error: "Concurrent processing" };
     }
 

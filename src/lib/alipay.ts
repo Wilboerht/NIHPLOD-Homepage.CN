@@ -52,9 +52,17 @@ validateAlipayKeys();
  * 支付宝接口要求使用北京时间
  */
 function getBeijingTimestamp(): string {
-  const now = new Date();
-  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  return beijingTime.toISOString().replace("T", " ").slice(0, 19);
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  return formatter.format(new Date()).replace("T", " ");
 }
 
 /**
@@ -247,7 +255,7 @@ export async function createAlipayPayment(orderId: string): Promise<{
     const bizContent = {
       out_trade_no: order.orderNo,
       total_amount: formatMoney(order.payAmount),
-      subject: `你好朵朵-${order.items[0]?.productName || "商品"}`,
+      subject: `NIHPLOD-${order.items[0]?.productName || "商品"}`,
       body: `订单号: ${order.orderNo}, 商品数量: ${order.items.length}`,
       product_code: "QUICK_WAP_WAY",
     };

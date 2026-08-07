@@ -19,6 +19,11 @@ const createSchema = z.object({
   role: z.enum(["owner", "admin"]),
 });
 
+const batchSchema = z.object({
+  ids: z.array(z.string().cuid()),
+  action: z.enum(["delete"]),
+});
+
 const updateSchema = z.object({
   id: z.string().cuid(),
   email: z.string().email().optional(),
@@ -89,13 +94,46 @@ export const GET = withRole(["owner"], async (request) => {
   }
 });
 
-// POST - 创建
+// POST - 创建 / 批量操作
 export const POST = withRole(["owner"], async (request, admin) => {
   try {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
+
+    // 批量操作
+    if (body.ids && body.action) {
+      const batch = batchSchema.parse(body);
+      if (batch.action === "delete") {
+        // 不允许删除自己
+        const idsToDelete = batch.ids.filter((id) => id !== admin.id);
+        if (idsToDelete.length === 0) {
+          return NextResponse.json(
+            { success: false, error: { code: "SELF_DELETE", message: "不能删除自己的账号" } },
+            { status: 400 }
+          );
+        }
+        await prisma.admin.deleteMany({ where: { id: { in: idsToDelete } } });
+        await createAuditLog({
+          action: "delete_admin",
+          targetType: "admin",
+          detail: { ids: idsToDelete, count: idsToDelete.length },
+          adminId: admin.id,
+          request,
+        });
+
+        const skipped = batch.ids.length - idsToDelete.length;
+        return NextResponse.json({
+          success: true,
+          data: {
+            message: `已删除 ${idsToDelete.length} 名管理员${skipped > 0 ? `，${skipped} 名跳过（含自身）` : ""}`,
+          },
+        });
+      }
+    }
+
+    // 创建单个管理员
     const data = createSchema.parse(body);
 
     const existing = await prisma.admin.findUnique({

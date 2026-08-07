@@ -51,7 +51,7 @@ function LogoutConfirmContent() {
     fetch(`/api/oauth/check-post-logout-uri?post_logout_redirect_uri=${encodeURIComponent(rawRedirectUri)}`)
       .then((res) => res.json())
       .then((data) => {
-        setRedirectUri(data.valid ? rawRedirectUri : null);
+        setRedirectUri(data.trusted ? rawRedirectUri : null);
       })
       .catch(() => setRedirectUri(null));
   }, [rawRedirectUri]);

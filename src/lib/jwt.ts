@@ -404,10 +404,10 @@ export async function consumeWechatExchangeToken(token: string): Promise<boolean
       usedWechatExchangeTokens.set(hash, Date.now());
       return false;
     }
-    // DB 不可用：回退到内存保护，保守策略（未曾见过的 token 放行）
+    // DB 不可用：fail-closed，拒绝所有未在内存中确认的 token
+    // 避免 DB 故障期间 token 被重放攻击绕过
     if (usedWechatExchangeTokens.has(hash)) return false;
-    usedWechatExchangeTokens.set(hash, Date.now());
-    return true;
+    return false;
   }
 }
 
@@ -689,9 +689,35 @@ export async function verifyLogoutToken(token: string, audience: string): Promis
       return null;
     }
     // jti 重放检查：同一 logout_token 仅处理一次
+    // 内存 LRU 作为快速路径；数据库模式额外提供多实例共享保护
     if (processedLogoutJtis.has(claims.jti)) {
       return null;
     }
+
+    // 数据库模式：atomic upsert 防止多实例下的 jti 重用
+    if (process.env.TOKEN_BLACKLIST_STORAGE === "database") {
+      try {
+        const dbKey = `logout_jti:${claims.jti}`;
+        await prisma.tokenBlacklist.create({
+          data: {
+            type: "logout_jti",
+            key: dbKey,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          },
+        });
+      } catch (err) {
+        if (
+          err &&
+          typeof err === "object" &&
+          "code" in err &&
+          (err as { code: string }).code === "P2002"
+        ) {
+          return null;
+        }
+        // 数据库故障不影响单实例保护
+      }
+    }
+
     processedLogoutJtis.set(claims.jti, Date.now());
 
     return claims;
@@ -750,7 +776,7 @@ export async function signOAuthAccessToken(payload: {
   // 若配置了 RS256 密钥对，优先使用非对称签名；否则回退 HS256
   const rs256PrivateKey = await getAccessPrivateKey();
   if (rs256PrivateKey) {
-    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT" });
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: "access-token-rs256-v1" });
     return jwt.sign(rs256PrivateKey);
   }
 
@@ -810,6 +836,13 @@ export async function verifyOAuthAccessToken(
     if (t !== "access_token") {
       return null;
     }
+    // 用户级黑名单检查（封禁后 15 分钟窗口期内拒绝）
+    // M2M token（sub = "client:xxx"）无需检查，无关联用户
+    const userId = (payload as { id?: string }).id;
+    if (userId && !userId.startsWith("client:") && (await isTokenBlacklisted(userId))) {
+      return null;
+    }
+
     // RFC 7009 access_token 撤销检查
     const jti = (payload as { jti?: string }).jti;
     if (jti && (await isAccessTokenRevoked(jti))) {

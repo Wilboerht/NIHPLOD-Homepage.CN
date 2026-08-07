@@ -468,6 +468,7 @@ model SmsCode {
   codeHash  String   // 验证码 SHA-256 哈希
   type      String   @default("login")         // login | bind | reset
   used      Boolean  @default(false)
+  ipAddress String?  // 发送时的客户端 IP（可选，用于 IP 绑定校验）
   expiresAt DateTime
   createdAt DateTime @default(now())
 

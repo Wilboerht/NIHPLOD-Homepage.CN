@@ -666,5 +666,6 @@ export async function handleRefundNotify(
 }
 
 export function generateRefundNo(orderNo: string): string {
-  return `R${orderNo}${Date.now().toString().slice(-4)}`;
+  const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return `R${orderNo}${suffix}`.slice(0, 64);
 }

@@ -180,6 +180,7 @@ export async function POST(request: NextRequest) {
         codeHash,
         type,
         expiresAt,
+        ipAddress: getClientIP(request),
       },
     });
 
@@ -219,6 +220,24 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    // 并发请求导致的唯一约束冲突 → 返回友好提示（并发请求中只有一个能成功）
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "TOO_FREQUENT",
+            message: "操作过于频繁，请稍后重试",
+          },
+        },
+        { status: 429 }
+      );
+    }
     apiConsole.error("[SendCode] 异常:", error);
     return NextResponse.json(
       {

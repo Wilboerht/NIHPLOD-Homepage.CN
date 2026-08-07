@@ -44,6 +44,10 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     return null;
   }
 
+  if (await isTokenBlacklisted(token)) {
+    return null;
+  }
+
   const payload = await verifyToken(token);
   if (!payload) {
     return null;
@@ -107,6 +111,11 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
+  // 校验 token 是否在黑名单中
+  if (await isTokenBlacklisted(token)) {
+    return null;
+  }
+
   // 验证管理员是否仍存在且未被禁用/删除
   const admin = await prisma.admin.findUnique({
     where: { id: payload.id },
@@ -134,11 +143,6 @@ export function withAuth<T extends NextRequest, C = unknown, R extends Response 
   handler: (request: T, admin: AdminJWTPayload, context: C) => Promise<R>
 ): (request: T, context: C) => Promise<R> {
   return async (request: T, context: C) => {
-    const method = request.method?.toUpperCase() ?? "";
-    if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
-      return csrfForbiddenResponse() as unknown as R;
-    }
-
     const admin = await verifyAuth(request);
 
     if (!admin) {
@@ -251,7 +255,7 @@ export async function checkUserStatus(
   });
 
   if (!user) {
-    return { valid: false, status: "BANNED" as UserStatus, reason: "用户不存在" };
+    return { valid: false, status: "SUSPENDED" as UserStatus, reason: "用户不存在" };
   }
 
   if (user.status === "SUSPENDED") {

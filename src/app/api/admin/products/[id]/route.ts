@@ -76,19 +76,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // PATCH /api/admin/products/[id] - 更新产品部分字段
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
       );
-    }
-
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
     }
 
     const { id } = await params;
@@ -124,6 +124,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (validated.featured !== undefined) updateData.featured = validated.featured;
     if (validated.order !== undefined) updateData.order = validated.order;
 
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "无有效更新字段" } },
+        { status: 400 }
+      );
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: updateData,
@@ -158,19 +165,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 // PUT /api/admin/products/[id] - 完整更新产品
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
       );
-    }
-
-    const rateLimitResponse2 = await checkAdminRateLimit(request);
-    if (rateLimitResponse2) return rateLimitResponse2;
-
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
     }
 
     const { id } = await params;
@@ -374,19 +381,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
       );
-    }
-
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
     }
 
     const { id } = await params;
@@ -407,11 +414,6 @@ export async function DELETE(
       );
     }
 
-    // 先删除关联的物理图片文件
-    for (const image of existing.images) {
-      await deleteUploadedFile(image.url);
-    }
-
     // 检查是否被订单引用（有历史订单的商品禁止物理删除，返回友好提示）
     const orderItemCount = await prisma.orderItem.count({
       where: { productId: id },
@@ -427,6 +429,11 @@ export async function DELETE(
         },
         { status: 409 }
       );
+    }
+
+    // 订单检查通过后才删除关联的物理图片文件
+    for (const image of existing.images) {
+      await deleteUploadedFile(image.url);
     }
 
     // 删除产品（级联删除关联的图片数据库记录）

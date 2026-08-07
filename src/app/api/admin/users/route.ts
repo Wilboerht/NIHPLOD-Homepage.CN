@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       const csvRows = users
         .map((user) =>
           [
-            escapeCSV(user.phone),
+            escapeCSV(maskPhone(user.phone)),
             escapeCSV(user.nickname || ""),
             escapeCSV(user.status),
             escapeCSV(user.membershipLevel),

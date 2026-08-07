@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Download, RotateCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -99,6 +99,7 @@ const getEventBadgeVariant = (type: string): "primary" | "secondary" | "success"
 
 function OAuthAuditPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const toast = useToast();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -133,6 +134,8 @@ function OAuthAuditPage() {
       if (dateFrom) params.set("startDate", dateFrom);
       if (dateTo) params.set("endDate", dateTo);
       if (successFilter) params.set("success", successFilter);
+      const qs = params.toString();
+      router.replace(`/admin/oauth/audit${qs ? `?${qs}` : ""}`, { scroll: false });
       const data = await apiGet<AuditResponse>(
         `/api/admin/oauth/audit?${params.toString()}`
       );
@@ -143,31 +146,11 @@ function OAuthAuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, eventType, searchClientId, searchUserId, dateFrom, dateTo, successFilter, toast]);
+  }, [page, eventType, searchClientId, searchUserId, dateFrom, dateTo, successFilter, toast, router]);
 
   useEffect(() => {
     fetchAudit();
   }, [fetchAudit]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (page !== 1) params.set("page", String(page));
-    else params.delete("page");
-    if (eventType) params.set("event", eventType);
-    else params.delete("event");
-    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
-    else params.delete("clientId");
-    if (searchUserId.trim()) params.set("userId", searchUserId.trim());
-    else params.delete("userId");
-    if (dateFrom) params.set("startDate", dateFrom);
-    else params.delete("startDate");
-    if (dateTo) params.set("endDate", dateTo);
-    else params.delete("endDate");
-    if (successFilter) params.set("success", successFilter);
-    else params.delete("success");
-    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-    window.history.replaceState(null, "", newUrl);
-  }, [page, eventType, searchClientId, searchUserId, dateFrom, dateTo, successFilter]);
 
   const handleSearch = () => {
     setPage(1);
@@ -205,9 +188,12 @@ function OAuthAuditPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">SSO 审计日志</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-medium text-brand-charcoal">SSO 审计日志</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">记录 SSO 系统所有关键事件</p>
+        </div>
         <Button
           variant="outline"
           onClick={handleExportCsv}
@@ -219,7 +205,7 @@ function OAuthAuditPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-44">
             <Select
@@ -283,52 +269,52 @@ function OAuthAuditPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">事件类型</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">用户 ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Client ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Client Name</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">IP</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">状态</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">时间</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">详情</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">事件类型</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">用户 ID</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client ID</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client Name</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">IP</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">状态</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">时间</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">详情</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-brand-charcoal/50">
                   加载中...
                 </td>
               </tr>
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-brand-charcoal/50">
                   暂无数据
                 </td>
               </tr>
             ) : (
               entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <tr key={entry.id} className="border-b hover:bg-gray-50">
+                  <tr key={entry.id} className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]">
                     <td className="px-4 py-3">
                       <Badge variant={getEventBadgeVariant(entry.event)}>
                         {formatEventType(entry.event)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-600">{entry.userId}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-600">{entry.clientId}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/80">{entry.userId}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/80">{entry.clientId}</td>
                     <td className="px-4 py-3 text-sm">{entry.clientName || "-"}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-gray-500">{entry.ip}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/50">{entry.ip}</td>
                     <td className="px-4 py-3">
                       <Badge variant={entry.success ? "success" : "danger"}>
                         {entry.success ? "成功" : "失败"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{formatDate(entry.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-brand-charcoal/50">{formatDate(entry.createdAt)}</td>
                     <td className="px-4 py-3">
                       {entry.detail ? (
                         <button
@@ -346,9 +332,9 @@ function OAuthAuditPage() {
                     </td>
                   </tr>
                   {expandedId === entry.id && entry.detail != null && (
-                    <tr key={`${entry.id}-detail`} className="bg-gray-50 border-b">
+                    <tr key={`${entry.id}-detail`} className="border-b border-brand-charcoal/[0.06] bg-brand-charcoal/[0.03]">
                       <td colSpan={8} className="px-4 py-3">
-                        <pre className="text-xs text-gray-600 bg-gray-100 rounded p-3 overflow-x-auto max-h-40">
+                        <pre className="text-xs text-brand-charcoal/70 rounded bg-brand-charcoal/[0.03] p-3 overflow-x-auto max-h-40">
                           {JSON.stringify(entry.detail, null, 2)}
                         </pre>
                       </td>
@@ -378,7 +364,7 @@ function OAuthAuditPage() {
 export default function OAuthAuditPageWrapper() {
   return (
     <RequireAdminRole role="owner">
-      <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
         <OAuthAuditPage />
       </Suspense>
     </RequireAdminRole>

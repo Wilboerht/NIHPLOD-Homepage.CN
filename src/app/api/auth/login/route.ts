@@ -157,6 +157,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // IP 绑定校验：验证码使用 IP 需与发送 IP 一致（可配置）
+    if (process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress) {
+      const verifyIp = getRateLimitClientIP(request);
+      if (verifyIp !== smsCode.ipAddress) {
+        apiConsole.warn(
+          `[Login] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${phone}`
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "IP_MISMATCH",
+              message: "验证环境异常，请重新获取验证码",
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // 5. 查找用户（验证码登录不再自动注册，用户必须先通过 /api/auth/register 注册）
     const user = await prisma.user.findUnique({
       where: { phone },

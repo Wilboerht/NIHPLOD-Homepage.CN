@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Search, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,10 @@ import { RequireAdminRole } from "@/components/admin";
 function maskForList(phone: string | null): string {
   if (!phone || phone.length < 7) return phone || "";
   return phone.slice(0, 3) + "****" + phone.slice(-4);
+}
+
+function maskPhone(phone: string): string {
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
 }
 
 interface Consent {
@@ -55,6 +59,7 @@ const STATUS_OPTIONS = [
 
 function OAuthConsentsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const toast = useToast();
   const [consents, setConsents] = useState<Consent[]>([]);
   const [total, setTotal] = useState(0);
@@ -65,18 +70,27 @@ function OAuthConsentsPage() {
   const [loading, setLoading] = useState(true);
   const pageSize = 20;
 
-  // Filters
   const [searchPhone, setSearchPhone] = useState(() => searchParams.get("search") || "");
   const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
 
-  // Revoke confirm
   const [revokeTarget, setRevokeTarget] = useState<{ userId: string; clientId: string } | null>(null);
   const [showRevoke, setShowRevoke] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
+  const syncUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (page !== 1) params.set("page", String(page));
+    if (searchPhone.trim()) params.set("search", searchPhone.trim());
+    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
+    if (statusFilter) params.set("status", statusFilter);
+    const qs = params.toString();
+    router.replace(`/admin/oauth/consents${qs ? `?${qs}` : ""}`);
+  }, [page, searchPhone, searchClientId, statusFilter, router]);
+
   const fetchConsents = useCallback(async () => {
     setLoading(true);
+    syncUrl();
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -94,25 +108,11 @@ function OAuthConsentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchPhone, searchClientId, statusFilter, toast]);
+  }, [page, searchPhone, searchClientId, statusFilter, toast, syncUrl]);
 
   useEffect(() => {
     fetchConsents();
   }, [fetchConsents]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (page !== 1) params.set("page", String(page));
-    else params.delete("page");
-    if (searchPhone.trim()) params.set("search", searchPhone.trim());
-    else params.delete("search");
-    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
-    else params.delete("clientId");
-    if (statusFilter) params.set("status", statusFilter);
-    else params.delete("status");
-    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-    window.history.replaceState(null, "", newUrl);
-  }, [page, searchPhone, searchClientId, statusFilter]);
 
   const handleSearch = () => {
     setPage(1);
@@ -137,87 +137,87 @@ function OAuthConsentsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">SSO 用户授权管理</h1>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-48">
-            <Input
-              placeholder="用户手机号"
-              value={searchPhone}
-              onChange={(e) => setSearchPhone(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </div>
-          <div className="w-48">
-            <Input
-              placeholder="Client ID"
-              value={searchClientId}
-              onChange={(e) => setSearchClientId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </div>
-          <div className="w-36">
-            <Select
-              options={STATUS_OPTIONS}
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={handleSearch}
-            leftIcon={<Search className="w-4 h-4" />}
-          >
-            搜索
-          </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-medium text-brand-charcoal">SSO 用户授权管理</h1>
+          <p className="mt-1 text-sm text-brand-charcoal/50">管理用户对 SSO 应用的授权记录</p>
         </div>
       </div>
 
+      <div className="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow-sm">
+        <div className="w-48">
+          <Input
+            placeholder="用户手机号"
+            value={searchPhone}
+            onChange={(e) => setSearchPhone(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+        </div>
+        <div className="w-48">
+          <Input
+            placeholder="Client ID"
+            value={searchClientId}
+            onChange={(e) => setSearchClientId(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+        </div>
+        <div className="w-36">
+          <Select
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          />
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleSearch}
+          leftIcon={<Search className="w-4 h-4" />}
+        >
+          搜索
+        </Button>
+      </div>
+
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">用户手机号</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Client ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Scopes</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">授权时间</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">状态</th>
-              <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">操作</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">用户手机号</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client ID</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Scopes</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">授权时间</th>
+              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">状态</th>
+              <th className="text-right px-4 py-3 text-sm font-medium text-brand-charcoal/60">操作</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-500">
+                <td colSpan={6} className="text-center py-8 text-brand-charcoal/50">
                   加载中...
                 </td>
               </tr>
             ) : consents.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-500">
+                <td colSpan={6} className="text-center py-8 text-brand-charcoal/50">
                   暂无数据
                 </td>
               </tr>
             ) : (
               consents.map((c) => (
-                <tr key={c.id} className="border-b hover:bg-gray-50">
+                <tr key={c.id} className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]">
                   <td className="px-4 py-3 text-sm">
                     <Tooltip content="查看用户详情" side="top">
                       <Link
-                        href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
+                        href={c.phone ? `/admin/users?search=${encodeURIComponent(c.phone)}` : "#"}
                         className="inline-flex text-blue-600 hover:underline"
                       >
-                        {maskForList(c.phone) || c.userId}
+                        {c.phone ? maskPhone(c.phone) : c.userId}
                       </Link>
                     </Tooltip>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/80">
                     <Tooltip content="查看 Client" side="top">
                       <Link
                         href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
@@ -236,7 +236,7 @@ function OAuthConsentsPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(c.grantedAt)}</td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">{formatDate(c.grantedAt)}</td>
                   <td className="px-4 py-3">
                     <Badge variant={c.status === "active" ? "success" : "danger"}>
                       {c.status === "active" ? "已授权" : "已撤销"}
@@ -250,13 +250,13 @@ function OAuthConsentsPage() {
                             setRevokeTarget({ userId: c.userId, clientId: c.clientId });
                             setShowRevoke(true);
                           }}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-red-600 rounded"
+                          className="inline-flex p-1.5 text-brand-charcoal/50 hover:text-red-600 rounded"
                         >
                           <XCircle className="w-4 h-4" />
                         </button>
                       </Tooltip>
                     ) : (
-                      <span className="text-xs text-gray-400" title="用户下次访问该 Client 时需要重新授权">
+                      <span className="text-xs text-brand-charcoal/40" title="用户下次访问该 Client 时需要重新授权">
                         需重新授权
                       </span>
                     )}
@@ -297,7 +297,7 @@ function OAuthConsentsPage() {
 export default function OAuthConsentsPageWrapper() {
   return (
     <RequireAdminRole role="owner">
-      <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
         <OAuthConsentsPage />
       </Suspense>
     </RequireAdminRole>

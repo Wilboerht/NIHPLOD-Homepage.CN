@@ -31,11 +31,10 @@ export async function autoRefundCancelledOrder(order: CancelledPaidOrder): Promi
   if (paymentMethod === "wechat") {
     const refundNo = generateRefundNo(orderNo);
     const result = await applyWechatRefund(orderNo, refundNo, payAmount, payAmount, "订单已取消，自动退款");
-    if (result.success) {
-      await finalizeRefund(orderId, result.refundId || refundNo, payAmount);
-    } else {
-      apiConsole.error(`[AutoRefund] 微信自动退款失败: ${orderNo}`, result.error);
+    if (!result.success) {
+      apiConsole.error(`[AutoRefund] 微信自动退款申请失败: ${orderNo}`, result.error);
     }
+    // 微信退款为异步，不在此处 finalizeRefund，等待微信退款回调确认后处理
     return;
   }
 

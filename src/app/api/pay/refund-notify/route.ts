@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         await markNotificationSuccess(recordResult.recordId);
       }
     } catch (recordError) {
-      console.warn(`[RefundNotify] 幂等记录失败 ${notifyId}:`, recordError);
+      apiConsole.warn(`[RefundNotify] 幂等记录失败 ${notifyId}:`, recordError);
     }
 
     return NextResponse.json({ code: "SUCCESS", message: "成功" }, { status: 200 });

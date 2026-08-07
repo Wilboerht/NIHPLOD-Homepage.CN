@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { getOAuthClientById, updateOAuthClient, deleteOAuthClient, toSafeClientResponse } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
+import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -35,6 +36,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         { status: 403 }
       );
     }
+
+    const rateLimitResult = await checkAdminRateLimit(request, "admin-oauth-client-detail");
+    if (rateLimitResult) return rateLimitResult;
 
     const { id } = await context.params;
     if (!validateCUID(id)) {
@@ -143,8 +147,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     });
 
     return NextResponse.json({ success: true, data: { client: toSafeClientResponse(client) } });
-  } catch (error: any) {
-    if (error?.name === "ZodError") {
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
         { status: 400 }

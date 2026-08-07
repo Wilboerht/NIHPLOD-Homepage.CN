@@ -10,29 +10,35 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { createHash } from "crypto";
 
 // 管理员账户级防爆破配置
 const ADMIN_MAX_ATTEMPTS = 5;
 const ADMIN_WINDOW_MS = 15 * 60 * 1000; // 15 分钟
 const ADMIN_LOCKOUT_MS = 30 * 60 * 1000; // 30 分钟
 
-// 防时序攻击 dummy 哈希（与 password.ts 中 SALT_ROUNDS = 12 保持一致）
+// 防时序攻击 dummy 哈希（与 password.ts 中 SALT_ROUNDS = 13 保持一致）
 // 懒加载生成，避免冷启动延迟，同时保证与真实密码哈希相同的盐轮数
 let _dummyHash: string | null = null;
 function getDummyHash(): string {
   if (!_dummyHash) {
-    _dummyHash = bcrypt.hashSync("__nihplod_dummy_timing_defense__", 12);
+    _dummyHash = bcrypt.hashSync("__nihplod_dummy_timing_defense__", 13);
   }
   return _dummyHash;
+}
+
+function hashEmail(email: string): string {
+  return createHash("sha256").update(email, "utf8").digest("hex");
 }
 
 async function checkAdminLockout(
   email: string
 ): Promise<{ locked: boolean; remainingMinutes: number }> {
+  const identifier = hashEmail(email);
   const windowStart = new Date(Date.now() - ADMIN_WINDOW_MS);
   const failedAttempts = await prisma.loginAttempt.count({
     where: {
-      identifier: email,
+      identifier,
       type: "admin",
       success: false,
       createdAt: { gte: windowStart },
@@ -41,7 +47,7 @@ async function checkAdminLockout(
 
   if (failedAttempts >= ADMIN_MAX_ATTEMPTS) {
     const lastFailed = await prisma.loginAttempt.findFirst({
-      where: { identifier: email, type: "admin", success: false },
+      where: { identifier, type: "admin", success: false },
       orderBy: { createdAt: "desc" },
     });
     if (lastFailed) {
@@ -61,9 +67,10 @@ async function recordAdminAttempt(
   request: NextRequest
 ): Promise<void> {
   try {
+    const identifier = hashEmail(email);
     await prisma.loginAttempt.create({
       data: {
-        identifier: email,
+        identifier,
         type: "admin",
         success,
         ipAddress: getClientIP(request),
@@ -82,12 +89,31 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // 0. CSRF 保护：校验 Origin / Referer 头
+    // 0. CSRF 保护：校验 Origin / Referer 头（支持多域名、多协议）
     const origin = request.headers.get("origin");
     const referer = request.headers.get("referer");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
-    const isValidOrigin = origin && origin === appUrl;
-    const isValidReferer = referer && referer.startsWith(appUrl);
+    const allowedHostnames = new Set([
+      new URL(appUrl).hostname,
+    ]);
+    // 额外允许的 hostname（通过环境变量逗号分隔）
+    const extraHosts = process.env.APP_ALLOWED_HOSTS;
+    if (extraHosts) {
+      extraHosts.split(",").map((h) => h.trim()).filter(Boolean).forEach((h) => allowedHostnames.add(h));
+    }
+
+    const checkUrl = (urlStr: string | null): boolean => {
+      if (!urlStr) return false;
+      try {
+        const parsed = new URL(urlStr);
+        return allowedHostnames.has(parsed.hostname);
+      } catch {
+        return false;
+      }
+    };
+
+    const isValidOrigin = checkUrl(origin);
+    const isValidReferer = checkUrl(referer);
     if (!isValidOrigin && !isValidReferer) {
       return NextResponse.json(
         { success: false, error: { code: "CSRF_DETECTED", message: "请求来源不合法" } },
@@ -247,7 +273,7 @@ export async function POST(request: NextRequest) {
     // 记录成功登录尝试（用于审计和安全监控）
     await recordAdminAttempt(email, true, request);
 
-    // 生成 JWT token
+    // 生成 JWT token（过期时间与 Cookie maxAge 保持一致）
     const token = await signToken({
       id: admin.id,
       email: admin.email,
@@ -255,10 +281,6 @@ export async function POST(request: NextRequest) {
       role: admin.role,
     });
 
-    // 计算过期时间（7天）
-    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
-
-    // 创建响应
     const response = NextResponse.json({
       success: true,
       data: {
@@ -268,7 +290,6 @@ export async function POST(request: NextRequest) {
           name: admin.name,
           role: admin.role,
         },
-        expiresAt,
       },
     });
 

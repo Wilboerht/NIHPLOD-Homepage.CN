@@ -5,13 +5,13 @@ import { z } from "zod";
 
 // 产品图片 Schema
 export const ProductImageSchema = z.object({
-  id: z.string().optional(), // 已有图片的 ID
+  id: z.string().optional(),
   url: z
     .string()
     .min(1, "图片URL不能为空")
     .refine((val) => {
       const v = val.trim().toLowerCase();
-      return v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://");
+      return v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://") || v.startsWith("blob:");
     }, "请输入有效的图片URL（支持相对路径或完整URL）"),
   alt: z.string().max(200, "图片描述最多200个字符").optional().nullable(),
   order: z.number().int().min(0).default(0),
@@ -44,12 +44,12 @@ export const ProductSchema = z.object({
   price: z.coerce.number().min(0, "价格不能为负数"),
   capacity: z.string().max(50, "规格容量不能超过50个字符").optional().nullable(),
   origin: z.string().max(100, "产地不能超过100个字符").optional().nullable(),
-  purchaseUrl: z.string().url("请输入有效的URL").optional().nullable().or(z.literal("")), // @deprecated 逐步迁移至 purchaseLinks，新业务请使用 purchaseLinks
+  purchaseUrl: z.string().url().or(z.literal("")).optional().nullable(),
   purchaseLinks: z.array(PurchaseLinkSchema).optional(), // 多平台购买链接
   description: z.string().min(1, "产品描述不能为空").max(5000, "描述不能超过5000个字符"),
   ingredients: z.string().max(5000, "成分说明不能超过5000个字符").optional().nullable(),
   usage: z.string().max(5000, "使用方法不能超过5000个字符").optional().nullable(),
-  benefits: z.array(z.string().max(50)).max(20, "最多添加20个功效标签").optional(),
+  benefits: z.array(z.string().min(1, "功效标签不能为空").max(50)).max(20, "最多添加20个功效标签").optional(),
   images: z.array(ProductImageSchema).min(1, "请至少上传一张产品图片"),
   order: z.number().int().min(0).default(0),
   featured: z.boolean().default(false),
@@ -61,8 +61,8 @@ export const ProductSchema = z.object({
   geoFaqs: z
     .array(
       z.object({
-        question: z.string(),
-        answer: z.string(),
+        question: z.string().min(1, "FAQ问题不能为空"),
+        answer: z.string().min(1, "FAQ答案不能为空"),
       })
     )
     .optional()
@@ -102,4 +102,19 @@ export const CategorySchema = z.object({
     .optional(),
   order: z.number().int().min(0).default(0),
   visible: z.boolean().default(true),
+});
+
+// 职位创建/更新 Schema
+export const JobSchema = z.object({
+  title: z.string().min(1, "职位名称不能为空").max(100, "职位名称不能超过100个字符"),
+  titleEn: z.string().max(100, "英文名称不能超过100个字符").optional().nullable(),
+  location: z.string().min(1, "工作地点不能为空").max(200, "工作地点不能超过200个字符"),
+  type: z.enum(["fulltime", "parttime", "intern"], { message: "无效的职位类型" }),
+  description: z.string().min(1, "职位描述不能为空").max(10000, "描述不能超过10000个字符"),
+  requirements: z.string().min(1, "任职要求不能为空").max(10000, "要求不能超过10000个字符"),
+  salary: z.string().max(50, "薪资范围不能超过50个字符").optional().nullable(),
+  order: z.number().int().min(0, "排序值不能为负数").default(0),
+  published: z.boolean().default(true),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
 });

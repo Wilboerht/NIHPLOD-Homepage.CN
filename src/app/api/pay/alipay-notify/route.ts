@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         await markNotificationSuccess(recordResult.recordId);
       }
     } catch (recordError) {
-      console.warn(`[AlipayNotify] 幂等记录失败 ${notifyId}:`, recordError);
+      apiConsole.warn(`[AlipayNotify] 幂等记录失败 ${notifyId}:`, recordError);
     }
 
     // 返回成功响应（支付宝要求返回 "success" 字符串）

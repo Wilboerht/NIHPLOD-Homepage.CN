@@ -83,7 +83,6 @@ export function Modal({
   // open 状态变化：记录/还原焦点 + 滚动锁（仅在 false→true / true→false 时触发）
   useEffect(() => {
     if (open) {
-      // 仅在从关闭变为打开时记录触发元素
       if (!wasOpenRef.current) {
         previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
       }
@@ -92,14 +91,17 @@ export function Modal({
       document.addEventListener("keydown", handleKeyDown);
     } else {
       if (wasOpenRef.current) {
-        // 还原焦点到触发元素
         if (previouslyFocusedRef.current?.isConnected) {
           previouslyFocusedRef.current.focus();
         }
         previouslyFocusedRef.current = null;
       }
       wasOpenRef.current = false;
-      document.body.style.overflow = "unset";
+      // Only restore body scroll when no other open modals exist
+      const otherModalOpen = document.querySelector('[aria-modal="true"]');
+      if (!otherModalOpen) {
+        document.body.style.overflow = "unset";
+      }
       document.removeEventListener("keydown", handleKeyDown);
     }
     return () => {

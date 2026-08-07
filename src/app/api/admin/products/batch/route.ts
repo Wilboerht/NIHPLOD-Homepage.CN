@@ -6,6 +6,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { deleteUploadedFile } from "@/lib/upload";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -77,7 +78,15 @@ export async function POST(request: NextRequest) {
             { status: 409 }
           );
         }
-        // 删除产品会级联删除关联的图片
+        // 删除关联的物理图片文件
+        const images = await prisma.image.findMany({
+          where: { productId: { in: ids } },
+          select: { url: true },
+        });
+        for (const img of images) {
+          await deleteUploadedFile(img.url);
+        }
+        // 删除产品（级联删除关联的图片数据库记录）
         result = await prisma.product.deleteMany({
           where: { id: { in: ids } },
         });

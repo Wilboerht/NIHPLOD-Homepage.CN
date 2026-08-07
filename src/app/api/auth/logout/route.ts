@@ -19,7 +19,7 @@ import {
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
-import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { validateCSRFToken, csrfForbiddenResponse, CSRF_COOKIE_NAME } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 
@@ -79,26 +79,27 @@ export async function POST(request: NextRequest) {
           });
           const targetClientId = refreshRecord?.clientId;
           if (targetClientId) {
+            // 先发送 Backchannel Logout（需要活跃 session 的 sid），再撤销 session
+            await sendBackchannelLogout(user.id, [targetClientId]);
             await prisma.oAuthSession.updateMany({
               where: { userId: user.id, clientId: targetClientId, revokedAt: null },
               data: { revokedAt: new Date() },
             });
-            await sendBackchannelLogout(user.id, [targetClientId]);
           } else {
+            const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+            await sendBackchannelLogout(user.id, clientIds);
             await prisma.oAuthSession.updateMany({
               where: { userId: user.id, revokedAt: null },
               data: { revokedAt: new Date() },
             });
-            const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-            await sendBackchannelLogout(user.id, clientIds);
           }
         } else {
+          const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+          await sendBackchannelLogout(user.id, clientIds);
           await prisma.oAuthSession.updateMany({
             where: { userId: user.id, revokedAt: null },
             data: { revokedAt: new Date() },
           });
-          const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-          await sendBackchannelLogout(user.id, clientIds);
         }
       }
     }
@@ -118,6 +119,13 @@ export async function POST(request: NextRequest) {
     });
     response.cookies.set(USER_REFRESH_COOKIE_NAME, "", {
       ...USER_REFRESH_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    response.cookies.set(CSRF_COOKIE_NAME, "", {
+      httpOnly: false,
+      secure: true,
+      sameSite: "strict" as const,
+      path: "/",
       maxAge: 0,
     });
 

@@ -47,12 +47,19 @@ export async function POST(req: NextRequest) {
   try {
     const admin = await verifyAuth(req);
     if (!admin)
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
+        { status: 401 }
+      );
+
+    if (!validateCSRFToken(req)) {
+      return csrfForbiddenResponse();
+    }
 
     // 资金/权益操作：仅超级管理员可创建优惠券
     if (admin.role !== "owner")
       return NextResponse.json(
-        { success: false, error: "仅超级管理员可创建优惠券" },
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可创建优惠券" } },
         { status: 403 }
       );
 
@@ -63,6 +70,12 @@ export async function POST(req: NextRequest) {
 
     // 批量上下架：{ batch: { ids, isActive } }
     if (body && body.batch && Array.isArray(body.batch.ids)) {
+      // 批量操作同样需要超级管理员权限
+      if (admin.role !== "owner")
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作优惠券" } },
+          { status: 403 }
+        );
       const { ids, isActive } = body.batch;
       if (ids.length === 0 || typeof isActive !== "boolean") {
         return NextResponse.json(

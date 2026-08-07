@@ -10,6 +10,8 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { AmapLocationPicker } from "@/components/admin/AmapLocationPicker";
+import { JobSchema } from "@/schemas/product";
+import { z } from "zod";
 
 // 职位类型选项
 const JOB_TYPES = [
@@ -76,14 +78,23 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   };
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.title?.trim()) newErrors.title = "请输入中文职位名称";
-    if (!formData.location?.trim()) newErrors.location = "请输入工作地点";
-    if (!formData.description?.trim()) newErrors.description = "请输入职位描述";
-    if (!formData.requirements?.trim()) newErrors.requirements = "请输入任职要求";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    try {
+      JobSchema.parse(formData);
+      setErrors({});
+      return true;
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        for (const issue of err.issues) {
+          const key = String(issue.path[0] ?? "");
+          if (key && !newErrors[key]) {
+            newErrors[key] = issue.message;
+          }
+        }
+        setErrors(newErrors);
+      }
+      return false;
+    }
   };
 
   // 辅助函数：提交前尝试根据文字补全坐标 (针对 POI + 高效纠合方案)
@@ -104,7 +115,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
       // 智能提取关键词：如果是 "上海市普陀区信泰中心广场T3-610" -> 会尝试提取 "普陀区信泰中心广场"
       const cleanKeyword = address.split(" ").shift() || address;
-      const shortKeyword = cleanKeyword.split(/[A-Z,a-z,0-9]/)[0] || cleanKeyword; // 尝试剥离房号后缀
+      const shortKeyword = cleanKeyword.split(/[A-Za-z0-9]/)[0] || cleanKeyword;
 
       ps.search(shortKeyword, (status: string, result: AMap.PlaceSearchResult) => {
         if (status === "complete" && result.poiList && result.poiList.pois.length > 0) {

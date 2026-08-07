@@ -68,13 +68,17 @@ export async function GET(request: NextRequest) {
       });
 
       const escapeCSV = (val: string): string => {
-        // 防公式注入：以 = + - @ 开头的单元格加单引号前缀
-        const sanitized = /^[=+\-@]/.test(val) ? `'${val}` : val;
-        // 包含逗号、双引号或换行时用双引号包裹
-        if (/[",\n\r]/.test(sanitized)) {
-          return `"${sanitized.replace(/"/g, '""')}"`;
+        // 先转义双引号（CSV 标准：用两个双引号表示一个引号字符）
+        let escaped = val.replace(/"/g, '""');
+        // 包含逗号、双引号、换行或制表符时用双引号包裹
+        if (/[",\n\r\t]/.test(escaped)) {
+          escaped = `"${escaped}"`;
         }
-        return sanitized;
+        // 防公式注入：以 = + - @ 或制表符开头的单元格加单引号前缀
+        if (/^[=+\-@\t]/.test(escaped)) {
+          escaped = `'${escaped}`;
+        }
+        return escaped;
       };
 
       const csvHeaders = "id,event,userId,clientId,clientName,ip,success,createdAt\n";

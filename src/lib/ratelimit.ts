@@ -146,6 +146,10 @@ export const RATE_LIMIT_PRESETS = {
   "oauth-discovery": { maxRequests: 30, windowMs: 60 * 1000 },
   /** OAuth post_logout_redirect_uri 校验 - 每分钟 20 次 */
   "oauth-check-post-logout-uri": { maxRequests: 20, windowMs: 60 * 1000 },
+  /** VIP 会员读取 - 每分钟 30 次 */
+  "vip:read": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** VIP 会员写入 - 每分钟 5 次 */
+  "vip:write": { maxRequests: 5, windowMs: 60 * 1000 },
 } as const;
 
 /**
@@ -170,9 +174,8 @@ export async function rateLimit(
   const opts: RateLimitOptions = { ...preset, ...options };
 
   // 数据库模式：支持多实例部署
-  // 多租户预留：dbKey 格式应为 {tenantId}:{type}:{identifier}
   if (process.env.RATE_LIMIT_STORAGE === "database") {
-    // 数据库模式已预留，当前回退至内存速率限制
+    return rateLimitDB(`${type}:${identifier}`, opts);
   }
 
   const now = Date.now();

@@ -12,6 +12,7 @@ import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -201,8 +202,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       request,
     });
 
-    // === 通知子项目账户状态变更（Phase 2-D）===
-    // 查询该用户的活跃 OAuthSession，向各 client 的 backchannelLogoutUri 通知
+    // === 通知子项目账户状态变更 + 撤销 OAuth 会话 ===
     if (status !== "ACTIVE") {
       try {
         const activeSessions = await prisma.oAuthSession.findMany({
@@ -211,37 +211,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         });
 
         if (activeSessions.length > 0) {
-          const clientIds = activeSessions.map((s) => s.clientId);
-          const clients = await prisma.oAuthClient.findMany({
-            where: { clientId: { in: clientIds }, isActive: true, backchannelLogoutUri: { not: null } },
-            select: { clientId: true, backchannelLogoutUri: true, name: true },
+          const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+          // 撤销所有 OAuth 会话（服务端一次性清除）
+          await prisma.oAuthSession.updateMany({
+            where: { userId: id, revokedAt: null },
+            data: { revokedAt: new Date() },
           });
-
-          if (clients.length > 0) {
-            const { signLogoutToken } = await import("@/lib/jwt");
-            for (const client of clients) {
-              if (!client.backchannelLogoutUri) continue;
-              try {
-                const logoutToken = await signLogoutToken({
-                  sub: user.id,
-                  aud: client.clientId,
-                  events: { "http://schemas.openid.net/event/backchannel-logout": {} },
-                  jti: crypto.randomUUID(),
-                });
-
-                fetch(client.backchannelLogoutUri, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                  body: new URLSearchParams({
-                    logout_token: logoutToken,
-                    event: "account_disabled",
-                    reason: status === "SUSPENDED" ? "SUSPENDED" : "BANNED",
-                  }),
-                  signal: AbortSignal.timeout(5000),
-                }).catch(() => {});
-              } catch {}
-            }
-          }
+          // 通过安全的 backchannel logout 通知子项目（含 URL 校验/SSRF 防护/重试）
+          await sendBackchannelLogout(user.id, clientIds, { includeInactive: true });
         }
       } catch (err) {
         apiConsole.warn("[AdminUserUpdate] 子项目通知失败:", err);
@@ -313,6 +290,24 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       data: { revokedAt: new Date() },
     });
     await blacklistUserTokens(user.id, "用户数据已被删除");
+
+    // 撤销所有 OAuth 会话 + 清除用户授权 + 通知子项目
+    const activeSessions = await prisma.oAuthSession.findMany({
+      where: { userId: id, revokedAt: null },
+      select: { clientId: true },
+    });
+    if (activeSessions.length > 0) {
+      const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+      await prisma.oAuthSession.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await prisma.userConsent.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await sendBackchannelLogout(user.id, clientIds, { includeInactive: true }).catch(() => {});
+    }
 
     // 级联清理
     await prisma.cartItem.deleteMany({ where: { userId: id } });
