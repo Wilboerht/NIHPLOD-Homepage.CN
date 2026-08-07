@@ -43,6 +43,7 @@ export default function AdminMessagesPage() {
   // 状态
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(parseInt(searchParams.get("pageSize") || "20"));
   const [total, setTotal] = useState(0);
@@ -79,8 +80,10 @@ export default function AdminMessagesPage() {
       setMessages(data.items);
       setTotal(data.pagination.total);
       setUnreadCount(data.unreadCount);
+      setLoadError(false);
     } catch (error) {
       console.error("获取留言列表失败:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -286,6 +289,20 @@ export default function AdminMessagesPage() {
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-red-50 p-4">
+              <Mail className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
+            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取留言列表，请检查网络连接</p>
+            <button
+              onClick={() => { setLoadError(false); fetchMessages(); }}
+              className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+            >
+              重试
+            </button>
           </div>
         ) : messages.length === 0 ? (
           <Empty className="h-64" title="暂无留言" />

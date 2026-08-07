@@ -12,6 +12,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
 
@@ -193,11 +194,9 @@ function OAuthConsentsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={6} className="text-center py-8 text-brand-charcoal/50">
-                  加载中...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={6} />
+              ))
             ) : consents.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center py-8 text-brand-charcoal/50">

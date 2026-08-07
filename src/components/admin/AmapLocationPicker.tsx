@@ -133,10 +133,7 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
               key={index}
               onMouseDown={(e) => {
                 e.preventDefault();
-                const fullLocation =
-                  tip.address && typeof tip.address === "string" && !tip.name.includes(tip.address)
-                    ? `${tip.district}${tip.name}`
-                    : `${tip.district}${tip.name}`;
+                const fullLocation = `${tip.district}${tip.name}`;
 
                 onChange(fullLocation);
                 if (tip.location) {

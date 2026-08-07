@@ -273,9 +273,10 @@ export default function AdminVIPPage() {
                   <Input
                     type="number"
                     value={editBenefit.minPoints}
-                    onChange={(e) =>
-                      setEditBenefit({ ...editBenefit, minPoints: parseInt(e.target.value) || 0 })
-                    }
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setEditBenefit({ ...editBenefit, minPoints: Number.isNaN(val) ? 0 : val });
+                    }}
                   />
                 </div>
                 <div>
@@ -297,9 +298,10 @@ export default function AdminVIPPage() {
                 <Input
                   type="number"
                   value={editBenefit.pointRate}
-                  onChange={(e) =>
-                    setEditBenefit({ ...editBenefit, pointRate: parseInt(e.target.value) || 1 })
-                  }
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setEditBenefit({ ...editBenefit, pointRate: Number.isNaN(val) ? 1 : val });
+                    }}
                 />
               </div>
               <div>
@@ -357,10 +359,11 @@ export default function AdminVIPPage() {
                 <Input
                   type="number"
                   placeholder="如: 100 或 -50"
-                  value={adjustForm.points || ""}
-                  onChange={(e) =>
-                    setAdjustForm({ ...adjustForm, points: parseInt(e.target.value) || 0 })
-                  }
+                  value={adjustForm.points}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setAdjustForm({ ...adjustForm, points: Number.isNaN(val) ? 0 : val });
+                  }}
                 />
               </div>
               <div>

@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withRole, checkAdminRateLimit } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
@@ -97,6 +98,10 @@ export const GET = withRole(["owner"], async (request) => {
 // POST - 创建 / 批量操作
 export const POST = withRole(["owner"], async (request, admin) => {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -181,6 +186,10 @@ export const POST = withRole(["owner"], async (request, admin) => {
 // PUT - 更新
 export const PUT = withRole(["owner"], async (request, admin) => {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 

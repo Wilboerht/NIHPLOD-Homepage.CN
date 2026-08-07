@@ -28,6 +28,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { RequireAdminRole } from "@/components/admin";
@@ -514,9 +515,9 @@ if (!payload) {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-500">加载中...</td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={10} />
+              ))
             ) : clients.length === 0 ? (
               <tr>
                 <td colSpan={10} className="text-center py-8 text-gray-500">暂无数据</td>

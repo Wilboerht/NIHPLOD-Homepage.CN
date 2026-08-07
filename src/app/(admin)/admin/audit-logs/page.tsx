@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw, Eye, FileJson } from "lucide-react";
+import { RefreshCw, Eye, FileJson, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
@@ -119,6 +119,7 @@ export default function AuditLogsPage() {
 
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -142,8 +143,10 @@ export default function AuditLogsPage() {
       );
       setLogs(data.items);
       setPagination(data.pagination);
+      setLoadError(false);
     } catch {
       console.error("获取审计日志失败");
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -208,31 +211,75 @@ export default function AuditLogsPage() {
 
       {/* 日志列表 */}
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-              <th scope="col" className="px-4 py-3">时间</th>
-              <th scope="col" className="px-4 py-3">操作人</th>
-              <th scope="col" className="px-4 py-3">操作</th>
-              <th scope="col" className="px-4 py-3">目标类型</th>
-              <th scope="col" className="px-4 py-3">目标ID</th>
-              <th scope="col" className="px-4 py-3">IP地址</th>
-              <th scope="col" className="px-4 py-3 text-right">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+        {loading ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                <th scope="col" className="px-4 py-3">时间</th>
+                <th scope="col" className="px-4 py-3">操作人</th>
+                <th scope="col" className="px-4 py-3">操作</th>
+                <th scope="col" className="px-4 py-3">目标类型</th>
+                <th scope="col" className="px-4 py-3">目标ID</th>
+                <th scope="col" className="px-4 py-3">IP地址</th>
+                <th scope="col" className="px-4 py-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={7} />
-              ))
-            ) : logs.length === 0 ? (
+              ))}
+            </tbody>
+          </table>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-red-50 p-4">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
+            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取审计日志，请检查网络连接</p>
+            <button
+              onClick={() => { setLoadError(false); fetchLogs(); }}
+              className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+            >
+              重试
+            </button>
+          </div>
+        ) : logs.length === 0 ? (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                <th scope="col" className="px-4 py-3">时间</th>
+                <th scope="col" className="px-4 py-3">操作人</th>
+                <th scope="col" className="px-4 py-3">操作</th>
+                <th scope="col" className="px-4 py-3">目标类型</th>
+                <th scope="col" className="px-4 py-3">目标ID</th>
+                <th scope="col" className="px-4 py-3">IP地址</th>
+                <th scope="col" className="px-4 py-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无记录
                 </td>
               </tr>
-            ) : (
-              logs.map((log) => (
+            </tbody>
+          </table>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                <th scope="col" className="px-4 py-3">时间</th>
+                <th scope="col" className="px-4 py-3">操作人</th>
+                <th scope="col" className="px-4 py-3">操作</th>
+                <th scope="col" className="px-4 py-3">目标类型</th>
+                <th scope="col" className="px-4 py-3">目标ID</th>
+                <th scope="col" className="px-4 py-3">IP地址</th>
+                <th scope="col" className="px-4 py-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {logs.map((log) => (
                 <tr
                   key={log.id}
                   className="cursor-pointer hover:bg-brand-charcoal/[0.03]"
@@ -280,10 +327,10 @@ export default function AuditLogsPage() {
                     </Button>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* 分页 */}

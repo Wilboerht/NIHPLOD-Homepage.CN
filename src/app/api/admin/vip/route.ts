@@ -111,6 +111,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // 权益配置变更：仅超级管理员可操作
+    if (admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可修改等级权益" } },
+        { status: 403 }
+      );
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request, "vip:write");
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -148,6 +156,16 @@ export async function PUT(request: NextRequest) {
         ...(data.benefits !== undefined && { benefits: data.benefits }),
         ...(data.colorClass !== undefined && { colorClass: data.colorClass }),
       },
+    });
+
+    // 记录审计日志
+    await createAuditLog({
+      action: "update_vip_benefit",
+      targetType: "vip",
+      targetId: level,
+      detail: { level, updatedFields: Object.keys(data).filter((k) => k !== "password") },
+      adminId: admin.id,
+      request,
     });
 
     return NextResponse.json({ success: true, data: { benefit } });

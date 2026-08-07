@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
@@ -22,6 +23,10 @@ export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async (request: NextRequest, adminPayload) => {
   try {
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 

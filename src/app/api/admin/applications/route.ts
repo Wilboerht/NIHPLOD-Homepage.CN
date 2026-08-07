@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);
     const params = querySchema.parse({

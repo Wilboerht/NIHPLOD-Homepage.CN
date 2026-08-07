@@ -85,10 +85,45 @@ export default async function AdminDashboard() {
     redirect("/admin-login");
   }
 
-  const [stats, ssoStats] = await Promise.all([
-    getAdminStats(),
-    admin.role === "owner" ? getSsoStats() : null,
-  ]);
+  let stats;
+  let statsError = false;
+  try {
+    stats = await getAdminStats();
+  } catch {
+    statsError = true;
+  }
+
+  let ssoStats = null;
+  if (admin.role === "owner") {
+    try {
+      ssoStats = await getSsoStats();
+    } catch {
+      // SSO 统计获取失败不阻断整个仪表盘
+    }
+  }
+
+  if (statsError || !stats) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-medium text-brand-charcoal">仪表盘</h1>
+        </div>
+        <div className="flex flex-col items-center justify-center rounded-xl bg-white py-16 shadow-sm">
+          <div className="rounded-full bg-red-50 p-4">
+            <TrendingUp className="h-8 w-8 text-red-400" />
+          </div>
+          <h2 className="mt-4 text-lg font-medium text-brand-charcoal">数据加载失败</h2>
+          <p className="mt-1 text-sm text-brand-charcoal/50">无法获取仪表盘统计数据，请稍后重试</p>
+          <a
+            href="/admin"
+            className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+          >
+            重新加载
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

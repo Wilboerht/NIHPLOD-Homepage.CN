@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { createAuditLog } from "@/lib/audit";
 
@@ -8,6 +9,10 @@ import { createAuditLog } from "@/lib/audit";
 export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async (request: NextRequest, admin) => {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   // 记录登出审计日志
   await createAuditLog({
     action: "logout",

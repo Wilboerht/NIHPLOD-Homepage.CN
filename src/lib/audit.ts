@@ -56,6 +56,7 @@ export type AuditAction =
   | "user_status_change"
   | "user_deleted"
   | "user_points_adjust"
+  | "update_vip_benefit"
   | "oauth_client_create"
   | "oauth_client_update"
   | "oauth_client_delete"
@@ -82,6 +83,7 @@ export type AuditTargetType =
   | "application_folder"
   | "oauth_client"
   | "oauth_consent"
+  | "vip"
   | "oauth_session";
 
 export const AUDIT_ACTIONS = [

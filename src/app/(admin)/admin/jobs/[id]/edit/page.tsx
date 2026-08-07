@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError } from "@/lib/api-client";
@@ -60,7 +60,22 @@ export default function EditJobPage() {
   }
 
   if (!job) {
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="rounded-full bg-amber-50 p-4">
+          <AlertTriangle className="h-8 w-8 text-amber-500" />
+        </div>
+        <h2 className="mt-4 text-lg font-medium text-brand-charcoal">职位未找到</h2>
+        <p className="mt-1 text-sm text-brand-charcoal/50">该职位可能已被删除或不存在</p>
+        <Link
+          href="/admin/jobs"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          返回职位列表
+        </Link>
+      </div>
+    );
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles } from "lucide-react";
@@ -116,6 +116,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     }
     return defaultFormData;
   });
+  const initialFormRef = useRef<FormData>(structuredClone(formData));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -135,6 +136,18 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       }));
     }
   }, [formData.nameEn, mode, formData.slug]);
+
+  // 未保存更改离开确认
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormRef.current);
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   // 更新表单字段
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -189,11 +202,11 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
       if (img.file) {
         // 新上传的图片
-        const formData = new FormData();
-        formData.append("file", img.file);
-        formData.append("folder", "products");
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", img.file);
+        uploadFormData.append("folder", "products");
 
-        const data = await apiPost<{ url: string }>("/api/upload", formData);
+        const data = await apiPost<{ url: string }>("/api/upload", uploadFormData);
 
         uploaded.push({
           url: data.url,

@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withRole, checkAdminRateLimit } from "@/lib/auth";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -15,6 +16,10 @@ export const DELETE = withRole(
   ["owner"],
   async (request, admin, { params }: { params: Promise<{ id: string }> }) => {
     try {
+      if (!validateCSRFToken(request)) {
+        return csrfForbiddenResponse();
+      }
+
       const rateLimitResponse = await checkAdminRateLimit(request);
       if (rateLimitResponse) return rateLimitResponse;
 

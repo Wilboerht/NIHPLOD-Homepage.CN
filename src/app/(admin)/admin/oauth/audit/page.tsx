@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
@@ -285,11 +286,9 @@ function OAuthAuditPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-8 text-brand-charcoal/50">
-                  加载中...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={8} />
+              ))
             ) : entries.length === 0 ? (
               <tr>
                 <td colSpan={8} className="text-center py-8 text-brand-charcoal/50">
