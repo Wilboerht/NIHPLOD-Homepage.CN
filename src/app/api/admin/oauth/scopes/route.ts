@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { SUPPORTED_SCOPES } from "@/lib/oauth-constants";
+import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -19,21 +20,29 @@ const SCOPE_LABELS: Record<string, { label: string; desc: string }> = {
 };
 
 export async function GET(request: NextRequest) {
-  const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-scopes");
-  if (rateLimitResponse) return rateLimitResponse;
+  try {
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-scopes");
+    if (rateLimitResponse) return rateLimitResponse;
 
-  const admin = await verifyAuth(request);
-  if (!admin) {
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
+        { status: 401 }
+      );
+    }
+
+    const scopes = SUPPORTED_SCOPES.map((value) => ({
+      value,
+      label: SCOPE_LABELS[value]?.label || value,
+      desc: SCOPE_LABELS[value]?.desc || "",
+    }));
+    return NextResponse.json({ success: true, data: { scopes } });
+  } catch (error) {
+    apiConsole.error("[OAuthScopes] GET 异常:", error);
     return NextResponse.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
-      { status: 401 }
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
+      { status: 500 }
     );
   }
-
-  const scopes = SUPPORTED_SCOPES.map((value) => ({
-    value,
-    label: SCOPE_LABELS[value]?.label || value,
-    desc: SCOPE_LABELS[value]?.desc || "",
-  }));
-  return NextResponse.json({ success: true, data: { scopes } });
 }

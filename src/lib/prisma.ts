@@ -18,7 +18,9 @@ const globalForPrisma = globalThis as unknown as {
 // 创建连接池（单例）
 const isLocalDb =
   process.env.DATABASE_URL?.includes("//localhost") ||
-  process.env.DATABASE_URL?.includes("//127.0.0.1");
+  process.env.DATABASE_URL?.includes("//127.0.0.1") ||
+  process.env.DATABASE_URL?.includes("@localhost") ||
+  process.env.DATABASE_URL?.includes("@127.0.0.1");
 const poolConfig: pg.PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl:

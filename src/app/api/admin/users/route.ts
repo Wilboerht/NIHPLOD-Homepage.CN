@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -171,6 +171,9 @@ export async function POST(request: NextRequest) {
     if (!validateCSRFToken(request)) {
       return csrfForbiddenResponse();
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const parsed = z

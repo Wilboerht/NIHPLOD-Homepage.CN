@@ -134,6 +134,9 @@ function createStore(): TokenBlacklistStore {
   if (process.env.TOKEN_BLACKLIST_STORAGE === "database") {
     return new DatabaseTokenBlacklistStore();
   }
+  if (process.env.TOKEN_BLACKLIST_STORAGE === "memory") {
+    return new MemoryTokenBlacklistStore();
+  }
   if (process.env.NODE_ENV === "production") {
     throw new Error(
       "[TokenBlacklist] 生产环境必须设置 TOKEN_BLACKLIST_STORAGE=database，" +

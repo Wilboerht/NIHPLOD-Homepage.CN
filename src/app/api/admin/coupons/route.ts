@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
   try {
     const admin = await verifyAuth(req);
     if (!admin)
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "未授权" } }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));

@@ -138,8 +138,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   }, [formData.nameEn, mode, formData.slug]);
 
   // 未保存更改离开确认
-  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormRef.current);
   useEffect(() => {
+    const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormRef.current);
     if (!isDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -147,7 +147,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
+  }, [formData]);
 
   // 更新表单字段
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
