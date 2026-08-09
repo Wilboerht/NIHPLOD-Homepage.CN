@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { maskPhone } from "@/lib/mask-phone";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -59,7 +60,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      data: { order },
+      data: {
+        order: {
+          ...order,
+          recipientPhone: maskPhone(order.recipientPhone),
+          user: order.user
+            ? { ...order.user, phone: maskPhone(order.user.phone) }
+            : null,
+        },
+      },
     });
   } catch (error) {
     apiConsole.error("[AdminOrderDetail] 异常:", error);
@@ -138,7 +147,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      data: { order },
+      data: {
+        order: {
+          ...order,
+          recipientPhone: maskPhone(order.recipientPhone),
+        },
+      },
     });
   } catch (error) {
     apiConsole.error("[AdminOrderDetail] PATCH 异常:", error);

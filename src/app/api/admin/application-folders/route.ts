@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const folders = await prisma.applicationFolder.findMany({
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       include: {
@@ -75,7 +78,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validated = CreateFolderSchema.parse(body);
+    const parsed = CreateFolderSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: parsed.error.issues[0].message } },
+        { status: 400 }
+      );
+    }
+    const validated = parsed.data;
 
     // 获取最大排序值
     const maxOrder = await prisma.applicationFolder.aggregate({

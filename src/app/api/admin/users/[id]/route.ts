@@ -13,6 +13,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { maskPhone } from "@/lib/mask-phone";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -100,7 +101,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
-      data: { user },
+      data: {
+        user: {
+          ...user,
+          phone: maskPhone(user.phone),
+          addresses: user.addresses.map((addr) => ({
+            ...addr,
+            phone: maskPhone(addr.phone),
+          })),
+        },
+      },
     });
   } catch (error) {
     apiConsole.error("[AdminUserDetail] 异常:", error);

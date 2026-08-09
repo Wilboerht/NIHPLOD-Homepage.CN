@@ -29,9 +29,6 @@ export async function PUT(request: NextRequest) {
       return csrfForbiddenResponse();
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
-
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -40,8 +37,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
-    const { items } = OrderUpdateSchema.parse(body);
+    const parsed = OrderUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        { status: 400 }
+      );
+    }
+    const { items } = parsed.data;
 
     // 批量更新排序
     await prisma.$transaction(

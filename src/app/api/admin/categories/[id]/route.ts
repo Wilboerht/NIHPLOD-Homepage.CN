@@ -36,6 +36,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
 
     if (!validateCUID(id)) {
@@ -98,7 +101,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
-    const validated = CategoryUpdateSchema.parse(body);
+    const parsed = CategoryUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        { status: 400 }
+      );
+    }
+    const validated = parsed.data;
 
     // 检查分类是否存在
     const existing = await prisma.category.findUnique({ where: { id } });

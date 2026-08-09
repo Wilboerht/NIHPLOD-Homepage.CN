@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { LogOut, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { adminNavItems, type NavItem } from "@/config/admin-nav";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost } from "@/lib/api-client";
@@ -31,6 +31,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState<number | undefined>(undefined);
 
   // 加载未读留言数（badge）
@@ -49,12 +50,15 @@ export function Sidebar({
 
   // 处理登出
   const handleLogout = async () => {
+    setLoggingOut(true);
     try {
       await apiPost("/api/admin/logout");
       router.push("/admin-login");
       router.refresh();
     } catch (error) {
       console.error("登出失败:", error);
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -213,13 +217,14 @@ export function Sidebar({
         {/* 登出按钮 */}
         <button
           onClick={handleLogout}
+          disabled={loggingOut}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-charcoal/60 transition-colors hover:bg-red-50/70 hover:text-red-500",
             isCollapsed && !isMobile && "justify-center px-2"
           )}
           title={isCollapsed && !isMobile ? "退出登录" : undefined}
         >
-          <LogOut className="h-5 w-5" />
+          {loggingOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
           {(!isCollapsed || isMobile) && <span>退出登录</span>}
         </button>
       </div>

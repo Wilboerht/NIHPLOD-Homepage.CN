@@ -74,6 +74,7 @@ const STATUS_MAP: Record<
   { label: string; color: "default" | "warning" | "success" | "danger" | "primary" }
 > = {
   PENDING: { label: "待付款", color: "warning" },
+  PAYING: { label: "支付中", color: "primary" },
   PAID: { label: "已支付", color: "primary" },
   PROCESSING: { label: "处理中", color: "primary" },
   SHIPPED: { label: "已发货", color: "success" },

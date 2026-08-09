@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, ChevronRight, ChevronDown, LogOut, User } from "lucide-react";
+import { useState } from "react";
+import { Menu, ChevronRight, ChevronDown, LogOut, User, Loader2 } from "lucide-react";
 import { getBreadcrumbs } from "@/config/admin-nav";
 import { apiPost } from "@/lib/api-client";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -20,16 +21,20 @@ interface AdminHeaderProps {
 export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: AdminHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
   const breadcrumbs = getBreadcrumbs(pathname);
 
   // 处理登出
   const handleLogout = async () => {
+    setLoggingOut(true);
     try {
       await apiPost("/api/admin/logout");
       router.push("/admin-login");
       router.refresh();
     } catch (error) {
       console.error("登出失败:", error);
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -95,7 +100,8 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
           {
             label: "退出登录",
             danger: true,
-            icon: <LogOut className="h-4 w-4" />,
+            icon: loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />,
+            disabled: loggingOut,
             onClick: handleLogout,
           },
         ]}

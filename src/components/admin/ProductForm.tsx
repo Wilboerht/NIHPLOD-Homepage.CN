@@ -117,6 +117,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     return defaultFormData;
   });
   const initialFormRef = useRef<FormData>(structuredClone(formData));
+  const slugManuallySetRef = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -129,7 +130,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
   // 自动生成 slug
   useEffect(() => {
-    if (mode === "create" && formData.nameEn && !formData.slug) {
+    if (mode === "create" && formData.nameEn && !formData.slug && !slugManuallySetRef.current) {
       setFormData((prev) => ({
         ...prev,
         slug: generateSlug(prev.nameEn),
@@ -139,7 +140,16 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
   // 未保存更改离开确认
   useEffect(() => {
-    const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormRef.current);
+    const stripBlobUrls = (data: FormData) => ({
+      ...data,
+      images: data.images.map((img) => ({
+        ...img,
+        url: img.url?.startsWith("blob:") ? "" : img.url,
+        file: undefined,
+      })),
+    });
+    const isDirty =
+      JSON.stringify(stripBlobUrls(formData)) !== JSON.stringify(stripBlobUrls(initialFormRef.current));
     if (!isDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -266,7 +276,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
       success(publish ? "产品已发布" : "产品已保存");
       router.push("/admin/products");
-      router.refresh();
     } catch (err) {
       showError(err instanceof Error ? err.message : "保存失败");
     } finally {
@@ -327,7 +336,10 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
             <Input
               label="URL 别名"
               value={formData.slug}
-              onChange={(e) => updateField("slug", e.target.value)}
+              onChange={(e) => {
+                slugManuallySetRef.current = true;
+                updateField("slug", e.target.value);
+              }}
               error={errors.slug}
               required
               placeholder="自动生成，可修改"
@@ -485,7 +497,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               <div className="space-y-3">
                 {formData.purchaseLinks.map((link, index) => (
                   <div
-                    key={index}
+                    key={`${link.platform}-${link.url}-${index}`}
                     className="flex items-center gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
                   >
                     <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-brand-charcoal/50" />

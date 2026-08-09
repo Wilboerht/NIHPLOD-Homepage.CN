@@ -7,7 +7,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { apiPost, ApiError } from "@/lib/api-client";
-import { validatePasswordStrength } from "@/lib/password";
 
 interface FormErrors {
   email?: string;
@@ -39,11 +38,23 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const [breadcrumbOpen, setBreadcrumbOpen] = useState(false);
   const breadcrumbRef = useRef<HTMLDivElement>(null);
+  const formTouched = email || password || (totpRequired && totpCode);
 
   // 挂载动画
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 防止意外离开导致表单数据丢失
+  useEffect(() => {
+    if (!formTouched) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [formTouched]);
 
   // 面包屑下拉：点击外部关闭 + Escape 关闭
   useEffect(() => {
@@ -81,11 +92,6 @@ export default function LoginPage() {
 
     if (!password) {
       errors.password = "请输入密码";
-    } else {
-      const strength = validatePasswordStrength(password);
-      if (!strength.valid) {
-        errors.password = strength.message || "密码格式不符合要求";
-      }
     }
 
     if (totpRequired && totpCode.length !== 6) {

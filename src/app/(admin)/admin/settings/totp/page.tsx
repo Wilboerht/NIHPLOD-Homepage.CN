@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -24,8 +24,6 @@ export default function TOTPSettingsPage() {
   const [processing, setProcessing] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -33,14 +31,14 @@ export default function TOTPSettingsPage() {
         const data = await apiGet<{ totpEnabled: boolean }>("/api/admin/totp/status");
         setTotpEnabled(data.totpEnabled);
       } catch {
-        toastRef.current.error("获取二次验证状态失败");
+        toast.error("获取二次验证状态失败");
       } finally {
         setLoading(false);
       }
     };
 
     fetchStatus();
-  }, []);
+  }, [toast]);
 
   const startSetup = async () => {
     setProcessing(true);

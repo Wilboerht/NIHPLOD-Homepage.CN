@@ -7,10 +7,12 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
+import { maskPhone } from "@/lib/mask-phone";
 
 // 更新留言 Schema
 const UpdateSchema = z.object({
   read: z.boolean().optional(),
+  reply: z.string().max(5000).optional(),
 });
 
 // GET /api/admin/messages/[id] - 获取留言详情
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       success: true,
       data: {
         ...message,
+        phone: maskPhone(message.phone),
         createdAt: message.createdAt.toISOString(),
       },
     });
@@ -96,11 +99,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // 更新留言
+    const updateData: Record<string, unknown> = {};
+    if (validated.read !== undefined) updateData.read = validated.read;
+    if (validated.reply !== undefined) {
+      updateData.reply = validated.reply;
+      updateData.repliedAt = new Date();
+    }
+
     const message = await prisma.contactMessage.update({
       where: { id },
-      data: {
-        ...(validated.read !== undefined && { read: validated.read }),
-      },
+      data: updateData,
     });
 
     revalidateTag("admin-stats", "max");
@@ -109,7 +117,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       action: "update_message",
       targetType: "message",
       targetId: id,
-      detail: { read: validated.read },
+      detail: { read: validated.read, replied: !!validated.reply },
       adminId: admin.id,
       request,
     }).catch(() => {});

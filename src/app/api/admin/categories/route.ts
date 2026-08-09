@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const categories = await prisma.category.findMany({
       orderBy: { order: "asc" },
       include: {

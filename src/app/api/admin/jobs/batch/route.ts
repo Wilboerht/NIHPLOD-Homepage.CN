@@ -19,6 +19,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -30,10 +32,15 @@ export async function POST(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    if (!validateCSRFToken(request)) return csrfForbiddenResponse();
-
     const body = await request.json();
     const { ids, action } = BatchSchema.parse(body);
+
+    if (action === "delete" && admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可批量删除职位" } },
+        { status: 403 }
+      );
+    }
 
     let count = 0;
 
@@ -89,7 +96,7 @@ export async function POST(request: NextRequest) {
     createAuditLog({
       action: "batch_job",
       targetType: "job",
-      targetId: ids[0],
+      targetId: "batch",
       detail: { ids, action, count },
       adminId: admin.id,
       request,

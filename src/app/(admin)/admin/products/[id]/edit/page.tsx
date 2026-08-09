@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { apiGet } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 
 interface Category {
   id: string;
@@ -105,7 +106,7 @@ export default function EditProductPage() {
         });
       })
       .catch((err) => {
-        console.error("获取数据失败:", err);
+        apiConsole.error("获取产品数据失败:", err);
         setError("获取数据失败");
       })
       .finally(() => setLoading(false));

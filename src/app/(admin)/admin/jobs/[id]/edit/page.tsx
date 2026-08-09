@@ -7,6 +7,7 @@ import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 
 interface JobData {
   id: string;
@@ -36,7 +37,7 @@ export default function EditJobPage() {
         const data = await apiGet<JobData>(`/api/admin/jobs/${jobId}`);
         setJob(data);
       } catch (error) {
-        console.error("获取职位失败:", error);
+        apiConsole.error("获取职位数据失败:", error);
         if (error instanceof ApiError && error.status === 404) {
           showError("职位不存在");
         } else {

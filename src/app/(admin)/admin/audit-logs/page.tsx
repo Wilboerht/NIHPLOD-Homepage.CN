@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw, Eye, FileJson, AlertCircle } from "lucide-react";
+import { RefreshCw, Eye, FileJson, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
@@ -23,56 +23,37 @@ interface AuditLogItem {
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  login: "登录",
-  logout: "登出",
-  ship_order: "发货",
-  refund_approve: "同意退款",
-  refund_reject: "拒绝退款",
-  create_admin: "创建管理员",
-  update_admin: "更新管理员",
-  delete_admin: "删除管理员",
-  create_product: "创建产品",
-  update_product: "更新产品",
-  delete_product: "删除产品",
-  batch_product: "批量操作产品",
-  create_category: "创建分类",
-  update_category: "更新分类",
-  delete_category: "删除分类",
-  create_job: "创建职位",
-  update_job: "更新职位",
-  delete_job: "删除职位",
-  batch_job: "批量操作职位",
-  update_application: "更新简历",
-  delete_application: "删除简历",
-  update_message: "更新留言",
-  delete_message: "删除留言",
-  batch_message: "批量操作留言",
-  create_coupon: "创建优惠券",
-  update_coupon: "更新优惠券",
-  delete_coupon: "删除优惠券",
-  batch_coupon: "批量操作优惠券",
-  run_cron_task: "执行定时任务",
-  user_points_adjust: "调整用户积分",
-  oauth_client_create: "创建 SSO 客户端",
-  oauth_client_update: "更新 SSO 客户端",
-  oauth_client_delete: "删除 SSO 客户端",
-  oauth_client_rotate_secret: "轮换 SSO 客户端密钥",
-  oauth_client_test: "测试 SSO 客户端",
-  oauth_consent_revoke: "撤销 SSO 授权",
+  login: "登录", logout: "登出", ship_order: "发货", update_order: "更新订单",
+  refund_approve: "同意退款", refund_reject: "拒绝退款",
+  create_admin: "创建管理员", update_admin: "更新管理员", delete_admin: "删除管理员",
+  create_product: "创建产品", update_product: "更新产品", delete_product: "删除产品",
+  batch_product: "批量操作产品", create_category: "创建分类", update_category: "更新分类",
+  delete_category: "删除分类", create_job: "创建职位", update_job: "更新职位",
+  delete_job: "删除职位", batch_job: "批量操作职位", update_application: "更新简历",
+  delete_application: "删除简历", update_message: "更新留言", delete_message: "删除留言",
+  batch_message: "批量操作留言", create_coupon: "创建优惠券", update_coupon: "更新优惠券",
+  delete_coupon: "删除优惠券", batch_coupon: "批量操作优惠券", run_cron_task: "执行定时任务",
+  user_points_adjust: "调整用户积分", update_vip_benefit: "更新会员权益",
+  oauth_client_create: "创建 SSO 客户端", oauth_client_update: "更新 SSO 客户端",
+  oauth_client_delete: "删除 SSO 客户端", oauth_client_rotate_secret: "轮换 SSO 客户端密钥",
+  oauth_client_test: "测试 SSO 客户端", oauth_consent_revoke: "撤销 SSO 授权",
   oauth_session_terminate: "终止 SSO 会话",
+  user_login: "用户登录", user_logout: "用户登出",
+  user_register: "用户注册", user_reset_password: "用户重置密码",
+  user_status_change: "用户状态变更", user_deleted: "用户删除",
+  admin_login: "管理员登录", admin_logout: "管理员登出",
+  create_application_folder: "创建简历文件夹", update_application_folder: "更新简历文件夹",
+  delete_application_folder: "删除简历文件夹", reorder_categories: "重排分类",
+  user_wechat_bind: "用户微信绑定", user_oauth_revoke: "用户 OAuth 撤销",
+  refresh_token_reuse_detected: "检测到 Refresh Token 复用",
+  user_set_password: "用户设置密码",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
-  order: "订单",
-  admin: "管理员",
-  product: "产品",
-  category: "分类",
-  job: "职位",
-  message: "留言",
-  application: "简历",
-  coupon: "优惠券",
-  system: "系统",
-  oauth_client: "SSO 客户端",
+  order: "订单", admin: "管理员", product: "产品", category: "分类",
+  job: "职位", message: "留言", application: "简历", coupon: "优惠券",
+  system: "系统", oauth_client: "SSO 客户端", user: "用户",
+  application_folder: "简历文件夹", oauth_consent: "SSO 授权", vip: "会员", oauth_session: "SSO 会话",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -125,6 +106,8 @@ export default function AuditLogsPage() {
   const page = parseInt(searchParams.get("page") || "1");
   const action = searchParams.get("action") || "";
   const targetType = searchParams.get("targetType") || "";
+  const startDate = searchParams.get("startDate") || "";
+  const endDate = searchParams.get("endDate") || "";
 
   // 模态框状态
   const [detailOpen, setDetailOpen] = useState(false);
@@ -133,13 +116,16 @@ export default function AuditLogsPage() {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
+      const params: Record<string, string | number | undefined> = {
+        page,
+        action: action || undefined,
+        targetType: targetType || undefined,
+      };
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
       const data = await apiGet<{ items: AuditLogItem[]; pagination: typeof pagination }>(
         "/api/admin/audit-logs",
-        {
-          page,
-          action: action || undefined,
-          targetType: targetType || undefined,
-        }
+        params
       );
       setLogs(data.items);
       setPagination(data.pagination);
@@ -150,7 +136,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, action, targetType]);
+  }, [page, action, targetType, startDate, endDate]);
 
   useEffect(() => {
     fetchLogs();
@@ -207,6 +193,37 @@ export default function AuditLogsPage() {
           onChange={(e) => updateParams({ targetType: e.target.value })}
           className="w-32"
         />
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => updateParams({ startDate: e.target.value })}
+            className="h-9 rounded-lg border border-brand-charcoal/15 px-3 text-sm"
+          />
+          <span className="text-sm text-brand-charcoal/50">至</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => updateParams({ endDate: e.target.value })}
+            className="h-9 rounded-lg border border-brand-charcoal/15 px-3 text-sm"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<Download className="h-4 w-4" />}
+          onClick={() => {
+            const params = new URLSearchParams();
+            if (action) params.set("action", action);
+            if (targetType) params.set("targetType", targetType);
+            if (startDate) params.set("startDate", startDate);
+            if (endDate) params.set("endDate", endDate);
+            params.set("export", "csv");
+            window.open(`/api/admin/audit-logs?${params.toString()}`, "_blank");
+          }}
+        >
+          导出 CSV
+        </Button>
       </div>
 
       {/* 日志列表 */}

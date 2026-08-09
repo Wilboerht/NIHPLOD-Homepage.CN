@@ -32,6 +32,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
 
     if (!validateCUID(id)) {
@@ -201,11 +204,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       select: { resumePath: true },
     });
 
+    await prisma.jobApplication.delete({ where: { id } });
+
     if (application?.resumePath) {
       await deleteUploadedFile(application.resumePath);
     }
-
-    await prisma.jobApplication.delete({ where: { id } });
 
     createApplicationAuditLog("delete_application", id, {}, admin, request).catch(() => {});
 

@@ -30,6 +30,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 
 interface Job {
   id: string;
@@ -112,7 +113,7 @@ export default function AdminApplicationsPage() {
       const data = await apiGet<ApplicationFolder[]>("/api/admin/application-folders");
       setFolders(data);
     } catch (error) {
-      console.error("获取分类夹列表失败:", error);
+      apiConsole.error("获取分类夹列表失败:", error);
     }
   }, []);
 
@@ -123,7 +124,7 @@ export default function AdminApplicationsPage() {
         const data = await apiGet<{ items: Job[] }>("/api/admin/jobs", { pageSize: 100 });
         setJobs(data.items);
       } catch (error) {
-        console.error("获取职位列表失败:", error);
+        apiConsole.error("获取职位列表失败:", error);
       }
     };
     fetchJobs();
@@ -153,7 +154,7 @@ export default function AdminApplicationsPage() {
       setTotal(data.pagination.total);
       setPendingCount(data.pendingCount);
     } catch (error) {
-      console.error("获取申请列表失败:", error);
+      apiConsole.error("获取申请列表失败:", error);
       if (error instanceof ApiError && error.status === 401) {
         showError("登录已过期，请重新登录");
         window.location.href = "/admin-login";

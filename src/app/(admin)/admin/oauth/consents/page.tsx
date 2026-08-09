@@ -16,11 +16,6 @@ import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
 
-function maskForList(phone: string | null): string {
-  if (!phone || phone.length < 7) return phone || "";
-  return phone.slice(0, 3) + "****" + phone.slice(-4);
-}
-
 function maskPhone(phone: string): string {
   return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
 }

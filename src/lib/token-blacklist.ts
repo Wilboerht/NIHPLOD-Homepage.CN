@@ -19,6 +19,18 @@ export async function blacklistUserTokens(userId: string, reason: string): Promi
 }
 
 /**
+ * 将管理员加入 token 黑名单（禁用/删除时调用）
+ * 默认 24 小时 TTL，与 admin JWT 过期时间一致
+ */
+export async function blacklistAdminTokens(
+  adminId: string,
+  reason: string,
+  ttlMs: number = 24 * 60 * 60 * 1000
+): Promise<void> {
+  await tokenBlacklistStore.blacklistUser(adminId, reason, ttlMs);
+}
+
+/**
  * 检查用户是否在黑名单中
  * @returns null 表示不在黑名单，否则返回封禁原因
  */

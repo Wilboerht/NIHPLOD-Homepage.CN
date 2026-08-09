@@ -10,6 +10,7 @@ import { withRole, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
+import { blacklistAdminTokens } from "@/lib/token-blacklist";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -51,7 +52,7 @@ export const GET = withRole(["owner"], async (request) => {
       search: searchParams.get("search"),
     });
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { deletedAt: null };
     if (params.search) {
       where.OR = [
         { email: { contains: params.search, mode: "insensitive" } },
@@ -65,7 +66,7 @@ export const GET = withRole(["owner"], async (request) => {
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
         orderBy: { createdAt: "desc" },
-        select: { id: true, email: true, name: true, role: true, createdAt: true, updatedAt: true },
+        select: { id: true, email: true, name: true, role: true, status: true, createdAt: true, updatedAt: true },
       }),
       prisma.admin.count({ where }),
     ]);
@@ -119,7 +120,16 @@ export const POST = withRole(["owner"], async (request, admin) => {
             { status: 400 }
           );
         }
-        await prisma.admin.deleteMany({ where: { id: { in: idsToDelete } } });
+        await prisma.admin.updateMany({
+          where: { id: { in: idsToDelete } },
+          data: { deletedAt: new Date(), status: "DISABLED" },
+        });
+
+        // 吊销所有被删除管理员的 token
+        for (const id of idsToDelete) {
+          blacklistAdminTokens(id, "admin_deleted");
+        }
+
         await createAuditLog({
           action: "delete_admin",
           targetType: "admin",
@@ -141,8 +151,8 @@ export const POST = withRole(["owner"], async (request, admin) => {
     // 创建单个管理员
     const data = createSchema.parse(body);
 
-    const existing = await prisma.admin.findUnique({
-      where: { email: data.email },
+    const existing = await prisma.admin.findFirst({
+      where: { email: data.email, deletedAt: null },
       select: { id: true },
     });
     if (existing) {
@@ -196,10 +206,10 @@ export const PUT = withRole(["owner"], async (request, admin) => {
     const body = await request.json();
     const data = updateSchema.parse(body);
 
-    // 检查邮箱唯一性（排除自身）
+    // 检查邮箱唯一性（排除自身和已删除）
     if (data.email) {
       const existing = await prisma.admin.findFirst({
-        where: { email: data.email, id: { not: data.id } },
+        where: { email: data.email, id: { not: data.id }, deletedAt: null },
         select: { id: true },
       });
       if (existing) {
@@ -216,8 +226,15 @@ export const PUT = withRole(["owner"], async (request, admin) => {
     if (data.role) updateData.role = data.role;
     if (data.password) updateData.password = await hashPassword(data.password);
 
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { success: false, error: { code: "NO_CHANGES", message: "没有需要更新的字段" } },
+        { status: 400 }
+      );
+    }
+
     const updatedAdmin = await prisma.admin.update({
-      where: { id: data.id },
+      where: { id: data.id, deletedAt: null },
       data: updateData,
       select: { id: true, email: true, name: true, role: true, createdAt: true, updatedAt: true },
     });

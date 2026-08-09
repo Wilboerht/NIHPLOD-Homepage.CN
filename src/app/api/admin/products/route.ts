@@ -36,6 +36,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
+
     // 解析查询参数
     const searchParams = request.nextUrl.searchParams;
     const query = QuerySchema.parse({

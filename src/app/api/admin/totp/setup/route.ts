@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
+import { verifyPassword } from "@/lib/password";
 import {
   generateTOTPSecret,
   generateTOTPQRCodeUrl,
@@ -31,7 +32,15 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json().catch(() => ({}));
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_JSON", message: "请求体格式错误" } },
+        { status: 400 }
+      );
+    }
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!password) {
@@ -54,7 +63,6 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     }
 
     // 必须先验证当前密码
-    const { verifyPassword } = await import("@/lib/password");
     const passwordValid = await verifyPassword(password, admin.password);
     if (!passwordValid) {
       return NextResponse.json(

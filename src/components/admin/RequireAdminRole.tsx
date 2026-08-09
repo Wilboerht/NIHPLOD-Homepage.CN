@@ -17,9 +17,10 @@
  * }
  * ```
  */
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useCallback } from "react";
 import { apiGet } from "@/lib/api-client";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, WifiOff, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface RequireAdminRoleProps {
   role: "owner" | "admin";
@@ -29,14 +30,19 @@ interface RequireAdminRoleProps {
 export function RequireAdminRole({ role, children }: RequireAdminRoleProps) {
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const fetchRole = useCallback(() => {
+    setLoading(true);
+    setError(false);
     let cancelled = false;
     apiGet<{ user: { role: string } }>("/api/admin/me")
       .then((data) => {
         if (!cancelled) setUserRole(data.user?.role);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -44,6 +50,11 @@ export function RequireAdminRole({ role, children }: RequireAdminRoleProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const cleanup = fetchRole();
+    return cleanup;
+  }, [fetchRole]);
 
   if (loading) {
     return (
@@ -53,12 +64,26 @@ export function RequireAdminRole({ role, children }: RequireAdminRoleProps) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
+        <WifiOff className="h-12 w-12 text-brand-charcoal/30" />
+        <p className="text-lg font-medium text-brand-charcoal/70">网络错误</p>
+        <p className="text-sm text-brand-charcoal/50">无法验证管理员权限，请检查网络连接</p>
+        <Button variant="outline" onClick={fetchRole} leftIcon={<RefreshCw className="h-4 w-4" />}>
+          重试
+        </Button>
+      </div>
+    );
+  }
+
   if (!userRole || userRole !== role) {
+    const roleLabel = role === "owner" ? "超级管理员" : "管理员";
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <ShieldAlert className="h-12 w-12 text-brand-charcoal/30" />
         <p className="text-lg font-medium text-brand-charcoal/70">无权访问</p>
-        <p className="text-sm text-brand-charcoal/50">该页面仅限超级管理员访问</p>
+        <p className="text-sm text-brand-charcoal/50">该页面仅限{roleLabel}访问</p>
       </div>
     );
   }

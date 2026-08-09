@@ -400,7 +400,7 @@ function OAuthClientsPage() {
   };
 
   const getSdkConfigCode = (client: OAuthClient, type: ClientType, pkceChallenge?: string) => {
-    const ssoBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://nihplod.cn";
+    const ssoBaseUrl = typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
     const primaryUri = client.redirectUris[0] || "https://your-app.com/callback";
     const scopes = client.scopes.join(" ");
 
@@ -994,7 +994,7 @@ if (!payload) {
           <p className="text-xs text-gray-500">
             将代码复制到子项目中即可快速接入。详情请参考{" "}
             <a
-              href="https://nihplod.cn/docs/sso-integration"
+              href={`${process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn"}/docs/sso-integration`}
               target="_blank"
               className="text-blue-600 underline"
               rel="noreferrer"

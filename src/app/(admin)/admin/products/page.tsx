@@ -235,6 +235,8 @@ export default function AdminProductsPage() {
         onSort={(key, order) =>
           updateParams({ sortBy: key, sortOrder: order })
         }
+        sortBy={sortBy || undefined}
+        sortOrder={sortOrder as "asc" | "desc" | undefined}
       />
     </div>
   );

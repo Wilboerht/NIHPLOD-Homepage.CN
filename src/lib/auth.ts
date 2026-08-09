@@ -44,12 +44,13 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     return null;
   }
 
-  if (await isTokenBlacklisted(token)) {
+  const payload = await verifyToken(token);
+  if (!payload) {
     return null;
   }
 
-  const payload = await verifyToken(token);
-  if (!payload) {
+  // 校验管理员是否已被拉黑（禁用/删除时加入黑名单）
+  if (await isTokenBlacklisted(payload.id)) {
     return null;
   }
 
@@ -111,8 +112,8 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
-  // 校验 token 是否在黑名单中
-  if (await isTokenBlacklisted(token)) {
+  // 校验管理员是否已被拉黑（禁用/删除时加入黑名单）
+  if (await isTokenBlacklisted(payload.id)) {
     return null;
   }
 
@@ -146,15 +147,16 @@ export function withAuth<T extends NextRequest, C = unknown, R extends Response 
     const admin = await verifyAuth(request);
 
     if (!admin) {
+      const tokenExists = getTokenFromRequest(request) !== null;
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "UNAUTHORIZED",
-            message: "未授权访问",
+            code: tokenExists ? "CSRF_INVALID" : "UNAUTHORIZED",
+            message: tokenExists ? "CSRF 验证失败" : "未授权访问",
           },
         },
-        { status: 401 }
+        { status: tokenExists ? 403 : 401 }
       ) as unknown as R;
     }
 

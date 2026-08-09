@@ -79,6 +79,7 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     }
 
     let totpValid = false;
+    let consumedBackupResult: { remainingCodes: string[] } | null = null;
     if (admin.totpSecret) {
       try {
         const secret = decryptTOTPSecret(admin.totpSecret);
@@ -92,11 +93,7 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       const backupResult = verifyBackupCode(totpCode, admin.totpBackupCodes);
       if (backupResult) {
         totpValid = true;
-        // 消耗已使用的备用码
-        await prisma.admin.update({
-          where: { id: admin.id },
-          data: { totpBackupCodes: JSON.stringify(backupResult.remainingCodes) },
-        });
+        consumedBackupResult = backupResult;
       }
     }
 
@@ -107,13 +104,21 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
-    await prisma.admin.update({
-      where: { id: admin.id },
-      data: {
-        totpEnabled: false,
-        totpSecret: null,
-        totpBackupCodes: null,
-      },
+    await prisma.$transaction(async (tx) => {
+      if (consumedBackupResult) {
+        await tx.admin.update({
+          where: { id: admin.id },
+          data: { totpBackupCodes: JSON.stringify(consumedBackupResult.remainingCodes) },
+        });
+      }
+      await tx.admin.update({
+        where: { id: admin.id },
+        data: {
+          totpEnabled: false,
+          totpSecret: null,
+          totpBackupCodes: null,
+        },
+      });
     });
 
     await createAuditLog({

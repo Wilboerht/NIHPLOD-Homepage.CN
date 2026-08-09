@@ -11,6 +11,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 
 // 分类类型
 interface Category {
@@ -47,7 +48,7 @@ export default function AdminCategoriesPage() {
       const data = await apiGet<Category[]>("/api/admin/categories");
       setCategories(data);
     } catch (error) {
-      console.error("获取分类失败:", error);
+      apiConsole.error("获取分类失败:", error);
       showError("加载失败，请刷新重试");
     } finally {
       setLoading(false);

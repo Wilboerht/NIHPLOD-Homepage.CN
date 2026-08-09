@@ -68,7 +68,21 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     }
 
     const body = await req.json();
-    const data = updateSchema.parse(body);
+    const parsed = updateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        { status: 400 }
+      );
+    }
+    const data = parsed.data;
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "无有效更新字段" } },
+        { status: 400 }
+      );
+    }
 
     const coupon = await prisma.coupon.update({
       where: { id },

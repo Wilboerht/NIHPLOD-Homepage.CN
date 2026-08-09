@@ -4,7 +4,7 @@
  * 会员管理后台页面
  */
 import { useEffect, useState, useCallback } from "react";
-import { Crown, TrendingUp, Users, Coins, Save, RefreshCw } from "lucide-react";
+import { Crown, Users, Coins, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -63,6 +63,7 @@ export default function AdminVIPPage() {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ userId: "", points: 0, note: "" });
   const [adjusting, setAdjusting] = useState(false);
+  const [jsonError, setJsonError] = useState("");
   const { success, error: showError } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -316,11 +317,13 @@ export default function AdminVIPPage() {
                     try {
                       const parsed = JSON.parse(e.target.value);
                       setEditBenefit({ ...editBenefit, benefits: parsed });
+                      setJsonError("");
                     } catch {
-                      // 允许用户编辑未完成的 JSON
+                      setJsonError("JSON 格式错误，请检查语法");
                     }
                   }}
                 />
+                {jsonError && <p className="mt-1 text-xs text-red-500">{jsonError}</p>}
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-3">

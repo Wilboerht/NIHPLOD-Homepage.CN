@@ -70,6 +70,41 @@ function getActiveNavItem(pathname: string): NavItem | undefined {
 }
 
 /**
+ * 解析路径获取深层路径信息
+ */
+function parseDeepPath(pathname: string): { title: string; href: string } | null {
+  // 产品编辑: /admin/products/[id]/edit
+  if (pathname.match(/\/admin\/products\/[^/]+\/edit/)) {
+    return { title: "编辑产品", href: pathname };
+  }
+  // 产品新建: /admin/products/new
+  if (pathname === "/admin/products/new") {
+    return { title: "新增产品", href: "/admin/products/new" };
+  }
+  // 订单详情: /admin/orders/[id]
+  if (pathname.match(/\/admin\/orders\/[^/]+$/)) {
+    return { title: "订单详情", href: pathname };
+  }
+  // 职位编辑: /admin/jobs/[id]/edit
+  if (pathname.match(/\/admin\/jobs\/[^/]+\/edit/)) {
+    return { title: "编辑职位", href: pathname };
+  }
+  // 职位新建: /admin/jobs/new
+  if (pathname === "/admin/jobs/new") {
+    return { title: "新增职位", href: "/admin/jobs/new" };
+  }
+  // OAuth 客户端向导: /admin/oauth-clients/wizard
+  if (pathname === "/admin/oauth-clients/wizard") {
+    return { title: "创建客户端", href: "/admin/oauth-clients/wizard" };
+  }
+  // TOTP 设置: /admin/settings/totp
+  if (pathname === "/admin/settings/totp") {
+    return { title: "安全设置", href: "/admin/settings/totp" };
+  }
+  return null;
+}
+
+/**
  * 生成面包屑导航
  */
 export function getBreadcrumbs(pathname: string): { title: string; href: string }[] {
@@ -78,6 +113,11 @@ export function getBreadcrumbs(pathname: string): { title: string; href: string 
   const activeItem = getActiveNavItem(pathname);
   if (activeItem && activeItem.href !== "/admin") {
     breadcrumbs.push({ title: activeItem.title, href: activeItem.href });
+  }
+
+  const deepPath = parseDeepPath(pathname);
+  if (deepPath) {
+    breadcrumbs.push({ title: deepPath.title, href: deepPath.href });
   }
 
   return breadcrumbs;

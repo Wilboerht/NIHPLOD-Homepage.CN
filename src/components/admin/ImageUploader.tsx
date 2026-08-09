@@ -11,8 +11,7 @@ interface ImageItem {
   url: string;
   alt?: string | null;
   order: number;
-  file?: File; // 新上传的文件
-  uploading?: boolean;
+  file?: File;
 }
 
 interface ImageUploaderProps {
@@ -43,7 +42,10 @@ export function ImageUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const dragItem = useRef<number | null>(null);
   const valueRef = useRef(value);
-  valueRef.current = value;
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const handleChange = useCallback(
     (newImages: ImageItem[]) => {
@@ -80,7 +82,7 @@ export function ImageUploader({
       setIsCompressing(true);
       const errors: string[] = [];
       const newImages: ImageItem[] = [];
-      const remainingSlots = maxImages - value.length;
+      const remainingSlots = maxImages - valueRef.current.length;
       const fileArray = Array.from(files).slice(0, remainingSlots);
 
       for (let i = 0; i < fileArray.length; i++) {
@@ -115,7 +117,7 @@ export function ImageUploader({
         newImages.push({
           url,
           alt: null,
-          order: value.length + i,
+          order: valueRef.current.length + i,
           file,
         });
       }
@@ -126,11 +128,12 @@ export function ImageUploader({
       }
 
       if (newImages.length > 0) {
-        handleChange([...value, ...newImages]);
+        const currentValue = valueRef.current;
+        handleChange([...currentValue, ...newImages]);
       }
       setIsCompressing(false);
     },
-    [value, maxImages, onChange, validateFile]
+    [maxImages, onChange, validateFile]
   );
 
   // 拖拽事件
@@ -229,8 +232,7 @@ export function ImageUploader({
               onDragEnd={handleDragEnd}
               className={cn(
                 "group relative aspect-square overflow-hidden rounded-lg border-2 bg-brand-charcoal/8",
-                dragOverIndex === index ? "border-brand-primary" : "border-transparent",
-                image.uploading && "opacity-50"
+                dragOverIndex === index ? "border-brand-primary" : "border-transparent"
               )}
             >
               <Image src={image.url} alt={image.alt || "产品图片"} fill className="object-cover" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" />
@@ -242,6 +244,7 @@ export function ImageUploader({
               <button
                 type="button"
                 onClick={() => removeImage(index)}
+                aria-label={`删除第 ${index + 1} 张图片`}
                 className="absolute right-1 top-1 rounded-full bg-black/50 p-1 opacity-0 transition-opacity hover:bg-red-500 group-hover:opacity-100"
               >
                 <X className="h-4 w-4 text-white" />
@@ -250,12 +253,6 @@ export function ImageUploader({
               <div className="absolute bottom-1 left-1 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
                 {index + 1}
               </div>
-              {/* 加载指示器 */}
-              {image.uploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -264,6 +261,15 @@ export function ImageUploader({
       {/* 上传区域 */}
       {value.length < maxImages && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="上传图片"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}

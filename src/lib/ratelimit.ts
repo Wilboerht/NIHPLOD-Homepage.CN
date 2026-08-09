@@ -56,7 +56,13 @@ function checkProductionRateLimitStorage(): void {
 }
 
 async function withMutex<T>(key: string, fn: () => T | Promise<T>): Promise<T> {
+  const start = Date.now();
+  const timeoutMs = 5000;
   while (mutexMap.has(key)) {
+    if (Date.now() - start > timeoutMs) {
+      mutexMap.delete(key); // 超时后强制释放过期的互斥锁
+      break;
+    }
     await mutexMap.get(key);
   }
   let resolve: () => void;

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus, Inbox } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
@@ -46,6 +46,8 @@ interface DataTableProps<T> {
     onClick: () => void;
   };
   onSort?: (key: string, order: "asc" | "desc") => void;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   className?: string;
 }
 
@@ -62,9 +64,19 @@ export function DataTable<T extends object>({
   emptyText = "暂无数据",
   emptyAction,
   onSort,
+  sortBy,
+  sortOrder,
   className,
 }: DataTableProps<T>) {
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(
+    sortBy && sortOrder ? { key: sortBy, order: sortOrder } : null
+  );
+
+  useEffect(() => {
+    if (sortBy && sortOrder) {
+      setSortConfig({ key: sortBy, order: sortOrder });
+    }
+  }, [sortBy, sortOrder]);
 
   // 获取行的唯一键
   const getRowKey = (record: T, index: number): string => {
@@ -135,7 +147,7 @@ export function DataTable<T extends object>({
       )}
     >
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-brand-charcoal/10" aria-label={emptyText || "数据表格"}>
+        <table className="min-w-full divide-y divide-brand-charcoal/10" aria-label="数据表格">
           <thead className="sticky top-0 z-10 bg-brand-charcoal/[0.02]">
             <tr>
               {columns.map((column) => {
@@ -156,6 +168,13 @@ export function DataTable<T extends object>({
                       column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
                     )}
                     aria-sort={column.sortable ? sortState : undefined}
+                    tabIndex={column.sortable ? 0 : undefined}
+                    onKeyDown={(e) => {
+                      if (column.sortable && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        handleSort(column);
+                      }
+                    }}
                     onClick={() => handleSort(column)}
                   >
                     <div
@@ -203,10 +222,19 @@ export function DataTable<T extends object>({
               data.map((record, rowIndex) => (
                 <tr
                   key={getRowKey(record, rowIndex)}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  role={onRowClick ? "button" : undefined}
+                  aria-label={onRowClick ? "查看详情" : undefined}
+                  onKeyDown={(e) => {
+                    if ((e.key === "Enter" || e.key === " ") && onRowClick) {
+                      e.preventDefault();
+                      onRowClick(record);
+                    }
+                  }}
                   onClick={() => onRowClick?.(record)}
                   className={cn(
                     "transition-colors even:bg-brand-charcoal/[0.02]",
-                    onRowClick && "cursor-pointer hover:bg-brand-charcoal/[0.03]"
+                    onRowClick && "cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   )}
                 >
                   {columns.map((column) => {
@@ -247,9 +275,9 @@ export function DataTable<T extends object>({
         </div>
       )}
 
-      {/* 加载遮罩 */}
+      {/* 加载遮罩 — 仅覆盖表格内容区，不影响分页 */}
       {loading && data.length > 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+        <div className="absolute inset-0 bottom-[60px] flex items-center justify-center bg-white/50">
           <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
@@ -80,18 +80,16 @@ export function ProductsTable({
   }>({ open: false });
 
   // 选择/取消选择
-  const handleSelect = (id: string) => {
+  const handleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
-  };
+  }, []);
 
   // 全选/取消全选
-  const handleSelectAll = () => {
-    if (selectedIds.length === products.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(products.map((p) => p.id));
-    }
-  };
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds((prev) =>
+      prev.length === products.length ? [] : products.map((p) => p.id)
+    );
+  }, [products]);
 
   // 切换发布状态
   const handleTogglePublish = async (id: string, published: boolean) => {
@@ -117,11 +115,8 @@ export function ProductsTable({
       } else if (id) {
         await apiDelete(`/api/admin/products/${id}`);
       }
-      // 删光当前页最后一条时回退一页
-      const emptiedCurrentPage = batch
-        ? selectedIds.length >= products.length
-        : products.length === 1;
-      if (emptiedCurrentPage && pagination.page > 1) {
+      // 删光当前页所有数据时回退一页
+      if (products.length === 1 && pagination.page > 1) {
         onPageChange(pagination.page - 1);
       } else {
         onRefresh();
@@ -283,7 +278,7 @@ export function ProductsTable({
         </div>
       ),
     },
-  ], [selectedIds, products.length, actionLoading]);
+  ], [selectedIds, products, actionLoading, handleSelectAll]);
 
   return (
     <div className="space-y-4">
@@ -335,6 +330,8 @@ export function ProductsTable({
         rowKey="id"
         emptyText="暂无产品数据"
         onSort={onSort}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
         pagination={{
           page: pagination.page,
           pageSize: pagination.pageSize,

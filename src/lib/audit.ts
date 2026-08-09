@@ -90,6 +90,7 @@ export const AUDIT_ACTIONS = [
   "login",
   "logout",
   "ship_order",
+  "update_order",
   "refund_approve",
   "refund_reject",
   "create_admin",
@@ -118,6 +119,7 @@ export const AUDIT_ACTIONS = [
   "create_coupon",
   "update_coupon",
   "delete_coupon",
+  "batch_coupon",
   "run_cron_task",
   "user_login",
   "user_logout",
@@ -127,6 +129,8 @@ export const AUDIT_ACTIONS = [
   "user_oauth_revoke",
   "user_status_change",
   "user_deleted",
+  "user_points_adjust",
+  "update_vip_benefit",
   "oauth_client_create",
   "oauth_client_update",
   "oauth_client_delete",
@@ -155,6 +159,7 @@ export const AUDIT_TARGET_TYPES = [
   "oauth_client",
   "oauth_consent",
   "oauth_session",
+  "vip",
 ] as const;
 
 interface AuditLogInput {
@@ -210,7 +215,8 @@ export async function listAuditLogs(options: {
   startDate?: Date;
   endDate?: Date;
 }) {
-  const { page, pageSize: rawPageSize, action, targetType, adminId, startDate, endDate } = options;
+  const { page: rawPage, pageSize: rawPageSize, action, targetType, adminId, startDate, endDate } = options;
+  const page = Math.min(rawPage, 1000); // 防止跳过过多行
   const pageSize = Math.min(rawPageSize, 100);
 
   const where: Record<string, unknown> = {};

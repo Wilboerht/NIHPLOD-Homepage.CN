@@ -38,7 +38,14 @@ export async function POST(request: NextRequest) {
 
     // 解析请求体
     const body = await request.json();
-    const { ids, action } = BatchActionSchema.parse(body);
+    const parsed = BatchActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        { status: 400 }
+      );
+    }
+    const { ids, action } = parsed.data;
 
     let result: { count: number };
 
@@ -78,18 +85,18 @@ export async function POST(request: NextRequest) {
             { status: 409 }
           );
         }
-        // 删除关联的物理图片文件
+        // 删除关联的物理图片文件（先查，后删DB，最后删文件）
         const images = await prisma.image.findMany({
           where: { productId: { in: ids } },
           select: { url: true },
         });
-        for (const img of images) {
-          await deleteUploadedFile(img.url);
-        }
         // 删除产品（级联删除关联的图片数据库记录）
         result = await prisma.product.deleteMany({
           where: { id: { in: ids } },
         });
+        for (const img of images) {
+          await deleteUploadedFile(img.url);
+        }
         break;
       }
 

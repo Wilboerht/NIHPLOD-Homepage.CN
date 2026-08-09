@@ -166,14 +166,16 @@ model ApplicationFolder {
 // ============================================
 
 model ContactMessage {
-  id        String   @id @default(cuid())
-  name      String   // 留言人姓名
-  phone     String   // 联系电话
-  type      String?  // 留言类型 (咨询、合作等)
-  content   String   @db.Text // 留言内容
-  read      Boolean  @default(false) // 是否已读
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id        String    @id @default(cuid())
+  name      String    // 留言人姓名
+  phone     String    // 联系电话
+  type      String?   // 留言类型 (咨询、合作等)
+  content   String    @db.Text // 留言内容
+  reply     String?   @db.Text // 管理员回复
+  repliedAt DateTime? // 回复时间
+  read      Boolean   @default(false) // 是否已读
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
 
   @@index([read, createdAt(sort: Desc)])
 }
@@ -453,6 +455,7 @@ model Address {
   city        String                           // 市
   district    String                           // 区
   detail      String                           // 详细地址
+  postalCode  String?                          // 邮政编码
   isDefault   Boolean  @default(false)
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

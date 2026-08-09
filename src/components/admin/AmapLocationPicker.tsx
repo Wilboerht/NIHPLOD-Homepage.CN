@@ -17,6 +17,7 @@ export interface AmapLocationPickerProps {
 export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLocationPickerProps) {
   const [suggestions, setSuggestions] = useState<AMap.Tip[]>([]);
   const [open, setOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const autoCompleteRef = useRef<AMap.Autocomplete | null>(null);
 
@@ -85,7 +86,18 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
     } else {
       setSuggestions([]);
       setOpen(false);
+      setSelectedIndex(-1);
     }
+  };
+
+  const selectSuggestion = (tip: AMap.Tip) => {
+    const fullLocation = `${tip.district}${tip.name}`;
+    onChange(fullLocation);
+    if (tip.location) {
+      onCoordsChange(tip.location.lng, tip.location.lat);
+    }
+    setOpen(false);
+    setSelectedIndex(-1);
   };
 
   // 点击外部关闭
@@ -115,6 +127,24 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
             if (suggestions.length > 0) setOpen(true);
           }}
           onChange={(e) => handleSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (!open || suggestions.length === 0) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setSelectedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setSelectedIndex((prev) => Math.max(prev - 1, 0));
+            } else if (e.key === "Enter") {
+              e.preventDefault();
+              if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+                selectSuggestion(suggestions[selectedIndex]);
+              }
+            } else if (e.key === "Escape") {
+              setOpen(false);
+              setSelectedIndex(-1);
+            }
+          }}
           autoComplete="off"
           className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
             error
@@ -131,17 +161,16 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
           {suggestions.map((tip, index) => (
             <li
               key={index}
+              role="option"
+              aria-selected={index === selectedIndex}
               onMouseDown={(e) => {
                 e.preventDefault();
-                const fullLocation = `${tip.district}${tip.name}`;
-
-                onChange(fullLocation);
-                if (tip.location) {
-                  onCoordsChange(tip.location.lng, tip.location.lat);
-                }
-                setOpen(false);
+                selectSuggestion(tip);
               }}
-              className="flex cursor-pointer flex-col px-4 py-2 hover:bg-brand-charcoal/[0.03]"
+              onMouseEnter={() => setSelectedIndex(index)}
+              className={`flex cursor-pointer flex-col px-4 py-2 ${
+                index === selectedIndex ? "bg-brand-primary/10" : "hover:bg-brand-charcoal/[0.03]"
+              }`}
             >
               <div className="flex items-center gap-2 text-sm font-medium text-brand-charcoal">
                 <Search className="h-3.5 w-3.5 text-brand-charcoal/50" />

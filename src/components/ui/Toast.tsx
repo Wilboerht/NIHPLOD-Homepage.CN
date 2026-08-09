@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect, ReactNode } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
@@ -167,7 +167,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [removeToast, dismissAll]
   );
 
-  const value: ToastContextType = {
+  const value = useMemo<ToastContextType>(() => ({
     toast: addToast,
     success: (message, duration) => addToast({ type: "success", message, duration }),
     error: (message, duration) => addToast({ type: "error", message, duration }),
@@ -176,7 +176,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     loading: (message) => addToast({ type: "loading", message }),
     dismiss,
     update: updateToast,
-  };
+  }), [addToast, dismiss, updateToast]);
 
   return (
     <ToastContext.Provider value={value}>

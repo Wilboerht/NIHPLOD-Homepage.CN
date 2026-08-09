@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth";
+import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { createAuditLog } from "@/lib/audit";
@@ -13,6 +13,9 @@ export const POST = withAuth(async (request: NextRequest, admin) => {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
   }
+
+  const rateLimitResponse = await checkAdminRateLimit(request, "admin-logout");
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     // 记录登出审计日志

@@ -32,6 +32,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
+import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 
@@ -394,8 +395,10 @@ export default function AdminUsersPage() {
               ))
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-brand-charcoal/50">
-                  暂无用户
+                <td colSpan={9}>
+                  <div className="flex justify-center py-12">
+                    <Empty title="暂无用户" />
+                  </div>
                 </td>
               </tr>
             ) : (
