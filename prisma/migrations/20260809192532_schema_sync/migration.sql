@@ -26,8 +26,18 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- 2. Address: add postalCode column
-ALTER TABLE "Address" ADD COLUMN IF NOT EXISTS "postalCode" TEXT;
+DO $$ BEGIN
+  ALTER TABLE "Address" ADD COLUMN "postalCode" TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 
 -- 3. ContactMessage: add reply and repliedAt columns
-ALTER TABLE "ContactMessage" ADD COLUMN IF NOT EXISTS "reply" TEXT;
-ALTER TABLE "ContactMessage" ADD COLUMN IF NOT EXISTS "repliedAt" TIMESTAMP(3);
+DO $$ BEGIN
+  ALTER TABLE "ContactMessage" ADD COLUMN "reply" TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "ContactMessage" ADD COLUMN "repliedAt" TIMESTAMP(3);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
