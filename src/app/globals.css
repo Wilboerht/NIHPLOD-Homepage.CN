@@ -62,7 +62,8 @@
   body {
     color: var(--foreground);
     background: var(--background);
-    font-family: "Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
+    font-family:
+      "Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -657,7 +658,8 @@
 
 /* 品牌文案 - 高奢护肤品调性 */
 .home-container .title {
-  font-family: "Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
+  font-family:
+    "Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
   font-size: clamp(1.15rem, 4vw, 1.375rem);
   font-weight: 300;
   line-height: 1.7;
@@ -996,12 +998,9 @@
 
 :root {
   --kinetic-bg: #ebe5d8;
-  --kinetic-accent: #333333;
   --kinetic-text-primary: #ffffff;
   --kinetic-text-secondary: #a1a1a1;
   --kinetic-border-radius: 28px;
-  --kinetic-transition: 0.6s;
-  --kinetic-ease: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* 背景包装器 - 覆盖全屏 */
@@ -1091,23 +1090,6 @@
     width: clamp(130px, 16vw, 185px);
     height: auto;
   }
-
-  /* 移动端关闭卡片过渡动画，防止地址栏收缩时触发残影 */
-  .kinetic-cell,
-  .kinetic-cell-image {
-    transition: none !important;
-  }
-}
-
-/* 尊重用户减少动画偏好 */
-@media (prefers-reduced-motion: reduce) {
-  .kinetic-cell {
-    transition: none !important;
-  }
-
-  .kinetic-cell-image {
-    transition: none !important;
-  }
 }
 
 /* ========== Bento Grid 便当盒卡片布局 ========== */
@@ -1169,15 +1151,8 @@
   flex-direction: column;
   justify-content: flex-end;
   padding: 40px;
-  transition:
-    transform var(--kinetic-transition) var(--kinetic-ease),
-    box-shadow var(--kinetic-transition) var(--kinetic-ease),
-    border-color 0.4s ease,
-    background-color 0.4s ease;
-
   box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
   border: none;
-
   cursor: default;
   pointer-events: auto;
 }
@@ -1195,12 +1170,6 @@
   box-shadow: 0 2px 12px -6px rgba(0, 38, 62, 0.05);
 }
 
-/* 禁止文字卡/登录卡的视差倾斜效果 */
-.kinetic-cell.no-hover-effect {
-  transform: none !important;
-  transition: none;
-}
-
 /* ========== 图片卡片样式 ========== */
 
 .kinetic-image-cell {
@@ -1214,9 +1183,25 @@
   object-fit: cover;
   /* 默认保持彩色，悬浮时轻微增强 */
   filter: saturate(1) contrast(1.02);
-  transition:
-    transform 0.6s var(--kinetic-ease),
-    filter 0.6s var(--kinetic-ease);
+}
+
+/* 品牌故事图：桌面/移动端双源，CSS 控制显示，避免 JS 切换闪烁 */
+.kinetic-image-desktop {
+  display: none;
+}
+
+.kinetic-image-mobile {
+  display: block;
+}
+
+@media (min-width: 1025px) {
+  .kinetic-image-desktop {
+    display: block;
+  }
+
+  .kinetic-image-mobile {
+    display: none;
+  }
 }
 
 /* 键盘焦点可访问性 - 白色 outline 适配深色/浅色各类卡片 */
@@ -1257,25 +1242,6 @@
   z-index: 2;
 }
 
-.kinetic-name {
-  font-size: 2.2rem;
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 12px;
-  letter-spacing: -1px;
-  color: var(--kinetic-text-primary);
-  font-family:
-    "Futura LT",
-    "Futura",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  position: relative;
-  z-index: 2;
-}
-
 .kinetic-desc {
   font-size: 0.875rem;
   font-weight: 300;
@@ -1292,9 +1258,6 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  transition:
-    color 0.4s ease,
-    letter-spacing 0.4s ease;
   position: relative;
   z-index: 2;
 }
@@ -1315,22 +1278,6 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  transition:
-    color 0.4s ease,
-    letter-spacing 0.4s ease;
-  position: relative;
-  z-index: 2;
-}
-
-.kinetic-description {
-  font-size: 0.95rem;
-  color: var(--kinetic-text-secondary);
-  font-family: "JetBrains Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition:
-    color 0.4s ease,
-    letter-spacing 0.4s ease;
   position: relative;
   z-index: 2;
 }
@@ -1474,12 +1421,7 @@
       border-radius: 20px;
     }
 
-    .kinetic-name {
-      font-size: 1.8rem !important;
-    }
-
     /* 针对文字卡片的字号微调 */
-    .kinetic-text-cell .kinetic-name,
     .kinetic-text-cell .kinetic-title-sm {
       font-size: 1.45rem;
       line-height: 1.25;
@@ -1522,7 +1464,6 @@
     aspect-ratio: 1 / 1;
   }
 
-  .kinetic-name,
   .kinetic-title-sm {
     font-size: 1.35rem;
     text-shadow: none !important;
@@ -1548,55 +1489,25 @@
   .kinetic-btn-group {
     gap: 8px;
   }
-
-  /* 彻底禁用卡片的悬浮位移和偏移白边（:active 触控反馈由 ≤819px 规则单独提供） */
-  .kinetic-cell:hover,
-  .kinetic-login-cell:not(.no-hover-effect):hover {
-    transform: none !important;
-    box-shadow: 0 10px 25px -5px rgba(120, 90, 50, 0.08) !important;
-  }
-
-  /* 禁用图片缩放、边框发光、文字变色等 hover 效果 */
-  .kinetic-cell:not(.no-hover-effect):hover .kinetic-cell-image {
-    transform: none !important;
-    filter: none !important;
-  }
-
-  .kinetic-cell:not(.no-hover-effect):hover::before {
-    opacity: 0 !important;
-  }
-
-  .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-description,
-  .kinetic-text-cell:not(.no-hover-effect):hover .kinetic-body-sm {
-    color: inherit !important;
-    letter-spacing: inherit !important;
-  }
 }
 
-/* 水印端切换与便当盒移动端断点对齐（820px），避免 Tailwind md=768px 区间混搭 */
+/* 水印端切换与便当盒移动端断点对齐（1025px），避免 Tailwind md=768px 区间混搭 */
 .kinetic-watermark-pc {
   display: none;
 }
 
 .kinetic-watermark-mobile {
   display: block;
+  opacity: 0.12;
 }
 
-@media (min-width: 820px) {
+@media (min-width: 1025px) {
   .kinetic-watermark-pc {
     display: block;
   }
 
   .kinetic-watermark-mobile {
     display: none;
-  }
-}
-
-/* ========== 移动端便当盒网格补充样式 ========== */
-@media (max-width: 819px) {
-  /* 水印提亮 - 深色水印在浅色背景上形成品牌纹理 */
-  .kinetic-watermark-mobile {
-    opacity: 0.12;
   }
 }
 
@@ -1607,7 +1518,6 @@
   box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
-.kinetic-cell-yellow .kinetic-name,
 .kinetic-cell-yellow .kinetic-title-sm {
   color: #00263e;
 }
@@ -1617,25 +1527,14 @@
   color: #4a6272;
 }
 
-.kinetic-cell-yellow .kinetic-description {
-  color: #00263e;
-  text-shadow: none;
-  font-size: 0.8rem;
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-  width: 100%;
-}
-
 .kinetic-cell-orange {
   background: #f8f1e4;
   box-shadow: 0 4px 20px -8px rgba(0, 38, 62, 0.08);
 }
 
-.kinetic-cell-orange .kinetic-name,
 .kinetic-cell-orange .kinetic-title-sm,
 .kinetic-cell-orange .kinetic-desc,
-.kinetic-cell-orange .kinetic-body-sm,
-.kinetic-cell-orange .kinetic-description {
+.kinetic-cell-orange .kinetic-body-sm {
   color: #00263e;
   text-shadow: none;
 }

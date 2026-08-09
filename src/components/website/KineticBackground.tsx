@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "next-view-transitions";
@@ -48,23 +48,17 @@ export function KineticBackground() {
     };
   }, []);
 
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 1025px)");
-    setIsDesktop(mql.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
-
   const handleLoginClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>) => {
       e.preventDefault();
       e.stopPropagation();
-      redirectToLogin();
+      if (user) {
+        openUserCenter();
+      } else {
+        redirectToLogin();
+      }
     },
-    [redirectToLogin],
+    [user, openUserCenter, redirectToLogin]
   );
 
   return (
@@ -72,7 +66,7 @@ export function KineticBackground() {
       <div className="kinetic-bg-base" />
       <div className="kinetic-dot-pattern" />
       <div className="kinetic-watermark">
-        {/* PC 端水印（≥820px 断点切换见 globals.css，与便当盒移动端断点对齐） */}
+        {/* PC 端水印（≥1025px 断点切换见 globals.css，与便当盒移动端断点对齐） */}
         <div
           className="kinetic-watermark-pc relative"
           style={{ filter: "brightness(0) invert(0.95)", opacity: 0.22 }}
@@ -113,7 +107,7 @@ export function KineticBackground() {
         </Link>
 
         {/* 左侧大卡片 - 跨两行 */}
-        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes no-hover-effect group relative cursor-pointer">
+        <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer">
           <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
           <Image
             src="/images/kinetic-product-hero.webp"
@@ -131,7 +125,7 @@ export function KineticBackground() {
         </div>
 
         {/* Row 1, Col 2: 文字卡 */}
-        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps no-hover-effect text-center">
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps text-center">
           <div className="kinetic-title-sm">
             更少步骤
             <br />
@@ -146,7 +140,7 @@ export function KineticBackground() {
 
         {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
         <div
-          className="kinetic-cell kinetic-image-cell kinetic-cell-less no-hover-effect group relative cursor-pointer"
+          className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
           style={{ gridColumn: "span 2", aspectRatio: "auto" }}
         >
           <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
@@ -165,9 +159,9 @@ export function KineticBackground() {
           </div>
         </div>
 
-        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin no-hover-effect group relative cursor-pointer">
+        <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer">
           <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
-          {isDesktop ? (
+          <div className="kinetic-image-desktop absolute inset-0">
             <Image
               src="/images/kinetic-desktop.webp?v=2"
               alt="旎柏品牌故事 - 桌面端展示"
@@ -175,15 +169,16 @@ export function KineticBackground() {
               className="kinetic-cell-image"
               sizes="22vw"
             />
-          ) : (
+          </div>
+          <div className="kinetic-image-mobile absolute inset-0">
             <Image
               src="/images/kinetic-mobile.webp?v=2"
               alt="旎柏品牌故事 - 移动端展示"
               fill
               className="kinetic-cell-image"
-              sizes="(max-width: 819px) 82vw, (max-width: 1024px) 80vw, 22vw"
+              sizes="(max-width: 1024px) 82vw"
             />
-          )}
+          </div>
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#DECCB0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
             <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
               品牌故事
@@ -192,23 +187,16 @@ export function KineticBackground() {
         </div>
 
         {/* Row 2, Col 3: 文字卡 */}
-        <div className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse no-hover-effect text-center">
+        <div className="kinetic-cell kinetic-text-cell kinetic-cell-orange kinetic-cell-reverse text-center">
           <div className="kinetic-title-sm">逆转时光</div>
           <div className="kinetic-desc">REVERSE TIME</div>
         </div>
 
         {/* Row 2, Col 4: 登录/CTA卡 */}
-        <div
-          className="kinetic-cell kinetic-login-cell kinetic-cell-login no-hover-effect cursor-pointer"
-          onClick={user ? () => openUserCenter() : handleLoginClick}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              user ? openUserCenter() : redirectToLogin();
-            }
-          }}
+        <button
+          type="button"
+          className="kinetic-cell kinetic-login-cell kinetic-cell-login cursor-pointer"
+          onClick={handleLoginClick}
         >
           <div className="kinetic-btn-group pointer-events-none">
             <div className="flex w-full flex-col items-center justify-center gap-1.5 sm:mb-2">
@@ -248,7 +236,7 @@ export function KineticBackground() {
               </div>
             )}
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );
