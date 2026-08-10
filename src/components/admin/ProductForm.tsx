@@ -149,7 +149,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       })),
     });
     const isDirty =
-      JSON.stringify(stripBlobUrls(formData)) !== JSON.stringify(stripBlobUrls(initialFormRef.current));
+      JSON.stringify(stripBlobUrls(formData)) !==
+      JSON.stringify(stripBlobUrls(initialFormRef.current));
     if (!isDirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -563,7 +564,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               {formData.geoFaqs.map((faq, index) => (
                 <div
                   key={index}
-                  className="space-y-2 rounded-lg border border-brand-charcoal/8 bg-brand-charcoal/[0.03] p-4"
+                  className="border-brand-charcoal/8 space-y-2 rounded-lg border bg-brand-charcoal/[0.03] p-4"
                 >
                   <div className="flex gap-2">
                     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">

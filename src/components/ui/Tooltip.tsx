@@ -14,6 +14,7 @@
  * ```
  */
 import { ReactNode, useRef, useState, useCallback, useEffect } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
@@ -91,11 +92,35 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const [arrowSide, setArrowSide] = useState<"top" | "bottom" | "left" | "right">(side);
   const wrapRef = useRef<HTMLSpanElement>(null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const handleScroll = useCallback(
+    function handleScroll() {
+      const el = wrapRef.current?.firstElementChild as HTMLElement | null;
+      if (!el) {
+        setVisible(false);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      // 简单检测：trigger 是否仍在视口内（完全滚出视口则隐藏并移除监听）
+      if (
+        rect.bottom < 0 ||
+        rect.top > window.innerHeight ||
+        rect.right < 0 ||
+        rect.left > window.innerWidth
+      ) {
+        setVisible(false);
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleScroll);
+        return;
+      }
+      // 仍在视口内则更新位置
+      const result = getPosition(rect, side);
+      setPos({ left: result.left, top: result.top });
+      setArrowSide(result.arrowSide);
+    },
+    [side]
+  );
 
   const show = useCallback(() => {
     const el = wrapRef.current?.firstElementChild as HTMLElement | null;
@@ -108,26 +133,7 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
     // 监听滚动/窗口变化：当 trigger 位置变化时重新计算或隐藏
     window.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", handleScroll);
-  }, [side]);
-
-  const handleScroll = useCallback(() => {
-    const el = wrapRef.current?.firstElementChild as HTMLElement | null;
-    if (!el) {
-      setVisible(false);
-      return;
-    }
-    const rect = el.getBoundingClientRect();
-    // 简单检测：trigger 是否仍在视口内（完全滚出视口则隐藏）
-    if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
-      setVisible(false);
-      cleanupScroll();
-      return;
-    }
-    // 仍在视口内则更新位置
-    const result = getPosition(rect, side);
-    setPos({ left: result.left, top: result.top });
-    setArrowSide(result.arrowSide);
-  }, [side]);
+  }, [side, handleScroll]);
 
   const cleanupScroll = useCallback(() => {
     window.removeEventListener("scroll", handleScroll, true);

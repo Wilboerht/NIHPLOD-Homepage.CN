@@ -65,11 +65,9 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // 打开时移动焦点到第一个可用菜单项（roving focus）
+  // 打开时移动焦点到第一个可用菜单项（roving focus；activeIndex 已在打开事件中设置）
   useEffect(() => {
     if (open) {
-      const first = enabledIndices[0];
-      setActiveIndex(first ?? -1);
       const firstEl = menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]');
       firstEl?.focus();
     }
@@ -80,6 +78,8 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
     if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       setOpen(true);
+      // 打开时在事件回调中设置初始焦点索引（避免 effect 内 setState）
+      setActiveIndex(enabledIndices[0] ?? -1);
     }
   };
 
@@ -96,9 +96,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
       const next = enabledIndices[Math.min(pos + 1, enabledIndices.length - 1)];
       if (next !== undefined) {
         setActiveIndex(next);
-        menuRef.current
-          ?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
-          [next]?.focus();
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[next]?.focus();
       }
       return;
     }
@@ -108,9 +106,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
       const prev = enabledIndices[Math.max(pos - 1, 0)];
       if (prev !== undefined) {
         setActiveIndex(prev);
-        menuRef.current
-          ?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
-          [prev]?.focus();
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[prev]?.focus();
       }
       return;
     }
@@ -120,15 +116,12 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
     }
   };
 
-  const handleItemClick = useCallback(
-    (item: DropdownItem) => {
-      if (item.disabled) return;
-      item.onClick?.();
-      setOpen(false);
-      setActiveIndex(-1);
-    },
-    []
-  );
+  const handleItemClick = useCallback((item: DropdownItem) => {
+    if (item.disabled) return;
+    item.onClick?.();
+    setOpen(false);
+    setActiveIndex(-1);
+  }, []);
 
   return (
     <div ref={containerRef} className={cn("relative inline-block", className)}>
@@ -138,8 +131,14 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => {
-          setOpen((v) => !v);
-          setActiveIndex(-1);
+          if (open) {
+            setOpen(false);
+            setActiveIndex(-1);
+          } else {
+            setOpen(true);
+            // 打开时在事件回调中设置初始焦点索引（避免 effect 内 setState）
+            setActiveIndex(enabledIndices[0] ?? -1);
+          }
         }}
         onKeyDown={handleTriggerKeyDown}
         className="inline-flex"

@@ -26,10 +26,7 @@ const rotateSchema = z.object({
   }),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
   }
@@ -62,7 +59,10 @@ export async function POST(
     const parsed = rotateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }

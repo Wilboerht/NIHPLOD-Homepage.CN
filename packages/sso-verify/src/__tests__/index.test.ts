@@ -3,7 +3,12 @@
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SignJWT } from "jose";
-import { createTokenVerifier, ssoMiddleware } from "../index";
+import {
+  createTokenVerifier,
+  ssoMiddleware,
+  type SsoMiddlewareRequest,
+  type SsoMiddlewareResponse,
+} from "../index";
 
 const issuer = "https://nihplod.cn";
 const audience = "test-client";
@@ -193,8 +198,8 @@ describe("ssoMiddleware", () => {
       accessTokenSecret: accessSecretString,
     });
 
-    const req: any = { headers: {} };
-    const res: any = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    const req: SsoMiddlewareRequest = { headers: {} };
+    const res: SsoMiddlewareResponse = { status: vi.fn().mockReturnThis(), json: vi.fn() };
     const next = vi.fn();
 
     await middleware(req, res, next);
@@ -211,8 +216,8 @@ describe("ssoMiddleware", () => {
       accessTokenSecret: accessSecretString,
     });
 
-    const req: any = { headers: { authorization: `Bearer ${token}` } };
-    const res: any = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    const req: SsoMiddlewareRequest = { headers: { authorization: `Bearer ${token}` } };
+    const res: SsoMiddlewareResponse = { status: vi.fn().mockReturnThis(), json: vi.fn() };
     const next = vi.fn();
 
     await middleware(req, res, next);

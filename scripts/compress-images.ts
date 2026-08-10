@@ -194,8 +194,8 @@ async function main() {
           `  ✅ ${result.originalWidth}x${result.originalHeight} → ${result.newWidth}x~ | ${formatSize(result.originalSize)} → ${formatSize(result.newSize)} (-${result.savings.toFixed(1)}%)`
         );
       }
-    } catch (err: any) {
-      console.log(`  ❌ 失败: ${err.message || err}`);
+    } catch (err: unknown) {
+      console.log(`  ❌ 失败: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

@@ -33,8 +33,7 @@ export interface MockProduct {
 /**
  * 生成 SVG 图标字符串
  */
-const svgIcon = (paths: string) =>
-  `<svg viewBox="0 0 24 24" fill="none">${paths}</svg>`;
+const svgIcon = (paths: string) => `<svg viewBox="0 0 24 24" fill="none">${paths}</svg>`;
 
 /* ============================================================
  * Categories
@@ -168,8 +167,7 @@ export const mockProducts: MockProduct[] = [
     categoryId: cat("cleanser"),
     category: mockCategories[0],
     images: defaultImages,
-    ingredients:
-      "椰油酰甘氨酸钾（氨基酸表活）、扁柏水、牡丹花水、泛醇、透明质酸钠。",
+    ingredients: "椰油酰甘氨酸钾（氨基酸表活）、扁柏水、牡丹花水、泛醇、透明质酸钠。",
     usage: "取适量泡沫于湿润的面部，轻柔按摩后用温水洗净。",
     benefits: ["温和清洁", "保湿不紧绷", "深层洁净", "适合所有肤质"],
     allowDirectBuy: true,
@@ -189,8 +187,7 @@ export const mockProducts: MockProduct[] = [
     categoryId: cat("scrub"),
     category: mockCategories[1],
     images: defaultImages,
-    ingredients:
-      "圆形胡桃壳粉微末、乳酸、壬二酸、葡萄柚籽提取物、迷迭香叶油",
+    ingredients: "圆形胡桃壳粉微末、乳酸、壬二酸、葡萄柚籽提取物、迷迭香叶油",
     usage:
       "清洁皮肤可加少量水或不加水直接使用本品。取适量大小的膏体于指尖，轻轻涂抹于面部。以打圈的方式轻柔按摩脸颊和额头后用清水彻底洗净。",
     benefits: ["去角质", "收缩毛孔", "提亮肤色", "平衡水油"],
@@ -211,8 +208,7 @@ export const mockProducts: MockProduct[] = [
     categoryId: cat("mask"),
     category: mockCategories[2],
     images: defaultImages,
-    ingredients:
-      "乙酰基六肽-8、α-熊果苷、烟酰胺、可溶性胶原、透明质酸钠",
+    ingredients: "乙酰基六肽-8、α-熊果苷、烟酰胺、可溶性胶原、透明质酸钠",
     usage:
       "洁面后，取出面膜敷于面部，静享 10--15 分钟后取下，可适当按摩面部，将剩余精华液彻底吸收。",
     benefits: ["密集修护", "修复屏障", "深层保湿", "提亮焕肤"],
@@ -235,8 +231,7 @@ export const mockProducts: MockProduct[] = [
     images: defaultImages,
     ingredients:
       "羟丙基四氢吡喃三醇（玻色因）、富勒烯、棕榈酰三肽-5、双歧杆菌发酵溶胞物、α-熊果苷、曲克芦丁、烟酰胺",
-    usage:
-      "深层清洁皮肤后，在指尖涂抹精华液，轻轻涂抹在脸上。轻轻按摩你的脸颊、眼睛和脖子。",
+    usage: "深层清洁皮肤后，在指尖涂抹精华液，轻轻涂抹在脸上。轻轻按摩你的脸颊、眼睛和脖子。",
     benefits: ["抗老紧致", "淡化细纹", "提升弹性", "修护肌底", "焕亮光采"],
     allowDirectBuy: true,
     stock: 50,
@@ -255,10 +250,8 @@ export const mockProducts: MockProduct[] = [
     categoryId: cat("cream"),
     category: mockCategories[4],
     images: defaultImages,
-    ingredients:
-      "羟丙基四氢吡喃三醇（玻色因）、神经酰胺 NP、泛醇、红没药醇、燕麦仁油",
-    usage:
-      "深层清洁皮肤后，在指尖涂抹面霜，轻轻涂抹在脸上。轻轻按摩你的脸颊和眼睛。",
+    ingredients: "羟丙基四氢吡喃三醇（玻色因）、神经酰胺 NP、泛醇、红没药醇、燕麦仁油",
+    usage: "深层清洁皮肤后，在指尖涂抹面霜，轻轻涂抹在脸上。轻轻按摩你的脸颊和眼睛。",
     benefits: ["抗衰老", "深层滋养", "紧致提升", "保湿锁水", "修护屏障"],
     allowDirectBuy: true,
     stock: 60,
@@ -277,8 +270,7 @@ export const mockProducts: MockProduct[] = [
     categoryId: cat("hand-cream"),
     category: mockCategories[6],
     images: defaultImages,
-    ingredients:
-      "羟丙基四氢吡喃三醇（玻色因）、依克多因、乳酸杆菌、细小裸藻多糖、角鲨烷",
+    ingredients: "羟丙基四氢吡喃三醇（玻色因）、依克多因、乳酸杆菌、细小裸藻多糖、角鲨烷",
     usage:
       "取适量乳霜于手掌或手背上，然后均匀涂抹于整个手部。对于特别干燥或严重脱水的肌肤，建议使用较多的频率和用量。",
     benefits: ["深层滋润", "淡化细纹", "柔嫩双手", "长效保湿"],
@@ -299,8 +291,7 @@ export const mockProducts: MockProduct[] = [
     categoryId: cat("body-care"),
     category: mockCategories[7],
     images: defaultImages,
-    ingredients:
-      "羟丙基四氢吡喃三醇（玻色因）、三叶鬼针草、光甘草定、烟酰胺、乳酸菌发酵产物",
+    ingredients: "羟丙基四氢吡喃三醇（玻色因）、三叶鬼针草、光甘草定、烟酰胺、乳酸菌发酵产物",
     usage: "清洁全身后，取适量本产品涂抹于需要护理的部位，并以打圈的方式轻轻按摩至完全吸收。",
     benefits: ["全身滋养", "持久保湿", "柔滑细腻", "快速吸收"],
     allowDirectBuy: true,
@@ -331,8 +322,7 @@ export const mockProducts: MockProduct[] = [
     name: "修护臻养护理油",
     nameEn: "Treatment Oil",
     slug: "treatment-oil",
-    description:
-      "富含多种植物精华油的护理油，深层滋养肌肤，修护干燥损伤，令肌肤重现柔嫩光泽。",
+    description: "富含多种植物精华油的护理油，深层滋养肌肤，修护干燥损伤，令肌肤重现柔嫩光泽。",
     price: 1600,
     capacity: "30 ml",
     purchaseUrl: null,
@@ -351,8 +341,7 @@ export const mockProducts: MockProduct[] = [
     name: "奢宠臻选礼盒",
     nameEn: "Luxury Gift Box",
     slug: "gift-box",
-    description:
-      "甄选NIHPLOD明星产品组合，精美礼盒包装，是馈赠亲友或犒赏自己的理想之选。",
+    description: "甄选NIHPLOD明星产品组合，精美礼盒包装，是馈赠亲友或犒赏自己的理想之选。",
     price: 6350,
     capacity: null,
     purchaseUrl: null,

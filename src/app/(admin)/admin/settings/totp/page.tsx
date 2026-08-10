@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Shield, ShieldCheck, AlertTriangle, Copy, Check, Loader2, Eye, EyeOff } from "lucide-react";
+import {
+  Shield,
+  ShieldCheck,
+  AlertTriangle,
+  Copy,
+  Check,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet, apiPost } from "@/lib/api-client";
@@ -165,7 +174,7 @@ export default function TOTPSettingsPage() {
                 <Image src={setupData.qrCode} alt="TOTP QR Code" width={200} height={200} />
               </div>
               <div className="flex items-center gap-2">
-                <code className="rounded bg-brand-charcoal/8 px-2 py-1 text-xs text-brand-charcoal/80">
+                <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-xs text-brand-charcoal/80">
                   {showTotpSecret ? setupData.secret : "••••••••••••••••"}
                 </code>
                 <Tooltip content={showTotpSecret ? "隐藏密钥" : "显示密钥"} side="top">
@@ -192,13 +201,15 @@ export default function TOTPSettingsPage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-brand-charcoal/80">2. 备用码（仅显示一次，请保存）</p>
+              <p className="text-sm font-medium text-brand-charcoal/80">
+                2. 备用码（仅显示一次，请保存）
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {setupData.backupCodes.map((code, index) => (
                   <div
                     key={index}
                     onClick={() => copyToClipboard(code, `backup-${index}`)}
-                    className="flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 font-mono text-xs text-brand-charcoal/80 hover:bg-brand-charcoal/8"
+                    className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 font-mono text-xs text-brand-charcoal/80"
                   >
                     <span>{code}</span>
                     {copied === `backup-${index}` ? (
@@ -247,7 +258,9 @@ export default function TOTPSettingsPage() {
           </p>
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">当前密码</label>
+              <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+                当前密码
+              </label>
               <input
                 type="password"
                 value={disablePassword}
@@ -270,5 +283,3 @@ export default function TOTPSettingsPage() {
     </div>
   );
 }
-
-

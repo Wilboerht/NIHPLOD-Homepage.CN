@@ -5,6 +5,7 @@ import { Ticket, Loader2, Check, Gift, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, ApiError } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface Coupon {
   id: string;
@@ -61,7 +62,7 @@ export function CouponsContent() {
   }, [user]);
 
   useEffect(() => {
-    fetchCoupons();
+    deferInEffect(fetchCoupons);
   }, [fetchCoupons]);
 
   const handleAcquire = async (coupon: Coupon) => {

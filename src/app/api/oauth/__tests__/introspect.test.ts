@@ -52,11 +52,16 @@ function createFormBody(data: Record<string, string>): Request {
 function validVerifyResult() {
   return {
     client: {
-      id: "1", clientId: "test-client", name: "Test",
+      id: "1",
+      clientId: "test-client",
+      name: "Test",
       redirectUris: ["https://example.com/cb"],
       postLogoutRedirectUris: [],
-      scopes: ["openid"], isActive: true,
-      backchannelLogoutUri: null, createdAt: new Date(), updatedAt: new Date(),
+      scopes: ["openid"],
+      isActive: true,
+      backchannelLogoutUri: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       isPublic: false,
       codeTtlSeconds: 300,
       accessTokenTtlSeconds: 900,
@@ -104,7 +109,7 @@ describe("POST /api/oauth/introspect", () => {
   });
 
   it("audience 不匹配应返回 active: false", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());;
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "other-client",
@@ -123,7 +128,7 @@ describe("POST /api/oauth/introspect", () => {
   });
 
   it("token 有效且 audience 匹配应返回完整 introspection", async () => {
-    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());;
+    vi.mocked(verifyOAuthClientSecret).mockResolvedValue(validVerifyResult());
     const now = Math.floor(Date.now() / 1000);
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",

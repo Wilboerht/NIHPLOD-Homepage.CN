@@ -35,14 +35,6 @@ interface CartResponseItem {
   quantity: number;
 }
 
-interface CartResponse {
-  success: boolean;
-  data: {
-    items: CartResponseItem[];
-    totalItems: number;
-  };
-}
-
 export const useCartStore = create<CartState>((set, get) => ({
   isOpen: false,
   items: [],

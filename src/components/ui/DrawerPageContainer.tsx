@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, useId, type ReactNode, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useId,
+  type ReactNode,
+  type CSSProperties,
+} from "react";
 import { m } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -138,7 +146,7 @@ export function DrawerPageContainer({
               className={cn(
                 "group pointer-events-auto relative z-30 flex items-center justify-center self-center overflow-hidden",
                 "mt-3 rounded-full bg-brand-cream/90 py-3 shadow-[0_2px_12px_-4px_rgba(120,90,50,0.10)] backdrop-blur-md",
-                "lg:-mt-[1px] lg:rounded-t-none lg:rounded-b-2xl lg:bg-[#FBF8F0] lg:py-3.5 lg:shadow-none lg:backdrop-blur-none",
+                "lg:-mt-[1px] lg:rounded-b-2xl lg:rounded-t-none lg:bg-[#FBF8F0] lg:py-3.5 lg:shadow-none lg:backdrop-blur-none",
                 buttonWidth
               )}
             >

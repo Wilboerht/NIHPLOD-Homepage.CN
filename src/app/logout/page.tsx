@@ -14,7 +14,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 function getCsrfTokenFromCookie(): string | null {
   if (typeof document === "undefined") return null;
@@ -34,10 +34,7 @@ async function ensureCsrfToken(): Promise<string | null> {
   return null;
 }
 
-async function checkTrustedLogoutUri(
-  uri: string,
-  clientId: string | null
-): Promise<boolean> {
+async function checkTrustedLogoutUri(uri: string, clientId: string | null): Promise<boolean> {
   if (!uri) return true;
   if (uri.startsWith("/") && !uri.startsWith("//")) return true;
   try {
@@ -55,7 +52,6 @@ async function checkTrustedLogoutUri(
 
 function LogoutContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const postLogoutRedirectUri = searchParams.get("post_logout_redirect_uri") || "";
   const clientId = searchParams.get("client_id") || "";
@@ -103,7 +99,9 @@ function LogoutContent() {
       }
 
       // 清除所有客户端存储数据（auth_hint、购物车、偏好等）
-      try { localStorage.clear(); } catch {}
+      try {
+        localStorage.clear();
+      } catch {}
 
       // 跳转到 frontchannel logout 确认页（仅传递可信的重定向地址）
       const confirmUrl = new URL("/logout/confirm", window.location.origin);
@@ -125,35 +123,33 @@ function LogoutContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">退出登录</h1>
-        <p className="text-gray-500 mb-6">
-          {clientId
-            ? `确定要退出登录并同步退出已授权的应用吗？`
-            : "确定要退出登录吗？"}
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">退出登录</h1>
+        <p className="mb-6 text-gray-500">
+          {clientId ? `确定要退出登录并同步退出已授权的应用吗？` : "确定要退出登录吗？"}
         </p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
-        <div className="flex gap-3 justify-center">
+        <div className="flex justify-center gap-3">
           <button
             onClick={() => {
               window.location.href = "/";
             }}
             disabled={loading}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             取消
           </button>
           <button
             onClick={handleLogout}
             disabled={loading || !trustCheckDone}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            className="rounded-lg bg-red-600 px-6 py-3 text-white hover:bg-red-700 disabled:opacity-50"
           >
             {!trustCheckDone ? "验证中..." : loading ? "处理中..." : "确认退出"}
           </button>
@@ -167,8 +163,8 @@ export default function LogoutPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       }
     >

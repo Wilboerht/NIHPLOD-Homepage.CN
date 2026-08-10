@@ -96,7 +96,13 @@ async function createCertDownloadClient() {
         Formatter.request(method, uri, timestamp, nonce, payload),
         Rsa.from(config.privateKey, Rsa.KEY_TYPE_PRIVATE)
       );
-      const authorization = Formatter.authorization(config.mchId, nonce, signature, timestamp, config.serialNo);
+      const authorization = Formatter.authorization(
+        config.mchId,
+        nonce,
+        signature,
+        timestamp,
+        config.serialNo
+      );
 
       const response = await fetch(`https://api.mch.weixin.qq.com${uri}`, {
         method,
@@ -470,7 +476,11 @@ export async function handlePaymentNotify(
 
       // 已取消但支付成功：触发自动退款，避免用户被扣款
       if (order.status === OrderStatus.CANCELLED) {
-        cancelledOrderRefund = { orderId: order.id, orderNo: order.orderNo, payAmount: Number(order.payAmount) };
+        cancelledOrderRefund = {
+          orderId: order.id,
+          orderNo: order.orderNo,
+          payAmount: Number(order.payAmount),
+        };
         return;
       }
 
@@ -551,7 +561,11 @@ export async function handlePaymentNotify(
 
     // 订单已取消但支付成功：自动发起退款（事务外，避免回调阻塞）
     // TS 无法感知事务闭包内的赋值，此处做类型断言
-    const refundTarget = cancelledOrderRefund as { orderId: string; orderNo: string; payAmount: number } | null;
+    const refundTarget = cancelledOrderRefund as {
+      orderId: string;
+      orderNo: string;
+      payAmount: number;
+    } | null;
     if (refundTarget) {
       await autoRefundCancelledOrder({
         orderId: refundTarget.orderId,

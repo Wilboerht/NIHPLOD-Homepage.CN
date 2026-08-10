@@ -130,8 +130,12 @@ describe("密码工具", () => {
 
     it("recordPasswordHistory 应创建记录并清理旧记录", async () => {
       mockFindMany.mockResolvedValueOnce([
-        { id: "h1" }, { id: "h2" }, { id: "h3" },
-        { id: "h4" }, { id: "h5" }, { id: "h6" },
+        { id: "h1" },
+        { id: "h2" },
+        { id: "h3" },
+        { id: "h4" },
+        { id: "h5" },
+        { id: "h6" },
       ]);
 
       await recordPasswordHistory("user-1", "hashed-password", 5);

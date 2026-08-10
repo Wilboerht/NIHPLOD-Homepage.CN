@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { formatMoney, moneyStrictEqual, ensureMoneyPrecision } from "./money";
-import { formatKey, validateKeyFormat, toPrivateKeyPem, toPublicKeyPem } from "./crypto-utils";
+import { validateKeyFormat, toPrivateKeyPem, toPublicKeyPem } from "./crypto-utils";
 import { fetchWithTimeout } from "./fetch-utils";
 import { autoRefundCancelledOrder } from "./auto-refund";
 import { apiConsole } from "@/lib/logger";
@@ -318,7 +318,8 @@ export async function queryAlipayOrder(orderNo: string): Promise<{
       total_amount?: string;
     };
 
-    const paid = response.trade_status === "TRADE_SUCCESS" || response.trade_status === "TRADE_FINISHED";
+    const paid =
+      response.trade_status === "TRADE_SUCCESS" || response.trade_status === "TRADE_FINISHED";
 
     return {
       success: true,
@@ -373,7 +374,10 @@ export async function handleAlipayNotify(
     // 校验 notify_time 新鲜度（±15 分钟），防重放
     if (params.notify_time) {
       const notifyTime = new Date(params.notify_time);
-      if (isNaN(notifyTime.getTime()) || Math.abs(Date.now() - notifyTime.getTime()) > 15 * 60 * 1000) {
+      if (
+        isNaN(notifyTime.getTime()) ||
+        Math.abs(Date.now() - notifyTime.getTime()) > 15 * 60 * 1000
+      ) {
         apiConsole.error(`[Alipay] notify_time 过期: ${params.notify_time}`);
         return { success: false, message: "通知时间无效" };
       }
@@ -419,7 +423,11 @@ export async function handleAlipayNotify(
 
       // 已取消但支付成功：触发自动退款，避免用户被扣款
       if (order.status === OrderStatus.CANCELLED) {
-        cancelledOrderRefund = { orderId: order.id, orderNo: order.orderNo, payAmount: Number(order.payAmount) };
+        cancelledOrderRefund = {
+          orderId: order.id,
+          orderNo: order.orderNo,
+          payAmount: Number(order.payAmount),
+        };
         return;
       }
 
@@ -496,7 +504,11 @@ export async function handleAlipayNotify(
 
     // 订单已取消但支付成功：自动发起退款（事务外，避免回调阻塞）
     // TS 无法感知事务闭包内的赋值，此处做类型断言
-    const refundTarget = cancelledOrderRefund as { orderId: string; orderNo: string; payAmount: number } | null;
+    const refundTarget = cancelledOrderRefund as {
+      orderId: string;
+      orderNo: string;
+      payAmount: number;
+    } | null;
     if (refundTarget) {
       await autoRefundCancelledOrder({
         orderId: refundTarget.orderId,

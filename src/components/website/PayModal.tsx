@@ -5,10 +5,11 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useMounted } from "@/hooks/useMounted";
+import { deferInEffect } from "@/hooks/deferInEffect";
 import { AnimatePresence, m } from "framer-motion";
 import { X, CreditCard, Loader2, Clock, Check, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
 import { isWechatBrowser } from "@/lib/wechat";
 import { trackEvent } from "@/lib/analytics";
 import { useScrollLock } from "@/hooks/useScrollLock";
@@ -35,10 +36,9 @@ interface OrderData {
 }
 
 export default function PayModal() {
-  const _router = useRouter();
   const { payOpen, payOrderId, closePay, openUserCenter } = useAuth();
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -47,10 +47,6 @@ export default function PayModal() {
   const [payMethod, setPayMethod] = useState<PayMethod>("wechat");
 
   useScrollLock(payOpen);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // ESC 关闭
   useEffect(() => {
@@ -72,19 +68,28 @@ export default function PayModal() {
         // API 返回的是 data.data.order
         const orderData: OrderData = {
           ...data.data.order,
-          items: data.data.order.items?.map((item: { productId: string; productName: string; price: string | number; quantity: number }) => ({
-            productId: item.productId,
-            productName: item.productName,
-            price: typeof item.price === "string" ? parseFloat(item.price) : item.price,
-            quantity: item.quantity,
-          })),
+          items: data.data.order.items?.map(
+            (item: {
+              productId: string;
+              productName: string;
+              price: string | number;
+              quantity: number;
+            }) => ({
+              productId: item.productId,
+              productName: item.productName,
+              price: typeof item.price === "string" ? parseFloat(item.price) : item.price,
+              quantity: item.quantity,
+            })
+          ),
         };
         setOrder(orderData);
         // 缓存订单 items 供 PayResult 回退使用
         if (orderData.items) {
           try {
             sessionStorage.setItem("pending_purchase_items", JSON.stringify(orderData.items));
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       } else {
         setError(data.error?.message || "加载订单失败");
@@ -98,11 +103,13 @@ export default function PayModal() {
 
   useEffect(() => {
     if (payOpen && payOrderId) {
-      // 重置状态
-      setOrder(null);
-      setError("");
-      setCountdown(0);
-      loadOrder();
+      // 重置状态并加载订单（微任务延迟，避免 effect 内同步 setState）
+      deferInEffect(() => {
+        setOrder(null);
+        setError("");
+        setCountdown(0);
+        loadOrder();
+      });
     }
   }, [payOpen, payOrderId, loadOrder]);
 
@@ -243,7 +250,7 @@ export default function PayModal() {
   const content = (
     <AnimatePresence>
       {payOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-[calc(1rem+env(safe-area-inset-top,0px))]">
           {/* 遮罩 - 支付流程中不允许点击遮罩关闭 */}
           <m.div
             initial={{ opacity: 0 }}

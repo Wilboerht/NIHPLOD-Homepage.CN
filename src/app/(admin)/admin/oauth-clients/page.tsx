@@ -28,6 +28,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { deferInEffect } from "@/hooks/deferInEffect";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -79,8 +80,13 @@ const formatDateTime = (dateStr: string) => {
   return new Date(dateStr).toLocaleString("zh-CN");
 };
 
-const validateRedirectUris = (uris: string): { valid: boolean; error?: string; parsed: string[] } => {
-  const lines = uris.split("\n").map((u) => u.trim()).filter(Boolean);
+const validateRedirectUris = (
+  uris: string
+): { valid: boolean; error?: string; parsed: string[] } => {
+  const lines = uris
+    .split("\n")
+    .map((u) => u.trim())
+    .filter(Boolean);
   if (lines.length === 0) return { valid: false, error: "至少需要一个回调 URL", parsed: [] };
   const parsed: string[] = [];
   for (const line of lines) {
@@ -191,7 +197,7 @@ function OAuthClientsPage() {
   }, [page, search, toast]);
 
   useEffect(() => {
-    fetchClients();
+    deferInEffect(fetchClients);
   }, [fetchClients]);
 
   useEffect(() => {
@@ -400,7 +406,10 @@ function OAuthClientsPage() {
   };
 
   const getSdkConfigCode = (client: OAuthClient, type: ClientType, pkceChallenge?: string) => {
-    const ssoBaseUrl = typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+    const ssoBaseUrl =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
     const primaryUri = client.redirectUris[0] || "https://your-app.com/callback";
     const scopes = client.scopes.join(" ");
 
@@ -475,52 +484,49 @@ if (!payload) {
 
   return (
     <div className="p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">OAuth Client 管理</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索名称或 Client ID"
-              className="pl-9 w-64"
+              className="w-64 pl-9"
             />
           </div>
-          <Button
-            onClick={openCreate}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
+          <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
             新建 Client
           </Button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+      <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="border-b bg-gray-50">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">名称</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Client ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">类型</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">回调 URL</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Scopes</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">活跃用户</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">最近活跃</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">状态</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">创建时间</th>
-              <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">操作</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Client ID</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">类型</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">回调 URL</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Scopes</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">活跃用户</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">最近活跃</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={10} />
-              ))
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={10} />)
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-500">暂无数据</td>
+                <td colSpan={10} className="py-8 text-center text-gray-500">
+                  暂无数据
+                </td>
               </tr>
             ) : (
               clients.map((c) => (
@@ -533,15 +539,17 @@ if (!payload) {
                       {c.name}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm font-mono text-gray-600">
+                  <td className="px-4 py-3 font-mono text-sm text-gray-600">
                     <div className="flex items-center gap-2">
-                      <span className="truncate max-w-[120px]" title={c.clientId}>{c.clientId}</span>
+                      <span className="max-w-[120px] truncate" title={c.clientId}>
+                        {c.clientId}
+                      </span>
                       <Tooltip content="复制 Client ID" side="top">
                         <button
                           onClick={() => copyToClipboard(c.clientId)}
                           className="inline-flex text-gray-400 hover:text-gray-600"
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          <Copy className="h-3.5 w-3.5" />
                         </button>
                       </Tooltip>
                     </div>
@@ -551,25 +559,27 @@ if (!payload) {
                       {c.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
+                  <td className="max-w-[200px] truncate px-4 py-3 text-sm text-gray-600">
                     {c.redirectUris.join(", ")}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex flex-wrap gap-1">
                       {c.scopes.map((s) => (
-                        <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                        <Badge key={s} variant="secondary" className="text-xs">
+                          {s}
+                        </Badge>
                       ))}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />
+                      <Users className="h-3.5 w-3.5" />
                       {c.activeUserCount ?? "-"}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
+                      <Clock className="h-3.5 w-3.5" />
                       {c.lastActiveAt ? formatDate(c.lastActiveAt) : "-"}
                     </div>
                   </td>
@@ -584,57 +594,63 @@ if (!payload) {
                       <Tooltip content="查看详情" side="top">
                         <button
                           onClick={() => setDetailClient(c)}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content="生成接入配置" side="top">
                         <button
                           onClick={() => openSdkConfig(c)}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-green-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-green-600"
                         >
-                          <Code className="w-4 h-4" />
+                          <Code className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content="在线测试" side="top">
                         <button
                           onClick={() => openTest(c)}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-green-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-green-600"
                         >
-                          <Shield className="w-4 h-4" />
+                          <Shield className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content="编辑" side="top">
                         <button
                           onClick={() => openEdit(c)}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content="轮换密钥" side="top">
                         <button
-                          onClick={() => { setRotateClientId(c.id); setShowRotateConfirm(true); }}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-purple-600 rounded"
+                          onClick={() => {
+                            setRotateClientId(c.id);
+                            setShowRotateConfirm(true);
+                          }}
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-purple-600"
                         >
-                          <RotateCw className="w-4 h-4" />
+                          <RotateCw className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content={c.isActive ? "禁用" : "启用"} side="top">
                         <button
                           onClick={() => handleToggleActive(c)}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-orange-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-orange-600"
                         >
-                          <Power className="w-4 h-4" />
+                          <Power className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content="删除 Client" side="top">
                         <button
-                          onClick={() => { setDeleteClientId(c.id); setShowDeleteConfirm(true); }}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-red-600 rounded"
+                          onClick={() => {
+                            setDeleteClientId(c.id);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </Tooltip>
                     </div>
@@ -648,26 +664,24 @@ if (!payload) {
 
       {total > pageSize && (
         <div className="mt-4">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
+          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}
 
       {/* Create Modal */}
       <Modal
         open={showCreate}
-        onClose={() => { setShowCreate(false); setNewSecret(null); }}
+        onClose={() => {
+          setShowCreate(false);
+          setNewSecret(null);
+        }}
         title="新建 OAuth Client"
       >
         {newSecret ? (
           <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-green-800 font-medium mb-2">Client 创建成功！</p>
-              <p className="text-xs text-green-600 mb-3">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <p className="mb-2 text-sm font-medium text-green-800">Client 创建成功！</p>
+              <p className="mb-3 text-xs text-green-600">
                 请立即复制并安全保存 Client Secret，关闭后无法再次查看。
               </p>
               <div className="flex items-center gap-2">
@@ -675,26 +689,34 @@ if (!payload) {
                   type={showNewSecret ? "text" : "password"}
                   value={newSecret}
                   readOnly
-                  className="font-mono text-sm flex-1"
+                  className="flex-1 font-mono text-sm"
                 />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowNewSecret(!showNewSecret)}
-                  leftIcon={showNewSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  leftIcon={
+                    showNewSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />
+                  }
                 />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => copyToClipboard(newSecret)}
-                  leftIcon={<Copy className="w-4 h-4" />}
+                  leftIcon={<Copy className="h-4 w-4" />}
                 >
                   复制
                 </Button>
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={() => { setShowCreate(false); setNewSecret(null); fetchClients(); }}>
+              <Button
+                onClick={() => {
+                  setShowCreate(false);
+                  setNewSecret(null);
+                  fetchClients();
+                }}
+              >
                 关闭
               </Button>
             </div>
@@ -702,44 +724,68 @@ if (!payload) {
         ) : (
           <div className="space-y-4">
             {formError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {formError}
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">应用名称 *</label>
-              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="如：Advisor 顾问系统" />
+              <label className="mb-1 block text-sm font-medium text-gray-700">应用名称 *</label>
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="如：Advisor 顾问系统"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">回调 URL *（每行一个）</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                回调 URL *（每行一个）
+              </label>
               <textarea
                 value={formRedirectUris}
                 onChange={(e) => setFormRedirectUris(e.target.value)}
                 placeholder="https://advisor.nihplod.cn/api/auth/callback&#10;https://shop.nihplod.cn/callback"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
-              <p className="text-xs text-gray-400 mt-1">生产环境回调 URL 必须使用 https://</p>
+              <p className="mt-1 text-xs text-gray-400">生产环境回调 URL 必须使用 https://</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Scopes（空格分隔）</label>
-              <Input value={formScopes} onChange={(e) => setFormScopes(e.target.value)} placeholder="openid profile phone membership" />
-              <p className="text-xs text-gray-400 mt-1">必须包含 openid，建议只申请必需 scope</p>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Scopes（空格分隔）
+              </label>
+              <Input
+                value={formScopes}
+                onChange={(e) => setFormScopes(e.target.value)}
+                placeholder="openid profile phone membership"
+              />
+              <p className="mt-1 text-xs text-gray-400">必须包含 openid，建议只申请必需 scope</p>
             </div>
             <div>
               <Switch
                 checked={formIsPublic}
                 onChange={setFormIsPublic}
                 label="Public Client"
-                description={formIsPublic ? "SPA / 移动端 / 桌面端，不传输 client_secret" : "Next.js / 服务端应用，必须保密 client_secret"}
+                description={
+                  formIsPublic
+                    ? "SPA / 移动端 / 桌面端，不传输 client_secret"
+                    : "Next.js / 服务端应用，必须保密 client_secret"
+                }
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Backchannel Logout URI（可选）</label>
-              <Input value={formBackchannelUri} onChange={(e) => setFormBackchannelUri(e.target.value)} placeholder="https://advisor.nihplod.cn/api/sso/logout" />
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Backchannel Logout URI（可选）
+              </label>
+              <Input
+                value={formBackchannelUri}
+                onChange={(e) => setFormBackchannelUri(e.target.value)}
+                placeholder="https://advisor.nihplod.cn/api/sso/logout"
+              />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowCreate(false)}>取消</Button>
+              <Button variant="outline" onClick={() => setShowCreate(false)}>
+                取消
+              </Button>
               <Button onClick={handleCreate} disabled={saving}>
                 {saving ? "创建中..." : "创建"}
               </Button>
@@ -749,50 +795,61 @@ if (!payload) {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal
-        open={showEdit}
-        onClose={() => setShowEdit(false)}
-        title="编辑 OAuth Client"
-      >
+      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="编辑 OAuth Client">
         <div className="space-y-4">
           {formError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {formError}
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">应用名称 *</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">应用名称 *</label>
             <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">回调 URL *（每行一个）</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              回调 URL *（每行一个）
+            </label>
             <textarea
               value={formRedirectUris}
               onChange={(e) => setFormRedirectUris(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
-            <p className="text-xs text-gray-400 mt-1">生产环境回调 URL 必须使用 https://</p>
+            <p className="mt-1 text-xs text-gray-400">生产环境回调 URL 必须使用 https://</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scopes（空格分隔）</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Scopes（空格分隔）
+            </label>
             <Input value={formScopes} onChange={(e) => setFormScopes(e.target.value)} />
-            <p className="text-xs text-gray-400 mt-1">必须包含 openid，建议只申请必需 scope</p>
+            <p className="mt-1 text-xs text-gray-400">必须包含 openid，建议只申请必需 scope</p>
           </div>
           <div>
             <Switch
               checked={formIsPublic}
               onChange={setFormIsPublic}
               label="Public Client"
-              description={formIsPublic ? "SPA / 移动端 / 桌面端，不传输 client_secret" : "Next.js / 服务端应用，必须保密 client_secret"}
+              description={
+                formIsPublic
+                  ? "SPA / 移动端 / 桌面端，不传输 client_secret"
+                  : "Next.js / 服务端应用，必须保密 client_secret"
+              }
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Backchannel Logout URI（可选）</label>
-            <Input value={formBackchannelUri} onChange={(e) => setFormBackchannelUri(e.target.value)} />
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Backchannel Logout URI（可选）
+            </label>
+            <Input
+              value={formBackchannelUri}
+              onChange={(e) => setFormBackchannelUri(e.target.value)}
+            />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowEdit(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setShowEdit(false)}>
+              取消
+            </Button>
             <Button onClick={handleEdit} disabled={saving}>
               {saving ? "保存中..." : "保存"}
             </Button>
@@ -803,7 +860,10 @@ if (!payload) {
       {/* Rotate Secret Confirm */}
       <ConfirmDialog
         open={showRotateConfirm}
-        onClose={() => { setShowRotateConfirm(false); setRotateClientId(null); }}
+        onClose={() => {
+          setShowRotateConfirm(false);
+          setRotateClientId(null);
+        }}
         onConfirm={handleRotateSecret}
         title="轮换 Client 密钥"
         description="确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效，所有使用旧密钥的子项目需要立即更新配置。"
@@ -814,7 +874,10 @@ if (!payload) {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={showDeleteConfirm}
-        onClose={() => { setShowDeleteConfirm(false); setDeleteClientId(null); }}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteClientId(null);
+        }}
         onConfirm={handleDelete}
         type="danger"
         title="删除 Client"
@@ -826,13 +889,16 @@ if (!payload) {
       {/* Rotated Secret Display Modal */}
       <Modal
         open={showRotatedSecret}
-        onClose={() => { setShowRotatedSecret(false); setRotatedSecret(null); }}
+        onClose={() => {
+          setShowRotatedSecret(false);
+          setRotatedSecret(null);
+        }}
         title="Client Secret 轮换成功"
       >
         <div className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-800 font-medium mb-2">新 Secret 已生成</p>
-            <p className="text-xs text-green-600 mb-3">
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+            <p className="mb-2 text-sm font-medium text-green-800">新 Secret 已生成</p>
+            <p className="mb-3 text-xs text-green-600">
               请立即复制并安全保存。旧 Secret 将在 5 分钟内失效，关闭后无法再次查看新 Secret。
             </p>
             <div className="flex items-center gap-2">
@@ -840,26 +906,38 @@ if (!payload) {
                 type={showRotatedSecretValue ? "text" : "password"}
                 value={rotatedSecret || ""}
                 readOnly
-                className="font-mono text-sm flex-1"
+                className="flex-1 font-mono text-sm"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRotatedSecretValue(!showRotatedSecretValue)}
-                leftIcon={showRotatedSecretValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                leftIcon={
+                  showRotatedSecretValue ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )
+                }
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => rotatedSecret && copyToClipboard(rotatedSecret)}
-                leftIcon={<Copy className="w-4 h-4" />}
+                leftIcon={<Copy className="h-4 w-4" />}
               >
                 复制
               </Button>
             </div>
           </div>
           <div className="flex justify-end">
-            <Button onClick={() => { setShowRotatedSecret(false); setRotatedSecret(null); fetchClients(); }}>
+            <Button
+              onClick={() => {
+                setShowRotatedSecret(false);
+                setRotatedSecret(null);
+                fetchClients();
+              }}
+            >
               关闭
             </Button>
           </div>
@@ -874,7 +952,8 @@ if (!payload) {
       >
         <div className="space-y-4">
           <p className="text-xs text-gray-500">
-            输入 Client Secret 与回调地址，验证凭据、JWKS、authorize、token、userinfo、introspect 全链路连通性。
+            输入 Client Secret 与回调地址，验证凭据、JWKS、authorize、token、userinfo、introspect
+            全链路连通性。
           </p>
           <div className="space-y-3">
             <div>
@@ -900,9 +979,15 @@ if (!payload) {
           </div>
 
           {testResult && (
-            <div className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"}`}>
-              <p className={`text-sm font-medium mb-2 ${testResult.steps.every((s) => s.status === "passed") ? "text-emerald-800" : "text-amber-800"}`}>
-                {testResult.steps.every((s) => s.status === "passed") ? "✅ 连接测试全部通过" : "⚠️ 测试未完全通过"}
+            <div
+              className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "border border-emerald-200 bg-emerald-50" : "border border-amber-200 bg-amber-50"}`}
+            >
+              <p
+                className={`mb-2 text-sm font-medium ${testResult.steps.every((s) => s.status === "passed") ? "text-emerald-800" : "text-amber-800"}`}
+              >
+                {testResult.steps.every((s) => s.status === "passed")
+                  ? "✅ 连接测试全部通过"
+                  : "⚠️ 测试未完全通过"}
               </p>
               <div className="space-y-1">
                 {testResult.steps.map((s, i) => (
@@ -930,7 +1015,7 @@ if (!payload) {
             <Button
               onClick={handleRunTest}
               disabled={testLoading}
-              leftIcon={<Shield className="w-4 h-4" />}
+              leftIcon={<Shield className="h-4 w-4" />}
             >
               {testLoading ? "测试中..." : "开始测试"}
             </Button>
@@ -939,35 +1024,31 @@ if (!payload) {
       </Modal>
 
       {/* SDK Config Modal */}
-      <Modal
-        open={showSdkConfig}
-        onClose={() => setShowSdkConfig(false)}
-        title="接入配置代码"
-      >
+      <Modal open={showSdkConfig} onClose={() => setShowSdkConfig(false)} title="接入配置代码">
         <div className="space-y-4">
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+          <div className="flex gap-2 rounded-lg bg-gray-100 p-1">
             <button
               onClick={() => handleSdkTypeChange("confidential")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 sdkClientType === "confidential"
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
-              <Shield className="w-4 h-4" />
+              <Shield className="h-4 w-4" />
               Confidential（服务端）
             </button>
             <button
               onClick={() => handleSdkTypeChange("public")}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 sdkClientType === "public"
                   ? "bg-white text-gray-900 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
-              <Smartphone className="w-4 h-4" />
+              <Smartphone className="h-4 w-4" />
               Public（SPA/移动端）
             </button>
           </div>
@@ -977,16 +1058,16 @@ if (!payload) {
               : "适用于 SPA、移动端、桌面端，不传输 client_secret，必须使用 PKCE。"}
           </p>
           <div className="relative">
-            <pre className="bg-gray-900 text-green-400 rounded-lg p-4 text-xs overflow-x-auto max-h-80">
+            <pre className="max-h-80 overflow-x-auto rounded-lg bg-gray-900 p-4 text-xs text-green-400">
               <code>{sdkConfigCode}</code>
             </pre>
-            <span className="absolute top-2 right-2">
+            <span className="absolute right-2 top-2">
               <Tooltip content="复制代码" side="top">
                 <button
                   onClick={() => copyToClipboard(sdkConfigCode)}
-                  className="inline-flex p-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded"
+                  className="inline-flex rounded bg-gray-700 p-1.5 text-white hover:bg-gray-600"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="h-3.5 w-3.5" />
                 </button>
               </Tooltip>
             </span>
@@ -1014,28 +1095,25 @@ if (!payload) {
       {/* Detail Drawer */}
       {detailClient && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setDetailClient(null)}
-          />
-          <div className="relative w-full max-w-md bg-white shadow-xl h-full overflow-y-auto">
-            <div className="p-6 space-y-6">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDetailClient(null)} />
+          <div className="relative h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
+            <div className="space-y-6 p-6">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">{detailClient.name}</h2>
-                  <p className="text-sm text-gray-500 mt-1">Client ID: {detailClient.clientId}</p>
+                  <p className="mt-1 text-sm text-gray-500">Client ID: {detailClient.clientId}</p>
                 </div>
                 <button
                   onClick={() => setDetailClient(null)}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                  className="rounded p-1 text-gray-400 hover:text-gray-600"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
               <div className="space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">基本信息</h3>
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <h3 className="mb-3 text-sm font-medium text-gray-700">基本信息</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">状态</span>
@@ -1055,7 +1133,11 @@ if (!payload) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">最近活跃</span>
-                      <span>{detailClient.lastActiveAt ? formatDateTime(detailClient.lastActiveAt) : "-"}</span>
+                      <span>
+                        {detailClient.lastActiveAt
+                          ? formatDateTime(detailClient.lastActiveAt)
+                          : "-"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">创建时间</span>
@@ -1069,19 +1151,21 @@ if (!payload) {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">权限范围（Scopes）</h3>
-                  <div className="flex gap-2 flex-wrap">
+                  <h3 className="mb-2 text-sm font-medium text-gray-700">权限范围（Scopes）</h3>
+                  <div className="flex flex-wrap gap-2">
                     {detailClient.scopes.map((s) => (
-                      <Badge key={s} variant="secondary">{s}</Badge>
+                      <Badge key={s} variant="secondary">
+                        {s}
+                      </Badge>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">回调 URL</h3>
+                  <h3 className="mb-2 text-sm font-medium text-gray-700">回调 URL</h3>
                   <ul className="space-y-2">
                     {detailClient.redirectUris.map((uri) => (
-                      <li key={uri} className="text-sm font-mono bg-gray-50 p-2 rounded break-all">
+                      <li key={uri} className="break-all rounded bg-gray-50 p-2 font-mono text-sm">
                         {uri}
                       </li>
                     ))}
@@ -1090,25 +1174,33 @@ if (!payload) {
 
                 {detailClient.backchannelLogoutUri && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Backchannel Logout URI</h3>
-                    <p className="text-sm font-mono bg-gray-50 p-2 rounded break-all">
+                    <h3 className="mb-2 text-sm font-medium text-gray-700">
+                      Backchannel Logout URI
+                    </h3>
+                    <p className="break-all rounded bg-gray-50 p-2 font-mono text-sm">
                       {detailClient.backchannelLogoutUri}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="flex gap-2 border-t pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => { setDetailClient(null); openEdit(detailClient); }}
-                  leftIcon={<Pencil className="w-4 h-4" />}
+                  onClick={() => {
+                    setDetailClient(null);
+                    openEdit(detailClient);
+                  }}
+                  leftIcon={<Pencil className="h-4 w-4" />}
                 >
                   编辑
                 </Button>
                 <Button
-                  onClick={() => { setDetailClient(null); openSdkConfig(detailClient); }}
-                  leftIcon={<Code className="w-4 h-4" />}
+                  onClick={() => {
+                    setDetailClient(null);
+                    openSdkConfig(detailClient);
+                  }}
+                  leftIcon={<Code className="h-4 w-4" />}
                 >
                   接入配置
                 </Button>

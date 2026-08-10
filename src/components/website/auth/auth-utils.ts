@@ -4,9 +4,7 @@ import { ApiError } from "@/lib/api-client";
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 32;
 
-export function validatePasswordStrength(
-  password: string
-): { valid: boolean; message?: string } {
+export function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
   if (password.length < PASSWORD_MIN_LENGTH) {
     return { valid: false, message: `密码至少${PASSWORD_MIN_LENGTH}位` };
   }

@@ -36,11 +36,7 @@ import {
   checkAndRecordNonce,
   hashRequestBody,
 } from "@/lib/internal-api";
-import {
-  signUserToken,
-  signRefreshToken,
-  verifyWechatExchangeToken,
-} from "@/lib/jwt";
+import { signUserToken, signRefreshToken, verifyWechatExchangeToken } from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { passwordSchema } from "@/lib/password";

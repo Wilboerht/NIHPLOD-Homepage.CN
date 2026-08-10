@@ -44,10 +44,7 @@ declare namespace AMap {
   /** 自动补全类 */
   class Autocomplete {
     constructor(opts: AutocompleteOptions);
-    search(
-      keyword: string,
-      callback: (status: string, result: AutocompleteResult) => void
-    ): void;
+    search(keyword: string, callback: (status: string, result: AutocompleteResult) => void): void;
   }
 
   // ── PlaceSearch（地点搜索）──
@@ -79,10 +76,7 @@ declare namespace AMap {
   /** 地点搜索类 */
   class PlaceSearch {
     constructor(opts?: PlaceSearchOptions);
-    search(
-      keyword: string,
-      callback: (status: string, result: PlaceSearchResult) => void
-    ): void;
+    search(keyword: string, callback: (status: string, result: PlaceSearchResult) => void): void;
   }
 
   // ── Geocoder（地理编码）──
@@ -107,10 +101,7 @@ declare namespace AMap {
   /** 地理编码类 */
   class Geocoder {
     constructor(opts?: GeocoderOptions);
-    getLocation(
-      address: string,
-      callback: (status: string, result: GeocoderResult) => void
-    ): void;
+    getLocation(address: string, callback: (status: string, result: GeocoderResult) => void): void;
   }
 
   // ── Map（地图）──

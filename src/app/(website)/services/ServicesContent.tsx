@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
@@ -15,7 +15,15 @@ const ICON_COLOR = "#C3BC9F";
 const ICON_HOVER_COLOR = "#B8A47B";
 const ICON_MOBILE_COLOR = "rgba(0, 38, 62, 0.35)";
 
-function VipIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
+function VipIcon({
+  className,
+  isHovered,
+  color,
+}: {
+  className?: string;
+  isHovered?: boolean;
+  color?: string;
+}) {
   return (
     <Crown
       className={className}
@@ -25,7 +33,15 @@ function VipIcon({ className, isHovered, color }: { className?: string; isHovere
   );
 }
 
-function AuthIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
+function AuthIcon({
+  className,
+  isHovered,
+  color,
+}: {
+  className?: string;
+  isHovered?: boolean;
+  color?: string;
+}) {
   return (
     <ShieldCheck
       className={className}
@@ -35,7 +51,15 @@ function AuthIcon({ className, isHovered, color }: { className?: string; isHover
   );
 }
 
-function InfluencerIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
+function InfluencerIcon({
+  className,
+  isHovered,
+  color,
+}: {
+  className?: string;
+  isHovered?: boolean;
+  color?: string;
+}) {
   return (
     <Users
       className={className}
@@ -45,7 +69,15 @@ function InfluencerIcon({ className, isHovered, color }: { className?: string; i
   );
 }
 
-function AdvisorIcon({ className, isHovered, color }: { className?: string; isHovered?: boolean; color?: string }) {
+function AdvisorIcon({
+  className,
+  isHovered,
+  color,
+}: {
+  className?: string;
+  isHovered?: boolean;
+  color?: string;
+}) {
   return (
     <ScanFace
       className={className}
@@ -55,16 +87,15 @@ function AdvisorIcon({ className, isHovered, color }: { className?: string; isHo
   );
 }
 
-const iconMap: Record<string, React.FC<{ className?: string; isHovered?: boolean; color?: string }>> = {
+const iconMap: Record<
+  string,
+  React.FC<{ className?: string; isHovered?: boolean; color?: string }>
+> = {
   vip: VipIcon,
   auth: AuthIcon,
   influencer: InfluencerIcon,
   advisor: AdvisorIcon,
 };
-
-function getServiceIcon(serviceId: string) {
-  return iconMap[serviceId] || VipIcon;
-}
 
 export function ServicesContent({ content }: ServicesContentProps) {
   const pageTitle = content.pageTitle || { en: "SERVICES", zh: "服务入口" };
@@ -105,10 +136,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        desktopMenuRef.current &&
-        !desktopMenuRef.current.contains(event.target as Node)
-      ) {
+      if (desktopMenuRef.current && !desktopMenuRef.current.contains(event.target as Node)) {
         setDesktopMenuOpen(false);
       }
     };
@@ -119,7 +147,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
   }, [desktopMenuOpen]);
 
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
+    <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] lg:mb-[-6rem]">
       {/* Top Bar */}
       <nav
         aria-label="服务页导航"
@@ -376,7 +404,9 @@ export function ServicesContent({ content }: ServicesContentProps) {
             </button>
             {/* PC端：hover 显示 */}
             <div className="group relative hidden cursor-pointer md:inline-flex">
-              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
+              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">
+                服务号
+              </span>
               <Image
                 src="/images/wechat-qrcode.jpg"
                 alt="NIHPLOD 微信服务号"
@@ -437,7 +467,8 @@ export function ServicesContent({ content }: ServicesContentProps) {
 }
 
 function ServiceListItem({ service, index }: { service: ServiceDetail; index: number }) {
-  const Icon = getServiceIcon(service.id);
+  // 直查模块级 iconMap，避免渲染期经函数调用获取组件类型
+  const Icon = iconMap[service.id] || VipIcon;
   const isDisabled = service.id === "vip" || service.id === "influencer";
   const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
 
@@ -460,7 +491,9 @@ function ServiceListItem({ service, index }: { service: ServiceDetail; index: nu
         <div className="flex h-10 w-10 shrink-0 items-center justify-center">
           <Icon className="h-7 w-7" isHovered={false} color={ICON_MOBILE_COLOR} />
         </div>
-        <span className="text-[14px] font-light tracking-[0.08em] text-brand-charcoal">{service.label}</span>
+        <span className="text-[14px] font-light tracking-[0.08em] text-brand-charcoal">
+          {service.label}
+        </span>
         {!isDisabled && (
           <ChevronDown className="ml-auto h-4 w-4 -rotate-90 text-brand-charcoal/30" />
         )}
@@ -471,7 +504,7 @@ function ServiceListItem({ service, index }: { service: ServiceDetail; index: nu
 
 function ServiceCard({ service, index }: { service: ServiceDetail; index: number }) {
   const [isHovered, setIsHovered] = useState(false);
-  const Icon = getServiceIcon(service.id);
+  const Icon = iconMap[service.id] || VipIcon;
   const isDisabled = service.id === "vip" || service.id === "influencer";
   const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
 
@@ -497,7 +530,9 @@ function ServiceCard({ service, index }: { service: ServiceDetail; index: number
         <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
           <Icon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
         </div>
-        <span className="text-[13px] font-light tracking-[0.08em] text-brand-charcoal md:text-[15px] md:tracking-[0.15em]">{service.label}</span>
+        <span className="text-[13px] font-light tracking-[0.08em] text-brand-charcoal md:text-[15px] md:tracking-[0.15em]">
+          {service.label}
+        </span>
       </Link>
     </m.div>
   );

@@ -190,11 +190,15 @@ export function PrivacyContent() {
   const [tocOpen, setTocOpen] = useState(false);
 
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 mb-[-7rem] lg:mb-[-6rem]">
-      <StandaloneNav title="隐私政策" links={[
-        { href: "/contact", label: "联系我们" },
-        { href: "/terms", label: "服务条款" },
-      ]} leftButton={{ label: "章节目录", onClick: () => setTocOpen(true) }} />
+    <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 lg:mb-[-6rem]">
+      <StandaloneNav
+        title="隐私政策"
+        links={[
+          { href: "/contact", label: "联系我们" },
+          { href: "/terms", label: "服务条款" },
+        ]}
+        leftButton={{ label: "章节目录", onClick: () => setTocOpen(true) }}
+      />
 
       <div className="container mx-auto px-6 md:px-20">
         <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
@@ -204,7 +208,11 @@ export function PrivacyContent() {
           {/* Main Content */}
           <main className="max-w-4xl flex-1 space-y-10 break-words font-songti text-brand-charcoal/80 md:space-y-16 md:leading-relaxed">
             {sections.map((section) => (
-              <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
+              <section
+                key={section.id}
+                id={section.id}
+                className="scroll-mt-[100px] md:scroll-mt-32"
+              >
                 <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-8 md:text-2xl md:font-light md:tracking-[0.12em]">
                   {section.title}
                 </h2>
@@ -264,7 +272,9 @@ export function PrivacyContent() {
           >
             {/* Header */}
             <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-brand-charcoal/[0.06] px-6">
-              <span className="text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">章节目录</span>
+              <span className="text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">
+                章节目录
+              </span>
               <button
                 type="button"
                 onClick={() => setTocOpen(false)}

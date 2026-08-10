@@ -177,7 +177,12 @@ export async function checkAndRecordNonce(nonce: string): Promise<boolean> {
     return true;
   } catch (error) {
     // 唯一约束冲突 = nonce 已被使用（含跨实例并发场景）
-    if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "P2002") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
       nonceCache.set(nonce, true);
       return false;
     }

@@ -23,7 +23,9 @@ const TEST_TIMEOUT_MS = 10_000;
 function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timeoutId)
+  );
 }
 
 export const dynamic = "force-dynamic";
@@ -46,9 +48,7 @@ const bodySchema = z.object({
  */
 function generatePkce() {
   const verifier = randomBytes(32).toString("base64url");
-  const challenge = createHash("sha256")
-    .update(verifier)
-    .digest("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
   return { verifier, challenge };
 }
 
@@ -73,14 +73,21 @@ export async function POST(request: NextRequest) {
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误", details: parsed.error.issues } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: "参数错误", details: parsed.error.issues },
+        },
         { status: 400 }
       );
     }
 
     const { clientId, clientSecret, redirectUri } = parsed.data;
     const steps: TestStep[] = [];
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+    const baseUrl = (
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      ""
+    ).replace(/\/$/, "");
     if (!baseUrl) {
       return NextResponse.json(
         { success: false, error: { code: "SERVER_ERROR", message: "未配置 NEXT_PUBLIC_APP_URL" } },
@@ -106,7 +113,9 @@ export async function POST(request: NextRequest) {
       step: "客户端凭据验证",
       status: verifyResult.client ? "passed" : "failed",
       durationMs: Math.round(performance.now() - t1),
-      detail: verifyResult.client ? `Client "${verifyResult.client.name}" 凭据有效` : "clientSecret 不匹配或 Client 已停用",
+      detail: verifyResult.client
+        ? `Client "${verifyResult.client.name}" 凭据有效`
+        : "clientSecret 不匹配或 Client 已停用",
     });
 
     if (!verifyResult.client) {
@@ -118,7 +127,7 @@ export async function POST(request: NextRequest) {
     try {
       const jwksRes = await fetch(`${baseUrl}/api/oauth/jwks`, {
         method: "GET",
-        headers: { "Accept": "application/json" },
+        headers: { Accept: "application/json" },
       });
       const jwksCacheHit = jwksRes.headers.get("X-Cache") || jwksRes.headers.get("x-cache");
 
@@ -264,7 +273,7 @@ export async function POST(request: NextRequest) {
     try {
       const userinfoRes = await fetch(`${baseUrl}/api/oauth/userinfo`, {
         method: "GET",
-        headers: { "Accept": "application/json" },
+        headers: { Accept: "application/json" },
       });
 
       if (userinfoRes.status === 401) {

@@ -4,12 +4,12 @@
  *
  * 生成新的 CSRF Token 并设置到 Cookie 中。
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { generateCSRFToken, setCSRFCookie } from "@/lib/csrf";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   const token = generateCSRFToken();
   // token 仅通过 Set-Cookie 返回（httpOnly: false 但仍不应暴露在 JSON body 中）
   // 防止 XSS 读取

@@ -30,7 +30,13 @@ export async function autoRefundCancelledOrder(order: CancelledPaidOrder): Promi
 
   if (paymentMethod === "wechat") {
     const refundNo = generateRefundNo(orderNo);
-    const result = await applyWechatRefund(orderNo, refundNo, payAmount, payAmount, "订单已取消，自动退款");
+    const result = await applyWechatRefund(
+      orderNo,
+      refundNo,
+      payAmount,
+      payAmount,
+      "订单已取消，自动退款"
+    );
     if (!result.success) {
       apiConsole.error(`[AutoRefund] 微信自动退款申请失败: ${orderNo}`, result.error);
     }
@@ -55,9 +61,13 @@ export async function autoRefundCancelledOrder(order: CancelledPaidOrder): Promi
  * 从订单记录判断是否需要自动退款并执行
  * @param order - 已查询到的订单（含 items）
  */
-export async function autoRefundIfCancelledPaid(
-  order: { id: string; orderNo: string; payAmount: unknown; paymentMethod: string | null; status: string }
-): Promise<void> {
+export async function autoRefundIfCancelledPaid(order: {
+  id: string;
+  orderNo: string;
+  payAmount: unknown;
+  paymentMethod: string | null;
+  status: string;
+}): Promise<void> {
   if (order.status !== OrderStatus.CANCELLED) return;
   await autoRefundCancelledOrder({
     orderId: order.id,

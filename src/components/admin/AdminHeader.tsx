@@ -100,7 +100,11 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
           {
             label: "退出登录",
             danger: true,
-            icon: loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />,
+            icon: loggingOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            ),
             disabled: loggingOut,
             onClick: handleLogout,
           },

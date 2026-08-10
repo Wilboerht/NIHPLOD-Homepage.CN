@@ -18,8 +18,26 @@ import { createHash, randomBytes } from "crypto";
 // ============================================
 // 共享 mock 状态
 // ============================================
+interface FlowCodeCreateData {
+  code: string;
+  clientId: string;
+  userId: string;
+  redirectUri: string;
+  scopes: string;
+  codeChallenge: string;
+  codeChallengeMethod: string;
+  nonce: string | null;
+  expiresAt: Date;
+}
+
+interface FlowCodeRecord extends FlowCodeCreateData {
+  id: string;
+  used: boolean;
+  createdAt: Date;
+}
+
 const mockStore = vi.hoisted(() => ({
-  codeRecord: null as any,
+  codeRecord: null as FlowCodeRecord | null,
   reset: () => {
     mockStore.codeRecord = null;
   },
@@ -33,7 +51,7 @@ const mockStore = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => {
   const _flowPrismaClient = {
     oAuthAuthorizationCode: {
-      create: vi.fn().mockImplementation(async (args: any) => {
+      create: vi.fn().mockImplementation(async (args: { data: FlowCodeCreateData }) => {
         const record = {
           id: "code-flow-id",
           code: args.data.code,
@@ -93,9 +111,7 @@ vi.mock("@/lib/prisma", () => {
   return {
     prisma: {
       ..._flowPrismaClient,
-      $transaction: vi.fn(
-        (cb: (tx: typeof _flowPrismaClient) => unknown) => cb(_flowPrismaClient)
-      ),
+      $transaction: vi.fn((cb: (tx: typeof _flowPrismaClient) => unknown) => cb(_flowPrismaClient)),
       $executeRaw: vi.fn().mockResolvedValue(1),
       $executeRawUnsafe: vi.fn().mockResolvedValue(1),
     },
@@ -151,24 +167,20 @@ const mockRevokeRefreshToken = vi.fn();
 vi.mock("@/lib/auth-security", () => ({
   extractDeviceInfo: (...args: unknown[]) => mockExtractDeviceInfo(...args),
   saveRefreshToken: (...args: unknown[]) => mockSaveRefreshToken(...args),
-  atomicallyRotateRefreshToken: (...args: unknown[]) =>
-    mockAtomicallyRotateRefreshToken(...args),
+  atomicallyRotateRefreshToken: (...args: unknown[]) => mockAtomicallyRotateRefreshToken(...args),
   recordLoginAttempt: (...args: unknown[]) => mockRecordLoginAttempt(...args),
   revokeRefreshToken: (...args: unknown[]) => mockRevokeRefreshToken(...args),
 }));
 
 // === 手机号脱敏：mock ===
 vi.mock("@/lib/mask-phone", () => ({
-  maskPhone: vi.fn((p: string) =>
-    p.length < 7 ? p : `${p.slice(0, 3)}****${p.slice(-4)}`
-  ),
+  maskPhone: vi.fn((p: string) => (p.length < 7 ? p : `${p.slice(0, 3)}****${p.slice(-4)}`)),
 }));
 
 // === Token 黑名单：保留真实 access_token 撤销/检查能力，仅 mock 用户级黑名单 ===
 vi.mock("@/lib/token-blacklist", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/token-blacklist")>(
-    "@/lib/token-blacklist"
-  );
+  const actual =
+    await vi.importActual<typeof import("@/lib/token-blacklist")>("@/lib/token-blacklist");
   return {
     ...actual,
     isTokenBlacklisted: vi.fn().mockResolvedValue(null),

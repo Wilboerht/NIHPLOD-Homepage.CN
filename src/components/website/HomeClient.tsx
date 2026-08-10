@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -43,14 +44,10 @@ function MobileFooterMenu({
   onExploreClick: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // 全屏菜单打开时的模态行为：Esc 关闭、锁定背景滚动、背景 inert、焦点移入/还原
   useEffect(() => {
@@ -240,7 +237,7 @@ interface HomeClientProps {
   content?: HomePageContent;
 }
 
-export default function HomeClient({ content: _content }: HomeClientProps) {
+export default function HomeClient(_: HomeClientProps) {
   const textureRef = useRef<HTMLDivElement>(null);
   const { isDrawerOpen, setDrawerOpen } = useLayout();
 

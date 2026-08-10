@@ -107,8 +107,14 @@ async function renderAndLoad(orders: unknown[] = []) {
 describe("OrdersPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("confirm", vi.fn(() => true));
-    vi.stubGlobal("prompt", vi.fn(() => "退款原因"));
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true)
+    );
+    vi.stubGlobal(
+      "prompt",
+      vi.fn(() => "退款原因")
+    );
   });
 
   afterEach(() => {

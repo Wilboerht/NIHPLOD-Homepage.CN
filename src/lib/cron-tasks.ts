@@ -177,7 +177,9 @@ const tasks: ScheduledTask[] = [
       try {
         apiConsole.info("[Cron] 开始清理已撤销的会话和 Token...");
         const result = await cleanupRevokedSessionsAndTokens();
-        apiConsole.info(`[Cron] 已撤销记录清理完成: ${result.sessions} 个会话, ${result.tokens} 个 Token`);
+        apiConsole.info(
+          `[Cron] 已撤销记录清理完成: ${result.sessions} 个会话, ${result.tokens} 个 Token`
+        );
       } catch (error) {
         apiConsole.error("[Cron] 已撤销记录清理失败:", error);
       }

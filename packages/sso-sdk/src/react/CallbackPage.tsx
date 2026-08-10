@@ -35,7 +35,8 @@ export function CallbackPage() {
         // 弹窗与主窗口同源（都在子项目域名下），open 注入的 opener 关系保留 origin 访问能力
         window.opener.location.origin
       );
-      setProcessing(false);
+      // 微任务延迟，避免 effect 内同步 setState
+      Promise.resolve().then(() => setProcessing(false));
       return;
     }
 

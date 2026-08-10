@@ -19,19 +19,43 @@ export const PASSWORD_MAX_LENGTH = 32;
 /** 默认保留最近密码历史数量 */
 export const PASSWORD_HISTORY_LIMIT = 5;
 /** 默认密码过期天数（可通过环境变量覆盖） */
-export const PASSWORD_EXPIRY_DAYS = Math.max(
-  1,
-  Number(process.env.PASSWORD_EXPIRY_DAYS || 90)
-);
+export const PASSWORD_EXPIRY_DAYS = Math.max(1, Number(process.env.PASSWORD_EXPIRY_DAYS || 90));
 
 /** 常见弱密码黑名单（小写比较） */
 export const WEAK_PASSWORD_BLACKLIST = new Set([
-  "123456", "12345678", "123456789", "1234567890", "password",
-  "qwerty", "abc123", "111111", "000000", "iloveyou", "admin123",
-  "password123", "letmein", "welcome", "monkey", "dragon", "master",
-  "sunshine", "princess", "football", "baseball", "superman", "batman",
-  "password1", "qwerty123", "1q2w3e4r", "passw0rd", "changeme",
-  "123456789a", "abc123456", "adminadmin", "testtest", "guestguest",
+  "123456",
+  "12345678",
+  "123456789",
+  "1234567890",
+  "password",
+  "qwerty",
+  "abc123",
+  "111111",
+  "000000",
+  "iloveyou",
+  "admin123",
+  "password123",
+  "letmein",
+  "welcome",
+  "monkey",
+  "dragon",
+  "master",
+  "sunshine",
+  "princess",
+  "football",
+  "baseball",
+  "superman",
+  "batman",
+  "password1",
+  "qwerty123",
+  "1q2w3e4r",
+  "passw0rd",
+  "changeme",
+  "123456789a",
+  "abc123456",
+  "adminadmin",
+  "testtest",
+  "guestguest",
 ]);
 
 /**
@@ -51,12 +75,20 @@ export function isWeakPassword(password: string): boolean {
   if (/^(.)\1+$/.test(password)) return true;
 
   // 连续 6 位以上数字
-  if (/(012345|123456|234567|345678|456789|567890|098765|987654|876543|765432|654321|543210)/.test(password)) {
+  if (
+    /(012345|123456|234567|345678|456789|567890|098765|987654|876543|765432|654321|543210)/.test(
+      password
+    )
+  ) {
     return true;
   }
 
   // 连续 6 位以上字母（abcd... / zyx...）
-  if (/(abcdef|bcdefg|cdefgh|defghi|efghij|fghijk|ghijkl|hijklm|ijklmn|jklmno|klmnop|lmnopq|mnopqr|nopqrs|opqrst|pqrstu|qrstuv|rstuvw|stuvwx|tuvwxy|uvwxyz|zyxwvu|yxwvut|xwvuts|wvutsr|vutsrq|utsrqp|tsrqpo|srqpon|rqponm|qponml|ponmlk|onmlkj|nmlkji|mlkjih|lkjihg|kjihgf|jihgfe|ihgfed|hgfedc|gfedcb|fedcba)/.test(lower)) {
+  if (
+    /(abcdef|bcdefg|cdefgh|defghi|efghij|fghijk|ghijkl|hijklm|ijklmn|jklmno|klmnop|lmnopq|mnopqr|nopqrs|opqrst|pqrstu|qrstuv|rstuvw|stuvwx|tuvwxy|uvwxyz|zyxwvu|yxwvut|xwvuts|wvutsr|vutsrq|utsrqp|tsrqpo|srqpon|rqponm|qponml|ponmlk|onmlkj|nmlkji|mlkjih|lkjihg|kjihgf|jihgfe|ihgfed|hgfedc|gfedcb|fedcba)/.test(
+      lower
+    )
+  ) {
     return true;
   }
 

@@ -86,7 +86,11 @@ async function checkAndGrantBirthdayGift(userId: string): Promise<void> {
     if (!user?.birthday) return;
 
     const now = new Date();
-    const birthdayThisYear = new Date(now.getFullYear(), user.birthday.getMonth(), user.birthday.getDate());
+    const birthdayThisYear = new Date(
+      now.getFullYear(),
+      user.birthday.getMonth(),
+      user.birthday.getDate()
+    );
     const isToday =
       birthdayThisYear.getDate() === now.getDate() &&
       birthdayThisYear.getMonth() === now.getMonth();
@@ -107,8 +111,7 @@ async function checkAndGrantBirthdayGift(userId: string): Promise<void> {
 
     // 发放生日积分礼
     const giftPoints = user.membershipLevel === "DIAMOND" ? 1000 : 500;
-    const giftLabel =
-      user.membershipLevel === "DIAMOND" ? "钻石会员生日礼盒" : "金卡会员生日礼遇";
+    const giftLabel = user.membershipLevel === "DIAMOND" ? "钻石会员生日礼盒" : "金卡会员生日礼遇";
 
     await prisma.pointTransaction.create({
       data: {

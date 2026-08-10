@@ -91,7 +91,6 @@ import { POST } from "../token/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { atomicallyRotateRefreshToken } from "@/lib/auth-security";
 import { prisma } from "@/lib/prisma";
-import { verifyPKCE } from "@/lib/oauth-code";
 import { signRefreshToken } from "@/lib/jwt";
 
 function createRequest(body: Record<string, string>, contentType = "application/json"): Request {
@@ -104,7 +103,9 @@ function createRequest(body: Record<string, string>, contentType = "application/
 
 function validClient() {
   return {
-    id: "1", clientId: "test-client", name: "Test",
+    id: "1",
+    clientId: "test-client",
+    name: "Test",
     redirectUris: ["https://example.com/cb"],
     postLogoutRedirectUris: [],
     scopes: ["openid", "phone"],
@@ -164,7 +165,9 @@ describe("POST /api/oauth/token", () => {
     it("授权码已使用或不存在应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // consumeAuthorizationCode 返回 null（已使用/不存在）
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 0 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 0,
+      });
 
       const req = createRequest({
         grant_type: "authorization_code",
@@ -180,7 +183,9 @@ describe("POST /api/oauth/token", () => {
 
     it("授权码过期应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -213,7 +218,9 @@ describe("POST /api/oauth/token", () => {
         },
         reason: "ok",
       });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client", // 与请求的 other-client 不匹配
@@ -240,7 +247,9 @@ describe("POST /api/oauth/token", () => {
 
     it("缺少 redirect_uri 应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -268,7 +277,9 @@ describe("POST /api/oauth/token", () => {
 
     it("redirect_uri 与授权请求不一致应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -297,7 +308,9 @@ describe("POST /api/oauth/token", () => {
 
     it("PKCE code_verifier 缺失应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -326,7 +339,9 @@ describe("POST /api/oauth/token", () => {
 
     it("授权码未携带 PKCE 应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ count: 1 });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -411,7 +426,9 @@ describe("POST /api/oauth/token", () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // atomicallyRotateRefreshToken 默认返回 undefined，会导致轮换失败；
       // 这里 mock 为成功，验证 client_id 校验通过
-      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({ valid: true } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         scopes: ["openid", "phone"],
       });

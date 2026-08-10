@@ -3,8 +3,7 @@
  * 用法: node scripts/generate-legal-docs.mjs
  */
 import { readFileSync, writeFileSync } from "fs";
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from "docx";
-import ts from "typescript";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 
 // ============ 提取隐私政策内容 ============
 function extractPrivacyData() {

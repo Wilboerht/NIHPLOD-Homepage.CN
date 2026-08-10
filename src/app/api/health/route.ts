@@ -26,10 +26,7 @@ export async function GET(request: Request) {
   const ip = getClientIP(request);
   const limitResult = await rateLimit(ip, "health");
   if (!limitResult.success) {
-    return NextResponse.json(
-      { status: "rate_limited", message: "请求过于频繁" },
-      { status: 429 }
-    );
+    return NextResponse.json({ status: "rate_limited", message: "请求过于频繁" }, { status: 429 });
   }
 
   const checks: Record<string, { status: string; latency?: number; error?: string }> = {

@@ -80,7 +80,7 @@ NIHPLOD 提供模块化的护肤方案，涵盖居家修护与高端院线调理
 
 ## 常见问题 (GEO FAQ)
 ${products.filter(p => p.geoFaqs).map(p => {
-    const faqs = p.geoFaqs as any[];
+    const faqs = p.geoFaqs as unknown as { question: string; answer: string }[];
     return faqs.map(f => `
 ### Q: ${f.question}
 A: ${f.answer}

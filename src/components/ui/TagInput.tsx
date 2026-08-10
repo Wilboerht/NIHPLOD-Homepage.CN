@@ -57,7 +57,9 @@ export function TagInput({
 
   return (
     <div className={className}>
-      {label && <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>}
+      {label && (
+        <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>
+      )}
 
       <div
         className={cn(

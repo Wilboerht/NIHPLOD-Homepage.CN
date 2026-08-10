@@ -22,12 +22,11 @@ export function hashVerifyCode(phone: string, code: string, type: string): strin
   // 生产环境必须设置此环境变量，否则服务将无法启动。
   const hmacSecret = process.env.SMS_CODE_HMAC_KEY;
   if (!hmacSecret) {
-    throw new Error("[SMS] SMS_CODE_HMAC_KEY 环境变量未设置，无法进行验证码哈希。请联系管理员配置。");
+    throw new Error(
+      "[SMS] SMS_CODE_HMAC_KEY 环境变量未设置，无法进行验证码哈希。请联系管理员配置。"
+    );
   }
-  return crypto
-    .createHmac("sha256", hmacSecret)
-    .update(`${phone}:${code}:${type}`)
-    .digest("hex");
+  return crypto.createHmac("sha256", hmacSecret).update(`${phone}:${code}:${type}`).digest("hex");
 }
 
 /**

@@ -46,13 +46,7 @@ export async function POST(request: NextRequest) {
     // 1. 预记录幂等（PENDING 状态），防止并发/重试导致重复处理
     let notificationRecordId: string | null = null;
     try {
-      const recordResult = await recordNotification(
-        "wechat",
-        notifyId,
-        "",
-        0,
-        {}
-      );
+      const recordResult = await recordNotification("wechat", notifyId, "", 0, {});
       if (recordResult.success && recordResult.recordId) {
         notificationRecordId = recordResult.recordId;
       }

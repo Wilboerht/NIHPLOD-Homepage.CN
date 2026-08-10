@@ -13,12 +13,12 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
   // 使用专用限流 key，降低信息泄漏风险（此端点可被用于探测合法 redirect URI）
-  const limitResult = await rateLimit(ip, "oauth-check-post-logout-uri", { maxRequests: 20, windowMs: 60 * 1000 });
+  const limitResult = await rateLimit(ip, "oauth-check-post-logout-uri", {
+    maxRequests: 20,
+    windowMs: 60 * 1000,
+  });
   if (!limitResult.success) {
-    return NextResponse.json(
-      { error: "rate_limited" },
-      { status: 429 }
-    );
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   const { searchParams } = request.nextUrl;

@@ -13,8 +13,13 @@ import { apiConsole } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 const EVENT_TYPES = [
-  "authorize", "token", "introspect", "userinfo",
-  "backchannel_logout", "consent", "status_change",
+  "authorize",
+  "token",
+  "introspect",
+  "userinfo",
+  "backchannel_logout",
+  "consent",
+  "status_change",
 ];
 
 export async function GET(request: NextRequest) {
@@ -34,7 +39,9 @@ export async function GET(request: NextRequest) {
     const isExport = searchParams.get("export") === "csv";
 
     const page = isExport ? 1 : Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = isExport ? 5000 : Math.min(parseInt(searchParams.get("pageSize") || "50", 10), 500);
+    const pageSize = isExport
+      ? 5000
+      : Math.min(parseInt(searchParams.get("pageSize") || "50", 10), 500);
     const event = searchParams.get("event") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const userId = searchParams.get("userId") || undefined;
@@ -82,18 +89,20 @@ export async function GET(request: NextRequest) {
       };
 
       const csvHeaders = "id,event,userId,clientId,clientName,ip,success,createdAt\n";
-      const csvRows = items.map((item) =>
-        [
-          escapeCSV(item.id),
-          escapeCSV(item.event),
-          escapeCSV(item.userId || ""),
-          escapeCSV(item.clientId || ""),
-          escapeCSV(item.clientName || ""),
-          escapeCSV(item.ip || ""),
-          String(item.success),
-          item.createdAt.toISOString(),
-        ].join(",")
-      ).join("\n");
+      const csvRows = items
+        .map((item) =>
+          [
+            escapeCSV(item.id),
+            escapeCSV(item.event),
+            escapeCSV(item.userId || ""),
+            escapeCSV(item.clientId || ""),
+            escapeCSV(item.clientName || ""),
+            escapeCSV(item.ip || ""),
+            String(item.success),
+            item.createdAt.toISOString(),
+          ].join(",")
+        )
+        .join("\n");
 
       return new NextResponse(csvHeaders + csvRows, {
         headers: {

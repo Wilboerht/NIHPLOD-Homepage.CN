@@ -30,7 +30,9 @@ describe("analytics", () => {
     expect(dataLayer).toHaveLength(1);
     expect(dataLayer[0]).toMatchObject({ event: "click", item: "product" });
     expect(gtag).toHaveBeenCalledWith("event", "click", { item: "product" });
-    expect((globalThis.window as unknown as { dispatchEvent: ReturnType<typeof vi.fn> }).dispatchEvent).toHaveBeenCalled();
+    expect(
+      (globalThis.window as unknown as { dispatchEvent: ReturnType<typeof vi.fn> }).dispatchEvent
+    ).toHaveBeenCalled();
   });
 
   it("无 props 时应正确调用 gtag", () => {

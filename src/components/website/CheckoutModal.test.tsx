@@ -114,7 +114,7 @@ describe("CheckoutModal", () => {
 
   it("checkoutOpen=false 时不应渲染结算内容", () => {
     mockCheckoutOpen = false;
-    const { container } = render(<CheckoutModal />);
+    render(<CheckoutModal />);
     expect(screen.queryByText("测试商品A")).toBeNull();
   });
 

@@ -8,9 +8,9 @@ import { ProductsTable } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
-import { cn } from "@/lib/utils";
 import { apiGet } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 // 产品类型
 interface ProductItem {
@@ -109,7 +109,7 @@ export default function AdminProductsPage() {
   }, [page, pageSize, categoryId, status, search, sortBy, sortOrder]);
 
   useEffect(() => {
-    fetchProducts();
+    deferInEffect(fetchProducts);
   }, [fetchProducts]);
 
   // 更新 URL 参数
@@ -163,7 +163,9 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-medium text-brand-charcoal">产品管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">管理所有产品，共 {pagination.total} 个</p>
+          <p className="mt-1 text-sm text-brand-charcoal/50">
+            管理所有产品，共 {pagination.total} 个
+          </p>
         </div>
         <Link href="/admin/products/new">
           <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
@@ -216,8 +218,8 @@ export default function AdminProductsPage() {
 
       {/* 加载失败错误态 */}
       {loadError && (
-        <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <p className="text-red-500 text-sm">{loadError}</p>
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <p className="text-sm text-red-500">{loadError}</p>
           <Button variant="outline" size="sm" onClick={fetchProducts}>
             重试
           </Button>
@@ -232,9 +234,7 @@ export default function AdminProductsPage() {
         onPageChange={(p) => updateParams({ page: String(p) })}
         onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
         onRefresh={fetchProducts}
-        onSort={(key, order) =>
-          updateParams({ sortBy: key, sortOrder: order })
-        }
+        onSort={(key, order) => updateParams({ sortBy: key, sortOrder: order })}
         sortBy={sortBy || undefined}
         sortOrder={sortOrder as "asc" | "desc" | undefined}
       />

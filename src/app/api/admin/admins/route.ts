@@ -66,7 +66,15 @@ export const GET = withRole(["owner"], async (request) => {
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
         orderBy: { createdAt: "desc" },
-        select: { id: true, email: true, name: true, role: true, status: true, createdAt: true, updatedAt: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       prisma.admin.count({ where }),
     ]);

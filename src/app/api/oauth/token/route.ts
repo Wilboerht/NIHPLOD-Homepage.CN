@@ -28,15 +28,19 @@ import {
   computeAtHash,
   type IdTokenClaims,
 } from "@/lib/jwt";
-import { atomicallyRotateRefreshToken, extractDeviceInfo, saveRefreshToken } from "@/lib/auth-security";
+import {
+  atomicallyRotateRefreshToken,
+  extractDeviceInfo,
+  saveRefreshToken,
+} from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
-import { validateDPoPProof, computeDPoPAth, dpopNonceHeader } from "@/lib/dpop";
+import { validateDPoPProof, dpopNonceHeader } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +66,9 @@ export async function POST(request: NextRequest) {
     } else {
       const formData = await request.formData();
       body = {};
-      formData.forEach((v, k) => { body[k] = v.toString(); });
+      formData.forEach((v, k) => {
+        body[k] = v.toString();
+      });
     }
 
     // 限流：client_id 级优先，IP 级兜底（避免同 IP 下多子项目互相影响）
@@ -70,33 +76,26 @@ export async function POST(request: NextRequest) {
     if (client_id_from_req) {
       const clientLimitResult = await rateLimit(`client:${client_id_from_req}`, "oauth-token");
       if (!clientLimitResult.success) {
-        return resJson(
-          { error: "rate_limited", error_description: "子项目请求过于频繁" },
-          429
-        );
+        return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
       }
     }
 
     const limitResult = await rateLimit(ip, "oauth-token");
     if (!limitResult.success) {
-      return resJson(
-        { error: "rate_limited", error_description: "请求过于频繁" },
-        429
-      );
+      return resJson({ error: "rate_limited", error_description: "请求过于频繁" }, 429);
     }
 
     const grant_type = body.grant_type;
     const { client_id, client_secret } = getClientCredentials(request, body);
 
     if (!client_id) {
-      return resJson(
-        { error: "invalid_client", error_description: "缺少 client_id" },
-        401
-      );
+      return resJson({ error: "invalid_client", error_description: "缺少 client_id" }, 401);
     }
 
     // 验证 client（Public Client 可不传 client_secret）
-    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, {
+      allowPublic: true,
+    });
     if (!verifyResult.client) {
       const reason = verifyResult.reason;
       recordSsoEvent({
@@ -107,15 +106,9 @@ export async function POST(request: NextRequest) {
         detail: { grant_type, reason: reason },
       });
       if (reason === "disabled") {
-        return resJson(
-          { error: "unauthorized_client", error_description: "Client 已被停用" },
-          401
-        );
+        return resJson({ error: "unauthorized_client", error_description: "Client 已被停用" }, 401);
       }
-      return resJson(
-        { error: "invalid_client", error_description: "Client 认证失败" },
-        401
-      );
+      return resJson({ error: "invalid_client", error_description: "Client 认证失败" }, 401);
     }
     const client = verifyResult.client;
 
@@ -130,7 +123,10 @@ export async function POST(request: NextRequest) {
         detail: { grant_type, reason: "missing_client_secret" },
       });
       return resJson(
-        { error: "invalid_client", error_description: "Confidential Client 必须提供 client_secret" },
+        {
+          error: "invalid_client",
+          error_description: "Confidential Client 必须提供 client_secret",
+        },
         401
       );
     }
@@ -176,19 +172,13 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "client_id_mismatch", expected: codeData.clientId },
         });
-        return resJson(
-          { error: "invalid_grant", error_description: "Client ID 不匹配" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "Client ID 不匹配" }, 400);
       }
 
       // RFC 6749 §4.1.3: token 端点必须校验 redirect_uri 与授权请求一致
       const redirect_uri = body.redirect_uri;
       if (!redirect_uri) {
-        return resJson(
-          { error: "invalid_grant", error_description: "缺少 redirect_uri" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "缺少 redirect_uri" }, 400);
       }
       if (redirect_uri !== codeData.redirectUri) {
         recordSsoEvent({
@@ -198,7 +188,12 @@ export async function POST(request: NextRequest) {
           clientName: client.name,
           ip,
           success: false,
-          detail: { grant_type, reason: "redirect_uri_mismatch", expected: codeData.redirectUri, got: redirect_uri },
+          detail: {
+            grant_type,
+            reason: "redirect_uri_mismatch",
+            expected: codeData.redirectUri,
+            got: redirect_uri,
+          },
         });
         return resJson(
           { error: "invalid_grant", error_description: "redirect_uri 与授权请求不一致" },
@@ -209,17 +204,19 @@ export async function POST(request: NextRequest) {
       // PKCE 校验（强制）
       if (!codeData.codeChallenge) {
         return resJson(
-          { error: "invalid_grant", error_description: "Authorization code was issued without PKCE" },
+          {
+            error: "invalid_grant",
+            error_description: "Authorization code was issued without PKCE",
+          },
           400
         );
       }
       if (!code_verifier) {
-        return resJson(
-          { error: "invalid_grant", error_description: "Missing code_verifier" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "Missing code_verifier" }, 400);
       }
-      if (!verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")) {
+      if (
+        !verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")
+      ) {
         recordSsoEvent({
           event: "token",
           userId: codeData.userId,
@@ -229,16 +226,21 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "pkce_failed" },
         });
-        return resJson(
-          { error: "invalid_grant", error_description: "Invalid code_verifier" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "Invalid code_verifier" }, 400);
       }
 
       // 查询用户信息
       const user = await prisma.user.findUnique({
         where: { id: codeData.userId },
-        select: { id: true, phone: true, nickname: true, avatar: true, membershipLevel: true, totalPoints: true, status: true },
+        select: {
+          id: true,
+          phone: true,
+          nickname: true,
+          avatar: true,
+          membershipLevel: true,
+          totalPoints: true,
+          status: true,
+        },
       });
 
       if (!user || user.status !== "ACTIVE") {
@@ -251,10 +253,7 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type, reason: "user_inactive" },
         });
-        return resJson(
-          { error: "invalid_grant", error_description: "用户账户不可用" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
       }
 
       const scopeStr = codeData.scopes.join(" ");
@@ -401,7 +400,9 @@ export async function POST(request: NextRequest) {
       // 记录登录尝试（OAuth 授权码登录）
       await recordLoginAttempt(user.phone, true, request, undefined, "oauth", user.id, client_id);
 
-      const expiresIn = getExpiresInFromToken(accessToken) ?? (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
+      const expiresIn =
+        getExpiresInFromToken(accessToken) ??
+        (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
       const tokenResponse: Record<string, unknown> = {
         access_token: accessToken,
@@ -428,19 +429,13 @@ export async function POST(request: NextRequest) {
     if (grant_type === "refresh_token") {
       const refresh_token = body.refresh_token;
       if (!refresh_token) {
-        return resJson(
-          { error: "invalid_grant", error_description: "缺少 refresh_token" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "缺少 refresh_token" }, 400);
       }
 
       // 先验证 JWT 签名
       const refreshPayload = await verifyRefreshToken(refresh_token);
       if (!refreshPayload) {
-        return resJson(
-          { error: "invalid_grant", error_description: "Refresh token 无效" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "Refresh token 无效" }, 400);
       }
 
       // Refresh Token 所有权校验：OAuth 流程签发的 token 必须携带 client_id，
@@ -455,10 +450,7 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type: "refresh_token", reason: "missing_client_id" },
         });
-        return resJson(
-          { error: "invalid_grant", error_description: "Refresh token 无效" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "Refresh token 无效" }, 400);
       }
       if (refreshPayload.client_id !== client_id) {
         recordSsoEvent({
@@ -564,7 +556,15 @@ export async function POST(request: NextRequest) {
       // 查询用户信息用于 ID Token
       const user = await prisma.user.findUnique({
         where: { id: refreshPayload.id },
-        select: { id: true, phone: true, nickname: true, avatar: true, membershipLevel: true, totalPoints: true, status: true },
+        select: {
+          id: true,
+          phone: true,
+          nickname: true,
+          avatar: true,
+          membershipLevel: true,
+          totalPoints: true,
+          status: true,
+        },
       });
 
       if (!user || user.status !== "ACTIVE") {
@@ -577,10 +577,7 @@ export async function POST(request: NextRequest) {
           success: false,
           detail: { grant_type: "refresh_token", reason: "user_inactive" },
         });
-        return resJson(
-          { error: "invalid_grant", error_description: "用户账户不可用" },
-          400
-        );
+        return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
       }
 
       // 签发新的 ID Token（含 at_hash）
@@ -615,7 +612,9 @@ export async function POST(request: NextRequest) {
       });
 
       const refreshExpiresIn = 30 * 24 * 60 * 60;
-      const newExpiresIn = getExpiresInFromToken(newAccessToken) ?? (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
+      const newExpiresIn =
+        getExpiresInFromToken(newAccessToken) ??
+        (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
       const refreshResponse: Record<string, unknown> = {
         access_token: newAccessToken,
@@ -638,7 +637,10 @@ export async function POST(request: NextRequest) {
       // Public Client 不能使用 client_credentials（M2M 场景需要信任客户端）
       if (client.isPublic) {
         return resJson(
-          { error: "unauthorized_client", error_description: "Public Client 不能使用 client_credentials 模式" },
+          {
+            error: "unauthorized_client",
+            error_description: "Public Client 不能使用 client_credentials 模式",
+          },
           401
         );
       }
@@ -674,7 +676,9 @@ export async function POST(request: NextRequest) {
         expiresIn: `${client.accessTokenTtlSeconds}s`,
       });
 
-      const expiresIn = getExpiresInFromToken(accessToken) ?? (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
+      const expiresIn =
+        getExpiresInFromToken(accessToken) ??
+        (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
       recordSsoEvent({
         event: "token",
@@ -700,10 +704,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     apiConsole.error("[OAuth Token] 异常:", error);
-    return resJson(
-      { error: "server_error", error_description: "服务器内部错误" },
-      500
-    );
+    return resJson({ error: "server_error", error_description: "服务器内部错误" }, 500);
   }
 }
 

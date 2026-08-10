@@ -25,15 +25,13 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "联系我们 | NIHPLOD 旎柏",
-    description:
-      "联系 NIHPLOD 旎柏——专属服务，始终在线。",
+    description: "联系 NIHPLOD 旎柏——专属服务，始终在线。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "联系我们 | NIHPLOD 旎柏",
-    description:
-      "联系 NIHPLOD 旎柏——专属服务，始终在线。",
+    description: "联系 NIHPLOD 旎柏——专属服务，始终在线。",
     images: ["/images/og-image.png"],
   },
 };

@@ -163,10 +163,7 @@ export async function POST(request: NextRequest) {
     if (!rotation.valid) {
       // Refresh Token 重用检测：仅对 revoked/missing 执行全量撤销（安全的 token 泄漏信号）
       // concurrent_rotation 是正常并发场景，不撤销所有设备（避免多 Tab 误伤）
-      if (
-        rotation.reason === "revoked" ||
-        rotation.reason === "missing"
-      ) {
+      if (rotation.reason === "revoked" || rotation.reason === "missing") {
         logAuthEvent("refresh_token_reuse_detected", {
           userId: payload.id,
           identifier: payload.phone,

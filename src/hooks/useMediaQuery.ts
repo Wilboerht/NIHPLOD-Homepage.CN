@@ -13,9 +13,15 @@ function getInitialMatch(query: string): boolean {
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => getInitialMatch(query));
 
+  // query 变化时在渲染阶段同步状态（React 推荐的派生状态模式，避免 effect 内 setState）
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (prevQuery !== query) {
+    setPrevQuery(query);
+    setMatches(getInitialMatch(query));
+  }
+
   useEffect(() => {
     const media = window.matchMedia(query);
-    setMatches(media.matches);
     const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);

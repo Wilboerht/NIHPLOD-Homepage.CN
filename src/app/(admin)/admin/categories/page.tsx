@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, GripVertical, Eye, EyeOff, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  GripVertical,
+  Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -12,6 +21,7 @@ import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 // 分类类型
 interface Category {
@@ -56,7 +66,7 @@ export default function AdminCategoriesPage() {
   }, []);
 
   useEffect(() => {
-    fetchCategories();
+    deferInEffect(fetchCategories);
   }, [fetchCategories]);
 
   // 打开新增弹窗
@@ -198,7 +208,7 @@ export default function AdminCategoriesPage() {
         {categories.length === 0 ? (
           <Empty className="h-48" title="暂无分类" description="点击上方按钮创建第一个分类" />
         ) : (
-          <div className="divide-y divide-brand-charcoal/8">
+          <div className="divide-brand-charcoal/8 divide-y">
             {/* 表头 */}
             <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <div className="col-span-1"></div>
@@ -261,7 +271,7 @@ export default function AdminCategoriesPage() {
 
                 {/* Slug */}
                 <div className="col-span-2 flex items-center">
-                  <code className="rounded bg-brand-charcoal/8 px-2 py-1 text-sm text-brand-charcoal/60">
+                  <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-sm text-brand-charcoal/60">
                     {category.slug}
                   </code>
                 </div>

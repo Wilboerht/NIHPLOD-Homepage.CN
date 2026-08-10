@@ -143,7 +143,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    createApplicationAuditLog("update_application", id, { status, notes, folderId }, admin, request).catch(() => {});
+    createApplicationAuditLog(
+      "update_application",
+      id,
+      { status, notes, folderId },
+      admin,
+      request
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, data: application });
   } catch (error) {

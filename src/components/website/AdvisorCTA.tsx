@@ -9,12 +9,9 @@ interface AdvisorCTAProps {
 }
 
 const COPY = {
-  guide:
-    "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
-  discover:
-    "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
-  "empty-cart":
-    "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
+  guide: "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
+  discover: "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
+  "empty-cart": "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
 } as const;
 
 /**
@@ -23,7 +20,12 @@ const COPY = {
  */
 export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps) {
   return (
-    <div className={cn("max-lg:rounded-lg max-lg:border max-lg:border-brand-charcoal/10 max-lg:px-4 max-lg:py-3", className)}>
+    <div
+      className={cn(
+        "max-lg:rounded-lg max-lg:border max-lg:border-brand-charcoal/10 max-lg:px-4 max-lg:py-3",
+        className
+      )}
+    >
       <a
         href="https://advisor.nihplod.cn"
         target="_blank"

@@ -22,11 +22,15 @@ const updateBenefitSchema = z.object({
   minPoints: z.number().int().min(0).optional(),
   maxPoints: z.number().int().min(0).nullable().optional(),
   pointRate: z.number().int().min(1).optional(),
-  benefits: z.array(z.object({
-    icon: z.string(),
-    title: z.string(),
-    desc: z.string(),
-  })).optional(),
+  benefits: z
+    .array(
+      z.object({
+        icon: z.string(),
+        title: z.string(),
+        desc: z.string(),
+      })
+    )
+    .optional(),
   colorClass: z.string().optional(),
 });
 
@@ -126,7 +130,10 @@ export async function PUT(request: NextRequest) {
     const parsed = updateBenefitSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message },
+        },
         { status: 400 }
       );
     }
@@ -137,7 +144,8 @@ export async function PUT(request: NextRequest) {
       where: { level },
       create: {
         level,
-        name: data.name ?? `${level === "SILVER" ? "银卡" : level === "GOLD" ? "金卡" : "钻石"}会员`,
+        name:
+          data.name ?? `${level === "SILVER" ? "银卡" : level === "GOLD" ? "金卡" : "钻石"}会员`,
         minPoints: data.minPoints ?? (level === "SILVER" ? 0 : level === "GOLD" ? 5000 : 20000),
         maxPoints: data.maxPoints ?? (level === "SILVER" ? 4999 : level === "GOLD" ? 19999 : null),
         pointRate: data.pointRate ?? 1,
@@ -208,7 +216,10 @@ export async function POST(request: NextRequest) {
     const parsed = adjustPointsSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message },
+        },
         { status: 400 }
       );
     }

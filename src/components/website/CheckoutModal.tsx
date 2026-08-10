@@ -6,6 +6,8 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useMounted } from "@/hooks/useMounted";
+import { deferInEffect } from "@/hooks/deferInEffect";
 import { m, AnimatePresence } from "framer-motion";
 import { X, MapPin, ChevronRight, ShoppingBag, FileText, Loader2, Check } from "lucide-react";
 import Image from "next/image";
@@ -68,7 +70,7 @@ export function CheckoutModal() {
     setPendingCheckout,
     openPay,
   } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -76,10 +78,6 @@ export function CheckoutModal() {
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [selectedCouponId, setSelectedCouponId] = useState("");
   const [remark, setRemark] = useState("");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useScrollLock(checkoutOpen);
 
@@ -134,7 +132,7 @@ export function CheckoutModal() {
 
   useEffect(() => {
     if (checkoutOpen && user) {
-      loadCheckoutData();
+      deferInEffect(loadCheckoutData);
     }
   }, [checkoutOpen, user, loadCheckoutData]);
 
@@ -188,11 +186,17 @@ export function CheckoutModal() {
       redirectToLogin();
       closeCheckout();
     }
-  }, [checkoutOpen, user, redirectToLogin, closeCheckout, checkoutSelectedProductIds, checkoutQuantities, setPendingCheckout]);
+  }, [
+    checkoutOpen,
+    user,
+    redirectToLogin,
+    closeCheckout,
+    checkoutSelectedProductIds,
+    checkoutQuantities,
+    setPendingCheckout,
+  ]);
 
   if (!mounted) return null;
-
-  const _selectedAddress = data?.addresses.find((a) => a.id === selectedAddressId);
 
   const content = (
     <AnimatePresence>

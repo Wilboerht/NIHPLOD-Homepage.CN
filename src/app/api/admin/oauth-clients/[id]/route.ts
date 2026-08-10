@@ -6,7 +6,12 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { getOAuthClientById, updateOAuthClient, deleteOAuthClient, toSafeClientResponse } from "@/lib/oauth-client";
+import {
+  getOAuthClientById,
+  updateOAuthClient,
+  deleteOAuthClient,
+  toSafeClientResponse,
+} from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -32,7 +37,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" } },
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" },
+        },
         { status: 403 }
       );
     }

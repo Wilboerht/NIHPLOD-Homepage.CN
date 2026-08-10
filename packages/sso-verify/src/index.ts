@@ -464,6 +464,20 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
   };
 }
 
+/** 框架无关的最小中间件请求类型（兼容 Express/Connect 风格） */
+export interface SsoMiddlewareRequest {
+  headers?: Record<string, string | undefined>;
+  /** 验证通过后由中间件挂载的用户信息 */
+  user?: VerifiedTokenPayload;
+  [key: string]: unknown;
+}
+
+/** 框架无关的最小中间件响应类型 */
+export interface SsoMiddlewareResponse {
+  status?: (code: number) => { json: (body: unknown) => unknown };
+  [key: string]: unknown;
+}
+
 /**
  * Express/Next.js 兼容中间件
  *
@@ -491,7 +505,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
 export function ssoMiddleware(options: SsoVerifierOptions) {
   const verifier = createTokenVerifier(options);
 
-  return async (req: any, res: any, next: () => void) => {
+  return async (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: () => void) => {
     const authHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 

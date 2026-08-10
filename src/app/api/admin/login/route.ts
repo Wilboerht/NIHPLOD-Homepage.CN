@@ -93,13 +93,15 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get("origin");
     const referer = request.headers.get("referer");
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
-    const allowedHostnames = new Set([
-      new URL(appUrl).hostname,
-    ]);
+    const allowedHostnames = new Set([new URL(appUrl).hostname]);
     // 额外允许的 hostname（通过环境变量逗号分隔）
     const extraHosts = process.env.APP_ALLOWED_HOSTS;
     if (extraHosts) {
-      extraHosts.split(",").map((h) => h.trim()).filter(Boolean).forEach((h) => allowedHostnames.add(h));
+      extraHosts
+        .split(",")
+        .map((h) => h.trim())
+        .filter(Boolean)
+        .forEach((h) => allowedHostnames.add(h));
     }
 
     const checkUrl = (urlStr: string | null): boolean => {

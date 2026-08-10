@@ -101,7 +101,10 @@ async function fulfillOrderAsPaid(
     // 更新商品销量（按 productId 聚合后批量更新，避免 N+1）
     const salesAggregation = new Map<string, number>();
     for (const item of order.items) {
-      salesAggregation.set(item.productId, (salesAggregation.get(item.productId) || 0) + item.quantity);
+      salesAggregation.set(
+        item.productId,
+        (salesAggregation.get(item.productId) || 0) + item.quantity
+      );
     }
     for (const [productId, qty] of salesAggregation) {
       await tx.product.update({
@@ -174,7 +177,9 @@ export async function queryAndFulfillExpiredPendingOrders(pendingMinutes = 25): 
       }
     }
 
-    apiConsole.info(`[PaymentQuery] 批量兜底查询完成: ${fulfilledCount}/${orders.length} 个订单已支付`);
+    apiConsole.info(
+      `[PaymentQuery] 批量兜底查询完成: ${fulfilledCount}/${orders.length} 个订单已支付`
+    );
     return { success: true, fulfilledCount };
   } catch (error) {
     apiConsole.error("[PaymentQuery] 批量查询失败:", error);

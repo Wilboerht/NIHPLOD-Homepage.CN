@@ -64,10 +64,18 @@ export function PlatformIcon({ platform }: { platform: string }) {
   if (p.includes("天猫") || p.toLowerCase().includes("tmall")) {
     return <>{getPlatformIcon("tmall")}</>;
   }
-  if (p.includes("小红书") || p.toLowerCase().includes("xiaohongshu") || p.toLowerCase().includes("xhs")) {
+  if (
+    p.includes("小红书") ||
+    p.toLowerCase().includes("xiaohongshu") ||
+    p.toLowerCase().includes("xhs")
+  ) {
     return <>{getPlatformIcon("xiaohongshu")}</>;
   }
-  if (p.includes("抖音") || p.toLowerCase().includes("douyin") || p.toLowerCase().includes("tiktok")) {
+  if (
+    p.includes("抖音") ||
+    p.toLowerCase().includes("douyin") ||
+    p.toLowerCase().includes("tiktok")
+  ) {
     return <>{getPlatformIcon("douyin")}</>;
   }
   return <ShoppingBag className="h-4 w-4" />;
@@ -143,15 +151,17 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
     };
   }, [isOpen, handleKeyDown]);
 
-  // 重置状态
-  useEffect(() => {
+  // 关闭时重置状态（渲染阶段同步，避免 effect 内 setState）
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
       setCurrentImageIndex(0);
       setOpenAccordion(null);
       setPurchaseMenuOpen(false);
       setActiveTab("description");
     }
-  }, [isOpen]);
+  }
 
   // 切换图片
   const handlePrevImage = (e: React.MouseEvent) => {
@@ -474,7 +484,9 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                                 </a>
                               ))
                             : !product.allowDirectBuy && (
-                                <span className="text-[14px] text-brand-charcoal/50">暂无购买链接</span>
+                                <span className="text-[14px] text-brand-charcoal/50">
+                                  暂无购买链接
+                                </span>
                               )}
                         </div>
                       </div>

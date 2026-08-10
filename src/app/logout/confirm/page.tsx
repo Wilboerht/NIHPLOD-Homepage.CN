@@ -19,6 +19,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 function LogoutConfirmContent() {
   const searchParams = useSearchParams();
@@ -38,22 +39,26 @@ function LogoutConfirmContent() {
   }, [redirectUri, state]);
 
   useEffect(() => {
-    if (!rawRedirectUri) {
-      setRedirectUri(null);
-      return;
-    }
+    deferInEffect(() => {
+      if (!rawRedirectUri) {
+        setRedirectUri(null);
+        return;
+      }
 
-    if (rawRedirectUri.startsWith("/") && !rawRedirectUri.startsWith("//")) {
-      setRedirectUri(rawRedirectUri);
-      return;
-    }
+      if (rawRedirectUri.startsWith("/") && !rawRedirectUri.startsWith("//")) {
+        setRedirectUri(rawRedirectUri);
+        return;
+      }
 
-    fetch(`/api/oauth/check-post-logout-uri?post_logout_redirect_uri=${encodeURIComponent(rawRedirectUri)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setRedirectUri(data.trusted ? rawRedirectUri : null);
-      })
-      .catch(() => setRedirectUri(null));
+      fetch(
+        `/api/oauth/check-post-logout-uri?post_logout_redirect_uri=${encodeURIComponent(rawRedirectUri)}`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setRedirectUri(data.trusted ? rawRedirectUri : null);
+        })
+        .catch(() => setRedirectUri(null));
+    });
   }, [rawRedirectUri]);
 
   useEffect(() => {
@@ -70,14 +75,12 @@ function LogoutConfirmContent() {
   }, [redirectUri, router, getFinalRedirectUrl]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">已退出登录</h1>
-        <p className="text-gray-500 mb-6">您已成功退出登录</p>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">已退出登录</h1>
+        <p className="mb-6 text-gray-500">您已成功退出登录</p>
 
-        <p className="text-sm text-gray-400">
-          {done ? "正在跳转..." : "请稍候..."}
-        </p>
+        <p className="text-sm text-gray-400">{done ? "正在跳转..." : "请稍候..."}</p>
 
         <button
           onClick={() => {
@@ -88,7 +91,7 @@ function LogoutConfirmContent() {
               router.push("/");
             }
           }}
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+          className="mt-4 rounded-lg bg-blue-600 px-6 py-2 text-sm text-white hover:bg-blue-700"
         >
           立即跳转
         </button>
@@ -101,8 +104,8 @@ export default function LogoutConfirmPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       }
     >

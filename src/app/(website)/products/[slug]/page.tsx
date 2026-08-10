@@ -22,7 +22,10 @@ const isDev = process.env.NODE_ENV === "development";
  */
 function toMetaDescription(html: string | null | undefined, fallback: string): string {
   if (!html) return fallback;
-  const text = html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  const text = html
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!text) return fallback;
   return text.length > 80 ? `${text.slice(0, 80).trimEnd()}…` : text;
 }

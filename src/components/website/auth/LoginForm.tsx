@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { m } from "framer-motion";
-import { Eye, EyeOff, ArrowLeftRight, CheckCircle, MessageCircle } from "lucide-react";
+import { Eye, EyeOff, ArrowLeftRight, MessageCircle } from "lucide-react";
 import { pcInputClass, pcBtnClass, mobileInputClass, mobileInputFlexClass } from "./auth-styles";
 import { Checkbox } from "@/components/ui/Checkbox";
 
@@ -62,11 +62,21 @@ function AgreementCheckbox({
         label={
           <span className="text-xs tracking-wide text-brand-charcoal/50">
             我已阅读并同意
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal">
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+            >
               《用户协议》
             </a>
             和
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal">
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+            >
               《隐私政策》
             </a>
           </span>
@@ -311,7 +321,9 @@ export function LoginForm({
             type="button"
             onClick={onLoginMethodToggle}
             className={`inline-flex h-7 min-h-0 items-center gap-1.5 text-xs tracking-wider transition-colors ${
-              loginMethod === "code" ? "text-brand-charcoal" : "text-brand-charcoal/50 hover:text-brand-charcoal"
+              loginMethod === "code"
+                ? "text-brand-charcoal"
+                : "text-brand-charcoal/50 hover:text-brand-charcoal"
             }`}
           >
             <ArrowLeftRight className="h-3 w-3" strokeWidth={2} />

@@ -1,6 +1,15 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+  ReactNode,
+} from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
@@ -74,9 +83,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         timersRef.current.delete(id);
       }
       // 标记为退出动画；reduceMotion 时立即移除，否则 300ms 后移除
-      setToasts((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, duration: -1 } : t))
-      );
+      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, duration: -1 } : t)));
       const delay = reduceMotion ? 0 : 300;
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -167,16 +174,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [removeToast, dismissAll]
   );
 
-  const value = useMemo<ToastContextType>(() => ({
-    toast: addToast,
-    success: (message, duration) => addToast({ type: "success", message, duration }),
-    error: (message, duration) => addToast({ type: "error", message, duration }),
-    warning: (message, duration) => addToast({ type: "warning", message, duration }),
-    info: (message, duration) => addToast({ type: "info", message, duration }),
-    loading: (message) => addToast({ type: "loading", message }),
-    dismiss,
-    update: updateToast,
-  }), [addToast, dismiss, updateToast]);
+  const value = useMemo<ToastContextType>(
+    () => ({
+      toast: addToast,
+      success: (message, duration) => addToast({ type: "success", message, duration }),
+      error: (message, duration) => addToast({ type: "error", message, duration }),
+      warning: (message, duration) => addToast({ type: "warning", message, duration }),
+      info: (message, duration) => addToast({ type: "info", message, duration }),
+      loading: (message) => addToast({ type: "loading", message }),
+      dismiss,
+      update: updateToast,
+    }),
+    [addToast, dismiss, updateToast]
+  );
 
   return (
     <ToastContext.Provider value={value}>
@@ -186,7 +196,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <AnimatePresence>
           {toasts.map((toast) => {
             const Icon = iconMap[toast.type];
-            const isRemoving = toast.duration === -1;
             return (
               <m.div
                 key={toast.id}

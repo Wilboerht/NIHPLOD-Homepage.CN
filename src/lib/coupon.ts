@@ -27,7 +27,7 @@ export async function autoExpireUserCoupons(): Promise<{
       },
     });
 
-    console.log(`[Coupon] 自动标记了 ${result.count} 张过期优惠券为 EXPIRED`);
+    apiConsole.info(`[Coupon] 自动标记了 ${result.count} 张过期优惠券为 EXPIRED`);
     return { success: true, expiredCount: result.count };
   } catch (error) {
     apiConsole.error("[Coupon] 自动过期清理失败:", error);

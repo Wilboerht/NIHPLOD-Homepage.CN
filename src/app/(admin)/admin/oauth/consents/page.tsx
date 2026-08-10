@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 function maskPhone(phone: string): string {
   return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
@@ -70,7 +71,9 @@ function OAuthConsentsPage() {
   const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
 
-  const [revokeTarget, setRevokeTarget] = useState<{ userId: string; clientId: string } | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ userId: string; clientId: string } | null>(
+    null
+  );
   const [showRevoke, setShowRevoke] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
@@ -94,9 +97,7 @@ function OAuthConsentsPage() {
       if (searchPhone.trim()) params.set("search", searchPhone.trim());
       if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
       if (statusFilter) params.set("status", statusFilter);
-      const data = await apiGet<ConsentsResponse>(
-        `/api/admin/oauth/consents?${params.toString()}`
-      );
+      const data = await apiGet<ConsentsResponse>(`/api/admin/oauth/consents?${params.toString()}`);
       setConsents(data.items);
       setTotal(data.pagination.total);
     } catch {
@@ -107,7 +108,7 @@ function OAuthConsentsPage() {
   }, [page, searchPhone, searchClientId, statusFilter, toast, syncUrl]);
 
   useEffect(() => {
-    fetchConsents();
+    deferInEffect(fetchConsents);
   }, [fetchConsents]);
 
   const handleSearch = () => {
@@ -162,14 +163,13 @@ function OAuthConsentsPage() {
           <Select
             options={STATUS_OPTIONS}
             value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
           />
         </div>
-        <Button
-          variant="outline"
-          onClick={handleSearch}
-          leftIcon={<Search className="w-4 h-4" />}
-        >
+        <Button variant="outline" onClick={handleSearch} leftIcon={<Search className="h-4 w-4" />}>
           搜索
         </Button>
       </div>
@@ -179,28 +179,41 @@ function OAuthConsentsPage() {
         <table className="w-full">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">用户手机号</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Scopes</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">授权时间</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">状态</th>
-              <th className="text-right px-4 py-3 text-sm font-medium text-brand-charcoal/60">操作</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                用户手机号
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                Client ID
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                Scopes
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                授权时间
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                状态
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-brand-charcoal/60">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={6} />
-              ))
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
             ) : consents.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-brand-charcoal/50">
+                <td colSpan={6} className="py-8 text-center text-brand-charcoal/50">
                   暂无数据
                 </td>
               </tr>
             ) : (
               consents.map((c) => (
-                <tr key={c.id} className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]">
+                <tr
+                  key={c.id}
+                  className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]"
+                >
                   <td className="px-4 py-3 text-sm">
                     <Tooltip content="查看用户详情" side="top">
                       <Link
@@ -215,14 +228,14 @@ function OAuthConsentsPage() {
                     <Tooltip content="查看 Client" side="top">
                       <Link
                         href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
-                        className="inline-flex text-blue-600 hover:underline font-mono"
+                        className="inline-flex font-mono text-blue-600 hover:underline"
                       >
                         {c.clientName || c.clientId}
                       </Link>
                     </Tooltip>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex flex-wrap gap-1">
                       {c.scopes.map((s) => (
                         <Badge key={s} variant="secondary" className="text-xs">
                           {s}
@@ -230,7 +243,9 @@ function OAuthConsentsPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">{formatDate(c.grantedAt)}</td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                    {formatDate(c.grantedAt)}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={c.status === "active" ? "success" : "danger"}>
                       {c.status === "active" ? "已授权" : "已撤销"}
@@ -244,13 +259,16 @@ function OAuthConsentsPage() {
                             setRevokeTarget({ userId: c.userId, clientId: c.clientId });
                             setShowRevoke(true);
                           }}
-                          className="inline-flex p-1.5 text-brand-charcoal/50 hover:text-red-600 rounded"
+                          className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-red-600"
                         >
-                          <XCircle className="w-4 h-4" />
+                          <XCircle className="h-4 w-4" />
                         </button>
                       </Tooltip>
                     ) : (
-                      <span className="text-xs text-brand-charcoal/40" title="用户下次访问该 Client 时需要重新授权">
+                      <span
+                        className="text-xs text-brand-charcoal/40"
+                        title="用户下次访问该 Client 时需要重新授权"
+                      >
                         需重新授权
                       </span>
                     )}
@@ -264,12 +282,7 @@ function OAuthConsentsPage() {
 
       {total > pageSize && (
         <div className="mt-4">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
+          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}
 

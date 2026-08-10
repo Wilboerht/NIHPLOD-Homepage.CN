@@ -46,11 +46,15 @@ let _warnedMemoryMode = false;
 function checkProductionRateLimitStorage(): void {
   if (_warnedMemoryMode) return;
   _warnedMemoryMode = true;
-  if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_STORAGE !== "database" && process.env.RATE_LIMIT_STORAGE !== "memory") {
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.RATE_LIMIT_STORAGE !== "database" &&
+    process.env.RATE_LIMIT_STORAGE !== "memory"
+  ) {
     throw new Error(
       "[RateLimit] 生产环境必须设置 RATE_LIMIT_STORAGE=database，" +
-      "多实例部署时内存限流各实例不共享，存在被绕过风险。" +
-      "若仅单实例部署，请设置 RATE_LIMIT_STORAGE=memory 以显式允许。"
+        "多实例部署时内存限流各实例不共享，存在被绕过风险。" +
+        "若仅单实例部署，请设置 RATE_LIMIT_STORAGE=memory 以显式允许。"
     );
   }
 }
@@ -66,7 +70,9 @@ async function withMutex<T>(key: string, fn: () => T | Promise<T>): Promise<T> {
     await mutexMap.get(key);
   }
   let resolve: () => void;
-  const promise = new Promise<void>((r) => { resolve = r; });
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
   mutexMap.set(key, promise);
   try {
     return await fn();
@@ -147,7 +153,7 @@ export const RATE_LIMIT_PRESETS = {
   /** 微信绑定 - 每分钟 5 次 */
   "wechat-bind": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 健康检查 - 每分钟 10 次 */
-  "health": { maxRequests: 10, windowMs: 60 * 1000 },
+  health: { maxRequests: 10, windowMs: 60 * 1000 },
   /** OIDC Discovery 端点 - 每分钟 30 次（公开可缓存端点） */
   "oauth-discovery": { maxRequests: 30, windowMs: 60 * 1000 },
   /** OAuth post_logout_redirect_uri 校验 - 每分钟 20 次 */

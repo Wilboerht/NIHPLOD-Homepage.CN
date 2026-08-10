@@ -25,7 +25,10 @@ describe("oauth-client-auth", () => {
       const request = {
         headers: { get: () => "Basic !!!" },
       };
-      const result = getClientCredentials(request, { client_id: "body-id", client_secret: "body-secret" });
+      const result = getClientCredentials(request, {
+        client_id: "body-id",
+        client_secret: "body-secret",
+      });
       expect(result).toEqual({ client_id: "body-id", client_secret: "body-secret" });
     });
 
@@ -41,7 +44,10 @@ describe("oauth-client-auth", () => {
       const request = {
         headers: { get: () => null },
       };
-      const result = getClientCredentials(request, { client_id: "public-client", client_secret: "" });
+      const result = getClientCredentials(request, {
+        client_id: "public-client",
+        client_secret: "",
+      });
       expect(result.client_secret).toBeUndefined();
     });
   });

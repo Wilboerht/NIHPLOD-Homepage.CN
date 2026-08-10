@@ -75,7 +75,9 @@ export async function shipOrder(
       });
     });
 
-    apiConsole.info(`[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ****${trackingNo.slice(-4)}`);
+    apiConsole.info(
+      `[Logistics] 订单发货: ${order.orderNo} - ${logisticsCompany} ****${trackingNo.slice(-4)}`
+    );
     return { success: true };
   } catch (error) {
     apiConsole.error("[Logistics] 发货失败:", error);
@@ -188,7 +190,7 @@ export async function confirmReceipt(
       },
     });
 
-    console.log(`[Logistics] 确认收货: ${order.orderNo}`);
+    apiConsole.info(`[Logistics] 确认收货: ${order.orderNo}`);
     return { success: true };
   } catch (error) {
     apiConsole.error("[Logistics] 确认收货失败:", error);

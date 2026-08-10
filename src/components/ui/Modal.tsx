@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect, useCallback, useRef, useState } from "react";
+import { ReactNode, useEffect, useCallback, useRef } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
@@ -39,17 +40,16 @@ export function Modal({
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const closeOnEscapeRef = useRef(closeOnEscape);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const wasOpenRef = useRef(false);
 
-  // 保持最新回调（避免 effect 因内联 onClose 重跑）
-  onCloseRef.current = onClose;
-  closeOnEscapeRef.current = closeOnEscape;
-
-  // 确保在客户端渲染（SSR 时 document.body 不可用）
+  // 保持最新回调（避免 effect 因内联 onClose 重跑；在 effect 中更新避免渲染期写 ref）
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    onCloseRef.current = onClose;
+    closeOnEscapeRef.current = closeOnEscape;
+  });
+
+  // 确保在客户端渲染（SSR 时 document.body 不可用）—— useMounted 已提供 hydration 守卫
 
   // 处理 ESC 键关闭 + Tab 焦点循环（ref 稳定化，不依赖 onClose 引用）
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -114,7 +114,7 @@ export function Modal({
   useEffect(() => {
     if (open && dialogRef.current) {
       const autofocusEl = dialogRef.current.querySelector<HTMLElement>(
-        '[autofocus], [data-autofocus]'
+        "[autofocus], [data-autofocus]"
       );
       if (autofocusEl) {
         autofocusEl.focus();
@@ -174,7 +174,10 @@ export function Modal({
               <div className="flex shrink-0 items-start justify-between border-b border-brand-charcoal/10 px-4 py-3 sm:px-6 sm:py-4">
                 <div>
                   {title && (
-                    <h2 id="modal-title" className="text-base font-semibold text-brand-charcoal sm:text-lg">
+                    <h2
+                      id="modal-title"
+                      className="text-base font-semibold text-brand-charcoal sm:text-lg"
+                    >
                       {title}
                     </h2>
                   )}

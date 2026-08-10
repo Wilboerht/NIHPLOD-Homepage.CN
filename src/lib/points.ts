@@ -51,7 +51,7 @@ export async function creditPointsForOrder(params: {
   payAmount: number;
   orderNo: string;
 }): Promise<{ points: number; newLevel: MembershipLevel; oldLevel: MembershipLevel } | null> {
-  const { tx, orderId, userId, payAmount, orderNo } = params;
+  const { tx, userId, payAmount, orderNo } = params;
   const db = tx ?? prisma;
 
   try {
@@ -76,9 +76,7 @@ export async function creditPointsForOrder(params: {
 
     // 生日月双倍积分（金卡及以上）
     const birthdayBonus =
-      user.membershipLevel !== "SILVER" && isBirthdayMonth(user.birthday ?? null)
-        ? basePoints
-        : 0;
+      user.membershipLevel !== "SILVER" && isBirthdayMonth(user.birthday ?? null) ? basePoints : 0;
 
     const totalPointsEarned = basePoints + birthdayBonus;
     if (totalPointsEarned <= 0) return null;
@@ -116,7 +114,9 @@ export async function creditPointsForOrder(params: {
     }
 
     // 更新用户积分和等级
-    const finalPoints = newTotalPoints + (levelUp ? (newLevel === "GOLD" ? 200 : newLevel === "DIAMOND" ? 500 : 0) : 0);
+    const finalPoints =
+      newTotalPoints +
+      (levelUp ? (newLevel === "GOLD" ? 200 : newLevel === "DIAMOND" ? 500 : 0) : 0);
     await db.user.update({
       where: { id: userId },
       data: {
@@ -127,7 +127,7 @@ export async function creditPointsForOrder(params: {
 
     apiConsole.info(
       `[Points] 用户 ${userId} 获得 ${totalPointsEarned} 积分 (总 ${finalPoints}), ` +
-      `等级: ${oldLevel} → ${newLevel}`
+        `等级: ${oldLevel} → ${newLevel}`
     );
 
     // 失效 profile 缓存，确保 AuthContext 拉取最新积分与等级
@@ -138,7 +138,9 @@ export async function creditPointsForOrder(params: {
     }
 
     return {
-      points: totalPointsEarned + (levelUp ? (newLevel === "GOLD" ? 200 : newLevel === "DIAMOND" ? 500 : 0) : 0),
+      points:
+        totalPointsEarned +
+        (levelUp ? (newLevel === "GOLD" ? 200 : newLevel === "DIAMOND" ? 500 : 0) : 0),
       newLevel,
       oldLevel,
     };
@@ -166,7 +168,7 @@ export async function refundPointsForOrder(params: {
   userId: string;
   orderNo: string;
 }): Promise<{ deductedPoints: number } | null> {
-  const { tx, orderId, userId, orderNo } = params;
+  const { tx, userId, orderNo } = params;
   const db = tx ?? prisma;
 
   try {

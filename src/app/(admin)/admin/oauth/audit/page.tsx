@@ -13,6 +13,7 @@ import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface AuditEntry {
   id: string;
@@ -81,8 +82,13 @@ const formatEventType = (type: string): string => {
   return map[type] || type;
 };
 
-const getEventBadgeVariant = (type: string): "primary" | "secondary" | "success" | "warning" | "danger" | "outline" => {
-  const map: Record<string, "primary" | "secondary" | "success" | "warning" | "danger" | "outline"> = {
+const getEventBadgeVariant = (
+  type: string
+): "primary" | "secondary" | "success" | "warning" | "danger" | "outline" => {
+  const map: Record<
+    string,
+    "primary" | "secondary" | "success" | "warning" | "danger" | "outline"
+  > = {
     authorize: "primary",
     token: "success",
     refresh: "secondary",
@@ -137,9 +143,7 @@ function OAuthAuditPage() {
       if (successFilter) params.set("success", successFilter);
       const qs = params.toString();
       router.replace(`/admin/oauth/audit${qs ? `?${qs}` : ""}`, { scroll: false });
-      const data = await apiGet<AuditResponse>(
-        `/api/admin/oauth/audit?${params.toString()}`
-      );
+      const data = await apiGet<AuditResponse>(`/api/admin/oauth/audit?${params.toString()}`);
       setEntries(data.items);
       setTotal(data.pagination.total);
     } catch {
@@ -147,10 +151,20 @@ function OAuthAuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, eventType, searchClientId, searchUserId, dateFrom, dateTo, successFilter, toast, router]);
+  }, [
+    page,
+    eventType,
+    searchClientId,
+    searchUserId,
+    dateFrom,
+    dateTo,
+    successFilter,
+    toast,
+    router,
+  ]);
 
   useEffect(() => {
-    fetchAudit();
+    deferInEffect(fetchAudit);
   }, [fetchAudit]);
 
   const handleSearch = () => {
@@ -180,7 +194,10 @@ function OAuthAuditPage() {
       if (dateTo) params.set("endDate", dateTo);
       if (successFilter) params.set("success", successFilter);
       const w = window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
-      if (!w) { toast.error("导出被浏览器拦截，请允许弹出窗口"); return; }
+      if (!w) {
+        toast.error("导出被浏览器拦截，请允许弹出窗口");
+        return;
+      }
     } catch {
       toast.error("导出失败");
     } finally {
@@ -199,7 +216,7 @@ function OAuthAuditPage() {
           variant="outline"
           onClick={handleExportCsv}
           disabled={exporting}
-          leftIcon={<Download className="w-4 h-4" />}
+          leftIcon={<Download className="h-4 w-4" />}
         >
           {exporting ? "导出中..." : "导出 CSV"}
         </Button>
@@ -212,7 +229,10 @@ function OAuthAuditPage() {
             <Select
               options={EVENT_TYPE_OPTIONS}
               value={eventType}
-              onChange={(e) => { setEventType(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setEventType(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <div className="w-44">
@@ -234,14 +254,20 @@ function OAuthAuditPage() {
           <div className="w-36">
             <DatePicker
               value={dateFrom}
-              onChange={(v) => { setDateFrom(v); setPage(1); }}
+              onChange={(v) => {
+                setDateFrom(v);
+                setPage(1);
+              }}
               placeholder="开始日期"
             />
           </div>
           <div className="w-36">
             <DatePicker
               value={dateTo}
-              onChange={(v) => { setDateTo(v); setPage(1); }}
+              onChange={(v) => {
+                setDateTo(v);
+                setPage(1);
+              }}
               placeholder="结束日期"
             />
           </div>
@@ -249,20 +275,23 @@ function OAuthAuditPage() {
             <Select
               options={SUCCESS_OPTIONS}
               value={successFilter}
-              onChange={(e) => { setSuccessFilter(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSuccessFilter(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <Button
             variant="outline"
             onClick={handleSearch}
-            leftIcon={<Search className="w-4 h-4" />}
+            leftIcon={<Search className="h-4 w-4" />}
           >
             搜索
           </Button>
           <Button
             variant="outline"
             onClick={handleReset}
-            leftIcon={<RotateCw className="w-4 h-4" />}
+            leftIcon={<RotateCw className="h-4 w-4" />}
           >
             重置
           </Button>
@@ -274,55 +303,78 @@ function OAuthAuditPage() {
         <table className="w-full">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">事件类型</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">用户 ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client Name</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">IP</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">状态</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">时间</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">详情</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                事件类型
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                用户 ID
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                Client ID
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                Client Name
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">IP</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                状态
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                时间
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                详情
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={8} />
-              ))
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-brand-charcoal/50">
+                <td colSpan={8} className="py-8 text-center text-brand-charcoal/50">
                   暂无数据
                 </td>
               </tr>
             ) : (
               entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <tr key={entry.id} className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]">
+                  <tr
+                    key={entry.id}
+                    className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]"
+                  >
                     <td className="px-4 py-3">
                       <Badge variant={getEventBadgeVariant(entry.event)}>
                         {formatEventType(entry.event)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/80">{entry.userId}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/80">{entry.clientId}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
+                      {entry.userId}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
+                      {entry.clientId}
+                    </td>
                     <td className="px-4 py-3 text-sm">{entry.clientName || "-"}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/50">{entry.ip}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/50">
+                      {entry.ip}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant={entry.success ? "success" : "danger"}>
                         {entry.success ? "成功" : "失败"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-brand-charcoal/50">{formatDate(entry.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                      {formatDate(entry.createdAt)}
+                    </td>
                     <td className="px-4 py-3">
                       {entry.detail ? (
                         <button
                           onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-                          className="text-blue-600 text-xs hover:underline flex items-center gap-1"
+                          className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
                         >
                           展开
                           <ChevronDown
-                            className={`w-3 h-3 transition-transform ${expandedId === entry.id ? "rotate-180" : ""}`}
+                            className={`h-3 w-3 transition-transform ${expandedId === entry.id ? "rotate-180" : ""}`}
                           />
                         </button>
                       ) : (
@@ -331,9 +383,12 @@ function OAuthAuditPage() {
                     </td>
                   </tr>
                   {expandedId === entry.id && entry.detail != null && (
-                    <tr key={`${entry.id}-detail`} className="border-b border-brand-charcoal/[0.06] bg-brand-charcoal/[0.03]">
+                    <tr
+                      key={`${entry.id}-detail`}
+                      className="border-b border-brand-charcoal/[0.06] bg-brand-charcoal/[0.03]"
+                    >
                       <td colSpan={8} className="px-4 py-3">
-                        <pre className="text-xs text-brand-charcoal/70 rounded bg-brand-charcoal/[0.03] p-3 overflow-x-auto max-h-40">
+                        <pre className="max-h-40 overflow-x-auto rounded bg-brand-charcoal/[0.03] p-3 text-xs text-brand-charcoal/70">
                           {JSON.stringify(entry.detail, null, 2)}
                         </pre>
                       </td>
@@ -348,12 +403,7 @@ function OAuthAuditPage() {
 
       {total > pageSize && (
         <div className="mt-4">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
+          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}
     </div>

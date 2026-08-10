@@ -124,11 +124,10 @@ export function SsoProvider({
   const [user, setUser] = useState<SsoUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const clientRef = useRef(new SsoClient(config));
+  // 实例用 useState 懒初始化保持稳定引用（避免渲染期读取 ref）
+  const [client] = useState(() => new SsoClient(config));
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
-
-  const client = clientRef.current;
 
   // 加载用户信息
   const loadUser = useCallback(async () => {
@@ -152,17 +151,19 @@ export function SsoProvider({
     }
   }, [client]);
 
-  // 初始化
+  // 初始化（微任务延迟，避免 effect 内同步 setState）
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
 
-    // 检查是否有有效的 token（不发起网络请求）
-    if (client.isAuthenticated()) {
-      loadUser();
-    } else {
-      setIsLoading(false);
-    }
+    Promise.resolve().then(() => {
+      // 检查是否有有效的 token（不发起网络请求）
+      if (client.isAuthenticated()) {
+        loadUser();
+      } else {
+        setIsLoading(false);
+      }
+    });
   }, [client, loadUser]);
 
   // Token 自动刷新定时器（setTimeout 递归调度，避免 setInterval 堆积）

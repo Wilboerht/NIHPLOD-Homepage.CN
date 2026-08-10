@@ -50,9 +50,7 @@ export const metadata: Metadata = {
  * 双入口：AI 护肤顾问 + 产品浏览
  */
 export default async function Home() {
-  const breadcrumbs = [
-    { name: "首页", url: "/" },
-  ];
+  const breadcrumbs = [{ name: "首页", url: "/" }];
 
   return (
     <>

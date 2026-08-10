@@ -23,6 +23,11 @@ const shipSchema = z.object({
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  // CSRF 保护：非安全方法须校验 CSRF Token（先于认证，正确区分 403/401）
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -30,11 +35,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
       );
-    }
-
-    // CSRF 保护：非安全方法须校验 CSRF Token（纵深防御，auth 之后检查以正确区分 401/403）
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
     }
 
     const rateLimitResponse = await checkAdminRateLimit(request);

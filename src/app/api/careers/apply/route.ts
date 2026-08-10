@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
     const ip = getClientIP(request);
     const limitResult = await rateLimit(ip, "form");
     if (!limitResult.success) {
-      return NextResponse.json({ success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } }, { status: 429 });
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
     }
     if (process.env.NODE_ENV === "development") apiConsole.debug("🚀 [Apply API] Received request");
     const formData = await request.formData();
@@ -63,7 +66,14 @@ export async function POST(request: NextRequest) {
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("❌ [Apply API] Validation failed", result.error.flatten().fieldErrors);
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "表单验证失败", details: result.error.flatten().fieldErrors } },
+        {
+          success: false,
+          error: {
+            code: "INVALID_PARAMS",
+            message: "表单验证失败",
+            details: result.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 }
       );
     }
@@ -71,7 +81,10 @@ export async function POST(request: NextRequest) {
     // 验证简历文件
     if (!resumeFile) {
       if (process.env.NODE_ENV === "development") apiConsole.debug("❌ [Apply API] No resume file");
-      return NextResponse.json({ success: false, error: { code: "MISSING_RESUME", message: "请上传简历文件" } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "MISSING_RESUME", message: "请上传简历文件" } },
+        { status: 400 }
+      );
     }
 
     // 读取文件内容用于真实类型检测
@@ -82,14 +95,20 @@ export async function POST(request: NextRequest) {
     if (!fileTypeResult || fileTypeResult.mime !== "application/pdf") {
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("❌ [Apply API] Invalid file type (magic bytes):", fileTypeResult?.mime);
-      return NextResponse.json({ success: false, error: { code: "INVALID_FILE_TYPE", message: "仅支持 PDF 格式的简历" } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE_TYPE", message: "仅支持 PDF 格式的简历" } },
+        { status: 400 }
+      );
     }
 
     // 检查文件大小
     if (resumeFile.size > MAX_FILE_SIZE) {
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("❌ [Apply API] File too large:", resumeFile.size);
-      return NextResponse.json({ success: false, error: { code: "FILE_TOO_LARGE", message: "简历文件大小不能超过 10MB" } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "FILE_TOO_LARGE", message: "简历文件大小不能超过 10MB" } },
+        { status: 400 }
+      );
     }
 
     // 验证职位是否存在且处于招聘状态
@@ -105,9 +124,13 @@ export async function POST(request: NextRequest) {
     if (!job) {
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("❌ [Apply API] Job not found or not published");
-      return NextResponse.json({ success: false, error: { code: "JOB_NOT_FOUND", message: "该职位不存在或已关闭招聘" } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "JOB_NOT_FOUND", message: "该职位不存在或已关闭招聘" } },
+        { status: 400 }
+      );
     }
-    if (process.env.NODE_ENV === "development") apiConsole.debug("✅ [Apply API] Job found:", job.title);
+    if (process.env.NODE_ENV === "development")
+      apiConsole.debug("✅ [Apply API] Job found:", job.title);
 
     // 上传文件到存储 (自动处理 Local/Supabase)，限制为 PDF
     const uploadResult = await uploadFile(fileBuffer, resumeFile.name, resumeFile.type, "resumes", [
@@ -118,14 +141,18 @@ export async function POST(request: NextRequest) {
     if (!uploadResult.filename.toLowerCase().endsWith(".pdf")) {
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("❌ [Apply API] Uploaded file extension is not pdf");
-      return NextResponse.json({ success: false, error: { code: "INVALID_FILE_EXT", message: "简历文件格式异常" } }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE_EXT", message: "简历文件格式异常" } },
+        { status: 400 }
+      );
     }
 
     if (process.env.NODE_ENV === "development")
       apiConsole.debug("✅ [Apply API] File uploaded:", uploadResult.url);
 
     // 保存申请记录到数据库
-    if (process.env.NODE_ENV === "development") apiConsole.debug("💾 [Apply API] Creating DB record");
+    if (process.env.NODE_ENV === "development")
+      apiConsole.debug("💾 [Apply API] Creating DB record");
     try {
       await prisma.jobApplication.create({
         data: {
@@ -135,7 +162,8 @@ export async function POST(request: NextRequest) {
           resumePath: uploadResult.url,
         },
       });
-      if (process.env.NODE_ENV === "development") apiConsole.debug("✅ [Apply API] DB record created");
+      if (process.env.NODE_ENV === "development")
+        apiConsole.debug("✅ [Apply API] DB record created");
     } catch (dbError) {
       // 数据库写入失败，清理已上传的文件
       deleteUploadedFile(uploadResult.url).catch(() => {});
@@ -143,7 +171,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 发送通知
-    if (process.env.NODE_ENV === "development") apiConsole.debug("📢 [Apply API] Sending notifications");
+    if (process.env.NODE_ENV === "development")
+      apiConsole.debug("📢 [Apply API] Sending notifications");
     try {
       // 发送企业微信群机器人通知 (强制路由至招聘群)
       const wecomMsg = formatJobApplicationToWecom({

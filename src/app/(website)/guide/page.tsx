@@ -28,15 +28,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "护肤仪式 | NIHPLOD 旎柏",
-    description:
-      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
+    description: "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "护肤仪式 | NIHPLOD 旎柏",
-    description:
-      "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
+    description: "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
     images: ["/images/og-image.png"],
   },
 };
@@ -110,7 +108,13 @@ export default async function RitualPage() {
           }));
       }
       return scheme.steps.length > 0
-        ? [{ name: `${moduleLabel} · ${scheme.name}`, description: scheme.desc, steps: scheme.steps }]
+        ? [
+            {
+              name: `${moduleLabel} · ${scheme.name}`,
+              description: scheme.desc,
+              steps: scheme.steps,
+            },
+          ]
         : [];
     });
   });

@@ -9,6 +9,14 @@ import { getNonce } from "@/lib/nonce";
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
 /**
+ * 获取 N 天后的 ISO 日期字符串（yyyy-MM-dd）
+ * 包装为函数避免渲染期直接调用 Date.now（react-hooks/purity）
+ */
+function isoDateDaysFromNow(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+}
+
+/**
  * 通用 JSON-LD 脚本组件
  */
 async function JsonLdScript({ data }: { data: object }) {
@@ -163,7 +171,7 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
       url: product.purchaseUrl || productUrl,
       priceCurrency: "CNY",
       price: product.price,
-      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      priceValidUntil: isoDateDaysFromNow(365),
       availability: "https://schema.org/InStock",
       seller: {
         "@id": `${baseUrl}/#organization`,
@@ -335,7 +343,7 @@ export async function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
     title: job.title,
     description: job.description.replace(/<[^>]*>/g, ""),
     datePosted: new Date().toISOString().split("T")[0],
-    validThrough: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    validThrough: isoDateDaysFromNow(90),
     employmentType:
       job.type === "fulltime" ? "FULL_TIME" : job.type === "parttime" ? "PART_TIME" : "OTHER",
     hiringOrganization: {

@@ -31,7 +31,9 @@ export async function sendWecomNotification(
 
   if (!webhookUrl) {
     // 记录日志告警：生产环境不应静默丢失通知
-    apiConsole.warn(`[WeCom] ${type === "job" ? "招聘" : "联系表单"}机器人 Webhook 未配置，通知不会发送`);
+    apiConsole.warn(
+      `[WeCom] ${type === "job" ? "招聘" : "联系表单"}机器人 Webhook 未配置，通知不会发送`
+    );
     return { success: false, error: "WECOM_BOT_WEBHOOK not configured" };
   }
 

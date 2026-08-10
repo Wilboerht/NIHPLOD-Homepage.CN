@@ -32,6 +32,39 @@ interface RichTextEditorProps {
   minHeight?: string;
 }
 
+// 工具栏按钮（模块级定义，避免渲染期创建组件导致子树状态重置）
+function ToolbarButton({
+  onClick,
+  active,
+  disabled,
+  children,
+  title,
+}: {
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={cn(
+        "rounded p-1.5 transition-colors",
+        active
+          ? "bg-brand-primary/20 text-brand-primary"
+          : "text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80",
+        disabled && "cursor-not-allowed opacity-50"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -113,50 +146,23 @@ export function RichTextEditor({
     return (
       <div className={cn("animate-pulse", className)}>
         {label && <div className="mb-1.5 h-5 w-20 rounded bg-brand-charcoal/10" />}
-        <div className="h-32 rounded-lg bg-brand-charcoal/8" />
+        <div className="bg-brand-charcoal/8 h-32 rounded-lg" />
       </div>
     );
   }
 
-  // 工具栏按钮
-  const ToolbarButton = ({
-    onClick,
-    active,
-    disabled,
-    children,
-    title,
-  }: {
-    onClick: () => void;
-    active?: boolean;
-    disabled?: boolean;
-    children: React.ReactNode;
-    title: string;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={cn(
-        "rounded p-1.5 transition-colors",
-        active
-          ? "bg-brand-primary/20 text-brand-primary"
-          : "text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80",
-        disabled && "cursor-not-allowed opacity-50"
-      )}
-    >
-      {children}
-    </button>
-  );
-
   return (
     <div className={className}>
-      {label && <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>}
+      {label && (
+        <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>
+      )}
 
       <div
         className={cn(
           "overflow-hidden rounded-lg border bg-white transition-all",
-          isFocused ? "border-brand-primary ring-2 ring-brand-primary/20" : "border-brand-charcoal/20",
+          isFocused
+            ? "border-brand-primary ring-2 ring-brand-primary/20"
+            : "border-brand-charcoal/20",
           error && "border-red-500"
         )}
       >

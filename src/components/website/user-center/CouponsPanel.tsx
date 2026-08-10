@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Ticket, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface UserCoupon {
   id: string;
@@ -29,10 +30,6 @@ export function CouponsPanel() {
   const [filter, setFilter] = useState<FilterStatus>("all");
   const { error: showError } = useToast();
 
-  useEffect(() => {
-    fetchCoupons();
-  }, []);
-
   const fetchCoupons = async (status?: string) => {
     setLoading(true);
     try {
@@ -50,6 +47,10 @@ export function CouponsPanel() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    deferInEffect(() => fetchCoupons());
+  }, []);
 
   const handleFilterChange = (f: FilterStatus) => {
     setFilter(f);

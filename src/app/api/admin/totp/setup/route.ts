@@ -45,7 +45,10 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     if (!password) {
       return NextResponse.json(
-        { success: false, error: { code: "PASSWORD_REQUIRED", message: "请输入当前密码以验证身份" } },
+        {
+          success: false,
+          error: { code: "PASSWORD_REQUIRED", message: "请输入当前密码以验证身份" },
+        },
         { status: 400 }
       );
     }

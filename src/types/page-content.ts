@@ -54,12 +54,7 @@ export interface StoryTabContent {
   subtitle?: string; // 英文副标题
   slogan?: string; // 理念口号
   layout?:
-    | "default"
-    | "cards"
-    | "philosophy"
-    | "mission-centered"
-    | "media-images"
-    | "awards-images";
+    "default" | "cards" | "philosophy" | "mission-centered" | "media-images" | "awards-images";
   sections: StorySection[];
 }
 

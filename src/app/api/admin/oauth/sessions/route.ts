@@ -105,22 +105,24 @@ export async function GET(request: NextRequest) {
 
     // 批量获取用户信息
     const userIds = [...new Set(sessions.map((s) => s.userId))];
-    const users = userIds.length > 0
-      ? await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, phone: true, nickname: true },
-        })
-      : [];
+    const users =
+      userIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, phone: true, nickname: true },
+          })
+        : [];
     const userMap = new Map(users.map((u) => [u.id, u]));
 
     // 批量获取 client 名称
     const clientIds = [...new Set(sessions.map((s) => s.clientId))];
-    const clients = clientIds.length > 0
-      ? await prisma.oAuthClient.findMany({
-          where: { clientId: { in: clientIds } },
-          select: { clientId: true, name: true },
-        })
-      : [];
+    const clients =
+      clientIds.length > 0
+        ? await prisma.oAuthClient.findMany({
+            where: { clientId: { in: clientIds } },
+            select: { clientId: true, name: true },
+          })
+        : [];
     const clientMap = new Map(clients.map((c) => [c.clientId, c.name]));
 
     return NextResponse.json({
@@ -135,7 +137,10 @@ export async function GET(request: NextRequest) {
           return {
             id: s.id,
             userId: s.userId,
-            phone: u?.phone && u.phone.length >= 7 ? u.phone.slice(0, 3) + "****" + u.phone.slice(-4) : (u?.phone || null),
+            phone:
+              u?.phone && u.phone.length >= 7
+                ? u.phone.slice(0, 3) + "****" + u.phone.slice(-4)
+                : u?.phone || null,
             nickname: u?.nickname || null,
             clientId: s.clientId,
             clientName: clientMap.get(s.clientId) || s.clientId,
@@ -235,7 +240,12 @@ export async function POST(request: NextRequest) {
         action: "oauth_session_terminate",
         targetType: "oauth_session",
         targetId: sessionId,
-        detail: { userId: session.userId, clientId: session.clientId, sessionId, terminatedCount: 1 },
+        detail: {
+          userId: session.userId,
+          clientId: session.clientId,
+          sessionId,
+          terminatedCount: 1,
+        },
         adminId: admin.id,
         request,
       });

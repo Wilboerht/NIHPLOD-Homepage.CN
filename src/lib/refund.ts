@@ -72,7 +72,10 @@ export async function finalizeRefund(
         existing.stockIncrement += item.quantity;
         existing.salesDecrement += decrementQty;
       } else {
-        stockAggregation.set(item.productId, { stockIncrement: item.quantity, salesDecrement: decrementQty });
+        stockAggregation.set(item.productId, {
+          stockIncrement: item.quantity,
+          salesDecrement: decrementQty,
+        });
       }
     }
     for (const [productId, agg] of stockAggregation) {
@@ -276,7 +279,9 @@ export async function processRefund(
 
       // 4. 未知的支付方式：拒绝退款
       else {
-        apiConsole.error(`[Refund] 未知支付方式，无法自动退款: ${order.orderNo} (${order.paymentMethod})`);
+        apiConsole.error(
+          `[Refund] 未知支付方式，无法自动退款: ${order.orderNo} (${order.paymentMethod})`
+        );
         return { success: false, error: `不支持的支付方式: ${order.paymentMethod}` };
       }
 

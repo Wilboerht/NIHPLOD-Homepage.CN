@@ -13,20 +13,15 @@ import prisma from "./prisma";
 
 function getTodayUTC8(): Date {
   const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), -8, 0, 0, 0)
-  );
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), -8, 0, 0, 0));
 }
 
 function getMonthStartUTC8(): Date {
   const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, -8, 0, 0, 0)
-  );
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, -8, 0, 0, 0));
 }
 
-const STATS_REVALIDATE =
-  parseInt(process.env.ADMIN_STATS_CACHE_TTL ?? "", 10) || 300;
+const STATS_REVALIDATE = parseInt(process.env.ADMIN_STATS_CACHE_TTL ?? "", 10) || 300;
 
 export interface AdminStatsData {
   products: number;
@@ -65,7 +60,7 @@ export interface SsoStatsData {
 const STATS_CACHE_TAGS = ["admin-stats"];
 
 const getCachedStats = unstable_cache(
-  async (dateStr: string) => {
+  async (_: string) => {
     const todayStart = getTodayUTC8();
 
     const [
@@ -201,23 +196,18 @@ const getCachedSsoStats = unstable_cache(
     const todayStart = getTodayUTC8();
     const monthStart = getMonthStartUTC8();
 
-    const [
-      activeClients,
-      activeSessions,
-      todayEvents,
-      successfulEvents,
-      totalEvents,
-    ] = await Promise.all([
-      prisma.oAuthClient.count({ where: { isActive: true } }),
-      prisma.oAuthSession.count({ where: { revokedAt: null } }),
-      prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
-      prisma.ssoAuditEvent.count({
-        where: { createdAt: { gte: monthStart }, success: true },
-      }),
-      prisma.ssoAuditEvent.count({
-        where: { createdAt: { gte: monthStart } },
-      }),
-    ]);
+    const [activeClients, activeSessions, todayEvents, successfulEvents, totalEvents] =
+      await Promise.all([
+        prisma.oAuthClient.count({ where: { isActive: true } }),
+        prisma.oAuthSession.count({ where: { revokedAt: null } }),
+        prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
+        prisma.ssoAuditEvent.count({
+          where: { createdAt: { gte: monthStart }, success: true },
+        }),
+        prisma.ssoAuditEvent.count({
+          where: { createdAt: { gte: monthStart } },
+        }),
+      ]);
 
     return {
       activeClients,

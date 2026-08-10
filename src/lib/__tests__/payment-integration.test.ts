@@ -70,7 +70,9 @@ vi.mock("wechatpay-axios-plugin", () => {
       timestamp: vi.fn(() => 1234567890),
       nonce: vi.fn(() => "mock-nonce"),
       request: vi.fn((method: string, uri: string) => `${method}\n${uri}`),
-      response: vi.fn((timestamp: string, nonce: string, body: string) => `${timestamp}\n${nonce}\n${body}`),
+      response: vi.fn(
+        (timestamp: string, nonce: string, body: string) => `${timestamp}\n${nonce}\n${body}`
+      ),
       authorization: vi.fn(() => "MOCK_AUTH"),
       joinedByLineFeed: vi.fn((...pieces: string[]) => pieces.join("\n")),
     },
@@ -140,7 +142,7 @@ describe("支付链路集成测试", () => {
   let wechatPay: typeof import("@/lib/wechat-pay");
   let paymentQuery: typeof import("@/lib/payment-query");
   let refund: typeof import("@/lib/refund");
-  let mockAes: typeof import("wechatpay-axios-plugin")["Aes"];
+  let mockAes: (typeof import("wechatpay-axios-plugin"))["Aes"];
 
   beforeEach(async () => {
     vi.resetModules();
@@ -203,7 +205,11 @@ describe("支付链路集成测试", () => {
       expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { orderNo: order.orderNo, status: { in: ["PENDING", "PAYING"] } },
-          data: expect.objectContaining({ status: "PAID", paymentMethod: "wechat", paymentNo: "wx123" }),
+          data: expect.objectContaining({
+            status: "PAID",
+            paymentMethod: "wechat",
+            paymentNo: "wx123",
+          }),
         })
       );
       expect(mockPrisma.product.update).toHaveBeenCalledWith(
@@ -354,7 +360,11 @@ describe("支付链路集成测试", () => {
       expect(mockPrisma.order.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: order.id, status: { in: ["PENDING", "PAYING"] } },
-          data: expect.objectContaining({ status: "PAID", paymentMethod: "wechat", paymentNo: "wx_query_123" }),
+          data: expect.objectContaining({
+            status: "PAID",
+            paymentMethod: "wechat",
+            paymentNo: "wx_query_123",
+          }),
         })
       );
       expect(mockPrisma.transaction.create).toHaveBeenCalledWith(
@@ -523,7 +533,9 @@ describe("支付链路集成测试", () => {
 
       const plugin = await import("wechatpay-axios-plugin");
       const wxpay = new plugin.Wechatpay({} as never);
-      wxpay.v3.refund.domestic.refunds.post = vi.fn().mockResolvedValue({ data: { refund_id: "R123" } });
+      wxpay.v3.refund.domestic.refunds.post = vi
+        .fn()
+        .mockResolvedValue({ data: { refund_id: "R123" } });
 
       const result = await refund.processRefund(order.id, true, "同意退款");
 

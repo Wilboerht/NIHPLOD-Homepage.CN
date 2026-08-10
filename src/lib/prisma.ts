@@ -28,9 +28,7 @@ const poolConfig: pg.PoolConfig = {
       ? process.env.DATABASE_SSL_CA
         ? { ca: fs.readFileSync(process.env.DATABASE_SSL_CA), rejectUnauthorized: true }
         : (() => {
-            throw new Error(
-              "[Prisma] 生产环境必须设置 DATABASE_SSL_CA 环境变量指向 CA 证书路径。"
-            );
+            throw new Error("[Prisma] 生产环境必须设置 DATABASE_SSL_CA 环境变量指向 CA 证书路径。");
           })()
       : undefined,
   max:
@@ -75,7 +73,7 @@ export default prisma;
 // 非构建阶段注册优雅关闭钩子，确保连接池正确释放
 if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "undefined") {
   const gracefulShutdown = async (signal: string) => {
-    console.log(`[Prisma] 收到 ${signal}，关闭连接池...`);
+    apiConsole.info(`[Prisma] 收到 ${signal}，关闭连接池...`);
     try {
       await prisma.$disconnect();
       await pool.end();

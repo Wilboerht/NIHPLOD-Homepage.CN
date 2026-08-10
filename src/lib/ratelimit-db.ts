@@ -10,6 +10,7 @@
 
 import { prisma } from "./prisma";
 import { LRUCache } from "lru-cache";
+import { apiConsole } from "./logger";
 import type { RateLimitResult, RateLimitOptions } from "./ratelimit";
 
 interface FallbackRecord {
@@ -87,8 +88,7 @@ export async function rateLimitDB(
         } catch (err: unknown) {
           // 并发唯一约束冲突时重试一次
           const isUniqueConflict =
-            typeof err === "object" && err !== null &&
-            ((err as { code?: string }).code === "P2002");
+            typeof err === "object" && err !== null && (err as { code?: string }).code === "P2002";
           if (isUniqueConflict) {
             const existing = await tx.rateLimitRecord.findFirst({
               where: { key: identifier, windowStart: { gte: windowStart } },
@@ -105,7 +105,12 @@ export async function rateLimitDB(
               where: { id: existing.id },
               data: { count: existing.count + 1 },
             });
-            return { success: true, remaining: options.maxRequests - existing.count - 1, reset, limit: options.maxRequests };
+            return {
+              success: true,
+              remaining: options.maxRequests - existing.count - 1,
+              reset,
+              limit: options.maxRequests,
+            };
           }
           throw err;
         }
@@ -159,10 +164,10 @@ export async function cleanupRateLimitRecords(): Promise<number> {
         windowStart: { lt: oneHourAgo },
       },
     });
-    console.log(`[CleanupRateLimitRecords] 清理了 ${result.count} 条过期限流记录`);
+    apiConsole.info(`[CleanupRateLimitRecords] 清理了 ${result.count} 条过期限流记录`);
     return result.count;
   } catch (error) {
-    console.error("[CleanupRateLimitRecords] 清理失败:", error);
+    apiConsole.error("[CleanupRateLimitRecords] 清理失败:", error);
     return 0;
   }
 }

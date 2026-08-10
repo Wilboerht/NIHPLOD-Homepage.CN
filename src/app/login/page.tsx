@@ -10,6 +10,7 @@
  * - 移动端：全屏米色面板，从右侧滑入。
  */
 import { useState, useEffect, Suspense, useCallback } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
@@ -28,7 +29,11 @@ type AuthMode = "login" | "register" | "reset" | "consent" | "wechat-bind";
 
 const VALID_MODES: AuthMode[] = ["login", "register", "reset", "consent", "wechat-bind"];
 
-function buildLoginUrl(mode: AuthMode, returnTo: string | null, extra: Record<string, string> = {}) {
+function buildLoginUrl(
+  mode: AuthMode,
+  returnTo: string | null,
+  extra: Record<string, string> = {}
+) {
   const params = new URLSearchParams();
   if (mode !== "login") params.set("mode", mode);
   if (returnTo) params.set("return_to", returnTo);
@@ -46,12 +51,16 @@ function LoginPageContent() {
 
   const returnTo = searchParams.get("return_to");
   const rawMode = searchParams.get("mode");
-  const mode: AuthMode = VALID_MODES.includes(rawMode as AuthMode) ? (rawMode as AuthMode) : "login";
-  const clientName = (searchParams.get("client_name") || "第三方应用").replace(/[<>"'&`\/\\;]/g, "").slice(0, 50);
+  const mode: AuthMode = VALID_MODES.includes(rawMode as AuthMode)
+    ? (rawMode as AuthMode)
+    : "login";
+  const clientName = (searchParams.get("client_name") || "第三方应用")
+    .replace(/[<>"'&`\/\\;]/g, "")
+    .slice(0, 50);
   const oauthId = searchParams.get("oauth_id") || "";
   const oauthParamsFromUrl = searchParams.get("oauth_params") || "";
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
   const [oauthParamsError, setOauthParamsError] = useState(false);
 
@@ -67,7 +76,6 @@ function LoginPageContent() {
       })
       .catch(() => setOauthParamsError(true));
   }, [oauthId, oauthParams]);
-  useEffect(() => { setMounted(true); }, []);
   // 确保 CSRF Cookie 已设置（首次访问 consent 页时可能缺失）
   useEffect(() => {
     fetch("/api/auth/csrf").catch(() => {});
@@ -126,29 +134,32 @@ function LoginPageContent() {
     }
   }, []);
 
-  const navigateToReturnTo = useCallback((rawReturnTo?: string | null) => {
-    if (!rawReturnTo) {
-      router.push("/");
-      return;
-    }
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(rawReturnTo);
-    } catch {
-      router.push("/");
-      return;
-    }
-    if (!isSafeReturnTo(decoded)) {
-      router.push("/");
-      return;
-    }
-    // 授权端点必须使用完整页面导航，确保 Cookie / middleware 状态正确切换
-    if (decoded.startsWith("/api/oauth/authorize")) {
-      window.location.assign(decoded);
-      return;
-    }
-    router.push(decoded);
-  }, [router, isSafeReturnTo]);
+  const navigateToReturnTo = useCallback(
+    (rawReturnTo?: string | null) => {
+      if (!rawReturnTo) {
+        router.push("/");
+        return;
+      }
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(rawReturnTo);
+      } catch {
+        router.push("/");
+        return;
+      }
+      if (!isSafeReturnTo(decoded)) {
+        router.push("/");
+        return;
+      }
+      // 授权端点必须使用完整页面导航，确保 Cookie / middleware 状态正确切换
+      if (decoded.startsWith("/api/oauth/authorize")) {
+        window.location.assign(decoded);
+        return;
+      }
+      router.push(decoded);
+    },
+    [router, isSafeReturnTo]
+  );
 
   const handleClose = useCallback(() => {
     navigateToReturnTo(returnTo);
@@ -168,8 +179,10 @@ function LoginPageContent() {
     [mode, oauthParams, oauthId, returnTo, router]
   );
 
-  // Reset form states when mode changes (mirrors modal open/close reset)
-  useEffect(() => {
+  // 模式切换时重置表单状态与字段数据（渲染阶段同步，避免 effect 内 setState）
+  const [prevMode, setPrevMode] = useState(mode);
+  if (prevMode !== mode) {
+    setPrevMode(mode);
     setLoading(false);
     setForgotSubmitted(false);
     setRegCodeSending(false);
@@ -183,10 +196,6 @@ function LoginPageContent() {
     setLoginCodeSending(false);
     setConsentError("");
     setShowPassword(false);
-  }, [mode]);
-
-  useEffect(() => {
-    // 模式切换时清除表单字段数据（防止跨模式数据残留）
     setLoginPhone("");
     setLoginPassword("");
     setRegName("");
@@ -198,7 +207,7 @@ function LoginPageContent() {
     setResetCode("");
     setResetNewPassword("");
     setResetConfirmPassword("");
-  }, [mode]);
+  }
 
   // Countdown timers
   useEffect(() => {
@@ -657,13 +666,25 @@ function LoginPageContent() {
     if (oauthId && !oauthParams) {
       if (oauthParamsError) {
         return (
-          <div className={variant === "mobile" ? "flex flex-col items-center justify-center py-20 gap-4" : "flex flex-col items-center justify-center py-20 gap-4"}>
-            <p className="text-red-500 text-sm">授权参数已过期或不存在，请返回应用重新发起授权</p>
+          <div
+            className={
+              variant === "mobile"
+                ? "flex flex-col items-center justify-center gap-4 py-20"
+                : "flex flex-col items-center justify-center gap-4 py-20"
+            }
+          >
+            <p className="text-sm text-red-500">授权参数已过期或不存在，请返回应用重新发起授权</p>
           </div>
         );
       }
       return (
-        <div className={variant === "mobile" ? "flex flex-col items-center justify-center py-20" : "flex items-center justify-center py-20"}>
+        <div
+          className={
+            variant === "mobile"
+              ? "flex flex-col items-center justify-center py-20"
+              : "flex items-center justify-center py-20"
+          }
+        >
           <p className="text-gray-400">正在加载授权信息...</p>
         </div>
       );
@@ -684,13 +705,15 @@ function LoginPageContent() {
         )}
         {variant === "mobile" && (
           <div className="pb-4 pt-[6px] text-center">
-            <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">授权登录</h2>
+            <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">
+              授权登录
+            </h2>
             <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
           </div>
         )}
 
         <div className="space-y-10">
-          <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4">
+          <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
             <p className="text-sm text-brand-charcoal/80">
               <strong>{clientName}</strong> 请求访问您的账户信息
             </p>
@@ -702,7 +725,7 @@ function LoginPageContent() {
             <ul className="mt-2 space-y-1">
               {requestedScopes.map((scope) => (
                 <li key={scope} className="flex items-start gap-2 text-xs text-brand-charcoal/70">
-                  <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
                   <span>
                     <code className="rounded bg-blue-100 px-1 py-0.5 text-blue-700">{scope}</code>
                     {scopeDescriptions[scope] ? ` — ${scopeDescriptions[scope]}` : null}
@@ -712,32 +735,32 @@ function LoginPageContent() {
             </ul>
           </div>
 
-        {consentError && (
-          <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-sm text-red-600">
-            {consentError}
-          </div>
-        )}
+          {consentError && (
+            <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+              {consentError}
+            </div>
+          )}
 
-        <div className="flex gap-3">
-          <button
-            onClick={() => handleConsent("deny")}
-            disabled={consentLoading}
-            className="flex-1 py-3 border border-brand-charcoal/25 text-sm font-light tracking-[0.12em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] disabled:opacity-40"
-          >
-            拒绝
-          </button>
-          <button
-            onClick={() => handleConsent("approve")}
-            disabled={consentLoading}
-            className="flex-1 py-3 bg-brand-charcoal text-white text-sm font-light tracking-[0.12em] transition-all hover:bg-brand-charcoal/90 disabled:opacity-40"
-          >
-            {consentLoading ? "处理中..." : "授权登录"}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleConsent("deny")}
+              disabled={consentLoading}
+              className="flex-1 border border-brand-charcoal/25 py-3 text-sm font-light tracking-[0.12em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] disabled:opacity-40"
+            >
+              拒绝
+            </button>
+            <button
+              onClick={() => handleConsent("approve")}
+              disabled={consentLoading}
+              className="flex-1 bg-brand-charcoal py-3 text-sm font-light tracking-[0.12em] text-white transition-all hover:bg-brand-charcoal/90 disabled:opacity-40"
+            >
+              {consentLoading ? "处理中..." : "授权登录"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <AnimatePresence>

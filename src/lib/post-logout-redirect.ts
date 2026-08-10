@@ -55,7 +55,9 @@ export async function isTrustedPostLogoutRedirectUri(
         if (uri === url || (uri.startsWith(url + "/") && uri.length > url.length + 1)) {
           return true;
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
   }
 

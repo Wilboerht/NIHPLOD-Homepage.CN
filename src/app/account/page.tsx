@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 /** 从 Cookie 读取 CSRF Token */
 function getCsrfToken(): string {
@@ -109,7 +110,7 @@ export default function AccountPage() {
   }, [router]);
 
   useEffect(() => {
-    fetchProfile();
+    deferInEffect(fetchProfile);
   }, [fetchProfile]);
 
   const handleUpdateProfile = async () => {
@@ -225,26 +226,28 @@ export default function AccountPage() {
     }
   };
 
-  // 切换 Tab 时加载对应数据
+  // 切换 Tab 时加载对应数据（微任务延迟，避免 effect 内同步 setState）
   useEffect(() => {
-    if (activeTab === "authorizations") fetchSessions();
-    else if (activeTab === "devices") fetchDevices();
-    else if (activeTab === "history") fetchLoginHistory();
+    deferInEffect(() => {
+      if (activeTab === "authorizations") fetchSessions();
+      else if (activeTab === "devices") fetchDevices();
+      else if (activeTab === "history") fetchLoginHistory();
+    });
   }, [activeTab, fetchSessions, fetchDevices, fetchLoginHistory]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">请先登录</p>
+          <p className="mb-4 text-gray-500">请先登录</p>
           <Link href="/login?return_to=/account" className="text-blue-600 hover:underline">
             前往登录
           </Link>
@@ -264,14 +267,16 @@ export default function AccountPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-gray-900">NIHPLOD</Link>
+      <header className="border-b bg-white">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+          <Link href="/" className="text-xl font-bold text-gray-900">
+            NIHPLOD
+          </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">用户中心</span>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
             >
               退出登录
             </button>
@@ -280,13 +285,13 @@ export default function AccountPage() {
       </header>
 
       {/* Tabs */}
-      <div className="max-w-4xl mx-auto px-4 pt-8">
-        <div className="flex border-b bg-white rounded-t-xl">
+      <div className="mx-auto max-w-4xl px-4 pt-8">
+        <div className="flex rounded-t-xl border-b bg-white">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
                 activeTab === t.key
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
@@ -298,52 +303,61 @@ export default function AccountPage() {
         </div>
 
         {/* Content */}
-        <div className="bg-white rounded-b-xl shadow-sm p-6 mb-8">
+        <div className="mb-8 rounded-b-xl bg-white p-6 shadow-sm">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
               <p className="text-sm text-red-600">{error}</p>
-              <button onClick={() => setError("")} className="text-xs text-red-500 hover:underline mt-1">关闭</button>
+              <button
+                onClick={() => setError("")}
+                className="mt-1 text-xs text-red-500 hover:underline"
+              >
+                关闭
+              </button>
             </div>
           )}
 
           {/* Profile Tab */}
           {activeTab === "profile" && (
             <div data-testid="account-profile">
-              <h2 className="text-lg font-semibold mb-6">个人信息</h2>
-              <div className="space-y-4 max-w-md">
+              <h2 className="mb-6 text-lg font-semibold">个人信息</h2>
+              <div className="max-w-md space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">手机号</label>
                   <input
                     type="text"
                     value={user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")}
                     disabled
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">昵称</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">昵称</label>
                   <input
                     type="text"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
                     placeholder="设置昵称"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">会员等级</label>
-                  <p className="text-sm text-gray-900 font-medium">
-                    {user.membershipLevel === "DIAMOND" ? "💎 钻石会员" : user.membershipLevel === "GOLD" ? "🥇 金卡会员" : "🥈 银卡会员"}
+                  <label className="mb-1 block text-sm font-medium text-gray-700">会员等级</label>
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.membershipLevel === "DIAMOND"
+                      ? "💎 钻石会员"
+                      : user.membershipLevel === "GOLD"
+                        ? "🥇 金卡会员"
+                        : "🥈 银卡会员"}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">积分</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">积分</label>
                   <p className="text-sm text-gray-900">{user.totalPoints} 分</p>
                 </div>
                 <button
                   onClick={handleUpdateProfile}
                   disabled={saving}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-blue-600 px-6 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? "保存中..." : "保存"}
                 </button>
@@ -354,40 +368,40 @@ export default function AccountPage() {
           {/* Security Tab */}
           {activeTab === "security" && (
             <div data-testid="account-security">
-              <h2 className="text-lg font-semibold mb-6">安全设置</h2>
-              <div className="space-y-4 max-w-md">
+              <h2 className="mb-6 text-lg font-semibold">安全设置</h2>
+              <div className="max-w-md space-y-4">
                 <h3 className="text-sm font-medium text-gray-700">修改密码</h3>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">旧密码</label>
+                  <label className="mb-1 block text-sm text-gray-600">旧密码</label>
                   <input
                     type="password"
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">新密码</label>
+                  <label className="mb-1 block text-sm text-gray-600">新密码</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">确认新密码</label>
+                  <label className="mb-1 block text-sm text-gray-600">确认新密码</label>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <button
                   onClick={handleChangePassword}
                   disabled={saving}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="rounded-lg bg-blue-600 px-6 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saving ? "修改中..." : "修改密码"}
                 </button>
@@ -398,8 +412,8 @@ export default function AccountPage() {
           {/* Authorizations Tab */}
           {activeTab === "authorizations" && (
             <div data-testid="account-authorizations">
-              <h2 className="text-lg font-semibold mb-6">授权管理</h2>
-              <p className="text-sm text-gray-500 mb-4">
+              <h2 className="mb-6 text-lg font-semibold">授权管理</h2>
+              <p className="mb-4 text-sm text-gray-500">
                 管理已授权的第三方应用。撤销授权后，该应用将无法访问您的账户信息。
               </p>
               {sessions.length === 0 ? (
@@ -407,20 +421,26 @@ export default function AccountPage() {
               ) : (
                 <div className="space-y-3">
                   {sessions.map((s) => (
-                    <div key={s.clientId} className="border rounded-lg p-4 flex items-center justify-between">
+                    <div
+                      key={s.clientId}
+                      className="flex items-center justify-between rounded-lg border p-4"
+                    >
                       <div>
                         <p className="font-medium text-gray-900">{s.clientName || s.clientId}</p>
                         <p className="text-sm text-gray-500">
-                          权限：{s.scopes.join(", ")} · 授权时间：{new Date(s.createdAt).toLocaleString()}
+                          权限：{s.scopes.join(", ")} · 授权时间：
+                          {new Date(s.createdAt).toLocaleString()}
                         </p>
                       </div>
                       <button
                         onClick={() => {
-                          if (window.confirm(`确定要撤销 ${s.clientName || s.clientId} 的授权吗？`)) {
+                          if (
+                            window.confirm(`确定要撤销 ${s.clientName || s.clientId} 的授权吗？`)
+                          ) {
                             handleRevoke(s.clientId);
                           }
                         }}
-                        className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                        className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         撤销授权
                       </button>
@@ -434,14 +454,17 @@ export default function AccountPage() {
           {/* Devices Tab */}
           {activeTab === "devices" && (
             <div data-testid="account-devices">
-              <h2 className="text-lg font-semibold mb-6">设备管理</h2>
-              <p className="text-sm text-gray-500 mb-4">管理登录设备，可强制下线可疑设备。</p>
+              <h2 className="mb-6 text-lg font-semibold">设备管理</h2>
+              <p className="mb-4 text-sm text-gray-500">管理登录设备，可强制下线可疑设备。</p>
               {devices.length === 0 ? (
                 <p className="text-sm text-gray-400">暂无设备记录</p>
               ) : (
                 <div className="space-y-3">
                   {devices.map((d) => (
-                    <div key={d.id} className="border rounded-lg p-4 flex items-center justify-between">
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between rounded-lg border p-4"
+                    >
                       <div>
                         <p className="font-medium text-gray-900">{d.deviceName}</p>
                         <p className="text-sm text-gray-500">
@@ -450,7 +473,7 @@ export default function AccountPage() {
                       </div>
                       <button
                         onClick={() => setError("暂不支持该功能，请联系客服")}
-                        className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                        className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         强制下线
                       </button>
@@ -464,8 +487,8 @@ export default function AccountPage() {
           {/* Login History Tab */}
           {activeTab === "history" && (
             <div data-testid="account-login-history">
-              <h2 className="text-lg font-semibold mb-6">登录历史</h2>
-              <p className="text-sm text-gray-500 mb-4">最近 20 条登录记录。</p>
+              <h2 className="mb-6 text-lg font-semibold">登录历史</h2>
+              <p className="mb-4 text-sm text-gray-500">最近 20 条登录记录。</p>
               {loginHistory.length === 0 ? (
                 <p className="text-sm text-gray-400">暂无登录记录</p>
               ) : (
@@ -482,11 +505,21 @@ export default function AccountPage() {
                     <tbody>
                       {loginHistory.map((r, i) => (
                         <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 pr-4 text-gray-700">{new Date(r.createdAt).toLocaleString()}</td>
-                          <td className="py-2 pr-4 text-gray-700">{r.type === "sms" ? "验证码" : r.type === "oauth" ? "OAuth授权" : "密码"}</td>
+                          <td className="py-2 pr-4 text-gray-700">
+                            {new Date(r.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-700">
+                            {r.type === "sms"
+                              ? "验证码"
+                              : r.type === "oauth"
+                                ? "OAuth授权"
+                                : "密码"}
+                          </td>
                           <td className="py-2 pr-4 text-gray-500">{r.ipAddress}</td>
                           <td className="py-2">
-                            <span className={`px-2 py-0.5 rounded text-xs ${r.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                            <span
+                              className={`rounded px-2 py-0.5 text-xs ${r.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                            >
                               {r.success ? "成功" : "失败"}
                             </span>
                           </td>
@@ -501,8 +534,10 @@ export default function AccountPage() {
         </div>
       </div>
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium animate-fade-in"
-          style={{ background: toast.type === "success" ? "#065f46" : "#991b1b", color: "#fff" }}>
+        <div
+          className="fixed bottom-6 right-6 z-50 animate-fade-in rounded-lg px-4 py-3 text-sm font-medium shadow-lg"
+          style={{ background: toast.type === "success" ? "#065f46" : "#991b1b", color: "#fff" }}
+        >
           {toast.message}
         </div>
       )}

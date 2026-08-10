@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { deferInEffect } from "@/hooks/deferInEffect";
 import { useCartStore } from "@/store/cart";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { ProductDrawer } from "@/components/website";
@@ -40,15 +41,15 @@ import {
 
 // 底部 Tab 栏图标语义映射
 const TAB_ICONS: Record<string, LucideIcon> = {
-  simple: Sun,      // 精简方案
-  outing: Compass,  // 外出方案
-  t1: Sun,          // 日常外出
-  t2: Compass,      // 轻悦旅行
-  t3: Sparkles,     // 多效芳疗
-  s1: Flower,       // 面部方案 (spa)
-  s2: Heart,        // 全身方案 (spa)
-  p1: Flower,       // 面部护理套餐
-  p2: Heart,        // 全身护理套餐
+  simple: Sun, // 精简方案
+  outing: Compass, // 外出方案
+  t1: Sun, // 日常外出
+  t2: Compass, // 轻悦旅行
+  t3: Sparkles, // 多效芳疗
+  s1: Flower, // 面部方案 (spa)
+  s2: Heart, // 全身方案 (spa)
+  p1: Flower, // 面部护理套餐
+  p2: Heart, // 全身护理套餐
 };
 
 // 查找匹配的图标，否则使用默认图标
@@ -116,16 +117,14 @@ function parseQueryParams(): { module: string | null; scheme: string | null; sub
 
 /** 将 raw query 参数解析为结构化导航状态 */
 function resolveNav(raw: { module: string | null; scheme: string | null; sub: string | null }) {
-  const module: ModuleId | null =
+  const moduleId: ModuleId | null =
     raw.module && raw.module in defaultModuleData ? (raw.module as ModuleId) : null;
-  const scheme: Scheme | null = module
-    ? (defaultModuleData[module].find((s) => s.id === raw.scheme) ?? null)
+  const scheme: Scheme | null = moduleId
+    ? (defaultModuleData[moduleId].find((s) => s.id === raw.scheme) ?? null)
     : null;
   const subPlan: SubPlan | null =
-    scheme?.subPlans?.find((sp) => sp.id === raw.sub) ??
-    scheme?.subPlans?.[0] ??
-    null;
-  return { module, scheme, subPlan };
+    scheme?.subPlans?.find((sp) => sp.id === raw.sub) ?? scheme?.subPlans?.[0] ?? null;
+  return { module: moduleId, scheme, subPlan };
 }
 
 export function RitualContent({ products = [] }: RitualContentProps) {
@@ -237,10 +236,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   const handleProductDrawerAuthRequired = useCallback(
     (productId: string, action: "addToCart" | "directBuy") => {
       if (typeof window === "undefined") return;
-      sessionStorage.setItem(
-        "pendingProductDrawer",
-        JSON.stringify({ productId, action })
-      );
+      sessionStorage.setItem("pendingProductDrawer", JSON.stringify({ productId, action }));
       window.location.href = `/login?return_to=${encodeURIComponent(
         "/guide?restoreProductDrawer=1"
       )}`;
@@ -251,39 +247,40 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // 登录后自动恢复 guide 页的产品抽屉
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("restoreProductDrawer") !== "1") return;
+    // 微任务延迟执行，避免 effect 内同步 setState
+    deferInEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("restoreProductDrawer") !== "1") return;
 
-    const raw = sessionStorage.getItem("pendingProductDrawer");
-    if (!raw) return;
+      const raw = sessionStorage.getItem("pendingProductDrawer");
+      if (!raw) return;
 
-    let restored = false;
-    try {
-      const pending = JSON.parse(raw) as {
-        productId: string;
-        action?: "addToCart" | "directBuy";
-      };
-      const product = findProductById(pending.productId);
-      if (product && user) {
-        setSelectedProduct(product);
-        setProductDrawerOpen(true);
-        if (pending.action === "addToCart") {
-          addToCart(product.id, 1).then((ok) => {
-            if (ok) showSuccess("已加入购物车");
-          });
-        } else if (pending.action === "directBuy") {
-          openCheckout([product.id], { [product.id]: 1 });
+      try {
+        const pending = JSON.parse(raw) as {
+          productId: string;
+          action?: "addToCart" | "directBuy";
+        };
+        const product = findProductById(pending.productId);
+        if (product && user) {
+          setSelectedProduct(product);
+          setProductDrawerOpen(true);
+          if (pending.action === "addToCart") {
+            addToCart(product.id, 1).then((ok) => {
+              if (ok) showSuccess("已加入购物车");
+            });
+          } else if (pending.action === "directBuy") {
+            openCheckout([product.id], { [product.id]: 1 });
+          }
         }
-        restored = true;
+      } catch {
+        // ignore invalid sessionStorage data
+      } finally {
+        sessionStorage.removeItem("pendingProductDrawer");
+        params.delete("restoreProductDrawer");
+        const newQuery = params.toString();
+        window.history.replaceState(null, "", `/guide${newQuery ? `?${newQuery}` : ""}`);
       }
-    } catch {
-      // ignore invalid sessionStorage data
-    } finally {
-      sessionStorage.removeItem("pendingProductDrawer");
-      params.delete("restoreProductDrawer");
-      const newQuery = params.toString();
-      window.history.replaceState(null, "", `/guide${newQuery ? `?${newQuery}` : ""}`);
-    }
+    });
   }, [user, products, addToCart, openCheckout, showSuccess]);
 
   // 使用默认数据
@@ -292,13 +289,22 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // ====== 客户端导航函数（使用 window.history，避免 RSC 重新获取数据） ======
 
   const navigate = useCallback(
-    (opts: { module?: string | null; scheme?: string | null; sub?: string | null; mode?: "push" | "replace" }) => {
+    (opts: {
+      module?: string | null;
+      scheme?: string | null;
+      sub?: string | null;
+      mode?: "push" | "replace";
+    }) => {
       const params = new URLSearchParams();
       if (opts.module) params.set("module", opts.module);
       if (opts.scheme) params.set("scheme", opts.scheme);
       if (opts.sub) params.set("sub", opts.sub);
       const url = `/guide${params.size ? "?" + params.toString() : ""}`;
-      const raw = { module: opts.module ?? null, scheme: opts.scheme ?? null, sub: opts.sub ?? null };
+      const raw = {
+        module: opts.module ?? null,
+        scheme: opts.scheme ?? null,
+        sub: opts.sub ?? null,
+      };
       setNavRaw(raw);
       if (opts.mode === "replace") {
         window.history.replaceState(null, "", url);
@@ -337,24 +343,18 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   );
 
   // 选择方案（情景）
-  const selectScheme = useCallback(
-    (scheme: Scheme) => {
-      if (!nav.module) return;
-      setCurrentStepIndex(0);
-      navigate({ module: nav.module, scheme: scheme.id });
-    },
-    [nav.module, navigate]
-  );
+  const selectScheme = (scheme: Scheme) => {
+    if (!nav.module) return;
+    setCurrentStepIndex(0);
+    navigate({ module: nav.module, scheme: scheme.id });
+  };
 
   // 选择子方案（Tab）：用 replace，避免 Tab 切换堆叠浏览器历史
-  const selectSubPlan = useCallback(
-    (subPlan: SubPlan) => {
-      if (!nav.module || !nav.scheme) return;
-      setCurrentStepIndex(0);
-      navigate({ module: nav.module, scheme: nav.scheme.id, sub: subPlan.id, mode: "replace" });
-    },
-    [nav.module, nav.scheme, navigate]
-  );
+  const selectSubPlan = (subPlan: SubPlan) => {
+    if (!nav.module || !nav.scheme) return;
+    setCurrentStepIndex(0);
+    navigate({ module: nav.module, scheme: nav.scheme.id, sub: subPlan.id, mode: "replace" });
+  };
 
   // 跳过 Level 2 直接到 Level 3 的模块
   const SKIP_LEVEL2_MODULES: ModuleId[] = ["portable", "professional", "spa"];
@@ -441,468 +441,510 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               <div
                 ref={fadeMaskRef}
                 className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
-                style={{ background: "linear-gradient(to bottom, var(--brand-cream, #FBF8F0), transparent)", opacity: 0 }}
+                style={{
+                  background:
+                    "linear-gradient(to bottom, var(--brand-cream, #FBF8F0), transparent)",
+                  opacity: 0,
+                }}
               />
               <div
-              ref={mobileScrollRef}
-              className="relative z-20 h-full overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              <div className="flex min-h-full flex-col">
-              <AnimatePresence mode="wait">
-                {/* Level 1: 模块选择 - 2x2 精致网格 */}
-                {currentLevel === 1 && (
-                  <m.div
-                    key="mobile-l1"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.05 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex flex-1 flex-col justify-start"
-                  >
-                    <div className="mb-8 flex flex-col items-center pt-3">
-                      <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                        护肤仪式指南
-                      </h2>
-                      <div className="mt-2 w-[70px] border-b border-brand-primary" />
-                    </div>
+                ref={mobileScrollRef}
+                className="relative z-20 h-full overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="flex min-h-full flex-col">
+                  <AnimatePresence mode="wait">
+                    {/* Level 1: 模块选择 - 2x2 精致网格 */}
+                    {currentLevel === 1 && (
+                      <m.div
+                        key="mobile-l1"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.05 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-1 flex-col justify-start"
+                      >
+                        <div className="mb-8 flex flex-col items-center pt-3">
+                          <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
+                            护肤仪式指南
+                          </h2>
+                          <div className="mt-2 w-[70px] border-b border-brand-primary" />
+                        </div>
 
-                    <div className="grid flex-1 grid-cols-2 gap-4">
-                      {modules.map((module, index) => (
-                        <m.button
-                          key={module.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, margin: "-20px" }}
-                          transition={{ delay: index * 0.1 }}
-                          onClick={() => selectModule(module.id)}
-                          className="relative flex h-full flex-col items-start justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-brand-warm-light p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
-                        >
-                          <div className="relative z-10 flex flex-col">
-                            <module.icon className="h-8 w-8 text-brand-buff mb-4" strokeWidth={1} />
-                            <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal">
-                              {module.label}
-                            </span>
-                            <p className="mt-1.5 line-clamp-1 text-[11px] font-light leading-relaxed text-brand-charcoal/50">
-                              {module.description}
-                            </p>
-                            <div className="mt-3 h-[1px] w-8 bg-brand-beige/50" />
-                          </div>
-                          <ChevronRight className="absolute bottom-4 right-4 h-4 w-4 text-brand-charcoal/20" />
-                        </m.button>
-                      ))}
-                    </div>
-                  </m.div>
-                )}
+                        <div className="grid flex-1 grid-cols-2 gap-4">
+                          {modules.map((module, index) => (
+                            <m.button
+                              key={module.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true, margin: "-20px" }}
+                              transition={{ delay: index * 0.1 }}
+                              onClick={() => selectModule(module.id)}
+                              className="relative flex h-full flex-col items-start justify-center overflow-hidden rounded-2xl border border-brand-beige/60 bg-brand-warm-light p-5 text-left shadow-[0_1px_0_rgba(0,0,0,0.02),0_6px_20px_-4px_rgba(0,38,62,0.04)] transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-charcoal/30 active:scale-[0.97]"
+                            >
+                              <div className="relative z-10 flex flex-col">
+                                <module.icon
+                                  className="mb-4 h-8 w-8 text-brand-buff"
+                                  strokeWidth={1}
+                                />
+                                <span className="text-lg font-light tracking-[0.12em] text-brand-charcoal">
+                                  {module.label}
+                                </span>
+                                <p className="mt-1.5 line-clamp-1 text-[11px] font-light leading-relaxed text-brand-charcoal/50">
+                                  {module.description}
+                                </p>
+                                <div className="mt-3 h-[1px] w-8 bg-brand-beige/50" />
+                              </div>
+                              <ChevronRight className="absolute bottom-4 right-4 h-4 w-4 text-brand-charcoal/20" />
+                            </m.button>
+                          ))}
+                        </div>
+                      </m.div>
+                    )}
 
-                {/* Level 2: 方案选择 - 紧凑型精选列表 */}
-                {currentLevel === 2 && nav.module && (
-                  <m.div
-                    key="mobile-l2"
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.02 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex flex-1 flex-col justify-center"
-                  >
-                    {/* 模块标题 - 与 Level 1 统一风格 */}
-                    <div className="mb-8 flex flex-col items-center pt-3">
-                      <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                        {modules.find((m) => m.id === nav.module)?.label}
-                      </h2>
-                      <div className="mt-2 w-[70px] border-b border-brand-primary" />
-                      <p className="mt-3 text-[13px] font-light leading-relaxed tracking-[0.06em] text-brand-charcoal/50">
-                        {modules.find((m) => m.id === nav.module)?.description}
-                      </p>
-                    </div>
+                    {/* Level 2: 方案选择 - 紧凑型精选列表 */}
+                    {currentLevel === 2 && nav.module && (
+                      <m.div
+                        key="mobile-l2"
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.02 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-1 flex-col justify-center"
+                      >
+                        {/* 模块标题 - 与 Level 1 统一风格 */}
+                        <div className="mb-8 flex flex-col items-center pt-3">
+                          <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
+                            {modules.find((m) => m.id === nav.module)?.label}
+                          </h2>
+                          <div className="mt-2 w-[70px] border-b border-brand-primary" />
+                          <p className="mt-3 text-[13px] font-light leading-relaxed tracking-[0.06em] text-brand-charcoal/50">
+                            {modules.find((m) => m.id === nav.module)?.description}
+                          </p>
+                        </div>
 
-                    <div className="flex flex-col gap-3">
-                      {moduleData[nav.module].map((scheme, idx) => (
-                        <m.button
-                          key={scheme.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true, margin: "-10px" }}
-                          transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
-                          onClick={() => selectScheme(scheme)}
-                          className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-brand-warm-white px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
-                        >
-                          {/* 左侧装饰线 */}
-                          <div className="mr-4 h-10 w-[2px] shrink-0 rounded-full bg-brand-beige/60 transition-colors group-active:bg-brand-beige" />
+                        <div className="flex flex-col gap-3">
+                          {moduleData[nav.module].map((scheme, idx) => (
+                            <m.button
+                              key={scheme.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              whileInView={{ opacity: 1, x: 0 }}
+                              viewport={{ once: true, margin: "-10px" }}
+                              transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
+                              onClick={() => selectScheme(scheme)}
+                              className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-brand-warm-white px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
+                            >
+                              {/* 左侧装饰线 */}
+                              <div className="mr-4 h-10 w-[2px] shrink-0 rounded-full bg-brand-beige/60 transition-colors group-active:bg-brand-beige" />
 
-                          {/* 中间内容：标题 + 时长 */}
-                          <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
-                            <h3 className="truncate text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">
-                              {scheme.name}
-                            </h3>
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3 text-brand-charcoal/40" />
-                              <span className="text-[11px] font-light tracking-[0.06em] text-brand-charcoal/50">
-                                {scheme.totalDuration || "15分钟"}
-                              </span>
+                              {/* 中间内容：标题 + 时长 */}
+                              <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
+                                <h3 className="truncate text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">
+                                  {scheme.name}
+                                </h3>
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="h-3 w-3 text-brand-charcoal/40" />
+                                  <span className="text-[11px] font-light tracking-[0.06em] text-brand-charcoal/50">
+                                    {scheme.totalDuration || "15分钟"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 右侧箭头 */}
+                              <ChevronRight className="ml-3 h-4 w-4 shrink-0 text-brand-charcoal/20 transition-colors group-active:text-brand-charcoal/50" />
+                            </m.button>
+                          ))}
+                        </div>
+
+                        {/* AI 护肤顾问引导 */}
+                        <div className="mt-8" />
+                      </m.div>
+                    )}
+
+                    {/* Level 3: 步骤详情 - 垂直精修指南 */}
+                    {currentLevel === 3 && nav.scheme && (
+                      <m.div
+                        key="mobile-l3"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-col"
+                      >
+                        {/* 顶部概览信息 (隐藏于 portable) */}
+                        {nav.module !== "portable" ? (
+                          <div className="mb-8 flex flex-col items-center pt-3">
+                            <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
+                              {nav.scheme.name}
+                            </h2>
+                            <div className="mt-2 w-[70px] border-b border-brand-primary" />
+
+                            {/* 相关产品 */}
+                            <div className="mt-6 w-full">
+                              <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
+                                {currentProducts.map((product, index) => {
+                                  const cleanName = product.name;
+                                  const isOptional = !!product.optional;
+                                  return (
+                                    <button
+                                      key={cleanName}
+                                      type="button"
+                                      onClick={() => handleProductClick(cleanName)}
+                                      className="flex flex-col items-center gap-1.5 transition-transform active:scale-95"
+                                    >
+                                      <div className="flex h-[52px] w-[52px] items-center justify-center">
+                                        {getCategoryIconPath(cleanName) ? (
+                                          <Image
+                                            src={getCategoryIconPath(cleanName)!}
+                                            alt={cleanName}
+                                            width={40}
+                                            height={40}
+                                            className="h-10 w-10"
+                                          />
+                                        ) : (
+                                          DEFAULT_ICONS[index % DEFAULT_ICONS.length]
+                                        )}
+                                      </div>
+                                      <span className="max-w-[68px] truncate text-[12px] font-light leading-[16px] tracking-[0.04em] text-brand-charcoal/60">
+                                        {cleanName}
+                                        {isOptional ? " ·" : ""}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="mt-8 flex items-center justify-center gap-6">
+                              <div className="flex flex-col items-center">
+                                <span className="mb-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
+                                  预计时长
+                                </span>
+                                <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
+                                  {nav.scheme.totalDuration?.replace("min", "分钟") || "15-20 分钟"}
+                                </span>
+                              </div>
+                              <div className="h-6 w-px bg-brand-charcoal/10" />
+                              <div className="flex flex-col items-center">
+                                <span className="mb-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
+                                  护理阶段
+                                </span>
+                                <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
+                                  {currentSteps.length} 个核心步骤
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ) : (
+                          <div className="mb-8 flex flex-col items-center pt-3">
+                            <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
+                              {nav.scheme.name}
+                            </h2>
+                            <div className="mt-2 w-[70px] border-b border-brand-primary" />
+                          </div>
+                        )}
 
-                          {/* 右侧箭头 */}
-                          <ChevronRight className="ml-3 h-4 w-4 shrink-0 text-brand-charcoal/20 transition-colors group-active:text-brand-charcoal/50" />
-                        </m.button>
-                      ))}
-                    </div>
+                        {/* Content Rendering based on Module */}
+                        {nav.module === "portable" ? (
+                          // Portable Module Layout
+                          <div className="flex flex-col">
+                            {/* Hero Image */}
+                            <div className="relative mb-6 aspect-[4/3] w-full overflow-hidden rounded-xl">
+                              <Image
+                                src={nav.scheme.heroImage || "/images/portable-hero-update.webp"}
+                                alt={nav.scheme.name}
+                                fill
+                                sizes="100vw"
+                                className="object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-brand-charcoal/70 via-transparent to-transparent opacity-80" />
+                              <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-1.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {nav.scheme.benefits?.slice(0, 3).map((benefit, i) => (
+                                    <span
+                                      key={i}
+                                      className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-white/90 backdrop-blur-sm"
+                                    >
+                                      {benefit}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
 
-                    {/* AI 护肤顾问引导 */}
-                    <div className="mt-8" />
-                  </m.div>
-                )}
+                            {/* Description Content */}
+                            <div>
+                              <p className="mb-4 text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
+                                {nav.scheme.desc}
+                              </p>
 
-                {/* Level 3: 步骤详情 - 垂直精修指南 */}
-                {currentLevel === 3 && nav.scheme && (
-                  <m.div
-                    key="mobile-l3"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex flex-col"
-                  >
-                    {/* 顶部概览信息 (隐藏于 portable) */}
-                    {nav.module !== "portable" ? (
-                      <div className="mb-8 flex flex-col items-center pt-3">
-                        <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                          {nav.scheme.name}
-                        </h2>
-                        <div className="mt-2 w-[70px] border-b border-brand-primary" />
-
-                          {/* 相关产品 */}
-                          <div className="mt-6 w-full">
-                            <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
-                              {currentProducts.map((product, index) => {
-                                const cleanName = product.name;
-                                const isOptional = !!product.optional;
-                                return (
+                              {/* Products Meta - 图标+文字，无框线 */}
+                              <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-brand-charcoal/[0.06] pt-4">
+                                {nav.scheme.products?.map((prod, idx) => (
                                   <button
-                                    key={cleanName}
+                                    key={prod.name}
                                     type="button"
-                                    onClick={() => handleProductClick(cleanName)}
+                                    onClick={() => handleProductClick(prod.name)}
                                     className="flex flex-col items-center gap-1.5 transition-transform active:scale-95"
                                   >
                                     <div className="flex h-[52px] w-[52px] items-center justify-center">
-                                      {getCategoryIconPath(cleanName) ? (
+                                      {getCategoryIconPath(prod.name) ? (
                                         <Image
-                                          src={getCategoryIconPath(cleanName)!}
-                                          alt={cleanName}
+                                          src={getCategoryIconPath(prod.name)!}
+                                          alt={prod.name}
                                           width={40}
                                           height={40}
                                           className="h-10 w-10"
                                         />
                                       ) : (
-                                        DEFAULT_ICONS[index % DEFAULT_ICONS.length]
+                                        DEFAULT_ICONS[idx % DEFAULT_ICONS.length]
                                       )}
                                     </div>
                                     <span className="max-w-[68px] truncate text-[12px] font-light leading-[16px] tracking-[0.04em] text-brand-charcoal/60">
-                                      {cleanName}{isOptional ? " ·" : ""}
+                                      {prod.name}
                                     </span>
                                   </button>
-                                );
-                              })}
+                                ))}
+                              </div>
                             </div>
                           </div>
-
-                          <div className="mt-8 flex items-center justify-center gap-6">
-                            <div className="flex flex-col items-center">
-                              <span className="mb-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
-                                预计时长
-                              </span>
-                              <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
-                                {nav.scheme.totalDuration?.replace("min", "分钟") ||
-                                  "15-20 分钟"}
-                              </span>
-                            </div>
-                            <div className="h-6 w-px bg-brand-charcoal/10" />
-                            <div className="flex flex-col items-center">
-                              <span className="mb-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
-                                护理阶段
-                              </span>
-                              <span className="text-[14px] font-normal leading-[22px] tracking-[0.04em] text-brand-charcoal/80">
-                                {currentSteps.length} 个核心步骤
+                        ) : nav.module === "professional" ? (
+                          <div className="flex w-full flex-col">
+                            <div className="mb-3 flex items-center gap-2">
+                              <h3 className="text-[17px] font-normal tracking-[0.1em] text-brand-charcoal">
+                                {nav.scheme?.id === "p1" ? "面部方案" : "全身方案"}
+                              </h3>
+                              <span className="rounded-sm bg-brand-ecru px-1.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-brand-charcoal/60">
+                                招牌
                               </span>
                             </div>
-                          </div>
-                        </div>
-                    ) : (
-                      <div className="mb-8 flex flex-col items-center pt-3">
-                        <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
-                          {nav.scheme.name}
-                        </h2>
-                        <div className="mt-2 w-[70px] border-b border-brand-primary" />
-                      </div>
-                    )}
+                            <div className="mb-6">
+                              <p className="text-[11px] font-light tracking-[0.12em] text-brand-charcoal/45">
+                                {nav.scheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
+                              </p>
+                            </div>
 
-                    {/* Content Rendering based on Module */}
-                    {nav.module === "portable" ? (
-                      // Portable Module Layout
-                      <div className="flex flex-col">
-                        {/* Hero Image */}
-                        <div className="relative mb-6 aspect-[4/3] w-full overflow-hidden rounded-xl">
-                          <Image
-                            src={nav.scheme.heroImage || "/images/portable-hero-update.webp"}
-                            alt={nav.scheme.name}
-                            fill
-                            sizes="100vw"
-                            className="object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-brand-charcoal/70 via-transparent to-transparent opacity-80" />
-                          <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-1.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              {nav.scheme.benefits?.slice(0, 3).map((benefit, i) => (
-                                <span
-                                  key={i}
-                                  className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-white/90 backdrop-blur-sm"
+                            {/* 中间卡片区 - 纵向列表 */}
+                            <div className="mb-6 flex flex-col gap-6">
+                              {getProfessionalCards(nav.scheme?.id).map((item) => (
+                                <div
+                                  key={item.image}
+                                  className="relative aspect-[4/3] w-full overflow-hidden rounded-xl"
                                 >
-                                  {benefit}
-                                </span>
+                                  <Image
+                                    src={item.image}
+                                    alt={item.title}
+                                    fill
+                                    sizes="100vw"
+                                    className="z-0 object-cover"
+                                  />
+                                  {/* 渐变遮罩 */}
+                                  <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+                                  {/* 文字内容 */}
+                                  <div className="pointer-events-none absolute bottom-0 left-0 z-20 flex w-full flex-col gap-2 p-4">
+                                    <div className="flex items-baseline gap-1.5 text-white">
+                                      <h4 className="text-[17px] font-normal tracking-[0.08em] text-white drop-shadow-sm">
+                                        {item.title}
+                                      </h4>
+                                      <span className="text-[12px] font-light text-white/70">
+                                        /
+                                      </span>
+                                      <span className="text-[13px] font-light tracking-[0.06em] text-white/85 drop-shadow-sm">
+                                        {item.duration}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="inline-block rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-light tracking-[0.06em] text-white/85 backdrop-blur-sm">
+                                        {item.tags}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
                               ))}
                             </div>
-                          </div>
-                        </div>
-                    
-                        {/* Description Content */}
-                        <div>
-                          <p className="mb-4 text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
-                            {nav.scheme.desc}
-                          </p>
 
-                          {/* Products Meta - 图标+文字，无框线 */}
-                          <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-brand-charcoal/[0.06] pt-4">
-                            {nav.scheme.products?.map((prod, idx) => (
-                              <button
-                                key={prod.name}
-                                type="button"
-                                onClick={() => handleProductClick(prod.name)}
-                                className="flex flex-col items-center gap-1.5 transition-transform active:scale-95"
-                              >
-                                <div className="flex h-[52px] w-[52px] items-center justify-center">
-                                  {getCategoryIconPath(prod.name) ? (
+                            {/* 底部 Logo 栏 - 无限滚动 */}
+                            <HotelLogoMarquee variant="mobile" />
+                          </div>
+                        ) : (
+                          /* Regular Steps Waterfall Layout (daily, spa) */
+                          <div className="space-y-8">
+                            {currentSteps.map((step, index) => (
+                              <div key={index} className="group relative flex flex-col">
+                                {/* 图片展示区 + 胶囊定位容器 */}
+                                <div className="relative mb-4">
+                                  {/* 步骤胶囊 */}
+                                  <div className="border-brand-charcoal/12 absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                                    步骤 {String(index + 1).padStart(2, "0")}
+                                  </div>
+                                  {/* 图片展示区 */}
+                                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-brand-warm-white transition-transform duration-500 group-active:scale-[0.99]">
                                     <Image
-                                      src={getCategoryIconPath(prod.name)!}
-                                      alt={prod.name}
-                                      width={40}
-                                      height={40}
-                                      className="h-10 w-10"
+                                      src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
+                                      alt={step.title}
+                                      fill
+                                      sizes="100vw"
+                                      className="object-contain p-4 mix-blend-multiply"
                                     />
-                                  ) : (
-                                    DEFAULT_ICONS[idx % DEFAULT_ICONS.length]
-                                  )}
+                                  </div>
                                 </div>
-                                <span className="max-w-[68px] truncate text-[12px] font-light leading-[16px] tracking-[0.04em] text-brand-charcoal/60">
-                                  {prod.name}
-                                </span>
-                              </button>
+
+                                {/* 文本描述区 */}
+                                <div>
+                                  <h3 className="mb-2 text-center text-[15px] font-normal leading-[24px] tracking-[0.1em] text-brand-charcoal">
+                                    {step.title}
+                                  </h3>
+                                  <p className="text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
+                                    {step.description}
+                                  </p>
+                                </div>
+                              </div>
                             ))}
                           </div>
-                        </div>
-                      </div>
-                    ) : nav.module === "professional" ? (
-                      <div className="flex w-full flex-col">
-                        <div className="mb-3 flex items-center gap-2">
-                          <h3 className="text-[17px] font-normal tracking-[0.1em] text-brand-charcoal">
-                            {nav.scheme?.id === "p1" ? "面部方案" : "全身方案"}
-                          </h3>
-                          <span className="rounded-sm bg-brand-ecru px-1.5 py-0.5 text-[11px] font-light tracking-[0.06em] text-brand-charcoal/60">
-                            招牌
-                          </span>
-                        </div>
-                        <div className="mb-6">
-                          <p className="text-[11px] font-light tracking-[0.12em] text-brand-charcoal/45">
-                            {nav.scheme?.id === "p1" ? "SKIN CARE" : "BODY CARE"}
-                          </p>
-                        </div>
+                        )}
 
-                        {/* 中间卡片区 - 纵向列表 */}
-                        <div className="mb-6 flex flex-col gap-6">
-                          {getProfessionalCards(nav.scheme?.id).map((item) => (
-                            <div
-                              key={item.image}
-                              className="relative aspect-[4/3] w-full overflow-hidden rounded-xl"
-                            >
-                              <Image
-                                src={item.image}
-                                alt={item.title}
-                                fill
-                                sizes="100vw"
-                                className="z-0 object-cover"
-                              />
-                              {/* 渐变遮罩 */}
-                              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-                              {/* 文字内容 */}
-                              <div className="pointer-events-none absolute bottom-0 left-0 z-20 flex w-full flex-col gap-2 p-4">
-                                <div className="flex items-baseline gap-1.5 text-white">
-                                  <h4 className="text-[17px] font-normal tracking-[0.08em] text-white drop-shadow-sm">
-                                    {item.title}
-                                  </h4>
-                                  <span className="text-[12px] font-light text-white/70">/</span>
-                                  <span className="text-[13px] font-light tracking-[0.06em] text-white/85 drop-shadow-sm">
-                                    {item.duration}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="inline-block rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-light tracking-[0.06em] text-white/85 backdrop-blur-sm">
-                                    {item.tags}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        {/* 底部信息收尾 */}
+                        {nav.module !== "portable" && (
+                          <div className="mt-10 flex flex-col items-center text-center">
+                            <div className="flex flex-col items-center gap-4">
+                              {/* 核心优势 - 纯文字 */}
+                              <p className="text-[12px] font-light leading-[20px] tracking-[0.06em] text-brand-charcoal/50">
+                                {(
+                                  nav.subPlan?.benefits ||
+                                  nav.scheme.benefits || ["保湿锁水", "屏障增强"]
+                                ).join(" · ")}
+                              </p>
 
-                        {/* 底部 Logo 栏 - 无限滚动 */}
-                        <HotelLogoMarquee variant="mobile" />
-                      </div>
-                    ) : (
-                      /* Regular Steps Waterfall Layout (daily, spa) */
-                      <div className="space-y-8">
-                        {currentSteps.map((step, index) => (
-                          <div key={index} className="group relative flex flex-col">
-                            {/* 图片展示区 + 胶囊定位容器 */}
-                            <div className="relative mb-4">
-                              {/* 步骤胶囊 */}
-                              <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/12 bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.08em] text-brand-charcoal/50">
-                                步骤 {String(index + 1).padStart(2, "0")}
-                              </div>
-                              {/* 图片展示区 */}
-                              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-brand-warm-white transition-transform duration-500 group-active:scale-[0.99]">
+                              {/* 特殊时期 + 认证 - 合并为一行辅助信息 */}
+                              {(() => {
+                                const supportText =
+                                  nav.subPlan?.specialSupport !== undefined
+                                    ? nav.subPlan.specialSupport
+                                    : (nav.scheme.specialSupport ?? "孕期、月子期、轻医美术后");
+                                return supportText ? (
+                                  <p
+                                    className={cn(
+                                      "text-[11px] font-light leading-[18px] tracking-[0.06em]",
+                                      supportText.includes("不支持")
+                                        ? "text-orange-900/50"
+                                        : "text-brand-charcoal/45"
+                                    )}
+                                  >
+                                    {supportText}
+                                    {supportText.includes("不支持") ? "" : "可用"}
+                                  </p>
+                                ) : null;
+                              })()}
+
+                              {/* 认证 Logo */}
+                              <div className="flex items-center gap-4 pt-1 opacity-40 mix-blend-multiply">
                                 <Image
-                                  src={step.imageUrl || "/images/ritual-step-placeholder.webp"}
-                                  alt={step.title}
-                                  fill
-                                  sizes="100vw"
-                                  className="object-contain p-4 mix-blend-multiply"
+                                  src="/images/sgs.svg"
+                                  alt="SGS"
+                                  width={20}
+                                  height={20}
+                                  className="h-[18px] w-auto"
+                                />
+                                <Image
+                                  src="/images/intertek-logo.svg"
+                                  alt="Intertek"
+                                  width={20}
+                                  height={20}
+                                  className="h-[16px] w-auto"
                                 />
                               </div>
-                            </div>
 
-                            {/* 文本描述区 */}
-                            <div>
-                              <h3 className="mb-2 text-center text-[15px] font-normal leading-[24px] tracking-[0.1em] text-brand-charcoal">
-                                {step.title}
-                              </h3>
-                              <p className="text-[13px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/60">
-                                {step.description}
-                              </p>
+                              {/* 专业门店入驻 - 纯文字 */}
+                              {nav.module === "professional" && (
+                                <p className="pt-1 text-[12px] font-light leading-[18px] tracking-[0.04em] text-brand-charcoal/50">
+                                  找不到您所在城市的门店？
+                                  <br />
+                                  银卡级别以上会员可
+                                  <Link
+                                    href="/contact?type=cooperation"
+                                    className="mx-0.5 text-brand-charcoal/60 underline decoration-brand-charcoal/15 underline-offset-2 active:opacity-70"
+                                  >
+                                    申请入驻
+                                  </Link>
+                                </p>
+                              )}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </m.div>
                     )}
+                  </AnimatePresence>
 
-                    {/* 底部信息收尾 */}
-                    {nav.module !== "portable" && (
-                    <div className="mt-10 flex flex-col items-center text-center">
-                        <div className="flex flex-col items-center gap-4">
-                          {/* 核心优势 - 纯文字 */}
-                          <p className="text-[12px] font-light leading-[20px] tracking-[0.06em] text-brand-charcoal/50">
-                            {(
-                              nav.subPlan?.benefits ||
-                              nav.scheme.benefits || ["保湿锁水", "屏障增强"]
-                            ).join(" · ")}
-                          </p>
-
-                          {/* 特殊时期 + 认证 - 合并为一行辅助信息 */}
-                          {(() => {
-                            const supportText =
-                              nav.subPlan?.specialSupport !== undefined
-                                ? nav.subPlan.specialSupport
-                                : (nav.scheme.specialSupport ?? "孕期、月子期、轻医美术后");
-                            return supportText ? (
-                              <p className={cn(
-                                "text-[11px] font-light leading-[18px] tracking-[0.06em]",
-                                supportText.includes("不支持") ? "text-orange-900/50" : "text-brand-charcoal/45"
-                              )}>
-                                {supportText}{supportText.includes("不支持") ? "" : "可用"}
-                              </p>
-                            ) : null;
-                          })()}
-
-                          {/* 认证 Logo */}
-                          <div className="flex items-center gap-4 pt-1 opacity-40 mix-blend-multiply">
-                            <Image src="/images/sgs.svg" alt="SGS" width={20} height={20} className="h-[18px] w-auto" />
-                            <Image src="/images/intertek-logo.svg" alt="Intertek" width={20} height={20} className="h-[16px] w-auto" />
-                          </div>
-
-                          {/* 专业门店入驻 - 纯文字 */}
-                          {nav.module === "professional" && (
-                            <p className="pt-1 text-[12px] font-light leading-[18px] tracking-[0.04em] text-brand-charcoal/50">
-                              找不到您所在城市的门店？
-                              <br />
-                              银卡级别以上会员可
-                              <Link
-                                href="/contact?type=cooperation"
-                                className="mx-0.5 text-brand-charcoal/60 underline decoration-brand-charcoal/15 underline-offset-2 active:opacity-70"
-                              >
-                                申请入驻
-                              </Link>
-                            </p>
-                          )}
-                        </div>
-                    </div>
-                    )}
-                  </m.div>
-                )}
-              </AnimatePresence>
-
-              {/* 移动端版权信息 - 滚动区内 mt-auto 贴底 */}
-              <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-4">
-                <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
-                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-                </p>
+                  {/* 移动端版权信息 - 滚动区内 mt-auto 贴底 */}
+                  <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-4">
+                    <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                      &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                    </p>
+                  </div>
+                </div>
               </div>
-              </div>
-            </div>
             </div>
 
             {/* Level 3 底部 Tab 栏 - 与 /products 移动端对齐 */}
-            {currentLevel === 3 && nav.module && nav.scheme &&
+            {currentLevel === 3 &&
+              nav.module &&
+              nav.scheme &&
               ((nav.scheme.subPlans && nav.scheme.subPlans.length > 1) ||
                 (["portable", "professional", "spa"].includes(nav.module) &&
                   moduleData[nav.module].length > 1)) && (
-              <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
-                {nav.scheme.subPlans && nav.scheme.subPlans.length > 1
-                  ? nav.scheme.subPlans.map((subPlan) => {
-                      const isActive = nav.subPlan?.id === subPlan.id;
-                      const Icon = TAB_ICONS[subPlan.id] || Sun;
-                      return (
-                        <button
-                          key={subPlan.id}
-                          type="button"
-                          onClick={() => selectSubPlan(subPlan)}
-                          className={cn(
-                            "flex flex-col items-center gap-1 transition-colors",
-                            isActive ? "text-brand-primary" : "text-brand-charcoal/40"
-                          )}
-                        >
-                          <Icon size={20} strokeWidth={1.5} />
-                          <span className={cn("text-[11px] tracking-[0.06em]", isActive ? "font-normal" : "font-light")}>{subPlan.name}</span>
-                        </button>
-                      );
-                    })
-                  : moduleData[nav.module].map((scheme) => {
-                      const isActive = scheme.id === nav.scheme!.id;
-                      const Icon = TAB_ICONS[scheme.id] || Sun;
-                      return (
-                        <button
-                          key={scheme.id}
-                          type="button"
-                          onClick={() => selectScheme(scheme)}
-                          className={cn(
-                            "flex flex-col items-center gap-1 transition-colors",
-                            isActive ? "text-brand-primary" : "text-brand-charcoal/40"
-                          )}
-                        >
-                          <Icon size={20} strokeWidth={1.5} />
-                          <span className={cn("text-[11px] tracking-[0.06em]", isActive ? "font-normal" : "font-light")}>{scheme.name}</span>
-                        </button>
-                      );
-                    })}
-              </div>
-            )}
+                <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
+                  {nav.scheme.subPlans && nav.scheme.subPlans.length > 1
+                    ? nav.scheme.subPlans.map((subPlan) => {
+                        const isActive = nav.subPlan?.id === subPlan.id;
+                        const Icon = TAB_ICONS[subPlan.id] || Sun;
+                        return (
+                          <button
+                            key={subPlan.id}
+                            type="button"
+                            onClick={() => selectSubPlan(subPlan)}
+                            className={cn(
+                              "flex flex-col items-center gap-1 transition-colors",
+                              isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                            )}
+                          >
+                            <Icon size={20} strokeWidth={1.5} />
+                            <span
+                              className={cn(
+                                "text-[11px] tracking-[0.06em]",
+                                isActive ? "font-normal" : "font-light"
+                              )}
+                            >
+                              {subPlan.name}
+                            </span>
+                          </button>
+                        );
+                      })
+                    : moduleData[nav.module].map((scheme) => {
+                        const isActive = scheme.id === nav.scheme!.id;
+                        const Icon = TAB_ICONS[scheme.id] || Sun;
+                        return (
+                          <button
+                            key={scheme.id}
+                            type="button"
+                            onClick={() => selectScheme(scheme)}
+                            className={cn(
+                              "flex flex-col items-center gap-1 transition-colors",
+                              isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                            )}
+                          >
+                            <Icon size={20} strokeWidth={1.5} />
+                            <span
+                              className={cn(
+                                "text-[11px] tracking-[0.06em]",
+                                isActive ? "font-normal" : "font-light"
+                              )}
+                            >
+                              {scheme.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                </div>
+              )}
           </div>
 
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
@@ -1105,7 +1147,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                           {/* 预计用时 */}
                           <div className="flex items-center gap-2 text-brand-charcoal/45">
                             <Clock className="h-3.5 w-3.5" />
-                            <span className="text-[13px] font-light tracking-[0.1em]">{scheme.totalDuration}</span>
+                            <span className="text-[13px] font-light tracking-[0.1em]">
+                              {scheme.totalDuration}
+                            </span>
                           </div>
                         </m.button>
                       ))}
@@ -1197,7 +1241,11 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                           layoutId={`desktop-activeTab-${nav.module}`}
                                           className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
                                           initial={false}
-                                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                          transition={{
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 30,
+                                          }}
                                         />
                                       )}
                                     </button>
@@ -1210,10 +1258,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       </header>
 
                       {/* 内容主体：左侧边栏 + 右侧网格 */}
-                      <div className="flex min-h-0 flex-1 w-full flex-row gap-12">
+                      <div className="flex min-h-0 w-full flex-1 flex-row gap-12">
                         {/* 左侧：信息侧边栏 (Info Sidebar) */}
                         <m.aside
-                          className="flex w-[25%] flex-shrink-0 flex-col gap-10 overflow-y-auto pr-4 pt-4 min-h-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                          className="flex min-h-0 w-[25%] flex-shrink-0 flex-col gap-10 overflow-y-auto pr-4 pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                           initial={{ opacity: 0, x: -30 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.4, delay: 0.05, ease: [0.19, 1, 0.22, 1] }}
@@ -1282,9 +1330,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 nav.scheme.benefits || ["保湿锁水", "屏障增强"]
                               ).map((tag) => (
                                 <div key={tag} className="group flex items-center gap-2">
-                                  <span className="text-[10px] text-brand-charcoal/25">
-                                    ✦
-                                  </span>
+                                  <span className="text-[10px] text-brand-charcoal/25">✦</span>
                                   <span className="text-sm font-light tracking-[0.12em] text-brand-charcoal/80 transition-colors group-hover:text-brand-charcoal">
                                     {tag}
                                   </span>
@@ -1346,7 +1392,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                       isRestricted ? "text-orange-900/70" : "text-brand-charcoal/70"
                                     )}
                                   >
-                                {supportText}
+                                    {supportText}
                                   </p>
                                 </div>
                               </div>
@@ -1459,9 +1505,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               {/* Full width image container */}
                               <div className="relative mb-8 aspect-[21/10] w-full flex-shrink-0 overflow-hidden rounded-xl bg-brand-charcoal/5">
                                 <Image
-                                  src={
-                                    nav.scheme.heroImage || "/images/portable-hero-update.webp"
-                                  }
+                                  src={nav.scheme.heroImage || "/images/portable-hero-update.webp"}
                                   alt="Portable Ritual"
                                   fill
                                   sizes="75vw"
@@ -1657,7 +1701,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
             <div className="flex shrink-0 flex-col items-center px-10 pt-4 xl:px-[8%]" />
 
             {/* Desktop Footer Copyright */}
-            <div className="flex shrink-0 flex-col items-center justify-center gap-2 pt-4 pb-6">
+            <div className="flex shrink-0 flex-col items-center justify-center gap-2 pb-6 pt-4">
               <p className="text-center text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48]">
                 &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
               </p>

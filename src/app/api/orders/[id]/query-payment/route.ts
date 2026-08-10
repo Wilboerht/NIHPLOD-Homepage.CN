@@ -9,7 +9,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { queryAndFulfillOrderPayment } from "@/lib/payment-query";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { rateLimit } from "@/lib/ratelimit";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -27,7 +27,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // 限流：每个用户每分钟最多查询 10 次
-    const clientIP = getClientIP(request);
     const limitResult = await rateLimit(`user:${payload.id}:query-payment`, "default", {
       maxRequests: 10,
       windowMs: 60 * 1000,

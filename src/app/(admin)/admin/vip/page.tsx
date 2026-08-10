@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiPut } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface LevelStat {
   level: string;
@@ -82,7 +83,7 @@ export default function AdminVIPPage() {
   }, [showError]);
 
   useEffect(() => {
-    fetchData();
+    deferInEffect(fetchData);
   }, [fetchData]);
 
   const handleSaveBenefit = async () => {
@@ -184,7 +185,9 @@ export default function AdminVIPPage() {
             <div key={l.level} className="rounded-xl border bg-white p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="rounded-lg bg-gray-50 p-2">
-                  <Crown className={`h-5 w-5 ${l.level === "GOLD" ? "text-amber-500" : l.level === "DIAMOND" ? "text-violet-500" : "text-slate-400"}`} />
+                  <Crown
+                    className={`h-5 w-5 ${l.level === "GOLD" ? "text-amber-500" : l.level === "DIAMOND" ? "text-violet-500" : "text-slate-400"}`}
+                  />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">{LEVEL_LABELS[l.level] ?? l.level}</p>
@@ -234,7 +237,9 @@ export default function AdminVIPPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditBenefit({ ...b, benefits: (b.benefits as BenefitItem[]) ?? [] })}
+                        onClick={() =>
+                          setEditBenefit({ ...b, benefits: (b.benefits as BenefitItem[]) ?? [] })
+                        }
                       >
                         编辑
                       </Button>
@@ -299,10 +304,10 @@ export default function AdminVIPPage() {
                 <Input
                   type="number"
                   value={editBenefit.pointRate}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      setEditBenefit({ ...editBenefit, pointRate: Number.isNaN(val) ? 1 : val });
-                    }}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setEditBenefit({ ...editBenefit, pointRate: Number.isNaN(val) ? 1 : val });
+                  }}
                 />
               </div>
               <div>
@@ -350,9 +355,7 @@ export default function AdminVIPPage() {
                 <Input
                   placeholder="输入用户 CUID"
                   value={adjustForm.userId}
-                  onChange={(e) =>
-                    setAdjustForm({ ...adjustForm, userId: e.target.value })
-                  }
+                  onChange={(e) => setAdjustForm({ ...adjustForm, userId: e.target.value })}
                 />
               </div>
               <div>
@@ -374,9 +377,7 @@ export default function AdminVIPPage() {
                 <Input
                   placeholder="如：活动奖励 / 售后补偿"
                   value={adjustForm.note}
-                  onChange={(e) =>
-                    setAdjustForm({ ...adjustForm, note: e.target.value })
-                  }
+                  onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
                 />
               </div>
             </div>

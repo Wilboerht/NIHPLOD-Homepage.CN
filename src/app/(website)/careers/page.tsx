@@ -26,15 +26,13 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "加入我们 | NIHPLOD 旎柏",
-    description:
-      "加入 NIHPLOD 旎柏——与我们一起，逆转时光。",
+    description: "加入 NIHPLOD 旎柏——与我们一起，逆转时光。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "加入我们 | NIHPLOD 旎柏",
-    description:
-      "加入 NIHPLOD 旎柏——与我们一起，逆转时光。",
+    description: "加入 NIHPLOD 旎柏——与我们一起，逆转时光。",
     images: ["/images/og-image.png"],
   },
 };
@@ -42,9 +40,8 @@ export const metadata: Metadata = {
 import Script from "next/script";
 import { getNonce } from "@/lib/nonce";
 
-// 高德地图 Key 与 安全密钥从环境变量读取（服务端环境变量，不会暴露到客户端 JS bundle）
+// 高德地图 Key 从环境变量读取（服务端环境变量，不会暴露到客户端 JS bundle）
 const AMAP_KEY = process.env.AMAP_KEY;
-const AMAP_SECRET = process.env.AMAP_SECRET;
 
 async function getJobs(): Promise<Job[]> {
   try {

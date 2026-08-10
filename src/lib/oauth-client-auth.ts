@@ -18,7 +18,9 @@ export interface ClientCredentials {
 /**
  * 从 Authorization header 解析 Basic 认证
  */
-function parseBasicAuth(header: string | null): { client_id: string; client_secret: string } | null {
+function parseBasicAuth(
+  header: string | null
+): { client_id: string; client_secret: string } | null {
   if (!header || !header.startsWith("Basic ")) return null;
 
   const base64 = header.slice(6).trim();

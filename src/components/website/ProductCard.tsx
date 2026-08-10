@@ -81,14 +81,13 @@ export function ProductCard({ product, onClick, priority = false, className }: P
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const { name, nameEn: _nameEn, price, capacity, images, category } = product;
+  const { name, price, capacity, images, category } = product;
 
   // 是否有多张图片
   const hasMultipleImages = images.length > 1;
 
   // 获取当前显示的图片
   const currentImage = images[currentImageIndex] || images[0];
-  const _hoverImage = hasMultipleImages ? images[1] : null;
 
   /**
    * 处理鼠标进入

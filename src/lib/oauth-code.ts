@@ -180,9 +180,7 @@ export function verifyPKCE(
   }
 
   // S256: SHA-256(code_verifier) → base64url, timing-safe 比较
-  const expected = createHash("sha256")
-    .update(codeVerifier)
-    .digest("base64url");
+  const expected = createHash("sha256").update(codeVerifier).digest("base64url");
 
   if (expected.length !== codeChallenge.length) return false;
   try {

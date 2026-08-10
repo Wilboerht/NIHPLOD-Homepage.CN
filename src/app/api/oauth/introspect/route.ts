@@ -34,10 +34,7 @@ export async function POST(request: NextRequest) {
     // 限流
     const limitResult = await rateLimit(ip, "oauth-introspect");
     if (!limitResult.success) {
-      return resJson(
-        { error: "rate_limited", error_description: "请求过于频繁" },
-        429
-      );
+      return resJson({ error: "rate_limited", error_description: "请求过于频繁" }, 429);
     }
 
     // 读取 body
@@ -49,7 +46,9 @@ export async function POST(request: NextRequest) {
     } else {
       const formData = await request.formData();
       body = {};
-      formData.forEach((v, k) => { body[k] = v.toString(); });
+      formData.forEach((v, k) => {
+        body[k] = v.toString();
+      });
     }
 
     const { client_id, client_secret } = getClientCredentials(request, body);
@@ -59,7 +58,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证 client：Public Client 允许不传 secret
-    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, {
+      allowPublic: true,
+    });
     if (!verifyResult.client) {
       recordSsoEvent({
         event: "introspect",
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查 JTI 级令牌撤销
-    if (payload.jti && await isAccessTokenRevoked(payload.jti as string)) {
+    if (payload.jti && (await isAccessTokenRevoked(payload.jti as string))) {
       recordSsoEvent({
         event: "introspect",
         userId: payload.id,

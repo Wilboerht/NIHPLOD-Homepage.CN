@@ -156,7 +156,8 @@ describe("优惠券服务", () => {
     it("适用范围：ALL 类型不限制", () => {
       const coupon = { scopeType: "ALL", scopeIds: [] };
       // ALL 类型不做范围校验
-      const needsScopeCheck = coupon.scopeType && coupon.scopeType !== "ALL" && coupon.scopeIds.length > 0;
+      const needsScopeCheck =
+        coupon.scopeType && coupon.scopeType !== "ALL" && coupon.scopeIds.length > 0;
       expect(needsScopeCheck).toBe(false);
     });
   });

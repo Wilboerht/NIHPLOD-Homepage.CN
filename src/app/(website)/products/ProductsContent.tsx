@@ -75,15 +75,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products.length]);
   const [mobileView, setMobileView] = useState<"products" | "categories" | string>("products");
-  const [activeTab, _setActiveTab] = useState<"featured" | "all">("featured");
+  const [activeTab] = useState<"featured" | "all">("featured");
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const fadeMaskRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-
-  const _tabItems = [
-    { id: "featured" as const, label: "当季热卖" },
-    { id: "all" as const, label: "全部产品" },
-  ];
 
   // 挑选主推的3个产品 (这里默认取前三个，实际可根据后台标记筛选)
   const featuredProducts = products.slice(0, 3);
@@ -94,9 +89,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   };
 
   /**
-   * 移动端展示组件 - 抽屉内 drill-down 模式（与 FAQ 一致）
+   * 移动端展示层 - 抽屉内 drill-down 模式（与 FAQ 一致）
+   * 以渲染函数方式调用，避免渲染期创建组件导致状态重置
    */
-  const MobileShowcase = () => (
+  const renderMobileShowcase = () => (
     <div className="flex h-full flex-col overflow-hidden bg-[#FBF8F0]">
       {/* Header - 与 FAQ 返回按钮模式一致 */}
       <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm transition-all">
@@ -117,7 +113,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         </AnimatePresence>
         <Link href="/" className="mt-1 flex items-center justify-center">
           <div className="relative h-[28px] w-[100px]">
-            <Image src="/images/NIHPLOD-logo.svg" alt="NIHPLOD" fill className="object-contain" priority />
+            <Image
+              src="/images/NIHPLOD-logo.svg"
+              alt="NIHPLOD"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
         </Link>
         <div className="texture-overlay absolute inset-0 z-[-1]" />
@@ -171,7 +173,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     >
                       <Link
                         href={`/products/${product.slug}`}
-                        onClick={(e) => { e.preventDefault(); handleProductClick(product); }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleProductClick(product);
+                        }}
                         className="group relative flex w-full flex-col transition-all active:scale-[0.98]"
                       >
                         <div className="texture-overlay pointer-events-none absolute inset-0 opacity-[0.03]" />
@@ -195,7 +200,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         onClick={() => handleProductClick(product)}
                         className="flex w-full flex-col items-start gap-1.5 px-5 pb-5 pt-4 text-left"
                       >
-                        <p className="line-clamp-1 text-[15px] font-light leading-[24px] tracking-[0.08em] text-brand-primary" title={product.name}>
+                        <p
+                          className="line-clamp-1 text-[15px] font-light leading-[24px] tracking-[0.08em] text-brand-primary"
+                          title={product.name}
+                        >
                           {product.name}
                         </p>
                         <p className="text-[13px] font-light tracking-[0.08em] text-brand-primary/50">
@@ -213,7 +221,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   </p>
                 </div>
               </m.div>
-
             ) : mobileView === "categories" ? (
               /* --- 分类列表视图 --- */
               <m.div
@@ -240,16 +247,26 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => { if (categoryProduct) handleProductClick(categoryProduct); }}
+                        onClick={() => {
+                          if (categoryProduct) handleProductClick(categoryProduct);
+                        }}
                         disabled={!categoryProduct}
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200",
-                          categoryProduct ? "active:bg-brand-charcoal/[0.03]" : "cursor-not-allowed opacity-40"
+                          categoryProduct
+                            ? "active:bg-brand-charcoal/[0.03]"
+                            : "cursor-not-allowed opacity-40"
                         )}
                       >
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center">
                           {getCategoryIconPath(cat.name) ? (
-                            <Image src={getCategoryIconPath(cat.name)!} alt={cat.name} width={32} height={32} className="h-8 w-8" />
+                            <Image
+                              src={getCategoryIconPath(cat.name)!}
+                              alt={cat.name}
+                              width={32}
+                              height={32}
+                              className="h-8 w-8"
+                            />
                           ) : (
                             <div className="h-8 w-8 rounded-lg bg-brand-beige/30" />
                           )}
@@ -258,9 +275,15 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           {cat.name}
                         </span>
                         {categoryProduct ? (
-                          <ChevronRight size={16} strokeWidth={1.5} className="shrink-0 text-brand-primary/40" />
+                          <ChevronRight
+                            size={16}
+                            strokeWidth={1.5}
+                            className="shrink-0 text-brand-primary/40"
+                          />
                         ) : (
-                          <span className="shrink-0 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/40">敬请期待</span>
+                          <span className="shrink-0 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/40">
+                            敬请期待
+                          </span>
                         )}
                       </button>
                     );
@@ -274,7 +297,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   </p>
                 </div>
               </m.div>
-
             ) : null}
           </AnimatePresence>
         </div>
@@ -358,7 +380,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         >
           {/* 移动端展示层 - 仅在移动端显示，一屏式布局 */}
           <div className="relative flex h-full flex-col overflow-hidden lg:hidden">
-            <MobileShowcase />
+            {renderMobileShowcase()}
           </div>
 
           {/* 桌面端内容展示 - 保持原有响应式逻辑但对移动端隐藏 */}
@@ -401,7 +423,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
             {/* 桌面端主内容区：增加滚动支持并移除可能导致重叠的弹性冲突 */}
             {/* 桌面端主内容区：通过限制高度和压缩间距实现单屏显示 */}
-            <div className="flex-1 overflow-hidden px-16 pt-4 pb-6 xl:px-[12%]">
+            <div className="flex-1 overflow-hidden px-16 pb-6 pt-4 xl:px-[12%]">
               <div className="flex h-full flex-col">
                 <div className="flex flex-1 flex-col justify-center">
                   <m.header
@@ -472,7 +494,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       </Link>
                     ))}
                   </section>
-
                 </div>
 
                 {/* Footer Info */}

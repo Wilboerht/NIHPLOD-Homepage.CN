@@ -14,15 +14,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "隐私政策 | NIHPLOD 旎柏",
-    description:
-      "了解我们如何收集、使用和保护您的个人信息。",
+    description: "了解我们如何收集、使用和保护您的个人信息。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "隐私政策 | NIHPLOD 旎柏",
-    description:
-      "了解我们如何收集、使用和保护您的个人信息。",
+    description: "了解我们如何收集、使用和保护您的个人信息。",
     images: ["/images/og-image.png"],
   },
   robots: {

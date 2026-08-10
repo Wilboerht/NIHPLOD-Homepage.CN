@@ -180,7 +180,10 @@ export function StoryContent() {
               <div
                 ref={fadeMaskRef}
                 className="pointer-events-none absolute inset-x-0 top-0 z-30 h-6 transition-opacity duration-300"
-                style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
+                style={{
+                  background: "linear-gradient(to bottom, #FBF8F0, transparent)",
+                  opacity: 0,
+                }}
               />
 
               {/* Main Content Area */}
@@ -188,128 +191,128 @@ export function StoryContent() {
                 ref={contentRef}
                 className="relative z-20 flex h-full flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-              {/* 移动端 Section 1: 品牌故事 */}
-              {activeSection === "story" && (
-                <section className="relative pt-3">
-                  <div className="mb-8 flex flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
-                      品牌故事
-                    </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
-                  </div>
-
-                  <div>
-                    {/* 第一个内容块 */}
-                    <div className="mb-6">
-                      <span className="block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
-                        来自大自然的神奇修复力
-                      </span>
-                      <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
-                        海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
-                      </p>
-                      <div className="relative mt-6 w-full overflow-hidden border border-brand-charcoal/10">
-                        <Image
-                          src="/images/story/dolphin-ocean.webp"
-                          alt="Dolphin Skin"
-                          width={600}
-                          height={400}
-                          className="w-full transition-transform duration-[1.2s] hover:scale-105"
-                        />
-                      </div>
+                {/* 移动端 Section 1: 品牌故事 */}
+                {activeSection === "story" && (
+                  <section className="relative pt-3">
+                    <div className="mb-8 flex flex-col items-center">
+                      <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
+                        品牌故事
+                      </h2>
+                      <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
                     </div>
 
-                    {/* 第二个内容块 */}
                     <div>
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-brand-charcoal/60">
+                      {/* 第一个内容块 */}
+                      <div className="mb-6">
+                        <span className="block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
+                          来自大自然的神奇修复力
+                        </span>
+                        <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
+                          海豚的肌肤拥有每两小时自我更新的神奇能力。这种「逆转时光」的动物本能，是旎柏成立的灵感来源。
+                        </p>
+                        <div className="relative mt-6 w-full overflow-hidden border border-brand-charcoal/10">
+                          <Image
+                            src="/images/story/dolphin-ocean.webp"
+                            alt="Dolphin Skin"
+                            width={600}
+                            height={400}
+                            className="w-full transition-transform duration-[1.2s] hover:scale-105"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 第二个内容块 */}
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 text-[12px] text-brand-charcoal/60">
+                          <Image
+                            src="/images/quote-icon.svg"
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="h-8 w-8 opacity-30"
+                          />
+                          2008 | 摩纳哥 | 联合实验室公司
+                        </span>
+                        <span className="mt-6 block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
+                          前沿科技赋能精简护理
+                        </span>
+                        <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
+                          创始人 Dr. Stefan
+                          博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
+                        </p>
+                        <div className="relative mt-6 w-full overflow-hidden border border-brand-charcoal/10">
+                          <Image
+                            src="/images/story/lab-research.webp"
+                            alt="Science"
+                            width={600}
+                            height={400}
+                            className="w-full transition-transform duration-[1.2s] hover:scale-105"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* 移动端 Section 2: 公司使命 */}
+                {activeSection === "mission" && (
+                  <section className="relative pt-3">
+                    <div className="mb-8 flex flex-col items-center">
+                      <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
+                        公司使命
+                      </h2>
+                      <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
+                    </div>
+
+                    <div className="flex flex-col gap-6">
+                      <div className="relative w-full overflow-hidden border border-brand-charcoal/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
                         <Image
-                          src="/images/quote-icon.svg"
-                          alt=""
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 opacity-30"
-                        />
-                        2008 | 摩纳哥 | 联合实验室公司
-                      </span>
-                      <span className="mt-6 block text-[17px] font-normal leading-snug tracking-[0.08em] text-brand-primary">
-                        前沿科技赋能精简护理
-                      </span>
-                      <p className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
-                        创始人 Dr. Stefan
-                        博士和他的团队将前沿技术与精选的天然活性成分相结合，为每一款产品融入了前沿的科技和配方，使护肤调理变得简单、高效且美好。
-                      </p>
-                      <div className="relative mt-6 w-full overflow-hidden border border-brand-charcoal/10">
-                        <Image
-                          src="/images/story/lab-research.webp"
-                          alt="Science"
+                          src="/images/story/mission-image.webp"
+                          alt="NIHPLOD 品牌使命"
                           width={600}
-                          height={400}
-                          className="w-full transition-transform duration-[1.2s] hover:scale-105"
+                          height={800}
+                          sizes="(max-width: 640px) calc(100vw - 48px), 600px"
+                          className="h-auto w-full object-contain"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2.5">
+                        <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
+                          旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
+                        </p>
+                        <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
+                          将逆转时光的不可能，慢慢变得「有可能」。
+                        </p>
+                      </div>
+
+                      {/* CEO 签名 */}
+                      <div className="flex flex-col items-end gap-2.5">
+                        <span className="text-[12px] leading-[18px] text-brand-charcoal/50">
+                          CEO
+                        </span>
+                        <Image
+                          src="/images/story/mission-decoration.svg"
+                          alt="John Morrell"
+                          width={85}
+                          height={22}
+                          className="opacity-80"
                         />
                       </div>
                     </div>
-                  </div>
-                </section>
-              )}
+                  </section>
+                )}
 
-              {/* 移动端 Section 2: 公司使命 */}
-              {activeSection === "mission" && (
-                <section className="relative pt-3">
-                  <div className="mb-8 flex flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
-                      公司使命
-                    </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
-                  </div>
-
-                  <div className="flex flex-col gap-6">
-                    <div className="relative w-full overflow-hidden border border-brand-charcoal/10 bg-white/20 shadow-[0_2px_8px_-2px_rgba(0,38,62,0.08)]">
-                      <Image
-                        src="/images/story/mission-image.webp"
-                        alt="NIHPLOD 品牌使命"
-                        width={600}
-                        height={800}
-                        sizes="(max-width: 640px) calc(100vw - 48px), 600px"
-                        className="h-auto w-full object-contain"
-                      />
+                {/* 移动端 Section 3: 品牌哲学 */}
+                {activeSection === "philosophy" && (
+                  <section className="relative pt-3">
+                    <div className="mb-8 flex shrink-0 flex-col items-center">
+                      <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
+                        品牌哲学
+                      </h2>
+                      <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
                     </div>
 
-                    <div className="flex flex-col gap-2.5">
-                      <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
-                        旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
-                      </p>
-                      <p className="text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
-                        将逆转时光的不可能，慢慢变得「有可能」。
-                      </p>
-                    </div>
-
-                    {/* CEO 签名 */}
-                    <div className="flex flex-col items-end gap-2.5">
-                      <span className="text-[12px] leading-[18px] text-brand-charcoal/50">
-                        CEO
-                      </span>
-                      <Image
-                        src="/images/story/mission-decoration.svg"
-                        alt="John Morrell"
-                        width={85}
-                        height={22}
-                        className="opacity-80"
-                      />
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* 移动端 Section 3: 品牌哲学 */}
-              {activeSection === "philosophy" && (
-                <section className="relative pt-3">
-                  <div className="mb-8 flex shrink-0 flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
-                      品牌哲学
-                    </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       {[
                         {
                           num: "01",
@@ -350,71 +353,69 @@ export function StoryContent() {
                             {item.desc}
                           </p>
                         </m.div>
-                    ))}
+                      ))}
                     </div>
-                </section>
-              )}
+                  </section>
+                )}
 
-              {/* 移动端 Section 4: 媒体获奖 */}
-              {activeSection === "awards" && (
-                <section className="relative pt-3">
-                  <div className="mb-8 flex flex-col items-center">
-                    <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
-                      媒体及获奖
-                    </h2>
-                    <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
-                  </div>
+                {/* 移动端 Section 4: 媒体获奖 */}
+                {activeSection === "awards" && (
+                  <section className="relative pt-3">
+                    <div className="mb-8 flex flex-col items-center">
+                      <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
+                        媒体及获奖
+                      </h2>
+                      <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
+                    </div>
                     {/* 奖项列表 */}
                     <div className="flex flex-col gap-6">
-                      {AWARDS_DATA.map(
-                        (award, idx) => (
-                          <m.div
-                            key={award.image}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true, margin: "-40px" }}
-                            transition={{ duration: 0.45, delay: (idx % 2) * 0.08, ease: "easeOut" }}
-                            className="flex flex-col border border-brand-charcoal/[0.08] bg-[#FFFDF9]"
-                          >
-                            {/* Award Image */}
-                            <div className="relative w-full overflow-hidden">
-                              <Image
-                                src={award.image}
-                                alt={award.title}
-                                width={600}
-                                height={400}
-                                sizes="(max-width: 640px) calc(100vw - 48px), 600px"
-                                className="h-auto w-full object-contain"
-                              />
-                            </div>
+                      {AWARDS_DATA.map((award, idx) => (
+                        <m.div
+                          key={award.image}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-40px" }}
+                          transition={{ duration: 0.45, delay: (idx % 2) * 0.08, ease: "easeOut" }}
+                          className="flex flex-col border border-brand-charcoal/[0.08] bg-[#FFFDF9]"
+                        >
+                          {/* Award Image */}
+                          <div className="relative w-full overflow-hidden">
+                            <Image
+                              src={award.image}
+                              alt={award.title}
+                              width={600}
+                              height={400}
+                              sizes="(max-width: 640px) calc(100vw - 48px), 600px"
+                              className="h-auto w-full object-contain"
+                            />
+                          </div>
 
-                            <div className="flex flex-col items-center border-t border-brand-charcoal/[0.05] px-5 py-5 text-center">
-                              <h3 className="text-[15px] font-normal tracking-[0.08em] leading-[24px] text-brand-primary">
-                                {award.title}
-                              </h3>
-                              <div className="mt-1.5 flex items-center gap-1.5 text-[13px] font-light">
-                                <span className="tracking-[0.08em] leading-[20px] text-brand-primary/60">
-                                  {award.org}
-                                </span>
-                                <span className="text-brand-charcoal/25">·</span>
-                                <span className="tracking-[0.08em] leading-[20px] text-brand-charcoal/50">
-                                  {award.year}
-                                </span>
-                              </div>
+                          <div className="flex flex-col items-center border-t border-brand-charcoal/[0.05] px-5 py-5 text-center">
+                            <h3 className="text-[15px] font-normal leading-[24px] tracking-[0.08em] text-brand-primary">
+                              {award.title}
+                            </h3>
+                            <div className="mt-1.5 flex items-center gap-1.5 text-[13px] font-light">
+                              <span className="leading-[20px] tracking-[0.08em] text-brand-primary/60">
+                                {award.org}
+                              </span>
+                              <span className="text-brand-charcoal/25">·</span>
+                              <span className="leading-[20px] tracking-[0.08em] text-brand-charcoal/50">
+                                {award.year}
+                              </span>
                             </div>
-                          </m.div>
-                        )
-                      )}
+                          </div>
+                        </m.div>
+                      ))}
                     </div>
-                </section>
-              )}
+                  </section>
+                )}
 
-              {/* Mobile Footer Copyright */}
-              <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
-                <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
-                  &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-                </p>
-              </div>
+                {/* Mobile Footer Copyright */}
+                <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
+                  <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                    &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -529,7 +530,7 @@ export function StoryContent() {
                       <span className="mb-4 block text-sm font-light tracking-[0.15em] text-brand-charcoal/60">
                         Since 2008 | Monaco
                       </span>
-                      <h2 className="mt-8 mb-8 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mt-10 md:mb-10 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
+                      <h2 className="mb-8 mt-8 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mb-10 md:mt-10 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
                         来自大自然的
                         <br />
                         神奇修复力
@@ -573,10 +574,10 @@ export function StoryContent() {
                           <span className="mb-4 block text-[12px] font-light tracking-[0.15em] text-brand-charcoal/60">
                             公司使命
                           </span>
-                             <h2 className="mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mb-8 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
-                             化繁为简
-                             <br />
-                             逆转时光
+                          <h2 className="mb-6 font-sans text-2xl font-light !leading-[1.3] tracking-[0.12em] text-brand-charcoal md:mb-8 md:text-3xl md:tracking-[0.15em] lg:text-[36px]">
+                            化繁为简
+                            <br />
+                            逆转时光
                           </h2>
                           <p className="max-w-[420px] text-[16px] font-light leading-[1.8] tracking-[0.05em] text-brand-charcoal/80">
                             旎柏始终坚持正确且积极的科学理念。通过化繁为简的居家修护及高效舒适的院线调理，尽可能的帮助人们解决并预防各类肌肤问题。
@@ -641,7 +642,9 @@ export function StoryContent() {
                         key={idx}
                         className="flex h-full flex-col justify-between bg-[#FBF8F0] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_-8px_rgba(0,38,62,0.12)] lg:p-10"
                       >
-                        <span className="text-6xl font-thin text-brand-charcoal/10">{item.num}</span>
+                        <span className="text-6xl font-thin text-brand-charcoal/10">
+                          {item.num}
+                        </span>
                         <div>
                           <h3 className="mb-3 text-lg font-light tracking-[0.15em] text-brand-charcoal">
                             {item.title}

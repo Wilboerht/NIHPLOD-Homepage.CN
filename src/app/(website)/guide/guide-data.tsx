@@ -273,7 +273,13 @@ export const defaultModuleData: ModuleData = {
         </svg>
       ),
       totalDuration: "15-20分钟",
-      products: [{ name: "洁面" }, { name: "精华露", optional: true }, { name: "面膜" }, { name: "面霜" }, { name: "身体乳", optional: true }],
+      products: [
+        { name: "洁面" },
+        { name: "精华露", optional: true },
+        { name: "面膜" },
+        { name: "面霜" },
+        { name: "身体乳", optional: true },
+      ],
       benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -399,7 +405,13 @@ export const defaultModuleData: ModuleData = {
       nameEn: "FACE RITUAL",
       desc: "仅需 4 个步骤",
       totalDuration: "20-30分钟",
-      products: [{ name: "洁面" }, { name: "磨砂膏" }, { name: "护理油" }, { name: "面霜" }, { name: "面膜" }],
+      products: [
+        { name: "洁面" },
+        { name: "磨砂膏" },
+        { name: "护理油" },
+        { name: "面霜" },
+        { name: "面膜" },
+      ],
       benefits: ["保湿锁水", "屏障增强", "过敏修护", "抗初老", "维稳舒缓"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -439,7 +451,14 @@ export const defaultModuleData: ModuleData = {
       nameEn: "FULL BODY RITUAL",
       desc: "仅需 6 个步骤",
       totalDuration: "30-45分钟",
-      products: [{ name: "洁面" }, { name: "磨砂膏" }, { name: "护理油" }, { name: "面霜" }, { name: "面膜" }, { name: "身体乳" }],
+      products: [
+        { name: "洁面" },
+        { name: "磨砂膏" },
+        { name: "护理油" },
+        { name: "面霜" },
+        { name: "面膜" },
+        { name: "身体乳" },
+      ],
       benefits: ["保湿锁水", "屏障增强", "抗初老", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "孕期、月子期、轻医美术后",
       steps: [
@@ -495,7 +514,14 @@ export const defaultModuleData: ModuleData = {
       nameEn: "FACIAL CARE",
       desc: "仅需 4 个步骤",
       totalDuration: "20-30分钟",
-      products: [{ name: "洁面" }, { name: "磨砂膏" }, { name: "护理油" }, { name: "精华露" }, { name: "面霜" }, { name: "面膜" }],
+      products: [
+        { name: "洁面" },
+        { name: "磨砂膏" },
+        { name: "护理油" },
+        { name: "精华露" },
+        { name: "面霜" },
+        { name: "面膜" },
+      ],
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "",
 
@@ -536,7 +562,15 @@ export const defaultModuleData: ModuleData = {
       nameEn: "FULL BODY CARE",
       desc: "仅需 6 个步骤",
       totalDuration: "30-45分钟",
-      products: [{ name: "洁面" }, { name: "磨砂膏" }, { name: "护理油" }, { name: "精华露" }, { name: "面霜" }, { name: "面膜" }, { name: "身体乳" }],
+      products: [
+        { name: "洁面" },
+        { name: "磨砂膏" },
+        { name: "护理油" },
+        { name: "精华露" },
+        { name: "面霜" },
+        { name: "面膜" },
+        { name: "身体乳" },
+      ],
       benefits: ["保湿锁水", "屏障增强", "抗初老", "修护延衰", "维稳舒缓", "紧致提拉", "润泽提亮"],
       specialSupport: "",
 
@@ -589,10 +623,7 @@ export const defaultModuleData: ModuleData = {
 };
 
 /** 未配置产品时的兜底（与原字符串 "洁面慕斯、面霜" 等价） */
-export const defaultRelatedProducts: RitualProductRef[] = [
-  { name: "洁面慕斯" },
-  { name: "面霜" },
-];
+export const defaultRelatedProducts: RitualProductRef[] = [{ name: "洁面慕斯" }, { name: "面霜" }];
 
 /** 专业水疗护理卡片（移动端/桌面端共用） */
 export interface ProfessionalCard {

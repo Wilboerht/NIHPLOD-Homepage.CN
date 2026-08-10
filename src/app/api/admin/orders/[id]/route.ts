@@ -64,9 +64,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         order: {
           ...order,
           recipientPhone: maskPhone(order.recipientPhone),
-          user: order.user
-            ? { ...order.user, phone: maskPhone(order.user.phone) }
-            : null,
+          user: order.user ? { ...order.user, phone: maskPhone(order.user.phone) } : null,
         },
       },
     });

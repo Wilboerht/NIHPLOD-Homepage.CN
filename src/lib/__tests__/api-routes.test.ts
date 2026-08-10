@@ -3,7 +3,7 @@
  * 直接调用 route handler，验证请求/响应契约
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // Mock prisma
 vi.mock("@/lib/prisma", () => {
@@ -60,7 +60,6 @@ vi.mock("@/lib/shipping-config", () => ({
 vi.mock("@/lib/csrf", () => ({
   validateCSRFToken: vi.fn().mockReturnValue(true),
   csrfForbiddenResponse: () => {
-    const { NextResponse } = require("next/server");
     return NextResponse.json(
       { success: false, error: { code: "CSRF_ERROR", message: "CSRF 验证失败" } },
       { status: 403 }
@@ -78,7 +77,6 @@ vi.mock("@/lib/order", () => ({
 vi.mock("@/lib/validation", () => ({
   validateCUID: (id: string) => id.length > 0 && id.length <= 30,
   invalidIdResponse: () => {
-    const { NextResponse } = require("next/server");
     return NextResponse.json(
       { success: false, error: { code: "INVALID_ID", message: "无效ID" } },
       { status: 400 }
@@ -297,7 +295,15 @@ describe("API 路由集成测试", () => {
     it("直接购买模式：库存不足应返回 400", async () => {
       mockVerifyUserAuth.mockResolvedValue({ id: "user-1", role: "user" });
       mockPrisma.product.findMany.mockResolvedValue([
-        { id: "prod-1", name: "商品A", price: 100, stock: 2, published: true, allowDirectBuy: true, images: [] },
+        {
+          id: "prod-1",
+          name: "商品A",
+          price: 100,
+          stock: 2,
+          published: true,
+          allowDirectBuy: true,
+          images: [],
+        },
       ]);
 
       const { GET } = await import("@/app/api/checkout/data/route");
@@ -313,11 +319,28 @@ describe("API 路由集成测试", () => {
       mockVerifyUserAuth.mockResolvedValue({ id: "user-1", role: "user" });
       mockPrisma.product.findMany
         .mockResolvedValueOnce([
-          { id: "prod-1", name: "商品A", price: 299, stock: 10, published: true, allowDirectBuy: true, images: [{ url: "/img.jpg" }] },
+          {
+            id: "prod-1",
+            name: "商品A",
+            price: 299,
+            stock: 10,
+            published: true,
+            allowDirectBuy: true,
+            images: [{ url: "/img.jpg" }],
+          },
         ])
         .mockResolvedValueOnce([{ id: "prod-1", categoryId: "cat-1" }]);
       mockPrisma.address.findMany.mockResolvedValue([
-        { id: "addr-1", name: "张三", phone: "138", province: "北京", city: "北京", district: "朝阳", detail: "路1号", isDefault: true },
+        {
+          id: "addr-1",
+          name: "张三",
+          phone: "138",
+          province: "北京",
+          city: "北京",
+          district: "朝阳",
+          detail: "路1号",
+          isDefault: true,
+        },
       ]);
       mockPrisma.userCoupon.findMany.mockResolvedValue([]);
 

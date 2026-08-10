@@ -39,14 +39,16 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
   }
 });
 
-const updateMeSchema = z.object({
-  name: z.string().min(1).max(50).optional(),
-  currentPassword: z.string().optional(),
-  newPassword: passwordSchema.optional(),
-}).refine(
-  (data) => !data.newPassword || data.currentPassword,
-  { message: "修改密码需要提供当前密码", path: ["currentPassword"] }
-);
+const updateMeSchema = z
+  .object({
+    name: z.string().min(1).max(50).optional(),
+    currentPassword: z.string().optional(),
+    newPassword: passwordSchema.optional(),
+  })
+  .refine((data) => !data.newPassword || data.currentPassword, {
+    message: "修改密码需要提供当前密码",
+    path: ["currentPassword"],
+  });
 
 // PUT /api/admin/me - 更新当前管理员个人资料
 export const PUT = withAuth(async (request: NextRequest, admin) => {
@@ -115,7 +117,10 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: error.issues[0]?.message || "参数错误" },
+        },
         { status: 400 }
       );
     }

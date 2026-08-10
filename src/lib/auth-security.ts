@@ -336,7 +336,8 @@ export type RefreshTokenValidationResult =
   | { valid: true }
   | {
       valid: false;
-      reason: "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" | "error";
+      reason:
+        "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" | "error";
     };
 
 /**
@@ -582,7 +583,10 @@ export async function cleanupExpiredSmsCodes(): Promise<number> {
 /**
  * 清理已撤销的 OAuth Session 和 Refresh Token（30 天后物理删除）
  */
-export async function cleanupRevokedSessionsAndTokens(): Promise<{ sessions: number; tokens: number }> {
+export async function cleanupRevokedSessionsAndTokens(): Promise<{
+  sessions: number;
+  tokens: number;
+}> {
   try {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [sessions, tokens] = await Promise.all([

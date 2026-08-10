@@ -57,8 +57,13 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
   const isEdit = !!category;
 
-  // 初始化表单数据
-  useEffect(() => {
+  // 初始化表单数据（渲染阶段同步，避免 effect 内 setState；sentinel 为 null 确保首次挂载也执行）
+  const [prevInit, setPrevInit] = useState<{
+    category: Category | null | undefined;
+    open: boolean;
+  } | null>(null);
+  if (!prevInit || prevInit.category !== category || prevInit.open !== open) {
+    setPrevInit({ category, open });
     if (category) {
       setFormData({
         name: category.name,
@@ -70,9 +75,21 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         visible: category.visible ?? true,
       });
     } else {
-      setFormData({ name: "", nameEn: "", slug: "", description: "", icon: "", order: 0, visible: true });
+      setFormData({
+        name: "",
+        nameEn: "",
+        slug: "",
+        description: "",
+        icon: "",
+        order: 0,
+        visible: true,
+      });
     }
     setErrors({});
+  }
+
+  // ref 重置放在 effect 中（避免渲染期写 ref）
+  useEffect(() => {
     slugManuallySetRef.current = false;
   }, [category, open]);
 

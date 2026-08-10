@@ -33,14 +33,10 @@ export async function POST(request: NextRequest) {
     NextResponse.json(body, { status, headers: corsHeaders });
 
   try {
-
     // 限流
     const limitResult = await rateLimit(ip, "oauth-revoke");
     if (!limitResult.success) {
-      return resJson(
-        { error: "rate_limited", error_description: "请求过于频繁" },
-        429
-      );
+      return resJson({ error: "rate_limited", error_description: "请求过于频繁" }, 429);
     }
 
     // 读取 body（支持 JSON 和 form-urlencoded）
@@ -52,7 +48,9 @@ export async function POST(request: NextRequest) {
     } else {
       const formData = await request.formData();
       body = {};
-      formData.forEach((v, k) => { body[k] = v.toString(); });
+      formData.forEach((v, k) => {
+        body[k] = v.toString();
+      });
     }
 
     const { client_id, client_secret } = getClientCredentials(request, body);
@@ -60,10 +58,7 @@ export async function POST(request: NextRequest) {
     const token_type_hint = body.token_type_hint;
 
     if (!client_id) {
-      return resJson(
-        { error: "invalid_client", error_description: "缺少 client_id" },
-        401
-      );
+      return resJson({ error: "invalid_client", error_description: "缺少 client_id" }, 401);
     }
 
     if (!token) {
@@ -72,7 +67,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证 client：Public Client 允许不传 secret；Confidential Client 必须验证 secret
-    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, { allowPublic: true });
+    const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, {
+      allowPublic: true,
+    });
     if (!verifyResult.client) {
       recordSsoEvent({
         event: "logout",
@@ -81,10 +78,7 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { reason: verifyResult.reason, action: "revoke" },
       });
-      return resJson(
-        { error: "invalid_client", error_description: "Client 认证失败" },
-        401
-      );
+      return resJson({ error: "invalid_client", error_description: "Client 认证失败" }, 401);
     }
     const client = verifyResult.client;
 

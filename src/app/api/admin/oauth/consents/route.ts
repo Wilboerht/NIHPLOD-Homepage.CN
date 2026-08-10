@@ -77,22 +77,24 @@ export async function GET(request: NextRequest) {
 
     // 批量获取用户信息
     const userIds = [...new Set(items.map((i) => i.userId))];
-    const users = userIds.length > 0
-      ? await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, phone: true, nickname: true },
-        })
-      : [];
+    const users =
+      userIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, phone: true, nickname: true },
+          })
+        : [];
     const userMap = new Map(users.map((u) => [u.id, u]));
 
     // 批量获取 client 名称
     const clientIds = [...new Set(items.map((i) => i.clientId))];
-    const clients = clientIds.length > 0
-      ? await prisma.oAuthClient.findMany({
-          where: { clientId: { in: clientIds } },
-          select: { clientId: true, name: true },
-        })
-      : [];
+    const clients =
+      clientIds.length > 0
+        ? await prisma.oAuthClient.findMany({
+            where: { clientId: { in: clientIds } },
+            select: { clientId: true, name: true },
+          })
+        : [];
     const clientMap = new Map(clients.map((c) => [c.clientId, c.name]));
 
     return NextResponse.json({

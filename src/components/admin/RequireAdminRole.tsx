@@ -33,8 +33,6 @@ export function RequireAdminRole({ role, children }: RequireAdminRoleProps) {
   const [error, setError] = useState(false);
 
   const fetchRole = useCallback(() => {
-    setLoading(true);
-    setError(false);
     let cancelled = false;
     apiGet<{ user: { role: string } }>("/api/admin/me")
       .then((data) => {
@@ -70,7 +68,16 @@ export function RequireAdminRole({ role, children }: RequireAdminRoleProps) {
         <WifiOff className="h-12 w-12 text-brand-charcoal/30" />
         <p className="text-lg font-medium text-brand-charcoal/70">网络错误</p>
         <p className="text-sm text-brand-charcoal/50">无法验证管理员权限，请检查网络连接</p>
-        <Button variant="outline" onClick={fetchRole} leftIcon={<RefreshCw className="h-4 w-4" />}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            // 重试时在事件回调中重置状态（避免 effect 内同步 setState）
+            setLoading(true);
+            setError(false);
+            fetchRole();
+          }}
+          leftIcon={<RefreshCw className="h-4 w-4" />}
+        >
           重试
         </Button>
       </div>

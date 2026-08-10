@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useRef } from "react";
+import { ReactNode } from "react";
 import { AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";

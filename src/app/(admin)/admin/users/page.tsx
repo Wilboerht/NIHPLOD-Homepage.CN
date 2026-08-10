@@ -35,6 +35,7 @@ import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
 
@@ -63,7 +64,14 @@ const userStatusMap: Record<
   BANNED: { label: "封禁", variant: "danger", description: "账号永久封禁，不可恢复" },
 };
 
-const membershipLevelMap: Record<string, { label: string; emoji: string; variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline" }> = {
+const membershipLevelMap: Record<
+  string,
+  {
+    label: string;
+    emoji: string;
+    variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
+  }
+> = {
   SILVER: { label: "银卡", emoji: "🪙", variant: "secondary" },
   GOLD: { label: "金卡", emoji: "🥇", variant: "warning" },
   DIAMOND: { label: "钻石", emoji: "💎", variant: "primary" },
@@ -180,7 +188,7 @@ export default function AdminUsersPage() {
   }, [page, pageSize, search, status]);
 
   useEffect(() => {
-    fetchUsers();
+    deferInEffect(fetchUsers);
   }, [fetchUsers]);
 
   const updateUserStatus = (userId: string, status: UserStatus) => {
@@ -245,7 +253,9 @@ export default function AdminUsersPage() {
         ids: Array.from(selectedIds),
         status: targetStatus,
       });
-      toast.success(`已将选中的 ${selectedIds.size} 个用户设置为「${userStatusMap[targetStatus].label}」`);
+      toast.success(
+        `已将选中的 ${selectedIds.size} 个用户设置为「${userStatusMap[targetStatus].label}」`
+      );
       setBatchTarget(null);
       setSelectedIds(new Set());
       await fetchUsers();
@@ -298,10 +308,20 @@ export default function AdminUsersPage() {
           <p className="mt-1 text-sm text-brand-charcoal/50">管理注册用户</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" leftIcon={<Download className="h-4 w-4" />} onClick={exportCsv}>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Download className="h-4 w-4" />}
+            onClick={exportCsv}
+          >
             导出 CSV
           </Button>
-          <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchUsers}>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={fetchUsers}
+          >
             刷新
           </Button>
         </div>
@@ -334,7 +354,12 @@ export default function AdminUsersPage() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
-              <Button size="sm" variant="outline" leftIcon={<CheckCircle className="h-4 w-4" />} onClick={() => setBatchTarget({ status: "ACTIVE" })}>
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={<CheckCircle className="h-4 w-4" />}
+                onClick={() => setBatchTarget({ status: "ACTIVE" })}
+              >
                 恢复正常
               </Button>
               <Button
@@ -346,7 +371,12 @@ export default function AdminUsersPage() {
               >
                 冻结
               </Button>
-              <Button size="sm" variant="danger" leftIcon={<Ban className="h-4 w-4" />} onClick={() => setBatchTarget({ status: "BANNED" })}>
+              <Button
+                size="sm"
+                variant="danger"
+                leftIcon={<Ban className="h-4 w-4" />}
+                onClick={() => setBatchTarget({ status: "BANNED" })}
+              >
                 封禁
               </Button>
             </div>
@@ -356,9 +386,12 @@ export default function AdminUsersPage() {
 
       {/* 加载失败错误态 */}
       {loadError && (
-        <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <p className="text-red-500 text-sm">{loadError}</p>
-          <button onClick={fetchUsers} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <p className="text-sm text-red-500">{loadError}</p>
+          <button
+            onClick={fetchUsers}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-xs hover:bg-gray-50"
+          >
             重试
           </button>
         </div>
@@ -378,21 +411,35 @@ export default function AdminUsersPage() {
                   aria-label="全选"
                 />
               </th>
-              <th scope="col" className="px-4 py-3">用户</th>
-              <th scope="col" className="px-4 py-3">手机号</th>
-              <th scope="col" className="px-4 py-3">会员等级</th>
-              <th scope="col" className="px-4 py-3">积分</th>
-              <th scope="col" className="px-4 py-3">状态</th>
-              <th scope="col" className="px-4 py-3">订单数</th>
-              <th scope="col" className="px-4 py-3">注册时间</th>
-              <th scope="col" className="px-4 py-3">操作</th>
+              <th scope="col" className="px-4 py-3">
+                用户
+              </th>
+              <th scope="col" className="px-4 py-3">
+                手机号
+              </th>
+              <th scope="col" className="px-4 py-3">
+                会员等级
+              </th>
+              <th scope="col" className="px-4 py-3">
+                积分
+              </th>
+              <th scope="col" className="px-4 py-3">
+                状态
+              </th>
+              <th scope="col" className="px-4 py-3">
+                订单数
+              </th>
+              <th scope="col" className="px-4 py-3">
+                注册时间
+              </th>
+              <th scope="col" className="px-4 py-3">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={9} />
-              ))
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={9} />)
             ) : users.length === 0 ? (
               <tr>
                 <td colSpan={9}>
@@ -520,7 +567,9 @@ export default function AdminUsersPage() {
                 <p className="truncate text-lg font-medium text-brand-charcoal">
                   {detailUser.nickname || "未设置昵称"}
                 </p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/50">ID: {detailUser.id}</p>
+                <p className="truncate font-mono text-xs text-brand-charcoal/50">
+                  ID: {detailUser.id}
+                </p>
               </div>
             </div>
 
@@ -642,7 +691,8 @@ export default function AdminUsersPage() {
                         会员等级
                       </dt>
                       <dd>
-                        {detailUser.membershipLevel && membershipLevelMap[detailUser.membershipLevel] ? (
+                        {detailUser.membershipLevel &&
+                        membershipLevelMap[detailUser.membershipLevel] ? (
                           <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
                             {membershipLevelMap[detailUser.membershipLevel].emoji}{" "}
                             {membershipLevelMap[detailUser.membershipLevel].label}
@@ -658,7 +708,9 @@ export default function AdminUsersPage() {
                         累计积分
                       </dt>
                       <dd className="font-mono font-medium">
-                        {detailUser.totalPoints != null ? detailUser.totalPoints.toLocaleString() : "0"}
+                        {detailUser.totalPoints != null
+                          ? detailUser.totalPoints.toLocaleString()
+                          : "0"}
                       </dd>
                     </div>
                   </dl>
@@ -677,7 +729,7 @@ export default function AdminUsersPage() {
                   {detailUser.addresses.map((addr) => (
                     <div
                       key={addr.id}
-                      className="rounded-xl border border-brand-charcoal/8 bg-white p-4 text-sm"
+                      className="border-brand-charcoal/8 rounded-xl border bg-white p-4 text-sm"
                     >
                       <div className="mb-1 flex items-center justify-between">
                         <span className="font-medium">
@@ -727,14 +779,22 @@ export default function AdminUsersPage() {
             {detailUser.orders && detailUser.orders.length > 0 && (
               <div>
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">最近订单</h3>
-                <div className="overflow-hidden rounded-xl border border-brand-charcoal/8">
+                <div className="border-brand-charcoal/8 overflow-hidden rounded-xl border">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-brand-charcoal/60">
-                        <th scope="col" className="px-4 py-2 font-medium">订单号</th>
-                        <th scope="col" className="px-4 py-2 font-medium">状态</th>
-                        <th scope="col" className="px-4 py-2 font-medium">金额</th>
-                        <th scope="col" className="px-4 py-2 font-medium">时间</th>
+                        <th scope="col" className="px-4 py-2 font-medium">
+                          订单号
+                        </th>
+                        <th scope="col" className="px-4 py-2 font-medium">
+                          状态
+                        </th>
+                        <th scope="col" className="px-4 py-2 font-medium">
+                          金额
+                        </th>
+                        <th scope="col" className="px-4 py-2 font-medium">
+                          时间
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">

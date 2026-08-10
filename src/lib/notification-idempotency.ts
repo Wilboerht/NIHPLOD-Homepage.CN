@@ -205,7 +205,7 @@ export async function cleanupOldNotifications(daysOld: number = 30): Promise<num
       },
     });
 
-    console.log(`[Notification] 清理了 ${result.count} 条过期通知记录`);
+    apiConsole.info(`[Notification] 清理了 ${result.count} 条过期通知记录`);
     return result.count;
   } catch (error) {
     apiConsole.error("[Notification] 清理失败:", error);

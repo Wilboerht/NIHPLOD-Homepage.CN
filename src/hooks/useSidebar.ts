@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useMediaQuery } from "./useMediaQuery";
 import { useScrollLock } from "./useScrollLock";
 
@@ -55,12 +55,14 @@ export function useSidebar(): UseSidebarReturn {
     setIsCollapsed((prev) => !prev);
   }, []);
 
-  // 切换到桌面模式时关闭移动端侧边栏
-  useEffect(() => {
-    if (!isMobile) {
+  // 切换到桌面模式时关闭移动端侧边栏（渲染阶段同步派生状态，避免 effect 内 setState）
+  const [prevIsMobile, setPrevIsMobile] = useState(isMobile);
+  if (prevIsMobile !== isMobile) {
+    setPrevIsMobile(isMobile);
+    if (!isMobile && isOpen) {
       setIsOpen(false);
     }
-  }, [isMobile]);
+  }
 
   // 使用全局共享的滚动锁，与其他弹窗（Modal、CartDrawer）协同，避免互相覆盖
   useScrollLock(isMobile && isOpen);

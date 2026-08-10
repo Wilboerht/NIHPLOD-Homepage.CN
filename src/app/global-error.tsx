@@ -40,6 +40,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           <div className="relative z-10 text-center">
             {/* Logo - 使用 img 标签因为 Next Image 可能加载失败 */}
             <div className="mb-8">
+              {/* global-error 处于应用壳层之外，Next.js 官方要求使用原生 HTML 标签，不可用 next/link */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a href="/" className="inline-block">
                 <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
                   <Image
@@ -84,6 +86,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 <RefreshCw className="h-4 w-4" />
                 重启应用
               </button>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/"
                 className="flex items-center gap-2 rounded-full border border-brand-charcoal/20 px-8 py-3 text-sm font-medium text-brand-charcoal/60 transition-all hover:border-brand-gold hover:bg-brand-cream hover:text-brand-gold"

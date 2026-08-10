@@ -3,17 +3,13 @@
 /**
  * 全局模态框组件 - 包含所有需要的模态框
  */
-import { useEffect, useState } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { UserCenterModal } from "./UserCenterModal";
 import { CheckoutModal } from "./CheckoutModal";
 import PayModal from "./PayModal";
 
 export function GlobalModals() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   // 确保客户端渲染 - SSG 期间返回 null 是正常行为
   if (!mounted) {

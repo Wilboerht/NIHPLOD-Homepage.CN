@@ -38,9 +38,7 @@ async function enrichClientsWithStats(
       },
       _count: { userId: true },
     });
-    sessionMap = new Map(
-      sessionCounts.map((s) => [s.clientId, s._count.userId])
-    );
+    sessionMap = new Map(sessionCounts.map((s) => [s.clientId, s._count.userId]));
   } catch (err) {
     apiConsole.warn("[enrichClientsWithStats] 活跃用户统计查询失败，返回 0:", err);
   }
@@ -81,7 +79,10 @@ export async function GET(request: NextRequest) {
 
     if (admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" } },
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" },
+        },
         { status: 403 }
       );
     }
@@ -138,7 +139,10 @@ export async function POST(request: NextRequest) {
 
     if (admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" } },
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" },
+        },
         { status: 403 }
       );
     }
@@ -169,7 +173,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }

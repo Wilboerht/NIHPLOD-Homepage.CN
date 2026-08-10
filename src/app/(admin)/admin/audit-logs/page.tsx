@@ -9,6 +9,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface AuditLogItem {
   id: string;
@@ -23,37 +24,79 @@ interface AuditLogItem {
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  login: "登录", logout: "登出", ship_order: "发货", update_order: "更新订单",
-  refund_approve: "同意退款", refund_reject: "拒绝退款",
-  create_admin: "创建管理员", update_admin: "更新管理员", delete_admin: "删除管理员",
-  create_product: "创建产品", update_product: "更新产品", delete_product: "删除产品",
-  batch_product: "批量操作产品", create_category: "创建分类", update_category: "更新分类",
-  delete_category: "删除分类", create_job: "创建职位", update_job: "更新职位",
-  delete_job: "删除职位", batch_job: "批量操作职位", update_application: "更新简历",
-  delete_application: "删除简历", update_message: "更新留言", delete_message: "删除留言",
-  batch_message: "批量操作留言", create_coupon: "创建优惠券", update_coupon: "更新优惠券",
-  delete_coupon: "删除优惠券", batch_coupon: "批量操作优惠券", run_cron_task: "执行定时任务",
-  user_points_adjust: "调整用户积分", update_vip_benefit: "更新会员权益",
-  oauth_client_create: "创建 SSO 客户端", oauth_client_update: "更新 SSO 客户端",
-  oauth_client_delete: "删除 SSO 客户端", oauth_client_rotate_secret: "轮换 SSO 客户端密钥",
-  oauth_client_test: "测试 SSO 客户端", oauth_consent_revoke: "撤销 SSO 授权",
+  login: "登录",
+  logout: "登出",
+  ship_order: "发货",
+  update_order: "更新订单",
+  refund_approve: "同意退款",
+  refund_reject: "拒绝退款",
+  create_admin: "创建管理员",
+  update_admin: "更新管理员",
+  delete_admin: "删除管理员",
+  create_product: "创建产品",
+  update_product: "更新产品",
+  delete_product: "删除产品",
+  batch_product: "批量操作产品",
+  create_category: "创建分类",
+  update_category: "更新分类",
+  delete_category: "删除分类",
+  create_job: "创建职位",
+  update_job: "更新职位",
+  delete_job: "删除职位",
+  batch_job: "批量操作职位",
+  update_application: "更新简历",
+  delete_application: "删除简历",
+  update_message: "更新留言",
+  delete_message: "删除留言",
+  batch_message: "批量操作留言",
+  create_coupon: "创建优惠券",
+  update_coupon: "更新优惠券",
+  delete_coupon: "删除优惠券",
+  batch_coupon: "批量操作优惠券",
+  run_cron_task: "执行定时任务",
+  user_points_adjust: "调整用户积分",
+  update_vip_benefit: "更新会员权益",
+  oauth_client_create: "创建 SSO 客户端",
+  oauth_client_update: "更新 SSO 客户端",
+  oauth_client_delete: "删除 SSO 客户端",
+  oauth_client_rotate_secret: "轮换 SSO 客户端密钥",
+  oauth_client_test: "测试 SSO 客户端",
+  oauth_consent_revoke: "撤销 SSO 授权",
   oauth_session_terminate: "终止 SSO 会话",
-  user_login: "用户登录", user_logout: "用户登出",
-  user_register: "用户注册", user_reset_password: "用户重置密码",
-  user_status_change: "用户状态变更", user_deleted: "用户删除",
-  admin_login: "管理员登录", admin_logout: "管理员登出",
-  create_application_folder: "创建简历文件夹", update_application_folder: "更新简历文件夹",
-  delete_application_folder: "删除简历文件夹", reorder_categories: "重排分类",
-  user_wechat_bind: "用户微信绑定", user_oauth_revoke: "用户 OAuth 撤销",
+  user_login: "用户登录",
+  user_logout: "用户登出",
+  user_register: "用户注册",
+  user_reset_password: "用户重置密码",
+  user_status_change: "用户状态变更",
+  user_deleted: "用户删除",
+  admin_login: "管理员登录",
+  admin_logout: "管理员登出",
+  create_application_folder: "创建简历文件夹",
+  update_application_folder: "更新简历文件夹",
+  delete_application_folder: "删除简历文件夹",
+  reorder_categories: "重排分类",
+  user_wechat_bind: "用户微信绑定",
+  user_oauth_revoke: "用户 OAuth 撤销",
   refresh_token_reuse_detected: "检测到 Refresh Token 复用",
   user_set_password: "用户设置密码",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
-  order: "订单", admin: "管理员", product: "产品", category: "分类",
-  job: "职位", message: "留言", application: "简历", coupon: "优惠券",
-  system: "系统", oauth_client: "SSO 客户端", user: "用户",
-  application_folder: "简历文件夹", oauth_consent: "SSO 授权", vip: "会员", oauth_session: "SSO 会话",
+  order: "订单",
+  admin: "管理员",
+  product: "产品",
+  category: "分类",
+  job: "职位",
+  message: "留言",
+  application: "简历",
+  coupon: "优惠券",
+  system: "系统",
+  oauth_client: "SSO 客户端",
+  user: "用户",
+  application_folder: "简历文件夹",
+  oauth_consent: "SSO 授权",
+  vip: "会员",
+  oauth_session: "SSO 会话",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -139,7 +182,7 @@ export default function AuditLogsPage() {
   }, [page, action, targetType, startDate, endDate]);
 
   useEffect(() => {
-    fetchLogs();
+    deferInEffect(fetchLogs);
   }, [fetchLogs]);
 
   const updateParams = (newParams: Record<string, string>) => {
@@ -166,9 +209,16 @@ export default function AuditLogsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-medium text-brand-charcoal">审计日志</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">记录管理端关键操作，便于追溯和合规审计</p>
+          <p className="mt-1 text-sm text-brand-charcoal/50">
+            记录管理端关键操作，便于追溯和合规审计
+          </p>
         </div>
-        <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchLogs}>
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<RefreshCw className="h-4 w-4" />}
+          onClick={fetchLogs}
+        >
           刷新
         </Button>
       </div>
@@ -232,13 +282,27 @@ export default function AuditLogsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-                <th scope="col" className="px-4 py-3">时间</th>
-                <th scope="col" className="px-4 py-3">操作人</th>
-                <th scope="col" className="px-4 py-3">操作</th>
-                <th scope="col" className="px-4 py-3">目标类型</th>
-                <th scope="col" className="px-4 py-3">目标ID</th>
-                <th scope="col" className="px-4 py-3">IP地址</th>
-                <th scope="col" className="px-4 py-3 text-right">操作</th>
+                <th scope="col" className="px-4 py-3">
+                  时间
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  操作人
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  操作
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  目标类型
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  目标ID
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  IP地址
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -255,7 +319,10 @@ export default function AuditLogsPage() {
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
             <p className="mt-1 text-sm text-brand-charcoal/50">无法获取审计日志，请检查网络连接</p>
             <button
-              onClick={() => { setLoadError(false); fetchLogs(); }}
+              onClick={() => {
+                setLoadError(false);
+                fetchLogs();
+              }}
               className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
             >
               重试
@@ -265,13 +332,27 @@ export default function AuditLogsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-                <th scope="col" className="px-4 py-3">时间</th>
-                <th scope="col" className="px-4 py-3">操作人</th>
-                <th scope="col" className="px-4 py-3">操作</th>
-                <th scope="col" className="px-4 py-3">目标类型</th>
-                <th scope="col" className="px-4 py-3">目标ID</th>
-                <th scope="col" className="px-4 py-3">IP地址</th>
-                <th scope="col" className="px-4 py-3 text-right">操作</th>
+                <th scope="col" className="px-4 py-3">
+                  时间
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  操作人
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  操作
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  目标类型
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  目标ID
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  IP地址
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -286,13 +367,27 @@ export default function AuditLogsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-                <th scope="col" className="px-4 py-3">时间</th>
-                <th scope="col" className="px-4 py-3">操作人</th>
-                <th scope="col" className="px-4 py-3">操作</th>
-                <th scope="col" className="px-4 py-3">目标类型</th>
-                <th scope="col" className="px-4 py-3">目标ID</th>
-                <th scope="col" className="px-4 py-3">IP地址</th>
-                <th scope="col" className="px-4 py-3 text-right">操作</th>
+                <th scope="col" className="px-4 py-3">
+                  时间
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  操作人
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  操作
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  目标类型
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  目标ID
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  IP地址
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -414,7 +509,7 @@ export default function AuditLogsPage() {
                   <FileJson className="h-4 w-4" />
                   操作详情
                 </h4>
-                <pre className="max-h-80 overflow-auto rounded-lg border border-brand-charcoal/8 bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/60">
+                <pre className="border-brand-charcoal/8 max-h-80 overflow-auto rounded-lg border bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/60">
                   {JSON.stringify(selectedLog.detail, null, 2)}
                 </pre>
               </div>

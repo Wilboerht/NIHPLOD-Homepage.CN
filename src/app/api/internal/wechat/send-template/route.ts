@@ -11,7 +11,7 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { getInternalApiKeys } from "@/lib/internal-api";
 import { sendWechatTemplateMessage } from "@/lib/wechat-template";
 import { z } from "zod";
-import { createHmac, timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { apiConsole } from "@/lib/logger";
 
 const sendTemplateSchema = z.object({
@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // dummy 比较，防止 secret 存在性/长度差异泄漏
-      try { timingSafeEqual(Buffer.from(secret || dummy), Buffer.from(dummy)); } catch { /* ignore */ }
+      try {
+        timingSafeEqual(Buffer.from(secret || dummy), Buffer.from(dummy));
+      } catch {
+        /* ignore */
+      }
     }
 
     if (!valid) {

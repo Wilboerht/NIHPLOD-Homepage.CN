@@ -30,19 +30,16 @@ export function getClientIP(
 ): string {
   const headers = request.headers;
 
-  const trustProxy =
-    options.trustProxy ??
-    process.env.TRUST_PROXY === "true";
+  const trustProxy = options.trustProxy ?? process.env.TRUST_PROXY === "true";
 
   if (!trustProxy) {
     // 生产环境必须配置 TRUST_PROXY=true，否则所有 IP 收敛为 "unknown"
     // 导致全局限流桶共享，DoS 防护全部失效
     if (process.env.NODE_ENV === "production" && !process.env.NEXT_PHASE) {
-      throw new Error(
-        "[ClientIP] 生产环境必须设置 TRUST_PROXY=true 和 TRUST_PROXY_HOPS。"
-      );
+      throw new Error("[ClientIP] 生产环境必须设置 TRUST_PROXY=true 和 TRUST_PROXY_HOPS。");
     }
-    const directIP = (request as Request & { socket?: { remoteAddress?: string } }).socket?.remoteAddress;
+    const directIP = (request as Request & { socket?: { remoteAddress?: string } }).socket
+      ?.remoteAddress;
     return directIP || "unknown";
   }
 
@@ -58,9 +55,10 @@ export function getClientIP(
     // 默认取最后一段（最靠近应用），而非第一段（最容易被伪造）
     // TRUST_PROXY_HOPS 可从后往前数（负值）或从前往后（正值）
     const hopsRaw = options.hops ?? parseInt(process.env.TRUST_PROXY_HOPS || "0", 10);
-    const idx = hopsRaw <= 0
-      ? ips.length - 1 + hopsRaw  // 负值/0：从尾部倒数
-      : Math.min(hopsRaw - 1, ips.length - 1);  // 正值：从头部往后
+    const idx =
+      hopsRaw <= 0
+        ? ips.length - 1 + hopsRaw // 负值/0：从尾部倒数
+        : Math.min(hopsRaw - 1, ips.length - 1); // 正值：从头部往后
     return ips[Math.max(0, Math.min(idx, ips.length - 1))] || "unknown";
   }
 

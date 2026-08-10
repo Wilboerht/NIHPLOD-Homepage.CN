@@ -17,10 +17,16 @@ const DPOP_PROOF_MAX_AGE_MS = 60_000; // 1 分钟
 const DPOP_NONCE_TTL_MS = 5 * 60_000; // 5 分钟
 
 const supportedAlgorithms = [
-  "ES256", "ES384", "ES512",
+  "ES256",
+  "ES384",
+  "ES512",
   "EdDSA",
-  "RS256", "RS384", "RS512",
-  "PS256", "PS384", "PS512",
+  "RS256",
+  "RS384",
+  "RS512",
+  "PS256",
+  "PS384",
+  "PS512",
 ];
 
 // 已使用的 DPoP nonce 缓存（防重放）
@@ -105,7 +111,9 @@ async function withDpopMutex<T>(key: string, fn: () => T | Promise<T>): Promise<
     await dpopMutexMap.get(key);
   }
   let resolve: () => void;
-  const promise = new Promise<void>((r) => { resolve = r; });
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
   dpopMutexMap.set(key, promise);
   try {
     return await fn();
@@ -121,7 +129,7 @@ export async function validateDPoPProof(
   htu: string,
   expectedAth?: string,
   expectedNonce?: string,
-  clientUserId?: string,
+  clientUserId?: string
 ): Promise<DPoPValidationResult> {
   if (!dpopHeader) {
     return { valid: false, error: "invalid_dpop_proof", errorDescription: "缺少 DPoP header" };
@@ -131,21 +139,25 @@ export async function validateDPoPProof(
   let jwk: JWK;
 
   try {
-    const { payload: rawPayload, protectedHeader } = await jwtVerify(dpopHeader, async (header) => {
-      if (!header.jwk) {
-        throw new Error("DPoP proof 必须包含 jwk 声明");
+    const { payload: rawPayload } = await jwtVerify(
+      dpopHeader,
+      async (header) => {
+        if (!header.jwk) {
+          throw new Error("DPoP proof 必须包含 jwk 声明");
+        }
+        if (!supportedAlgorithms.includes(header.alg as string)) {
+          throw new Error(`不支持的 DPoP 算法: ${header.alg}`);
+        }
+        jwk = header.jwk as JWK;
+        const key = await importJWK(jwk, header.alg as string);
+        return key;
+      },
+      {
+        algorithms: supportedAlgorithms,
+        typ: "dpop+jwt",
+        maxTokenAge: DPOP_PROOF_MAX_AGE_MS / 1000,
       }
-      if (!supportedAlgorithms.includes(header.alg as string)) {
-        throw new Error(`不支持的 DPoP 算法: ${header.alg}`);
-      }
-      jwk = header.jwk as JWK;
-      const key = await importJWK(jwk, header.alg as string);
-      return key;
-    }, {
-      algorithms: supportedAlgorithms,
-      typ: "dpop+jwt",
-      maxTokenAge: DPOP_PROOF_MAX_AGE_MS / 1000,
-    });
+    );
 
     payload = rawPayload as unknown as DPoPProofPayload;
   } catch (err) {
@@ -163,28 +175,48 @@ export async function validateDPoPProof(
     return true;
   });
   if (!jtiOk) {
-    return { valid: false, error: "invalid_dpop_proof", errorDescription: "DPoP proof jti 已被使用" };
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: "DPoP proof jti 已被使用",
+    };
   }
 
   // htm 必须匹配实际 HTTP method
   if (payload.htm !== htm) {
-    return { valid: false, error: "invalid_dpop_proof", errorDescription: `htm 不匹配 (期望: ${htm}, 实际: ${payload.htm})` };
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: `htm 不匹配 (期望: ${htm}, 实际: ${payload.htm})`,
+    };
   }
 
   // htu 必须匹配实际请求 URL（小写，不含 query/fragment 的完整 URL）
   if (payload.htu !== htu) {
-    return { valid: false, error: "invalid_dpop_proof", errorDescription: `htu 不匹配 (期望: ${htu}, 实际: ${payload.htu})` };
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: `htu 不匹配 (期望: ${htu}, 实际: ${payload.htu})`,
+    };
   }
 
   // 时间窗口检查
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - payload.iat) > DPOP_PROOF_MAX_AGE_MS / 1000) {
-    return { valid: false, error: "invalid_dpop_proof", errorDescription: "DPoP proof iat 超出时间窗口" };
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: "DPoP proof iat 超出时间窗口",
+    };
   }
 
   // access token hash 绑定
   if (expectedAth && payload.ath !== expectedAth) {
-    return { valid: false, error: "invalid_dpop_proof", errorDescription: "DPoP proof ath 与 access token 不匹配" };
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: "DPoP proof ath 与 access token 不匹配",
+    };
   }
 
   // nonce 校验（服务端要求 nonce 时）

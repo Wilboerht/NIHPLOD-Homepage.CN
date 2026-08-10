@@ -116,11 +116,9 @@ describe("订单服务", () => {
       mockPrisma.order.create.mockResolvedValue({ id: "order-1", orderNo: "20240101000000123456" });
       mockPrisma.cartItem.deleteMany.mockResolvedValue({ count: 1 });
 
-      const result = await createOrder(
-        "user-1",
-        [{ productId: "prod-1", quantity: 2 }],
-        { recipient: { name: "张三", phone: "13800138000", address: "北京市" } }
-      );
+      const result = await createOrder("user-1", [{ productId: "prod-1", quantity: 2 }], {
+        recipient: { name: "张三", phone: "13800138000", address: "北京市" },
+      });
 
       expect(result.success).toBe(true);
       expect(result.orderId).toBe("order-1");
@@ -137,11 +135,9 @@ describe("订单服务", () => {
       mockPrisma.product.findMany.mockResolvedValue([makeProduct({ stock: 1 })]);
       mockPrisma.product.updateMany.mockResolvedValue({ count: 0 }); // 扣减失败
 
-      const result = await createOrder(
-        "user-1",
-        [{ productId: "prod-1", quantity: 5 }],
-        { recipient: { name: "张三", phone: "13800138000", address: "北京市" } }
-      );
+      const result = await createOrder("user-1", [{ productId: "prod-1", quantity: 5 }], {
+        recipient: { name: "张三", phone: "13800138000", address: "北京市" },
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("库存不足");
@@ -151,11 +147,9 @@ describe("订单服务", () => {
     it("商品不存在或已下架时应拒绝", async () => {
       mockPrisma.product.findMany.mockResolvedValue([]);
 
-      const result = await createOrder(
-        "user-1",
-        [{ productId: "prod-999", quantity: 1 }],
-        { recipient: { name: "张三", phone: "13800138000", address: "北京市" } }
-      );
+      const result = await createOrder("user-1", [{ productId: "prod-999", quantity: 1 }], {
+        recipient: { name: "张三", phone: "13800138000", address: "北京市" },
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("不存在或已下架");
@@ -164,11 +158,9 @@ describe("订单服务", () => {
     it("不支持站内购买的商品应拒绝", async () => {
       mockPrisma.product.findMany.mockResolvedValue([makeProduct({ allowDirectBuy: false })]);
 
-      const result = await createOrder(
-        "user-1",
-        [{ productId: "prod-1", quantity: 1 }],
-        { recipient: { name: "张三", phone: "13800138000", address: "北京市" } }
-      );
+      const result = await createOrder("user-1", [{ productId: "prod-1", quantity: 1 }], {
+        recipient: { name: "张三", phone: "13800138000", address: "北京市" },
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("不支持站内购买");
@@ -212,11 +204,9 @@ describe("订单服务", () => {
       mockPrisma.order.create.mockResolvedValue({ id: "order-1", orderNo: "20240101000000123456" });
       mockPrisma.cartItem.deleteMany.mockResolvedValue({ count: 0 });
 
-      await createOrder(
-        "user-1",
-        [{ productId: "prod-1", quantity: 1 }],
-        { recipient: { name: "张三", phone: "13800138000", address: "北京市" } }
-      );
+      await createOrder("user-1", [{ productId: "prod-1", quantity: 1 }], {
+        recipient: { name: "张三", phone: "13800138000", address: "北京市" },
+      });
 
       // payAmount = totalAmount(100) + shippingFee(15) - discount(0) = 115
       expect(mockPrisma.order.create).toHaveBeenCalledWith(
@@ -468,8 +458,22 @@ describe("订单服务", () => {
 
     it("CAS 失败的订单不应恢复库存（静默跳过）", async () => {
       const orders = [
-        { id: "order-1", orderNo: "A", status: "PENDING", adminNote: null, items: [{ productId: "prod-1", quantity: 1 }], userCoupon: null },
-        { id: "order-2", orderNo: "B", status: "PENDING", adminNote: null, items: [{ productId: "prod-2", quantity: 2 }], userCoupon: null },
+        {
+          id: "order-1",
+          orderNo: "A",
+          status: "PENDING",
+          adminNote: null,
+          items: [{ productId: "prod-1", quantity: 1 }],
+          userCoupon: null,
+        },
+        {
+          id: "order-2",
+          orderNo: "B",
+          status: "PENDING",
+          adminNote: null,
+          items: [{ productId: "prod-2", quantity: 2 }],
+          userCoupon: null,
+        },
       ];
       mockPrisma.order.findMany.mockResolvedValue(orders);
       // 第一个 CAS 失败，第二个成功

@@ -119,7 +119,9 @@ export function ContactContent({ content }: ContactContentProps) {
     }
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     const error = validateField(name, value);
     setErrors((prev) => {
@@ -133,13 +135,16 @@ export function ContactContent({ content }: ContactContentProps) {
     });
   };
 
-  useEffect(() => {
-    const typeParam = searchParams.get("type");
+  // URL type 参数同步到表单（渲染阶段同步派生状态，避免 effect 内 setState）
+  const typeParam = searchParams.get("type");
+  const [prevTypeParam, setPrevTypeParam] = useState<string | null>(null);
+  if (prevTypeParam !== typeParam) {
+    setPrevTypeParam(typeParam);
     if (typeParam) {
       const match = messageTypesData.find((t) => t.value === typeParam);
       if (match) setFormData((prev) => ({ ...prev, type: typeParam }));
     }
-  }, [searchParams, messageTypesData]);
+  }
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -158,10 +163,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        desktopMenuRef.current &&
-        !desktopMenuRef.current.contains(event.target as Node)
-      ) {
+      if (desktopMenuRef.current && !desktopMenuRef.current.contains(event.target as Node)) {
         setDesktopMenuOpen(false);
       }
     };
@@ -219,7 +221,7 @@ export function ContactContent({ content }: ContactContentProps) {
   };
 
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
+    <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] lg:mb-[-6rem]">
       {/* Top Bar */}
       <nav
         className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
@@ -424,7 +426,7 @@ export function ContactContent({ content }: ContactContentProps) {
           {title.zh}
         </h1>
         <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
-        <p className="mx-auto max-w-md px-6 text-[13px] font-light tracking-[0.06em] leading-[1.8] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
+        <p className="mx-auto max-w-md px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
           {description}
         </p>
       </div>
@@ -437,7 +439,10 @@ export function ContactContent({ content }: ContactContentProps) {
               <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
               <h2 className="mb-2 text-xl font-medium text-brand-charcoal">留言已提交</h2>
               <p className="text-brand-charcoal/60">感谢您的留言，我们会尽快回复</p>
-              <Link href="/" className="mt-6 inline-block text-[15px] font-light tracking-[0.12em] text-brand-charcoal hover:underline">
+              <Link
+                href="/"
+                className="mt-6 inline-block text-[15px] font-light tracking-[0.12em] text-brand-charcoal hover:underline"
+              >
                 返回首页
               </Link>
             </div>
@@ -475,7 +480,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     autoComplete="name"
                     maxLength={50}
                     className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:tracking-wider placeholder:uppercase placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                       errors.name
                         ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                         : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
@@ -502,7 +507,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     inputMode="tel"
                     maxLength={11}
                     className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:tracking-wider placeholder:uppercase placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                       errors.phone
                         ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                         : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
@@ -531,7 +536,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     }}
                     onBlur={handleBlur}
                     className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors appearance-none md:rounded-lg md:border md:px-4 md:py-3.5 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
+                      "w-full appearance-none rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors md:rounded-lg md:border md:px-4 md:py-3.5 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
                       !formData.type && "text-sm text-brand-charcoal/40",
                       errors.type
                         ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
@@ -568,7 +573,7 @@ export function ContactContent({ content }: ContactContentProps) {
                   rows={4}
                   maxLength={2000}
                   className={cn(
-                    "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:tracking-wider placeholder:uppercase placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                    "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                     errors.content
                       ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                       : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
@@ -582,7 +587,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:bg-transparent md:gap-2 md:py-3.5 md:tracking-[0.15em] md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:gap-2 md:bg-transparent md:py-3.5 md:tracking-[0.15em] md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
               >
                 {status === "loading" ? (
                   <>
@@ -619,7 +624,9 @@ export function ContactContent({ content }: ContactContentProps) {
             </button>
             {/* PC 端 hover 展示 */}
             <div className="group relative hidden cursor-pointer md:inline-flex">
-              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
+              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">
+                服务号
+              </span>
               <Image
                 src="/images/wechat-qrcode.jpg"
                 alt="NIHPLOD 微信服务号"
@@ -660,7 +667,9 @@ export function ContactContent({ content }: ContactContentProps) {
                 unoptimized
                 className="h-[200px] w-[200px] rounded-lg"
               />
-              <p className="mt-4 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/60">扫码关注 NIHPLOD 服务号</p>
+              <p className="mt-4 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/60">
+                扫码关注 NIHPLOD 服务号
+              </p>
               <button
                 type="button"
                 onClick={() => setQrModalOpen(false)}

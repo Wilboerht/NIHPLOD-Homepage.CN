@@ -107,7 +107,7 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
     <aside className="hidden w-72 shrink-0 lg:block">
       <div
         ref={navRef}
-        className="scrollbar-hide sticky top-[120px] md:top-32 max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain"
+        className="scrollbar-hide sticky top-[120px] max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain md:top-32"
       >
         <nav className="flex flex-col space-y-1" aria-label={label}>
           {sections.map((section) => (

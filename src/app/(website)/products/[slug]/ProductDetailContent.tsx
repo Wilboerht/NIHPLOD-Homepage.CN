@@ -5,15 +5,7 @@ import Image from "next/image";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Share2,
-  Menu,
-  X,
-  Home,
-  ShoppingCart,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, Menu, X, Home, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ProductCard, PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
@@ -196,10 +188,13 @@ export function ProductDetailContent({
     usage: product.usage,
   };
 
-  const handleTabChange = useCallback((key: TabType) => {
-    if (key === activeTab) return;
-    setActiveTab(key);
-  }, [activeTab]);
+  const handleTabChange = useCallback(
+    (key: TabType) => {
+      if (key === activeTab) return;
+      setActiveTab(key);
+    },
+    [activeTab]
+  );
 
   const handleTabKeyDown = (e: React.KeyboardEvent) => {
     const currentIndex = tabs.findIndex((t) => t.key === activeTab);
@@ -308,29 +303,28 @@ export function ProductDetailContent({
     setLightboxOpen(true);
   }, []);
 
-  const handleMainImageKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : prev));
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      setCurrentImageIndex((prev) =>
-        prev < product.images.length - 1 ? prev + 1 : prev
-      );
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setLightboxOpen(true);
-    }
-  }, [product.images.length]);
+  const handleMainImageKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : prev));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setCurrentImageIndex((prev) => (prev < product.images.length - 1 ? prev + 1 : prev));
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setLightboxOpen(true);
+      }
+    },
+    [product.images.length]
+  );
 
   const handleLightboxPrev = useCallback(() => {
     setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : prev));
   }, []);
 
   const handleLightboxNext = useCallback(() => {
-    setCurrentImageIndex((prev) =>
-      prev < product.images.length - 1 ? prev + 1 : prev
-    );
+    setCurrentImageIndex((prev) => (prev < product.images.length - 1 ? prev + 1 : prev));
   }, [product.images.length]);
 
   const handleLightboxKeyDown = useCallback(
@@ -485,9 +479,7 @@ export function ProductDetailContent({
       </a>
     ) : (
       !product.allowDirectBuy && (
-        <span className="text-sm font-light text-brand-charcoal/50">
-          暂无购买链接
-        </span>
+        <span className="text-sm font-light text-brand-charcoal/50">暂无购买链接</span>
       )
     );
 
@@ -657,11 +649,10 @@ export function ProductDetailContent({
       {/* 固定顶栏占位 */}
       <div className="h-[88px] shrink-0 md:h-[88px]" />
 
-      <div className="relative z-10 flex flex-1 flex-col pb-24 lg:w-[80%] lg:mx-auto lg:justify-center lg:pb-8">
-
+      <div className="relative z-10 flex flex-1 flex-col pb-24 lg:mx-auto lg:w-[80%] lg:justify-center lg:pb-8">
         {/* 内容区域（全局布局已提供 <main>，此处使用 div 避免嵌套 main 地标） */}
         <div className="relative w-full lg:flex lg:items-center lg:justify-center">
-          <div className="w-full scroll-smooth overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <div className="w-full overflow-y-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12">
               {/* 左侧：图片轮播区域 */}
               <div className="px-6 pt-6 lg:flex lg:min-w-0 lg:flex-col lg:justify-center lg:overflow-y-auto lg:px-0 lg:pb-8">
@@ -696,7 +687,13 @@ export function ProductDetailContent({
                           transition={{ duration: 0.4 }}
                         >
                           {product.images.map((img, index) => (
-                            <div key={img.id} className="relative h-full w-full flex-shrink-0" role="group" aria-roledescription="slide" aria-label={`第 ${index + 1} 张，共 ${product.images.length} 张`}>
+                            <div
+                              key={img.id}
+                              className="relative h-full w-full flex-shrink-0"
+                              role="group"
+                              aria-roledescription="slide"
+                              aria-label={`第 ${index + 1} 张，共 ${product.images.length} 张`}
+                            >
                               <Image
                                 src={img.url}
                                 alt={img.alt || `${product.name} 图片 ${index + 1}`}
@@ -717,12 +714,13 @@ export function ProductDetailContent({
                               <button
                                 key={index}
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(index); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentImageIndex(index);
+                                }}
                                 className={cn(
                                   "h-[2px] rounded-full border-none p-0 transition-all duration-300",
-                                  currentImageIndex === index
-                                    ? "w-5 bg-white"
-                                    : "w-3 bg-white/40"
+                                  currentImageIndex === index ? "w-5 bg-white" : "w-3 bg-white/40"
                                 )}
                                 aria-label={`查看第 ${index + 1} 张图片`}
                                 aria-current={currentImageIndex === index ? "true" : undefined}
@@ -771,169 +769,175 @@ export function ProductDetailContent({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                   >
-                  {/* 产品名称 + 操作按钮 */}
-                  <div className="flex items-center justify-between gap-3">
-                    <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-brand-charcoal sm:text-[24px] lg:text-[28px]">
-                      {product.name}
-                    </h1>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={handleShare}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
-                        aria-label="分享"
-                      >
-                        <Share2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 产地/规格 */}
-                  {(product.origin || product.capacity) && (
-                    <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-brand-charcoal">
-                      {product.origin && (
-                        <div className="flex gap-0">
-                          <dt>产地：</dt>
-                          <dd>{product.origin}</dd>
-                        </div>
-                      )}
-                      {product.capacity && (
-                        <div className="flex gap-0">
-                          <dt>规格：</dt>
-                          <dd>{product.capacity}</dd>
-                        </div>
-                      )}
-                    </dl>
-                  )}
-
-                  {/* 价格 */}
-                  <div className="mt-4">
-                    <data
-                      value={product.price}
-                      className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-brand-charcoal"
-                    >
-                      {formatPrice(product.price)}
-                    </data>
-                  </div>
-
-                  {/* 功效标签 */}
-                  {product.benefits.length > 0 && (
-                    <ul className="mt-6 flex flex-wrap gap-2">
-                      {product.benefits.map((benefit, index) => (
-                        <li
-                          key={index}
-                          className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light tracking-[0.06em] text-brand-charcoal md:text-sm"
-                        >
-                          {benefit}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </m.div>
-
-                {/* Tab 区域 */}
-                <div className="py-8">
-                  {/* Tab 切换 */}
-                  <div className="border-b border-brand-beige">
-                    <div className="flex justify-start gap-6" role="tablist" aria-label="产品信息">
-                      {tabs.map((tab) => (
+                    {/* 产品名称 + 操作按钮 */}
+                    <div className="flex items-center justify-between gap-3">
+                      <h1 className="font-serif text-[20px] text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-brand-charcoal sm:text-[24px] lg:text-[28px]">
+                        {product.name}
+                      </h1>
+                      <div className="flex items-center gap-1">
                         <button
-                          key={tab.key}
                           type="button"
-                          role="tab"
-                          id={`tab-${tab.key}`}
-                          aria-selected={activeTab === tab.key}
-                          aria-controls={`panel-${tab.key}`}
-                          tabIndex={activeTab === tab.key ? 0 : -1}
-                          onClick={() => handleTabChange(tab.key)}
-                          onKeyDown={handleTabKeyDown}
-                          className={cn(
-                            "relative cursor-pointer pb-3 text-[13px] tracking-[0.08em] transition-colors md:text-sm md:tracking-[0.12em]",
-                            activeTab === tab.key
-                              ? "font-normal text-brand-charcoal"
-                              : "font-light text-brand-charcoal hover:opacity-70"
-                          )}
+                          onClick={handleShare}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
+                          aria-label="分享"
                         >
-                          {tab.label}
-                          {activeTab === tab.key && (
-                            <m.div
-                              className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00263e]"
-                              layoutId="tab-indicator"
-                            />
-                          )}
+                          <Share2 className="h-5 w-5" />
                         </button>
-                      ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Tab 内容 - 所有面板叠放在同一 grid 格子中，容器高度恒为最高面板，切换时不抖动 */}
-                  <div className="mt-6 grid">
-                    {tabs.map((tab) => {
-                      const isActive = activeTab === tab.key;
-                      return (
-                        <div
-                          key={tab.key}
-                          role="tabpanel"
-                          id={`panel-${tab.key}`}
-                          aria-labelledby={`tab-${tab.key}`}
-                          aria-hidden={!isActive}
-                          tabIndex={isActive ? 0 : -1}
-                          className={cn(
-                            "col-start-1 row-start-1 transition-opacity duration-300",
-                            isActive ? "opacity-100" : "pointer-events-none invisible opacity-0"
-                          )}
-                        >
-                          {tabContent[tab.key] ? (
-                            <div
-                              className="text-left text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 md:text-base md:tracking-[0.08em] [&_p+p]:mt-3"
-                              dangerouslySetInnerHTML={{
-                                __html: sanitizeHtml(tabContent[tab.key]!),
-                              }}
-                            />
-                          ) : (
-                            <p className="text-base font-light text-brand-charcoal/40">暂无内容</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 小红书链接 */}
-                <XiaohongshuLink
-                  categoryName={product.category.name}
-                  className="flex flex-col gap-1 pb-6 lg:pb-7"
-                />
-
-                {/* 购买按钮区域 - 桌面端内联 */}
-                <div className="pb-6 max-lg:hidden">
-                  {/* 外部购买链接 - 图标形式 */}
-                  <div className="flex flex-wrap items-center justify-start gap-4">
-                    {product.allowDirectBuy && (
-                      <button
-                        type="button"
-                        onClick={handleOfficialBuy}
-                        disabled={buying}
-                        aria-label="官网购买"
-                        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <span className="text-xs font-normal tracking-[0.12em] text-brand-charcoal">
-                          {buying ? "加入中…" : "官网"}
-                        </span>
-                      </button>
+                    {/* 产地/规格 */}
+                    {(product.origin || product.capacity) && (
+                      <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-brand-charcoal">
+                        {product.origin && (
+                          <div className="flex gap-0">
+                            <dt>产地：</dt>
+                            <dd>{product.origin}</dd>
+                          </div>
+                        )}
+                        {product.capacity && (
+                          <div className="flex gap-0">
+                            <dt>规格：</dt>
+                            <dd>{product.capacity}</dd>
+                          </div>
+                        )}
+                      </dl>
                     )}
-                    {renderExternalPurchaseLinks()}
+
+                    {/* 价格 */}
+                    <div className="mt-4">
+                      <data
+                        value={product.price}
+                        className="text-lg font-light tracking-[0.12em] text-brand-charcoal max-lg:text-brand-charcoal"
+                      >
+                        {formatPrice(product.price)}
+                      </data>
+                    </div>
+
+                    {/* 功效标签 */}
+                    {product.benefits.length > 0 && (
+                      <ul className="mt-6 flex flex-wrap gap-2">
+                        {product.benefits.map((benefit, index) => (
+                          <li
+                            key={index}
+                            className="rounded-full border border-brand-beige bg-[#FBF8F0] px-3 py-1 text-[13px] font-light tracking-[0.06em] text-brand-charcoal md:text-sm"
+                          >
+                            {benefit}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </m.div>
+
+                  {/* Tab 区域 */}
+                  <div className="py-8">
+                    {/* Tab 切换 */}
+                    <div className="border-b border-brand-beige">
+                      <div
+                        className="flex justify-start gap-6"
+                        role="tablist"
+                        aria-label="产品信息"
+                      >
+                        {tabs.map((tab) => (
+                          <button
+                            key={tab.key}
+                            type="button"
+                            role="tab"
+                            id={`tab-${tab.key}`}
+                            aria-selected={activeTab === tab.key}
+                            aria-controls={`panel-${tab.key}`}
+                            tabIndex={activeTab === tab.key ? 0 : -1}
+                            onClick={() => handleTabChange(tab.key)}
+                            onKeyDown={handleTabKeyDown}
+                            className={cn(
+                              "relative cursor-pointer pb-3 text-[13px] tracking-[0.08em] transition-colors md:text-sm md:tracking-[0.12em]",
+                              activeTab === tab.key
+                                ? "font-normal text-brand-charcoal"
+                                : "font-light text-brand-charcoal hover:opacity-70"
+                            )}
+                          >
+                            {tab.label}
+                            {activeTab === tab.key && (
+                              <m.div
+                                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00263e]"
+                                layoutId="tab-indicator"
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tab 内容 - 所有面板叠放在同一 grid 格子中，容器高度恒为最高面板，切换时不抖动 */}
+                    <div className="mt-6 grid">
+                      {tabs.map((tab) => {
+                        const isActive = activeTab === tab.key;
+                        return (
+                          <div
+                            key={tab.key}
+                            role="tabpanel"
+                            id={`panel-${tab.key}`}
+                            aria-labelledby={`tab-${tab.key}`}
+                            aria-hidden={!isActive}
+                            tabIndex={isActive ? 0 : -1}
+                            className={cn(
+                              "col-start-1 row-start-1 transition-opacity duration-300",
+                              isActive ? "opacity-100" : "pointer-events-none invisible opacity-0"
+                            )}
+                          >
+                            {tabContent[tab.key] ? (
+                              <div
+                                className="text-left text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 md:text-base md:tracking-[0.08em] [&_p+p]:mt-3"
+                                dangerouslySetInnerHTML={{
+                                  __html: sanitizeHtml(tabContent[tab.key]!),
+                                }}
+                              />
+                            ) : (
+                              <p className="text-base font-light text-brand-charcoal/40">
+                                暂无内容
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
-                {/* 购买链接区域 - 移动端（外部渠道，官网直购见底部固定栏） */}
-                {showMobilePurchaseLinks && (
-                  <div className="pb-6 lg:hidden">
+                  {/* 小红书链接 */}
+                  <XiaohongshuLink
+                    categoryName={product.category.name}
+                    className="flex flex-col gap-1 pb-6 lg:pb-7"
+                  />
+
+                  {/* 购买按钮区域 - 桌面端内联 */}
+                  <div className="pb-6 max-lg:hidden">
+                    {/* 外部购买链接 - 图标形式 */}
                     <div className="flex flex-wrap items-center justify-start gap-4">
+                      {product.allowDirectBuy && (
+                        <button
+                          type="button"
+                          onClick={handleOfficialBuy}
+                          disabled={buying}
+                          aria-label="官网购买"
+                          className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <span className="text-xs font-normal tracking-[0.12em] text-brand-charcoal">
+                            {buying ? "加入中…" : "官网"}
+                          </span>
+                        </button>
+                      )}
                       {renderExternalPurchaseLinks()}
                     </div>
                   </div>
-                )}
+
+                  {/* 购买链接区域 - 移动端（外部渠道，官网直购见底部固定栏） */}
+                  {showMobilePurchaseLinks && (
+                    <div className="pb-6 lg:hidden">
+                      <div className="flex flex-wrap items-center justify-start gap-4">
+                        {renderExternalPurchaseLinks()}
+                      </div>
+                    </div>
+                  )}
 
                   {/* 肌智派素颜测肤推广 */}
                   <div className="pb-6 lg:pb-7">
@@ -943,7 +947,7 @@ export function ProductDetailContent({
 
                 {/* 相关产品推荐 */}
                 {relatedProducts.length > 0 && (
-                  <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pt-8 sm:px-0 pb-24">
+                  <div className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pb-24 pt-8 sm:px-0">
                     <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em] max-lg:text-brand-charcoal">
                       相关推荐
                     </h2>
@@ -999,12 +1003,18 @@ export function ProductDetailContent({
             </div>
           </div>
         )}
-
       </div>
 
       {/* 底部版权信息 */}
       <footer className="mt-auto md:border-t md:border-brand-charcoal/10">
-        <div className={cn("container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16", product.allowDirectBuy ? "max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom))]" : "max-lg:pb-6")}>
+        <div
+          className={cn(
+            "container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16",
+            product.allowDirectBuy
+              ? "max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
+              : "max-lg:pb-6"
+          )}
+        >
           <div className="flex items-center justify-center gap-3">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
@@ -1020,7 +1030,9 @@ export function ProductDetailContent({
             </button>
             {/* PC端：hover 显示 */}
             <div className="group relative hidden cursor-pointer md:inline-flex">
-              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">服务号</span>
+              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">
+                服务号
+              </span>
               <Image
                 src="/images/wechat-qrcode.jpg"
                 alt="NIHPLOD 微信服务号"
@@ -1174,7 +1186,7 @@ function ImageLightbox({
           alt={imgAlt}
           width={2048}
           height={2048}
-          className="max-h-[90vh] h-auto w-auto max-w-full object-contain"
+          className="h-auto max-h-[90vh] w-auto max-w-full object-contain"
           sizes="100vw"
           priority
         />

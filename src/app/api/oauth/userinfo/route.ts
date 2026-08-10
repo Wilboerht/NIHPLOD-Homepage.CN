@@ -31,10 +31,7 @@ export async function GET(request: NextRequest) {
     // 限流
     const limitResult = await rateLimit(ip, "oauth-userinfo");
     if (!limitResult.success) {
-      return resJson(
-        { error: "rate_limited", error_description: "请求过于频繁" },
-        429
-      );
+      return resJson({ error: "rate_limited", error_description: "请求过于频繁" }, 429);
     }
 
     // 从 Authorization header 提取 token
@@ -77,10 +74,7 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { reason: "blacklisted", blacklistReason: blacklisted.reason },
       });
-      return resJson(
-        { error: "account_disabled", error_description: "账户已被限制" },
-        403
-      );
+      return resJson({ error: "account_disabled", error_description: "账户已被限制" }, 403);
     }
 
     // DPoP 绑定验证：若 token 包含 cnf.jkt，请求必须携带有效的 DPoP proof
@@ -161,10 +155,7 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { reason: "account_disabled" },
       });
-      return resJson(
-        { error: "account_disabled", error_description: "账户已被封禁或冻结" },
-        403
-      );
+      return resJson({ error: "account_disabled", error_description: "账户已被封禁或冻结" }, 403);
     }
 
     // 按 scope 裁剪返回字段

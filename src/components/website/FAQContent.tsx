@@ -216,8 +216,7 @@ export function FAQContent() {
           <div className="texture-overlay absolute inset-0 z-[-1]" />
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:pb-0 sm:px-10 lg:px-[15%] xl:px-[20%]">
-
+        <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:px-10 sm:pb-0 lg:px-[15%] xl:px-[20%]">
           {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {/* Top Fade Mask - 仅在滚动后显示，通过 ref 直接操作避免重渲染 */}
@@ -232,7 +231,6 @@ export function FAQContent() {
               ref={mobileScrollRef}
               className="flex h-full flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-
               {/* ===== Mobile: Drill-down List/Detail ===== */}
               <div className="flex flex-1 flex-col sm:hidden">
                 <AnimatePresence mode="wait">
@@ -347,9 +345,9 @@ export function FAQContent() {
                     <div
                       key={index}
                       className={cn(
-                        "group border-b border-l-[1.5px] border-brand-charcoal/10 border-l-transparent border-t-0 border-r-0 transition-colors duration-500 ease-out",
+                        "group border-b border-l-[1.5px] border-r-0 border-t-0 border-brand-charcoal/10 border-l-transparent transition-colors duration-500 ease-out",
                         openIndex === index
-                          ? "bg-[#FFFFFF]/40 border-l-[#B5AC88]"
+                          ? "border-l-[#B5AC88] bg-[#FFFFFF]/40"
                           : "hover:bg-white/20"
                       )}
                     >
@@ -371,8 +369,8 @@ export function FAQContent() {
                           className={cn(
                             "shrink-0 rounded-full p-1.5 text-brand-charcoal/30 transition-all duration-500",
                             openIndex === index
-                              ? "rotate-45 text-brand-charcoal/80 bg-brand-charcoal/10"
-                              : "group-hover:text-brand-charcoal/50 group-hover:bg-brand-charcoal/[0.03]"
+                              ? "rotate-45 bg-brand-charcoal/10 text-brand-charcoal/80"
+                              : "group-hover:bg-brand-charcoal/[0.03] group-hover:text-brand-charcoal/50"
                           )}
                         >
                           <Plus className="h-5 w-5 stroke-[1.5]" />
@@ -415,12 +413,11 @@ export function FAQContent() {
                   </button>
                 </div>
               </div>
-
             </div>
           </div>
 
           {/* Footer Info - Desktop 固定页脚 */}
-          <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pt-10 pb-4 sm:flex">
+          <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-10 sm:flex">
             <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/[0.48]">
               <FooterCopyright />
             </p>

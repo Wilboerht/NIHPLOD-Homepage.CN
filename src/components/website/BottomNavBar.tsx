@@ -180,10 +180,7 @@ export function BottomNavBar() {
 
   // 当抽屉展开、动画中、登录弹窗、用户中心面板或联系我们弹窗激活时，隐藏导航栏
   const isVisible =
-    !isDrawerOpen &&
-    !isDrawerAnimating &&
-    !userCenterOpen &&
-    !isBottomNavHiddenRoute(pathname);
+    !isDrawerOpen && !isDrawerAnimating && !userCenterOpen && !isBottomNavHiddenRoute(pathname);
 
   // 尊重用户减少动画偏好
   const dockTransition = shouldReduceMotion
@@ -216,7 +213,12 @@ export function BottomNavBar() {
             delayChildren: 0.04,
           },
         },
-        exit: { opacity: 0, y: 8, scale: 0.9, transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] } },
+        exit: {
+          opacity: 0,
+          y: 8,
+          scale: 0.9,
+          transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] },
+        },
       };
 
   const menuItemVariants: Variants = shouldReduceMotion

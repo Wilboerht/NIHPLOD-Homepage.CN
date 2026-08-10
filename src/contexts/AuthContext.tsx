@@ -1,8 +1,17 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+  useEffect,
+} from "react";
 import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { apiPost } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface User {
   id: string;
@@ -74,7 +83,10 @@ function buildAuthUrl(mode: string, returnTo?: string | null) {
 
 function savePendingCheckout(pending: PendingCheckout | null) {
   if (typeof window === "undefined") return;
-  if (pending && (pending.selectedProductIds?.length || Object.keys(pending.quantities || {}).length)) {
+  if (
+    pending &&
+    (pending.selectedProductIds?.length || Object.keys(pending.quantities || {}).length)
+  ) {
     try {
       window.sessionStorage.setItem(
         PENDING_CHECKOUT_KEY,
@@ -135,7 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 统一登录页跳转（使用 window.location 确保在事件回调中也能立即触发）
   const redirectToLogin = useCallback((returnTo?: string | null, pending?: PendingCheckout) => {
-    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    const target =
+      returnTo ??
+      (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
     savePendingCheckout(pending ?? null);
     window.location.href = buildAuthUrl("login", target);
   }, []);
@@ -151,17 +165,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const redirectToRegister = useCallback((returnTo?: string | null) => {
-    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    const target =
+      returnTo ??
+      (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
     window.location.href = buildAuthUrl("register", target);
   }, []);
 
   const redirectToForgotPassword = useCallback((returnTo?: string | null) => {
-    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    const target =
+      returnTo ??
+      (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
     window.location.href = buildAuthUrl("reset", target);
   }, []);
 
   const redirectToWechatBind = useCallback((returnTo?: string | null) => {
-    const target = returnTo ?? (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
+    const target =
+      returnTo ??
+      (typeof window !== "undefined" ? window.location.pathname + window.location.search : null);
     window.location.href = buildAuthUrl("wechat-bind", target);
   }, []);
 
@@ -268,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 初始化时获取用户信息
   useEffect(() => {
-    refreshUser();
+    deferInEffect(refreshUser);
   }, [refreshUser]);
 
   // 预取 CSRF Token（如果用户可能已登录）
@@ -301,7 +321,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (ok) {
                   localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
                 } else {
-                  const count = parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10) + 1;
+                  const count =
+                    parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10) + 1;
                   localStorage.setItem(REFRESH_FAIL_COUNT_KEY, String(count));
                 }
               })
@@ -399,11 +420,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

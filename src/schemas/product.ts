@@ -11,7 +11,12 @@ export const ProductImageSchema = z.object({
     .min(1, "图片URL不能为空")
     .refine((val) => {
       const v = val.trim().toLowerCase();
-      return v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://") || v.startsWith("blob:");
+      return (
+        v.startsWith("/") ||
+        v.startsWith("http://") ||
+        v.startsWith("https://") ||
+        v.startsWith("blob:")
+      );
     }, "请输入有效的图片URL（支持相对路径或完整URL）"),
   alt: z.string().max(200, "图片描述最多200个字符").optional().nullable(),
   order: z.number().int().min(0).default(0),
@@ -49,7 +54,10 @@ export const ProductSchema = z.object({
   description: z.string().min(1, "产品描述不能为空").max(5000, "描述不能超过5000个字符"),
   ingredients: z.string().max(5000, "成分说明不能超过5000个字符").optional().nullable(),
   usage: z.string().max(5000, "使用方法不能超过5000个字符").optional().nullable(),
-  benefits: z.array(z.string().min(1, "功效标签不能为空").max(50)).max(20, "最多添加20个功效标签").optional(),
+  benefits: z
+    .array(z.string().min(1, "功效标签不能为空").max(50))
+    .max(20, "最多添加20个功效标签")
+    .optional(),
   images: z.array(ProductImageSchema).min(1, "请至少上传一张产品图片"),
   order: z.number().int().min(0).default(0),
   featured: z.boolean().default(false),

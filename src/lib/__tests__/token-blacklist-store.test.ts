@@ -69,7 +69,10 @@ describe("token-blacklist-store", () => {
 
     it("过期 access_token 记录应视为未撤销", async () => {
       process.env.TOKEN_BLACKLIST_STORAGE = "database";
-      mockFindUnique.mockResolvedValue({ type: "access_token", expiresAt: new Date(Date.now() - 1000) });
+      mockFindUnique.mockResolvedValue({
+        type: "access_token",
+        expiresAt: new Date(Date.now() - 1000),
+      });
       const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
       expect(await store.isAccessTokenRevoked("jti-1")).toBe(false);
     });
@@ -89,7 +92,11 @@ describe("token-blacklist-store", () => {
 
     it("应查询用户是否在黑名单中", async () => {
       process.env.TOKEN_BLACKLIST_STORAGE = "database";
-      mockFindUnique.mockResolvedValue({ type: "user", reason: "fraud", expiresAt: new Date(Date.now() + 1000) });
+      mockFindUnique.mockResolvedValue({
+        type: "user",
+        reason: "fraud",
+        expiresAt: new Date(Date.now() + 1000),
+      });
       const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
       expect(await store.isUserBlacklisted("user-1")).toEqual({ reason: "fraud" });
     });

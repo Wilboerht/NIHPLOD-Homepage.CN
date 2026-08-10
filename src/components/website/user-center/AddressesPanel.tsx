@@ -6,6 +6,7 @@ import cascaderOptions, { type CascaderOption } from "@pansy/china-division";
 import { m, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface Address {
   id: string;
@@ -25,10 +26,6 @@ export function AddressesPanel() {
   const [showForm, setShowForm] = useState(false);
   const { success: showSuccess, error: showError } = useToast();
 
-  useEffect(() => {
-    fetchAddresses();
-  }, []);
-
   const fetchAddresses = async () => {
     setLoading(true);
     try {
@@ -41,6 +38,10 @@ export function AddressesPanel() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    deferInEffect(fetchAddresses);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm("确定删除此地址？")) return;

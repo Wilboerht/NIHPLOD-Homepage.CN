@@ -32,7 +32,9 @@ const AUTH_TAG_LENGTH = 16;
 function getEncryptionKey(): Buffer {
   const secret = process.env.TOTP_ENCRYPTION_KEY;
   if (!secret) {
-    throw new Error("[TOTP] TOTP_ENCRYPTION_KEY 环境变量未设置。请使用 openssl rand -hex 32 生成专用密钥。");
+    throw new Error(
+      "[TOTP] TOTP_ENCRYPTION_KEY 环境变量未设置。请使用 openssl rand -hex 32 生成专用密钥。"
+    );
   }
   return createHash("sha256").update(secret).digest();
 }

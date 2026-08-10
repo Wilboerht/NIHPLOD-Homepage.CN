@@ -65,7 +65,10 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
 }
 
 class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
-  async revokeAccessToken(jti: string, expiresAtMs = Date.now() + ACCESS_TOKEN_BLACKLIST_TTL_MS): Promise<void> {
+  async revokeAccessToken(
+    jti: string,
+    expiresAtMs = Date.now() + ACCESS_TOKEN_BLACKLIST_TTL_MS
+  ): Promise<void> {
     const key = `at:${jti}`;
     await prisma.tokenBlacklist.upsert({
       where: { key },
@@ -140,8 +143,8 @@ function createStore(): TokenBlacklistStore {
   if (process.env.NODE_ENV === "production") {
     throw new Error(
       "[TokenBlacklist] 生产环境必须设置 TOKEN_BLACKLIST_STORAGE=database，" +
-      "多实例部署时内存黑名单不共享，封禁/撤销状态会不一致。" +
-      "若仅单实例部署，请设置 TOKEN_BLACKLIST_STORAGE=memory 以显式允许。"
+        "多实例部署时内存黑名单不共享，封禁/撤销状态会不一致。" +
+        "若仅单实例部署，请设置 TOKEN_BLACKLIST_STORAGE=memory 以显式允许。"
     );
   }
   return new MemoryTokenBlacklistStore();

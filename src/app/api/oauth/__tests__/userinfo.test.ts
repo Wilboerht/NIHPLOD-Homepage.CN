@@ -78,7 +78,10 @@ describe("GET /api/oauth/userinfo", () => {
     // 实际上 JWT 验证会先失败，但我们确保黑名单逻辑在适当位置被测试
     // 此用例主要验证导入和调用路径正确
     const req = new Request("http://localhost/api/oauth/userinfo", {
-      headers: { Authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0eXBlIjoiYWNjZXNzX3Rva2VuIiwiaWQiOiJ1c2VyLTEifQ.invalid" },
+      headers: {
+        Authorization:
+          "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0eXBlIjoiYWNjZXNzX3Rva2VuIiwiaWQiOiJ1c2VyLTEifQ.invalid",
+      },
     });
     const res = await GET(req as unknown as NextRequest);
     // JWT 验证失败先于黑名单检查，返回 401

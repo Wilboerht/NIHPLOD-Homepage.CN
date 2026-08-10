@@ -209,7 +209,9 @@ export default function OrderDetailPage() {
         <p className="text-lg font-medium text-brand-charcoal/60">订单不存在</p>
         <p className="mt-1 text-sm">该订单可能已被删除或链接无效</p>
         <Link href="/admin/orders" className="mt-4">
-          <Button variant="outline" size="sm">返回订单列表</Button>
+          <Button variant="outline" size="sm">
+            返回订单列表
+          </Button>
         </Link>
       </div>
     );
@@ -308,7 +310,9 @@ export default function OrderDetailPage() {
             {order.remark && (
               <div className="border-t pt-2">
                 <dt className="mb-1 text-brand-charcoal/50">用户备注</dt>
-                <dd className="rounded-lg bg-brand-cream/50 p-2 text-brand-charcoal/80">{order.remark}</dd>
+                <dd className="rounded-lg bg-brand-cream/50 p-2 text-brand-charcoal/80">
+                  {order.remark}
+                </dd>
               </div>
             )}
             {order.refundStatus && (
@@ -395,10 +399,18 @@ export default function OrderDetailPage() {
         <table className="w-full text-sm">
           <thead className="border-b text-left text-brand-charcoal/50">
             <tr>
-              <th scope="col" className="pb-2">商品</th>
-              <th scope="col" className="pb-2">单价</th>
-              <th scope="col" className="pb-2">数量</th>
-              <th scope="col" className="pb-2">小计</th>
+              <th scope="col" className="pb-2">
+                商品
+              </th>
+              <th scope="col" className="pb-2">
+                单价
+              </th>
+              <th scope="col" className="pb-2">
+                数量
+              </th>
+              <th scope="col" className="pb-2">
+                小计
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -431,7 +443,9 @@ export default function OrderDetailPage() {
                 <td colSpan={3} className="py-1 text-right text-brand-charcoal/50">
                   优惠 {order.userCoupon?.coupon.name ? `(${order.userCoupon.coupon.name})` : ""}
                 </td>
-                <td className="py-1 text-brand-primary">-¥{Number(order.discountAmount).toFixed(2)}</td>
+                <td className="py-1 text-brand-primary">
+                  -¥{Number(order.discountAmount).toFixed(2)}
+                </td>
               </tr>
             )}
             <tr>
@@ -476,7 +490,9 @@ export default function OrderDetailPage() {
         ) : (
           <div className="space-y-3">
             {order.adminNote ? (
-              <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm text-brand-charcoal/80">{order.adminNote}</p>
+              <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm text-brand-charcoal/80">
+                {order.adminNote}
+              </p>
             ) : (
               <p className="text-sm text-brand-charcoal/50">暂无备注</p>
             )}
@@ -497,12 +513,7 @@ export default function OrderDetailPage() {
       </div>
 
       {/* 发货弹窗 */}
-      <Modal
-        open={showShipModal}
-        onClose={() => setShowShipModal(false)}
-        title="发货"
-        size="sm"
-      >
+      <Modal open={showShipModal} onClose={() => setShowShipModal(false)} title="发货" size="sm">
         <div className="space-y-4">
           <Select
             label="物流公司"
@@ -521,7 +532,11 @@ export default function OrderDetailPage() {
           <Button variant="outline" onClick={() => setShowShipModal(false)}>
             取消
           </Button>
-          <Button onClick={handleShip} disabled={actionLoading || !shipForm.trackingNo} loading={actionLoading}>
+          <Button
+            onClick={handleShip}
+            disabled={actionLoading || !shipForm.trackingNo}
+            loading={actionLoading}
+          >
             确认发货
           </Button>
         </div>

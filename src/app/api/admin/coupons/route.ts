@@ -159,7 +159,10 @@ export async function GET(req: NextRequest) {
   try {
     const admin = await verifyAuth(req);
     if (!admin)
-      return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "未授权" } }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
 
     const rateLimitResponse = await checkAdminRateLimit(req, "admin-read");
     if (rateLimitResponse) return rateLimitResponse;
@@ -205,9 +208,7 @@ export async function GET(req: NextRequest) {
         .map((c) => {
           const typeLabel = c.type === "DISCOUNT_AMOUNT" ? "满减" : "折扣";
           const valueText =
-            c.type === "DISCOUNT_AMOUNT"
-              ? `¥${c.value}`
-              : `${(Number(c.value) * 10).toFixed(1)}折`;
+            c.type === "DISCOUNT_AMOUNT" ? `¥${c.value}` : `${(Number(c.value) * 10).toFixed(1)}折`;
           return [
             escapeCSV(c.name),
             escapeCSV(c.code || ""),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, Loader2, ChevronDown, ExternalLink } from "lucide-react";
 import Image from "next/image";
@@ -35,15 +36,11 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // 挂载动画（useMounted 提供 hydration 守卫，避免 effect 内同步 setState）
+  const mounted = useMounted();
   const [breadcrumbOpen, setBreadcrumbOpen] = useState(false);
   const breadcrumbRef = useRef<HTMLDivElement>(null);
   const formTouched = email || password || (totpRequired && totpCode);
-
-  // 挂载动画
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // 防止意外离开导致表单数据丢失
   useEffect(() => {
@@ -191,7 +188,7 @@ export default function LoginPage() {
             />
           </button>
           {breadcrumbOpen && (
-            <div className="absolute left-0 top-full z-30 mt-2 flex -translate-x-[13px] flex-col gap-2 whitespace-nowrap rounded-xl border border-brand-charcoal/8 bg-white p-3 text-xs shadow-lg">
+            <div className="border-brand-charcoal/8 absolute left-0 top-full z-30 mt-2 flex -translate-x-[13px] flex-col gap-2 whitespace-nowrap rounded-xl border bg-white p-3 text-xs shadow-lg">
               <div className="flex items-center gap-2">
                 <span className="select-none text-brand-charcoal/25">/</span>
                 <a
@@ -253,7 +250,9 @@ export default function LoginPage() {
                 />
               </div>
               <div className="flex h-11 items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 backdrop-blur-sm">
-                <span className="text-xs font-light tracking-wider text-white/60">NIHPLOD Admin v2.0.1</span>
+                <span className="text-xs font-light tracking-wider text-white/60">
+                  NIHPLOD Admin v2.0.1
+                </span>
               </div>
             </div>
           </div>
@@ -273,13 +272,18 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <h1 className="mb-1 text-xl font-medium tracking-wide text-brand-charcoal">管理员登录</h1>
+            <h1 className="mb-1 text-xl font-medium tracking-wide text-brand-charcoal">
+              管理员登录
+            </h1>
             <p className="mb-8 text-sm text-brand-charcoal/50">请输入您的管理账号</p>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               {/* 邮箱 */}
               <div>
-                <label htmlFor="email" className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60">
+                <label
+                  htmlFor="email"
+                  className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60"
+                >
                   邮箱地址
                 </label>
                 <input
@@ -316,7 +320,10 @@ export default function LoginPage() {
 
               {/* 密码 */}
               <div>
-                <label htmlFor="password" className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60">
+                <label
+                  htmlFor="password"
+                  className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60"
+                >
                   密码
                 </label>
                 <div className="relative">
@@ -366,7 +373,10 @@ export default function LoginPage() {
               {/* TOTP Code */}
               {totpRequired && (
                 <div>
-                  <label htmlFor="totpCode" className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60">
+                  <label
+                    htmlFor="totpCode"
+                    className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60"
+                  >
                     二次验证码
                   </label>
                   <input

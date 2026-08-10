@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, m } from "framer-motion";
-import { MapPin, Briefcase, X, Upload, FileText, Send, Loader2, Home, Menu, ChevronDown } from "lucide-react";
+import {
+  MapPin,
+  Briefcase,
+  X,
+  Upload,
+  FileText,
+  Send,
+  Loader2,
+  Home,
+  Menu,
+  ChevronDown,
+} from "lucide-react";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiPost, ApiError } from "@/lib/api-client";
 
@@ -88,10 +99,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        desktopMenuRef.current &&
-        !desktopMenuRef.current.contains(event.target as Node)
-      ) {
+      if (desktopMenuRef.current && !desktopMenuRef.current.contains(event.target as Node)) {
         setDesktopMenuOpen(false);
       }
     };
@@ -109,7 +117,6 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
     content?.description || "我们正在寻找那些希望将想法转化为创新体验和解决方案的人";
   // 手机端两行显示：在“转化为”处语义断行（md+ 隐藏 br，PC 保持单行）；文案不含该词时自动降级为单行
   const [descLine1, descLine2] = description.split("转化为");
-  const contactEmail = content?.contactEmail || "hr@nihplod.com";
   const submitTip = content?.submitTip || {
     title: "简历投递",
     content: "请将简历直接投递到在招岗位的投递提交表单中\n简历命名格式：【应聘】职位名称 - 姓名",
@@ -126,7 +133,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
 
   return (
     <>
-      <div className="flex min-h-dvh flex-col bg-[#fefcf8] mb-[-7rem] lg:mb-[-6rem]">
+      <div className="mb-[-7rem] flex min-h-dvh flex-col bg-[#fefcf8] lg:mb-[-6rem]">
         {/* Top Bar */}
         <nav
           className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
@@ -338,7 +345,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             {title.zh}
           </h1>
           <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
-          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light tracking-[0.06em] leading-[1.8] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
+          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
             {descLine1}
             {descLine2 !== undefined && (
               <>
@@ -377,7 +384,9 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
                 <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#E4DFD9]" />
-                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">暂无开放职位，请稍后再来查看</p>
+                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">
+                  暂无开放职位，请稍后再来查看
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3">
@@ -402,12 +411,7 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       {/* Job Detail Modal */}
       <AnimatePresence>
         {selectedJob && (
-          <JobModal
-            job={selectedJob}
-            onClose={() => setSelectedJob(null)}
-            contactEmail={contactEmail}
-            submitTip={submitTip}
-          />
+          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} submitTip={submitTip} />
         )}
       </AnimatePresence>
 
@@ -464,7 +468,9 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
       className="w-full rounded-xl border border-zinc-200/60 p-4 text-left transition-all duration-200 active:scale-[0.98] active:bg-brand-charcoal/[0.02] md:p-5 md:hover:border-[#00263E]/30 md:hover:bg-white/50"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[15px] font-light tracking-[0.08em] text-brand-charcoal md:text-lg md:tracking-[0.12em]">{job.title}</h3>
+        <h3 className="text-[15px] font-light tracking-[0.08em] text-brand-charcoal md:text-lg md:tracking-[0.12em]">
+          {job.title}
+        </h3>
         <svg
           width="18"
           height="18"
@@ -509,12 +515,10 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
 function JobModal({
   job,
   onClose,
-  contactEmail,
   submitTip,
 }: {
   job: Job;
   onClose: () => void;
-  contactEmail?: string;
   submitTip?: { title: string; content: string };
 }) {
   const [formData, setFormData] = useState({ name: "", phone: "" });
@@ -523,7 +527,9 @@ function JobModal({
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const typeInfo = jobTypeMap[job.type] || { label: job.type, color: "bg-gray-100 text-gray-700" };
@@ -541,9 +547,8 @@ function JobModal({
     return null;
   };
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
-    setIsDesktop(mql.matches);
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
@@ -737,7 +742,9 @@ function JobModal({
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-4 md:p-6">
           <div>
-            <h2 className="text-[17px] font-normal tracking-[0.08em] text-brand-charcoal md:text-xl md:font-light md:tracking-[0.12em]">{job.title}</h2>
+            <h2 className="text-[17px] font-normal tracking-[0.08em] text-brand-charcoal md:text-xl md:font-light md:tracking-[0.12em]">
+              {job.title}
+            </h2>
             <div className="mt-2 flex items-center gap-2 text-[13px] font-light text-brand-charcoal/70">
               <span className={`rounded-full px-2 py-0.5 text-xs ${typeInfo.color}`}>
                 {typeInfo.label}
@@ -766,7 +773,9 @@ function JobModal({
 
           {/* Description */}
           <div>
-            <h3 className="mb-3 text-base font-light tracking-[0.12em] text-brand-charcoal">职位描述</h3>
+            <h3 className="mb-3 text-base font-light tracking-[0.12em] text-brand-charcoal">
+              职位描述
+            </h3>
             <div
               className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
               dangerouslySetInnerHTML={{
@@ -778,7 +787,9 @@ function JobModal({
           {/* Requirements */}
           {job.requirements && (
             <div>
-              <h3 className="mb-3 text-base font-light tracking-[0.12em] text-brand-charcoal">任职要求</h3>
+              <h3 className="mb-3 text-base font-light tracking-[0.12em] text-brand-charcoal">
+                任职要求
+              </h3>
               <div
                 className="prose prose-sm max-w-none font-light text-brand-charcoal/80 [&_li]:text-sm [&_li]:leading-7 [&_ol]:space-y-1 [&_p]:text-sm [&_p]:leading-7"
                 dangerouslySetInnerHTML={{
@@ -790,8 +801,12 @@ function JobModal({
 
           {/* Application Form */}
           <div className="border-t border-zinc-100 pt-6">
-            <h3 className="mb-4 text-base font-light tracking-[0.12em] text-brand-charcoal">投递简历</h3>
-            <p className="mb-4 whitespace-pre-line text-[14px] font-light text-brand-charcoal/70">{submitTip?.content}</p>
+            <h3 className="mb-4 text-base font-light tracking-[0.12em] text-brand-charcoal">
+              投递简历
+            </h3>
+            <p className="mb-4 whitespace-pre-line text-[14px] font-light text-brand-charcoal/70">
+              {submitTip?.content}
+            </p>
 
             {submitStatus === "success" ? (
               <div className="rounded-xl bg-green-50 p-6 text-center">
@@ -802,11 +817,16 @@ function JobModal({
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">姓名 *</label>
+                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">
+                      姓名 *
+                    </label>
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) => { setFormData((d) => ({ ...d, name: e.target.value })); setFieldErrors((prev) => ({ ...prev, name: "" })); }}
+                      onChange={(e) => {
+                        setFormData((d) => ({ ...d, name: e.target.value }));
+                        setFieldErrors((prev) => ({ ...prev, name: "" }));
+                      }}
                       onBlur={() => {
                         const err = validateField("name", formData.name);
                         setFieldErrors((prev) => (err ? { ...prev, name: err } : prev));
@@ -814,14 +834,21 @@ function JobModal({
                       className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                       placeholder="您的姓名"
                     />
-                    {fieldErrors.name && <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>}
+                    {fieldErrors.name && (
+                      <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>
+                    )}
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">电话 *</label>
+                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">
+                      电话 *
+                    </label>
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => { setFormData((d) => ({ ...d, phone: e.target.value })); setFieldErrors((prev) => ({ ...prev, phone: "" })); }}
+                      onChange={(e) => {
+                        setFormData((d) => ({ ...d, phone: e.target.value }));
+                        setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                      }}
                       onBlur={() => {
                         const err = validateField("phone", formData.phone);
                         setFieldErrors((prev) => (err ? { ...prev, phone: err } : prev));
@@ -829,12 +856,16 @@ function JobModal({
                       className="w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none transition-all focus:border-[#00263E]/40 focus:ring-4 focus:ring-[#00263E]/10"
                       placeholder="您的手机号"
                     />
-                    {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
+                    {fieldErrors.phone && (
+                      <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">简历 *</label>
+                  <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">
+                    简历 *
+                  </label>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -850,7 +881,9 @@ function JobModal({
                     {resumeFile ? (
                       <>
                         <FileText className="h-5 w-5 shrink-0 text-brand-charcoal" />
-                        <span className="flex-1 truncate text-left text-brand-charcoal">{resumeFile.name}</span>
+                        <span className="flex-1 truncate text-left text-brand-charcoal">
+                          {resumeFile.name}
+                        </span>
                         <button
                           type="button"
                           onClick={(e) => {

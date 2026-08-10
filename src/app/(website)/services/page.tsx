@@ -83,15 +83,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "服务入口 | NIHPLOD 旎柏",
-    description:
-      "NIHPLOD 旎柏服务平台——专属权益，一站即达。",
+    description: "NIHPLOD 旎柏服务平台——专属权益，一站即达。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "服务入口 | NIHPLOD 旎柏",
-    description:
-      "NIHPLOD 旎柏服务平台——专属权益，一站即达。",
+    description: "NIHPLOD 旎柏服务平台——专属权益，一站即达。",
     images: ["/images/og-image.png"],
   },
   robots: {

@@ -7,20 +7,12 @@
 
 import { SsoError } from "./errors";
 
-// Node.js <19 兼容：确保 crypto.subtle 可用
-const _crypto: Pick<Crypto, "subtle"> =
-  typeof crypto !== "undefined" && (crypto as Crypto).subtle
-    ? (crypto as Crypto)
-    : (() => {
-        try {
-          return require("crypto").webcrypto as Crypto;
-        } catch {
-          return null as unknown as Crypto;
-        }
-      })();
+// 运行时 crypto.subtle 检测：现代浏览器 / Edge Runtime / Node 20+ 均提供全局 crypto
+const _crypto: Pick<Crypto, "subtle"> | null =
+  typeof crypto !== "undefined" && (crypto as Crypto).subtle ? (crypto as Crypto) : null;
 
 function getCrypto(): Crypto | null {
-  return _crypto;
+  return (_crypto as Crypto | null) ?? null;
 }
 
 export interface JwksKey {

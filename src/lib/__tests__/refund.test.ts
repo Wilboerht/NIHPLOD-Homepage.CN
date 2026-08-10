@@ -244,20 +244,18 @@ describe("退款服务", () => {
       expect(result.error).toContain("支付宝退款失败");
     });
 
-    it("其他支付方式应直接 finalize（手动退款）", async () => {
+    it("不支持的支付方式应拒绝退款", async () => {
+      // 退款实现已收紧：仅支持 wechat/alipay/mock，其余方式需人工处理
       mockPrisma.order.findUnique.mockResolvedValue(
         createOrder({ status: "REFUNDING", paymentMethod: "cod" })
       );
-      mockPrisma.order.update.mockResolvedValue({});
-      mockPrisma.product.findMany.mockResolvedValue([{ id: "prod-1", salesCount: 2 }]);
-      mockPrisma.product.update.mockResolvedValue({});
-      mockPrisma.userCoupon.findFirst.mockResolvedValue(null);
 
       const result = await processRefund("order-1", true);
 
-      expect(result.success).toBe(true);
-      // 应调用 order.update 更新 adminNote
-      expect(mockPrisma.order.update).toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("不支持的支付方式");
+      // 不应执行 finalize 相关的订单状态更新
+      expect(mockPrisma.order.update).not.toHaveBeenCalled();
     });
   });
 

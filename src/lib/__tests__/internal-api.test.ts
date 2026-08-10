@@ -1,4 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const { mockTokenBlacklistCreate } = vi.hoisted(() => ({
+  mockTokenBlacklistCreate: vi.fn(),
+}));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    tokenBlacklist: {
+      create: (...args: unknown[]) => mockTokenBlacklistCreate(...args),
+    },
+  },
+}));
+
 import {
   generateInternalApiSignature,
   verifyInternalApiSignature,
@@ -15,6 +28,8 @@ describe("internal-api", () => {
     process.env.INTERNAL_API_KEYS = JSON.stringify([
       { project: "advisor", key: "advisor-key", secret: "advisor-secret" },
     ]);
+    mockTokenBlacklistCreate.mockReset();
+    mockTokenBlacklistCreate.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -110,11 +125,29 @@ describe("internal-api", () => {
   describe("checkAndRecordNonce", () => {
     it("新 nonce 应可用", async () => {
       expect(await checkAndRecordNonce("nonce-1")).toBe(true);
+      expect(mockTokenBlacklistCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: "internal_api_nonce",
+            key: "nonce:nonce-1",
+          }),
+        })
+      );
     });
 
-    it("重复 nonce 应被拒绝", async () => {
+    it("重复 nonce 应被拒绝（内存缓存命中）", async () => {
       await checkAndRecordNonce("nonce-2");
       expect(await checkAndRecordNonce("nonce-2")).toBe(false);
+    });
+
+    it("DB 唯一约束冲突（P2002）应拒绝（跨实例重放防护）", async () => {
+      mockTokenBlacklistCreate.mockRejectedValue({ code: "P2002" });
+      expect(await checkAndRecordNonce("nonce-3")).toBe(false);
+    });
+
+    it("DB 不可用应 fail-closed 拒绝", async () => {
+      mockTokenBlacklistCreate.mockRejectedValue(new Error("connection refused"));
+      expect(await checkAndRecordNonce("nonce-4")).toBe(false);
     });
   });
 

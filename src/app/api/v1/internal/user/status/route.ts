@@ -27,12 +27,14 @@ import {
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
-const statusQuerySchema = z.object({
-  userId: z.string().cuid().optional(),
-  userIds: z.array(z.string().cuid()).max(100).optional(),
-}).refine((data) => data.userId || (data.userIds && data.userIds.length > 0), {
-  message: "至少提供 userId 或 userIds",
-});
+const statusQuerySchema = z
+  .object({
+    userId: z.string().cuid().optional(),
+    userIds: z.array(z.string().cuid()).max(100).optional(),
+  })
+  .refine((data) => data.userId || (data.userIds && data.userIds.length > 0), {
+    message: "至少提供 userId 或 userIds",
+  });
 
 export const dynamic = "force-dynamic";
 

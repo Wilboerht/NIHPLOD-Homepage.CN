@@ -47,10 +47,7 @@ async function sendWebhook(
         `[Webhook] 第 ${attempt + 1} 次尝试失败 (${target.clientId}): HTTP ${response.status}`
       );
     } catch (error) {
-      apiConsole.warn(
-        `[Webhook] 第 ${attempt + 1} 次尝试异常 (${target.clientId}):`,
-        error
-      );
+      apiConsole.warn(`[Webhook] 第 ${attempt + 1} 次尝试异常 (${target.clientId}):`, error);
     }
 
     if (attempt < retries) {
@@ -88,9 +85,7 @@ export async function dispatchStatusChangeWebhook(
     `[Webhook] 分发状态变更通知 (userId=${change.userId}, ${change.oldStatus} -> ${change.newStatus}) 到 ${targets.length} 个目标`
   );
 
-  const results = await Promise.allSettled(
-    targets.map((target) => sendWebhook(target, payload))
-  );
+  const results = await Promise.allSettled(targets.map((target) => sendWebhook(target, payload)));
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
@@ -113,9 +108,7 @@ export async function dispatchStatusChangeWebhook(
         },
       });
 
-      apiConsole.error(
-        `[Webhook] 通知失败 (${target.clientId}, userId=${change.userId})`
-      );
+      apiConsole.error(`[Webhook] 通知失败 (${target.clientId}, userId=${change.userId})`);
     } else {
       recordSsoEvent({
         event: "status_change",

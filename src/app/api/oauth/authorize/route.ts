@@ -34,9 +34,7 @@ function storeOAuthParams(params: string): string {
   const expiresAt = Date.now() + PARAMS_STORE_TTL_MS;
   const payload = `${expiresAt}:${params}`;
   const encoded = Buffer.from(payload, "utf8").toString("base64url");
-  const sig = createHmac("sha256", getOAuthParamsHmacKey())
-    .update(encoded)
-    .digest("base64url");
+  const sig = createHmac("sha256", getOAuthParamsHmacKey()).update(encoded).digest("base64url");
   return `${encoded}.${sig}`;
 }
 
@@ -96,10 +94,7 @@ async function ensureUserConsent(
 /**
  * 用户拒绝授权时，撤销此前已授予的 consent（如存在）。
  */
-async function revokeUserConsent(
-  userId: string,
-  clientId: string
-): Promise<void> {
+async function revokeUserConsent(userId: string, clientId: string): Promise<void> {
   // 使用 updateMany + revokedAt: null 条件消除 TOCTOU：并发 approve + deny 中 approve 优先
   await prisma.userConsent.updateMany({
     where: { userId, clientId, revokedAt: null },
@@ -110,9 +105,7 @@ async function revokeUserConsent(
 /** 获取公网 origin（反向代理后 request.url 可能为 localhost） */
 function getPublicOrigin(request: NextRequest): string {
   return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    request.nextUrl.origin
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin
   );
 }
 
@@ -209,12 +202,7 @@ export async function GET(request: NextRequest) {
 
     // Client 已停用：通过 302 回传错误
     if (!client.isActive) {
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "unauthorized_client",
-        "Client 已停用",
-        state
-      );
+      return buildErrorRedirect(safeRedirectUri, "unauthorized_client", "Client 已停用", state);
     }
 
     // 4. 其余参数校验与错误 302 回传
@@ -236,12 +224,7 @@ export async function GET(request: NextRequest) {
       );
     }
     if (!scope.trim()) {
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "invalid_request",
-        "缺少 scope",
-        state
-      );
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "缺少 scope", state);
     }
     if (!state || state.length < 32) {
       return buildErrorRedirect(
@@ -328,12 +311,7 @@ export async function GET(request: NextRequest) {
 
     // 7. prompt=none: 用户未登录时返回错误而非重定向
     if (prompt === "none" && !isLoggedIn) {
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "login_required",
-        "用户未登录",
-        state
-      );
+      return buildErrorRedirect(safeRedirectUri, "login_required", "用户未登录", state);
     }
 
     // 8. max_age 校验：用户认证时间超过 maxAge 秒则要求重新登录
@@ -392,12 +370,7 @@ export async function GET(request: NextRequest) {
         });
       } catch (codeErr) {
         apiConsole.error("[OAuth Authorize GET] 创建授权码失败:", codeErr);
-        return buildErrorRedirect(
-          safeRedirectUri,
-          "server_error",
-          "服务器内部错误",
-          state
-        );
+        return buildErrorRedirect(safeRedirectUri, "server_error", "服务器内部错误", state);
       }
 
       const redirectUrl = new URL(redirect_uri);
@@ -540,12 +513,7 @@ export async function POST(request: NextRequest) {
 
     // Client 已停用：通过 302 回传错误
     if (!client.isActive) {
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "unauthorized_client",
-        "Client 已停用",
-        state
-      );
+      return buildErrorRedirect(safeRedirectUri, "unauthorized_client", "Client 已停用", state);
     }
 
     // action 校验
@@ -560,7 +528,8 @@ export async function POST(request: NextRequest) {
 
     const scope = typeof body.scope === "string" ? body.scope : "";
     const code_challenge = typeof body.code_challenge === "string" ? body.code_challenge : "";
-    const code_challenge_method = typeof body.code_challenge_method === "string" ? body.code_challenge_method : "";
+    const code_challenge_method =
+      typeof body.code_challenge_method === "string" ? body.code_challenge_method : "";
     const nonce = typeof body.nonce === "string" ? body.nonce : undefined;
 
     // 构建重定向 URL（成功或错误都用它）
@@ -648,12 +617,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (codeErr) {
       apiConsole.error("[OAuth Authorize POST] 创建授权码失败:", codeErr);
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "server_error",
-        "服务器内部错误",
-        state
-      );
+      return buildErrorRedirect(safeRedirectUri, "server_error", "服务器内部错误", state);
     }
 
     redirectUrl.searchParams.set("code", codeData.code);

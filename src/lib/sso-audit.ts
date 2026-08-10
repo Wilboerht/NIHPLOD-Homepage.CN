@@ -37,7 +37,13 @@ export interface SsoEventContext {
 export function recordSsoEvent(context: SsoEventContext): void {
   // 先写 console（DB 宕机时仍有冗余日志），
   // 再异步写数据库（不阻塞主流程）
-  const info = { event: context.event, userId: context.userId, clientId: context.clientId, ip: context.ip, success: context.success ?? true };
+  const info = {
+    event: context.event,
+    userId: context.userId,
+    clientId: context.clientId,
+    ip: context.ip,
+    success: context.success ?? true,
+  };
   apiConsole.info(`[SsoAudit] ${context.event}`, info);
 
   prisma.ssoAuditEvent

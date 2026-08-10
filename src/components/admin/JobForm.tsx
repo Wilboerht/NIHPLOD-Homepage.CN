@@ -139,14 +139,17 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           const fallbackKeyword = address.includes("区")
             ? address.split("区").pop()?.substring(0, 10)
             : address;
-          geocoder.getLocation(fallbackKeyword || address, (fs: string, fr: AMap.GeocoderResult) => {
-            if (fs === "complete" && fr.geocodes.length > 0) {
-              const loc = fr.geocodes[0].location;
-              resolve({ lng: loc.lng, lat: loc.lat });
-            } else {
-              resolve(null);
+          geocoder.getLocation(
+            fallbackKeyword || address,
+            (fs: string, fr: AMap.GeocoderResult) => {
+              if (fs === "complete" && fr.geocodes.length > 0) {
+                const loc = fr.geocodes[0].location;
+                resolve({ lng: loc.lng, lat: loc.lat });
+              } else {
+                resolve(null);
+              }
             }
-          });
+          );
         });
       });
     });

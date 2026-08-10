@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
         content,
       },
     });
-    if (process.env.NODE_ENV === "development") apiConsole.debug("✅ [Contact API] DB record created");
+    if (process.env.NODE_ENV === "development")
+      apiConsole.debug("✅ [Contact API] DB record created");
 
     // 发送通知
     if (process.env.NODE_ENV === "development")

@@ -25,7 +25,8 @@ export default function Home() {
     if (sso.isAuthenticated()) {
       sso.getUserInfo().then(setUser).catch(() => {}).finally(() => setLoading(false));
     } else {
-      setLoading(false);
+      // 微任务延迟，避免 effect 内同步 setState
+      Promise.resolve().then(() => setLoading(false));
     }
   }, []);
 

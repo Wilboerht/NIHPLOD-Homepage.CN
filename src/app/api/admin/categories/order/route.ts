@@ -44,7 +44,10 @@ export async function PUT(request: NextRequest) {
     const parsed = OrderUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues },
+        },
         { status: 400 }
       );
     }
@@ -64,7 +67,7 @@ export async function PUT(request: NextRequest) {
       action: "reorder_categories",
       targetType: "category",
       targetId: "batch",
-      detail: { count: items.length, ids: items.map(i => i.id) },
+      detail: { count: items.length, ids: items.map((i) => i.id) },
       adminId: admin.id,
       request,
     });

@@ -14,7 +14,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 /** 主站 URL，用于 postMessage targetOrigin 校验 */
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
@@ -88,8 +88,10 @@ export default function EmbedAccountPage() {
   }, []);
 
   useEffect(() => {
-    fetchProfile();
-    fetchSessions();
+    deferInEffect(() => {
+      fetchProfile();
+      fetchSessions();
+    });
     // 预获取 CSRF Token，确保写操作可用
     fetch("/api/auth/csrf").catch(() => {});
 
@@ -153,7 +155,7 @@ export default function EmbedAccountPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-600" />
       </div>
     );
   }
@@ -161,8 +163,12 @@ export default function EmbedAccountPage() {
   if (!user) {
     return (
       <div className="p-8 text-center">
-        <p className="text-gray-500 text-sm">{error || "请先登录"}</p>
-        <a href="/login" target="_top" className="text-blue-600 text-sm hover:underline mt-2 inline-block">
+        <p className="text-sm text-gray-500">{error || "请先登录"}</p>
+        <a
+          href="/login"
+          target="_top"
+          className="mt-2 inline-block text-sm text-blue-600 hover:underline"
+        >
           前往登录
         </a>
       </div>
@@ -172,16 +178,16 @@ export default function EmbedAccountPage() {
   return (
     <div className="p-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-2 mb-3">
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2">
           <p className="text-xs text-red-600">{error}</p>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex border-b mb-4">
+      <div className="mb-4 flex border-b">
         <button
           onClick={() => setActiveTab("profile")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "profile"
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -191,7 +197,7 @@ export default function EmbedAccountPage() {
         </button>
         <button
           onClick={() => setActiveTab("authorizations")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "authorizations"
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -205,42 +211,46 @@ export default function EmbedAccountPage() {
       {activeTab === "profile" && (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">手机号</label>
+            <label className="mb-1 block text-xs text-gray-500">手机号</label>
             <p className="text-sm text-gray-900">
               {user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")}
             </p>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">昵称</label>
+            <label className="mb-1 block text-xs text-gray-500">昵称</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
               />
               <button
                 onClick={handleSaveNickname}
                 disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? "保存中" : "保存"}
               </button>
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">会员等级</label>
+            <label className="mb-1 block text-xs text-gray-500">会员等级</label>
             <p className="text-sm text-gray-900">
-              {user.membershipLevel === "DIAMOND" ? "💎 钻石会员" : user.membershipLevel === "GOLD" ? "🥇 金卡会员" : "🥈 银卡会员"}
+              {user.membershipLevel === "DIAMOND"
+                ? "💎 钻石会员"
+                : user.membershipLevel === "GOLD"
+                  ? "🥇 金卡会员"
+                  : "🥈 银卡会员"}
             </p>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">积分</label>
+            <label className="mb-1 block text-xs text-gray-500">积分</label>
             <p className="text-sm text-gray-900">{user.totalPoints} 分</p>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+            className="w-full rounded-lg border border-red-200 py-2 text-sm text-red-600 hover:bg-red-50"
           >
             退出登录
           </button>
@@ -251,23 +261,24 @@ export default function EmbedAccountPage() {
       {activeTab === "authorizations" && (
         <div>
           {sessions.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">暂无授权记录</p>
+            <p className="py-4 text-center text-sm text-gray-500">暂无授权记录</p>
           ) : (
             <div className="space-y-2">
               {sessions.map((s) => (
-                <div key={s.clientId} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div
+                  key={s.clientId}
+                  className="flex items-center justify-between border-b py-2 last:border-0"
+                >
                   <div>
                     <p className="text-sm font-medium text-gray-900">{s.clientName}</p>
                     <p className="text-xs text-gray-500">
                       授权时间: {new Date(s.createdAt).toLocaleDateString("zh-CN")}
                     </p>
-                    <p className="text-xs text-gray-400">
-                      权限: {s.scopes.join(", ")}
-                    </p>
+                    <p className="text-xs text-gray-400">权限: {s.scopes.join(", ")}</p>
                   </div>
                   <button
                     onClick={() => handleRevoke(s.clientId)}
-                    className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50"
+                    className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
                   >
                     撤销
                   </button>

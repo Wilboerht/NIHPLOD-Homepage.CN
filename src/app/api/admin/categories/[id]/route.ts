@@ -104,7 +104,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const parsed = CategoryUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: parsed.error.issues },
+        },
         { status: 400 }
       );
     }

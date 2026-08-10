@@ -4,13 +4,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type BadgeVariant =
-  | "default"
-  | "primary"
-  | "secondary"
-  | "success"
-  | "warning"
-  | "danger"
-  | "outline";
+  "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
 
 interface BadgeProps {
   children: ReactNode;

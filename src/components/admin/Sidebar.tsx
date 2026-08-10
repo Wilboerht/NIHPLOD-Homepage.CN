@@ -224,7 +224,11 @@ export function Sidebar({
           )}
           title={isCollapsed && !isMobile ? "退出登录" : undefined}
         >
-          {loggingOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+          {loggingOut ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <LogOut className="h-5 w-5" />
+          )}
           {(!isCollapsed || isMobile) && <span>退出登录</span>}
         </button>
       </div>

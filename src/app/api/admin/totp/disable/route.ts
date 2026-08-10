@@ -44,7 +44,13 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     const admin = await prisma.admin.findUnique({
       where: { id: adminPayload.id },
-      select: { id: true, password: true, totpEnabled: true, totpSecret: true, totpBackupCodes: true },
+      select: {
+        id: true,
+        password: true,
+        totpEnabled: true,
+        totpSecret: true,
+        totpBackupCodes: true,
+      },
     });
 
     if (!admin) {

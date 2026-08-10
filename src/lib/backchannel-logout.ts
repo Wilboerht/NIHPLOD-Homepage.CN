@@ -100,9 +100,7 @@ export async function sendBackchannelLogout(
         }
 
         if (!delivered) {
-          apiConsole.warn(
-            `[SLO] Backchannel logout 通知失败（已重试）(${client.clientId})`
-          );
+          apiConsole.warn(`[SLO] Backchannel logout 通知失败（已重试）(${client.clientId})`);
           recordSsoEvent({
             event: "backchannel_logout",
             userId,
@@ -112,10 +110,7 @@ export async function sendBackchannelLogout(
           });
         }
       } catch (err) {
-        apiConsole.warn(
-          `[SLO] Backchannel logout token 签发失败 (${client.clientId}):`,
-          err
-        );
+        apiConsole.warn(`[SLO] Backchannel logout token 签发失败 (${client.clientId}):`, err);
       }
     });
 

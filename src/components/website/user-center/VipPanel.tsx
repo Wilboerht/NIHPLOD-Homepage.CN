@@ -5,8 +5,9 @@
  * 显示会员等级、积分、权益、积分历史
  */
 import { useEffect, useState } from "react";
-import { Crown, TrendingUp, Gift, ChevronRight, Loader2 } from "lucide-react";
+import { Crown, Gift, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface BenefitItem {
   icon: string;
@@ -73,11 +74,6 @@ export function VipPanel() {
   const [txTotal, setTxTotal] = useState(0);
   const { error: showError } = useToast();
 
-  useEffect(() => {
-    loadVIPData();
-    loadTransactions(1);
-  }, []);
-
   const loadVIPData = async () => {
     try {
       const res = await fetch("/api/user/vip");
@@ -107,6 +103,13 @@ export function VipPanel() {
     }
   };
 
+  useEffect(() => {
+    deferInEffect(() => {
+      loadVIPData();
+      loadTransactions(1);
+    });
+  }, []);
+
   if (!vipData && loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -123,7 +126,14 @@ export function VipPanel() {
     );
   }
 
-  const { currentLevel, nextLevel, totalPoints, allLevels, birthdayGiftGranted, birthdayGiftPoints } = vipData;
+  const {
+    currentLevel,
+    nextLevel,
+    totalPoints,
+    allLevels,
+    birthdayGiftGranted,
+    birthdayGiftPoints,
+  } = vipData;
   const levelBg = LEVEL_BG_COLORS[currentLevel.level] ?? "from-gray-50 to-gray-50";
 
   return (
@@ -134,9 +144,7 @@ export function VipPanel() {
           <div className="flex items-center gap-2">
             <Gift className="h-5 w-5 shrink-0 text-emerald-600" />
             <div>
-              <p className="text-sm font-medium text-emerald-800">
-                🎂 生日快乐！
-              </p>
+              <p className="text-sm font-medium text-emerald-800">🎂 生日快乐！</p>
               <p className="mt-0.5 text-xs text-emerald-600">
                 已为您发放 {birthdayGiftPoints?.toLocaleString() ?? 0} 生日积分礼
               </p>
@@ -161,7 +169,9 @@ export function VipPanel() {
               </div>
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/60">
-              <Crown className={`h-6 w-6 ${currentLevel.level === "GOLD" ? "text-amber-500" : currentLevel.level === "DIAMOND" ? "text-violet-500" : "text-slate-400"}`} />
+              <Crown
+                className={`h-6 w-6 ${currentLevel.level === "GOLD" ? "text-amber-500" : currentLevel.level === "DIAMOND" ? "text-violet-500" : "text-slate-400"}`}
+              />
             </div>
           </div>
 

@@ -3,6 +3,8 @@
  *
  * 未登录访问此页面时，Middleware 自动重定向到 SSO 登录页。
  */
+import Link from "next/link";
+
 export default function DashboardPage() {
   return (
     <div
@@ -35,7 +37,7 @@ export default function DashboardPage() {
           token 已通过 httpOnly cookie 存储，JavaScript 无法直接读取。
         </p>
       </div>
-      <a
+      <Link
         href="/"
         style={{
           color: "#2563eb",
@@ -44,7 +46,7 @@ export default function DashboardPage() {
         }}
       >
         ← 返回首页
-      </a>
+      </Link>
     </div>
   );
 }

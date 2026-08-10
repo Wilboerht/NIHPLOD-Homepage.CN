@@ -43,6 +43,8 @@ function DashboardContent() {
           退出登录
         </button>
       </div>
+      {/* react-spa 非 Next.js 应用，无 next/link 可用 */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a href="/" style={styles.link}>
         ← 返回首页
       </a>

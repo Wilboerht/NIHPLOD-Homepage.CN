@@ -247,7 +247,9 @@ export async function createOrder(
       const shippingFee = await calculateShippingFee(totalAmount);
 
       // 5. 创建订单
-      const payAmount = ensureMoneyPrecision(Math.max(0, totalAmount + shippingFee - discountAmount));
+      const payAmount = ensureMoneyPrecision(
+        Math.max(0, totalAmount + shippingFee - discountAmount)
+      );
       const orderNo = generateOrderNo();
 
       const order = await tx.order.create({
@@ -341,7 +343,10 @@ export async function cancelOrder(
       // 恢复库存（批量聚合后更新，避免 N+1）
       const stockRestoreMap = new Map<string, number>();
       for (const item of order.items) {
-        stockRestoreMap.set(item.productId, (stockRestoreMap.get(item.productId) || 0) + item.quantity);
+        stockRestoreMap.set(
+          item.productId,
+          (stockRestoreMap.get(item.productId) || 0) + item.quantity
+        );
       }
       for (const [productId, qty] of stockRestoreMap) {
         await tx.product.update({
@@ -417,7 +422,10 @@ export async function autoCancelExpiredOrders(
           // 恢复库存（批量聚合后更新，避免 N+1）
           const stockRestoreMap = new Map<string, number>();
           for (const item of order.items) {
-            stockRestoreMap.set(item.productId, (stockRestoreMap.get(item.productId) || 0) + item.quantity);
+            stockRestoreMap.set(
+              item.productId,
+              (stockRestoreMap.get(item.productId) || 0) + item.quantity
+            );
           }
           for (const [productId, qty] of stockRestoreMap) {
             await tx.product.update({

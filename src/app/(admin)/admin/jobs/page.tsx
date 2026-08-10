@@ -13,7 +13,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
-import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface Job {
   id: string;
@@ -78,7 +79,7 @@ export default function AdminJobsPage() {
   }, [page, pageSize, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    fetchJobs();
+    deferInEffect(fetchJobs);
   }, [fetchJobs]);
 
   // 搜索防抖
@@ -221,9 +222,12 @@ export default function AdminJobsPage() {
         ) : jobs.length === 0 ? (
           <Empty className="h-64" title="暂无职位" />
         ) : (
-          <div className="divide-y divide-brand-charcoal/8">
+          <div className="divide-brand-charcoal/8 divide-y">
             {jobs.map((job) => (
-              <div key={job.id} className="flex items-center gap-4 px-6 py-4 hover:bg-brand-charcoal/[0.03]">
+              <div
+                key={job.id}
+                className="flex items-center gap-4 px-6 py-4 hover:bg-brand-charcoal/[0.03]"
+              >
                 {/* 选择框 */}
                 <input
                   type="checkbox"

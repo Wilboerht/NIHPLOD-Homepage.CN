@@ -38,7 +38,9 @@ export async function POST(request: NextRequest) {
     } else {
       const formData = await request.formData();
       body = {};
-      formData.forEach((v, k) => { body[k] = v.toString(); });
+      formData.forEach((v, k) => {
+        body[k] = v.toString();
+      });
     }
 
     const client_id = body.client_id;
@@ -110,7 +112,10 @@ export async function POST(request: NextRequest) {
         detail: { reason: "invalid_events_claim" },
       });
       return NextResponse.json(
-        { error: "invalid_logout_token", error_description: "events claim 不包含 backchannel-logout" },
+        {
+          error: "invalid_logout_token",
+          error_description: "events claim 不包含 backchannel-logout",
+        },
         { status: 400 }
       );
     }

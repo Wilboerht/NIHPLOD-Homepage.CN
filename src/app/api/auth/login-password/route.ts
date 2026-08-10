@@ -103,7 +103,13 @@ export async function POST(request: NextRequest) {
     if (!user || !user.password) {
       // 统一错误响应：不区分"用户不存在"、"未设置密码"和"密码错误"
       // 防止攻击者通过不同错误码枚举有效手机号
-      await recordLoginAttempt(phone, false, request, user ? "password_not_set" : "user_not_found", "password");
+      await recordLoginAttempt(
+        phone,
+        false,
+        request,
+        user ? "password_not_set" : "user_not_found",
+        "password"
+      );
 
       return NextResponse.json(
         {

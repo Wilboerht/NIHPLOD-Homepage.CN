@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
               in: "query",
               required: true,
               schema: { type: "string" },
-              description: "空格分隔的 scope，如 `openid profile phone`。注意：`openid` 是 OIDC 核心 scope，所有 client 默认允许，无需在 client.scopes 中显式配置。",
+              description:
+                "空格分隔的 scope，如 `openid profile phone`。注意：`openid` 是 OIDC 核心 scope，所有 client 默认允许，无需在 client.scopes 中显式配置。",
             },
             {
               name: "state",
@@ -107,8 +108,7 @@ export async function GET(request: NextRequest) {
           ],
           responses: {
             "302": {
-              description:
-                "重定向到登录页或 consent 页（已登录用户）",
+              description: "重定向到登录页或 consent 页（已登录用户）",
             },
             "400": {
               description: "参数错误",
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
               headers: {
                 "WWW-Authenticate": {
                   schema: { type: "string" },
-                  description: "Bearer error=\"invalid_token\"",
+                  description: 'Bearer error="invalid_token"',
                 },
               },
             },
@@ -206,8 +206,7 @@ export async function GET(request: NextRequest) {
           tags: ["Introspection"],
           summary: "验证 Access Token",
           description:
-            "RFC 7662 兼容的 Token 内省端点。\n" +
-            "子项目通过此端点验证 access_token 的有效性。",
+            "RFC 7662 兼容的 Token 内省端点。\n" + "子项目通过此端点验证 access_token 的有效性。",
           requestBody: {
             required: true,
             content: {
@@ -235,8 +234,7 @@ export async function GET(request: NextRequest) {
         get: {
           tags: ["Discovery"],
           summary: "JWKS 端点",
-          description:
-            "返回用于验证 access_token 签名的公钥集合（JSON Web Key Set）。",
+          description: "返回用于验证 access_token 签名的公钥集合（JSON Web Key Set）。",
           responses: {
             "200": {
               description: "JWKS 文档",
@@ -365,7 +363,8 @@ export async function GET(request: NextRequest) {
             },
             refresh_expires_in: {
               type: "integer",
-              description: "Refresh Token 有效期（秒），默认 2592000（30 天）。若服务端未返回此字段，SDK 回退到 30 天默认值。",
+              description:
+                "Refresh Token 有效期（秒），默认 2592000（30 天）。若服务端未返回此字段，SDK 回退到 30 天默认值。",
             },
             refresh_token: {
               type: "string",

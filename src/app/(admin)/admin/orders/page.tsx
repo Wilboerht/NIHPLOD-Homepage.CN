@@ -16,6 +16,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface OrderItem {
   id: string;
@@ -97,7 +98,7 @@ export default function AdminOrdersPage() {
   }, [page, pageSize, status, search]);
 
   useEffect(() => {
-    fetchOrders();
+    deferInEffect(fetchOrders);
   }, [fetchOrders]);
 
   const updateParams = (newParams: Record<string, string>) => {
@@ -168,9 +169,12 @@ export default function AdminOrdersPage() {
       {/* 订单列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         {loadError && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <p className="text-red-500 text-sm">{loadError}</p>
-            <button onClick={fetchOrders} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <p className="text-sm text-red-500">{loadError}</p>
+            <button
+              onClick={fetchOrders}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-xs hover:bg-gray-50"
+            >
               重试
             </button>
           </div>
@@ -213,10 +217,7 @@ export default function AdminOrdersPage() {
                 </thead>
                 <tbody className="divide-y divide-brand-charcoal/[0.06]">
                   {orders.map((order) => (
-                    <tr
-                      key={order.id}
-                      className="transition-colors hover:bg-brand-charcoal/[0.02]"
-                    >
+                    <tr key={order.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
                       <td className="px-5 py-3.5">
                         <span className="font-mono text-sm text-brand-charcoal">
                           {order.orderNo}

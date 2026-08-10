@@ -63,9 +63,7 @@ function OrderStatusBadge({ status }: { status: string }) {
     className: "bg-gray-100 text-gray-500 border-gray-200",
   };
   return (
-    <span
-      className={`rounded-full border px-2 py-0.5 text-xs ${config.className}`}
-    >
+    <span className={`rounded-full border px-2 py-0.5 text-xs ${config.className}`}>
       {config.label}
     </span>
   );
@@ -167,7 +165,7 @@ export default async function AdminDashboard() {
       {ssoStats && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium text-brand-charcoal flex items-center gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
               <Shield className="h-5 w-5 text-brand-primary" />
               SSO 概览
             </h2>
@@ -222,7 +220,9 @@ export default async function AdminDashboard() {
                   className="block rounded-lg p-3 transition-colors hover:bg-brand-charcoal/[0.03]"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs text-brand-charcoal/70">{order.orderNo}</span>
+                    <span className="font-mono text-xs text-brand-charcoal/70">
+                      {order.orderNo}
+                    </span>
                     <span className="text-xs text-brand-charcoal/50">
                       {formatRelativeTime(order.createdAt)}
                     </span>
@@ -284,7 +284,9 @@ export default async function AdminDashboard() {
                           {formatRelativeTime(message.createdAt)}
                         </span>
                       </div>
-                      <p className="mt-1 truncate text-sm text-brand-charcoal/50">{message.content}</p>
+                      <p className="mt-1 truncate text-sm text-brand-charcoal/50">
+                        {message.content}
+                      </p>
                     </div>
                     {!message.read && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
                   </div>

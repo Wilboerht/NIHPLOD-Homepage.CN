@@ -2,11 +2,21 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Users, Pencil, Trash2, Power, Download, CheckCircle, XCircle, Search, X } from "lucide-react";
+import {
+  Plus,
+  Users,
+  Pencil,
+  Trash2,
+  Power,
+  Download,
+  CheckCircle,
+  XCircle,
+  Search,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -15,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "";
@@ -97,26 +108,29 @@ export default function AdminCouponsPage() {
 
   const pageSize = parseInt(searchParams.get("pageSize") || "20");
 
-  const fetchCoupons = useCallback(async (page = 1) => {
-    setLoading(true);
-    try {
-      const data = await apiGet<{ coupons: Coupon[]; pagination: typeof pagination }>(
-        "/api/admin/coupons",
-        { page, pageSize }
-      );
-      setLoadError("");
-      setCoupons(data.coupons);
-      setPagination(data.pagination);
-    } catch {
-      console.error("获取优惠券失败");
-      setLoadError("列表加载失败，请重试");
-    } finally {
-      setLoading(false);
-    }
-  }, [pageSize]);
+  const fetchCoupons = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const data = await apiGet<{ coupons: Coupon[]; pagination: typeof pagination }>(
+          "/api/admin/coupons",
+          { page, pageSize }
+        );
+        setLoadError("");
+        setCoupons(data.coupons);
+        setPagination(data.pagination);
+      } catch {
+        console.error("获取优惠券失败");
+        setLoadError("列表加载失败，请重试");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
-    fetchCoupons(1);
+    deferInEffect(() => fetchCoupons(1));
     apiGet<{ id: string; name: string }[]>("/api/admin/categories")
       .then((data) => setCategories(data))
       .catch(() => error("加载分类列表失败"));
@@ -345,9 +359,12 @@ export default function AdminCouponsPage() {
       {/* 列表 */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         {loadError && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <p className="text-red-500 text-sm">{loadError}</p>
-            <button onClick={() => fetchCoupons(pagination.page)} className="px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50">
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <p className="text-sm text-red-500">{loadError}</p>
+            <button
+              onClick={() => fetchCoupons(pagination.page)}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-xs hover:bg-gray-50"
+            >
               重试
             </button>
           </div>
@@ -377,7 +394,9 @@ export default function AdminCouponsPage() {
                   <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">有效期</th>
                   <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">发放/总限</th>
                   <th className="px-5 py-3.5 font-medium text-brand-charcoal/60">状态</th>
-                  <th className="px-5 py-3.5 text-right font-medium text-brand-charcoal/60">操作</th>
+                  <th className="px-5 py-3.5 text-right font-medium text-brand-charcoal/60">
+                    操作
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-charcoal/[0.06]">
@@ -399,7 +418,7 @@ export default function AdminCouponsPage() {
                     <td className="px-5 py-3.5">
                       <div className="font-medium text-brand-charcoal">{coupon.name}</div>
                       {coupon.code && (
-                        <span className="mt-1 inline-flex items-center rounded bg-brand-charcoal/8 px-2 py-0.5 text-xs font-medium text-brand-charcoal/60">
+                        <span className="bg-brand-charcoal/8 mt-1 inline-flex items-center rounded px-2 py-0.5 text-xs font-medium text-brand-charcoal/60">
                           {coupon.code}
                         </span>
                       )}
@@ -462,9 +481,7 @@ export default function AdminCouponsPage() {
                         </Tooltip>
                         <Tooltip content="删除" side="top">
                           <button
-                            onClick={() =>
-                              setDeleteTarget({ id: coupon.id, name: coupon.name })
-                            }
+                            onClick={() => setDeleteTarget({ id: coupon.id, name: coupon.name })}
                             className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -542,7 +559,9 @@ export default function AdminCouponsPage() {
               type="number"
               required
               value={modalCoupon.minAmount}
-              onChange={(e) => setModalCoupon({ ...modalCoupon, minAmount: Number(e.target.value) })}
+              onChange={(e) =>
+                setModalCoupon({ ...modalCoupon, minAmount: Number(e.target.value) })
+              }
             />
 
             {/* 有效期设置 */}
@@ -580,9 +599,7 @@ export default function AdminCouponsPage() {
                         ? new Date(modalCoupon.startDate).toISOString().slice(0, 16)
                         : ""
                     }
-                    onChange={(e) =>
-                      setModalCoupon({ ...modalCoupon, startDate: e.target.value })
-                    }
+                    onChange={(e) => setModalCoupon({ ...modalCoupon, startDate: e.target.value })}
                   />
                   <Input
                     label="结束时间"
@@ -592,9 +609,7 @@ export default function AdminCouponsPage() {
                         ? new Date(modalCoupon.endDate).toISOString().slice(0, 16)
                         : ""
                     }
-                    onChange={(e) =>
-                      setModalCoupon({ ...modalCoupon, endDate: e.target.value })
-                    }
+                    onChange={(e) => setModalCoupon({ ...modalCoupon, endDate: e.target.value })}
                   />
                 </div>
               ) : (
@@ -672,9 +687,7 @@ export default function AdminCouponsPage() {
                       className="pl-10"
                     />
                   </div>
-                  {productSearching && (
-                    <p className="text-xs text-brand-charcoal/50">搜索中...</p>
-                  )}
+                  {productSearching && <p className="text-xs text-brand-charcoal/50">搜索中...</p>}
                   {productResults.length > 0 && (
                     <div className="max-h-40 overflow-y-auto rounded-lg border border-brand-charcoal/10">
                       {productResults.map((p) => {

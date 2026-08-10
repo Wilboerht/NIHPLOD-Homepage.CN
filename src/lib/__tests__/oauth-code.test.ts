@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createHash } from "crypto";
 
 const mockCreate = vi.fn();
 const mockFindUnique = vi.fn();
@@ -93,7 +94,11 @@ describe("oauth-code", () => {
       expect(result?.clientId).toBe("client-1");
       expect(mockUpdateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { code: hashCode("raw-code"), used: false },
+          where: {
+            code: hashCode("raw-code"),
+            used: false,
+            expiresAt: { gte: expect.any(Date) },
+          },
           data: { used: true },
         })
       );
@@ -122,22 +127,15 @@ describe("oauth-code", () => {
   });
 
   describe("verifyPKCE", () => {
-    const verifier =
-      "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"; // 43 chars
+    const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"; // 43 chars
 
     it("S256 正确 verifier/challenge 应返回 true", () => {
-      const challenge = require("crypto")
-        .createHash("sha256")
-        .update(verifier)
-        .digest("base64url");
+      const challenge = createHash("sha256").update(verifier).digest("base64url");
       expect(verifyPKCE(verifier, challenge, "S256")).toBe(true);
     });
 
     it("错误 verifier 应返回 false", () => {
-      const challenge = require("crypto")
-        .createHash("sha256")
-        .update(verifier)
-        .digest("base64url");
+      const challenge = createHash("sha256").update(verifier).digest("base64url");
       expect(verifyPKCE(verifier + "x", challenge, "S256")).toBe(false);
     });
 

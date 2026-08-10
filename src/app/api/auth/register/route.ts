@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       if (
         typeof error === "object" &&
         error !== null &&
-        ((error as { code?: string }).code === "P2002")
+        (error as { code?: string }).code === "P2002"
       ) {
         return NextResponse.json(
           {
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
     if (
       typeof error === "object" &&
       error !== null &&
-      ((error as { code?: string }).code === "P2002")
+      (error as { code?: string }).code === "P2002"
     ) {
       // 事务内未捕获的 P2002（旧版 saveRefreshToken 可能触发）
       return NextResponse.json(

@@ -2,7 +2,11 @@
  * 密码策略服务端函数测试
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { updateUserPassword, recordPasswordHistory, checkPasswordHistory } from "@/lib/password-policy";
+import {
+  updateUserPassword,
+  recordPasswordHistory,
+  checkPasswordHistory,
+} from "@/lib/password-policy";
 import { hashPassword } from "@/lib/password";
 
 const mocks = vi.hoisted(() => ({
@@ -91,7 +95,12 @@ describe("password-policy", () => {
   describe("recordPasswordHistory", () => {
     it("应创建记录并清理超出限制的旧记录", async () => {
       mocks.passwordHistoryFindMany.mockResolvedValue([
-        { id: "h1" }, { id: "h2" }, { id: "h3" }, { id: "h4" }, { id: "h5" }, { id: "h6" },
+        { id: "h1" },
+        { id: "h2" },
+        { id: "h3" },
+        { id: "h4" },
+        { id: "h5" },
+        { id: "h6" },
       ]);
 
       await recordPasswordHistory("user-1", "hashed-password", 5);

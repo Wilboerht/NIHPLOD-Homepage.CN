@@ -106,7 +106,13 @@ export function CartDrawer() {
                       {/* Product Image */}
                       <div className="border-brand-brown/10 relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border bg-white">
                         {item.image ? (
-                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="96px" />
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="96px"
+                          />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400">
                             暂无图片

@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 import { RequireAdminRole } from "@/components/admin";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 function maskForList(phone: string | null): string {
   if (!phone || phone.length < 7) return phone || "";
@@ -86,7 +87,11 @@ function OAuthSessionsPage() {
   const [detailSession, setDetailSession] = useState<Session | null>(null);
 
   // Terminate single session
-  const [terminateTarget, setTerminateTarget] = useState<{ id: string; userId: string; clientId: string } | null>(null);
+  const [terminateTarget, setTerminateTarget] = useState<{
+    id: string;
+    userId: string;
+    clientId: string;
+  } | null>(null);
   const [showTerminate, setShowTerminate] = useState(false);
   const [terminating, setTerminating] = useState(false);
 
@@ -106,9 +111,7 @@ function OAuthSessionsPage() {
       // Sync URL params
       const qs = params.toString();
       router.replace(`/admin/oauth/sessions${qs ? `?${qs}` : ""}`, { scroll: false });
-      const data = await apiGet<SessionsResponse>(
-        `/api/admin/oauth/sessions?${params.toString()}`
-      );
+      const data = await apiGet<SessionsResponse>(`/api/admin/oauth/sessions?${params.toString()}`);
       setSessions(data.items);
       setStats(data.stats);
       setTotal(data.pagination.total);
@@ -120,7 +123,7 @@ function OAuthSessionsPage() {
   }, [page, search, searchClientId, toast, router]);
 
   useEffect(() => {
-    fetchSessions();
+    deferInEffect(fetchSessions);
   }, [fetchSessions]);
 
   // 加载 Client 下拉选项
@@ -186,8 +189,8 @@ function OAuthSessionsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl bg-white p-5 shadow-sm border-l-4 border-blue-500">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border-l-4 border-blue-500 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
               <Key className="h-5 w-5 text-blue-600" />
@@ -198,7 +201,7 @@ function OAuthSessionsPage() {
             </div>
           </div>
         </div>
-        <div className="rounded-xl bg-white p-5 shadow-sm border-l-4 border-green-500">
+        <div className="rounded-xl border-l-4 border-green-500 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50">
               <ShieldCheck className="h-5 w-5 text-green-600" />
@@ -212,8 +215,8 @@ function OAuthSessionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-end gap-3 justify-between rounded-xl bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3 justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-56">
               <Input
@@ -226,17 +229,23 @@ function OAuthSessionsPage() {
             <div className="w-48">
               <Select
                 value={searchClientId}
-                onChange={(e) => { setSearchClientId(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setSearchClientId(e.target.value);
+                  setPage(1);
+                }}
                 options={[
                   { value: "", label: "全部 Client" },
-                  ...clientOptions.map((c) => ({ value: c.clientId, label: `${c.name} (${c.clientId})` })),
+                  ...clientOptions.map((c) => ({
+                    value: c.clientId,
+                    label: `${c.name} (${c.clientId})`,
+                  })),
                 ]}
               />
             </div>
             <Button
               variant="outline"
               onClick={handleSearch}
-              leftIcon={<Search className="w-4 h-4" />}
+              leftIcon={<Search className="h-4 w-4" />}
             >
               搜索
             </Button>
@@ -244,7 +253,7 @@ function OAuthSessionsPage() {
           <Button
             variant="danger"
             onClick={() => setShowBatchTerminate(true)}
-            leftIcon={<Trash2 className="w-4 h-4" />}
+            leftIcon={<Trash2 className="h-4 w-4" />}
           >
             批量终止全部会话
           </Button>
@@ -256,34 +265,51 @@ function OAuthSessionsPage() {
         <table className="w-full">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">用户手机号</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">用户昵称</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Client ID</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">Scopes</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">创建时间</th>
-              <th className="text-left px-4 py-3 text-sm font-medium text-brand-charcoal/60">过期时间</th>
-              <th className="text-right px-4 py-3 text-sm font-medium text-brand-charcoal/60">操作</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                用户手机号
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                用户昵称
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                Client ID
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                Scopes
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                创建时间
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                过期时间
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-brand-charcoal/60">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={7} />
-              ))
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
             ) : sessions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-brand-charcoal/50">
+                <td colSpan={7} className="py-8 text-center text-brand-charcoal/50">
                   暂无数据
                 </td>
               </tr>
             ) : (
               sessions.map((s) => (
-                <tr key={s.id} className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]">
+                <tr
+                  key={s.id}
+                  className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]"
+                >
                   <td className="px-4 py-3 text-sm">{maskForList(s.phone) || s.userId}</td>
                   <td className="px-4 py-3 text-sm">{s.nickname || "-"}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-brand-charcoal/80">{s.clientId}</td>
+                  <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
+                    {s.clientId}
+                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex flex-wrap gap-1">
                       {s.scopes.map((scope) => (
                         <Badge key={scope} variant="secondary" className="text-xs">
                           {scope}
@@ -291,27 +317,35 @@ function OAuthSessionsPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">{formatDate(s.createdAt)}</td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">{formatDate(s.expiresAt)}</td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                    {formatDate(s.createdAt)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                    {formatDate(s.expiresAt)}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip content="查看详情" side="top">
                         <button
                           onClick={() => setDetailSession(s)}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-blue-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="h-4 w-4" />
                         </button>
                       </Tooltip>
                       <Tooltip content="终止会话" side="top">
                         <button
                           onClick={() => {
-                            setTerminateTarget({ id: s.id, userId: s.userId, clientId: s.clientId });
+                            setTerminateTarget({
+                              id: s.id,
+                              userId: s.userId,
+                              clientId: s.clientId,
+                            });
                             setShowTerminate(true);
                           }}
-                          className="inline-flex p-1.5 text-gray-400 hover:text-red-600 rounded"
+                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut className="h-4 w-4" />
                         </button>
                       </Tooltip>
                     </div>
@@ -325,12 +359,7 @@ function OAuthSessionsPage() {
 
       {total > pageSize && (
         <div className="mt-4">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={setPage}
-          />
+          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}
 
@@ -349,7 +378,10 @@ function OAuthSessionsPage() {
       {/* Batch Terminate Confirm */}
       <ConfirmDialog
         open={showBatchTerminate}
-        onClose={() => { setShowBatchTerminate(false); setBatchConfirmText(""); }}
+        onClose={() => {
+          setShowBatchTerminate(false);
+          setBatchConfirmText("");
+        }}
         onConfirm={handleBatchTerminate}
         type="danger"
         title="批量终止全部会话"
@@ -369,34 +401,33 @@ function OAuthSessionsPage() {
       {/* Detail Drawer */}
       {detailSession && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setDetailSession(null)}
-          />
-          <div className="relative w-full max-w-md bg-white shadow-xl h-full overflow-y-auto">
-            <div className="p-6 space-y-6">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDetailSession(null)} />
+          <div className="relative h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
+            <div className="space-y-6 p-6">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-xl font-medium text-brand-charcoal">会话详情</h2>
-                  <p className="text-sm text-brand-charcoal/50 mt-1">Session ID: {detailSession.id}</p>
+                  <p className="mt-1 text-sm text-brand-charcoal/50">
+                    Session ID: {detailSession.id}
+                  </p>
                 </div>
                 <button
                   onClick={() => setDetailSession(null)}
-                  className="p-1 text-brand-charcoal/50 hover:text-brand-charcoal/80 rounded"
+                  className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal/80"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-                  <h3 className="text-sm font-medium text-brand-charcoal mb-3">用户信息</h3>
+                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">用户信息</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-brand-charcoal/50">用户 ID</span>
                       <Link
                         href={`/admin/users?search=${encodeURIComponent(detailSession.userId)}`}
-                        className="text-blue-600 hover:underline font-mono"
+                        className="font-mono text-blue-600 hover:underline"
                       >
                         {detailSession.userId}
                       </Link>
@@ -413,7 +444,7 @@ function OAuthSessionsPage() {
                 </div>
 
                 <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-                  <h3 className="text-sm font-medium text-brand-charcoal mb-3">Client 信息</h3>
+                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">Client 信息</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-brand-charcoal/50">Client ID</span>
@@ -427,16 +458,20 @@ function OAuthSessionsPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-brand-charcoal mb-2">权限范围（Scopes）</h3>
-                  <div className="flex gap-2 flex-wrap">
+                  <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
+                    权限范围（Scopes）
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
                     {detailSession.scopes.map((s) => (
-                      <Badge key={s} variant="secondary">{s}</Badge>
+                      <Badge key={s} variant="secondary">
+                        {s}
+                      </Badge>
                     ))}
                   </div>
                 </div>
 
                 <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-                  <h3 className="text-sm font-medium text-brand-charcoal mb-3">时间信息</h3>
+                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">时间信息</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-brand-charcoal/50">创建时间</span>
@@ -454,12 +489,12 @@ function OAuthSessionsPage() {
                   className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
                   onClick={() => setDetailSession(null)}
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="h-4 w-4" />
                   查看该用户/Client 的审计日志
                 </Link>
               </div>
 
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="flex gap-2 border-t pt-4">
                 <Button
                   variant="danger"
                   onClick={() => {
@@ -471,7 +506,7 @@ function OAuthSessionsPage() {
                     });
                     setShowTerminate(true);
                   }}
-                  leftIcon={<LogOut className="w-4 h-4" />}
+                  leftIcon={<LogOut className="h-4 w-4" />}
                 >
                   终止会话
                 </Button>

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
 import { ProductsContent } from "./ProductsContent";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { mockCategories, mockProducts } from "./mock-data";
@@ -8,6 +9,9 @@ import { mockCategories, mockProducts } from "./mock-data";
 // ISR: 产品列表页每60秒重新验证一次
 export const revalidate = 60;
 
+// 开发环境无本地数据库时的 Mock 降级分支（仅限 NODE_ENV=development）：
+// 生产构建时该常量为 false，分支会被构建工具死代码消除，
+// mock-data.ts 不会进入生产包。如需彻底移除，请同步处理 [slug]/page.tsx。
 const isDev = process.env.NODE_ENV === "development";
 
 export const metadata: Metadata = {
@@ -29,15 +33,13 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "产品系列 | NIHPLOD 旎柏",
-    description:
-      "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
+    description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "产品系列 | NIHPLOD 旎柏",
-    description:
-      "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
+    description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };
@@ -47,7 +49,7 @@ export const metadata: Metadata = {
  */
 async function getCategories() {
   if (isDev) {
-    console.log("🔧 [DEV] 使用 Mock 分类数据");
+    apiConsole.info("[Products] DEV 使用 Mock 分类数据");
     return mockCategories;
   }
 
@@ -65,7 +67,7 @@ async function getCategories() {
     });
     return categories;
   } catch (error) {
-    console.error("获取分类列表失败:", error);
+    apiConsole.error("获取分类列表失败:", error);
     return [];
   }
 }
@@ -75,7 +77,7 @@ async function getCategories() {
  */
 async function getProducts() {
   if (isDev) {
-    console.log("🔧 [DEV] 使用 Mock 产品数据");
+    apiConsole.info("[Products] DEV 使用 Mock 产品数据");
     return mockProducts;
   }
 
@@ -105,7 +107,7 @@ async function getProducts() {
       price: Number(p.price),
     }));
   } catch (error) {
-    console.error("获取产品列表失败:", error);
+    apiConsole.error("获取产品列表失败:", error);
     return [];
   }
 }

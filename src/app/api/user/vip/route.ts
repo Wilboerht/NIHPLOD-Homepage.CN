@@ -9,17 +9,20 @@ import { withUserAuth } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 
 // 默认权益配置（数据库未配置时的 fallback）
-const DEFAULT_BENEFITS: Record<string, {
-  level: string;
-  name: string;
-  nameEn: string;
-  icon: string;
-  minPoints: number;
-  maxPoints: number | null;
-  pointRate: number;
-  benefits: { icon: string; title: string; desc: string }[];
-  colorClass: string;
-}> = {
+const DEFAULT_BENEFITS: Record<
+  string,
+  {
+    level: string;
+    name: string;
+    nameEn: string;
+    icon: string;
+    minPoints: number;
+    maxPoints: number | null;
+    pointRate: number;
+    benefits: { icon: string; title: string; desc: string }[];
+    colorClass: string;
+  }
+> = {
   SILVER: {
     level: "SILVER",
     name: "银卡会员",
@@ -99,8 +102,13 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
 
     if (user.birthday) {
       const now = new Date();
-      const birthdayThisYear = new Date(now.getFullYear(), user.birthday.getMonth(), user.birthday.getDate());
-      const isToday = birthdayThisYear.getDate() === now.getDate() &&
+      const birthdayThisYear = new Date(
+        now.getFullYear(),
+        user.birthday.getMonth(),
+        user.birthday.getDate()
+      );
+      const isToday =
+        birthdayThisYear.getDate() === now.getDate() &&
         birthdayThisYear.getMonth() === now.getMonth();
 
       if (isToday && user.membershipLevel !== "SILVER") {
@@ -117,7 +125,8 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
         if (!existingGift) {
           // 发放生日积分礼
           const giftPoints = user.membershipLevel === "DIAMOND" ? 1000 : 500;
-          const giftLabel = user.membershipLevel === "DIAMOND" ? "钻石会员生日礼盒" : "金卡会员生日礼遇";
+          const giftLabel =
+            user.membershipLevel === "DIAMOND" ? "钻石会员生日礼盒" : "金卡会员生日礼遇";
 
           await prisma.pointTransaction.create({
             data: {
@@ -152,7 +161,9 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
       orderBy: { minPoints: "asc" },
     });
 
-    const benefitsMap = new Map<string, (typeof dbBenefits)[number]>(dbBenefits.map((b) => [b.level, b]));
+    const benefitsMap = new Map<string, (typeof dbBenefits)[number]>(
+      dbBenefits.map((b) => [b.level, b])
+    );
 
     // 构建所有等级信息
     const levels = Object.entries(DEFAULT_BENEFITS).map(([level, defaults]) => {
@@ -174,14 +185,11 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
     const currentLevel = levels.find((l) => l.level === user.membershipLevel) ?? levels[0];
 
     // 下一等级
-    const nextLevel = levels.find(
-      (l) => l.minPoints > (currentLevel.maxPoints ?? Infinity)
-    ) ?? null;
+    const nextLevel =
+      levels.find((l) => l.minPoints > (currentLevel.maxPoints ?? Infinity)) ?? null;
 
     // 距离下一等级还需要多少积分
-    const pointsToNextLevel = nextLevel
-      ? Math.max(0, nextLevel.minPoints - updatedTotalPoints)
-      : 0;
+    const pointsToNextLevel = nextLevel ? Math.max(0, nextLevel.minPoints - updatedTotalPoints) : 0;
 
     return NextResponse.json({
       success: true,
@@ -198,9 +206,10 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
               name: nextLevel.name,
               minPoints: nextLevel.minPoints,
               pointsNeeded: pointsToNextLevel,
-              progress: nextLevel.minPoints > 0
-                ? Math.min(100, Math.round((updatedTotalPoints / nextLevel.minPoints) * 100))
-                : 100,
+              progress:
+                nextLevel.minPoints > 0
+                  ? Math.min(100, Math.round((updatedTotalPoints / nextLevel.minPoints) * 100))
+                  : 100,
             }
           : null,
         allLevels: levels,

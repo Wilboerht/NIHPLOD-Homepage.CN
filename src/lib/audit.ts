@@ -215,7 +215,15 @@ export async function listAuditLogs(options: {
   startDate?: Date;
   endDate?: Date;
 }) {
-  const { page: rawPage, pageSize: rawPageSize, action, targetType, adminId, startDate, endDate } = options;
+  const {
+    page: rawPage,
+    pageSize: rawPageSize,
+    action,
+    targetType,
+    adminId,
+    startDate,
+    endDate,
+  } = options;
   const page = Math.min(rawPage, 1000); // 防止跳过过多行
   const pageSize = Math.min(rawPageSize, 100);
 

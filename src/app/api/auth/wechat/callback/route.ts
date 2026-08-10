@@ -49,7 +49,11 @@ async function getOAuthWhitelistOrigins(): Promise<Set<string>> {
   const origins = new Set<string>();
   for (const c of clients) {
     for (const uri of c.redirectUris) {
-      try { origins.add(new URL(uri).origin); } catch { /* skip */ }
+      try {
+        origins.add(new URL(uri).origin);
+      } catch {
+        /* skip */
+      }
     }
   }
   _whitelistCache = { origins, ts: now };
@@ -59,9 +63,17 @@ async function getOAuthWhitelistOrigins(): Promise<Set<string>> {
 async function resolveSafeCallback(cb: string | undefined): Promise<string> {
   const def = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
   if (!cb) return def;
-  try { if (new URL(cb).origin === new URL(def).origin) return cb; } catch { return def; }
+  try {
+    if (new URL(cb).origin === new URL(def).origin) return cb;
+  } catch {
+    return def;
+  }
   const wl = await getOAuthWhitelistOrigins();
-  try { if (wl.has(new URL(cb).origin)) return cb; } catch { return def; }
+  try {
+    if (wl.has(new URL(cb).origin)) return cb;
+  } catch {
+    return def;
+  }
   return def;
 }
 
@@ -337,16 +349,16 @@ export async function GET(request: NextRequest) {
 
     // 子站场景：通过 URL 传递一次性 exchange token，避免 __Host- Cookie 无法跨域
     if (safeCallback && isSubsiteCallback(safeCallback)) {
-        const exchangeToken = await signWechatExchangeToken({
-          openid: wechatUser.openid,
-          unionid: wechatUser.unionid,
-          nickname: wechatUser.nickname,
-          avatar: wechatUser.headimgurl,
-        });
+      const exchangeToken = await signWechatExchangeToken({
+        openid: wechatUser.openid,
+        unionid: wechatUser.unionid,
+        nickname: wechatUser.nickname,
+        avatar: wechatUser.headimgurl,
+      });
 
-        const subsiteRedirect = new URL(baseRedirectUrl);
-        subsiteRedirect.searchParams.set("wechat_auth", "binding_required");
-        subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
+      const subsiteRedirect = new URL(baseRedirectUrl);
+      subsiteRedirect.searchParams.set("wechat_auth", "binding_required");
+      subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
 
       const response = NextResponse.redirect(subsiteRedirect, 302);
       // 清除 CSRF nonce Cookie

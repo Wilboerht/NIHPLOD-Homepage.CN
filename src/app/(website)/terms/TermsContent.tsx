@@ -19,7 +19,6 @@ interface TermsContentProps {
 // ============================================
 
 export function TermsContent({ content }: TermsContentProps) {
-  const lastUpdated = content.lastUpdated || "";
   const flatContent = content.tabs?.general?.content || [];
   const [tocOpen, setTocOpen] = useState(false);
 
@@ -33,11 +32,15 @@ export function TermsContent({ content }: TermsContentProps) {
   });
 
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 mb-[-7rem] lg:mb-[-6rem]">
-      <StandaloneNav title="服务条款" links={[
-        { href: "/contact", label: "联系我们" },
-        { href: "/privacy", label: "隐私政策" },
-      ]} leftButton={{ label: "章节目录", onClick: () => setTocOpen(true) }} />
+    <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 lg:mb-[-6rem]">
+      <StandaloneNav
+        title="服务条款"
+        links={[
+          { href: "/contact", label: "联系我们" },
+          { href: "/privacy", label: "隐私政策" },
+        ]}
+        leftButton={{ label: "章节目录", onClick: () => setTocOpen(true) }}
+      />
 
       <div className="container mx-auto px-6 md:px-20">
         <div className="flex flex-col gap-12 lg:flex-row lg:gap-24">
@@ -47,7 +50,11 @@ export function TermsContent({ content }: TermsContentProps) {
           {/* Main Content */}
           <main className="max-w-4xl flex-1 space-y-10 font-songti text-brand-charcoal/80 md:space-y-16 md:leading-relaxed">
             {sections.map((section, sIdx) => (
-              <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
+              <section
+                key={section.id}
+                id={section.id}
+                className="scroll-mt-[100px] md:scroll-mt-32"
+              >
                 <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-8 md:text-2xl md:font-light md:tracking-[0.12em]">
                   {section.title}
                 </h2>
@@ -77,12 +84,12 @@ export function TermsContent({ content }: TermsContentProps) {
       </div>
 
       {/* Page Footer */}
-<footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
-      <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
-        <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
-          &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
-        </p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-light text-brand-charcoal/[0.48]">
+      <footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
+        <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
+          <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
+            &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
+          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-light text-brand-charcoal/[0.48]">
             <Link
               href="https://beian.miit.gov.cn/"
               target="_blank"
@@ -121,7 +128,9 @@ export function TermsContent({ content }: TermsContentProps) {
           >
             {/* Header */}
             <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-brand-charcoal/[0.06] px-6">
-              <span className="text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">章节目录</span>
+              <span className="text-[15px] font-normal tracking-[0.1em] text-brand-charcoal">
+                章节目录
+              </span>
               <button
                 type="button"
                 onClick={() => setTocOpen(false)}

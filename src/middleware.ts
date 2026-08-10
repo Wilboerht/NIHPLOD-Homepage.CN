@@ -13,9 +13,7 @@ const AUTH_COOKIE_NAME = "__Host-admin_token";
 function getSecret(): Uint8Array {
   const jwtSecret = process.env.JWT_ADMIN_SECRET;
   if (!jwtSecret) {
-    throw new Error(
-      "[Middleware] JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用"
-    );
+    throw new Error("[Middleware] JWT_ADMIN_SECRET 环境变量未设置，请配置后再启动应用");
   }
   return new TextEncoder().encode(jwtSecret);
 }
@@ -70,9 +68,7 @@ async function verifyToken(token: string): Promise<boolean> {
  * 此设计防止前缀匹配过于宽泛的问题（如 "/api/admin/login" 误匹配 "/api/admin/login-attempt"）
  */
 function matchesPath(pathname: string, paths: string[]): boolean {
-  return paths.some((path) =>
-    path.endsWith("/") ? pathname.startsWith(path) : pathname === path
-  );
+  return paths.some((path) => (path.endsWith("/") ? pathname.startsWith(path) : pathname === path));
 }
 
 // ================= CSP nonce 配置 =================
@@ -173,9 +169,7 @@ export async function middleware(request: NextRequest) {
   //   不再在此处反射任意 origin，避免预检绕过白名单）
 
   if (process.env.NODE_ENV !== "production") {
-    console.log(
-      `[Middleware] pathname=${pathname}, method=${method}, cookie=${AUTH_COOKIE_NAME}`
-    );
+    console.log(`[Middleware] pathname=${pathname}, method=${method}, cookie=${AUTH_COOKIE_NAME}`);
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -250,7 +244,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/:path*",
-  ],
+  matcher: ["/:path*"],
 };

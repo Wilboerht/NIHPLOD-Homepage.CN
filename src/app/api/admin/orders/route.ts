@@ -118,20 +118,21 @@ export async function GET(request: NextRequest) {
         return sanitized;
       };
 
-      const csvHeaders =
-        "订单号,状态,实付金额,商品,用户昵称,手机号,创建时间,发货时间\n";
-      const csvRows = orders.map((order) =>
-        [
-          escapeCSV(order.orderNo),
-          escapeCSV(order.status),
-          Number(order.payAmount).toFixed(2),
-          escapeCSV(order.items.map((i) => `${i.productName}x${i.quantity}`).join("; ")),
-          escapeCSV(order.user?.nickname || ""),
-          escapeCSV(order.user?.phone ? maskPhone(order.user.phone) : ""),
-          order.createdAt.toISOString(),
-          order.shippedAt?.toISOString() || "",
-        ].join(",")
-      ).join("\n");
+      const csvHeaders = "订单号,状态,实付金额,商品,用户昵称,手机号,创建时间,发货时间\n";
+      const csvRows = orders
+        .map((order) =>
+          [
+            escapeCSV(order.orderNo),
+            escapeCSV(order.status),
+            Number(order.payAmount).toFixed(2),
+            escapeCSV(order.items.map((i) => `${i.productName}x${i.quantity}`).join("; ")),
+            escapeCSV(order.user?.nickname || ""),
+            escapeCSV(order.user?.phone ? maskPhone(order.user.phone) : ""),
+            order.createdAt.toISOString(),
+            order.shippedAt?.toISOString() || "",
+          ].join(",")
+        )
+        .join("\n");
 
       return new NextResponse(csvHeaders + csvRows, {
         headers: {

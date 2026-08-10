@@ -19,8 +19,7 @@ import { InputHTMLAttributes, ReactNode, forwardRef, useId } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface CheckboxProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
+interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
   label?: ReactNode;
   description?: string;
   error?: string;
@@ -29,10 +28,7 @@ interface CheckboxProps
 }
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
-  (
-    { className, label, description, error, checked = false, onChange, disabled, id, ...props },
-    ref
-  ) => {
+  ({ label, description, error, checked = false, onChange, disabled, id, ...props }, ref) => {
     const autoId = useId();
     const inputId = id || autoId;
 
@@ -65,7 +61,9 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           </span>
           {(label || description) && (
             <span className="flex-1">
-              {label && <span className="block text-sm font-medium text-brand-charcoal">{label}</span>}
+              {label && (
+                <span className="block text-sm font-medium text-brand-charcoal">{label}</span>
+              )}
               {description && (
                 <span className="block text-xs text-brand-charcoal/50">{description}</span>
               )}

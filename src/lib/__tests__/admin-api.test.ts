@@ -3,18 +3,32 @@
  * 覆盖认证、授权、CSRF 防护、限流、审计等安全关键路径
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // ============================================
 // vi.hoisted 变量：必须在 vi.mock 之前定义（vi.mock 被提升到文件顶部）
 // ============================================
 
-const { mockPrismaModel, mockSignToken, mockVerifyToken, mockVerifyPassword,
-  mockHashPassword, mockRateLimit, mockValidateCSRFToken } = vi.hoisted(() => {
+const {
+  mockPrismaModel,
+  mockSignToken,
+  mockVerifyToken,
+  mockVerifyPassword,
+  mockHashPassword,
+  mockRateLimit,
+  mockValidateCSRFToken,
+} = vi.hoisted(() => {
   const createMockModel = () => ({
-    findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(),
-    create: vi.fn(), update: vi.fn(), updateMany: vi.fn(),
-    deleteMany: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+    count: vi.fn(),
+    groupBy: vi.fn(),
+    aggregate: vi.fn(),
   });
   return {
     mockPrismaModel: createMockModel,
@@ -33,14 +47,24 @@ const { mockPrismaModel, mockSignToken, mockVerifyToken, mockVerifyPassword,
 
 vi.mock("@/lib/prisma", () => {
   const prisma = {
-    admin: mockPrismaModel(), order: mockPrismaModel(), user: mockPrismaModel(),
-    product: mockPrismaModel(), loginAttempt: mockPrismaModel(),
-    auditLog: mockPrismaModel(), refreshToken: mockPrismaModel(),
-    cartItem: mockPrismaModel(), userCoupon: mockPrismaModel(),
-    oAuthSession: mockPrismaModel(), oAuthClient: mockPrismaModel(),
-    ssoAuditEvent: mockPrismaModel(), contactMessage: mockPrismaModel(),
-    category: mockPrismaModel(), job: mockPrismaModel(), image: mockPrismaModel(),
-    purchaseLink: mockPrismaModel(), coupon: mockPrismaModel(),
+    admin: mockPrismaModel(),
+    order: mockPrismaModel(),
+    user: mockPrismaModel(),
+    product: mockPrismaModel(),
+    loginAttempt: mockPrismaModel(),
+    auditLog: mockPrismaModel(),
+    refreshToken: mockPrismaModel(),
+    cartItem: mockPrismaModel(),
+    userCoupon: mockPrismaModel(),
+    oAuthSession: mockPrismaModel(),
+    oAuthClient: mockPrismaModel(),
+    ssoAuditEvent: mockPrismaModel(),
+    contactMessage: mockPrismaModel(),
+    category: mockPrismaModel(),
+    job: mockPrismaModel(),
+    image: mockPrismaModel(),
+    purchaseLink: mockPrismaModel(),
+    coupon: mockPrismaModel(),
   };
   return { prisma, default: prisma };
 });
@@ -57,7 +81,9 @@ vi.mock("@/lib/jwt", () => ({
 const mockPasswordSchema = {
   parse: vi.fn((v: string) => v),
   safeParse: vi.fn((v: string) => ({ success: true, data: v })),
-  optional: function () { return this as unknown as typeof mockPasswordSchema; },
+  optional: function () {
+    return this as unknown as typeof mockPasswordSchema;
+  },
 };
 vi.mock("@/lib/password", () => ({
   verifyPassword: (...args: unknown[]) => mockVerifyPassword(...args),
@@ -90,7 +116,6 @@ mockValidateCSRFToken.mockReturnValue(true);
 vi.mock("@/lib/csrf", () => ({
   validateCSRFToken: (...args: unknown[]) => mockValidateCSRFToken(...args),
   csrfForbiddenResponse: () => {
-    const { NextResponse } = require("next/server");
     return NextResponse.json(
       { success: false, error: { code: "CSRF_INVALID", message: "CSRF 验证失败" } },
       { status: 403 }
@@ -101,7 +126,10 @@ vi.mock("@/lib/csrf", () => ({
 // Mock audit
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
-  listAuditLogs: vi.fn().mockResolvedValue({ items: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 } }),
+  listAuditLogs: vi.fn().mockResolvedValue({
+    items: [],
+    pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+  }),
   AUDIT_ACTIONS: ["login", "logout"],
   AUDIT_TARGET_TYPES: ["system", "admin"],
 }));
@@ -116,7 +144,6 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/validation", () => ({
   validateCUID: (id: string) => typeof id === "string" && id.length > 0,
   invalidIdResponse: () => {
-    const { NextResponse } = require("next/server");
     return NextResponse.json(
       { success: false, error: { code: "INVALID_ID", message: "非法 ID 格式" } },
       { status: 400 }
@@ -145,16 +172,31 @@ vi.mock("@/lib/token-blacklist", () => ({
 // Mock admin-stats
 vi.mock("@/lib/admin-stats", () => ({
   getAdminStats: vi.fn().mockResolvedValue({
-    products: 10, categories: 3, unreadMessages: 2, jobs: 5,
-    totalUsers: 100, pendingOrders: 5, paidOrders: 10, refundingOrders: 1,
-    todayRevenue: 5000, recentMessages: [], recentOrders: [],
+    products: 10,
+    categories: 3,
+    unreadMessages: 2,
+    jobs: 5,
+    totalUsers: 100,
+    pendingOrders: 5,
+    paidOrders: 10,
+    refundingOrders: 1,
+    todayRevenue: 5000,
+    recentMessages: [],
+    recentOrders: [],
   }),
 }));
 
 // Mock oauth-client (创建 OAuth Client 所需)
 vi.mock("@/lib/oauth-client", () => ({
   createOAuthClient: vi.fn().mockResolvedValue({
-    client: { id: "client-1", clientId: "abc123", name: "Test App", redirectUris: [], scopes: [], isActive: true },
+    client: {
+      id: "client-1",
+      clientId: "abc123",
+      name: "Test App",
+      redirectUris: [],
+      scopes: [],
+      isActive: true,
+    },
     plainSecret: "plain-secret-123",
   }),
   listOAuthClients: vi.fn().mockResolvedValue({ clients: [], total: 0 }),
@@ -198,7 +240,15 @@ const mockPrisma = prisma as unknown as Record<string, Record<string, ReturnType
 // 工具函数
 // ============================================
 
-function createRequest(path: string, options?: { method?: string; body?: unknown; headers?: Record<string, string>; cookies?: Record<string, string> }) {
+function createRequest(
+  path: string,
+  options?: {
+    method?: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+    cookies?: Record<string, string>;
+  }
+) {
   const url = new URL(path, "http://localhost:3000");
   const init: RequestInit = { method: options?.method || "GET" };
   if (options?.body) {
@@ -218,14 +268,25 @@ function createRequest(path: string, options?: { method?: string; body?: unknown
 }
 
 /** 设置管理员认证 mock（包括 token cookie） */
-function mockAdminAuth(admin: { id: string; email: string; name: string; role: string } | null, req?: NextRequest) {
+function mockAdminAuth(
+  admin: { id: string; email: string; name: string; role: string } | null,
+  req?: NextRequest
+) {
   if (admin) {
     mockVerifyToken.mockResolvedValue({
-      id: admin.id, email: admin.email, name: admin.name, role: admin.role, type: "admin",
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      role: admin.role,
+      type: "admin",
     });
     mockPrisma.admin.findUnique.mockResolvedValue({
-      id: admin.id, email: admin.email, name: admin.name, role: admin.role,
-      status: "ACTIVE", deletedAt: null,
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      role: admin.role,
+      status: "ACTIVE",
+      deletedAt: null,
     });
     // 在请求上设置 admin token cookie（withAuth/verifyAuth 会读取）
     if (req) {
@@ -355,9 +416,16 @@ describe("管理端 API 集成测试", () => {
     it("账号被禁用应返回 403", async () => {
       mockValidateCSRFToken.mockReturnValue(true);
       mockPrisma.admin.findUnique.mockResolvedValue({
-        id: "admin-1", email: "admin@test.com", password: "$2a$12$hash",
-        name: "Admin", role: "admin", status: "DISABLED", deletedAt: null,
-        totpEnabled: false, totpSecret: null, totpBackupCodes: null,
+        id: "admin-1",
+        email: "admin@test.com",
+        password: "$2a$12$hash",
+        name: "Admin",
+        role: "admin",
+        status: "DISABLED",
+        deletedAt: null,
+        totpEnabled: false,
+        totpSecret: null,
+        totpBackupCodes: null,
       });
 
       const { POST } = await import("@/app/api/admin/login/route");
@@ -375,9 +443,16 @@ describe("管理端 API 集成测试", () => {
     it("正常登录应返回 200 并设置 Cookie", async () => {
       mockValidateCSRFToken.mockReturnValue(true);
       mockPrisma.admin.findUnique.mockResolvedValue({
-        id: "admin-1", email: "admin@test.com", password: "$2a$12$hash",
-        name: "Admin", role: "admin", status: "ACTIVE", deletedAt: null,
-        totpEnabled: false, totpSecret: null, totpBackupCodes: null,
+        id: "admin-1",
+        email: "admin@test.com",
+        password: "$2a$12$hash",
+        name: "Admin",
+        role: "admin",
+        status: "ACTIVE",
+        deletedAt: null,
+        totpEnabled: false,
+        totpSecret: null,
+        totpBackupCodes: null,
       });
       mockSignToken.mockResolvedValue("mock-jwt-token-admin-1");
 
@@ -402,9 +477,16 @@ describe("管理端 API 集成测试", () => {
     it("TOTP 已启用但未提供 code 应返回 TOTP_REQUIRED", async () => {
       mockValidateCSRFToken.mockReturnValue(true);
       mockPrisma.admin.findUnique.mockResolvedValue({
-        id: "admin-1", email: "admin@test.com", password: "$2a$12$hash",
-        name: "Admin", role: "admin", status: "ACTIVE", deletedAt: null,
-        totpEnabled: true, totpSecret: "encrypted-secret", totpBackupCodes: "[]",
+        id: "admin-1",
+        email: "admin@test.com",
+        password: "$2a$12$hash",
+        name: "Admin",
+        role: "admin",
+        status: "ACTIVE",
+        deletedAt: null,
+        totpEnabled: true,
+        totpSecret: "encrypted-secret",
+        totpBackupCodes: "[]",
       });
 
       const { POST } = await import("@/app/api/admin/login/route");
@@ -495,10 +577,14 @@ describe("管理端 API 集成测试", () => {
       });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
-        id: "user-1", phone: "13800138000", status: "ACTIVE",
+        id: "user-1",
+        phone: "13800138000",
+        status: "ACTIVE",
       });
       mockPrisma.user.update.mockResolvedValue({
-        id: "user-1", phone: "13800138000", status: "BANNED",
+        id: "user-1",
+        phone: "13800138000",
+        status: "BANNED",
       });
 
       const { PATCH } = await import("@/app/api/admin/users/[id]/route");
@@ -535,7 +621,9 @@ describe("管理端 API 集成测试", () => {
       });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
-        id: "user-1", phone: "13800138000", status: "ACTIVE",
+        id: "user-1",
+        phone: "13800138000",
+        status: "ACTIVE",
       });
 
       const { PATCH } = await import("@/app/api/admin/users/[id]/route");
@@ -576,6 +664,8 @@ describe("管理端 API 集成测试", () => {
         method: "POST",
         body: { logisticsCompany: "顺丰", trackingNo: "SF1234567890" },
       });
+      // 路由先校验认证（401）再校验 CSRF（403），需先通过认证才能到达 CSRF 分支
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       const res = await POST(req, { params: Promise.resolve({ id: "order-1" }) });
       expect(res.status).toBe(403);
     });
@@ -590,6 +680,8 @@ describe("管理端 API 集成测试", () => {
         method: "POST",
         body: { approved: true },
       });
+      // 路由先校验认证（401）再校验 CSRF（403），需先通过认证才能到达 CSRF 分支
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       const res = await POST(req, { params: Promise.resolve({ id: "order-1" }) });
       expect(res.status).toBe(403);
     });
@@ -607,10 +699,19 @@ describe("管理端 API 集成测试", () => {
       const req = createRequest("/api/admin/products", {
         method: "POST",
         body: {
-          name: "测试产品", nameEn: "Test Product", slug: "test-product",
-          description: "<p>Test</p>", price: 100, categoryId: "cat-1",
-          images: [], benefits: [], order: 0, featured: false,
-          published: false, allowDirectBuy: false, stock: 0,
+          name: "测试产品",
+          nameEn: "Test Product",
+          slug: "test-product",
+          description: "<p>Test</p>",
+          price: 100,
+          categoryId: "cat-1",
+          images: [],
+          benefits: [],
+          order: 0,
+          featured: false,
+          published: false,
+          allowDirectBuy: false,
+          stock: 0,
         },
       });
       const res = await POST(req);
@@ -632,7 +733,12 @@ describe("管理端 API 集成测试", () => {
 
       const { POST } = await import("@/app/api/admin/admins/route");
       // withRole(["owner"]) 应该拦截 admin 角色（返回 403 FORBIDDEN）
-      const res = await POST(req, { id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" } as never);
+      const res = await POST(req, {
+        id: "admin-1",
+        email: "admin@test.com",
+        name: "Admin",
+        role: "admin",
+      } as never);
       expect(res.status).toBe(403);
       expect(await res.json()).toMatchObject({
         success: false,

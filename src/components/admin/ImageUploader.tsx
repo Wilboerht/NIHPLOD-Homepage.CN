@@ -206,7 +206,9 @@ export function ImageUploader({
 
   return (
     <div className={className}>
-      {label && <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>}
+      {label && (
+        <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>
+      )}
 
       {/* 错误提示 */}
       {uploadErrors.length > 0 && (
@@ -231,11 +233,17 @@ export function ImageUploader({
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
               className={cn(
-                "group relative aspect-square overflow-hidden rounded-lg border-2 bg-brand-charcoal/8",
+                "bg-brand-charcoal/8 group relative aspect-square overflow-hidden rounded-lg border-2",
                 dragOverIndex === index ? "border-brand-primary" : "border-transparent"
               )}
             >
-              <Image src={image.url} alt={image.alt || "产品图片"} fill className="object-cover" sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw" />
+              <Image
+                src={image.url}
+                alt={image.alt || "产品图片"}
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+              />
               {/* 拖拽手柄 */}
               <div className="absolute left-1 top-1 cursor-grab rounded bg-black/50 p-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <GripVertical className="h-4 w-4 text-white" />
@@ -292,7 +300,7 @@ export function ImageUploader({
             onChange={(e) => handleFiles(e.target.files)}
             className="hidden"
           />
-          <div className="mb-3 rounded-full bg-brand-charcoal/8 p-3">
+          <div className="bg-brand-charcoal/8 mb-3 rounded-full p-3">
             {isCompressing ? (
               <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
             ) : dragActive ? (
@@ -304,7 +312,9 @@ export function ImageUploader({
           <p className="mb-1 text-sm font-medium text-brand-charcoal/80">
             {isCompressing ? "正在处理图片..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
           </p>
-          <p className="text-xs text-brand-charcoal/50">支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB</p>
+          <p className="text-xs text-brand-charcoal/50">
+            支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB
+          </p>
           <p className="mt-1 text-xs text-brand-charcoal/50">
             已上传 {value.length}/{maxImages} 张
           </p>

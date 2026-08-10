@@ -21,14 +21,18 @@ function PayResultClient() {
   useEffect(() => {
     if (orderNo) {
       // 尝试从 sessionStorage 恢复订单 items（PayModal 缓存的）
-      let items: Array<{ productId: string; productName: string; price: number; quantity: number }> | undefined;
+      let items:
+        | Array<{ productId: string; productName: string; price: number; quantity: number }>
+        | undefined;
       try {
         const cached = sessionStorage.getItem("pending_purchase_items");
         if (cached) {
           items = JSON.parse(cached);
           sessionStorage.removeItem("pending_purchase_items");
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       trackEvent("purchase", {
         transaction_id: orderNo,

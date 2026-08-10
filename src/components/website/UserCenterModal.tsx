@@ -5,6 +5,7 @@
  * 品牌风格 - 左侧菜单 + 右侧内容
  */
 import { useEffect, useRef, useState } from "react";
+import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -28,14 +29,10 @@ const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
 export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
     useAuth();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [showMobileDetail, setShowMobileDetail] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // 初始加载及 PC/移动切换逻辑
   useEffect(() => {

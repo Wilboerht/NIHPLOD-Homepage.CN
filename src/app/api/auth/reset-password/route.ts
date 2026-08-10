@@ -15,7 +15,6 @@ import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/l
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { updateUserPassword } from "@/lib/password-policy";
 

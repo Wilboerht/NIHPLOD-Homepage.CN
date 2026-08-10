@@ -86,9 +86,7 @@ export function ProductsTable({
 
   // 全选/取消全选
   const handleSelectAll = useCallback(() => {
-    setSelectedIds((prev) =>
-      prev.length === products.length ? [] : products.map((p) => p.id)
-    );
+    setSelectedIds((prev) => (prev.length === products.length ? [] : products.map((p) => p.id)));
   }, [products]);
 
   // 切换发布状态
@@ -97,7 +95,7 @@ export function ProductsTable({
     try {
       await apiPatch(`/api/admin/products/${id}`, { published: !published });
       onRefresh();
-    } catch (error) {
+    } catch {
       showError("操作失败，请重试");
     } finally {
       setActionLoading(null);
@@ -121,7 +119,7 @@ export function ProductsTable({
       } else {
         onRefresh();
       }
-    } catch (error) {
+    } catch {
       showError("删除失败，请重试");
     } finally {
       setActionLoading(null);
@@ -136,7 +134,7 @@ export function ProductsTable({
       await apiPost("/api/admin/products/batch", { ids: selectedIds, action });
       setSelectedIds([]);
       onRefresh();
-    } catch (error) {
+    } catch {
       showError("批量操作失败，请重试");
     } finally {
       setActionLoading(null);
@@ -144,141 +142,148 @@ export function ProductsTable({
   };
 
   // 表格列定义
-  const columns: Column<ProductItem>[] = useMemo(() => [
-    {
-      key: "select",
-      title: (
-        <input
-          type="checkbox"
-          checked={selectedIds.length === products.length && products.length > 0}
-          onChange={handleSelectAll}
-          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
-        />
-      ),
-      width: "50px",
-      render: (_, record) => (
-        <input
-          type="checkbox"
-          checked={selectedIds.includes(record.id)}
-          onChange={() => handleSelect(record.id)}
-          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
-        />
-      ),
-    },
-    {
-      key: "image",
-      title: "图片",
-      width: "80px",
-      render: (_, record) => (
-        <div className="h-12 w-12 overflow-hidden rounded-lg bg-brand-charcoal/8">
-          {record.image ? (
-            <Image
-              src={record.image.url}
-              alt={record.image.alt || record.name}
-              width={48}
-              height={48}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/50">
-              无图
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: "name",
-      title: "产品名称",
-      render: (_, record) => (
-        <div>
-          <p className="font-medium text-brand-charcoal">{record.name}</p>
-          <p className="text-xs text-brand-charcoal/50">{record.nameEn}</p>
-        </div>
-      ),
-    },
-    {
-      key: "category.name",
-      title: "分类",
-      render: (_, record) => <Badge variant="secondary">{record.category.name}</Badge>,
-    },
-    {
-      key: "price",
-      title: "价格",
-      align: "right",
-      sortable: true,
-      render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
-    },
-    {
-      key: "order",
-      title: "排序",
-      align: "right",
-      width: "70px",
-      render: (_, record) => <span className="text-sm text-brand-charcoal/40">{record.order}</span>,
-    },
-    {
-      key: "salesCount",
-      title: "销量",
-      align: "right",
-      render: (_, record) => <span className="text-sm text-brand-charcoal/60">{record.salesCount}</span>,
-    },
-    {
-      key: "stock",
-      title: "库存",
-      align: "right",
-      render: (_, record) => (
-        <span
-          className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "font-medium text-red-500" : "text-brand-charcoal/60"}`}
-        >
-          {record.allowDirectBuy ? record.stock : "-"}
-        </span>
-      ),
-    },
-    {
-      key: "published",
-      title: "状态",
-      render: (_, record) => (
-        <DotBadge color={record.published ? "green" : "gray"}>
-          {record.published ? "已发布" : "草稿"}
-        </DotBadge>
-      ),
-    },
-    {
-      key: "actions",
-      title: "操作",
-      width: "120px",
-      align: "right",
-      render: (_, record) => (
-        <div className="flex items-center justify-end gap-1">
-          <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
-            <button
-              onClick={() => handleTogglePublish(record.id, record.published)}
-              disabled={actionLoading === record.id}
-              className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-            >
-              {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </Tooltip>
-          <Tooltip content="编辑" side="top">
-            <Link
-              href={`/admin/products/${record.id}/edit`}
-              className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-            >
-              <Pencil className="h-4 w-4" />
-            </Link>
-          </Tooltip>
-          <Tooltip content="删除" side="top">
-            <button
-              onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
-              className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </Tooltip>
-        </div>
-      ),
-    },
-  ], [selectedIds, products, actionLoading, handleSelectAll]);
+  const columns: Column<ProductItem>[] = useMemo(
+    () => [
+      {
+        key: "select",
+        title: (
+          <input
+            type="checkbox"
+            checked={selectedIds.length === products.length && products.length > 0}
+            onChange={handleSelectAll}
+            className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+          />
+        ),
+        width: "50px",
+        render: (_, record) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(record.id)}
+            onChange={() => handleSelect(record.id)}
+            className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+          />
+        ),
+      },
+      {
+        key: "image",
+        title: "图片",
+        width: "80px",
+        render: (_, record) => (
+          <div className="bg-brand-charcoal/8 h-12 w-12 overflow-hidden rounded-lg">
+            {record.image ? (
+              <Image
+                src={record.image.url}
+                alt={record.image.alt || record.name}
+                width={48}
+                height={48}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/50">
+                无图
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "name",
+        title: "产品名称",
+        render: (_, record) => (
+          <div>
+            <p className="font-medium text-brand-charcoal">{record.name}</p>
+            <p className="text-xs text-brand-charcoal/50">{record.nameEn}</p>
+          </div>
+        ),
+      },
+      {
+        key: "category.name",
+        title: "分类",
+        render: (_, record) => <Badge variant="secondary">{record.category.name}</Badge>,
+      },
+      {
+        key: "price",
+        title: "价格",
+        align: "right",
+        sortable: true,
+        render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
+      },
+      {
+        key: "order",
+        title: "排序",
+        align: "right",
+        width: "70px",
+        render: (_, record) => (
+          <span className="text-sm text-brand-charcoal/40">{record.order}</span>
+        ),
+      },
+      {
+        key: "salesCount",
+        title: "销量",
+        align: "right",
+        render: (_, record) => (
+          <span className="text-sm text-brand-charcoal/60">{record.salesCount}</span>
+        ),
+      },
+      {
+        key: "stock",
+        title: "库存",
+        align: "right",
+        render: (_, record) => (
+          <span
+            className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "font-medium text-red-500" : "text-brand-charcoal/60"}`}
+          >
+            {record.allowDirectBuy ? record.stock : "-"}
+          </span>
+        ),
+      },
+      {
+        key: "published",
+        title: "状态",
+        render: (_, record) => (
+          <DotBadge color={record.published ? "green" : "gray"}>
+            {record.published ? "已发布" : "草稿"}
+          </DotBadge>
+        ),
+      },
+      {
+        key: "actions",
+        title: "操作",
+        width: "120px",
+        align: "right",
+        render: (_, record) => (
+          <div className="flex items-center justify-end gap-1">
+            <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
+              <button
+                onClick={() => handleTogglePublish(record.id, record.published)}
+                disabled={actionLoading === record.id}
+                className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+              >
+                {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </Tooltip>
+            <Tooltip content="编辑" side="top">
+              <Link
+                href={`/admin/products/${record.id}/edit`}
+                className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+              >
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Tooltip>
+            <Tooltip content="删除" side="top">
+              <button
+                onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
+                className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          </div>
+        ),
+      },
+    ],
+    [selectedIds, products, actionLoading, handleSelectAll]
+  );
 
   return (
     <div className="space-y-4">

@@ -60,8 +60,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "常见问题",
-  description:
-    "关于 NIHPLOD 旎柏，你想知道的都在这里。",
+  description: "关于 NIHPLOD 旎柏，你想知道的都在这里。",
   alternates: {
     canonical: "/faq",
   },
@@ -77,15 +76,13 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "常见问题 | NIHPLOD 旎柏",
-    description:
-      "关于 NIHPLOD 旎柏，你想知道的都在这里。",
+    description: "关于 NIHPLOD 旎柏，你想知道的都在这里。",
     images: ["/images/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "常见问题 | NIHPLOD 旎柏",
-    description:
-      "关于 NIHPLOD 旎柏，你想知道的都在这里。",
+    description: "关于 NIHPLOD 旎柏，你想知道的都在这里。",
     images: ["/images/og-image.png"],
   },
 };

@@ -16,16 +16,15 @@ import { useState, useEffect } from "react";
  * @returns boolean - true 表示用户偏好减少动画
  */
 export function useReducedMotion(): boolean {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  // 懒初始化：直接读取媒体查询，避免 effect 内同步 setState
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () =>
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 
   useEffect(() => {
-    // 检测媒体查询
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    // 设置初始值
-    setPrefersReducedMotion(mediaQuery.matches);
-
     // 监听变化
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const handleChange = (event: MediaQueryListEvent) => {
       setPrefersReducedMotion(event.matches);
     };

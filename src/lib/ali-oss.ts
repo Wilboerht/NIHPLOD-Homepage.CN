@@ -162,7 +162,7 @@ export async function deleteOSSFiles(urls: string[]) {
 
     // 批量删除
     await ossClient.deleteMulti(names);
-    console.log("Deleted OSS files:", names);
+    apiConsole.info(`Deleted OSS files: ${names.join(", ")}`);
   } catch (e) {
     apiConsole.error("Failed to delete OSS files:", e);
   }

@@ -15,19 +15,23 @@ import { sendBackchannelLogout } from "./backchannel-logout";
 // 参数校验
 // ============================================
 
-const uriSchema = z.string().url().max(500).refine(
-  (u) => {
-    try {
-      const parsed = new URL(u);
-      if (parsed.protocol !== "https:") return false;
-      if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  { message: "必须是 https:// 公网地址" }
-);
+const uriSchema = z
+  .string()
+  .url()
+  .max(500)
+  .refine(
+    (u) => {
+      try {
+        const parsed = new URL(u);
+        if (parsed.protocol !== "https:") return false;
+        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "必须是 https:// 公网地址" }
+  );
 
 const createClientSchema = z.object({
   name: z.string().min(1).max(100),
@@ -35,20 +39,26 @@ const createClientSchema = z.object({
   postLogoutRedirectUris: z.array(uriSchema).optional().default([]),
   scopes: z.array(z.string().min(1).max(50)).min(1),
   isPublic: z.boolean().optional().default(false),
-  backchannelLogoutUri: z.string().url().max(500).refine(
-    (u) => {
-      try {
-        const parsed = new URL(u);
-        if (parsed.protocol !== "https:") return false;
-        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
-        if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname)) return false;
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    { message: "必须是 https:// 公网地址" }
-  ).optional(),
+  backchannelLogoutUri: z
+    .string()
+    .url()
+    .max(500)
+    .refine(
+      (u) => {
+        try {
+          const parsed = new URL(u);
+          if (parsed.protocol !== "https:") return false;
+          if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
+          if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname))
+            return false;
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "必须是 https:// 公网地址" }
+    )
+    .optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional().default(300),
   accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional().default(900),
 });
@@ -60,20 +70,27 @@ const updateClientSchema = z.object({
   scopes: z.array(z.string().min(1).max(50)).min(1).optional(),
   isActive: z.boolean().optional(),
   isPublic: z.boolean().optional(),
-  backchannelLogoutUri: z.string().url().max(500).refine(
-    (u) => {
-      try {
-        const parsed = new URL(u);
-        if (parsed.protocol !== "https:") return false;
-        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
-        if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname)) return false;
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    { message: "必须是 https:// 公网地址" }
-  ).nullable().optional(),
+  backchannelLogoutUri: z
+    .string()
+    .url()
+    .max(500)
+    .refine(
+      (u) => {
+        try {
+          const parsed = new URL(u);
+          if (parsed.protocol !== "https:") return false;
+          if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
+          if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname))
+            return false;
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "必须是 https:// 公网地址" }
+    )
+    .nullable()
+    .optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional(),
   accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional(),
 });
@@ -86,7 +103,9 @@ const updateClientSchema = z.object({
  * 返回去敏后的 client 数据（不含 clientSecret），用于 API 响应。
  * 使用显式字段白名单，避免依赖解构排除模式。
  */
-export function toSafeClientResponse(client: OAuthClientData): Omit<OAuthClientData, "clientSecret"> {
+export function toSafeClientResponse(
+  client: OAuthClientData
+): Omit<OAuthClientData, "clientSecret"> {
   return {
     id: client.id,
     clientId: client.clientId,
@@ -255,9 +274,7 @@ export async function createOAuthClient(
 /**
  * 按 clientId 查询 OAuth Client（不含 secret）
  */
-export async function getOAuthClientByClientId(
-  clientId: string
-): Promise<OAuthClientData | null> {
+export async function getOAuthClientByClientId(clientId: string): Promise<OAuthClientData | null> {
   const client = await prisma.oAuthClient.findFirst({
     where: { clientId },
   });

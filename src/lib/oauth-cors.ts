@@ -50,9 +50,7 @@ async function getAllowedOrigins(): Promise<Set<string>> {
  * @param request - NextRequest
  * @returns [headers, isCorsRequest]
  */
-export async function getOAuthCorsHeaders(
-  request: NextRequest
-): Promise<Record<string, string>> {
+export async function getOAuthCorsHeaders(request: NextRequest): Promise<Record<string, string>> {
   const origin = request.headers.get("origin");
   const allowedOrigins = await getAllowedOrigins();
 

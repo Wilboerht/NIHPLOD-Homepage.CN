@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Package, ChevronRight, Loader2, Truck, XCircle, CheckCircle, RotateCcw } from "lucide-react";
+import { Package, ChevronRight, Loader2, XCircle, CheckCircle, RotateCcw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";

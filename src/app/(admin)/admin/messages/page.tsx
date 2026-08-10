@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface Message {
   id: string;
@@ -90,7 +91,7 @@ export default function AdminMessagesPage() {
   }, [page, pageSize, debouncedSearch, statusFilter, typeFilter]);
 
   useEffect(() => {
-    fetchMessages();
+    deferInEffect(fetchMessages);
   }, [fetchMessages]);
 
   // 搜索防抖
@@ -298,7 +299,10 @@ export default function AdminMessagesPage() {
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
             <p className="mt-1 text-sm text-brand-charcoal/50">无法获取留言列表，请检查网络连接</p>
             <button
-              onClick={() => { setLoadError(false); fetchMessages(); }}
+              onClick={() => {
+                setLoadError(false);
+                fetchMessages();
+              }}
               className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
             >
               重试
@@ -309,7 +313,7 @@ export default function AdminMessagesPage() {
         ) : (
           <>
             {/* 表头 */}
-            <div className="flex items-center gap-4 border-b border-brand-charcoal/8 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
+            <div className="border-brand-charcoal/8 flex items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <input
                 type="checkbox"
                 checked={isAllSelected}
@@ -323,7 +327,7 @@ export default function AdminMessagesPage() {
             </div>
 
             {/* 列表 */}
-            <div className="divide-y divide-brand-charcoal/8">
+            <div className="divide-brand-charcoal/8 divide-y">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -386,7 +390,9 @@ export default function AdminMessagesPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="mt-1 truncate text-sm text-brand-charcoal/50">{message.content}</p>
+                        <p className="mt-1 truncate text-sm text-brand-charcoal/50">
+                          {message.content}
+                        </p>
                       </div>
                     </div>
                   </div>

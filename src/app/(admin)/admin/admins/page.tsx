@@ -16,6 +16,7 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { RequireAdminRole } from "@/components/admin";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface AdminItem {
   id: string;
@@ -72,7 +73,7 @@ export default function AdminAdminsPage() {
   }, [page, search]);
 
   useEffect(() => {
-    fetchAdmins();
+    deferInEffect(fetchAdmins);
   }, [fetchAdmins]);
 
   const updateParams = (newParams: Record<string, string>) => {
@@ -115,8 +116,13 @@ export default function AdminAdminsPage() {
 
     setSubmitting(true);
     try {
-      const body = editing ? { id: editing.id, ...form } : form;
-      if (editing && !form.password) delete (body as Record<string, unknown>).password;
+      // 编辑且未修改密码时不提交 password 字段（不可变构造，避免直接删除 state 派生对象属性）
+      const { password, ...formWithoutPassword } = form;
+      const body = editing
+        ? password
+          ? { id: editing.id, ...form }
+          : { id: editing.id, ...formWithoutPassword }
+        : form;
 
       if (editing) {
         await apiPut("/api/admin/admins", body);
@@ -171,226 +177,243 @@ export default function AdminAdminsPage() {
 
   return (
     <RequireAdminRole role="owner">
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">管理员管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">管理后台管理员账号</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" leftIcon={<RefreshCw className="h-4 w-4" />} onClick={fetchAdmins}>
-            刷新
-          </Button>
-          <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-            新增管理员
-          </Button>
-        </div>
-      </div>
-
-      {/* 搜索栏 */}
-      <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
-          <Input
-            placeholder="搜索邮箱/姓名..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-            className="pl-10"
-          />
-        </div>
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 hover:bg-red-50"
-              leftIcon={<Trash2 className="h-4 w-4" />}
-              onClick={() => setShowBatchDelete(true)}
-            >
-              批量删除
-            </Button>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="inline-flex p-1.5 text-brand-charcoal/50 hover:text-brand-charcoal/80 rounded"
-            >
-              <X className="h-4 w-4" />
-            </button>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-medium text-brand-charcoal">管理员管理</h1>
+            <p className="mt-1 text-sm text-brand-charcoal/50">管理后台管理员账号</p>
           </div>
-        )}
-      </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+              onClick={fetchAdmins}
+            >
+              刷新
+            </Button>
+            <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+              新增管理员
+            </Button>
+          </div>
+        </div>
 
-      {/* 列表 */}
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-              <th scope="col" className="w-10 px-4 py-3.5">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  onChange={(e) => {
-                    if (e.target.checked) setSelectedIds(new Set(admins.map((a) => a.id)));
-                    else setSelectedIds(new Set());
-                  }}
-                  className="h-4 w-4 rounded border-brand-charcoal/20"
-                  aria-label="全选"
-                />
-              </th>
-              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">姓名</th>
-              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">邮箱</th>
-              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">角色</th>
-              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">创建时间</th>
-              <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-brand-charcoal/[0.06]">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={6} />
-              ))
-            ) : admins.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-5 py-8">
-                  <Empty
-                    title="暂无管理员"
-                    className="py-6"
-                    action={
-                      <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-                        新增管理员
-                      </Button>
-                    }
+        {/* 搜索栏 */}
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
+          <div className="relative max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+            <Input
+              placeholder="搜索邮箱/姓名..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
+              className="pl-10"
+            />
+          </div>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:bg-red-50"
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() => setShowBatchDelete(true)}
+              >
+                批量删除
+              </Button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-brand-charcoal/80"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 列表 */}
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                <th scope="col" className="w-10 px-4 py-3.5">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedIds(new Set(admins.map((a) => a.id)));
+                      else setSelectedIds(new Set());
+                    }}
+                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                    aria-label="全选"
                   />
-                </td>
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                  姓名
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                  邮箱
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                  角色
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                  创建时间
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                  操作
+                </th>
               </tr>
-            ) : (
-              admins.map((admin) => (
-                <tr key={admin.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
-                  <td className="px-4 py-3.5">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(admin.id)}
-                      onChange={() => {
-                        const next = new Set(selectedIds);
-                        if (next.has(admin.id)) next.delete(admin.id);
-                        else next.add(admin.id);
-                        setSelectedIds(next);
-                      }}
-                      className="h-4 w-4 rounded border-brand-charcoal/20"
-                      aria-label={`选择 ${admin.name}`}
+            </thead>
+            <tbody className="divide-y divide-brand-charcoal/[0.06]">
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
+              ) : admins.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8">
+                    <Empty
+                      title="暂无管理员"
+                      className="py-6"
+                      action={
+                        <Button
+                          size="sm"
+                          leftIcon={<Plus className="h-4 w-4" />}
+                          onClick={openCreate}
+                        >
+                          新增管理员
+                        </Button>
+                      }
                     />
                   </td>
-                  <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
-                  <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
-                  <td className="px-5 py-3.5">
-                    <Badge variant={admin.role === "owner" ? "warning" : "default"}>
-                      {admin.role === "owner" ? "最高权限" : "管理员"}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-3.5 text-brand-charcoal/50">
-                    {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(admin)}>
-                        <Trash2 className="h-4 w-4 text-red-400" />
-                      </Button>
-                    </div>
-                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                admins.map((admin) => (
+                  <tr key={admin.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
+                    <td className="px-4 py-3.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(admin.id)}
+                        onChange={() => {
+                          const next = new Set(selectedIds);
+                          if (next.has(admin.id)) next.delete(admin.id);
+                          else next.add(admin.id);
+                          setSelectedIds(next);
+                        }}
+                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        aria-label={`选择 ${admin.name}`}
+                      />
+                    </td>
+                    <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
+                    <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
+                    <td className="px-5 py-3.5">
+                      <Badge variant={admin.role === "owner" ? "warning" : "default"}>
+                        {admin.role === "owner" ? "最高权限" : "管理员"}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3.5 text-brand-charcoal/50">
+                      {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(admin)}>
+                          <Trash2 className="h-4 w-4 text-red-400" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* 分页 */}
-      <div className="flex justify-center">
-        <Pagination
-          page={pagination.page}
-          pageSize={pagination.pageSize}
-          total={pagination.total}
-          onChange={(p) => updateParams({ page: String(p) })}
+        {/* 分页 */}
+        <div className="flex justify-center">
+          <Pagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            onChange={(p) => updateParams({ page: String(p) })}
+          />
+        </div>
+
+        {/* 弹窗 */}
+        <Modal
+          open={showModal}
+          onClose={() => setShowModal(false)}
+          title={editing ? "编辑管理员" : "新增管理员"}
+          size="sm"
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="姓名"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <Input
+              label="邮箱"
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+            <Input
+              label={`密码${editing ? "（留空则不修改）" : ""}`}
+              type="password"
+              required={!editing}
+              minLength={8}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            <Select
+              label="角色"
+              options={[
+                { value: "admin", label: "管理员" },
+                { value: "owner", label: "最高权限管理员" },
+              ]}
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)}>
+                取消
+              </Button>
+              <Button type="submit" size="sm" loading={submitting} disabled={submitting}>
+                保存
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* 删除确认 */}
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+          title="删除管理员"
+          description={`确定要删除管理员「${deleteTarget?.name}」吗？此操作不可撤销。`}
+          type="danger"
+          confirmText="删除"
+          loading={deleting}
+        />
+
+        {/* 批量删除确认 */}
+        <ConfirmDialog
+          open={showBatchDelete}
+          onClose={() => setShowBatchDelete(false)}
+          onConfirm={handleBatchDelete}
+          title="批量删除管理员"
+          description={`确定要删除选中的 ${selectedIds.size} 名管理员吗？此操作不可撤销。`}
+          type="danger"
+          confirmText="确认删除"
+          loading={batchDeleting}
         />
       </div>
-
-      {/* 弹窗 */}
-      <Modal
-        open={showModal}
-        onClose={() => setShowModal(false)}
-        title={editing ? "编辑管理员" : "新增管理员"}
-        size="sm"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="姓名"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <Input
-            label="邮箱"
-            type="email"
-            required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-          <Input
-            label={`密码${editing ? "（留空则不修改）" : ""}`}
-            type="password"
-            required={!editing}
-            minLength={8}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-          <Select
-            label="角色"
-            options={[
-              { value: "admin", label: "管理员" },
-              { value: "owner", label: "最高权限管理员" },
-            ]}
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}
-          />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)}>
-              取消
-            </Button>
-            <Button type="submit" size="sm" loading={submitting} disabled={submitting}>
-              保存
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* 删除确认 */}
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title="删除管理员"
-        description={`确定要删除管理员「${deleteTarget?.name}」吗？此操作不可撤销。`}
-        type="danger"
-        confirmText="删除"
-        loading={deleting}
-      />
-
-      {/* 批量删除确认 */}
-      <ConfirmDialog
-        open={showBatchDelete}
-        onClose={() => setShowBatchDelete(false)}
-        onConfirm={handleBatchDelete}
-        title="批量删除管理员"
-        description={`确定要删除选中的 ${selectedIds.size} 名管理员吗？此操作不可撤销。`}
-        type="danger"
-        confirmText="确认删除"
-        loading={batchDeleting}
-      />
-    </div>
     </RequireAdminRole>
   );
 }

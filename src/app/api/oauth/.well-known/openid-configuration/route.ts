@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
   const limitResult = await rateLimit(ip, "oauth-discovery");
   if (!limitResult.success) {
-    return NextResponse.json({ error: "rate_limited", error_description: "请求过于频繁" }, { status: 429 });
+    return NextResponse.json(
+      { error: "rate_limited", error_description: "请求过于频繁" },
+      { status: 429 }
+    );
   }
 
   // 发现文档的 issuer 必须稳定公开，优先使用环境变量中的公网地址，
@@ -63,14 +66,7 @@ export async function GET(request: NextRequest) {
     id_token_signing_alg_values_supported: ID_TOKEN_SIGNING_ALG_VALUES,
     token_endpoint_auth_methods_supported: TOKEN_ENDPOINT_AUTH_METHODS,
     subject_types_supported: ["public"],
-    claims_supported: [
-      "sub",
-      "nickname",
-      "avatar",
-      "phone",
-      "membership_level",
-      "total_points",
-    ],
+    claims_supported: ["sub", "nickname", "avatar", "phone", "membership_level", "total_points"],
     claims_parameter_supported: false,
     request_parameter_supported: false,
     request_uri_parameter_supported: false,

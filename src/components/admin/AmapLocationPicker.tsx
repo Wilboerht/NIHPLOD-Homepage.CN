@@ -14,7 +14,12 @@ export interface AmapLocationPickerProps {
  * 高德地图地址选择器组件
  * 提供地点搜索建议、自动补全和坐标返回
  */
-export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: AmapLocationPickerProps) {
+export function AmapLocationPicker({
+  value,
+  onChange,
+  onCoordsChange,
+  error,
+}: AmapLocationPickerProps) {
   const [suggestions, setSuggestions] = useState<AMap.Tip[]>([]);
   const [open, setOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -74,14 +79,17 @@ export function AmapLocationPicker({ value, onChange, onCoordsChange, error }: A
           });
         }
 
-        autoCompleteRef.current.search(keyword, (status: string, result: AMap.AutocompleteResult) => {
-          if (status === "complete" && result.tips) {
-            setSuggestions(result.tips.filter((t) => t.location));
-            setOpen(true);
-          } else {
-            setSuggestions([]);
+        autoCompleteRef.current.search(
+          keyword,
+          (status: string, result: AMap.AutocompleteResult) => {
+            if (status === "complete" && result.tips) {
+              setSuggestions(result.tips.filter((t) => t.location));
+              setOpen(true);
+            } else {
+              setSuggestions([]);
+            }
           }
-        });
+        );
       });
     } else {
       setSuggestions([]);

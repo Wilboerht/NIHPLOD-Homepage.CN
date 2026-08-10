@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus, Inbox } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
@@ -72,11 +72,16 @@ export function DataTable<T extends object>({
     sortBy && sortOrder ? { key: sortBy, order: sortOrder } : null
   );
 
-  useEffect(() => {
+  // 受控排序参数变化时同步内部状态（渲染阶段同步，避免 effect 内 setState）
+  const [prevSortProps, setPrevSortProps] = useState<[typeof sortBy, typeof sortOrder] | null>(
+    null
+  );
+  if (!prevSortProps || prevSortProps[0] !== sortBy || prevSortProps[1] !== sortOrder) {
+    setPrevSortProps([sortBy, sortOrder]);
     if (sortBy && sortOrder) {
       setSortConfig({ key: sortBy, order: sortOrder });
     }
-  }, [sortBy, sortOrder]);
+  }
 
   // 获取行的唯一键
   const getRowKey = (record: T, index: number): string => {
@@ -201,7 +206,10 @@ export function DataTable<T extends object>({
             ) : data.length === 0 ? (
               // 空状态
               <tr>
-                <td colSpan={columns.length} className="px-6 py-16 text-center text-brand-charcoal/50">
+                <td
+                  colSpan={columns.length}
+                  className="px-6 py-16 text-center text-brand-charcoal/50"
+                >
                   <div className="flex flex-col items-center gap-3">
                     <Inbox className="h-10 w-10 text-brand-charcoal/25" />
                     <span>{emptyText}</span>
@@ -234,7 +242,8 @@ export function DataTable<T extends object>({
                   onClick={() => onRowClick?.(record)}
                   className={cn(
                     "transition-colors even:bg-brand-charcoal/[0.02]",
-                    onRowClick && "cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    onRowClick &&
+                      "cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   )}
                 >
                   {columns.map((column) => {

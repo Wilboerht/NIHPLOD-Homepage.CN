@@ -19,7 +19,13 @@ import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 import { LRUCache } from "lru-cache";
 import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
 import { prisma } from "./prisma";
-import type { AdminJWTPayload, UserJWTPayload, RefreshTokenPayload, OAuthAccessTokenPayload, AdminRole } from "@/types/auth";
+import type {
+  AdminJWTPayload,
+  UserJWTPayload,
+  RefreshTokenPayload,
+  OAuthAccessTokenPayload,
+  AdminRole,
+} from "@/types/auth";
 
 const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
 const MIN_SECRET_LENGTH = 32;
@@ -33,7 +39,7 @@ if (
 ) {
   throw new Error(
     "[JWT] 生产环境必须设置 NEXT_PUBLIC_APP_URL 为公网地址（如 https://nihplod.cn），" +
-    "OIDC Discovery 端点依赖此值生成 issuer 和端点 URL。"
+      "OIDC Discovery 端点依赖此值生成 issuer 和端点 URL。"
   );
 }
 
@@ -89,7 +95,7 @@ if (
 ) {
   throw new Error(
     "[JWT] 生产环境必须配置 JWT_ID_TOKEN_PRIVATE_KEY 和 JWT_ID_TOKEN_PUBLIC_KEY。" +
-    "SSO SDK 已拒绝 HS256 签名的 ID Token，缺少 RS256 密钥对将导致所有 SDK 客户端登录失败。"
+      "SSO SDK 已拒绝 HS256 签名的 ID Token，缺少 RS256 密钥对将导致所有 SDK 客户端登录失败。"
   );
 }
 
@@ -171,7 +177,7 @@ export async function signToken(payload: {
     .setIssuer(ISSUER)
     .setAudience("admin")
     .setExpirationTime(adminExpiresIn)
-    .sign((adminSecret));
+    .sign(adminSecret);
 
   return token;
 }
@@ -181,7 +187,7 @@ export async function signToken(payload: {
  */
 export async function verifyToken(token: string): Promise<AdminJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, (adminSecret), {
+    const { payload } = await jwtVerify(token, adminSecret, {
       issuer: ISSUER,
       audience: "admin",
     });
@@ -217,7 +223,7 @@ export async function signUserToken(payload: { id: string; phone: string }): Pro
     .setIssuer(ISSUER)
     .setAudience("user")
     .setExpirationTime(accessTokenExpiresIn)
-    .sign((accessSecret));
+    .sign(accessSecret);
 
   return token;
 }
@@ -234,7 +240,7 @@ export async function verifyUserToken(
   options?: { checkStatus?: (userId: string) => Promise<boolean> }
 ): Promise<UserJWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, (accessSecret), {
+    const { payload } = await jwtVerify(token, accessSecret, {
       issuer: ISSUER,
       audience: "user",
     });
@@ -292,7 +298,7 @@ export async function signRefreshToken(payload: {
     .setIssuer(ISSUER)
     .setAudience("refresh")
     .setExpirationTime(refreshTokenExpiresIn)
-    .sign((refreshSecret));
+    .sign(refreshSecret);
 
   return token;
 }
@@ -302,7 +308,7 @@ export async function signRefreshToken(payload: {
  */
 export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, (refreshSecret), {
+    const { payload } = await jwtVerify(token, refreshSecret, {
       issuer: ISSUER,
       audience: "refresh",
     });
@@ -340,7 +346,7 @@ export async function signWechatBindToken(
     .setIssuer(ISSUER)
     .setAudience("wechat-bind")
     .setExpirationTime(wechatBindExpiresIn)
-    .sign((wechatBindSecret));
+    .sign(wechatBindSecret);
 
   return token;
 }
@@ -431,7 +437,7 @@ export async function signWechatExchangeToken(
     .setIssuer(ISSUER)
     .setAudience("wechat-exchange")
     .setExpirationTime(wechatExchangeExpiresIn)
-    .sign((wechatExchangeSecret));
+    .sign(wechatExchangeSecret);
 
   return token;
 }
@@ -443,7 +449,7 @@ export async function verifyWechatExchangeToken(
   token: string
 ): Promise<WechatExchangePayload | null> {
   try {
-    const { payload } = await jwtVerify(token, (wechatExchangeSecret), {
+    const { payload } = await jwtVerify(token, wechatExchangeSecret, {
       issuer: ISSUER,
       audience: "wechat-exchange",
     });
@@ -466,7 +472,7 @@ export async function verifyWechatExchangeToken(
  */
 export async function verifyWechatBindToken(token: string): Promise<WechatBindPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, (wechatBindSecret), {
+    const { payload } = await jwtVerify(token, wechatBindSecret, {
       issuer: ISSUER,
       audience: "wechat-bind",
     });
@@ -530,7 +536,7 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
   }
 
   jwt.setProtectedHeader({ alg: "HS256" });
-  return jwt.sign((idTokenSecret));
+  return jwt.sign(idTokenSecret);
 }
 
 /**
@@ -538,7 +544,10 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
  *
  * 支持 RS256（优先，若配置了公钥）与 HS256（兼容旧 token）。
  */
-export async function verifyIdToken(token: string, audience: string): Promise<IdTokenClaims | null> {
+export async function verifyIdToken(
+  token: string,
+  audience: string
+): Promise<IdTokenClaims | null> {
   try {
     const verifyOptions: { issuer: string; audience: string; algorithms?: string[] } = {
       issuer: ISSUER,
@@ -551,19 +560,25 @@ export async function verifyIdToken(token: string, audience: string): Promise<Id
 
     if (publicKey) {
       try {
-        const result = await jwtVerify(token, publicKey, { ...verifyOptions, algorithms: ["RS256"] });
+        const result = await jwtVerify(token, publicKey, {
+          ...verifyOptions,
+          algorithms: ["RS256"],
+        });
         payload = result.payload;
       } catch {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, (idTokenSecret), { ...verifyOptions, algorithms: ["HS256"] });
+          const result = await jwtVerify(token, idTokenSecret, {
+            ...verifyOptions,
+            algorithms: ["HS256"],
+          });
           payload = result.payload;
         } else {
           return null;
         }
       }
     } else {
-      const result = await jwtVerify(token, (idTokenSecret), verifyOptions);
+      const result = await jwtVerify(token, idTokenSecret, verifyOptions);
       payload = result.payload;
     }
 
@@ -587,11 +602,12 @@ async function getLogoutTokenPrivateKey(): Promise<CryptoKey | null> {
   if (!process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY) return null;
   if (cachedLogoutTokenPrivateKey) return cachedLogoutTokenPrivateKey;
   try {
-    cachedLogoutTokenPrivateKey = await importPKCS8(process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY, "RS256");
-  } catch {
-    throw new Error(
-      `[JWT] JWT_LOGOUT_TOKEN_PRIVATE_KEY 不是有效的 PKCS#8 PEM，请确认格式正确`
+    cachedLogoutTokenPrivateKey = await importPKCS8(
+      process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY,
+      "RS256"
     );
+  } catch {
+    throw new Error(`[JWT] JWT_LOGOUT_TOKEN_PRIVATE_KEY 不是有效的 PKCS#8 PEM，请确认格式正确`);
   }
   return cachedLogoutTokenPrivateKey;
 }
@@ -602,9 +618,7 @@ export async function getLogoutTokenPublicKey(): Promise<CryptoKey | null> {
   try {
     cachedLogoutTokenPublicKey = await importSPKI(process.env.JWT_LOGOUT_TOKEN_PUBLIC_KEY, "RS256");
   } catch {
-    throw new Error(
-      `[JWT] JWT_LOGOUT_TOKEN_PUBLIC_KEY 不是有效的 SPKI PEM，请确认格式正确`
-    );
+    throw new Error(`[JWT] JWT_LOGOUT_TOKEN_PUBLIC_KEY 不是有效的 SPKI PEM，请确认格式正确`);
   }
   return cachedLogoutTokenPublicKey;
 }
@@ -646,13 +660,16 @@ export async function signLogoutToken(claims: LogoutTokenClaims): Promise<string
   }
 
   jwt.setProtectedHeader({ alg: "HS256" });
-  return jwt.sign((logoutSecret));
+  return jwt.sign(logoutSecret);
 }
 
 /**
  * 验证 Logout Token
  */
-export async function verifyLogoutToken(token: string, audience: string): Promise<LogoutTokenClaims | null> {
+export async function verifyLogoutToken(
+  token: string,
+  audience: string
+): Promise<LogoutTokenClaims | null> {
   try {
     const verifyOptions: { issuer: string; audience: string; algorithms?: string[] } = {
       issuer: ISSUER,
@@ -665,18 +682,24 @@ export async function verifyLogoutToken(token: string, audience: string): Promis
 
     if (publicKey) {
       try {
-        const result = await jwtVerify(token, publicKey, { ...verifyOptions, algorithms: ["RS256"] });
+        const result = await jwtVerify(token, publicKey, {
+          ...verifyOptions,
+          algorithms: ["RS256"],
+        });
         payload = result.payload;
       } catch {
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, (logoutSecret), { ...verifyOptions, algorithms: ["HS256"] });
+          const result = await jwtVerify(token, logoutSecret, {
+            ...verifyOptions,
+            algorithms: ["HS256"],
+          });
           payload = result.payload;
         } else {
           return null;
         }
       }
     } else {
-      const result = await jwtVerify(token, (logoutSecret), verifyOptions);
+      const result = await jwtVerify(token, logoutSecret, verifyOptions);
       payload = result.payload;
     }
 
@@ -781,7 +804,7 @@ export async function signOAuthAccessToken(payload: {
   }
 
   jwt.setProtectedHeader({ alg: "HS256" });
-  return jwt.sign((accessSecret));
+  return jwt.sign(accessSecret);
 }
 
 /**
@@ -821,14 +844,14 @@ export async function verifyOAuthAccessToken(
       } catch {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, (accessSecret), verifyOptions);
+          const result = await jwtVerify(token, accessSecret, verifyOptions);
           payload = result.payload;
         } else {
           return null;
         }
       }
     } else {
-      const result = await jwtVerify(token, (accessSecret), verifyOptions);
+      const result = await jwtVerify(token, accessSecret, verifyOptions);
       payload = result.payload;
     }
 

@@ -106,7 +106,10 @@ export function ContentParagraph({
           /^\-[\s]/.test(trimmed)
         ) {
           return (
-            <p key={trimmed.substring(0, 32)} className="text-[14px] leading-[1.8] text-brand-charcoal/90 md:text-sm md:leading-7 md:text-brand-charcoal/80">
+            <p
+              key={trimmed.substring(0, 32)}
+              className="text-[14px] leading-[1.8] text-brand-charcoal/90 md:text-sm md:leading-7 md:text-brand-charcoal/80"
+            >
               {formatText(trimmed)}
             </p>
           );
@@ -114,7 +117,10 @@ export function ContentParagraph({
 
         // 普通段落
         return (
-          <p key={trimmed.substring(0, 32)} className="text-[14px] leading-[1.8] text-brand-charcoal/90 md:text-base md:leading-8 md:text-brand-charcoal/80">
+          <p
+            key={trimmed.substring(0, 32)}
+            className="text-[14px] leading-[1.8] text-brand-charcoal/90 md:text-base md:leading-8 md:text-brand-charcoal/80"
+          >
             {formatText(trimmed)}
           </p>
         );

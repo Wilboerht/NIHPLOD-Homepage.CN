@@ -39,7 +39,11 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         {label && (
           <label htmlFor={id} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
             {label}
-            {required && <span className="ml-0.5 text-red-500" aria-hidden="true">*</span>}
+            {required && (
+              <span className="ml-0.5 text-red-500" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
         <div className="relative">
@@ -61,7 +65,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
               error
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                 : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary",
-              "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-brand-charcoal/[0.03]",
+              "disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03] disabled:opacity-50",
               "dark:[color-scheme:light]",
               !value && "text-transparent", // 隐藏浏览器默认日期格式，显示自定义占位
               className
