@@ -13,9 +13,11 @@ import { prisma } from "@/lib/prisma";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { rateLimit } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { revokeRefreshToken } from "@/lib/auth-security";
+import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +37,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "请先登录" } },
         { status: 401 }
+      );
+    }
+
+    // 用户级限流（参照 checkAdminRateLimit 模式）：撤销操作会触发级联写与外部通知，防止滥用
+    const limitResult = await rateLimit(`oauth-revoke:${user.id}`, "default", {
+      maxRequests: 10,
+      windowMs: 60 * 1000,
+    });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+        { status: 429 }
       );
     }
 
@@ -78,8 +92,11 @@ export async function POST(request: NextRequest) {
     // 同步撤销该 client 对应的所有 Refresh Token，防止旧 refresh_token 继续换发 access_token
     await revokeRefreshToken(user.id, undefined, clientId);
 
-    // 记录审计日志
-    recordSsoEvent({
+    // 联动拉黑已签发的 access token，消除 15 分钟有效窗口（与 client 删除路径一致）
+    await blacklistUserTokens(user.id, "oauth_consent_revoked").catch(() => {});
+
+    // 记录审计日志（合规敏感，同步等待写入）
+    await recordSsoEvent({
       event: "consent",
       userId: user.id,
       clientId,

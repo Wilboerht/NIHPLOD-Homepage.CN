@@ -15,6 +15,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { revokeRefreshToken } from "@/lib/auth-security";
+import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -58,9 +59,9 @@ export async function GET(request: NextRequest) {
     }
 
     const [items, total] = await Promise.all([
-      prisma.oAuthSession.findMany({
+      prisma.userConsent.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { grantedAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: {
@@ -68,11 +69,11 @@ export async function GET(request: NextRequest) {
           userId: true,
           clientId: true,
           scopes: true,
-          createdAt: true,
+          grantedAt: true,
           revokedAt: true,
         },
       }),
-      prisma.oAuthSession.count({ where }),
+      prisma.userConsent.count({ where }),
     ]);
 
     // 批量获取用户信息
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
             clientId: item.clientId,
             clientName: clientMap.get(item.clientId) || item.clientId,
             scopes: item.scopes,
-            grantedAt: item.createdAt.toISOString(),
+            grantedAt: item.grantedAt.toISOString(),
             revokedAt: item.revokedAt?.toISOString() || null,
             status: item.revokedAt ? "revoked" : "active",
           };
@@ -174,23 +175,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 同步撤销 UserConsent，确保授权状态一致性
-    await prisma.userConsent.upsert({
-      where: { userId_clientId: { userId, clientId } },
-      update: { revokedAt: new Date() },
-      create: {
-        userId,
-        clientId,
-        scopes: [],
-        revokedAt: new Date(),
-      },
+    // 同步撤销已有 UserConsent，确保授权状态一致性
+    // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
+    await prisma.userConsent.updateMany({
+      where: { userId, clientId, revokedAt: null },
+      data: { revokedAt: new Date() },
     });
 
     // 同步撤销该用户在该 client 下的所有 Refresh Token
     await revokeRefreshToken(userId, undefined, clientId);
 
-    // 记录 SSO 审计事件
-    recordSsoEvent({
+    // 联动拉黑该用户已签发的 access token，消除 15 分钟有效窗口
+    await blacklistUserTokens(userId, "oauth_consent_revoked").catch(() => {});
+
+    // 记录 SSO 审计事件（合规敏感，同步等待写入）
+    await recordSsoEvent({
       event: "consent",
       userId,
       clientId,

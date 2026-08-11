@@ -98,8 +98,22 @@ function generateNonce(): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
-function buildCspHeader(nonce: string): string {
+function buildCspHeader(nonce: string, pathname: string): string {
   const isDev = process.env.NODE_ENV !== "production";
+
+  // /account/embed 允许被配置的父窗口源嵌入（服务端环境变量 EMBED_ALLOWED_ORIGINS，
+  // 逗号分隔 origin 列表；客户端白名单为 NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS，两者需保持一致）
+  let frameAncestors = "'self'";
+  if (pathname === "/account/embed" || pathname.startsWith("/account/embed/")) {
+    const embedOrigins = (process.env.EMBED_ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (embedOrigins.length > 0) {
+      frameAncestors = `'self' ${embedOrigins.join(" ")}`;
+    }
+  }
+
   return [
     "default-src 'self'",
     // script-src 已移除 'unsafe-inline'；通过 per-request nonce 放行受控内联脚本
@@ -118,7 +132,7 @@ function buildCspHeader(nonce: string): string {
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
     "worker-src 'self' blob:",
-    "frame-ancestors 'self'",
+    `frame-ancestors ${frameAncestors}`,
     "form-action 'self'",
     "base-uri 'self'",
     "upgrade-insecure-requests",
@@ -150,7 +164,7 @@ function applyCspNonce(request: NextRequest, response: NextResponse): NextRespon
   // 必须同时改写 request 头，服务端组件才能通过 headers() 读取 nonce
   const rewritten = NextResponse.next({ request: { headers: requestHeaders } });
   rewritten.headers.set("x-nonce", nonce);
-  rewritten.headers.set("Content-Security-Policy", buildCspHeader(nonce));
+  rewritten.headers.set("Content-Security-Policy", buildCspHeader(nonce, pathname));
 
   return rewritten;
 }

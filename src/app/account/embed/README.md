@@ -103,5 +103,5 @@ window.addEventListener("message", (event) => {
 ## 安全说明
 
 - **Origin 校验**: 父窗口必须校验 `event.origin === "https://nihplod.cn"`，防止恶意 iframe 伪造消息。
-- **targetOrigin**: 嵌入页面使用 `NEXT_PUBLIC_APP_URL` 作为 `postMessage` 的 `targetOrigin`，限制消息仅发送到明确的目标域，生产环境为 `"https://nihplod.cn"`。
+- **targetOrigin**: 嵌入页面从 `document.referrer` 推导父窗口 origin 作为 `postMessage` 的 `targetOrigin`，确保消息只送达实际嵌入的父窗口。可通过环境变量 `NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS`（逗号分隔的 origin 列表）配置白名单；配置后父窗口 origin 不在白名单内时不发送消息并输出 `console.warn`。注意：服务端还需配套设置 `EMBED_ALLOWED_ORIGINS`，使 `/account/embed` 的 CSP `frame-ancestors` 放行对应父窗口源。
 - **CSRF 防护**: 所有写操作（登出、撤销授权）均通过 CSRF Token（`X-CSRF-Token` header）进行服务端校验。

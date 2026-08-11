@@ -487,7 +487,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
 
 function FreeTag() {
   return (
-    <span className="shrink-0 rounded-full border border-brand-primary/20 bg-brand-primary/[0.05] px-2 py-0.5 text-[10px] font-light tracking-[0.12em] text-brand-primary/70">
+    <span className="shrink-0 rounded-full bg-[#B8A47B] px-2 py-0.5 text-[10px] font-normal tracking-[0.12em] text-[#FBF8F0]">
       free
     </span>
   );

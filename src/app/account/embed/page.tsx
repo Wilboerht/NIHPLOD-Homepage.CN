@@ -15,9 +15,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { getParentTargetOrigin } from "./parent-origin";
 
-/** 主站 URL，用于 postMessage targetOrigin 校验 */
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+/** 可选白名单：逗号分隔的允许父窗口 origin（未配置则不做白名单校验） */
+const EMBED_ALLOWED_ORIGINS = process.env.NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS || "";
 
 /** 从 Cookie 读取 CSRF Token */
 function getCsrfToken(): string {
@@ -29,6 +30,24 @@ function getCsrfToken(): string {
 /** 生成带 CSRF header 的请求头 */
 function csrfHeaders(extra?: Record<string, string>): Record<string, string> {
   return { "X-CSRF-Token": getCsrfToken(), ...extra };
+}
+
+/**
+ * 向父窗口发送 postMessage。
+ * targetOrigin 从 document.referrer 推导（父窗口 origin），
+ * 配置 NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS 时做白名单校验；
+ * 校验失败不发送消息并 console.warn。
+ */
+function postToParent(message: Record<string, unknown>): void {
+  if (typeof window === "undefined" || window.parent === window) return;
+  const targetOrigin = getParentTargetOrigin(document.referrer, EMBED_ALLOWED_ORIGINS);
+  if (!targetOrigin) {
+    console.warn("[SSO Embed] 父窗口 origin 无法推导或未通过白名单校验，跳过 postMessage", {
+      referrer: document.referrer,
+    });
+    return;
+  }
+  window.parent.postMessage(message, targetOrigin);
 }
 
 interface UserProfile {
@@ -96,9 +115,7 @@ export default function EmbedAccountPage() {
     fetch("/api/auth/csrf").catch(() => {});
 
     // 通知父窗口 iframe 已加载完成
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: "NIHPLOD_SSO_READY" }, APP_URL);
-    }
+    postToParent({ type: "NIHPLOD_SSO_READY" });
   }, [fetchProfile, fetchSessions]);
 
   const handleSaveNickname = async () => {
@@ -134,9 +151,7 @@ export default function EmbedAccountPage() {
       if (data.success) {
         setSessions((prev) => prev.filter((s) => s.clientId !== clientId));
         // 通知父窗口用户撤销了授权
-        if (window.parent !== window) {
-          window.parent.postMessage({ type: "NIHPLOD_SSO_REVOKE", clientId }, APP_URL);
-        }
+        postToParent({ type: "NIHPLOD_SSO_REVOKE", clientId });
       }
     } catch {
       setError("撤销失败");
@@ -147,9 +162,7 @@ export default function EmbedAccountPage() {
     const res = await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
     if (!res.ok) return;
     // 通知父窗口用户已登出
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: "NIHPLOD_SSO_LOGOUT" }, APP_URL);
-    }
+    postToParent({ type: "NIHPLOD_SSO_LOGOUT" });
   };
 
   if (loading) {
