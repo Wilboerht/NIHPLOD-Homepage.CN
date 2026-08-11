@@ -16,7 +16,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
-import { validateDPoPProof, computeDPoPAth, dpopNonceHeader } from "@/lib/dpop";
+import { validateDPoPProof, computeDPoPAth, dpopNonceHeader, getDPoPHtu } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +74,9 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { reason: "blacklisted", blacklistReason: blacklisted.reason },
       });
-      return resJson({ error: "account_disabled", error_description: "账户已被限制" }, 403);
+      return resJson({ error: "account_disabled", error_description: "账户已被限制" }, 403, {
+        "WWW-Authenticate": 'Bearer error="account_disabled", error_description="账户已被限制"',
+      });
     }
 
     // DPoP 绑定验证：若 token 包含 cnf.jkt，请求必须携带有效的 DPoP proof
@@ -89,8 +91,8 @@ export async function GET(request: NextRequest) {
         );
       }
       const ath = computeDPoPAth(token);
-      const url = new URL(request.url);
-      const htu = `${url.origin}${url.pathname}`.toLowerCase();
+      // htu 基于公网 origin（反向代理后 request.url 可能是内网地址），path 区分大小写
+      const htu = getDPoPHtu(request);
       const dpopResult = await validateDPoPProof(
         dpopHeader,
         "GET",
@@ -121,7 +123,11 @@ export async function GET(request: NextRequest) {
     }
 
     // M2M token（client_credentials grant）：无用户身份，仅返回 sub
-    if (payload.id.startsWith("client:")) {
+    // 优先按显式 client_type claim 识别，兼容旧 token 的 client: 前缀
+    const isM2m =
+      (payload as { client_type?: string }).client_type === "m2m" ||
+      payload.id.startsWith("client:");
+    if (isM2m) {
       recordSsoEvent({
         event: "userinfo",
         clientId: payload.client_id,

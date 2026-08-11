@@ -18,6 +18,7 @@ import { createHash } from "crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 import { LRUCache } from "lru-cache";
 import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
+import { maskPhone } from "./mask-phone";
 import { prisma } from "./prisma";
 import type {
   AdminJWTPayload,
@@ -105,6 +106,16 @@ if (
 
 let cachedAccessPrivateKey: CryptoKey | null = null;
 let cachedAccessPublicKey: CryptoKey | null = null;
+let cachedPrevAccessPublicKey: CryptoKey | null = null;
+
+// kid 可通过环境变量覆盖（默认保持现值），配合上一代公钥实现最小密钥轮换
+export function getAccessKeyId(): string {
+  return process.env.JWT_OAUTH_ACCESS_KID || "access-token-rs256-v1";
+}
+
+export function getPrevAccessKeyId(): string {
+  return process.env.JWT_OAUTH_ACCESS_PREV_KID || "access-token-rs256-v0";
+}
 
 async function getAccessPrivateKey(): Promise<CryptoKey | null> {
   if (!process.env.JWT_ACCESS_PRIVATE_KEY) return null;
@@ -120,12 +131,42 @@ export async function getAccessPublicKey(): Promise<CryptoKey | null> {
   return cachedAccessPublicKey;
 }
 
+/** 上一代 Access Token 公钥（密钥轮换过渡期，仅用于验证旧 token 与 JWKS 发布） */
+export async function getPrevAccessPublicKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_OAUTH_ACCESS_PREV_PUBLIC_KEY) return null;
+  if (cachedPrevAccessPublicKey) return cachedPrevAccessPublicKey;
+  cachedPrevAccessPublicKey = await importSPKI(
+    process.env.JWT_OAUTH_ACCESS_PREV_PUBLIC_KEY,
+    "RS256"
+  );
+  return cachedPrevAccessPublicKey;
+}
+
+/** Access Token 验签候选公钥：当前 + 上一代（按顺序尝试，jose JWKS 消费方按 kid 自然匹配） */
+async function getAccessVerifyPublicKeys(): Promise<CryptoKey[]> {
+  const keys: CryptoKey[] = [];
+  const current = await getAccessPublicKey();
+  if (current) keys.push(current);
+  const prev = await getPrevAccessPublicKey();
+  if (prev) keys.push(prev);
+  return keys;
+}
+
 // ============================================
 // OAuth ID Token RS256 迁移支持（可选）
 // ============================================
 
 let cachedIdTokenPrivateKey: CryptoKey | null = null;
 let cachedIdTokenPublicKey: CryptoKey | null = null;
+let cachedPrevIdTokenPublicKey: CryptoKey | null = null;
+
+export function getIdTokenKeyId(): string {
+  return process.env.JWT_OAUTH_ID_TOKEN_KID || "id-token-rs256-v1";
+}
+
+export function getPrevIdTokenKeyId(): string {
+  return process.env.JWT_OAUTH_ID_TOKEN_PREV_KID || "id-token-rs256-v0";
+}
 
 async function getIdTokenPrivateKey(): Promise<CryptoKey | null> {
   if (!process.env.JWT_ID_TOKEN_PRIVATE_KEY) return null;
@@ -139,6 +180,27 @@ export async function getIdTokenPublicKey(): Promise<CryptoKey | null> {
   if (cachedIdTokenPublicKey) return cachedIdTokenPublicKey;
   cachedIdTokenPublicKey = await importSPKI(process.env.JWT_ID_TOKEN_PUBLIC_KEY, "RS256");
   return cachedIdTokenPublicKey;
+}
+
+/** 上一代 ID Token 公钥（密钥轮换过渡期，仅用于验证旧 token 与 JWKS 发布） */
+export async function getPrevIdTokenPublicKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_OAUTH_ID_TOKEN_PREV_PUBLIC_KEY) return null;
+  if (cachedPrevIdTokenPublicKey) return cachedPrevIdTokenPublicKey;
+  cachedPrevIdTokenPublicKey = await importSPKI(
+    process.env.JWT_OAUTH_ID_TOKEN_PREV_PUBLIC_KEY,
+    "RS256"
+  );
+  return cachedPrevIdTokenPublicKey;
+}
+
+/** ID Token 验签候选公钥：当前 + 上一代（按顺序尝试） */
+async function getIdTokenVerifyPublicKeys(): Promise<CryptoKey[]> {
+  const keys: CryptoKey[] = [];
+  const current = await getIdTokenPublicKey();
+  if (current) keys.push(current);
+  const prev = await getPrevIdTokenPublicKey();
+  if (prev) keys.push(prev);
+  return keys;
 }
 
 // JWT 过期时间
@@ -531,7 +593,7 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
 
   const rs256PrivateKey = await getIdTokenPrivateKey();
   if (rs256PrivateKey) {
-    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: "id-token-rs256-v1" });
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: getIdTokenKeyId() });
     return jwt.sign(rs256PrivateKey);
   }
 
@@ -555,17 +617,27 @@ export async function verifyIdToken(
       algorithms: ["HS256", "RS256"],
     };
 
-    const publicKey = await getIdTokenPublicKey();
+    const publicKeys = await getIdTokenVerifyPublicKeys();
     let payload: import("jose").JWTPayload;
 
-    if (publicKey) {
-      try {
-        const result = await jwtVerify(token, publicKey, {
-          ...verifyOptions,
-          algorithms: ["RS256"],
-        });
-        payload = result.payload;
-      } catch {
+    if (publicKeys.length > 0) {
+      let verified: import("jose").JWTPayload | null = null;
+      // 密钥轮换：依次尝试当前公钥与上一代公钥
+      for (const key of publicKeys) {
+        try {
+          const result = await jwtVerify(token, key, {
+            ...verifyOptions,
+            algorithms: ["RS256"],
+          });
+          verified = result.payload;
+          break;
+        } catch {
+          // 尝试下一把公钥
+        }
+      }
+      if (verified) {
+        payload = verified;
+      } else {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
           const result = await jwtVerify(token, idTokenSecret, {
@@ -597,6 +669,15 @@ export async function verifyIdToken(
 
 let cachedLogoutTokenPrivateKey: CryptoKey | null = null;
 let cachedLogoutTokenPublicKey: CryptoKey | null = null;
+let cachedPrevLogoutTokenPublicKey: CryptoKey | null = null;
+
+export function getLogoutTokenKeyId(): string {
+  return process.env.JWT_LOGOUT_TOKEN_KID || "logout-token-rs256-v1";
+}
+
+export function getPrevLogoutTokenKeyId(): string {
+  return process.env.JWT_LOGOUT_TOKEN_PREV_KID || "logout-token-rs256-v0";
+}
 
 async function getLogoutTokenPrivateKey(): Promise<CryptoKey | null> {
   if (!process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY) return null;
@@ -621,6 +702,31 @@ export async function getLogoutTokenPublicKey(): Promise<CryptoKey | null> {
     throw new Error(`[JWT] JWT_LOGOUT_TOKEN_PUBLIC_KEY 不是有效的 SPKI PEM，请确认格式正确`);
   }
   return cachedLogoutTokenPublicKey;
+}
+
+/** 上一代 Logout Token 公钥（密钥轮换过渡期，仅用于验证旧 token 与 JWKS 发布） */
+export async function getPrevLogoutTokenPublicKey(): Promise<CryptoKey | null> {
+  if (!process.env.JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY) return null;
+  if (cachedPrevLogoutTokenPublicKey) return cachedPrevLogoutTokenPublicKey;
+  try {
+    cachedPrevLogoutTokenPublicKey = await importSPKI(
+      process.env.JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY,
+      "RS256"
+    );
+  } catch {
+    throw new Error(`[JWT] JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY 不是有效的 SPKI PEM，请确认格式正确`);
+  }
+  return cachedPrevLogoutTokenPublicKey;
+}
+
+/** Logout Token 验签候选公钥：当前 + 上一代（按顺序尝试） */
+async function getLogoutTokenVerifyPublicKeys(): Promise<CryptoKey[]> {
+  const keys: CryptoKey[] = [];
+  const current = await getLogoutTokenPublicKey();
+  if (current) keys.push(current);
+  const prev = await getPrevLogoutTokenPublicKey();
+  if (prev) keys.push(prev);
+  return keys;
 }
 
 // ============================================
@@ -655,7 +761,7 @@ export async function signLogoutToken(claims: LogoutTokenClaims): Promise<string
 
   const rs256PrivateKey = await getLogoutTokenPrivateKey();
   if (rs256PrivateKey) {
-    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: "logout-token-rs256-v1" });
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: getLogoutTokenKeyId() });
     return jwt.sign(rs256PrivateKey);
   }
 
@@ -677,17 +783,27 @@ export async function verifyLogoutToken(
       algorithms: ["HS256", "RS256"],
     };
 
-    const publicKey = await getLogoutTokenPublicKey();
+    const publicKeys = await getLogoutTokenVerifyPublicKeys();
     let payload: import("jose").JWTPayload;
 
-    if (publicKey) {
-      try {
-        const result = await jwtVerify(token, publicKey, {
-          ...verifyOptions,
-          algorithms: ["RS256"],
-        });
-        payload = result.payload;
-      } catch {
+    if (publicKeys.length > 0) {
+      let verified: import("jose").JWTPayload | null = null;
+      // 密钥轮换：依次尝试当前公钥与上一代公钥
+      for (const key of publicKeys) {
+        try {
+          const result = await jwtVerify(token, key, {
+            ...verifyOptions,
+            algorithms: ["RS256"],
+          });
+          verified = result.payload;
+          break;
+        } catch {
+          // 尝试下一把公钥
+        }
+      }
+      if (verified) {
+        payload = verified;
+      } else {
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
           const result = await jwtVerify(token, logoutSecret, {
             ...verifyOptions,
@@ -774,15 +890,19 @@ export async function signOAuthAccessToken(payload: {
   dpopJkt?: string;
 }): Promise<string> {
   const scopes = payload.scope.split(" ").filter(Boolean);
+  const isM2m = payload.id.startsWith("client:");
   const claims: Record<string, unknown> = {
     id: payload.id,
     client_id: payload.clientId,
     scope: payload.scope,
     type: "access_token" as const,
+    // M2M（client_credentials）身份的显式标记；消费方优先据此识别，兼容旧的 client: 前缀判断
+    client_type: isM2m ? "m2m" : "user",
   };
 
   if (scopes.includes("phone")) {
-    claims.phone = payload.phone;
+    // 与 userinfo / ID Token 策略一致：access token 中的手机号同样脱敏，避免明文泄漏
+    claims.phone = maskPhone(payload.phone);
   }
 
   if (payload.dpopJkt) {
@@ -799,7 +919,7 @@ export async function signOAuthAccessToken(payload: {
   // 若配置了 RS256 密钥对，优先使用非对称签名；否则回退 HS256
   const rs256PrivateKey = await getAccessPrivateKey();
   if (rs256PrivateKey) {
-    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: "access-token-rs256-v1" });
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: getAccessKeyId() });
     return jwt.sign(rs256PrivateKey);
   }
 
@@ -833,15 +953,24 @@ export async function verifyOAuthAccessToken(
       verifyOptions.audience = expectedClientId;
     }
 
-    // 优先尝试 RS256 公钥验证（若已配置）
-    const publicKey = await getAccessPublicKey();
+    // 优先尝试 RS256 公钥验证（若已配置），密钥轮换期依次尝试当前与上一代公钥
+    const publicKeys = await getAccessVerifyPublicKeys();
     let payload: import("jose").JWTPayload;
 
-    if (publicKey) {
-      try {
-        const result = await jwtVerify(token, publicKey, verifyOptions);
-        payload = result.payload;
-      } catch {
+    if (publicKeys.length > 0) {
+      let verified: import("jose").JWTPayload | null = null;
+      for (const key of publicKeys) {
+        try {
+          const result = await jwtVerify(token, key, verifyOptions);
+          verified = result.payload;
+          break;
+        } catch {
+          // 尝试下一把公钥
+        }
+      }
+      if (verified) {
+        payload = verified;
+      } else {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
           const result = await jwtVerify(token, accessSecret, verifyOptions);
@@ -860,9 +989,11 @@ export async function verifyOAuthAccessToken(
       return null;
     }
     // 用户级黑名单检查（封禁后 15 分钟窗口期内拒绝）
-    // M2M token（sub = "client:xxx"）无需检查，无关联用户
+    // M2M token（显式 client_type="m2m" 或旧格式 sub = "client:xxx"）无需检查，无关联用户
     const userId = (payload as { id?: string }).id;
-    if (userId && !userId.startsWith("client:") && (await isTokenBlacklisted(userId))) {
+    const clientType = (payload as { client_type?: string }).client_type;
+    const isM2m = clientType === "m2m" || (userId?.startsWith("client:") ?? false);
+    if (userId && !isM2m && (await isTokenBlacklisted(userId))) {
       return null;
     }
 

@@ -68,8 +68,9 @@ export interface SsoMiddlewareConfig {
 
   /**
    * 是否对 ssoCookieName 对应的主站 Cookie 进行 Introspection 二次验证。
-   * 默认 false（仅检查 Cookie 存在性以降低延迟）。
-   * 启用后每个请求会额外调用 SSO 中心 Introspection 端点验证 token 有效性。
+   * 默认 true（推荐）。设为 false 时仅检查 Cookie 存在性，延迟最低但可能放行
+   * 已失效/被撤销的会话 —— 中间件本质上只是 UX 层，敏感数据必须在
+   * Route Handler / Server Component 中二次校验。
    */
   validateSsoCookie?: boolean;
 
@@ -146,16 +147,49 @@ function matchesPath(pathname: string, paths: string[]): boolean {
  * 通过主站 Introspection 端点校验 access_token 是否仍有效。
  * Confidential Client（BFF）应配置 clientSecret，防止伪造 Cookie 绕过。
  *
- * 附带进程级缓存（key = token SHA-256 前 16 字节 + clientId），
+ * 附带进程级缓存（key = token 的 SHA-256 hex + clientId），
  * 减少同一用户 session 在短时间内对 SSO 中心的重复 introspection 调用。
+ * 缓存带 TTL（30s）与容量上限（LRU 淘汰），避免无界增长。
  */
 const introspectionCache = new Map<string, { active: boolean; until: number }>();
 const INTROSPECT_CACHE_TTL_MS = 30_000; // 30 秒
+const INTROSPECT_CACHE_MAX_ENTRIES = 500;
 
-function introspectCacheKey(token: string, clientId: string): string {
-  // token 本身作为 key 的一部分（token 已过期会自动 fail）
-  const prefix = token.length > 32 ? token.slice(0, 32) : token;
-  return `${prefix}|${clientId}`;
+/** 计算 token 的 SHA-256 hex（Edge Runtime Web Crypto），用作缓存 key 避免跨用户碰撞 */
+async function introspectCacheKey(token: string, clientId: string): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const hex = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${hex}|${clientId}`;
+}
+
+/** 读取缓存（命中时刷新插入顺序，实现 LRU） */
+function introspectCacheGet(key: string): { active: boolean; until: number } | null {
+  const entry = introspectionCache.get(key);
+  if (!entry) return null;
+  if (entry.until <= Date.now()) {
+    introspectionCache.delete(key);
+    return null;
+  }
+  // LRU：重新插入到 Map 尾部
+  introspectionCache.delete(key);
+  introspectionCache.set(key, entry);
+  return entry;
+}
+
+/** 写入缓存（先清过期项，再按插入顺序淘汰最旧项） */
+function introspectCacheSet(key: string, active: boolean): void {
+  const now = Date.now();
+  for (const [k, v] of introspectionCache) {
+    if (v.until <= now) introspectionCache.delete(k);
+  }
+  while (introspectionCache.size >= INTROSPECT_CACHE_MAX_ENTRIES) {
+    const oldest = introspectionCache.keys().next();
+    if (oldest.done) break;
+    introspectionCache.delete(oldest.value);
+  }
+  introspectionCache.set(key, { active, until: now + INTROSPECT_CACHE_TTL_MS });
 }
 
 async function introspectAccessToken(
@@ -164,10 +198,9 @@ async function introspectAccessToken(
   clientId: string,
   clientSecret?: string
 ): Promise<boolean> {
-  const now = Date.now();
-  const cacheKey = introspectCacheKey(token, clientId);
-  const cached = introspectionCache.get(cacheKey);
-  if (cached && cached.until > now) {
+  const cacheKey = await introspectCacheKey(token, clientId);
+  const cached = introspectCacheGet(cacheKey);
+  if (cached) {
     return cached.active;
   }
 
@@ -193,12 +226,12 @@ async function introspectAccessToken(
         // 非认证错误（如 500、网络问题）：不缓存，让下次请求重试
         return false;
       }
-      introspectionCache.set(cacheKey, { active: false, until: now + INTROSPECT_CACHE_TTL_MS });
+      introspectCacheSet(cacheKey, false);
       return false;
     }
     const data = (await res.json()) as { active?: boolean };
     const active = data.active === true;
-    introspectionCache.set(cacheKey, { active, until: now + INTROSPECT_CACHE_TTL_MS });
+    introspectCacheSet(cacheKey, active);
     return active;
   } catch {
     // 网络异常不缓存：下次请求会重试 introspection
@@ -220,7 +253,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     publicPaths = [],
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
-    validateSsoCookie = false,
+    validateSsoCookie = true,
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
@@ -229,6 +262,21 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
 
   // 规范化 ssoBaseUrl
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+
+  if (process.env.NODE_ENV !== "production") {
+    if (!validateSsoCookie) {
+      console.warn(
+        "[SSO SDK] validateSsoCookie=false：中间件仅检查 Cookie 存在性，可能放行已失效的会话。" +
+        "中间件只是 UX 层，敏感数据的鉴权必须在 Route Handler / Server Component 中完成。"
+      );
+    }
+    if (!clientSecret) {
+      console.warn(
+        "[SSO SDK] 未配置 clientSecret（Public Client 模式）：introspection 无客户端认证，" +
+        "中间件判定结果仅作 UX 参考。Confidential Client（BFF）请配置 clientSecret。"
+      );
+    }
+  }
 
   return async function ssoMiddleware(request: NextRequest) {
     const { pathname } = request.nextUrl;

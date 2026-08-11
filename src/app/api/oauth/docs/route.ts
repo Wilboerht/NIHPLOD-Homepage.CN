@@ -87,21 +87,21 @@ export async function GET(request: NextRequest) {
             {
               name: "state",
               in: "query",
-              required: false,
-              schema: { type: "string" },
-              description: "CSRF 防护 state 参数",
+              required: true,
+              schema: { type: "string", minLength: 32, maxLength: 512 },
+              description: "CSRF 防护 state 参数（至少 32 字符）",
             },
             {
               name: "code_challenge",
               in: "query",
-              required: false,
-              schema: { type: "string" },
-              description: "PKCE code_challenge (S256)",
+              required: true,
+              schema: { type: "string", minLength: 43, maxLength: 43 },
+              description: "PKCE code_challenge (S256)，43 字符 base64url",
             },
             {
               name: "code_challenge_method",
               in: "query",
-              required: false,
+              required: true,
               schema: { type: "string", enum: ["S256"] },
               description: "固定值 `S256`",
             },
@@ -118,6 +118,14 @@ export async function GET(request: NextRequest) {
                 },
               },
             },
+            "429": {
+              description: "请求过于频繁（IP 级限流）",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
           },
         },
       },
@@ -126,12 +134,16 @@ export async function GET(request: NextRequest) {
           tags: ["Token"],
           summary: "Token 端点",
           description:
-            "支持 `authorization_code` 和 `refresh_token` 两种 grant_type。\n\n" +
+            "支持 `authorization_code`、`refresh_token` 和 `client_credentials` 三种 grant_type。\n\n" +
             "### authorization_code\n" +
             "用授权码换取 access_token + refresh_token + id_token。\n" +
             "需提供 code_verifier 完成 PKCE 校验。\n\n" +
             "### refresh_token\n" +
-            "刷新过期的 access_token，旧的 refresh_token 会被收回（原子轮换）。",
+            "刷新过期的 access_token，旧的 refresh_token 会被收回（原子轮换）。\n\n" +
+            "### client_credentials\n" +
+            "M2M 场景：Confidential Client 使用 client_secret 直接换取 access_token（无用户身份）。\n\n" +
+            "### 限流\n" +
+            "按 client_id 与 IP 双重限流，触发时返回 429 `rate_limited`。成功响应固定携带 `Cache-Control: no-store`。",
           requestBody: {
             required: true,
             content: {
@@ -162,6 +174,14 @@ export async function GET(request: NextRequest) {
             },
             "401": {
               description: "Client 认证失败",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
+            "429": {
+              description: "请求过于频繁（限流）",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/OAuthError" },
@@ -230,11 +250,13 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      "/api/oauth/jwks.json": {
+      "/api/oauth/jwks": {
         get: {
           tags: ["Discovery"],
           summary: "JWKS 端点",
-          description: "返回用于验证 access_token 签名的公钥集合（JSON Web Key Set）。",
+          description:
+            "返回用于验证 token 签名的 RSA 公钥集合（JSON Web Key Set）。\n" +
+            "密钥轮换过渡期会同时包含当前与上一代公钥（以 kid 区分）。",
           responses: {
             "200": {
               description: "JWKS 文档",
@@ -315,7 +337,7 @@ export async function GET(request: NextRequest) {
           properties: {
             grant_type: {
               type: "string",
-              enum: ["authorization_code", "refresh_token"],
+              enum: ["authorization_code", "refresh_token", "client_credentials"],
               description: "授权类型",
             },
             client_id: {
@@ -433,11 +455,14 @@ export async function GET(request: NextRequest) {
         JWK: {
           type: "object",
           properties: {
-            kty: { type: "string", description: "密钥类型，当前为 oct（对称密钥）" },
-            kid: { type: "string", description: "密钥标识符" },
-            alg: { type: "string", description: "签名算法，当前为 HS256" },
+            kty: { type: "string", description: "密钥类型，RSA" },
+            kid: { type: "string", description: "密钥标识符（密钥轮换时按 kid 匹配）" },
+            alg: { type: "string", description: "签名算法，RS256" },
+            use: { type: "string", description: "固定值 sig" },
+            n: { type: "string", description: "RSA modulus（base64url）" },
+            e: { type: "string", description: "RSA exponent（base64url）" },
           },
-          description: "密钥标识符及签名算法。k值不通过 JWKS 公开分发。",
+          description: "RSA 公钥（JWK 格式），仅公开公钥参数。",
         },
         OidcDiscovery: {
           type: "object",

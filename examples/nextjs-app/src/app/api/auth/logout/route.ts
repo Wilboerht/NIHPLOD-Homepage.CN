@@ -11,7 +11,7 @@ import { createLogoutRouteHandler } from "@nihplod/sso-sdk/next";
 
 export const runtime = "nodejs";
 
-export const GET = createLogoutRouteHandler({
+const logoutHandler = createLogoutRouteHandler({
   clientId: process.env.SSO_CLIENT_ID || "your-client-id",
   clientSecret: process.env.SSO_CLIENT_SECRET,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
@@ -19,3 +19,8 @@ export const GET = createLogoutRouteHandler({
   postLogoutRedirectUri: process.env.SSO_POST_LOGOUT_REDIRECT_URI || "http://localhost:3002/",
   redirectToSso: true,
 });
+
+// GET：兼容 RP-Initiated Logout 规范（end_session_endpoint 支持 GET）
+export const GET = logoutHandler;
+// POST：UI 层推荐使用，避免 GET 登出被跨站图片/预取请求触发（CSRF）
+export const POST = logoutHandler;

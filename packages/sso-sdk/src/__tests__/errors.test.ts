@@ -2,7 +2,7 @@
  * 错误类测试
  */
 import { describe, it, expect } from "vitest";
-import { SsoError, OAuthError } from "../core/errors";
+import { SsoError, OAuthError, mapOAuthErrorToSsoCode } from "../core/errors";
 
 describe("SsoError", () => {
   it("正确设置 name、code、description", () => {
@@ -48,5 +48,23 @@ describe("OAuthError", () => {
     const err = new OAuthError("access_denied", "用户拒绝授权");
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(OAuthError);
+  });
+});
+
+describe("mapOAuthErrorToSsoCode", () => {
+  it("rate_limited 映射为独立错误码而非 network_error", () => {
+    expect(mapOAuthErrorToSsoCode("rate_limited")).toBe("rate_limited");
+  });
+
+  it("invalid_grant 按上下文细化：换 token 为授权码过期，刷新为会话失效", () => {
+    expect(mapOAuthErrorToSsoCode("invalid_grant")).toBe("authorization_code_expired");
+    expect(mapOAuthErrorToSsoCode("invalid_grant", "token_exchange")).toBe("authorization_code_expired");
+    expect(mapOAuthErrorToSsoCode("invalid_grant", "refresh")).toBe("session_expired");
+  });
+
+  it("access_denied / server_error 等常规映射", () => {
+    expect(mapOAuthErrorToSsoCode("access_denied")).toBe("user_denied_authorization");
+    expect(mapOAuthErrorToSsoCode("server_error")).toBe("sso_server_error");
+    expect(mapOAuthErrorToSsoCode("unknown_error")).toBe("token_request_failed");
   });
 });

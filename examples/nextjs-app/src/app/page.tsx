@@ -1,69 +1,60 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { SsoClient } from "@nihplod/sso-sdk";
+import { cookies } from "next/headers";
+import { DEFAULT_ACCESS_TOKEN_COOKIE_NAME } from "@nihplod/sso-sdk/next";
 
 /**
- * Next.js 首页 — 客户端 SDk 示例
+ * Next.js 首页 — Middleware 接入方式（推荐）
  *
- * 展示两种接入方式：
- * 1. Middleware（全站保护，配置在 src/middleware.ts）
- * 2. 客户端 SDK（按需登录，本页面演示）
+ * 本示例统一使用 Middleware + Route Handler 的 BFF 模式：
+ * - token 存储在 httpOnly Cookie 中，浏览器 JS 无法读取，客户端不使用 SsoClient
+ * - 未登录时点击“登录”会访问受保护路径 /dashboard，
+ *   Middleware（src/middleware.ts）自动重定向到 SSO 授权页
+ * - 授权成功后由 /api/auth/callback 写 Cookie 并跳回 /dashboard
+ *
+ * 注意：客户端 SsoClient.login() 与 Middleware 方式互斥——
+ * 前者把 PKCE state 存在浏览器 sessionStorage，后者存在 httpOnly Cookie，
+ * 混用会导致回调校验失败。Next.js 项目请只使用 Middleware 方式。
  */
-const sso = new SsoClient({
-  clientId: process.env.NEXT_PUBLIC_SSO_CLIENT_ID || "your-client-id",
-  redirectUri: process.env.NEXT_PUBLIC_SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
-  ssoBaseUrl: process.env.NEXT_PUBLIC_SSO_BASE_URL || "https://nihplod.cn",
-  scopes: "openid profile",
-});
+export const dynamic = "force-dynamic";
 
-export default function Home() {
-  const [user, setUser] = useState<{ nickname?: string; sub?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (sso.isAuthenticated()) {
-      sso.getUserInfo().then(setUser).catch(() => {}).finally(() => setLoading(false));
-    } else {
-      // 微任务延迟，避免 effect 内同步 setState
-      Promise.resolve().then(() => setLoading(false));
-    }
-  }, []);
-
-  if (loading) return <div style={styles.container}><p>加载中...</p></div>;
+export default async function Home() {
+  const cookieStore = await cookies();
+  const isAuthenticated = Boolean(
+    cookieStore.get(DEFAULT_ACCESS_TOKEN_COOKIE_NAME)?.value
+  );
 
   return (
     <div style={styles.container}>
       <h1>Next.js SSO 接入示例</h1>
-      {user ? (
+      {isAuthenticated ? (
         <div style={styles.card}>
-          <p>已登录: {user.nickname || user.sub}</p>
+          <p>已登录（token 在 httpOnly Cookie 中，JS 不可读取）</p>
           <div style={styles.buttons}>
-            <a href="/dashboard" style={styles.btnPrimary}>进入控制台</a>
-            <button
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                window.location.href = "/";
-              }}
-              style={styles.btnDanger}
-            >
-              退出登录
-            </button>
+            <a href="/dashboard" style={styles.btnPrimary}>
+              进入控制台
+            </a>
+            {/* 使用 POST 触发登出，避免 GET 被跨站预取/图片请求触发（CSRF） */}
+            <form action="/api/auth/logout" method="post">
+              <button type="submit" style={styles.btnDanger}>
+                退出登录
+              </button>
+            </form>
           </div>
         </div>
       ) : (
         <div style={styles.card}>
           <p>未登录</p>
-          <button style={styles.btnPrimary} onClick={() => sso.login()}>
+          {/* /dashboard 受 Middleware 保护，未登录访问会自动跳转 SSO 登录页 */}
+          <a href="/dashboard" style={styles.btnPrimary}>
             使用 NIHPLOD 账号登录
-          </button>
+          </a>
         </div>
       )}
       <div style={styles.info}>
-        <p>本示例展示了两种 SSO 集成方式：</p>
+        <p>本示例使用 Middleware 方式接入 SSO：</p>
         <ol>
-          <li><strong>Middleware 方式</strong>：全站自动保护，访问 /dashboard 未登录时自动跳转 SSO</li>
-          <li><strong>客户端 SDK</strong>：本页面按需登录，灵活性更高</li>
+          <li>访问受保护路径时未登录 → Middleware 自动跳转 SSO 授权页（PKCE + state 存 httpOnly Cookie）</li>
+          <li>授权成功 → /api/auth/callback 交换 token 并写入 httpOnly Cookie → 跳回原页面</li>
+          <li>退出登录 → POST /api/auth/logout 撤销 refresh_token、清除 Cookie 并跳转 SSO 中心登出</li>
         </ol>
       </div>
     </div>
@@ -99,6 +90,7 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: "none",
     fontSize: "14px",
     display: "inline-block",
+    marginTop: "0.75rem",
   },
   btnDanger: {
     padding: "10px 20px",

@@ -42,7 +42,14 @@ export async function POST(request: NextRequest) {
     let body: Record<string, string>;
 
     if (contentType.includes("application/json")) {
-      body = await request.json();
+      try {
+        body = await request.json();
+      } catch {
+        return resJson(
+          { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
+          400
+        );
+      }
     } else {
       const formData = await request.formData();
       body = {};
@@ -108,7 +115,10 @@ export async function POST(request: NextRequest) {
       return resJson({ active: false });
     }
 
-    const isM2m = payload.id.startsWith("client:");
+    // 优先按显式 client_type claim 识别 M2M token，兼容旧 token 的 client: 前缀
+    const isM2m =
+      (payload as { client_type?: string }).client_type === "m2m" ||
+      payload.id.startsWith("client:");
 
     // 用户级黑名单检查（M2M token 无需检查，无关联用户）
     if (!isM2m) {

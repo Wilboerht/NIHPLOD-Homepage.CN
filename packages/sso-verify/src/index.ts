@@ -29,7 +29,14 @@
  * ```
  */
 
-import { jwtVerify, importSPKI, createRemoteJWKSet, type KeyLike, type JWTPayload } from "jose";
+import {
+  jwtVerify,
+  importSPKI,
+  createRemoteJWKSet,
+  decodeProtectedHeader,
+  type KeyLike,
+  type JWTPayload,
+} from "jose";
 import { LRUCache } from "lru-cache";
 
 // ============================================
@@ -66,6 +73,19 @@ export interface SsoVerifierOptions {
   introspectCacheTtl?: number;
 
   /**
+   * Introspection 请求超时时间（毫秒），默认 10 秒。
+   * 超时按验证失败处理（返回 null）。
+   */
+  introspectTimeoutMs?: number;
+
+  /**
+   * Introspection 返回 active:false（已撤销/无效）结果的缓存 TTL（毫秒），默认 5 秒。
+   * 明显短于 active:true 的 TTL，以降低 token 撤销后的生效延迟。
+   * 设为 0 表示不缓存 active:false 结果。
+   */
+  introspectNegativeCacheTtl?: number;
+
+  /**
    * Access Token RS256 公钥（PEM 格式，可选）。
    * 主站已迁移至 RS256 签名，子项目可传入此公钥进行本地验证，
    * 避免每次都调用 Introspection 端点。
@@ -85,6 +105,16 @@ export interface SsoVerifierOptions {
    * 若未提供，将回退使用 accessTokenSecret 进行验证。
    */
   logoutTokenSecret?: string;
+
+  /**
+   * Logout Token RS256 公钥（PEM 格式，可选）。
+   * 主站 logout_token 使用独立密钥对（kid: logout-token-rs256-v1）签名，
+   * 与 access token 密钥不同，因此不能使用 accessTokenPublicKey 验证。
+   * 若未提供但配置了 jwksUri，将通过 JWKS 按 kid 匹配获取对应公钥。
+   * RS256 签名的 logout_token 在无任何可用公钥时验证失败（返回 null），
+   * 不会静默回退到 HS256。
+   */
+  logoutTokenPublicKey?: string;
 }
 
 export interface VerifiedTokenPayload extends JWTPayload {
@@ -181,7 +211,10 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     accessTokenPublicKey,
     jwksUri,
     logoutTokenSecret,
+    logoutTokenPublicKey,
     introspectCacheTtl = 30 * 1000,
+    introspectTimeoutMs = 10 * 1000,
+    introspectNegativeCacheTtl = 5 * 1000,
   } = options;
 
   const introspectCache = createIntrospectCache(introspectCacheTtl);
@@ -217,6 +250,25 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     return _rs256PublicKey;
   }
 
+  // Logout Token RS256 公钥（延迟导入，独立密钥对，kid: logout-token-rs256-v1）
+  let _logoutRs256PublicKey: KeyLike | null = null;
+  let _logoutRs256KeyInitialized = false;
+  async function getLogoutRS256PublicKey(): Promise<KeyLike | null> {
+    if (!_logoutRs256KeyInitialized) {
+      _logoutRs256KeyInitialized = true;
+      if (!logoutTokenPublicKey) {
+        _logoutRs256PublicKey = null;
+      } else {
+        try {
+          _logoutRs256PublicKey = await importSPKI(logoutTokenPublicKey, "RS256");
+        } catch {
+          _logoutRs256PublicKey = null;
+        }
+      }
+    }
+    return _logoutRs256PublicKey;
+  }
+
   /**
    * 调用主站 Introspection 端点验证 token
    *
@@ -243,6 +295,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: params,
+        signal: AbortSignal.timeout(introspectTimeoutMs),
       });
 
       if (!response.ok) return null;
@@ -260,7 +313,15 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         } as VerifiedTokenPayload;
       }
 
-      introspectCache.set(token, { active: data.active, payload });
+      // active:false（已撤销）结果使用更短的 TTL，降低撤销生效延迟；
+      // introspectNegativeCacheTtl 为 0 时不缓存。
+      if (data.active) {
+        introspectCache.set(token, { active: true, payload });
+      } else if (introspectNegativeCacheTtl > 0) {
+        introspectCache.set(token, { active: false, payload: null }, {
+          ttl: introspectNegativeCacheTtl,
+        });
+      }
       return data;
     } catch {
       return null;
@@ -278,6 +339,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
       const { payload } = await jwtVerify(token, secret, {
         issuer,
         audience,
+        algorithms: ["HS256"],
       });
 
       if ((payload as { type?: string }).type !== "access_token") {
@@ -354,10 +416,11 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
 
       // 3. Introspection 验证（兜底方案）
       const result = await introspect(token);
-      if (!result?.active) return null;
+      // active:true 必须携带非空 sub，否则视为无效（防 confused deputy）
+      if (!result?.active || !result.sub) return null;
 
       return {
-        sub: result.sub || "",
+        sub: result.sub,
         aud: audience,
         iss: issuer,
         client_id: result.client_id,
@@ -409,57 +472,77 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         if (!jti || typeof jti !== "string") {
           return null;
         }
-        if (processedLogoutJtis.has(jti)) {
+        // jti 缓存 key 带 issuer 前缀，避免跨 issuer / 跨 verifier 实例的 jti 冲突
+        const iss = (payload as { iss?: string }).iss || issuer;
+        const jtiKey = `${iss}:${jti}`;
+        if (processedLogoutJtis.has(jtiKey)) {
           return null;
         }
-        processedLogoutJtis.set(jti, Date.now());
+        processedLogoutJtis.set(jtiKey, Date.now());
         return payload as unknown as LogoutTokenPayload;
       };
 
-      // 1. 优先 RS256 本地验证（直接公钥或 JWKS 远程获取）
-      const directKey = await getRS256PublicKey();
-      if (directKey) {
-        try {
-          const { payload } = await jwtVerify(token, directKey, {
-            issuer,
-            audience,
-            algorithms: ["RS256"],
-          });
-          return validateLogoutPayload(payload as unknown as Record<string, unknown>);
-        } catch {
-          // RS256 直接公钥验证失败 → 继续尝试其他方式
-        }
-      }
-
-      const jwks = getJwksKeySet();
-      if (jwks) {
-        try {
-          const { payload } = await jwtVerify(token, jwks, {
-            issuer,
-            audience,
-            algorithms: ["RS256"],
-          });
-          return validateLogoutPayload(payload as unknown as Record<string, unknown>);
-        } catch {
-          // JWKS 验证失败 → 继续回退 HS256
-        }
-      }
-
-      // 2. 回退 HS256（使用 logoutTokenSecret 或 accessTokenSecret）
-      const secret = logoutTokenSecret || accessTokenSecret;
-      if (!secret) return null;
-
+      // 按 JWT header alg 分发，避免跨算法静默回退
+      let alg: string | undefined;
       try {
-        const key = new TextEncoder().encode(secret);
-        const { payload } = await jwtVerify(token, key, {
-          issuer,
-          audience,
-          algorithms: ["HS256"],
-        });
-        return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+        alg = decodeProtectedHeader(token).alg;
       } catch {
         return null;
       }
+
+      // 1. RS256：使用 logout token 独立公钥（logoutTokenPublicKey）或 JWKS（按 kid 匹配）。
+      //    无任何可用公钥时直接失败，不回退 HS256。
+      if (alg === "RS256") {
+        const directKey = await getLogoutRS256PublicKey();
+        if (directKey) {
+          try {
+            const { payload } = await jwtVerify(token, directKey, {
+              issuer,
+              audience,
+              algorithms: ["RS256"],
+            });
+            return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+          } catch {
+            return null;
+          }
+        }
+
+        const jwks = getJwksKeySet();
+        if (jwks) {
+          try {
+            const { payload } = await jwtVerify(token, jwks, {
+              issuer,
+              audience,
+              algorithms: ["RS256"],
+            });
+            return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+          } catch {
+            return null;
+          }
+        }
+
+        return null;
+      }
+
+      // 2. HS256：使用 logoutTokenSecret（显式配置）或 accessTokenSecret 本地验证
+      if (alg === "HS256") {
+        const secret = logoutTokenSecret || accessTokenSecret;
+        if (!secret) return null;
+
+        try {
+          const key = new TextEncoder().encode(secret);
+          const { payload } = await jwtVerify(token, key, {
+            issuer,
+            audience,
+            algorithms: ["HS256"],
+          });
+          return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+        } catch {
+          return null;
+        }
+      }
+
+      return null;
     },
   };
 }

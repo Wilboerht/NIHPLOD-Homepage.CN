@@ -138,6 +138,27 @@ export async function consumeAuthorizationCode(
 }
 
 /**
+ * 检测授权码重放（RFC 9700 §4.5）
+ *
+ * 在 consumeAuthorizationCode 消费失败后调用：
+ * 若 code 存在且已被使用，说明发生重放，调用方应撤销该 code 签发出的所有 token。
+ *
+ * @param rawCode - 明文授权码
+ * @returns 已被使用的授权码记录（含 id/clientId/userId），非重放返回 null
+ */
+export async function findUsedAuthorizationCode(
+  rawCode: string
+): Promise<{ id: string; clientId: string; userId: string } | null> {
+  const codeHash = hashCode(rawCode);
+  const record = await prisma.oAuthAuthorizationCode.findUnique({
+    where: { code: codeHash },
+    select: { id: true, clientId: true, userId: true, used: true },
+  });
+  if (!record || !record.used) return null;
+  return { id: record.id, clientId: record.clientId, userId: record.userId };
+}
+
+/**
  * 清理过期授权码（可由 cron 任务定期调用）
  */
 export async function cleanupExpiredCodes(): Promise<number> {

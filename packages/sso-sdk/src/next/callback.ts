@@ -24,6 +24,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { validateIdToken } from "../core/id-token";
+import { isTrustedReturnUrl } from "../core/security";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
@@ -82,19 +83,7 @@ export interface CallbackRouteConfig {
 // 工具函数
 // ============================================
 
-/**
- * 校验回调后的 returnUrl 是否可信。
- * 仅允许：相对路径（且不以 // 开头）或与当前 origin 完全一致。
- */
-function isTrustedReturnUrl(url: string, currentOrigin: string): boolean {
-  if (!url) return false;
-  if (url.startsWith("/") && !url.startsWith("//")) return true;
-  try {
-    return new URL(url).origin === currentOrigin;
-  } catch {
-    return false;
-  }
-}
+// returnUrl 开放重定向校验统一使用 ../core/security 的 isTrustedReturnUrl
 
 // ID Token 预校验逻辑已收敛到 ../core/id-token.ts
 
@@ -191,7 +180,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     }
 
     // 带重试的 token 交换（1 次重试 + 指数退避）
-    let res: Response;
+    let res: Response | null = null;
     let lastError: unknown;
     const maxRetries = 1;
 
@@ -219,7 +208,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       }
     }
 
-    if (lastError || !res!) {
+    if (lastError || !res) {
       return NextResponse.json(
         { error: "server_error", error_description: "Token 请求失败" },
         { status: 502 }
@@ -307,15 +296,18 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
             Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
           ) as { exp?: number };
           if (payload.exp && typeof payload.exp === "number") {
-            idTokenMaxAge = Math.max(60, payload.exp - Math.floor(Date.now() / 1000));
+            // 已过期（剩余 <= 0）的 id_token 不写入 cookie，避免携带失效凭证登出
+            idTokenMaxAge = payload.exp - Math.floor(Date.now() / 1000);
           }
         }
       } catch {
         // 解码失败，使用默认值
       }
-      response.cookies.set(idTokenCookieName, tokenData.id_token, {
-        ...getHostCookieOptions(idTokenMaxAge),
-      });
+      if (idTokenMaxAge > 0) {
+        response.cookies.set(idTokenCookieName, tokenData.id_token, {
+          ...getHostCookieOptions(idTokenMaxAge),
+        });
+      }
     }
 
     // 清除临时 cookies: state / return URL

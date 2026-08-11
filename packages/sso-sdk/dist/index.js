@@ -25,6 +25,7 @@ __export(src_exports, {
   SsoError: () => SsoError,
   clearAllSsoData: () => clearAllSsoData,
   clearVerifiersForClients: () => clearVerifiersForClients,
+  createSecureStorage: () => createSecureStorage,
   generateCodeChallenge: () => generateCodeChallenge,
   generateCodeVerifier: () => generateCodeVerifier,
   generateState: () => generateState,
@@ -33,6 +34,8 @@ __export(src_exports, {
   getReturnUrl: () => getReturnUrl,
   getTokenData: () => getTokenData,
   getTokenStorage: () => getTokenStorage,
+  isTrustedReturnUrl: () => isTrustedReturnUrl,
+  mapOAuthErrorToSsoCode: () => mapOAuthErrorToSsoCode,
   removeOAuthState: () => removeOAuthState,
   removePkceVerifier: () => removePkceVerifier,
   removeReturnUrl: () => removeReturnUrl,
@@ -41,11 +44,32 @@ __export(src_exports, {
   savePkceVerifier: () => savePkceVerifier,
   saveReturnUrl: () => saveReturnUrl,
   saveTokenData: () => saveTokenData,
-  setTokenStorage: () => setTokenStorage
+  setTokenStorage: () => setTokenStorage,
+  timingSafeEqualString: () => timingSafeEqualString
 });
 module.exports = __toCommonJS(src_exports);
 
 // src/core/errors.ts
+function mapOAuthErrorToSsoCode(oauthError, context = "token_exchange") {
+  switch (oauthError) {
+    case "invalid_grant":
+      return context === "refresh" ? "session_expired" : "authorization_code_expired";
+    case "invalid_client":
+      return "client_disabled";
+    case "access_denied":
+      return "user_denied_authorization";
+    case "server_error":
+      return "sso_server_error";
+    case "rate_limited":
+      return "rate_limited";
+    case "invalid_scope":
+    case "invalid_request":
+    case "unauthorized_client":
+    case "unsupported_grant_type":
+    default:
+      return "token_request_failed";
+  }
+}
 var SsoError = class extends Error {
   constructor(code, description, cause) {
     super(`[SSO SDK] ${code}: ${description}`);
@@ -128,6 +152,57 @@ function createMemoryStorageAdapter() {
   };
 }
 var memoryStorageAdapter = createMemoryStorageAdapter();
+var localStorageAdapter = {
+  get(key) {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(STORAGE_PREFIX + key);
+  },
+  set(key, value) {
+    if (typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(STORAGE_PREFIX + key, value);
+    } catch (err) {
+      console.warn(
+        `[SSO SDK] localStorage \u5199\u5165\u5931\u8D25\uFF08${err instanceof Error ? err.name : String(err)}\uFF09\uFF0C\u6570\u636E\u672A\u6301\u4E45\u5316`
+      );
+    }
+  },
+  remove(key) {
+    if (typeof localStorage === "undefined") return;
+    localStorage.removeItem(STORAGE_PREFIX + key);
+  }
+};
+function createSessionStorageAdapter() {
+  const fallback = /* @__PURE__ */ new Map();
+  return {
+    get(key) {
+      if (typeof sessionStorage !== "undefined") {
+        return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+      }
+      return fallback.get(key) ?? null;
+    },
+    set(key, value) {
+      if (typeof sessionStorage === "undefined") {
+        fallback.set(key, value);
+        return;
+      }
+      try {
+        sessionStorage.setItem(STORAGE_PREFIX + key, value);
+      } catch {
+        fallback.set(key, value);
+      }
+    },
+    remove(key) {
+      fallback.delete(key);
+      if (typeof sessionStorage === "undefined") return;
+      sessionStorage.removeItem(STORAGE_PREFIX + key);
+    }
+  };
+}
+var _transient = createSessionStorageAdapter();
+function createSecureStorage(options = {}) {
+  return options.persist ? localStorageAdapter : memoryStorageAdapter;
+}
 var _storage = memoryStorageAdapter;
 function setTokenStorage(storage) {
   _storage = storage;
@@ -151,31 +226,31 @@ function removeTokenData(clientId) {
   _storage.remove(buildKey(TOKEN_KEY, clientId));
 }
 function savePkceVerifier(clientId, verifier) {
-  _storage.set(VERIFIER_KEY_PREFIX + clientId, verifier);
+  _transient.set(VERIFIER_KEY_PREFIX + clientId, verifier);
 }
 function getPkceVerifier(clientId) {
-  return _storage.get(VERIFIER_KEY_PREFIX + clientId);
+  return _transient.get(VERIFIER_KEY_PREFIX + clientId);
 }
 function removePkceVerifier(clientId) {
-  _storage.remove(VERIFIER_KEY_PREFIX + clientId);
+  _transient.remove(VERIFIER_KEY_PREFIX + clientId);
 }
 function saveOAuthState(state, clientId) {
-  _storage.set(buildKey(STATE_KEY, clientId), state);
+  _transient.set(buildKey(STATE_KEY, clientId), state);
 }
 function getOAuthState(clientId) {
-  return _storage.get(buildKey(STATE_KEY, clientId));
+  return _transient.get(buildKey(STATE_KEY, clientId));
 }
 function removeOAuthState(clientId) {
-  _storage.remove(buildKey(STATE_KEY, clientId));
+  _transient.remove(buildKey(STATE_KEY, clientId));
 }
 function saveReturnUrl(url, clientId) {
-  _storage.set(buildKey(RETURN_URL_KEY, clientId), url);
+  _transient.set(buildKey(RETURN_URL_KEY, clientId), url);
 }
 function getReturnUrl(clientId) {
-  return _storage.get(buildKey(RETURN_URL_KEY, clientId));
+  return _transient.get(buildKey(RETURN_URL_KEY, clientId));
 }
 function removeReturnUrl(clientId) {
-  _storage.remove(buildKey(RETURN_URL_KEY, clientId));
+  _transient.remove(buildKey(RETURN_URL_KEY, clientId));
 }
 function clearAllSsoData(clientId) {
   if (clientId) {
@@ -183,28 +258,63 @@ function clearAllSsoData(clientId) {
     removeOAuthState(clientId);
     removeReturnUrl(clientId);
     removePkceVerifier(clientId);
+    removePkceVerifier(`${clientId}_popup_nonce`);
     return;
   }
   removeTokenData();
   removeOAuthState();
   removeReturnUrl();
-  if (typeof localStorage !== "undefined") {
-    const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(prefix)) {
-        _storage.remove(key.slice(STORAGE_PREFIX.length));
-      }
+  const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
+  const stores = [
+    typeof sessionStorage !== "undefined" ? sessionStorage : null,
+    typeof localStorage !== "undefined" ? localStorage : null
+  ];
+  for (const store of stores) {
+    if (!store) continue;
+    const keys = [];
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key?.startsWith(prefix)) keys.push(key);
+    }
+    for (const key of keys) {
+      _transient.remove(key.slice(STORAGE_PREFIX.length));
+      store.removeItem(key);
     }
   }
 }
 function clearVerifiersForClients(clientIds) {
   for (const clientId of clientIds) {
-    _storage.remove(VERIFIER_KEY_PREFIX + clientId);
+    _transient.remove(VERIFIER_KEY_PREFIX + clientId);
   }
 }
 
-// src/core/SsoClient.ts
+// src/core/security.ts
+function isTrustedReturnUrl(url, currentOrigin) {
+  if (!url) return false;
+  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  try {
+    return new URL(url).origin === currentOrigin;
+  } catch {
+    return false;
+  }
+}
+function timingSafeEqualString(a, b) {
+  const ba = new TextEncoder().encode(a);
+  const bb = new TextEncoder().encode(b);
+  if (ba.length === 0 || bb.length === 0) return ba.length === bb.length;
+  const len = Math.max(ba.length, bb.length);
+  let diff = ba.length ^ bb.length;
+  for (let i = 0; i < len; i++) {
+    diff |= ba[i % ba.length] ^ bb[i % bb.length];
+  }
+  return diff === 0;
+}
+
+// src/core/id-token.ts
+var _crypto = typeof crypto !== "undefined" && crypto.subtle ? crypto : null;
+function getCrypto() {
+  return _crypto ?? null;
+}
 function base64UrlDecode(input) {
   const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, "=");
@@ -239,14 +349,32 @@ function normalizeIssuer(url) {
   return url.replace(/\/+$/, "");
 }
 var cachedJwks = null;
+var cachedDiscovery = null;
 var JWKS_CACHE_TTL_MS = 5 * 60 * 1e3;
+async function fetchDiscoveryDoc(baseUrl) {
+  const now = Date.now();
+  if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return cachedDiscovery.doc;
+  }
+  try {
+    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`);
+    const doc = res.ok ? await res.json() : null;
+    cachedDiscovery = { baseUrl, doc, fetchedAt: now };
+    return doc;
+  } catch {
+    cachedDiscovery = { baseUrl, doc: null, fetchedAt: now };
+    return null;
+  }
+}
 async function fetchJwks(baseUrl) {
   const now = Date.now();
   if (cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
     return cachedJwks.jwks;
   }
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
   try {
-    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    const res = await fetch(jwksUri);
     if (!res.ok) return null;
     const jwks = await res.json();
     cachedJwks = { baseUrl, jwks, fetchedAt: now };
@@ -255,24 +383,13 @@ async function fetchJwks(baseUrl) {
     return null;
   }
 }
-async function computeAtHash(accessToken) {
-  const hash = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(accessToken)
-  );
-  const bytes = new Uint8Array(hash);
-  const half = bytes.slice(0, bytes.length / 2);
-  let binary = "";
-  for (const b of half) {
-    binary += String.fromCharCode(b);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-async function verifyRs256(token, jwk) {
+async function verifyRs256Signature(token, jwk) {
   try {
     const [headerB64, payloadB64, signature] = token.split(".");
     if (!signature || !jwk.n || !jwk.e) return false;
-    const cryptoKey = await crypto.subtle.importKey(
+    const c = getCrypto();
+    if (!c) return false;
+    const cryptoKey = await c.subtle.importKey(
       "jwk",
       { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
@@ -281,7 +398,7 @@ async function verifyRs256(token, jwk) {
     );
     const signatureBytes = base64UrlDecode(signature);
     const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-    return await crypto.subtle.verify(
+    return await c.subtle.verify(
       "RSASSA-PKCS1-v1_5",
       cryptoKey,
       signatureBytes,
@@ -291,7 +408,20 @@ async function verifyRs256(token, jwk) {
     return false;
   }
 }
-async function validateIdToken(idToken, expectedIssuer, expectedClientId, accessToken) {
+async function computeAtHash(accessToken) {
+  const c = getCrypto();
+  if (!c) return "";
+  const hash = await c.subtle.digest("SHA-256", new TextEncoder().encode(accessToken));
+  const bytes = new Uint8Array(hash);
+  const half = bytes.slice(0, bytes.length / 2);
+  let binary = "";
+  for (const b of half) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function validateIdToken(idToken, accessToken, expectedIssuer, expectedClientId, options = {}) {
+  const { rejectHs256WhenRs256Available = true } = options;
   const header = decodeJwtHeader(idToken);
   if (!header) {
     throw new SsoError("id_token_invalid", "ID Token \u683C\u5F0F\u9519\u8BEF");
@@ -300,54 +430,83 @@ async function validateIdToken(idToken, expectedIssuer, expectedClientId, access
   if (typeof alg !== "string" || alg !== "RS256" && alg !== "HS256") {
     throw new SsoError("id_token_unsupported_alg", `\u4E0D\u652F\u6301\u7684 ID Token \u7B7E\u540D\u7B97\u6CD5: ${alg}`);
   }
+  const baseUrl = normalizeIssuer(expectedIssuer);
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const normalizedIssuer = normalizeIssuer(discovery?.issuer || baseUrl);
   if (alg === "RS256") {
-    const jwks = await fetchJwks(normalizeIssuer(expectedIssuer));
+    const jwks = await fetchJwks(baseUrl);
     if (!jwks) {
       throw new SsoError("id_token_invalid_signature", "\u65E0\u6CD5\u83B7\u53D6 JWKS \u9A8C\u8BC1 ID Token \u7B7E\u540D");
     }
     const kid = typeof header.kid === "string" ? header.kid : void 0;
-    const key = jwks.keys.find(
+    const candidates = jwks.keys.filter(
       (k) => k.kty === "RSA" && k.alg === "RS256" && k.use === "sig" && (kid ? k.kid === kid : true)
     );
-    if (!key) {
+    if (candidates.length === 0) {
       throw new SsoError("id_token_invalid_signature", "JWKS \u4E2D\u672A\u627E\u5230\u5339\u914D\u7684 RS256 \u516C\u94A5");
     }
-    const validSig = await verifyRs256(idToken, key);
+    let validSig = false;
+    for (const key of candidates) {
+      if (await verifyRs256Signature(idToken, key)) {
+        validSig = true;
+        break;
+      }
+    }
     if (!validSig) {
       throw new SsoError("id_token_invalid_signature", "ID Token \u7B7E\u540D\u9A8C\u8BC1\u5931\u8D25");
     }
   }
   if (alg === "HS256") {
-    console.warn(
-      "[SSO SDK] ID Token \u4F7F\u7528 HS256 \u7B7E\u540D\uFF0CPublic Client \u65E0\u6CD5\u5B89\u5168\u9A8C\u8BC1\u7B7E\u540D\u3002\u5EFA\u8BAE\u4E3B\u7AD9\u914D\u7F6E JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY \u542F\u7528 RS256\u3002"
+    if (rejectHs256WhenRs256Available) {
+      const jwks = await fetchJwks(baseUrl);
+      const hasRs256 = jwks?.keys?.some((k) => k.alg === "RS256" && k.use === "sig");
+      if (hasRs256) {
+        throw new SsoError("id_token_unsupported_alg", "SSO \u4E2D\u5FC3\u5DF2\u914D\u7F6E RS256\uFF0C\u62D2\u7EDD HS256 ID Token");
+      }
+    }
+    throw new SsoError(
+      "id_token_hs256_unsupported",
+      "ID Token \u4F7F\u7528 HS256 \u5BF9\u79F0\u7B7E\u540D\uFF0CSDK \u65E0\u6CD5\u5B89\u5168\u9A8C\u8BC1\u3002\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458\u5728 SSO \u4E3B\u7AD9\u914D\u7F6E RS256 \u5BC6\u94A5\u5BF9\uFF08JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY\uFF09\u540E\u91CD\u65B0\u7B7E\u53D1\u3002"
     );
   }
   const payload = decodeJwtPayload(idToken);
   if (!payload) {
     throw new SsoError("id_token_invalid", "ID Token payload \u89E3\u6790\u5931\u8D25");
   }
-  const normalizedExpectedIssuer = normalizeIssuer(expectedIssuer);
   const tokenIssuer = typeof payload.iss === "string" ? normalizeIssuer(payload.iss) : "";
-  if (tokenIssuer !== normalizedExpectedIssuer) {
+  if (tokenIssuer !== normalizedIssuer) {
     throw new SsoError("id_token_issuer_mismatch", "ID Token issuer \u4E0D\u5339\u914D");
   }
-  if (payload.aud !== expectedClientId && !payload.aud?.includes(expectedClientId)) {
+  const aud = payload.aud;
+  const audList = Array.isArray(aud) ? aud : typeof aud === "string" ? [aud] : [];
+  if (!audList.includes(expectedClientId)) {
     throw new SsoError("id_token_audience_mismatch", "ID Token audience \u4E0D\u5339\u914D");
   }
-  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1e3) {
+  if (audList.length > 1 && payload.azp !== expectedClientId) {
+    throw new SsoError("id_token_audience_mismatch", "ID Token \u591A audience \u65F6 azp \u5FC5\u987B\u4E3A\u5F53\u524D client");
+  }
+  if (typeof payload.exp !== "number") {
+    throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 exp \u58F0\u660E");
+  }
+  if (Date.now() >= payload.exp * 1e3) {
     throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
+  }
+  if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
+    throw new SsoError("id_token_invalid", "ID Token iat \u5728\u672A\u6765\uFF0C\u7591\u4F3C\u4F2A\u9020\u6216\u65F6\u949F\u5F02\u5E38");
   }
   if (typeof payload.sub !== "string" || !payload.sub) {
     throw new SsoError("id_token_missing_sub", "ID Token \u7F3A\u5C11 sub");
   }
   if (typeof payload.at_hash === "string" && payload.at_hash) {
     const actual = await computeAtHash(accessToken);
-    if (actual !== payload.at_hash) {
+    if (!timingSafeEqualString(actual, payload.at_hash)) {
       throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash \u4E0D\u5339\u914D");
     }
   }
   return { sub: payload.sub };
 }
+
+// src/core/SsoClient.ts
 var _SsoClient = class _SsoClient {
   constructor(config) {
     this._discovery = null;
@@ -416,6 +575,17 @@ var _SsoClient = class _SsoClient {
     if (d) return d.userinfo_endpoint;
     return `${this.config.ssoBaseUrl}/api/oauth/userinfo`;
   }
+  /**
+   * 开放重定向防护：仅保存相对路径或与当前页面同源的 returnUrl，
+   * 其余（如 https://evil.com）忽略并告警，防止回调后跳转到钓鱼站点。
+   */
+  _saveReturnUrlIfTrusted(returnUrl) {
+    if (isTrustedReturnUrl(returnUrl, window.location.origin)) {
+      saveReturnUrl(returnUrl);
+    } else {
+      console.warn(`[SSO SDK] returnUrl \u672A\u901A\u8FC7\u540C\u6E90\u6821\u9A8C\uFF0C\u5DF2\u5FFD\u7565: ${returnUrl}`);
+    }
+  }
   // ============================================
   // 公共 API
   // ============================================
@@ -425,7 +595,8 @@ var _SsoClient = class _SsoClient {
    * 生成 PKCE code_verifier/code_challenge 和 state 参数，
    * 构建 authorize URL，通过 302 跳转到 SSO 登录页。
    *
-   * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage）
+   * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
+   *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
    */
   async login(returnUrl) {
     const verifier = generateCodeVerifier();
@@ -434,7 +605,7 @@ var _SsoClient = class _SsoClient {
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
     if (returnUrl) {
-      saveReturnUrl(returnUrl);
+      this._saveReturnUrlIfTrusted(returnUrl);
     }
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
@@ -458,7 +629,7 @@ var _SsoClient = class _SsoClient {
     const state = generateState();
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
-    if (returnUrl) saveReturnUrl(returnUrl);
+    if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
     params.set("response_type", "code");
@@ -471,10 +642,139 @@ var _SsoClient = class _SsoClient {
     return `${authorizeEndpoint}?${params.toString()}`;
   }
   /**
+   * 弹窗模式 SSO 登录
+   *
+   * 打开一个小窗口进行登录，认证完成后窗口自动关闭，
+   * 主页面不丢失状态（适用于 SPA 中需要保持表单/浏览上下文的场景）。
+   *
+   * 流程：
+   * 1. window.open() 打开授权 URL 到弹窗
+   * 2. 用户在弹窗中完成登录
+   * 3. 弹窗加载 CallbackPage 时检测到 window.opener，通过 postMessage 回传回调 URL
+   * 4. 主页面收到消息后调用 handleCallback() 交换 token
+   * 5. 弹窗自动关闭
+   *
+   * @param options - 弹窗配置
+   * @param options.returnUrl - 登录成功后的返回地址
+   * @param options.width - 弹窗宽度（默认 480）
+   * @param options.height - 弹窗高度（默认 640）
+   * @returns TokenData
+   *
+   * @example
+   * ```typescript
+   * const client = new SsoClient({ clientId: "xxx", redirectUri: "https://myapp.com/callback", ssoBaseUrl: "https://nihplod.cn" });
+   * try {
+   *   const tokenData = await client.loginPopup({ returnUrl: "/dashboard" });
+   *   console.log("登录成功", tokenData);
+   * } catch (err) {
+   *   if (err instanceof SsoError && err.code === "popup_blocked") {
+   *     // 弹窗被拦截，回退到同页重定向
+   *     await client.login("/dashboard");
+   *   }
+   * }
+   * ```
+   */
+  async loginPopup(options = {}) {
+    const verifier = generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
+    const state = generateState();
+    const popupNonce = generateState();
+    savePkceVerifier(this.config.clientId, verifier);
+    saveOAuthState(state, this.config.clientId);
+    savePkceVerifier(`${this.config.clientId}_popup_nonce`, popupNonce);
+    if (options.returnUrl) {
+      this._saveReturnUrlIfTrusted(options.returnUrl);
+    }
+    const authorizeEndpoint = await this._getAuthorizeEndpoint();
+    const params = new URLSearchParams();
+    params.set("response_type", "code");
+    params.set("client_id", this.config.clientId);
+    params.set("redirect_uri", this.config.redirectUri);
+    params.set("scope", this.config.scopes || "openid profile");
+    params.set("state", state);
+    params.set("code_challenge", challenge);
+    params.set("code_challenge_method", "S256");
+    params.set("popup_nonce", popupNonce);
+    const width = options.width || 480;
+    const height = options.height || 640;
+    const left = Math.max(0, (window.screen.width - width) / 2);
+    const top = Math.max(0, (window.screen.height - height) / 2);
+    const popupFeatures = [
+      `width=${width}`,
+      `height=${height}`,
+      `left=${Math.round(left)}`,
+      `top=${Math.round(top)}`,
+      "resizable=yes",
+      "scrollbars=yes",
+      "status=yes"
+    ].join(",");
+    const popup = window.open(
+      `${authorizeEndpoint}?${params.toString()}`,
+      "nihplod_sso_popup",
+      popupFeatures
+    );
+    if (!popup) {
+      removePkceVerifier(this.config.clientId);
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(`${this.config.clientId}_popup_nonce`);
+      throw new SsoError(
+        "popup_blocked",
+        "\u5F39\u7A97\u88AB\u6D4F\u89C8\u5668\u62E6\u622A\uFF0C\u8BF7\u5141\u8BB8\u5F39\u7A97\u540E\u91CD\u8BD5"
+      );
+    }
+    const redirectUriOrigin = new URL(this.config.redirectUri).origin;
+    try {
+      popup.focus();
+      return await new Promise((resolve, reject) => {
+        let completed = false;
+        const handleMessage = (event) => {
+          if (completed) return;
+          if (event.origin !== redirectUriOrigin) return;
+          if (!event.data || event.data.type !== "nihplod_sso_popup_callback") return;
+          if (!event.data.callbackUrl) return;
+          const savedNonce = getPkceVerifier(`${this.config.clientId}_popup_nonce`);
+          if (!savedNonce || !timingSafeEqualString(event.data.nonce ?? "", savedNonce)) return;
+          removePkceVerifier(`${this.config.clientId}_popup_nonce`);
+          completed = true;
+          cleanup();
+          if (popup && !popup.closed) {
+            popup.close();
+          }
+          this.handleCallback(event.data.callbackUrl).then(resolve).catch(reject);
+        };
+        const pollTimer = setInterval(() => {
+          if (popup.closed) {
+            if (!completed) {
+              completed = true;
+              cleanup();
+              reject(
+                new SsoError(
+                  "popup_closed",
+                  "\u767B\u5F55\u7A97\u53E3\u5DF2\u5173\u95ED"
+                )
+              );
+            }
+          }
+        }, 500);
+        const cleanup = () => {
+          clearInterval(pollTimer);
+          window.removeEventListener("message", handleMessage);
+          removePkceVerifier(`${this.config.clientId}_popup_nonce`);
+        };
+        window.addEventListener("message", handleMessage);
+      });
+    } catch (err) {
+      removePkceVerifier(this.config.clientId);
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(`${this.config.clientId}_popup_nonce`);
+      throw err;
+    }
+  }
+  /**
    * 处理 OAuth 回调
    *
    * 解析回调 URL，校验 state 参数，用授权码交换 token。
-   * 成功后 token 自动保存到 sessionStorage。
+   * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
    * @returns TokenData 或 null
@@ -493,14 +793,14 @@ var _SsoClient = class _SsoClient {
       throw new SsoError("token_request_failed", "\u56DE\u8C03 URL \u4E2D\u7F3A\u5C11 authorization code");
     }
     const savedState = getOAuthState(this.config.clientId);
-    if (!savedState || savedState !== returnedState) {
+    if (!savedState || !timingSafeEqualString(savedState, returnedState ?? "")) {
       removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB"
       );
     }
-    removeOAuthState(this.config.clientId);
     const verifier = getPkceVerifier(this.config.clientId);
     if (!verifier) {
       throw new SsoError(
@@ -508,7 +808,6 @@ var _SsoClient = class _SsoClient {
         "code_verifier \u4E0D\u5B58\u5728\uFF08\u53EF\u80FD\u5DF2\u8FC7\u671F\u6216\u6765\u81EA\u5176\u4ED6\u6807\u7B7E\u9875\uFF09"
       );
     }
-    removePkceVerifier(this.config.clientId);
     const tokenEndpoint = await this._getTokenEndpoint();
     const body = new URLSearchParams();
     body.set("grant_type", "authorization_code");
@@ -535,19 +834,22 @@ var _SsoClient = class _SsoClient {
         errData = await res.json();
       } catch {
       }
+      const serverError = errData.error || "";
       throw new SsoError(
-        "token_request_failed",
+        mapOAuthErrorToSsoCode(serverError),
         errData.error_description || `Token \u8BF7\u6C42\u5931\u8D25: HTTP ${res.status}`
       );
     }
     const data = await res.json();
+    removeOAuthState(this.config.clientId);
+    removePkceVerifier(this.config.clientId);
     if (data.id_token) {
       try {
         await validateIdToken(
           data.id_token,
+          data.access_token,
           this.config.ssoBaseUrl,
-          this.config.clientId,
-          data.access_token
+          this.config.clientId
         );
       } catch (err) {
         removeTokenData(this.config.clientId);
@@ -596,15 +898,24 @@ var _SsoClient = class _SsoClient {
     if (this.config.clientSecret) {
       body.set("client_secret", this.config.clientSecret);
     }
-    let res;
-    try {
-      res = await fetch(tokenEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-      });
-    } catch (err) {
-      throw new SsoError("network_error", "\u5237\u65B0 Token \u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25", err);
+    let res = null;
+    let lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        res = await fetch(tokenEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        });
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 1) await new Promise((r) => setTimeout(r, 1e3));
+      }
+    }
+    if (lastErr || !res) {
+      throw new SsoError("network_error", "\u5237\u65B0 Token \u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25", lastErr);
     }
     if (!res.ok) {
       let errData = {};
@@ -617,17 +928,31 @@ var _SsoClient = class _SsoClient {
         removeTokenData(this.config.clientId);
       }
       throw new SsoError(
-        errorCode === "invalid_grant" ? "session_expired" : "token_request_failed",
+        mapOAuthErrorToSsoCode(errorCode, "refresh"),
         errData.error_description || `\u5237\u65B0 Token \u5931\u8D25: HTTP ${res.status}`
       );
     }
     const data = await res.json();
+    if (data.id_token) {
+      try {
+        await validateIdToken(
+          data.id_token,
+          data.access_token,
+          this.config.ssoBaseUrl,
+          this.config.clientId
+        );
+      } catch (err) {
+        removeTokenData(this.config.clientId);
+        throw err;
+      }
+    }
     const now = Date.now();
     const tokenData = {
       access_token: data.access_token,
       token_type: data.token_type,
       expires_in: data.expires_in,
-      refresh_token: data.refresh_token,
+      // RFC 6749 §6：刷新响应可省略 refresh_token，此时沿用旧值
+      refresh_token: data.refresh_token || current.refresh_token,
       id_token: data.id_token,
       issued_at: now,
       expires_at: now + data.expires_in * 1e3
@@ -728,13 +1053,14 @@ var _SsoClient = class _SsoClient {
     }
     if (redirectToSso) {
       const discovery = await this._getDiscovery();
-      const endSessionEndpoint = discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/logout`;
+      const endSessionEndpoint = discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", this.config.clientId);
-      if (this.config.redirectUri) {
+      const postLogoutUri = this.config.postLogoutRedirectUri || this.config.redirectUri;
+      if (postLogoutUri) {
         logoutUrl.searchParams.set(
           "post_logout_redirect_uri",
-          this.config.redirectUri
+          postLogoutUri
         );
       }
       if (idTokenHint) {
@@ -767,6 +1093,7 @@ var SsoClient = _SsoClient;
   SsoError,
   clearAllSsoData,
   clearVerifiersForClients,
+  createSecureStorage,
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
@@ -775,6 +1102,8 @@ var SsoClient = _SsoClient;
   getReturnUrl,
   getTokenData,
   getTokenStorage,
+  isTrustedReturnUrl,
+  mapOAuthErrorToSsoCode,
   removeOAuthState,
   removePkceVerifier,
   removeReturnUrl,
@@ -783,6 +1112,7 @@ var SsoClient = _SsoClient;
   savePkceVerifier,
   saveReturnUrl,
   saveTokenData,
-  setTokenStorage
+  setTokenStorage,
+  timingSafeEqualString
 });
 //# sourceMappingURL=index.js.map

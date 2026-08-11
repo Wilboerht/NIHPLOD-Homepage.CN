@@ -22,7 +22,20 @@
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { getAccessPublicKey, getIdTokenPublicKey, getLogoutTokenPublicKey } from "@/lib/jwt";
+import {
+  getAccessPublicKey,
+  getPrevAccessPublicKey,
+  getAccessKeyId,
+  getPrevAccessKeyId,
+  getIdTokenPublicKey,
+  getPrevIdTokenPublicKey,
+  getIdTokenKeyId,
+  getPrevIdTokenKeyId,
+  getLogoutTokenPublicKey,
+  getPrevLogoutTokenPublicKey,
+  getLogoutTokenKeyId,
+  getPrevLogoutTokenKeyId,
+} from "@/lib/jwt";
 
 export const dynamic = "force-dynamic";
 
@@ -60,42 +73,25 @@ export async function GET(request: Request) {
 
     const keys: Record<string, unknown>[] = [];
 
-    // 若配置了 RS256 公钥，则公开给子项目本地验证
-    const accessPublicKey = await getAccessPublicKey();
-    if (accessPublicKey) {
+    // 同时暴露当前与上一代公钥（各自 kid）：密钥轮换过渡期内，
+    // 子项目仍可验证上一代密钥签发的未过期 token。kid 可通过环境变量覆盖。
+    const keyEntries: { getKey: () => Promise<CryptoKey | null>; kid: string }[] = [
+      { getKey: getAccessPublicKey, kid: getAccessKeyId() },
+      { getKey: getPrevAccessPublicKey, kid: getPrevAccessKeyId() },
+      { getKey: getIdTokenPublicKey, kid: getIdTokenKeyId() },
+      { getKey: getPrevIdTokenPublicKey, kid: getPrevIdTokenKeyId() },
+      { getKey: getLogoutTokenPublicKey, kid: getLogoutTokenKeyId() },
+      { getKey: getPrevLogoutTokenPublicKey, kid: getPrevLogoutTokenKeyId() },
+    ];
+
+    for (const { getKey, kid } of keyEntries) {
+      const publicKey = await getKey();
+      if (!publicKey) continue;
       // export public key as JWK
-      const jwk = await crypto.subtle.exportKey("jwk", accessPublicKey);
+      const jwk = await crypto.subtle.exportKey("jwk", publicKey);
       keys.push({
         kty: jwk.kty,
-        kid: "access-token-rs256-v1",
-        alg: "RS256",
-        use: "sig",
-        n: jwk.n,
-        e: jwk.e,
-      });
-    }
-
-    // 若配置了 ID Token RS256 公钥，也公开给子项目验证 ID Token
-    const idTokenPublicKey = await getIdTokenPublicKey();
-    if (idTokenPublicKey) {
-      const jwk = await crypto.subtle.exportKey("jwk", idTokenPublicKey);
-      keys.push({
-        kty: jwk.kty,
-        kid: "id-token-rs256-v1",
-        alg: "RS256",
-        use: "sig",
-        n: jwk.n,
-        e: jwk.e,
-      });
-    }
-
-    // 若配置了 Logout Token RS256 公钥，公开给子项目本地验证 logout token
-    const logoutTokenPublicKey = await getLogoutTokenPublicKey();
-    if (logoutTokenPublicKey) {
-      const jwk = await crypto.subtle.exportKey("jwk", logoutTokenPublicKey);
-      keys.push({
-        kty: jwk.kty,
-        kid: "logout-token-rs256-v1",
+        kid,
         alg: "RS256",
         use: "sig",
         n: jwk.n,

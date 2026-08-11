@@ -19,6 +19,7 @@
 import React, { useEffect, useState } from "react";
 import { useSso } from "./SsoProvider";
 import { getReturnUrl, removeReturnUrl } from "../core/storage";
+import { isTrustedReturnUrl } from "../core/security";
 import { SsoError } from "../core/errors";
 
 export function CallbackPage() {
@@ -30,10 +31,16 @@ export function CallbackPage() {
     // 弹窗模式：通过 postMessage 将回调 URL 传回主窗口，不自行处理
     if (window.opener && !window.opener.closed) {
       const nonce = new URL(window.location.href).searchParams.get("popup_nonce");
+      // opener 与弹窗同源时可直接读 origin；跨源访问会抛 SecurityError，回退到当前 origin
+      let targetOrigin = window.location.origin;
+      try {
+        targetOrigin = window.opener.location.origin;
+      } catch {
+        // 跨源 opener：使用当前 origin（postMessage 会校验，不会泄露给第三方）
+      }
       window.opener.postMessage(
         { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href, nonce: nonce || undefined },
-        // 弹窗与主窗口同源（都在子项目域名下），open 注入的 opener 关系保留 origin 访问能力
-        window.opener.location.origin
+        targetOrigin
       );
       // 微任务延迟，避免 effect 内同步 setState
       Promise.resolve().then(() => setProcessing(false));
@@ -51,10 +58,13 @@ export function CallbackPage() {
         // 刷新用户信息
         await refreshUser();
 
-        // 跳转到 returnUrl 或首页
+        // 跳转到 returnUrl 或首页（开放重定向防护：仅相对路径或同源）
         const returnUrl = getReturnUrl();
         removeReturnUrl();
-        window.location.href = returnUrl || "/";
+        window.location.href =
+          returnUrl && isTrustedReturnUrl(returnUrl, window.location.origin)
+            ? returnUrl
+            : "/";
       } catch (err) {
         if (cancelled) return;
         if (err instanceof SsoError) {

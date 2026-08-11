@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@nihplod/sso-sdk": "*",
+    "@nihplod/sso-sdk": "file:../../packages/sso-sdk",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0"

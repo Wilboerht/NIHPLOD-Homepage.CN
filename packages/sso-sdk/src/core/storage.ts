@@ -1,9 +1,13 @@
 /**
  * Token 存储抽象层
  *
- * 默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，XSS 无法窃取长期凭证。
- * 对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，可通过 setTokenStorage() 注入
- * localStorage 实现（如 createSecureStorage({ persist: true })）或自定义存储。
+ * 分两类存储：
+ * - Token 数据：默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，
+ *   XSS 无法窃取长期凭证。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
+ *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
+ * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
+ *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
+ *   SSR 等无 sessionStorage 环境自动降级为内存 Map。
  *
  * 多 client 隔离：
  * - token / state / return_url 均支持按 clientId 隔离 key
@@ -88,13 +92,60 @@ const localStorageAdapter: TokenStorage = {
   },
   set(key: string, value: string) {
     if (typeof localStorage === "undefined") return;
-    localStorage.setItem(STORAGE_PREFIX + key, value);
+    try {
+      localStorage.setItem(STORAGE_PREFIX + key, value);
+    } catch (err) {
+      // QuotaExceededError 等写入失败不应中断登录流程
+      console.warn(
+        `[SSO SDK] localStorage 写入失败（${err instanceof Error ? err.name : String(err)}），数据未持久化`
+      );
+    }
   },
   remove(key: string) {
     if (typeof localStorage === "undefined") return;
     localStorage.removeItem(STORAGE_PREFIX + key);
   },
 };
+
+/**
+ * 浏览器 sessionStorage 实现（临时数据专用）
+ *
+ * PKCE verifier / state / returnUrl / popup nonce 必须跨整页重定向存活
+ * （login() 跳转到 SSO 中心后回调页面仍需读取），不能放模块级内存；
+ * sessionStorage 在整页跳转后保留，且随标签页关闭自动清除，恰好匹配其生命周期。
+ * SSR / 隐私模式写入失败时降级为内存 Map，保证不抛异常。
+ */
+function createSessionStorageAdapter(): TokenStorage {
+  const fallback = new Map<string, string>();
+  return {
+    get(key: string) {
+      if (typeof sessionStorage !== "undefined") {
+        return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+      }
+      return fallback.get(key) ?? null;
+    },
+    set(key: string, value: string) {
+      if (typeof sessionStorage === "undefined") {
+        fallback.set(key, value);
+        return;
+      }
+      try {
+        sessionStorage.setItem(STORAGE_PREFIX + key, value);
+      } catch {
+        // 隐私模式等场景写入失败时降级到内存
+        fallback.set(key, value);
+      }
+    },
+    remove(key: string) {
+      fallback.delete(key);
+      if (typeof sessionStorage === "undefined") return;
+      sessionStorage.removeItem(STORAGE_PREFIX + key);
+    },
+  };
+}
+
+/** 临时数据存储（跨整页重定向存活），独立于 token 存储，不受 setTokenStorage() 影响 */
+const _transient: TokenStorage = createSessionStorageAdapter();
 
 /**
  * 创建存储实现
@@ -138,13 +189,10 @@ export function getTokenData(clientId?: string): TokenData | null {
   const raw = _storage.get(buildKey(TOKEN_KEY, clientId));
   if (!raw) return null;
   try {
-    const data = JSON.parse(raw) as TokenData;
-    // 自动清理已过期的 token（防止 localStorage 积攒过期数据）
-    if (data.expires_at && Date.now() >= data.expires_at) {
-      _storage.remove(buildKey(TOKEN_KEY, clientId));
-      return null;
-    }
-    return data;
+    // 过期不物理删除：refresh_token 通常比 access_token 长寿，
+    // 删除会同时丢弃 refresh_token 使刷新路径失效。
+    // 是否过期由调用方依据 expires_at 判断（isAuthenticated / getUserInfo 等）。
+    return JSON.parse(raw) as TokenData;
   } catch {
     return null;
   }
@@ -155,51 +203,51 @@ export function removeTokenData(clientId?: string): void {
 }
 
 // ============================================
-// PKCE 临时数据存取
+// PKCE 临时数据存取（transient：sessionStorage，跨整页重定向存活）
 // ============================================
 
 export function savePkceVerifier(clientId: string, verifier: string): void {
-  _storage.set(VERIFIER_KEY_PREFIX + clientId, verifier);
+  _transient.set(VERIFIER_KEY_PREFIX + clientId, verifier);
 }
 
 export function getPkceVerifier(clientId: string): string | null {
-  return _storage.get(VERIFIER_KEY_PREFIX + clientId);
+  return _transient.get(VERIFIER_KEY_PREFIX + clientId);
 }
 
 export function removePkceVerifier(clientId: string): void {
-  _storage.remove(VERIFIER_KEY_PREFIX + clientId);
+  _transient.remove(VERIFIER_KEY_PREFIX + clientId);
 }
 
 // ============================================
-// State 参数存取
+// State 参数存取（transient）
 // ============================================
 
 export function saveOAuthState(state: string, clientId?: string): void {
-  _storage.set(buildKey(STATE_KEY, clientId), state);
+  _transient.set(buildKey(STATE_KEY, clientId), state);
 }
 
 export function getOAuthState(clientId?: string): string | null {
-  return _storage.get(buildKey(STATE_KEY, clientId));
+  return _transient.get(buildKey(STATE_KEY, clientId));
 }
 
 export function removeOAuthState(clientId?: string): void {
-  _storage.remove(buildKey(STATE_KEY, clientId));
+  _transient.remove(buildKey(STATE_KEY, clientId));
 }
 
 // ============================================
-// 返回 URL 存取
+// 返回 URL 存取（transient）
 // ============================================
 
 export function saveReturnUrl(url: string, clientId?: string): void {
-  _storage.set(buildKey(RETURN_URL_KEY, clientId), url);
+  _transient.set(buildKey(RETURN_URL_KEY, clientId), url);
 }
 
 export function getReturnUrl(clientId?: string): string | null {
-  return _storage.get(buildKey(RETURN_URL_KEY, clientId));
+  return _transient.get(buildKey(RETURN_URL_KEY, clientId));
 }
 
 export function removeReturnUrl(clientId?: string): void {
-  _storage.remove(buildKey(RETURN_URL_KEY, clientId));
+  _transient.remove(buildKey(RETURN_URL_KEY, clientId));
 }
 
 // ============================================
@@ -212,6 +260,8 @@ export function clearAllSsoData(clientId?: string): void {
     removeOAuthState(clientId);
     removeReturnUrl(clientId);
     removePkceVerifier(clientId);
+    // popup nonce 复用 verifier key 空间（`${clientId}_popup_nonce`）
+    removePkceVerifier(`${clientId}_popup_nonce`);
     return;
   }
 
@@ -219,15 +269,22 @@ export function clearAllSsoData(clientId?: string): void {
   removeOAuthState();
   removeReturnUrl();
 
-  // 清理所有 PKCE verifier：同时从当前存储适配器和 localStorage 中清除
-  if (typeof localStorage !== "undefined") {
-    const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(prefix)) {
-        _storage.remove(key.slice(STORAGE_PREFIX.length));
-        localStorage.removeItem(key);
-      }
+  // 清理所有 PKCE verifier：当前版本存于 sessionStorage，同时清 localStorage 中可能的旧版本残留
+  const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
+  const stores = [
+    typeof sessionStorage !== "undefined" ? sessionStorage : null,
+    typeof localStorage !== "undefined" ? localStorage : null,
+  ];
+  for (const store of stores) {
+    if (!store) continue;
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key?.startsWith(prefix)) keys.push(key);
+    }
+    for (const key of keys) {
+      _transient.remove(key.slice(STORAGE_PREFIX.length));
+      store.removeItem(key);
     }
   }
 }
@@ -239,6 +296,6 @@ export function clearAllSsoData(clientId?: string): void {
  */
 export function clearVerifiersForClients(clientIds: string[]): void {
   for (const clientId of clientIds) {
-    _storage.remove(VERIFIER_KEY_PREFIX + clientId);
+    _transient.remove(VERIFIER_KEY_PREFIX + clientId);
   }
 }

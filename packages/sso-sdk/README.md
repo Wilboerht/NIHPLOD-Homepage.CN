@@ -260,6 +260,11 @@ export const middleware = createSsoMiddleware({
   publicPaths: ["/", "/public"],
   // Confidential Client (BFF) can pass clientSecret
   // clientSecret: process.env.SSO_CLIENT_SECRET,
+  // validateSsoCookie defaults to true: the middleware calls the introspection
+  // endpoint to verify the SSO session cookie. Set to false only if you accept
+  // "cookie exists = logged in" semantics (lowest latency, but may pass revoked
+  // sessions). Either way, the middleware is only a UX gate — always re-verify
+  // tokens in Route Handlers / Server Components before serving sensitive data.
 });
 
 export const config = {
@@ -284,20 +289,29 @@ export const GET = createCallbackRouteHandler({
 // src/app/api/auth/logout/route.ts
 import { createLogoutRouteHandler } from "@nihplod/sso-sdk/next";
 
-export const GET = createLogoutRouteHandler({
+const handler = createLogoutRouteHandler({
   clientId: "...",
   ssoBaseUrl: "https://nihplod.cn",
   redirectUri: "https://yourapp.com/api/auth/callback",
   postLogoutRedirectUri: "https://yourapp.com/",
   redirectToSso: true,
 });
+
+// Prefer POST to trigger logout (prevents logout CSRF via cross-site GET);
+// GET is kept for compatibility with plain <a> navigations.
+export const GET = handler;
+export const POST = handler;
 ```
 
-Use a standard `<a>` tag to trigger the logout endpoint:
+Trigger the logout endpoint with a POST request (recommended):
 
 ```tsx
-<a href="/api/auth/logout">Logout</a>
+<button onClick={() => fetch("/api/auth/logout", { method: "POST" }).then(() => location.assign("/"))}>
+  Logout
+</button>
 ```
+
+A plain `<a href="/api/auth/logout">` still works via GET, but note it can be triggered cross-site (logout CSRF).
 
 ### Cookie Configuration
 
@@ -318,6 +332,8 @@ Default cookie names:
 ## Security Recommendations and Token Storage
 
 By default, the SDK stores tokens in **memory**. Public Clients (SPA / mobile / desktop) should **never** write the `refresh_token` to `localStorage` to prevent XSS from stealing long-lived credentials.
+
+Transient OAuth data (PKCE `code_verifier`, `state`, `returnUrl`, popup nonce) is stored separately in **sessionStorage**, because it must survive the full-page redirect to the SSO center and back; it is cleared automatically when the tab closes. In SSR environments without `sessionStorage`, it falls back to an in-memory map.
 
 If the sub-project is a **Next.js BFF / Confidential Client**, you can store tokens in `localStorage` for multi-tab sharing:
 

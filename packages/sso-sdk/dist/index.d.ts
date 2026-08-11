@@ -1,9 +1,13 @@
 /**
  * Token 存储抽象层
  *
- * 默认使用 localStorage，以支持多 Tab 间自动同步 token 并避免并发刷新。
- * 对 XSS 敏感的子项目可通过 setTokenStorage() 注入更安全的自定义实现
- *（如内存存储、Service Worker 封装、或带加密的 storage）。
+ * 分两类存储：
+ * - Token 数据：默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，
+ *   XSS 无法窃取长期凭证。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
+ *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
+ * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
+ *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
+ *   SSR 等无 sessionStorage 环境自动降级为内存 Map。
  *
  * 多 client 隔离：
  * - token / state / return_url 均支持按 clientId 隔离 key
@@ -27,6 +31,19 @@ interface TokenStorage {
     set(key: string, value: string): void;
     remove(key: string): void;
 }
+/**
+ * 创建存储实现
+ *
+ * @param options.persist 是否持久化到 localStorage。默认 false（内存存储）。
+ *   ⚠️ 安全警告：persist=true 会将 refresh_token 明文写入 localStorage，
+ *   任何 XSS 均可在不被检测的情况下读取。仅在 BFF/Confidential Client
+ *   且 refresh_token 不直接暴露给浏览器的场景下使用。
+ *   - Confidential/BFF 子项目可设为 true。
+ *   - Public Client 在浏览器中应保持 false（默认）。
+ */
+declare function createSecureStorage(options?: {
+    persist?: boolean;
+}): TokenStorage;
 /**
  * 设置自定义存储实现
  */
@@ -85,6 +102,8 @@ interface SsoClientConfig {
     ssoBaseUrl: string;
     /** 请求的 scope（空格分隔），如 "openid profile phone" */
     scopes?: string;
+    /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
+    postLogoutRedirectUri?: string;
 }
 /** 用户信息 */
 interface SsoUser {
@@ -142,12 +161,18 @@ declare class SsoClient {
     /** 获取 userinfo 端点 URL（优先 Discovery，回退默认） */
     private _getUserinfoEndpoint;
     /**
+     * 开放重定向防护：仅保存相对路径或与当前页面同源的 returnUrl，
+     * 其余（如 https://evil.com）忽略并告警，防止回调后跳转到钓鱼站点。
+     */
+    private _saveReturnUrlIfTrusted;
+    /**
      * 发起 SSO 登录
      *
      * 生成 PKCE code_verifier/code_challenge 和 state 参数，
      * 构建 authorize URL，通过 302 跳转到 SSO 登录页。
      *
-     * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage）
+     * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
+     *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
      */
     login(returnUrl?: string): Promise<void>;
     /**
@@ -157,10 +182,48 @@ declare class SsoClient {
      */
     getLoginUrl(returnUrl?: string): Promise<string>;
     /**
+     * 弹窗模式 SSO 登录
+     *
+     * 打开一个小窗口进行登录，认证完成后窗口自动关闭，
+     * 主页面不丢失状态（适用于 SPA 中需要保持表单/浏览上下文的场景）。
+     *
+     * 流程：
+     * 1. window.open() 打开授权 URL 到弹窗
+     * 2. 用户在弹窗中完成登录
+     * 3. 弹窗加载 CallbackPage 时检测到 window.opener，通过 postMessage 回传回调 URL
+     * 4. 主页面收到消息后调用 handleCallback() 交换 token
+     * 5. 弹窗自动关闭
+     *
+     * @param options - 弹窗配置
+     * @param options.returnUrl - 登录成功后的返回地址
+     * @param options.width - 弹窗宽度（默认 480）
+     * @param options.height - 弹窗高度（默认 640）
+     * @returns TokenData
+     *
+     * @example
+     * ```typescript
+     * const client = new SsoClient({ clientId: "xxx", redirectUri: "https://myapp.com/callback", ssoBaseUrl: "https://nihplod.cn" });
+     * try {
+     *   const tokenData = await client.loginPopup({ returnUrl: "/dashboard" });
+     *   console.log("登录成功", tokenData);
+     * } catch (err) {
+     *   if (err instanceof SsoError && err.code === "popup_blocked") {
+     *     // 弹窗被拦截，回退到同页重定向
+     *     await client.login("/dashboard");
+     *   }
+     * }
+     * ```
+     */
+    loginPopup(options?: {
+        returnUrl?: string;
+        width?: number;
+        height?: number;
+    }): Promise<TokenData>;
+    /**
      * 处理 OAuth 回调
      *
      * 解析回调 URL，校验 state 参数，用授权码交换 token。
-     * 成功后 token 自动保存到 sessionStorage。
+     * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
      *
      * @param callbackUrl - 完整的回调 URL（window.location.href）
      * @returns TokenData 或 null
@@ -247,9 +310,16 @@ declare function generateState(): string;
  * SSO SDK 错误类型
  */
 /** SSO 错误码 */
-type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "sso_server_error" | "network_error" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch";
-/** OAuth 2.0 标准错误码 */
-type OAuthErrorCode = "invalid_request" | "invalid_client" | "invalid_grant" | "unauthorized_client" | "unsupported_grant_type" | "invalid_scope" | "access_denied" | "server_error" | "rate_limited";
+type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "authorization_code_expired" | "authorization_code_used" | "client_disabled" | "user_denied_authorization" | "account_disabled" | "sso_server_error" | "rate_limited" | "network_error" | "popup_blocked" | "popup_closed" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_hs256_unsupported" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch";
+/**
+ * 将 OAuth 2.0 服务端 error 字段映射到 SsoErrorCode
+ *
+ * @param oauthError 服务端返回的 error 字段
+ * @param context 调用上下文："token_exchange"（授权码换 token）或 "refresh"（刷新）。
+ *   invalid_grant 在换 token 场景多为授权码过期/已用，在刷新场景多为会话失效，
+ *   需按上下文细化映射。
+ */
+declare function mapOAuthErrorToSsoCode(oauthError: string, context?: "token_exchange" | "refresh"): SsoErrorCode;
 /**
  * SSO SDK 自定义错误
  */
@@ -260,13 +330,30 @@ declare class SsoError extends Error {
     constructor(code: SsoErrorCode, description: string, cause?: unknown);
 }
 /**
- * OAuth 2.0 服务端返回的错误
+ * OAuth 2.0 协议层错误（RFC 6749 §5.2）
+ *
+ * 用于表示服务端原样返回的 OAuth 错误（error / error_description / error_uri），
+ * 与 SDK 语义的 SsoError 区分。
  */
 declare class OAuthError extends Error {
-    readonly code: OAuthErrorCode;
+    readonly code: string;
     readonly description: string;
     readonly uri?: string;
-    constructor(code: OAuthErrorCode, description: string, uri?: string);
+    constructor(code: string, description: string, uri?: string);
 }
 
-export { OAuthError, type OAuthErrorCode, type OidcDiscovery, SsoClient, type SsoClientConfig, SsoError, type SsoErrorCode, type SsoUser, type TokenData, type TokenResponse, type TokenStorage, clearAllSsoData, clearVerifiersForClients, generateCodeChallenge, generateCodeVerifier, generateState, getOAuthState, getPkceVerifier, getReturnUrl, getTokenData, getTokenStorage, removeOAuthState, removePkceVerifier, removeReturnUrl, removeTokenData, saveOAuthState, savePkceVerifier, saveReturnUrl, saveTokenData, setTokenStorage };
+/**
+ * 安全相关小工具：returnUrl 开放重定向校验、常量时间字符串比较
+ */
+/**
+ * 校验 returnUrl 是否可信（防开放重定向）。
+ * 仅允许：相对路径（且不以 // 开头）或与 currentOrigin 完全同源的绝对 URL。
+ */
+declare function isTrustedReturnUrl(url: string, currentOrigin: string): boolean;
+/**
+ * 常量时间字符串比较（避免 state / at_hash / nonce 等机密值的时序侧信道）。
+ * 长度不同也执行完整循环，不提前返回。
+ */
+declare function timingSafeEqualString(a: string, b: string): boolean;
+
+export { OAuthError, type OidcDiscovery, SsoClient, type SsoClientConfig, SsoError, type SsoErrorCode, type SsoUser, type TokenData, type TokenResponse, type TokenStorage, clearAllSsoData, clearVerifiersForClients, createSecureStorage, generateCodeChallenge, generateCodeVerifier, generateState, getOAuthState, getPkceVerifier, getReturnUrl, getTokenData, getTokenStorage, isTrustedReturnUrl, mapOAuthErrorToSsoCode, removeOAuthState, removePkceVerifier, removeReturnUrl, removeTokenData, saveOAuthState, savePkceVerifier, saveReturnUrl, saveTokenData, setTokenStorage, timingSafeEqualString };

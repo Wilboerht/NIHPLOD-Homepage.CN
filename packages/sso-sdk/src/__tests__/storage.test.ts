@@ -32,6 +32,8 @@ const mockStorage = {
 describe("Token Storage", () => {
   beforeEach(() => {
     mockStore.clear();
+    sessionStorage.clear();
+    localStorage.clear();
     setTokenStorage(mockStorage);
   });
 
@@ -55,6 +57,15 @@ describe("Token Storage", () => {
       expect(retrieved!.issued_at).toBe(1700000000000);
     });
 
+    it("过期 token 不物理删除（保留 refresh_token 供刷新路径使用）", () => {
+      // sampleToken 的 expires_at 在过去
+      saveTokenData(sampleToken);
+      const retrieved = getTokenData();
+      expect(retrieved).not.toBeNull();
+      expect(retrieved!.refresh_token).toBe("test-refresh-token");
+      expect(Date.now() >= retrieved!.expires_at).toBe(true);
+    });
+
     it("无数据时返回 null", () => {
       expect(getTokenData()).toBeNull();
     });
@@ -63,6 +74,33 @@ describe("Token Storage", () => {
       saveTokenData(sampleToken);
       removeTokenData();
       expect(getTokenData()).toBeNull();
+    });
+  });
+
+  describe("transient 存储（sessionStorage，跨整页重定向存活）", () => {
+    it("state / verifier / returnUrl 写入 sessionStorage 而非 token 存储", () => {
+      saveOAuthState("state-abc", "client-1");
+      savePkceVerifier("client-1", "verifier-abc");
+      saveReturnUrl("/dashboard");
+
+      // 直接读 sessionStorage 验证落点（整页跳转后模块内存会丢，sessionStorage 不会）
+      expect(sessionStorage.getItem("nihplod_sso_oauth_state:client-1")).toBe("state-abc");
+      expect(sessionStorage.getItem("nihplod_sso_pkce_verifier_client-1")).toBe("verifier-abc");
+      expect(sessionStorage.getItem("nihplod_sso_return_url")).toBe("/dashboard");
+
+      // token 数据不落入 sessionStorage
+      saveTokenData(sampleToken);
+      expect(sessionStorage.getItem("nihplod_sso_token")).toBeNull();
+      expect(mockStore.has("token")).toBe(true);
+    });
+
+    it("clearAllSsoData 清除 sessionStorage 中的 verifier", () => {
+      savePkceVerifier("client-1", "v1");
+      savePkceVerifier("client-2", "v2");
+      clearAllSsoData();
+      expect(getPkceVerifier("client-1")).toBeNull();
+      expect(getPkceVerifier("client-2")).toBeNull();
+      expect(sessionStorage.getItem("nihplod_sso_pkce_verifier_client-1")).toBeNull();
     });
   });
 

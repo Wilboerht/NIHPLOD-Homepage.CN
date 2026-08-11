@@ -3,9 +3,13 @@ import React, { ReactNode, ComponentType } from 'react';
 /**
  * Token 存储抽象层
  *
- * 默认使用 localStorage，以支持多 Tab 间自动同步 token 并避免并发刷新。
- * 对 XSS 敏感的子项目可通过 setTokenStorage() 注入更安全的自定义实现
- *（如内存存储、Service Worker 封装、或带加密的 storage）。
+ * 分两类存储：
+ * - Token 数据：默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，
+ *   XSS 无法窃取长期凭证。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
+ *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
+ * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
+ *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
+ *   SSR 等无 sessionStorage 环境自动降级为内存 Map。
  *
  * 多 client 隔离：
  * - token / state / return_url 均支持按 clientId 隔离 key
@@ -54,6 +58,8 @@ interface SsoClientConfig {
     ssoBaseUrl: string;
     /** 请求的 scope（空格分隔），如 "openid profile phone" */
     scopes?: string;
+    /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
+    postLogoutRedirectUri?: string;
 }
 /** 用户信息 */
 interface SsoUser {
@@ -103,12 +109,18 @@ declare class SsoClient {
     /** 获取 userinfo 端点 URL（优先 Discovery，回退默认） */
     private _getUserinfoEndpoint;
     /**
+     * 开放重定向防护：仅保存相对路径或与当前页面同源的 returnUrl，
+     * 其余（如 https://evil.com）忽略并告警，防止回调后跳转到钓鱼站点。
+     */
+    private _saveReturnUrlIfTrusted;
+    /**
      * 发起 SSO 登录
      *
      * 生成 PKCE code_verifier/code_challenge 和 state 参数，
      * 构建 authorize URL，通过 302 跳转到 SSO 登录页。
      *
-     * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage）
+     * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
+     *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
      */
     login(returnUrl?: string): Promise<void>;
     /**
@@ -118,10 +130,48 @@ declare class SsoClient {
      */
     getLoginUrl(returnUrl?: string): Promise<string>;
     /**
+     * 弹窗模式 SSO 登录
+     *
+     * 打开一个小窗口进行登录，认证完成后窗口自动关闭，
+     * 主页面不丢失状态（适用于 SPA 中需要保持表单/浏览上下文的场景）。
+     *
+     * 流程：
+     * 1. window.open() 打开授权 URL 到弹窗
+     * 2. 用户在弹窗中完成登录
+     * 3. 弹窗加载 CallbackPage 时检测到 window.opener，通过 postMessage 回传回调 URL
+     * 4. 主页面收到消息后调用 handleCallback() 交换 token
+     * 5. 弹窗自动关闭
+     *
+     * @param options - 弹窗配置
+     * @param options.returnUrl - 登录成功后的返回地址
+     * @param options.width - 弹窗宽度（默认 480）
+     * @param options.height - 弹窗高度（默认 640）
+     * @returns TokenData
+     *
+     * @example
+     * ```typescript
+     * const client = new SsoClient({ clientId: "xxx", redirectUri: "https://myapp.com/callback", ssoBaseUrl: "https://nihplod.cn" });
+     * try {
+     *   const tokenData = await client.loginPopup({ returnUrl: "/dashboard" });
+     *   console.log("登录成功", tokenData);
+     * } catch (err) {
+     *   if (err instanceof SsoError && err.code === "popup_blocked") {
+     *     // 弹窗被拦截，回退到同页重定向
+     *     await client.login("/dashboard");
+     *   }
+     * }
+     * ```
+     */
+    loginPopup(options?: {
+        returnUrl?: string;
+        width?: number;
+        height?: number;
+    }): Promise<TokenData>;
+    /**
      * 处理 OAuth 回调
      *
      * 解析回调 URL，校验 state 参数，用授权码交换 token。
-     * 成功后 token 自动保存到 sessionStorage。
+     * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
      *
      * @param callbackUrl - 完整的回调 URL（window.location.href）
      * @returns TokenData 或 null
@@ -187,8 +237,14 @@ interface SsoContextValue {
     isAuthenticated: boolean;
     /** 是否正在加载（初始化/刷新中） */
     isLoading: boolean;
-    /** 发起登录 */
+    /** 发起登录（同页重定向） */
     login: (returnUrl?: string) => Promise<void>;
+    /** 弹窗模式登录（保持当前页面状态不丢失） */
+    loginPopup: (options?: {
+        returnUrl?: string;
+        width?: number;
+        height?: number;
+    }) => Promise<TokenData>;
     /** 登出 */
     logout: (redirectToSso?: boolean) => Promise<void>;
     /** 刷新用户信息 */
@@ -247,6 +303,12 @@ interface RequireAuthProps {
     fallback?: React.ReactNode;
     /** 是否在检测到未登录时自动发起登录跳转 */
     autoLogin?: boolean;
+    /**
+     * 是否使用弹窗模式登录（保持当前页面状态不丢失）
+     *
+     * 仅在 autoLogin=true 时生效。弹窗被拦截时自动回退到同页重定向。
+     */
+    usePopup?: boolean;
 }
 /**
  * 路由保护组件
@@ -255,12 +317,13 @@ interface RequireAuthProps {
  *
  * @example
  * ```tsx
- * <RequireAuth>
+ * // 弹窗模式：不中断用户当前操作
+ * <RequireAuth autoLogin usePopup>
  *   <Dashboard />
  * </RequireAuth>
  * ```
  */
-declare function RequireAuth({ children, fallback, autoLogin, }: RequireAuthProps): string | number | bigint | true | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | React.FunctionComponentElement<React.FragmentProps>;
+declare function RequireAuth({ children, fallback, autoLogin, usePopup, }: RequireAuthProps): string | number | bigint | true | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | React.FunctionComponentElement<React.FragmentProps>;
 /**
  * 高阶组件：包装页面组件，要求认证后才能访问
  *

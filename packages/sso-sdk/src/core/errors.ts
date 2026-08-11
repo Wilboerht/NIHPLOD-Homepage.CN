@@ -18,6 +18,7 @@ export type SsoErrorCode =
   | "user_denied_authorization"
   | "account_disabled"
   | "sso_server_error"
+  | "rate_limited"
   | "network_error"
   | "popup_blocked"
   | "popup_closed"
@@ -32,11 +33,22 @@ export type SsoErrorCode =
   | "id_token_missing_sub"
   | "id_token_at_hash_mismatch";
 
-/** 将 OAuth 2.0 服务端 error 字段映射到 SsoErrorCode */
-export function mapOAuthErrorToSsoCode(oauthError: string): SsoErrorCode {
+/**
+ * 将 OAuth 2.0 服务端 error 字段映射到 SsoErrorCode
+ *
+ * @param oauthError 服务端返回的 error 字段
+ * @param context 调用上下文："token_exchange"（授权码换 token）或 "refresh"（刷新）。
+ *   invalid_grant 在换 token 场景多为授权码过期/已用，在刷新场景多为会话失效，
+ *   需按上下文细化映射。
+ */
+export function mapOAuthErrorToSsoCode(
+  oauthError: string,
+  context: "token_exchange" | "refresh" = "token_exchange"
+): SsoErrorCode {
   switch (oauthError) {
     case "invalid_grant":
-      return "authorization_code_expired";
+      // 刷新场景的 invalid_grant 表示 refresh_token 已撤销/过期（调用方另会清除本地登录态）
+      return context === "refresh" ? "session_expired" : "authorization_code_expired";
     case "invalid_client":
       return "client_disabled";
     case "access_denied":
@@ -44,7 +56,8 @@ export function mapOAuthErrorToSsoCode(oauthError: string): SsoErrorCode {
     case "server_error":
       return "sso_server_error";
     case "rate_limited":
-      return "network_error";
+      // 限流是独立的可重试错误，不应误报为 network_error
+      return "rate_limited";
     case "invalid_scope":
     case "invalid_request":
     case "unauthorized_client":
@@ -68,5 +81,25 @@ export class SsoError extends Error {
     this.code = code;
     this.description = description;
     this.cause = cause;
+  }
+}
+
+/**
+ * OAuth 2.0 协议层错误（RFC 6749 §5.2）
+ *
+ * 用于表示服务端原样返回的 OAuth 错误（error / error_description / error_uri），
+ * 与 SDK 语义的 SsoError 区分。
+ */
+export class OAuthError extends Error {
+  public readonly code: string;
+  public readonly description: string;
+  public readonly uri?: string;
+
+  constructor(code: string, description: string, uri?: string) {
+    super(`[OAuth] ${code}: ${description}`);
+    this.name = "OAuthError";
+    this.code = code;
+    this.description = description;
+    this.uri = uri;
   }
 }

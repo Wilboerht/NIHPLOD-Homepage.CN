@@ -208,12 +208,18 @@ import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
 
 export const middleware = createSsoMiddleware({
   clientId: process.env.SSO_CLIENT_ID!,
-  // Confidential Client（BFF/Next.js）建议传入 clientSecret，
-  // Middleware 会通过 Introspection 精确校验 access_token，防止伪造 Cookie 绕过
+  // Confidential Client（BFF/Next.js）建议传入 clientSecret
   clientSecret: process.env.SSO_CLIENT_SECRET,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
   redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
   publicPaths: ["/", "/public", "/api/auth/logout"], // 不需要登录的路径
+  // ⚠️ 校验强度说明：
+  // - 对主站 SSO 会话 Cookie（__Host-user_token）默认仅检查存在性（低延迟），
+  //   存在即视为已登录；这只能防"未登录访问"，不能防伪造 Cookie。
+  // - 需要精确校验时显式设置 validateSsoCookie: true，Middleware 会对主站
+  //   Cookie 调用 Introspection 端点二次验证（每请求一次网络调用，有 30s 进程内缓存）。
+  // - 对子项目自身的 access_token Cookie（回调 handler 写入的）始终会做 Introspection 校验。
+  // validateSsoCookie: true,
 });
 
 export const config = {
@@ -246,7 +252,7 @@ import { createLogoutRouteHandler } from "@nihplod/sso-sdk/next";
 
 export const runtime = "nodejs";
 
-export const GET = createLogoutRouteHandler({
+const logoutHandler = createLogoutRouteHandler({
   clientId: process.env.SSO_CLIENT_ID!,
   clientSecret: process.env.SSO_CLIENT_SECRET,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
@@ -254,6 +260,9 @@ export const GET = createLogoutRouteHandler({
   postLogoutRedirectUri: process.env.SSO_POST_LOGOUT_REDIRECT_URI || "https://yourapp.com/",
   redirectToSso: true,
 });
+
+export const GET = logoutHandler;  // 兼容 OIDC RP-Initiated Logout（GET）
+export const POST = logoutHandler; // UI 层推荐用 POST 触发，避免 GET 被跨站请求滥用（CSRF）
 ```
 
 > 本地开发若使用 `http://localhost`，浏览器会拒绝 `Secure` Cookie。建议在 `.env.local` 中使用 HTTPS 地址，或仅在本地临时关闭 Secure（生产必须启用 HTTPS）。
@@ -272,12 +281,12 @@ export const GET = createLogoutRouteHandler({
                                          4. 用户登录
                                          5. 展示 consent 页
                                          6. 用户确认授权
-    7. 302 → redirect_uri?code=xxx  ←── 7. 302 返回 auth code
-    8. sso.handleCallback()
+    8. 302 → redirect_uri?code=xxx  ←── 7. 302 返回 auth code
+    9. sso.handleCallback()
        校验 state
        用 code + verifier 换 token
-       POST /api/oauth/token ─────────→ 9. 验证 code + PKCE
-         ←── access_token +           10. 签发 token
+       POST /api/oauth/token ─────────→ 10. 验证 code + PKCE
+         ←── access_token +            11. 签发 token
              refresh_token + id_token
 ```
 
@@ -297,9 +306,10 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 
 ### Token 存储策略
 
-- React SDK 默认使用 `localStorage` 存储 token，以实现多 Tab 间自动同步并避免并发刷新
-- 对 XSS 敏感的子项目可通过 `setTokenStorage()` 注入更安全的自定义实现（如内存存储、加密 storage）
-- Next.js 回调 handler 将 token 存入 httpOnly Secure cookie
+- **token 默认存储在内存中**（Public Client 浏览器默认）：refresh_token 不落盘，XSS 无法窃取长期凭证；代价是页面刷新后需重新授权
+- **PKCE verifier / state / return_url 等临时数据存储在 sessionStorage**（按标签页隔离），因此授权跳转与回调必须在同一标签页完成
+- 需要多 Tab 间同步 token 时，必须**显式**注入 localStorage 适配器（见下方"如何切换 Token 存储方式"）；⚠️ persist 到 localStorage 会让 refresh_token 明文落盘，仅建议在 BFF/Confidential Client 场景使用
+- Next.js（Middleware + Route Handler）方式将 token 存入 httpOnly Secure cookie，浏览器 JS 无法读取
 
 ### redirect_uri 规范
 
@@ -328,11 +338,12 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 
 ### ID Token 验证
 
-SDK 在 `handleCallback` 中会自动验证 ID Token：
-- 若主站配置了 `JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY`，ID Token 使用 RS256 签名，
-  SDK 会通过 `/api/oauth/jwks` 拉取公钥完成签名验证（推荐）。
-- 若主站未配置 RS256 密钥，ID Token 使用 HS256 签名；由于对称密钥无法安全分发给 Public Client，
-  SDK 会跳过签名验证，但仍校验 `iss / aud / exp / sub` 等声明。
+SDK 在 `handleCallback` 与 Next.js 回调 handler 中会自动验证 ID Token（`iss / aud / exp / sub`、签名、`at_hash`）：
+
+- ID Token **必须使用 RS256 签名**。SDK 通过 `/api/oauth/jwks` 拉取公钥完成签名验证。
+- **SDK 一律拒绝 HS256 签名的 ID Token**（对称密钥无法安全分发给 Public Client / BFF，
+  拒绝时抛出 `id_token_hs256_unsupported` 错误）。因此主站**必须**配置 RS256 密钥对，
+  否则所有子项目回调都会失败。
 
 主站生成 RS256 密钥：
 
@@ -340,7 +351,8 @@ SDK 在 `handleCallback` 中会自动验证 ID Token：
 npx tsx scripts/generate-oauth-rs256-keys.ts
 ```
 
-将输出的 `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY` 写入 `.env.local` 后重启应用即可生效。
+脚本会直接输出 `\n` 转义的单行 `.env` 格式，将 `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY`
+（以及同时生成的 access_token / logout_token 密钥对）写入 `.env.local` 后重启应用即可生效。
 
 ### 授权错误回传
 
@@ -348,6 +360,32 @@ npx tsx scripts/generate-oauth-rs256-keys.ts
 但其他参数（scope、PKCE、state、response_type 等）校验失败时，
 SSO 中心不会直接返回 JSON 400，而是按 OAuth 2.0 规范 302 重定向到 `redirect_uri?error=...&error_description=...&state=...`。
 子项目回调处理必须同时检查 `code` 和 `error` 参数。
+
+### 弹窗登录（Popup）
+
+SPA 场景可使用 `sso.loginPopup()` 在小窗口中完成登录，主页面不丢失状态（适合表单填写中途登录等场景）：
+
+```typescript
+try {
+  const tokenData = await sso.loginPopup({ returnUrl: "/dashboard" });
+} catch (err) {
+  if (err instanceof SsoError && err.code === "popup_blocked") {
+    await sso.login("/dashboard"); // 弹窗被拦截，回退到整页跳转
+  }
+}
+```
+
+约束：
+
+- 回调路由必须渲染 `<CallbackPage />`（`@nihplod/sso-sdk/react`）：它检测 `window.opener` 并通过 postMessage 把回调 URL 回传主窗口，由主窗口完成 token 交换；
+- 回调页与主页面必须同 origin（postMessage 会校验来源 origin 与一次性 `popup_nonce`，伪造消息会被丢弃）；
+- 移动浏览器 / 严格弹窗策略下建议始终准备 `popup_blocked` 回退路径。
+
+### 嵌入（iframe）限制
+
+SSO 中心的登录、授权确认等页面带有 CSP `frame-ancestors 'self'`，**禁止被跨站 iframe 嵌入**（防点击劫持）。
+不要用 iframe 嵌入 SSO 登录页实现"页内登录"——浏览器会直接拒绝渲染。
+需要不打断当前页面上下文的场景请使用上述 popup 方式。
 
 ---
 
@@ -377,7 +415,11 @@ Token/UserInfo/Introspect 端点白名单由已注册 `redirectUris` 自动推�
 
 ### Q: 回调页面报 "State 参数不匹配" 错误？
 
-A: 确保回调页面使用了同一个 `SsoClient` 实例（state 存储在 localStorage 中）。如果在不同标签页中登录，state 可能不匹配。
+A: state 存储在 **sessionStorage** 中（按标签页隔离）。请确保：
+
+1. 授权跳转与回调在**同一个标签页**完成——在新标签页打开回调 URL 会读不到 state；
+2. 回调页面使用与发起登录相同的 `clientId`（state 按 clientId 隔离存储）；
+3. 浏览器未禁用 sessionStorage（如部分隐私模式）。
 
 ### Q: 如何在后端验证 token？
 
@@ -426,16 +468,21 @@ A: 支持。`@nihplod/sso-sdk/next` 的 `createSsoMiddleware` 在 Edge Runtime �
 
 ### Q: 如何切换 Token 存储方式？
 
-```typescript
-import { setTokenStorage } from "@nihplod/sso-sdk";
+token **默认存储在内存中**（页面刷新后需重新登录）。如需多 Tab 共享 / 刷新后保持登录，
+可显式注入 localStorage 适配器：
 
-// 使用 localStorage（安全性较低）
-setTokenStorage({
-  get: (key) => localStorage.getItem(`sso_${key}`),
-  set: (key, val) => localStorage.setItem(`sso_${key}`, val),
-  remove: (key) => localStorage.removeItem(`sso_${key}`),
-});
+```typescript
+import { setTokenStorage, createSecureStorage } from "@nihplod/sso-sdk";
+
+// persist: true → 使用 localStorage（多 Tab 同步，但 refresh_token 明文落盘，XSS 可窃取）
+setTokenStorage(createSecureStorage({ persist: true }));
+
+// persist: false（默认）→ 内存存储，最安全
+setTokenStorage(createSecureStorage({ persist: false }));
 ```
+
+⚠️ `persist: true` 仅建议在 BFF/Confidential Client 或明确接受 XSS 风险的场景使用。
+也可以传入任意实现 `TokenStorage` 接口（`get / set / remove`）的自定义存储。
 
 ### Q: 在哪里查看接入状态和统计数据？
 

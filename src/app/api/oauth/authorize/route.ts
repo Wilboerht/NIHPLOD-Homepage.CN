@@ -180,6 +180,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 参数长度限制（防滥用）
+    if (client_id.length > 128 || redirect_uri.length > 1024) {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "client_id 或 redirect_uri 过长" },
+        { status: 400 }
+      );
+    }
+
     // 2. 校验 client
     const client = await getOAuthClientByClientId(client_id);
     if (!client) {
@@ -214,6 +222,8 @@ export async function GET(request: NextRequest) {
     const prompt = searchParams.get("prompt") || "";
     const maxAgeRaw = searchParams.get("max_age");
     const loginHint = searchParams.get("login_hint") || "";
+    // SDK 弹窗登录的非标准参数：仅透传，不入库
+    const popupNonce = searchParams.get("popup_nonce");
 
     if (response_type !== "code") {
       return buildErrorRedirect(
@@ -226,7 +236,17 @@ export async function GET(request: NextRequest) {
     if (!scope.trim()) {
       return buildErrorRedirect(safeRedirectUri, "invalid_request", "缺少 scope", state);
     }
-    if (!state || state.length < 32) {
+    // 参数长度限制（防滥用）
+    if (scope.length > 256) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "scope 参数过长", state);
+    }
+    if (nonce && nonce.length > 128) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "nonce 参数过长", state);
+    }
+    if (popupNonce && popupNonce.length > 64) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
+    }
+    if (!state || state.length < 32 || state.length > 512) {
       return buildErrorRedirect(
         safeRedirectUri,
         "invalid_request",
@@ -309,17 +329,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 7. prompt=none: 用户未登录时返回错误而非重定向
-    if (prompt === "none" && !isLoggedIn) {
-      return buildErrorRedirect(safeRedirectUri, "login_required", "用户未登录", state);
-    }
-
-    // 8. max_age 校验：用户认证时间超过 maxAge 秒则要求重新登录
+    // 7. max_age 校验：用户认证时间超过 maxAge 秒则要求重新登录
     if (maxAge !== undefined && isLoggedIn && userAuthTime) {
       const authAgeSeconds = (Date.now() - userAuthTime.getTime()) / 1000;
       if (authAgeSeconds > maxAge) {
         isLoggedIn = false;
       }
+    }
+
+    // 8. prompt=none：未登录或 max_age 超期时按 OIDC 回传 login_required，而非 302 到交互页
+    if (prompt === "none" && !isLoggedIn) {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "login_required",
+        "用户未登录或会话已过期",
+        state
+      );
     }
 
     // 9. 未登录 → 302 到登录页（prompt=none 已在上面处理）
@@ -376,6 +401,8 @@ export async function GET(request: NextRequest) {
       const redirectUrl = new URL(redirect_uri);
       redirectUrl.searchParams.set("code", codeData.code);
       if (state) redirectUrl.searchParams.set("state", state);
+      // SDK 弹窗登录：授权成功重定向原样透传 popup_nonce（不入库，仅透传）
+      if (popupNonce) redirectUrl.searchParams.set("popup_nonce", popupNonce);
 
       recordSsoEvent({
         event: "authorize",
@@ -388,6 +415,16 @@ export async function GET(request: NextRequest) {
       });
 
       return NextResponse.redirect(redirectUrl, 302);
+    }
+
+    // prompt=none 且需要 consent 交互：按 OIDC 回传 consent_required，而非 302 到 consent 页
+    if (prompt === "none") {
+      return buildErrorRedirect(
+        safeRedirectUri,
+        "consent_required",
+        "需要用户授权交互，prompt=none 无法静默完成",
+        state
+      );
     }
 
     // 否则展示 consent 页：OAuth 参数服务端存储，URL 仅传递随机 ID
@@ -460,8 +497,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 解析 body
-    const body = await request.json();
+    // 解析 body（JSON 解析失败按 invalid_request 400 处理，而非 500）
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
+        { status: 400 }
+      );
+    }
 
     // 先提取关键参数，用于判断是否可以安全地重定向错误
     const client_id = typeof body.client_id === "string" ? body.client_id : "";
@@ -469,7 +514,7 @@ export async function POST(request: NextRequest) {
     const state = typeof body.state === "string" ? body.state : undefined;
     const action = body.action;
 
-    if (!state || state.length < 32) {
+    if (!state || state.length < 32 || state.length > 512) {
       return NextResponse.json(
         { error: "invalid_request", error_description: "state 参数无效或长度不足" },
         { status: 400 }
@@ -531,6 +576,49 @@ export async function POST(request: NextRequest) {
     const code_challenge_method =
       typeof body.code_challenge_method === "string" ? body.code_challenge_method : "";
     const nonce = typeof body.nonce === "string" ? body.nonce : undefined;
+    // SDK 弹窗登录的非标准参数：仅透传，不入库
+    let popup_nonce = typeof body.popup_nonce === "string" ? body.popup_nonce : "";
+
+    // 参数长度限制（与 GET 对齐）
+    if (scope.length > 256) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "scope 参数过长", state);
+    }
+    if (nonce && nonce.length > 128) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "nonce 参数过长", state);
+    }
+    if (popup_nonce.length > 64) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
+    }
+
+    // 纵深防御：携带 oauth_id 时，客户端回传的授权参数必须与 GET 阶段
+    // storeOAuthParams 服务端存储的原始请求一致，防篡改
+    const oauthId = typeof body.oauth_id === "string" ? body.oauth_id : "";
+    if (oauthId) {
+      const storedParams = getOAuthParams(oauthId);
+      if (!storedParams) {
+        return NextResponse.json(
+          { error: "invalid_request", error_description: "oauth_id 已过期或无效" },
+          { status: 400 }
+        );
+      }
+      const stored = new URLSearchParams(storedParams);
+      const mismatch =
+        stored.get("client_id") !== client_id ||
+        stored.get("redirect_uri") !== redirect_uri ||
+        stored.get("state") !== state ||
+        (stored.get("scope") || "") !== scope ||
+        (stored.get("code_challenge") || "") !== code_challenge ||
+        (stored.get("code_challenge_method") || "") !== code_challenge_method ||
+        (stored.get("nonce") || "") !== (nonce || "");
+      if (mismatch) {
+        return NextResponse.json(
+          { error: "invalid_request", error_description: "授权参数与服务端存储不一致" },
+          { status: 400 }
+        );
+      }
+      // consent 页未回传 popup_nonce 时，从服务端存储的原始参数中补齐
+      if (!popup_nonce) popup_nonce = stored.get("popup_nonce") || "";
+    }
 
     // 构建重定向 URL（成功或错误都用它）
     const redirectUrl = new URL(safeRedirectUri);
@@ -621,6 +709,8 @@ export async function POST(request: NextRequest) {
     }
 
     redirectUrl.searchParams.set("code", codeData.code);
+    // SDK 弹窗登录：授权成功重定向原样透传 popup_nonce（不入库，仅透传）
+    if (popup_nonce) redirectUrl.searchParams.set("popup_nonce", popup_nonce);
 
     recordSsoEvent({
       event: "authorize",

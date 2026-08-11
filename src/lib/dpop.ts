@@ -11,7 +11,8 @@
  */
 import { jwtVerify, importJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { LRUCache } from "lru-cache";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
+import type { NextRequest } from "next/server";
 
 const DPOP_PROOF_MAX_AGE_MS = 60_000; // 1 分钟
 const DPOP_NONCE_TTL_MS = 5 * 60_000; // 5 分钟
@@ -66,10 +67,61 @@ export interface DPoPValidationResult {
 }
 
 /**
- * 生成新的 DPoP nonce
+ * DPoP nonce HMAC 签名密钥：由 JWT_ACCESS_SECRET 派生，多实例共享
+ * （nonce 为无状态自包含 token，签发后可被任意实例验证）
+ */
+function getNonceHmacKey(): Buffer {
+  const secret = process.env.JWT_ACCESS_SECRET;
+  if (!secret) throw new Error("[DPoP] 缺少 JWT_ACCESS_SECRET 用于 DPoP nonce 签名");
+  return createHash("sha256").update(`dpop_nonce_hmac_key:${secret}`).digest();
+}
+
+/**
+ * 生成新的 DPoP nonce（HMAC 签名的无状态 token：base64url(issuedAt:random).sig）
+ * 服务端签发后可验证，客户端无法伪造
  */
 function generateNonce(): string {
-  return randomBytes(24).toString("base64url");
+  const payload = `${Date.now()}:${randomBytes(16).toString("base64url")}`;
+  const encoded = Buffer.from(payload, "utf8").toString("base64url");
+  const sig = createHmac("sha256", getNonceHmacKey()).update(encoded).digest("base64url");
+  return `${encoded}.${sig}`;
+}
+
+/**
+ * 校验 nonce 是否为本服务端签发且未过期（不消费，重放检查由 usedNonces 缓存负责）
+ */
+export function isDpopNonceIssued(nonce: string): boolean {
+  const dotIdx = nonce.lastIndexOf(".");
+  if (dotIdx === -1) return false;
+  const encoded = nonce.slice(0, dotIdx);
+  const sig = nonce.slice(dotIdx + 1);
+  const expectedSig = createHmac("sha256", getNonceHmacKey()).update(encoded).digest("base64url");
+  try {
+    if (
+      sig.length !== expectedSig.length ||
+      !timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))
+    ) {
+      return false;
+    }
+    const payload = Buffer.from(encoded, "base64url").toString("utf8");
+    const colonIdx = payload.indexOf(":");
+    if (colonIdx === -1) return false;
+    const issuedAt = parseInt(payload.slice(0, colonIdx), 10);
+    return Number.isFinite(issuedAt) && Date.now() - issuedAt <= DPOP_NONCE_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 计算 DPoP htu：基于公网 origin（反向代理后 request.url 可能是内网地址，与客户端
+ * 公网 URL 永不匹配）。RFC 9449：仅 scheme/host 不区分大小写（URL.origin 已规范化），
+ * path 区分大小写，保持原样不做 toLowerCase。
+ */
+export function getDPoPHtu(request: NextRequest): string {
+  const publicOrigin =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
+  return `${new URL(publicOrigin).origin}${request.nextUrl.pathname}`;
 }
 
 /**
@@ -98,7 +150,7 @@ function rotateNonce(clientUserId: string): string {
  *
  * @param dpopHeader - DPoP header 值（原始 JWT 字符串）
  * @param htm - 期望的 HTTP method（如 "POST"）
- * @param htu - 期望的 HTTP URL（完整小写 URL）
+ * @param htu - 期望的 HTTP URL（公网 origin + path，path 区分大小写；用 getDPoPHtu 生成）
  * @param expectedAth - 可选的 access token hash（用于 token-bound proof）
  * @param expectedNonce - 可选的期望 nonce
  * @param clientUserId - 用于 nonce 轮换的标识
@@ -191,7 +243,7 @@ export async function validateDPoPProof(
     };
   }
 
-  // htu 必须匹配实际请求 URL（小写，不含 query/fragment 的完整 URL）
+  // htu 必须匹配实际请求 URL（公网 origin + path，不含 query/fragment）
   if (payload.htu !== htu) {
     return {
       valid: false,
@@ -225,6 +277,16 @@ export async function validateDPoPProof(
       valid: false,
       error: "use_dpop_nonce",
       errorDescription: "DPoP nonce 无效，请使用服务端返回的 nonce",
+      newNonce: clientUserId ? rotateNonce(clientUserId) : generateNonce(),
+    };
+  }
+
+  // nonce 必须是本服务端签发且在有效期内（防伪造）
+  if (payload.nonce && !isDpopNonceIssued(payload.nonce)) {
+    return {
+      valid: false,
+      error: "use_dpop_nonce",
+      errorDescription: "DPoP nonce 非服务端签发或已过期，请使用服务端返回的 nonce",
       newNonce: clientUserId ? rotateNonce(clientUserId) : generateNonce(),
     };
   }

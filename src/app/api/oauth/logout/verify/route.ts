@@ -34,7 +34,14 @@ export async function POST(request: NextRequest) {
     let body: Record<string, string>;
 
     if (contentType.includes("application/json")) {
-      body = await request.json();
+      try {
+        body = await request.json();
+      } catch {
+        return NextResponse.json(
+          { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
+          { status: 400 }
+        );
+      }
     } else {
       const formData = await request.formData();
       body = {};
@@ -91,6 +98,27 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(
         { error: "invalid_logout_token", error_description: "logout_token 无效或已过期" },
+        { status: 400 }
+      );
+    }
+
+    // OIDC Backchannel Logout：logout_token 必须携带 sub 或 sid 二者居一
+    const hasSub = typeof payload.sub === "string" && payload.sub.length > 0;
+    const hasSid = typeof payload.sid === "string" && payload.sid.length > 0;
+    if (!hasSub && !hasSid) {
+      recordSsoEvent({
+        event: "backchannel_logout",
+        clientId: client_id,
+        clientName: client.name,
+        ip,
+        success: false,
+        detail: { reason: "missing_sub_and_sid" },
+      });
+      return NextResponse.json(
+        {
+          error: "invalid_logout_token",
+          error_description: "logout_token 缺少 sub 与 sid（二者至少居一）",
+        },
         { status: 400 }
       );
     }

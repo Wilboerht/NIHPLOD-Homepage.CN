@@ -17,6 +17,7 @@ export {
 export {
   setTokenStorage,
   getTokenStorage,
+  createSecureStorage,
   saveTokenData,
   getTokenData,
   removeTokenData,
@@ -34,5 +35,7 @@ export {
 } from "./core/storage";
 export type { TokenData, TokenStorage } from "./core/storage";
 
-export { SsoError, mapOAuthErrorToSsoCode } from "./core/errors";
+export { SsoError, OAuthError, mapOAuthErrorToSsoCode } from "./core/errors";
 export type { SsoErrorCode } from "./core/errors";
+
+export { isTrustedReturnUrl, timingSafeEqualString } from "./core/security";

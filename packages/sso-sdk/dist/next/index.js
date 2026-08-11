@@ -21,6 +21,8 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var next_exports = {};
 __export(next_exports, {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME: () => DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+  DEFAULT_ID_TOKEN_COOKIE_NAME: () => DEFAULT_ID_TOKEN_COOKIE_NAME,
+  DEFAULT_LOGOUT_STATE_COOKIE_NAME: () => DEFAULT_LOGOUT_STATE_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME: () => DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME: () => DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME: () => DEFAULT_STATE_COOKIE_NAME,
@@ -43,6 +45,7 @@ var DEFAULT_ID_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_id";
 var DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
 var DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
 var DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
+var DEFAULT_LOGOUT_STATE_COOKIE_NAME = "__Host-nihplod_sso_logout_state";
 function getHostCookieOptions(maxAge) {
   return {
     httpOnly: true,
@@ -96,7 +99,43 @@ function matchesPath(pathname, paths) {
     return false;
   });
 }
+var introspectionCache = /* @__PURE__ */ new Map();
+var INTROSPECT_CACHE_TTL_MS = 3e4;
+var INTROSPECT_CACHE_MAX_ENTRIES = 500;
+async function introspectCacheKey(token, clientId) {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex}|${clientId}`;
+}
+function introspectCacheGet(key) {
+  const entry = introspectionCache.get(key);
+  if (!entry) return null;
+  if (entry.until <= Date.now()) {
+    introspectionCache.delete(key);
+    return null;
+  }
+  introspectionCache.delete(key);
+  introspectionCache.set(key, entry);
+  return entry;
+}
+function introspectCacheSet(key, active) {
+  const now = Date.now();
+  for (const [k, v] of introspectionCache) {
+    if (v.until <= now) introspectionCache.delete(k);
+  }
+  while (introspectionCache.size >= INTROSPECT_CACHE_MAX_ENTRIES) {
+    const oldest = introspectionCache.keys().next();
+    if (oldest.done) break;
+    introspectionCache.delete(oldest.value);
+  }
+  introspectionCache.set(key, { active, until: now + INTROSPECT_CACHE_TTL_MS });
+}
 async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) {
+  const cacheKey = await introspectCacheKey(token, clientId);
+  const cached = introspectCacheGet(cacheKey);
+  if (cached) {
+    return cached.active;
+  }
   try {
     const body = new URLSearchParams({
       token,
@@ -111,9 +150,17 @@ async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) 
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString()
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      if (res.status !== 401 && res.status !== 403) {
+        return false;
+      }
+      introspectCacheSet(cacheKey, false);
+      return false;
+    }
     const data = await res.json();
-    return data.active === true;
+    const active = data.active === true;
+    introspectCacheSet(cacheKey, active);
+    return active;
   } catch {
     return false;
   }
@@ -128,12 +175,25 @@ function createSsoMiddleware(config) {
     publicPaths = [],
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
+    validateSsoCookie = true,
     accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
     verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME
   } = config;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  if (process.env.NODE_ENV !== "production") {
+    if (!validateSsoCookie) {
+      console.warn(
+        "[SSO SDK] validateSsoCookie=false\uFF1A\u4E2D\u95F4\u4EF6\u4EC5\u68C0\u67E5 Cookie \u5B58\u5728\u6027\uFF0C\u53EF\u80FD\u653E\u884C\u5DF2\u5931\u6548\u7684\u4F1A\u8BDD\u3002\u4E2D\u95F4\u4EF6\u53EA\u662F UX \u5C42\uFF0C\u654F\u611F\u6570\u636E\u7684\u9274\u6743\u5FC5\u987B\u5728 Route Handler / Server Component \u4E2D\u5B8C\u6210\u3002"
+      );
+    }
+    if (!clientSecret) {
+      console.warn(
+        "[SSO SDK] \u672A\u914D\u7F6E clientSecret\uFF08Public Client \u6A21\u5F0F\uFF09\uFF1Aintrospection \u65E0\u5BA2\u6237\u7AEF\u8BA4\u8BC1\uFF0C\u4E2D\u95F4\u4EF6\u5224\u5B9A\u7ED3\u679C\u4EC5\u4F5C UX \u53C2\u8003\u3002Confidential Client\uFF08BFF\uFF09\u8BF7\u914D\u7F6E clientSecret\u3002"
+      );
+    }
+  }
   return async function ssoMiddleware(request) {
     const { pathname } = request.nextUrl;
     if (pathname.startsWith("/_next/") || pathname.startsWith("/favicon.ico") || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff2?)$/)) {
@@ -148,7 +208,19 @@ function createSsoMiddleware(config) {
     }
     const ssoSession = request.cookies.get(ssoCookieName);
     if (ssoSession?.value) {
-      return import_server.NextResponse.next();
+      if (validateSsoCookie) {
+        const tokenActive = await introspectAccessToken(
+          ssoSession.value,
+          normalizedBase,
+          clientId,
+          clientSecret
+        );
+        if (tokenActive) {
+          return import_server.NextResponse.next();
+        }
+      } else {
+        return import_server.NextResponse.next();
+      }
     }
     const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
@@ -178,7 +250,8 @@ function createSsoMiddleware(config) {
     const response = import_server.NextResponse.redirect(loginUrl);
     response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
     response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath));
-    response.cookies.set(returnUrlCookieName, request.url, getHostCookieOptions(600));
+    const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
+    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600));
     if (accessTokenCookie?.value) {
       response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
     }
@@ -188,6 +261,19 @@ function createSsoMiddleware(config) {
 
 // src/next/callback.ts
 var import_server2 = require("next/server");
+
+// src/core/errors.ts
+var SsoError = class extends Error {
+  constructor(code, description, cause) {
+    super(`[SSO SDK] ${code}: ${description}`);
+    this.name = "SsoError";
+    this.code = code;
+    this.description = description;
+    this.cause = cause;
+  }
+};
+
+// src/core/security.ts
 function isTrustedReturnUrl(url, currentOrigin) {
   if (!url) return false;
   if (url.startsWith("/") && !url.startsWith("//")) return true;
@@ -196,6 +282,23 @@ function isTrustedReturnUrl(url, currentOrigin) {
   } catch {
     return false;
   }
+}
+function timingSafeEqualString(a, b) {
+  const ba = new TextEncoder().encode(a);
+  const bb = new TextEncoder().encode(b);
+  if (ba.length === 0 || bb.length === 0) return ba.length === bb.length;
+  const len = Math.max(ba.length, bb.length);
+  let diff = ba.length ^ bb.length;
+  for (let i = 0; i < len; i++) {
+    diff |= ba[i % ba.length] ^ bb[i % bb.length];
+  }
+  return diff === 0;
+}
+
+// src/core/id-token.ts
+var _crypto = typeof crypto !== "undefined" && crypto.subtle ? crypto : null;
+function getCrypto() {
+  return _crypto ?? null;
 }
 function base64UrlDecode(input) {
   const base64 = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -227,11 +330,40 @@ function decodeJwtHeader(token) {
     return null;
   }
 }
-async function fetchJwks(baseUrl) {
+function normalizeIssuer(url) {
+  return url.replace(/\/+$/, "");
+}
+var cachedJwks = null;
+var cachedDiscovery = null;
+var JWKS_CACHE_TTL_MS = 5 * 60 * 1e3;
+async function fetchDiscoveryDoc(baseUrl) {
+  const now = Date.now();
+  if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return cachedDiscovery.doc;
+  }
   try {
-    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`);
+    const doc = res.ok ? await res.json() : null;
+    cachedDiscovery = { baseUrl, doc, fetchedAt: now };
+    return doc;
+  } catch {
+    cachedDiscovery = { baseUrl, doc: null, fetchedAt: now };
+    return null;
+  }
+}
+async function fetchJwks(baseUrl) {
+  const now = Date.now();
+  if (cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return cachedJwks.jwks;
+  }
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
+  try {
+    const res = await fetch(jwksUri);
     if (!res.ok) return null;
-    return await res.json();
+    const jwks = await res.json();
+    cachedJwks = { baseUrl, jwks, fetchedAt: now };
+    return jwks;
   } catch {
     return null;
   }
@@ -240,7 +372,9 @@ async function verifyRs256Signature(token, jwk) {
   try {
     const [headerB64, payloadB64, signature] = token.split(".");
     if (!signature || !jwk.n || !jwk.e) return false;
-    const cryptoKey = await crypto.subtle.importKey(
+    const c = getCrypto();
+    if (!c) return false;
+    const cryptoKey = await c.subtle.importKey(
       "jwk",
       { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RS256", ext: false },
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
@@ -249,7 +383,7 @@ async function verifyRs256Signature(token, jwk) {
     );
     const signatureBytes = base64UrlDecode(signature);
     const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-    return await crypto.subtle.verify(
+    return await c.subtle.verify(
       "RSASSA-PKCS1-v1_5",
       cryptoKey,
       signatureBytes,
@@ -260,10 +394,9 @@ async function verifyRs256Signature(token, jwk) {
   }
 }
 async function computeAtHash(accessToken) {
-  const hash = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(accessToken)
-  );
+  const c = getCrypto();
+  if (!c) return "";
+  const hash = await c.subtle.digest("SHA-256", new TextEncoder().encode(accessToken));
   const bytes = new Uint8Array(hash);
   const half = bytes.slice(0, bytes.length / 2);
   let binary = "";
@@ -272,54 +405,93 @@ async function computeAtHash(accessToken) {
   }
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-async function validateIdToken(idToken, accessToken, expectedIssuer, expectedClientId) {
+async function validateIdToken(idToken, accessToken, expectedIssuer, expectedClientId, options = {}) {
+  const { rejectHs256WhenRs256Available = true } = options;
   const header = decodeJwtHeader(idToken);
-  if (!header) throw new Error("ID Token \u683C\u5F0F\u9519\u8BEF");
+  if (!header) {
+    throw new SsoError("id_token_invalid", "ID Token \u683C\u5F0F\u9519\u8BEF");
+  }
   const alg = header.alg;
   if (typeof alg !== "string" || alg !== "RS256" && alg !== "HS256") {
-    throw new Error(`\u4E0D\u652F\u6301\u7684 ID Token \u7B7E\u540D\u7B97\u6CD5: ${alg}`);
+    throw new SsoError("id_token_unsupported_alg", `\u4E0D\u652F\u6301\u7684 ID Token \u7B7E\u540D\u7B97\u6CD5: ${alg}`);
   }
+  const baseUrl = normalizeIssuer(expectedIssuer);
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const normalizedIssuer = normalizeIssuer(discovery?.issuer || baseUrl);
   if (alg === "RS256") {
-    const jwks = await fetchJwks(expectedIssuer);
-    if (!jwks) throw new Error("\u65E0\u6CD5\u83B7\u53D6 JWKS");
+    const jwks = await fetchJwks(baseUrl);
+    if (!jwks) {
+      throw new SsoError("id_token_invalid_signature", "\u65E0\u6CD5\u83B7\u53D6 JWKS \u9A8C\u8BC1 ID Token \u7B7E\u540D");
+    }
     const kid = typeof header.kid === "string" ? header.kid : void 0;
-    const key = jwks.keys.find(
+    const candidates = jwks.keys.filter(
       (k) => k.kty === "RSA" && k.alg === "RS256" && k.use === "sig" && (kid ? k.kid === kid : true)
     );
-    if (!key) throw new Error("JWKS \u4E2D\u672A\u627E\u5230\u5339\u914D\u516C\u94A5");
-    const valid = await verifyRs256Signature(idToken, key);
-    if (!valid) throw new Error("ID Token \u7B7E\u540D\u9A8C\u8BC1\u5931\u8D25");
+    if (candidates.length === 0) {
+      throw new SsoError("id_token_invalid_signature", "JWKS \u4E2D\u672A\u627E\u5230\u5339\u914D\u7684 RS256 \u516C\u94A5");
+    }
+    let validSig = false;
+    for (const key of candidates) {
+      if (await verifyRs256Signature(idToken, key)) {
+        validSig = true;
+        break;
+      }
+    }
+    if (!validSig) {
+      throw new SsoError("id_token_invalid_signature", "ID Token \u7B7E\u540D\u9A8C\u8BC1\u5931\u8D25");
+    }
   }
   if (alg === "HS256") {
-    console.warn(
-      "[SSO SDK/Next] ID Token \u4F7F\u7528 HS256 \u7B7E\u540D\u3002\u5EFA\u8BAE\u4E3B\u7AD9\u542F\u7528 RS256 \u4EE5\u83B7\u5F97\u5B8C\u6574\u7B7E\u540D\u9A8C\u8BC1\u3002"
+    if (rejectHs256WhenRs256Available) {
+      const jwks = await fetchJwks(baseUrl);
+      const hasRs256 = jwks?.keys?.some((k) => k.alg === "RS256" && k.use === "sig");
+      if (hasRs256) {
+        throw new SsoError("id_token_unsupported_alg", "SSO \u4E2D\u5FC3\u5DF2\u914D\u7F6E RS256\uFF0C\u62D2\u7EDD HS256 ID Token");
+      }
+    }
+    throw new SsoError(
+      "id_token_hs256_unsupported",
+      "ID Token \u4F7F\u7528 HS256 \u5BF9\u79F0\u7B7E\u540D\uFF0CSDK \u65E0\u6CD5\u5B89\u5168\u9A8C\u8BC1\u3002\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458\u5728 SSO \u4E3B\u7AD9\u914D\u7F6E RS256 \u5BC6\u94A5\u5BF9\uFF08JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY\uFF09\u540E\u91CD\u65B0\u7B7E\u53D1\u3002"
     );
   }
   const payload = decodeJwtPayload(idToken);
-  if (!payload) throw new Error("ID Token payload \u89E3\u6790\u5931\u8D25");
-  const normalizedIssuer = expectedIssuer.replace(/\/+$/, "");
-  const tokenIssuer = typeof payload.iss === "string" ? payload.iss.replace(/\/+$/, "") : "";
+  if (!payload) {
+    throw new SsoError("id_token_invalid", "ID Token payload \u89E3\u6790\u5931\u8D25");
+  }
+  const tokenIssuer = typeof payload.iss === "string" ? normalizeIssuer(payload.iss) : "";
   if (tokenIssuer !== normalizedIssuer) {
-    throw new Error("ID Token issuer \u4E0D\u5339\u914D");
+    throw new SsoError("id_token_issuer_mismatch", "ID Token issuer \u4E0D\u5339\u914D");
   }
   const aud = payload.aud;
-  const audArr = Array.isArray(aud) ? aud : [aud];
-  if (!audArr.includes(expectedClientId)) {
-    throw new Error("ID Token audience \u4E0D\u5339\u914D");
+  const audList = Array.isArray(aud) ? aud : typeof aud === "string" ? [aud] : [];
+  if (!audList.includes(expectedClientId)) {
+    throw new SsoError("id_token_audience_mismatch", "ID Token audience \u4E0D\u5339\u914D");
   }
-  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1e3) {
-    throw new Error("ID Token \u5DF2\u8FC7\u671F");
+  if (audList.length > 1 && payload.azp !== expectedClientId) {
+    throw new SsoError("id_token_audience_mismatch", "ID Token \u591A audience \u65F6 azp \u5FC5\u987B\u4E3A\u5F53\u524D client");
+  }
+  if (typeof payload.exp !== "number") {
+    throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 exp \u58F0\u660E");
+  }
+  if (Date.now() >= payload.exp * 1e3) {
+    throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
+  }
+  if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
+    throw new SsoError("id_token_invalid", "ID Token iat \u5728\u672A\u6765\uFF0C\u7591\u4F3C\u4F2A\u9020\u6216\u65F6\u949F\u5F02\u5E38");
   }
   if (typeof payload.sub !== "string" || !payload.sub) {
-    throw new Error("ID Token \u7F3A\u5C11 sub");
+    throw new SsoError("id_token_missing_sub", "ID Token \u7F3A\u5C11 sub");
   }
   if (typeof payload.at_hash === "string" && payload.at_hash) {
     const actual = await computeAtHash(accessToken);
-    if (actual !== payload.at_hash) {
-      throw new Error("ID Token at_hash \u4E0D\u5339\u914D");
+    if (!timingSafeEqualString(actual, payload.at_hash)) {
+      throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash \u4E0D\u5339\u914D");
     }
   }
+  return { sub: payload.sub };
 }
+
+// src/next/callback.ts
 function createCallbackRouteHandler(config) {
   const {
     clientId,
@@ -395,7 +567,7 @@ function createCallbackRouteHandler(config) {
     if (clientSecret) {
       body.set("client_secret", clientSecret);
     }
-    let res;
+    let res = null;
     let lastError;
     const maxRetries = 1;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -470,9 +642,24 @@ function createCallbackRouteHandler(config) {
       ...getHostCookieOptions(refreshMaxAge)
     });
     if (tokenData.id_token) {
-      response.cookies.set(idTokenCookieName, tokenData.id_token, {
-        ...getHostCookieOptions(refreshMaxAge)
-      });
+      let idTokenMaxAge = 3600;
+      try {
+        const parts = tokenData.id_token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(
+            Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+          );
+          if (payload.exp && typeof payload.exp === "number") {
+            idTokenMaxAge = payload.exp - Math.floor(Date.now() / 1e3);
+          }
+        }
+      } catch {
+      }
+      if (idTokenMaxAge > 0) {
+        response.cookies.set(idTokenCookieName, tokenData.id_token, {
+          ...getHostCookieOptions(idTokenMaxAge)
+        });
+      }
     }
     response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
     response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
@@ -485,9 +672,9 @@ function createCallbackRouteHandler(config) {
 // src/next/logout.ts
 var import_server3 = require("next/server");
 async function fetchDiscovery(ssoBaseUrl) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5e3);
   try {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5e3);
     const res = await fetch(
       `${ssoBaseUrl}/api/oauth/.well-known/openid-configuration`,
       { signal: controller.signal }
@@ -496,7 +683,23 @@ async function fetchDiscovery(ssoBaseUrl) {
     return await res.json();
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+function generateRandomString2(length) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  const maxValid = Math.floor(256 / chars.length) * chars.length;
+  let result = "";
+  while (result.length < length) {
+    const array = new Uint8Array(length * 2);
+    crypto.getRandomValues(array);
+    for (let i = 0; i < array.length && result.length < length; i++) {
+      if (array[i] >= maxValid) continue;
+      result += chars[array[i] % chars.length];
+    }
+  }
+  return result;
 }
 function createLogoutRouteHandler(config) {
   const {
@@ -512,10 +715,24 @@ function createLogoutRouteHandler(config) {
     stateCookieName = DEFAULT_STATE_COOKIE_NAME,
     returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
     verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
-    callbackPath = "/api/auth/callback"
+    callbackPath = "/api/auth/callback",
+    logoutStateCookieName = DEFAULT_LOGOUT_STATE_COOKIE_NAME
   } = config;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
-  return async function GET(request) {
+  return async function handler(request) {
+    const returnedState = request.nextUrl.searchParams.get("state");
+    if (returnedState) {
+      const savedState = request.cookies.get(logoutStateCookieName)?.value;
+      if (!savedState || savedState !== returnedState) {
+        return import_server3.NextResponse.json(
+          { error: "invalid_request", error_description: "Logout state \u4E0D\u5339\u914D" },
+          { status: 400 }
+        );
+      }
+      const res = import_server3.NextResponse.redirect(request.nextUrl.origin + "/");
+      res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0));
+      return res;
+    }
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
     if (refreshToken) {
@@ -560,7 +777,11 @@ function createLogoutRouteHandler(config) {
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }
-      return clearCookies(import_server3.NextResponse.redirect(logoutUrl.toString()));
+      const logoutState = generateRandomString2(32);
+      logoutUrl.searchParams.set("state", logoutState);
+      const res = clearCookies(import_server3.NextResponse.redirect(logoutUrl.toString()));
+      res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600));
+      return res;
     }
     return clearCookies(
       import_server3.NextResponse.redirect(request.nextUrl.origin + "/")
@@ -570,6 +791,8 @@ function createLogoutRouteHandler(config) {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
+  DEFAULT_ID_TOKEN_COOKIE_NAME,
+  DEFAULT_LOGOUT_STATE_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,

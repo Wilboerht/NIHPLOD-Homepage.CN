@@ -28,9 +28,16 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn().mockResolvedValue(null),
       upsert: vi.fn().mockResolvedValue({}),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       create: vi.fn().mockResolvedValue({}),
     },
+    $executeRaw: vi.fn().mockResolvedValue(1),
   },
+}));
+
+// === Mock oauth-code（授权码签发）===
+vi.mock("@/lib/oauth-code", () => ({
+  createAuthorizationCode: vi.fn().mockResolvedValue({ code: "test-auth-code" }),
 }));
 
 // === Mock logger ===
@@ -61,6 +68,8 @@ vi.mock("@/lib/csrf", () => ({
 
 import { GET, POST } from "../authorize/route";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
+import { verifyUserToken } from "@/lib/jwt";
+import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 
 function validClient() {
@@ -210,6 +219,72 @@ describe("GET /api/oauth/authorize", () => {
     const location = res.headers.get("location")!;
     expect(location).toContain("error=invalid_request");
   });
+
+  it("popup_nonce 在已授权自动签发时应原样透传到成功重定向", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 已授权过且 scope 未扩大：auto-approve 直接签发授权码
+    (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      scopes: ["openid"],
+      revokedAt: null,
+    });
+    const req = new NextRequest(buildAuthorizeUrl({ popup_nonce: "popup123" }), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location).toContain("code=test-auth-code");
+    expect(location).toContain("popup_nonce=popup123");
+  });
+
+  it("popup_nonce 超过 64 字符应 302 回传 invalid_request", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = new NextRequest(buildAuthorizeUrl({ popup_nonce: "x".repeat(65) }));
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("error=invalid_request");
+  });
+
+  it("prompt=none 且用户未登录时应回传 login_required 而非跳转登录页", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 无登录 Cookie → 未登录
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }));
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location.startsWith("https://example.com/cb")).toBe(true);
+    expect(location).toContain("error=login_required");
+  });
+
+  it("prompt=none 且 max_age 超期时应回传 login_required", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    vi.mocked(verifyUserToken).mockResolvedValueOnce({
+      id: "user-1",
+      phone: "13800138000",
+      type: "user",
+      iat: Math.floor(Date.now() / 1000) - 3600, // 1 小时前认证
+    } as never);
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none", max_age: "10" }), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location).toContain("error=login_required");
+  });
+
+  it("prompt=none 且需要 consent 时应回传 consent_required 而非跳转 consent 页", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 默认 userConsent.findUnique → null（未授权）
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location.startsWith("https://example.com/cb")).toBe(true);
+    expect(location).toContain("error=consent_required");
+  });
 });
 
 describe("POST /api/oauth/authorize", () => {
@@ -337,5 +412,85 @@ describe("POST /api/oauth/authorize", () => {
     expect(res.status).toBe(302);
     const location = res.headers.get("location")!;
     expect(location).toContain("error=invalid_request");
+  });
+
+  it("授权成功重定向应原样透传 popup_nonce", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = createPostRequest({
+      action: "approve",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+      popup_nonce: "popup123",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location).toContain("code=test-auth-code");
+    expect(location).toContain("popup_nonce=popup123");
+  });
+
+  it("请求体非法 JSON 应返回 400 invalid_request 而非 500", async () => {
+    const req = new NextRequest("http://localhost/api/oauth/authorize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "__Host-user_token=dummy-token",
+      },
+      body: "{not-valid-json",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("携带 oauth_id 时回传参数与服务端存储不一致应返回 400；一致时正常签发并补齐 popup_nonce", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 先通过 GET 让服务端存储原始授权参数（已登录未授权 → 302 到 consent 页并携带 oauth_id）
+    const getReq = new NextRequest(buildAuthorizeUrl({ popup_nonce: "popup123" }), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const getRes = await GET(getReq);
+    expect(getRes.status).toBe(302);
+    const consentUrl = new URL(getRes.headers.get("location")!);
+    const oauthId = consentUrl.searchParams.get("oauth_id")!;
+    expect(oauthId).toBeTruthy();
+
+    // 篡改 scope → 与服务端存储的原始参数不一致
+    const tamperedReq = createPostRequest({
+      action: "approve",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid profile", // 存储值为 "openid"
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+      oauth_id: oauthId,
+    });
+    const tamperedRes = await POST(tamperedReq);
+    expect(tamperedRes.status).toBe(400);
+    const errBody = await tamperedRes.json();
+    expect(errBody.error).toBe("invalid_request");
+
+    // 参数一致 → 正常签发；popup_nonce 未回传时从服务端存储中补齐透传
+    const okReq = createPostRequest({
+      action: "approve",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+      oauth_id: oauthId,
+    });
+    const okRes = await POST(okReq);
+    expect(okRes.status).toBe(302);
+    const location = okRes.headers.get("location")!;
+    expect(location).toContain("code=test-auth-code");
+    expect(location).toContain("popup_nonce=popup123");
   });
 });

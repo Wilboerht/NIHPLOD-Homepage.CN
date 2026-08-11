@@ -87,10 +87,21 @@ export interface SsoProviderProps {
 const REFRESH_LOCK_PREFIX = "nihplod_sso_refresh_lock:";
 const LOCK_TTL_MS = 5000;
 
+// 本 Tab 持有的锁 token（用于释放时校验所有权，避免误删其他 Tab 的锁）
+const ownedLocks = new Map<string, string>();
+
 function lockKey(clientId: string): string {
   return REFRESH_LOCK_PREFIX + clientId;
 }
 
+/**
+ * 尝试获取跨 Tab 刷新锁。
+ *
+ * 权衡说明：localStorage 没有原子的 check-and-set，多 Tab 并发时无法完全避免
+ * 竞态（两个 Tab 同毫秒通过存在性检查后都写入）。这里采用「写入唯一 token 后
+ * 立刻 read-back 校验」将竞态窗口缩到最小；残余的双刷新风险由 SSO 服务端
+ * refresh_token 轮换宽限期兜底，属于可接受权衡。
+ */
 function acquireRefreshLock(clientId: string): boolean {
   if (typeof localStorage === "undefined") return true;
   const key = lockKey(clientId);
@@ -102,13 +113,22 @@ function acquireRefreshLock(clientId: string): boolean {
       return false;
     }
   }
-  localStorage.setItem(key, String(now));
+  const token = `${now}:${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(key, token);
+  // read-back：若读回的不是自己写入的值，说明其他 Tab 并发抢锁成功
+  if (localStorage.getItem(key) !== token) return false;
+  ownedLocks.set(clientId, token);
   return true;
 }
 
 function releaseRefreshLock(clientId: string): void {
   if (typeof localStorage === "undefined") return;
-  localStorage.removeItem(lockKey(clientId));
+  const owned = ownedLocks.get(clientId);
+  ownedLocks.delete(clientId);
+  // 仅当锁仍归本 Tab 所有时才删除，避免误删其他 Tab 新获取的锁
+  if (owned && localStorage.getItem(lockKey(clientId)) === owned) {
+    localStorage.removeItem(lockKey(clientId));
+  }
 }
 
 // ============================================
@@ -131,7 +151,11 @@ export function SsoProvider({
 
   // 加载用户信息
   const loadUser = useCallback(async () => {
-    if (!client.isAuthenticated()) {
+    // 以「本地存在 token 数据」为准而非 isAuthenticated()：
+    // access_token 已过期时 getTokenData 仍返回数据（保留 refresh_token），
+    // getUserInfo 内部会自动刷新恢复会话，避免过期即丢登录态。
+    const tokenData = getTokenData(client.config.clientId);
+    if (!tokenData) {
       setUser(null);
       setIsAuthenticated(false);
       setIsLoading(false);
@@ -157,8 +181,8 @@ export function SsoProvider({
     loadedRef.current = true;
 
     Promise.resolve().then(() => {
-      // 检查是否有有效的 token（不发起网络请求）
-      if (client.isAuthenticated()) {
+      // 本地存在 token 数据即尝试加载（过期 token 会在 loadUser 内自动刷新）
+      if (getTokenData(client.config.clientId)) {
         loadUser();
       } else {
         setIsLoading(false);

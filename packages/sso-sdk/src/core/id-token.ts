@@ -6,6 +6,7 @@
  */
 
 import { SsoError } from "./errors";
+import { timingSafeEqualString } from "./security";
 
 // 运行时 crypto.subtle 检测：现代浏览器 / Edge Runtime / Node 20+ 均提供全局 crypto
 const _crypto: Pick<Crypto, "subtle"> | null =
@@ -81,18 +82,46 @@ function normalizeIssuer(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
+/** OIDC Discovery 文档（仅取本模块关心的字段） */
+interface OidcDiscoveryDoc {
+  issuer?: string;
+  jwks_uri?: string;
+}
+
 let cachedJwks: { baseUrl: string; jwks: Jwks; fetchedAt: number } | null = null;
+let cachedDiscovery: { baseUrl: string; doc: OidcDiscoveryDoc | null; fetchedAt: number } | null = null;
 const JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
 
-/** 从 SSO 中心拉取 JWKS（带内存缓存） */
+/** 拉取 OIDC Discovery 文档（带内存缓存；失败返回 null 不抛错） */
+async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | null> {
+  const now = Date.now();
+  if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
+    return cachedDiscovery.doc;
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`);
+    const doc = res.ok ? ((await res.json()) as OidcDiscoveryDoc) : null;
+    cachedDiscovery = { baseUrl, doc, fetchedAt: now };
+    return doc;
+  } catch {
+    cachedDiscovery = { baseUrl, doc: null, fetchedAt: now };
+    return null;
+  }
+}
+
+/** 从 SSO 中心拉取 JWKS（带内存缓存；优先 Discovery 的 jwks_uri，回退硬编码路径） */
 export async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
   const now = Date.now();
   if (cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
     return cachedJwks.jwks;
   }
 
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
+
   try {
-    const res = await fetch(`${baseUrl}/api/oauth/jwks`);
+    const res = await fetch(jwksUri);
     if (!res.ok) return null;
     const jwks = (await res.json()) as Jwks;
     cachedJwks = { baseUrl, jwks, fetchedAt: now };
@@ -100,6 +129,12 @@ export async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
   } catch {
     return null;
   }
+}
+
+/** 清空 JWKS / Discovery 内存缓存（测试与密钥轮换场景使用） */
+export function clearIdTokenCaches(): void {
+  cachedJwks = null;
+  cachedDiscovery = null;
 }
 
 /** 使用 RS256 公钥验证 ID Token 签名 */
@@ -146,7 +181,7 @@ export async function computeAtHash(accessToken: string): Promise<string> {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-/** 验证 ID Token（iss、aud、exp、sub、签名、at_hash） */
+/** 验证 ID Token（iss、aud、exp、iat、azp、sub、签名、at_hash） */
 export async function validateIdToken(
   idToken: string,
   accessToken: string,
@@ -166,26 +201,36 @@ export async function validateIdToken(
     throw new SsoError("id_token_unsupported_alg", `不支持的 ID Token 签名算法: ${alg}`);
   }
 
-  const normalizedIssuer = normalizeIssuer(expectedIssuer);
+  const baseUrl = normalizeIssuer(expectedIssuer);
+  // issuer 以 Discovery 文档的 issuer 为准（防伪站伪造 iss 通过校验），回退调用方传入值
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const normalizedIssuer = normalizeIssuer(discovery?.issuer || baseUrl);
 
   // RS256：通过 JWKS 验证签名
   if (alg === "RS256") {
-    const jwks = await fetchJwks(normalizedIssuer);
+    const jwks = await fetchJwks(baseUrl);
     if (!jwks) {
       throw new SsoError("id_token_invalid_signature", "无法获取 JWKS 验证 ID Token 签名");
     }
     const kid = typeof header.kid === "string" ? header.kid : undefined;
-    const key = jwks.keys.find(
+    // 有 kid 时精确匹配；无 kid 时逐个尝试所有 RS256 签名公钥
+    const candidates = jwks.keys.filter(
       (k) =>
         k.kty === "RSA" &&
         k.alg === "RS256" &&
         k.use === "sig" &&
         (kid ? k.kid === kid : true)
     );
-    if (!key) {
+    if (candidates.length === 0) {
       throw new SsoError("id_token_invalid_signature", "JWKS 中未找到匹配的 RS256 公钥");
     }
-    const validSig = await verifyRs256Signature(idToken, key);
+    let validSig = false;
+    for (const key of candidates) {
+      if (await verifyRs256Signature(idToken, key)) {
+        validSig = true;
+        break;
+      }
+    }
     if (!validSig) {
       throw new SsoError("id_token_invalid_signature", "ID Token 签名验证失败");
     }
@@ -195,7 +240,7 @@ export async function validateIdToken(
   // SDK 拒绝 HS256 ID Token：主站需配置 RS256 密钥对以启用安全验证。
   if (alg === "HS256") {
     if (rejectHs256WhenRs256Available) {
-      const jwks = await fetchJwks(normalizedIssuer);
+      const jwks = await fetchJwks(baseUrl);
       const hasRs256 = jwks?.keys?.some((k) => k.alg === "RS256" && k.use === "sig");
       if (hasRs256) {
         throw new SsoError("id_token_unsupported_alg", "SSO 中心已配置 RS256，拒绝 HS256 ID Token");
@@ -204,8 +249,7 @@ export async function validateIdToken(
     throw new SsoError(
       "id_token_hs256_unsupported",
       "ID Token 使用 HS256 对称签名，SDK 无法安全验证。" +
-      "请联系管理员在主站配置 JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY 环境变量启用 RS256 非对称签名。" +
-      "迁移期间可设置 ALLOW_HS256_FALLBACK=true 临时兼容（不推荐用于生产环境）。"
+      "请联系管理员在 SSO 主站配置 RS256 密钥对（JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY）后重新签发。"
     );
   }
 
@@ -218,23 +262,38 @@ export async function validateIdToken(
   if (tokenIssuer !== normalizedIssuer) {
     throw new SsoError("id_token_issuer_mismatch", "ID Token issuer 不匹配");
   }
-  if (
-    payload.aud !== expectedClientId &&
-    !((payload.aud as string[] | undefined)?.includes(expectedClientId))
-  ) {
+
+  // aud 校验：单值或数组包含 clientId；多 aud 时按 OIDC Core §3.1.3.7 要求 azp 必须等于 clientId
+  const aud = payload.aud;
+  const audList = Array.isArray(aud) ? aud : typeof aud === "string" ? [aud] : [];
+  if (!audList.includes(expectedClientId)) {
     throw new SsoError("id_token_audience_mismatch", "ID Token audience 不匹配");
   }
-  if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1000) {
+  if (audList.length > 1 && payload.azp !== expectedClientId) {
+    throw new SsoError("id_token_audience_mismatch", "ID Token 多 audience 时 azp 必须为当前 client");
+  }
+
+  // exp 必需且不得过期
+  if (typeof payload.exp !== "number") {
+    throw new SsoError("id_token_invalid", "ID Token 缺少 exp 声明");
+  }
+  if (Date.now() >= payload.exp * 1000) {
     throw new SsoError("id_token_expired", "ID Token 已过期");
   }
+
+  // iat 不得在未来（允许 60s clock skew）
+  if (typeof payload.iat === "number" && payload.iat * 1000 > Date.now() + 60_000) {
+    throw new SsoError("id_token_invalid", "ID Token iat 在未来，疑似伪造或时钟异常");
+  }
+
   if (typeof payload.sub !== "string" || !payload.sub) {
     throw new SsoError("id_token_missing_sub", "ID Token 缺少 sub");
   }
 
-  // 校验 at_hash：确保 ID Token 与当前 access_token 绑定
+  // 校验 at_hash：确保 ID Token 与当前 access_token 绑定（常量时间比较）
   if (typeof payload.at_hash === "string" && payload.at_hash) {
     const actual = await computeAtHash(accessToken);
-    if (actual !== payload.at_hash) {
+    if (!timingSafeEqualString(actual, payload.at_hash)) {
       throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash 不匹配");
     }
   }

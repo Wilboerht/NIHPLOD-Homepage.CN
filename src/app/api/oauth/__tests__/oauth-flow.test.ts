@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OAuth 2.0 / OIDC 端到端集成测试
  *
  * 完整流程：authorize(approve) -> 提取 code -> token(authorization_code + PKCE) ->
@@ -86,6 +86,7 @@ vi.mock("@/lib/prisma", () => {
     oAuthSession: {
       create: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     userConsent: {
       findUnique: vi.fn().mockResolvedValue({
@@ -310,6 +311,9 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     });
     const tokenRes = await tokenPost(tokenReq);
     expect(tokenRes.status).toBe(200);
+    // RFC 6749 §5.1：token 响应不得被缓存
+    expect(tokenRes.headers.get("cache-control")).toBe("no-store");
+    expect(tokenRes.headers.get("pragma")).toBe("no-cache");
 
     const tokenBody = await tokenRes.json();
     expect(tokenBody.access_token).toBeTruthy();
@@ -348,6 +352,8 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     });
     const revokeRefreshRes = await revokePost(revokeRefreshReq);
     expect(revokeRefreshRes.status).toBe(200);
+    // RFC 7009 §2.2：撤销响应不得被缓存
+    expect(revokeRefreshRes.headers.get("cache-control")).toBe("no-store");
     expect(await revokeRefreshRes.json()).toEqual({});
 
     // 验证 refresh token 已触发撤销逻辑

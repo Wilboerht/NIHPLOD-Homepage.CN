@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
-import { consumeAuthorizationCode, verifyPKCE } from "@/lib/oauth-code";
+import { consumeAuthorizationCode, findUsedAuthorizationCode, verifyPKCE } from "@/lib/oauth-code";
 import {
   signOAuthAccessToken,
   signIdToken,
@@ -32,15 +32,15 @@ import {
   atomicallyRotateRefreshToken,
   extractDeviceInfo,
   saveRefreshToken,
+  revokeRefreshToken,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
-import { randomBytes } from "crypto";
 import { OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
-import { validateDPoPProof, dpopNonceHeader } from "@/lib/dpop";
+import { validateDPoPProof, dpopNonceHeader, getDPoPHtu, getDpopNonce } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +51,11 @@ const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = 900;
 export async function POST(request: NextRequest) {
   const corsHeaders = await getOAuthCorsHeaders(request);
   const resJson = (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
-    NextResponse.json(body, { status, headers: { ...corsHeaders, ...extraHeaders } });
+    NextResponse.json(body, {
+      status,
+      // RFC 6749 §5.1：token 端点响应不得被缓存
+      headers: { "Cache-Control": "no-store", Pragma: "no-cache", ...corsHeaders, ...extraHeaders },
+    });
 
   try {
     const ip = getClientIP(request);
@@ -61,8 +65,14 @@ export async function POST(request: NextRequest) {
     let body: Record<string, string>;
 
     if (contentType.includes("application/json")) {
-      const json = await request.json();
-      body = json;
+      try {
+        body = await request.json();
+      } catch {
+        return resJson(
+          { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
+          400
+        );
+      }
     } else {
       const formData = await request.formData();
       body = {};
@@ -146,15 +156,36 @@ export async function POST(request: NextRequest) {
       // 消费授权码（原子化）
       const codeData = await consumeAuthorizationCode(code);
       if (!codeData) {
-        recordSsoEvent({
-          event: "token",
-          userId: undefined,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: { grant_type, reason: "code_used_or_not_found" },
-        });
+        // RFC 9700 §4.5：授权码重放（code 已使用）时，撤销该 code 签发出的所有 token
+        const usedCode = await findUsedAuthorizationCode(code);
+        if (usedCode) {
+          // OAuthSession 通过 authorizationCodeId 关联授权码，可直接撤销
+          await prisma.oAuthSession.updateMany({
+            where: { authorizationCodeId: usedCode.id, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          // 授权码与 refresh token 无直接关联，按 userId+clientId 撤销整个会话族
+          await revokeRefreshToken(usedCode.userId, undefined, usedCode.clientId);
+          recordSsoEvent({
+            event: "token",
+            userId: usedCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "code_replay_all_tokens_revoked" },
+          });
+        } else {
+          recordSsoEvent({
+            event: "token",
+            userId: undefined,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "code_used_or_not_found" },
+          });
+        }
         return resJson(
           { error: "invalid_grant", error_description: "Authorization code 无效或已被使用" },
           400
@@ -302,8 +333,8 @@ export async function POST(request: NextRequest) {
       let dpopJkt: string | undefined;
       const dpopProof = request.headers.get("DPoP");
       if (dpopProof) {
-        const url = new URL(request.url);
-        const htu = `${url.origin}${url.pathname}`.toLowerCase();
+        // htu 基于公网 origin（反向代理后 request.url 可能是内网地址），path 区分大小写
+        const htu = getDPoPHtu(request);
         const dpopResult = await validateDPoPProof(
           dpopProof,
           "POST",
@@ -419,7 +450,8 @@ export async function POST(request: NextRequest) {
 
       const extraHeaders: Record<string, string> = {};
       if (dpopJkt) {
-        extraHeaders["DPoP-Nonce"] = randomBytes(24).toString("base64url");
+        // 服务端签发的可验证 nonce（HMAC 签名，后续 validateDPoPProof 会校验）
+        Object.assign(extraHeaders, dpopNonceHeader(getDpopNonce(`${client_id}:${user.id}`)));
       }
 
       return resJson(tokenResponse, 200, extraHeaders);
@@ -666,7 +698,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 签发 Access Token（M2M 场景，sub = client:xxx，无用户身份）
-      // userinfo 端点通过 payload.id.startsWith("client:") 识别此类型，仅返回 sub
+      // userinfo/introspect 通过显式 client_type="m2m" claim 识别此类型（兼容旧的 client: 前缀判断）
       const effectiveScope = scopeRaw || "";
       const accessToken = await signOAuthAccessToken({
         id: `client:${client_id}`,

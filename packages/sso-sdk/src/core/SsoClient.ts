@@ -31,6 +31,7 @@ import {
   type TokenData,
 } from "./storage";
 import { validateIdToken } from "./id-token";
+import { isTrustedReturnUrl, timingSafeEqualString } from "./security";
 
 // ============================================
 // 类型定义
@@ -197,6 +198,18 @@ export class SsoClient {
     return `${this.config.ssoBaseUrl}/api/oauth/userinfo`;
   }
 
+  /**
+   * 开放重定向防护：仅保存相对路径或与当前页面同源的 returnUrl，
+   * 其余（如 https://evil.com）忽略并告警，防止回调后跳转到钓鱼站点。
+   */
+  private _saveReturnUrlIfTrusted(returnUrl: string): void {
+    if (isTrustedReturnUrl(returnUrl, window.location.origin)) {
+      saveReturnUrl(returnUrl);
+    } else {
+      console.warn(`[SSO SDK] returnUrl 未通过同源校验，已忽略: ${returnUrl}`);
+    }
+  }
+
   // ============================================
   // 公共 API
   // ============================================
@@ -207,19 +220,20 @@ export class SsoClient {
    * 生成 PKCE code_verifier/code_challenge 和 state 参数，
    * 构建 authorize URL，通过 302 跳转到 SSO 登录页。
    *
-   * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage）
+   * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
+   *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
    */
   async login(returnUrl?: string): Promise<void> {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
 
-    // 保存 PKCE verifier 和 state 到 sessionStorage
+    // 保存 PKCE verifier 和 state 到 sessionStorage（整页重定向后仍可读取）
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
 
     if (returnUrl) {
-      saveReturnUrl(returnUrl);
+      this._saveReturnUrlIfTrusted(returnUrl);
     }
 
     // 构建 authorize URL
@@ -250,7 +264,7 @@ export class SsoClient {
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
     // 统一使用全局 returnUrl key，与 login() / CallbackPage 保持一致
-    if (returnUrl) saveReturnUrl(returnUrl);
+    if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
 
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
@@ -312,7 +326,7 @@ export class SsoClient {
     savePkceVerifier(`${this.config.clientId}_popup_nonce`, popupNonce);
 
     if (options.returnUrl) {
-      saveReturnUrl(options.returnUrl);
+      this._saveReturnUrlIfTrusted(options.returnUrl);
     }
 
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
@@ -375,9 +389,9 @@ export class SsoClient {
           if (!event.data || event.data.type !== "nihplod_sso_popup_callback") return;
           if (!event.data.callbackUrl) return;
 
-          // 校验 popup nonce：防止伪造的 postMessage
+          // 校验 popup nonce：防止伪造的 postMessage（fail-closed：本地 nonce 缺失同样拒绝）
           const savedNonce = getPkceVerifier(`${this.config.clientId}_popup_nonce`);
-          if (savedNonce && event.data.nonce !== savedNonce) return;
+          if (!savedNonce || !timingSafeEqualString(event.data.nonce ?? "", savedNonce)) return;
           removePkceVerifier(`${this.config.clientId}_popup_nonce`);
 
           completed = true;
@@ -427,7 +441,7 @@ export class SsoClient {
    * 处理 OAuth 回调
    *
    * 解析回调 URL，校验 state 参数，用授权码交换 token。
-   * 成功后 token 自动保存到 sessionStorage。
+   * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
    * @returns TokenData 或 null
@@ -452,10 +466,12 @@ export class SsoClient {
       throw new SsoError("token_request_failed", "回调 URL 中缺少 authorization code");
     }
 
-    // 校验 state 参数（CSRF 防护）
+    // 校验 state 参数（CSRF 防护，常量时间比较）
     const savedState = getOAuthState(this.config.clientId);
-    if (!savedState || savedState !== returnedState) {
+    if (!savedState || !timingSafeEqualString(savedState, returnedState ?? "")) {
+      // state 不匹配：state 与 verifier 一并清除，避免残留半套临时数据
       removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State 参数不匹配，可能存在 CSRF 攻击"
@@ -504,11 +520,13 @@ export class SsoClient {
       );
     }
 
-    // Token 交换成功后清除 state 和 verifier
+    // 先解析响应体，成功后再清除 state 和 verifier：
+    // 若 JSON 畸形导致解析抛错，保留 state/verifier 允许用户重试回调
+    const data: TokenResponse = await res.json();
+
+    // Token 交换成功后清除 state 和 verifier（一次性临时数据）
     removeOAuthState(this.config.clientId);
     removePkceVerifier(this.config.clientId);
-
-    const data: TokenResponse = await res.json();
 
     // OIDC：验证 ID Token 签名、基本声明及 at_hash
     if (data.id_token) {
@@ -604,7 +622,7 @@ export class SsoClient {
         removeTokenData(this.config.clientId);
       }
       throw new SsoError(
-        errorCode === "invalid_grant" ? "session_expired" : mapOAuthErrorToSsoCode(errorCode),
+        mapOAuthErrorToSsoCode(errorCode, "refresh"),
         (errData.error_description as string) || `刷新 Token 失败: HTTP ${res.status}`
       );
     }
@@ -630,7 +648,8 @@ export class SsoClient {
       access_token: data.access_token,
       token_type: data.token_type,
       expires_in: data.expires_in,
-      refresh_token: data.refresh_token,
+      // RFC 6749 §6：刷新响应可省略 refresh_token，此时沿用旧值
+      refresh_token: data.refresh_token || current.refresh_token,
       id_token: data.id_token,
       issued_at: now,
       expires_at: now + data.expires_in * 1000,

@@ -16,6 +16,8 @@ export const DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
 export const DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
 // Verifier 需要写入回调路径（非 /），因此使用 __Secure- 前缀而非 __Host-
 export const DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
+// RP-Initiated Logout 的 state cookie（登出 CSRF 防护）
+export const DEFAULT_LOGOUT_STATE_COOKIE_NAME = "__Host-nihplod_sso_logout_state";
 
 /** __Host- 前缀 Cookie 的安全选项（Path 必须为 /） */
 export function getHostCookieOptions(maxAge?: number): {

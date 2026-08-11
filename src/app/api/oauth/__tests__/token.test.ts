@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OAuth Token 端点单元测试
  * POST /api/oauth/token
  */
@@ -21,6 +21,7 @@ vi.mock("@/lib/prisma", () => {
     oAuthSession: {
       create: vi.fn(),
       findFirst: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     userConsent: {
       findUnique: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock("@/lib/auth-security", () => ({
   }),
   saveRefreshToken: vi.fn(),
   recordLoginAttempt: vi.fn(),
+  revokeRefreshToken: vi.fn().mockResolvedValue(1),
 }));
 
 // === Mock mask-phone ===
@@ -89,7 +91,7 @@ vi.mock("@/lib/oauth-code", async () => {
 
 import { POST } from "../token/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
-import { atomicallyRotateRefreshToken } from "@/lib/auth-security";
+import { atomicallyRotateRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
 import { prisma } from "@/lib/prisma";
 import { signRefreshToken } from "@/lib/jwt";
 
@@ -179,6 +181,53 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
+    });
+
+    it("授权码重放（已使用）应撤销该 code 签发出的所有 token（RFC 9700 §4.5）", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      // consumeAuthorizationCode 原子消费失败
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 0,
+      });
+      // findUsedAuthorizationCode 发现 code 存在且已使用 → 判定为重放
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        used: true,
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "replayed-code",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      // 撤销关联的 OAuthSession（通过 authorizationCodeId）
+      expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+        where: { authorizationCodeId: "code-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      // 撤销该 user+client 的 refresh token（会话族）
+      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+    });
+
+    it("请求体非法 JSON 应返回 400 invalid_request 且响应不可缓存", async () => {
+      const req = new Request("http://localhost/api/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{bad-json",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_request");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("pragma")).toBe("no-cache");
     });
 
     it("授权码过期应返回 400", async () => {
@@ -457,6 +506,9 @@ describe("POST /api/oauth/token", () => {
       });
       const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(200);
+      // RFC 6749 §5.1：token 响应不得被缓存
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("pragma")).toBe("no-cache");
       const body = await res.json();
       expect(body.access_token).toBeDefined();
       expect(body.refresh_token).toBeDefined();

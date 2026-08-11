@@ -17,6 +17,12 @@ vi.mock("@/lib/token-blacklist", () => ({
   isTokenBlacklisted: (...args: unknown[]) => mockIsBlacklisted(...args),
 }));
 
+// === Mock jwt（verifyOAuthAccessToken）===
+const mockVerifyOAuthAccessToken = vi.fn();
+vi.mock("@/lib/jwt", () => ({
+  verifyOAuthAccessToken: (...args: unknown[]) => mockVerifyOAuthAccessToken(...args),
+}));
+
 // === Mock sso-audit ===
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn(),
@@ -38,6 +44,8 @@ describe("GET /api/oauth/userinfo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsBlacklisted.mockReturnValue(false);
+    // 默认 token 验证失败（401 路径）
+    mockVerifyOAuthAccessToken.mockResolvedValue(null);
   });
 
   it("缺少 Authorization header 应返回 401", async () => {
@@ -72,19 +80,37 @@ describe("GET /api/oauth/userinfo", () => {
     expect(res.status).toBe(401);
   });
 
-  it("用户被黑名单应返回 403", async () => {
-    mockIsBlacklisted.mockReturnValue(true);
-    // 使用一个格式有效但无法通过签名验证的 token — 这是 edge case
-    // 实际上 JWT 验证会先失败，但我们确保黑名单逻辑在适当位置被测试
-    // 此用例主要验证导入和调用路径正确
+  it("用户被黑名单应返回 403 并携带 WWW-Authenticate 头", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid",
+    });
+    mockIsBlacklisted.mockReturnValue({ reason: "banned" });
     const req = new Request("http://localhost/api/oauth/userinfo", {
-      headers: {
-        Authorization:
-          "Bearer eyJhbGciOiJIUzI1NiJ9.eyJ0eXBlIjoiYWNjZXNzX3Rva2VuIiwiaWQiOiJ1c2VyLTEifQ.invalid",
-      },
+      headers: { Authorization: "Bearer valid-token" },
     });
     const res = await GET(req as unknown as NextRequest);
-    // JWT 验证失败先于黑名单检查，返回 401
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("account_disabled");
+    // RFC 6750：错误响应必须携带 WWW-Authenticate 头
+    expect(res.headers.get("www-authenticate")).toContain("Bearer");
+  });
+
+  it("M2M token（显式 client_type=m2m claim）应仅返回 sub", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "client:test-client",
+      client_id: "test-client",
+      client_type: "m2m",
+      scope: "",
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer m2m-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ sub: "client:test-client" });
   });
 });
