@@ -511,6 +511,8 @@ function LoginPageContent() {
         },
         body: JSON.stringify({
           action,
+          // 携带 oauth_id 使服务端可校验参数与 GET 阶段存储值一致，并补齐 popup_nonce
+          ...(oauthId ? { oauth_id: oauthId } : {}),
           client_id: params.get("client_id"),
           redirect_uri: params.get("redirect_uri"),
           scope: params.get("scope"),
@@ -518,6 +520,7 @@ function LoginPageContent() {
           code_challenge: params.get("code_challenge"),
           code_challenge_method: params.get("code_challenge_method"),
           nonce: params.get("nonce"),
+          popup_nonce: params.get("popup_nonce"),
         }),
         redirect: "manual",
       });
