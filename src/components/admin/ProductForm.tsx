@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles } from "lucide-react";
@@ -11,13 +12,23 @@ import { Select, SelectOption } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
 import { TagInput } from "@/components/ui/TagInput";
-import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
 import { generateSlug } from "@/lib/utils";
 import { usePurchaseLinks, type PurchaseLinkItem } from "@/hooks/usePurchaseLinks";
+
+// 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
+const RichTextEditor = dynamic(
+  () => import("@/components/ui/RichTextEditor").then((m) => m.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[260px] animate-pulse rounded-lg bg-stone-200/50" aria-hidden />
+    ),
+  }
+);
 
 // 图片类型
 interface ImageItem {

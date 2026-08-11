@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket, Crown } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
@@ -30,6 +30,8 @@ export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
     useAuth();
   const mounted = useMounted();
+  // 用户系统偏好减少动画时停用背景光斑循环动画
+  const reduceMotion = useReducedMotion();
   const [showMobileDetail, setShowMobileDetail] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -159,31 +161,41 @@ export function UserCenterModal() {
               {/* 背景动态装饰层 (位于模糊层之下) */}
               <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
                 <m.div
-                  animate={{
-                    x: ["-30%", "40%", "10%", "-30%"],
-                    y: ["-30%", "20%", "40%", "-30%"],
-                    rotate: [0, 180, 360],
-                    scale: [1, 1.4, 1.2, 1],
-                  }}
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : {
+                          x: ["-30%", "40%", "10%", "-30%"],
+                          y: ["-30%", "20%", "40%", "-30%"],
+                          rotate: [0, 180, 360],
+                          scale: [1, 1.4, 1.2, 1],
+                        }
+                  }
                   transition={{
                     duration: 25,
                     repeat: Infinity,
                     ease: "linear",
                   }}
+                  style={{ willChange: "transform" }}
                   className="absolute h-[120%] w-[120%] rounded-full bg-brand-primary/10 blur-[150px]"
                 />
                 <m.div
-                  animate={{
-                    x: ["40%", "-20%", "30%", "40%"],
-                    y: ["40%", "10%", "-30%", "40%"],
-                    rotate: [0, -180, -360],
-                    scale: [1, 1.3, 1.1, 1],
-                  }}
+                  animate={
+                    reduceMotion
+                      ? undefined
+                      : {
+                          x: ["40%", "-20%", "30%", "40%"],
+                          y: ["40%", "10%", "-30%", "40%"],
+                          rotate: [0, -180, -360],
+                          scale: [1, 1.3, 1.1, 1],
+                        }
+                  }
                   transition={{
                     duration: 35,
                     repeat: Infinity,
                     ease: "linear",
                   }}
+                  style={{ willChange: "transform" }}
                   className="absolute h-[110%] w-[110%] rounded-full bg-stone-400/15 blur-[130px]"
                 />
               </div>

@@ -671,6 +671,8 @@ model RateLimitRecord {
   updatedAt   DateTime @default(now()) @updatedAt
 
   @@unique([key, windowStart])
+  // 供定期清理过期记录（windowStart < 阈值）的 deleteMany 查询命中
+  @@index([windowStart])
 }
 
 // ============================================

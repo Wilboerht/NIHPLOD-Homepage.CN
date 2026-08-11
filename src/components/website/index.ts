@@ -1,6 +1,6 @@
-export { UserCenterModal } from "./UserCenterModal";
-export { CheckoutModal } from "./CheckoutModal";
-export { default as PayModal } from "./PayModal";
+// 注意：UserCenterModal / CheckoutModal / PayModal 不在此 barrel 导出，
+// 避免任何经由 barrel 的静态引入把它们拉回首屏同步 chunk；
+// 统一由 GlobalModals 通过 next/dynamic 懒加载。
 export { GlobalModals } from "./GlobalModals";
 export { ProductCard } from "./ProductCard";
 export { ProductDrawer, PlatformIcon } from "./ProductDrawer";

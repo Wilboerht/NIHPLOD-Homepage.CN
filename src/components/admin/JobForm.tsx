@@ -1,17 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPatch } from "@/lib/api-client";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { AmapLocationPicker } from "@/components/admin/AmapLocationPicker";
 import { JobSchema } from "@/schemas/product";
 import { z } from "zod";
+
+// 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
+const RichTextEditor = dynamic(
+  () => import("@/components/ui/RichTextEditor").then((m) => m.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[260px] animate-pulse rounded-lg bg-stone-200/50" aria-hidden />
+    ),
+  }
+);
 
 // 职位类型选项
 const JOB_TYPES = [
