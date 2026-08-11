@@ -1125,9 +1125,9 @@
 
 .kinetic-container {
   position: absolute;
-  top: 52%;
+  top: 52.5%;
   left: 50%;
-  /* 垂直居中点位于 52%，向下偏移 2%，为上方 Logo 留出空间 */
+  /* 垂直居中点位于 52.5%，向下偏移 2.5%，为上方 Logo 留出空间 */
   transform: translate(-50%, -50%);
   width: 75vw;
   max-width: 950px;
@@ -1322,7 +1322,7 @@
   /* iPad Air (820px), Pro (834px+) 恢复展示 PC 的全量卡片 */
   @media (min-width: 820px) {
     .kinetic-container {
-      top: 52%;
+      top: 52.5%;
     }
 
     .kinetic-cell-steps,
@@ -1356,7 +1356,7 @@
       width: min(82vw, 36vh);
       max-width: 420px;
       gap: 12px;
-      top: 52%;
+      top: 52.5%;
     }
 
     .kinetic-cell-steps,
