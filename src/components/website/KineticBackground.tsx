@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLayout } from "@/contexts/LayoutContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
 
@@ -22,7 +23,9 @@ const CARD_RENDER_PATHS = ["/", "/about", "/products", "/guide", "/faq"];
  */
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { user, redirectToLogin, openUserCenter } = useAuth();
+  const { isDrawerAnimating } = useLayout();
   const pathname = usePathname();
   const showCards = CARD_RENDER_PATHS.includes(pathname);
 
@@ -56,6 +59,62 @@ export function KineticBackground() {
       window.visualViewport?.removeEventListener("resize", debouncedUpdateHeight);
     };
   }, []);
+
+  /**
+   * 动态居中：让便当盒+Logo 在抽屉收起按钮与底部 Dock 之间垂直居中
+   */
+  useEffect(() => {
+    if (!showCards || !containerRef.current || typeof window === "undefined") return;
+
+    const container = containerRef.current;
+    const logo = container.querySelector<HTMLElement>(".kinetic-logo");
+
+    const updatePosition = () => {
+      const drawerButton = document.querySelector<HTMLElement>(
+        'button[aria-label="收起页面内容"], button[aria-label="展开页面内容"]'
+      );
+      const dock = document.querySelector<HTMLElement>('nav[aria-label="主要导航"]')?.parentElement;
+
+      if (!drawerButton || !dock) {
+        container.style.top = "";
+        return;
+      }
+
+      const upperBound = drawerButton.getBoundingClientRect().bottom;
+      const lowerBound = dock.getBoundingClientRect().top;
+      const targetCenter = (upperBound + lowerBound) / 2;
+
+      const logoOffset = logo ? Math.abs(parseFloat(window.getComputedStyle(logo).top)) : 0;
+      const containerHeight = container.getBoundingClientRect().height;
+
+      // 便当盒+Logo 的整体中心 = targetCenter
+      // 由于 Logo 位于 container 上方 logoOffset 处，container 中心需向下偏移 logoOffset/2
+      const containerCenter = targetCenter + logoOffset / 2;
+      container.style.top = `${containerCenter}px`;
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+
+    const ro = new ResizeObserver(updatePosition);
+    ro.observe(container);
+
+    let rafId = 0;
+    if (isDrawerAnimating) {
+      const loop = () => {
+        updatePosition();
+        rafId = requestAnimationFrame(loop);
+      };
+      rafId = requestAnimationFrame(loop);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      ro.disconnect();
+      cancelAnimationFrame(rafId);
+      container.style.top = "";
+    };
+  }, [isDrawerAnimating, showCards]);
 
   const handleLoginClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>) => {
@@ -104,7 +163,7 @@ export function KineticBackground() {
       </div>
 
       {showCards && (
-        <div className="kinetic-container">
+        <div ref={containerRef} className="kinetic-container">
           <Link href="/" className="kinetic-logo">
             <Image
               src="/images/NIHPLOD-logo.svg"
