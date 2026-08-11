@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, LayoutGroup } from "framer-motion";
 import { ChevronLeft, ChevronRight, BookOpen, Compass, Lightbulb, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -98,20 +98,40 @@ export function StoryContent() {
 
   const contentRef = useRef<HTMLDivElement>(null);
   const fadeMaskRef = useRef<HTMLDivElement>(null);
+  const bottomFadeMaskRef = useRef<HTMLDivElement>(null);
+  const aboutTabButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const { isDrawerOpen } = useLayout();
 
-  // 渐隐遮罩：初始隐藏，滚动超过 8px 后淡入（ref 直操，无重渲染）
+  // 上下渐隐遮罩：顶部滚动后淕入、底部触底后淡出（ref 直操，无重渲染）
   useEffect(() => {
     const el = contentRef.current;
     const mask = fadeMaskRef.current;
-    if (!el || !mask) return;
+    const bottomMask = bottomFadeMaskRef.current;
+    if (!el || !mask || !bottomMask) return;
     const sync = () => {
       mask.style.opacity = el.scrollTop > 8 ? "1" : "0";
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+      bottomMask.style.opacity = atBottom ? "0" : "1";
     };
     sync();
     el.addEventListener("scroll", sync, { passive: true });
     return () => el.removeEventListener("scroll", sync);
   }, []);
+
+  // 左右方向键切换 Tab 并移动焦点（WAI-ARIA Tabs 模式，与 /products 一致）
+  const handleAboutTabKeyDown = (
+    e: KeyboardEvent<HTMLButtonElement>,
+    itemCount: number,
+    activeIndex: number,
+    select: (index: number) => void
+  ) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const nextIndex = (activeIndex + (e.key === "ArrowRight" ? 1 : -1) + itemCount) % itemCount;
+    select(nextIndex);
+    aboutTabButtonsRef.current[nextIndex]?.focus();
+    contentRef.current?.scrollTo({ top: 0 });
+  };
 
   return (
     <>
@@ -171,6 +191,60 @@ export function StoryContent() {
               <div className="texture-overlay absolute inset-0 z-[-1]" />
             </div>
 
+            {/* 顶部 Tab 栏 - 紧贴 Header 下方吸顶（与 /products 移动端胶囊 Tab 对齐） */}
+            <div className="sticky top-[88px] z-40 shrink-0 bg-brand-cream/95 backdrop-blur-sm">
+              <div
+                className="flex items-center justify-center gap-2.5 px-3"
+                role="tablist"
+                aria-label="切换关于我们板块"
+              >
+                <LayoutGroup id="about-mobile-tab">
+                  {navItems.map((item, index) => {
+                    const isActive = activeSection === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        ref={(el) => {
+                          aboutTabButtonsRef.current[index] = el;
+                        }}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        tabIndex={isActive ? 0 : -1}
+                        onKeyDown={(e) =>
+                          handleAboutTabKeyDown(e, navItems.length, index, (i) => {
+                            setActiveSection(navItems[i].id);
+                            contentRef.current?.scrollTo({ top: 0 });
+                          })
+                        }
+                        onClick={() => {
+                          setActiveSection(item.id);
+                          contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className={cn(
+                          "relative rounded-full px-3.5 py-2.5 transition-colors",
+                          isActive
+                            ? "font-normal text-brand-primary"
+                            : "font-light text-brand-charcoal/40"
+                        )}
+                      >
+                        {isActive && (
+                          <m.div
+                            layoutId="about-tab-pill"
+                            className="absolute inset-0 rounded-full border border-[#00263e]/[0.08] bg-[#00263e]/[0.04]"
+                            transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                          />
+                        )}
+                        <span className="relative text-[12px] tracking-[0.06em]">
+                          {item.pcLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </LayoutGroup>
+              </div>
+            </div>
+
             {/* 页面主标题 - SEO用，视觉上隐藏 */}
             <h1 className="sr-only">关于 NIHPLOD 旎柏</h1>
 
@@ -185,6 +259,15 @@ export function StoryContent() {
                   opacity: 0,
                 }}
               />
+              {/* Bottom Fade Mask - 未滚到底时显示，滚到底后淡出 */}
+              <div
+                ref={bottomFadeMaskRef}
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-8 transition-opacity duration-300"
+                style={{
+                  background: "linear-gradient(to top, #FBF8F0, transparent)",
+                  opacity: 1,
+                }}
+              />
 
               {/* Main Content Area */}
               <div
@@ -193,7 +276,7 @@ export function StoryContent() {
               >
                 {/* 移动端 Section 1: 品牌故事 */}
                 {activeSection === "story" && (
-                  <section className="relative pt-3">
+                  <section className="relative pt-7">
                     <div className="mb-8 flex flex-col items-center">
                       <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                         品牌故事
@@ -256,7 +339,7 @@ export function StoryContent() {
 
                 {/* 移动端 Section 2: 公司使命 */}
                 {activeSection === "mission" && (
-                  <section className="relative pt-3">
+                  <section className="relative pt-7">
                     <div className="mb-8 flex flex-col items-center">
                       <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                         公司使命
@@ -304,7 +387,7 @@ export function StoryContent() {
 
                 {/* 移动端 Section 3: 品牌哲学 */}
                 {activeSection === "philosophy" && (
-                  <section className="relative pt-3">
+                  <section className="relative pt-7">
                     <div className="mb-8 flex shrink-0 flex-col items-center">
                       <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                         品牌哲学
@@ -360,7 +443,7 @@ export function StoryContent() {
 
                 {/* 移动端 Section 4: 媒体获奖 */}
                 {activeSection === "awards" && (
-                  <section className="relative pt-3">
+                  <section className="relative pt-7">
                     <div className="mb-8 flex flex-col items-center">
                       <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                         媒体及获奖
@@ -417,31 +500,6 @@ export function StoryContent() {
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Bottom Tab Bar - 与 products 对齐 */}
-            <div className="flex shrink-0 items-center justify-center gap-6 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
-              {navItems.map((item) => {
-                const isActive = activeSection === item.id;
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveSection(item.id);
-                      contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className={cn(
-                      "flex flex-col items-center gap-1 transition-colors",
-                      isActive ? "text-brand-primary" : "text-brand-charcoal/40"
-                    )}
-                  >
-                    <Icon size={20} strokeWidth={1.5} />
-                    <span className="text-[11px] font-light tracking-[0.06em]">{item.pcLabel}</span>
-                  </button>
-                );
-              })}
             </div>
           </div>
 

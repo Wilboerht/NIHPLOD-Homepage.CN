@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
@@ -78,6 +78,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const [activeTab] = useState<"featured" | "all">("featured");
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const fadeMaskRef = useRef<HTMLDivElement>(null);
+  const bottomFadeMaskRef = useRef<HTMLDivElement>(null);
+  const tabButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const router = useRouter();
 
   // 挑选主推的3个产品 (这里默认取前三个，实际可根据后台标记筛选)
@@ -86,6 +88,43 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   // 打开产品详情
   const handleProductClick = (product: Product) => {
     router.push(`/products/${product.slug}`);
+  };
+
+  // 上下渐隐遮罩状态评估：滚动中/触底/内容不溢出均正确
+  const updateFadeMasks = () => {
+    const el = mobileScrollRef.current;
+    if (!el) return;
+    const scrolled = el.scrollTop > 8;
+    if (fadeMaskRef.current) fadeMaskRef.current.style.opacity = scrolled ? "1" : "0";
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    if (bottomFadeMaskRef.current) bottomFadeMaskRef.current.style.opacity = atBottom ? "0" : "1";
+  };
+
+  // 视图切换/数据变化后重新评估，保证短内容初始状态正确
+  useEffect(() => {
+    const raf = requestAnimationFrame(updateFadeMasks);
+    return () => cancelAnimationFrame(raf);
+  }, [mobileView, products.length, categories.length]);
+
+  // 切换移动端 Tab：同步复位滚动位置，避免新列表从半屏中间开始展示
+  const switchMobileView = (view: "products" | "categories") => {
+    if (view === mobileView) return;
+    setMobileView(view);
+    mobileScrollRef.current?.scrollTo({ top: 0 });
+    if (fadeMaskRef.current) fadeMaskRef.current.style.opacity = "0";
+    if (bottomFadeMaskRef.current) bottomFadeMaskRef.current.style.opacity = "1";
+  };
+
+  // 左右方向键切换 Tab 并移动焦点（WAI-ARIA Tabs 模式）
+  const handleTabKeyDown = (
+    e: KeyboardEvent<HTMLButtonElement>,
+    current: "products" | "categories"
+  ) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const next = current === "products" ? "categories" : "products";
+    switchMobileView(next);
+    tabButtonsRef.current[next === "products" ? 0 : 1]?.focus();
   };
 
   /**
@@ -127,45 +166,69 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
       {/* 顶部 Tab 栏 - 紧贴 Header 下方吸顶，仅在产品列表/分类列表时显示，详情态隐藏 */}
       {mobileView !== "products" && mobileView !== "categories" ? null : (
-        <div className="sticky top-[88px] z-40 shrink-0 border-b border-brand-charcoal/[0.06] bg-brand-cream/95 backdrop-blur-sm">
-          <div className="flex items-center justify-center gap-12 px-6">
+        <div className="sticky top-[88px] z-40 shrink-0 bg-brand-cream/95 backdrop-blur-sm">
+          <div
+            className="flex items-center justify-center gap-3 px-6"
+            role="tablist"
+            aria-label="产品浏览方式"
+          >
             <button
+              ref={(el) => {
+                tabButtonsRef.current[0] = el;
+              }}
               type="button"
-              onClick={() => setMobileView("products")}
+              role="tab"
+              id="mobile-tab-products"
+              aria-selected={mobileView === "products"}
+              aria-controls="mobile-tabpanel-products"
+              tabIndex={mobileView === "products" ? 0 : -1}
+              onKeyDown={(e) => handleTabKeyDown(e, "products")}
+              onClick={() => switchMobileView("products")}
               className={cn(
-                "relative flex items-center gap-1.5 py-3 transition-colors",
+                "relative flex items-center gap-1.5 rounded-full px-5 py-2.5 transition-colors",
                 mobileView === "products"
                   ? "font-normal text-brand-primary"
                   : "font-light text-brand-charcoal/40"
               )}
             >
-              <ShoppingBag size={18} strokeWidth={1.5} />
-              <span className="text-[12px] tracking-[0.06em]">当季热卖</span>
               {mobileView === "products" && (
                 <m.div
-                  layoutId="products-tab-indicator"
-                  className="absolute inset-x-0 bottom-0 h-[2px] bg-brand-primary"
+                  layoutId="products-tab-pill"
+                  className="absolute inset-0 rounded-full border border-[#00263e]/[0.08] bg-[#00263e]/[0.04]"
+                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
+              <ShoppingBag size={18} strokeWidth={1.5} className="relative" />
+              <span className="relative text-[12px] tracking-[0.06em]">当季热卖</span>
             </button>
             <button
+              ref={(el) => {
+                tabButtonsRef.current[1] = el;
+              }}
               type="button"
-              onClick={() => setMobileView("categories")}
+              role="tab"
+              id="mobile-tab-categories"
+              aria-selected={mobileView === "categories"}
+              aria-controls="mobile-tabpanel-categories"
+              tabIndex={mobileView === "categories" ? 0 : -1}
+              onKeyDown={(e) => handleTabKeyDown(e, "categories")}
+              onClick={() => switchMobileView("categories")}
               className={cn(
-                "relative flex items-center gap-1.5 py-3 transition-colors",
+                "relative flex items-center gap-1.5 rounded-full px-5 py-2.5 transition-colors",
                 mobileView === "categories"
                   ? "font-normal text-brand-primary"
                   : "font-light text-brand-charcoal/40"
               )}
             >
-              <LayoutGrid size={18} strokeWidth={1.5} />
-              <span className="text-[12px] tracking-[0.06em]">全部产品</span>
               {mobileView === "categories" && (
                 <m.div
-                  layoutId="products-tab-indicator"
-                  className="absolute inset-x-0 bottom-0 h-[2px] bg-brand-primary"
+                  layoutId="products-tab-pill"
+                  className="absolute inset-0 rounded-full border border-[#00263e]/[0.08] bg-[#00263e]/[0.04]"
+                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
+              <LayoutGrid size={18} strokeWidth={1.5} className="relative" />
+              <span className="relative text-[12px] tracking-[0.06em]">全部产品</span>
             </button>
           </div>
         </div>
@@ -180,12 +243,16 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           style={{ background: "linear-gradient(to bottom, #FBF8F0, transparent)", opacity: 0 }}
         />
 
+        {/* Bottom Fade Mask - 未滚到底时显示，滚到底后淡出 */}
+        <div
+          ref={bottomFadeMaskRef}
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-8 transition-opacity duration-300"
+          style={{ background: "linear-gradient(to top, #FBF8F0, transparent)", opacity: 1 }}
+        />
+
         <div
           ref={mobileScrollRef}
-          onScroll={() => {
-            const scrolled = (mobileScrollRef.current?.scrollTop ?? 0) > 8;
-            if (fadeMaskRef.current) fadeMaskRef.current.style.opacity = scrolled ? "1" : "0";
-          }}
+          onScroll={updateFadeMasks}
           className="relative z-20 flex h-full flex-col overflow-y-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <AnimatePresence mode="wait">
@@ -193,6 +260,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               /* --- 产品列表视图 --- */
               <m.div
                 key="product-list"
+                id="mobile-tabpanel-products"
+                role="tabpanel"
+                aria-labelledby="mobile-tab-products"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -200,7 +270,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 className="flex min-h-full flex-col"
               >
                 {/* Title */}
-                <div className="mb-8 flex flex-col items-center pt-3">
+                <div className="mb-8 flex flex-col items-center pt-7">
                   <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     {activeTab === "featured" ? "当季热卖" : "全部产品"}
                   </h2>
@@ -271,6 +341,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               /* --- 分类列表视图 --- */
               <m.div
                 key="category-list"
+                id="mobile-tabpanel-categories"
+                role="tabpanel"
+                aria-labelledby="mobile-tab-categories"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -278,7 +351,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 className="flex min-h-full flex-col"
               >
                 {/* Title */}
-                <div className="mb-8 flex flex-col items-center pt-3">
+                <div className="mb-8 flex flex-col items-center pt-7">
                   <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                     产品分类
                   </h2>

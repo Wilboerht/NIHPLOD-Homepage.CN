@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -147,13 +147,17 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // 移动端滚动容器 & 渐隐遮罩（ref 直操 DOM，避免重渲染抖动）
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const fadeMaskRef = useRef<HTMLDivElement>(null);
+  const bottomFadeMaskRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = mobileScrollRef.current;
     const mask = fadeMaskRef.current;
-    if (!el || !mask) return;
+    const bottomMask = bottomFadeMaskRef.current;
+    if (!el || !mask || !bottomMask) return;
     const sync = () => {
       mask.style.opacity = el.scrollTop > 8 ? "1" : "0";
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+      bottomMask.style.opacity = atBottom ? "0" : "1";
     };
     sync();
     el.addEventListener("scroll", sync, { passive: true });
@@ -164,9 +168,29 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   useEffect(() => {
     const el = mobileScrollRef.current;
     const mask = fadeMaskRef.current;
+    const bottomMask = bottomFadeMaskRef.current;
     if (el) el.scrollTop = 0;
     if (mask) mask.style.opacity = "0";
+    if (bottomMask) bottomMask.style.opacity = "1";
   }, [currentLevel]);
+
+  // Tab 按钮 refs（方向键移动焦点用）
+  const guideTabButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // 左右方向键切换 Tab 并移动焦点（WAI-ARIA Tabs 模式，与 /products 一致）
+  const handleGuideTabKeyDown = (
+    e: KeyboardEvent<HTMLButtonElement>,
+    itemCount: number,
+    activeIndex: number,
+    select: (index: number) => void
+  ) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const nextIndex = (activeIndex + (e.key === "ArrowRight" ? 1 : -1) + itemCount) % itemCount;
+    select(nextIndex);
+    guideTabButtonsRef.current[nextIndex]?.focus();
+    mobileScrollRef.current?.scrollTo({ top: 0 });
+  };
 
   // 获取当前应该显示的步骤（优先使用子方案的步骤）
   const currentSteps = nav.subPlan?.steps || nav.scheme?.steps || [];
@@ -435,6 +459,118 @@ export function RitualContent({ products = [] }: RitualContentProps) {
               <div className="texture-overlay absolute inset-0 z-[-1]" />
             </div>
 
+            {/* Level 3 顶部 Tab 栏 - 紧贴 Header 下方吸顶（与 /products 移动端胶囊 Tab 对齐） */}
+            {currentLevel === 3 &&
+              nav.module &&
+              nav.scheme &&
+              ((nav.scheme.subPlans && nav.scheme.subPlans.length > 1) ||
+                (["portable", "professional", "spa"].includes(nav.module) &&
+                  moduleData[nav.module].length > 1)) && (
+                <div className="sticky top-[88px] z-40 shrink-0 bg-brand-cream/95 backdrop-blur-sm">
+                  <div
+                    className="flex items-center justify-center gap-3 px-6"
+                    role="tablist"
+                    aria-label="切换护理方案"
+                  >
+                    <LayoutGroup id="guide-mobile-tab">
+                      {nav.scheme.subPlans && nav.scheme.subPlans.length > 1
+                        ? nav.scheme.subPlans.map((subPlan, index) => {
+                            const isActive = nav.subPlan?.id === subPlan.id;
+                            const Icon = TAB_ICONS[subPlan.id] || Sun;
+                            return (
+                              <button
+                                key={subPlan.id}
+                                ref={(el) => {
+                                  guideTabButtonsRef.current[index] = el;
+                                }}
+                                type="button"
+                                role="tab"
+                                aria-selected={isActive}
+                                tabIndex={isActive ? 0 : -1}
+                                onKeyDown={(e) =>
+                                  handleGuideTabKeyDown(
+                                    e,
+                                    nav.scheme!.subPlans!.length,
+                                    index,
+                                    (i) => selectSubPlan(nav.scheme!.subPlans![i])
+                                  )
+                                }
+                                onClick={() => {
+                                  selectSubPlan(subPlan);
+                                  mobileScrollRef.current?.scrollTo({ top: 0 });
+                                }}
+                                className={cn(
+                                  "relative flex items-center gap-1.5 rounded-full px-4 py-2.5 transition-colors",
+                                  isActive
+                                    ? "font-normal text-brand-primary"
+                                    : "font-light text-brand-charcoal/40"
+                                )}
+                              >
+                                {isActive && (
+                                  <m.div
+                                    layoutId="guide-tab-pill"
+                                    className="absolute inset-0 rounded-full border border-[#00263e]/[0.08] bg-[#00263e]/[0.04]"
+                                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                                  />
+                                )}
+                                <Icon size={18} strokeWidth={1.5} className="relative" />
+                                <span className="relative text-[12px] tracking-[0.06em]">
+                                  {subPlan.name}
+                                </span>
+                              </button>
+                            );
+                          })
+                        : moduleData[nav.module].map((scheme, index) => {
+                            const isActive = scheme.id === nav.scheme!.id;
+                            const Icon = TAB_ICONS[scheme.id] || Sun;
+                            return (
+                              <button
+                                key={scheme.id}
+                                ref={(el) => {
+                                  guideTabButtonsRef.current[index] = el;
+                                }}
+                                type="button"
+                                role="tab"
+                                aria-selected={isActive}
+                                tabIndex={isActive ? 0 : -1}
+                                onKeyDown={(e) =>
+                                  handleGuideTabKeyDown(
+                                    e,
+                                    moduleData[nav.module!].length,
+                                    index,
+                                    (i) => selectScheme(moduleData[nav.module!][i])
+                                  )
+                                }
+                                onClick={() => {
+                                  selectScheme(scheme);
+                                  mobileScrollRef.current?.scrollTo({ top: 0 });
+                                }}
+                                className={cn(
+                                  "relative flex items-center gap-1.5 rounded-full px-4 py-2.5 transition-colors",
+                                  isActive
+                                    ? "font-normal text-brand-primary"
+                                    : "font-light text-brand-charcoal/40"
+                                )}
+                              >
+                                {isActive && (
+                                  <m.div
+                                    layoutId="guide-tab-pill"
+                                    className="absolute inset-0 rounded-full border border-[#00263e]/[0.08] bg-[#00263e]/[0.04]"
+                                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                                  />
+                                )}
+                                <Icon size={18} strokeWidth={1.5} className="relative" />
+                                <span className="relative text-[12px] tracking-[0.06em]">
+                                  {scheme.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                    </LayoutGroup>
+                  </div>
+                </div>
+              )}
+
             {/* 移动端内容区域 - 隐藏滚动条并移除多余 padding */}
             <div className="relative flex-1 overflow-hidden">
               {/* Top Fade Mask - 仅在滚动后显示 */}
@@ -445,6 +581,16 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                   background:
                     "linear-gradient(to bottom, var(--brand-cream, #FBF8F0), transparent)",
                   opacity: 0,
+                }}
+              />
+              {/* Bottom Fade Mask - 未滚到底时显示，滚到底后淡出 */}
+              <div
+                ref={bottomFadeMaskRef}
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-8 transition-opacity duration-300"
+                style={{
+                  background:
+                    "linear-gradient(to top, var(--brand-cream, #FBF8F0), transparent)",
+                  opacity: 1,
                 }}
               />
               <div
@@ -463,7 +609,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                         className="flex flex-1 flex-col justify-start"
                       >
-                        <div className="mb-8 flex flex-col items-center pt-3">
+                        <div className="mb-8 flex flex-col items-center pt-7">
                           <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                             护肤仪式指南
                           </h2>
@@ -512,7 +658,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                         className="flex flex-1 flex-col justify-center"
                       >
                         {/* 模块标题 - 与 Level 1 统一风格 */}
-                        <div className="mb-8 flex flex-col items-center pt-3">
+                        <div className="mb-8 flex flex-col items-center pt-7">
                           <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                             {modules.find((m) => m.id === nav.module)?.label}
                           </h2>
@@ -531,9 +677,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               viewport={{ once: true, margin: "-10px" }}
                               transition={{ duration: 0.4, delay: idx * 0.08, ease: "easeOut" }}
                               onClick={() => selectScheme(scheme)}
-                              className="group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-brand-warm-white px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]"
+                              className={cn(
+                                "group relative flex items-center overflow-hidden rounded-xl border border-brand-charcoal/[0.06] px-5 py-5 shadow-[0_2px_12px_-4px_rgba(0,38,62,0.03)] transition-all duration-300 active:scale-[0.98]",
+                                idx === 0 ? "bg-[#C3BC9F]/[0.13]" : "bg-[#00263E]/[0.05]"
+                              )}
                             >
-                              {/* 左侧装饰线 */}
+                              {/* 左侧情景图标（晨间太阳 / 晚间月亮） */}
+                              <div className="mr-3 shrink-0">{scheme.icon}</div>
+
+                              {/* 装饰线 */}
                               <div className="mr-4 h-10 w-[2px] shrink-0 rounded-full bg-brand-beige/60 transition-colors group-active:bg-brand-beige" />
 
                               {/* 中间内容：标题 + 时长 */}
@@ -572,7 +724,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       >
                         {/* 顶部概览信息 (隐藏于 portable) */}
                         {nav.module !== "portable" ? (
-                          <div className="mb-8 flex flex-col items-center pt-3">
+                          <div className="mb-8 flex flex-col items-center pt-7">
                             <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                               {nav.scheme.name}
                             </h2>
@@ -635,7 +787,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             </div>
                           </div>
                         ) : (
-                          <div className="mb-8 flex flex-col items-center pt-3">
+                          <div className="mb-8 flex flex-col items-center pt-7">
                             <h2 className="text-[19px] font-normal tracking-[0.15em] text-brand-primary">
                               {nav.scheme.name}
                             </h2>
@@ -883,68 +1035,6 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 </div>
               </div>
             </div>
-
-            {/* Level 3 底部 Tab 栏 - 与 /products 移动端对齐 */}
-            {currentLevel === 3 &&
-              nav.module &&
-              nav.scheme &&
-              ((nav.scheme.subPlans && nav.scheme.subPlans.length > 1) ||
-                (["portable", "professional", "spa"].includes(nav.module) &&
-                  moduleData[nav.module].length > 1)) && (
-                <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
-                  {nav.scheme.subPlans && nav.scheme.subPlans.length > 1
-                    ? nav.scheme.subPlans.map((subPlan) => {
-                        const isActive = nav.subPlan?.id === subPlan.id;
-                        const Icon = TAB_ICONS[subPlan.id] || Sun;
-                        return (
-                          <button
-                            key={subPlan.id}
-                            type="button"
-                            onClick={() => selectSubPlan(subPlan)}
-                            className={cn(
-                              "flex flex-col items-center gap-1 transition-colors",
-                              isActive ? "text-brand-primary" : "text-brand-charcoal/40"
-                            )}
-                          >
-                            <Icon size={20} strokeWidth={1.5} />
-                            <span
-                              className={cn(
-                                "text-[11px] tracking-[0.06em]",
-                                isActive ? "font-normal" : "font-light"
-                              )}
-                            >
-                              {subPlan.name}
-                            </span>
-                          </button>
-                        );
-                      })
-                    : moduleData[nav.module].map((scheme) => {
-                        const isActive = scheme.id === nav.scheme!.id;
-                        const Icon = TAB_ICONS[scheme.id] || Sun;
-                        return (
-                          <button
-                            key={scheme.id}
-                            type="button"
-                            onClick={() => selectScheme(scheme)}
-                            className={cn(
-                              "flex flex-col items-center gap-1 transition-colors",
-                              isActive ? "text-brand-primary" : "text-brand-charcoal/40"
-                            )}
-                          >
-                            <Icon size={20} strokeWidth={1.5} />
-                            <span
-                              className={cn(
-                                "text-[11px] tracking-[0.06em]",
-                                isActive ? "font-normal" : "font-light"
-                              )}
-                            >
-                              {scheme.name}
-                            </span>
-                          </button>
-                        );
-                      })}
-                </div>
-              )}
           </div>
 
           {/* ========== 桌面端布局 - 保持原有样式 ========== */}
