@@ -20,6 +20,7 @@ import { LRUCache } from "lru-cache";
 import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
 import { maskPhone } from "./mask-phone";
 import { prisma } from "./prisma";
+import { logger } from "./logger";
 import type {
   AdminJWTPayload,
   UserJWTPayload,
