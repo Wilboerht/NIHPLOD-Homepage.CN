@@ -20,7 +20,7 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
 
       {/* 主内容区域，包含 NavBar 逻辑 + 全局背景 */}
       <WebsiteLayoutClient>
-        {/* Graphite Kinetic Grid 全局背景 - 需在 LayoutProvider 内以访问抽屉状态 */}
+        {/* Graphite Kinetic Grid 全局背景 - 纯 CSS 定位，不依赖抽屉状态 */}
         <KineticBackground />
         <MainContent>{children}</MainContent>
       </WebsiteLayoutClient>
