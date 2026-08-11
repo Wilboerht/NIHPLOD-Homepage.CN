@@ -125,6 +125,52 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         <div className="texture-overlay absolute inset-0 z-[-1]" />
       </div>
 
+      {/* 顶部 Tab 栏 - 紧贴 Header 下方吸顶，仅在产品列表/分类列表时显示，详情态隐藏 */}
+      {mobileView !== "products" && mobileView !== "categories" ? null : (
+        <div className="sticky top-[88px] z-40 shrink-0 border-b border-brand-charcoal/[0.06] bg-brand-cream/95 backdrop-blur-sm">
+          <div className="flex items-center justify-center gap-12 px-6">
+            <button
+              type="button"
+              onClick={() => setMobileView("products")}
+              className={cn(
+                "relative flex items-center gap-1.5 py-3 transition-colors",
+                mobileView === "products"
+                  ? "font-normal text-brand-primary"
+                  : "font-light text-brand-charcoal/40"
+              )}
+            >
+              <ShoppingBag size={18} strokeWidth={1.5} />
+              <span className="text-[12px] tracking-[0.06em]">当季热卖</span>
+              {mobileView === "products" && (
+                <m.div
+                  layoutId="products-tab-indicator"
+                  className="absolute inset-x-0 bottom-0 h-[2px] bg-brand-primary"
+                />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView("categories")}
+              className={cn(
+                "relative flex items-center gap-1.5 py-3 transition-colors",
+                mobileView === "categories"
+                  ? "font-normal text-brand-primary"
+                  : "font-light text-brand-charcoal/40"
+              )}
+            >
+              <LayoutGrid size={18} strokeWidth={1.5} />
+              <span className="text-[12px] tracking-[0.06em]">全部产品</span>
+              {mobileView === "categories" && (
+                <m.div
+                  layoutId="products-tab-indicator"
+                  className="absolute inset-x-0 bottom-0 h-[2px] bg-brand-primary"
+                />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Scroll Area Wrapper - 渐隐遮罩 + drill-down */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {/* Top Fade Mask - 仅在滚动后显示，通过 ref 直接操作避免重渲染 */}
@@ -301,34 +347,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           </AnimatePresence>
         </div>
       </div>
-
-      {/* 底部 Tab 栏 - 仅在产品列表/分类列表时显示，详情态隐藏 */}
-      {mobileView !== "products" && mobileView !== "categories" ? null : (
-        <div className="flex shrink-0 items-center justify-center gap-8 border-t border-brand-charcoal/[0.06] bg-brand-cream/95 px-6 py-4 backdrop-blur-sm">
-          <button
-            type="button"
-            onClick={() => setMobileView("products")}
-            className={cn(
-              "flex flex-col items-center gap-1 transition-colors",
-              mobileView === "products" ? "text-brand-primary" : "text-brand-charcoal/40"
-            )}
-          >
-            <ShoppingBag size={20} strokeWidth={1.5} />
-            <span className="text-[11px] font-light tracking-[0.06em]">当季热卖</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView("categories")}
-            className={cn(
-              "flex flex-col items-center gap-1 transition-colors",
-              mobileView === "categories" ? "text-brand-primary" : "text-brand-charcoal/40"
-            )}
-          >
-            <LayoutGrid size={20} strokeWidth={1.5} />
-            <span className="text-[11px] font-light tracking-[0.06em]">全部产品</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 
