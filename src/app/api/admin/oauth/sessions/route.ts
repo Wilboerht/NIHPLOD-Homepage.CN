@@ -16,6 +16,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { revokeRefreshToken } from "@/lib/auth-security";
+import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -82,8 +83,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 活跃 OAuthSession
-    const sessionWhere: Record<string, unknown> = { revokedAt: null };
+    // 活跃 OAuthSession（排除已过期但未标记撤销的记录）
+    const sessionWhere: Record<string, unknown> = { revokedAt: null, expiresAt: { gt: new Date() } };
     if (userId) sessionWhere.userId = userId;
     if (clientId) sessionWhere.clientId = clientId;
     if (searchOr) sessionWhere.OR = searchOr;
@@ -98,9 +99,9 @@ export async function GET(request: NextRequest) {
       prisma.oAuthSession.count({ where: sessionWhere }),
     ]);
 
-    // 活跃 RefreshToken 数量
+    // 活跃 RefreshToken 数量（同样排除已过期记录）
     const refreshTokenCount = await prisma.refreshToken.count({
-      where: { revokedAt: null },
+      where: { revokedAt: null, expiresAt: { gt: new Date() } },
     });
 
     // 批量获取用户信息
@@ -161,14 +162,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// 两种模式显式互斥：strict 拒绝多余字段，避免 z.union 静默丢弃字段
 const terminateSchema = z.union([
-  z.object({
-    sessionId: z.string().min(1),
-  }),
-  z.object({
-    userId: z.string().min(1),
-    clientId: z.string().optional(),
-  }),
+  z
+    .object({
+      sessionId: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({
+      userId: z.string().min(1),
+      clientId: z.string().optional(),
+    })
+    .strict(),
 ]);
 
 export async function POST(request: NextRequest) {
@@ -224,10 +230,13 @@ export async function POST(request: NextRequest) {
       // 同步撤销该用户+client 下的活跃 RefreshToken
       await revokeRefreshToken(session.userId, undefined, session.clientId);
 
+      // 联动拉黑该用户已签发的 access token，消除 15 分钟有效窗口
+      await blacklistUserTokens(session.userId, "oauth_session_terminated").catch(() => {});
+
       // Backchannel Logout 通知
       await sendBackchannelLogout(session.userId, [session.clientId]);
 
-      recordSsoEvent({
+      await recordSsoEvent({
         event: "status_change",
         userId: session.userId,
         clientId: session.clientId,
@@ -281,10 +290,13 @@ export async function POST(request: NextRequest) {
 
     await revokeRefreshToken(userId, undefined, clientId);
 
+    // 联动拉黑该用户已签发的 access token，消除 15 分钟有效窗口
+    await blacklistUserTokens(userId, "oauth_session_terminated").catch(() => {});
+
     const uniqueClientIds = [...new Set(sessions.map((s) => s.clientId))];
     await sendBackchannelLogout(userId, uniqueClientIds);
 
-    recordSsoEvent({
+    await recordSsoEvent({
       event: "status_change",
       userId,
       ip,
@@ -366,13 +378,14 @@ export async function DELETE(request: NextRequest) {
       }),
     ]);
 
-    // Backchannel Logout：按用户聚合
+    // Backchannel Logout：按用户聚合；同时联动拉黑各用户已签发的 access token
     const userClients = new Map<string, Set<string>>();
     for (const s of activeSessions) {
       if (!userClients.has(s.userId)) userClients.set(s.userId, new Set());
       userClients.get(s.userId)!.add(s.clientId);
     }
     for (const [userId, clients] of userClients) {
+      await blacklistUserTokens(userId, "oauth_session_terminated").catch(() => {});
       await sendBackchannelLogout(userId, [...clients]);
     }
 

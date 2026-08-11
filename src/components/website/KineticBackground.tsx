@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLayout } from "@/contexts/LayoutContext";
 import { Link } from "next-view-transitions";
 import { ChevronRight } from "lucide-react";
 
@@ -23,6 +24,7 @@ const CARD_RENDER_PATHS = ["/", "/about", "/products", "/guide", "/faq"];
 export function KineticBackground() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user, redirectToLogin, openUserCenter } = useAuth();
+  const { setDrawerOpen } = useLayout();
   const pathname = usePathname();
   const showCards = CARD_RENDER_PATHS.includes(pathname);
 
@@ -56,6 +58,17 @@ export function KineticBackground() {
       window.visualViewport?.removeEventListener("resize", debouncedUpdateHeight);
     };
   }, []);
+
+  // 卡片指向当前页时：不重复导航，直接展开抽屉（与底部导航栏行为一致）
+  const handleCardClick = useCallback(
+    (href: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (pathname === href) {
+        e.preventDefault();
+        setDrawerOpen(true);
+      }
+    },
+    [pathname, setDrawerOpen]
+  );
 
   const handleLoginClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>) => {
@@ -118,7 +131,12 @@ export function KineticBackground() {
 
           {/* 左侧大卡片 - 跨两行 */}
           <div className="kinetic-cell kinetic-cell-large kinetic-image-cell kinetic-cell-boxes group relative cursor-pointer">
-            <Link href="/products" className="absolute inset-0 z-20" aria-label="了解产品" />
+            <Link
+              href="/products"
+              onClick={handleCardClick("/products")}
+              className="absolute inset-0 z-20"
+              aria-label="了解产品"
+            />
             <Image
               src="/images/kinetic-product-hero.webp"
               alt="NIHPLOD 产品系列"
@@ -153,7 +171,12 @@ export function KineticBackground() {
             className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
             style={{ gridColumn: "span 2", aspectRatio: "auto" }}
           >
-            <Link href="/guide" className="absolute inset-0 z-20" aria-label="官方指南" />
+            <Link
+              href="/guide"
+              onClick={handleCardClick("/guide")}
+              className="absolute inset-0 z-20"
+              aria-label="官方指南"
+            />
             <Image
               src="/images/kinetic-guide.webp"
               alt="NIHPLOD 官方护肤指南"
@@ -170,7 +193,12 @@ export function KineticBackground() {
           </div>
 
           <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer">
-            <Link href="/about" className="absolute inset-0 z-20" aria-label="关于旎柏" />
+            <Link
+              href="/about"
+              onClick={handleCardClick("/about")}
+              className="absolute inset-0 z-20"
+              aria-label="关于旎柏"
+            />
             <div className="kinetic-image-desktop absolute inset-0">
               <Image
                 src="/images/kinetic-desktop.webp?v=2"

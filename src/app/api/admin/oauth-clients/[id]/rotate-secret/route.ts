@@ -12,6 +12,8 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { recordSsoEvent } from "@/lib/sso-audit";
+import { getClientIP } from "@/lib/ratelimit";
 import { cacheOldSecret } from "@/lib/oauth-client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
@@ -92,6 +94,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await prisma.oAuthClient.update({
       where: { id },
       data: { clientSecret: newHash },
+    });
+
+    // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
+    await recordSsoEvent({
+      event: "status_change",
+      clientId: client.clientId,
+      clientName: client.name,
+      ip: getClientIP(request),
+      success: true,
+      detail: { action: "client_secret_rotated" },
     });
 
     await createAuditLog({

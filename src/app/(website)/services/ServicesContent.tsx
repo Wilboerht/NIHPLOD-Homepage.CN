@@ -113,6 +113,16 @@ export function ServicesContent({ content }: ServicesContentProps) {
   };
 
   const services = [...cmsServices, advisorService];
+  // 移动端列表：素颜测肤插在授权验真之前（PC 端网格仍用 services 原顺序）
+  const authIdx = cmsServices.findIndex((s) => s.id === "auth");
+  const mobileServices =
+    authIdx >= 0
+      ? [
+          ...cmsServices.slice(0, authIdx),
+          advisorService,
+          ...cmsServices.slice(authIdx),
+        ]
+      : services;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false);
@@ -375,7 +385,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
           <div className="mx-auto max-w-4xl">
             {/* 移动端列表 - 已开放在上，未开放在下 */}
             <div className="flex flex-col divide-y divide-brand-charcoal/[0.06] md:hidden">
-              {[...services]
+              {[...mobileServices]
                 .sort((a, b) => {
                   const aDisabled = a.id === "vip" || a.id === "influencer";
                   const bDisabled = b.id === "vip" || b.id === "influencer";
@@ -475,6 +485,14 @@ export function ServicesContent({ content }: ServicesContentProps) {
   );
 }
 
+function FreeTag() {
+  return (
+    <span className="shrink-0 rounded-full border border-brand-primary/20 bg-brand-primary/[0.05] px-2 py-0.5 text-[10px] font-light tracking-[0.12em] text-brand-primary/70">
+      free
+    </span>
+  );
+}
+
 function ServiceListItem({ service, index }: { service: ServiceDetail; index: number }) {
   // 直查模块级 iconMap，避免渲染期经函数调用获取组件类型
   const Icon = iconMap[service.id] || VipIcon;
@@ -503,6 +521,7 @@ function ServiceListItem({ service, index }: { service: ServiceDetail; index: nu
         <span className="text-[14px] font-light tracking-[0.08em] text-brand-charcoal">
           {service.label}
         </span>
+        {service.id === "advisor" && <FreeTag />}
         {!isDisabled && (
           <ChevronDown className="ml-auto h-4 w-4 -rotate-90 text-brand-charcoal/30" />
         )}
@@ -539,8 +558,9 @@ function ServiceCard({ service, index }: { service: ServiceDetail; index: number
         <div className="flex h-14 w-14 items-center justify-center sm:h-20 sm:w-20 md:h-24 md:w-24">
           <Icon className="h-10 w-10 sm:h-14 sm:w-14 md:h-16 md:w-16" isHovered={isHovered} />
         </div>
-        <span className="text-[13px] font-light tracking-[0.08em] text-brand-charcoal md:text-[15px] md:tracking-[0.15em]">
+        <span className="flex items-center gap-2 text-[13px] font-light tracking-[0.08em] text-brand-charcoal md:text-[15px] md:tracking-[0.15em]">
           {service.label}
+          {service.id === "advisor" && <FreeTag />}
         </span>
       </Link>
     </m.div>
