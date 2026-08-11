@@ -16,7 +16,7 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
-import { recordSsoEvent, cleanupOldSsoAuditEvents } from "@/lib/sso-audit";
+import { recordSsoEvent, cleanupOldSsoAuditEvents, escapeCSV } from "@/lib/sso-audit";
 
 describe("sso-audit", () => {
   beforeEach(() => {
@@ -73,5 +73,30 @@ describe("sso-audit", () => {
         where: { createdAt: { lt: expect.any(Date) } },
       })
     );
+  });
+
+  describe("escapeCSV", () => {
+    it("公式注入字符开头应加单引号前缀", () => {
+      expect(escapeCSV("=cmd|'/c calc'!A1")).toBe("'=cmd|'/c calc'!A1");
+      expect(escapeCSV("+SUM(A1)")).toBe("'+SUM(A1)");
+      expect(escapeCSV("@mention")).toBe("'@mention");
+    });
+
+    it("以 = 开头且含逗号的单元格不应绕过公式防护", () => {
+      // 修复前：先引号包裹使单元格以 " 开头，^[=...] 检测被绕过
+      expect(escapeCSV("=1,2")).toBe(`"'=1,2"`);
+    });
+
+    it("含逗号的普通值用双引号包裹", () => {
+      expect(escapeCSV("a,b")).toBe(`"a,b"`);
+    });
+
+    it("双引号应转义为两个双引号", () => {
+      expect(escapeCSV('say "hi"')).toBe(`"say ""hi"""`);
+    });
+
+    it("普通值不包裹不加前缀", () => {
+      expect(escapeCSV("authorize")).toBe("authorize");
+    });
   });
 });

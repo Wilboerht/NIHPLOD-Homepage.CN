@@ -97,6 +97,54 @@ describe("backchannel-logout", () => {
     expect(globalFetch).toHaveBeenCalled();
   });
 
+  it("RP 返回非 2xx 时应重试并记录失败审计", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        clientId: "client-1",
+        backchannelLogoutUri: "https://client.example.com/logout",
+      },
+    ]);
+    mockSignLogoutToken.mockResolvedValue("logout-token-jwt");
+    globalFetch.mockResolvedValue({ ok: false, status: 500 });
+
+    await sendBackchannelLogout("user-1", ["client-1"]);
+
+    // 非 2xx 视为投递失败：初次 + 1 次重试
+    expect(globalFetch).toHaveBeenCalledTimes(2);
+    expect(mockRecordSsoEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "backchannel_logout",
+        userId: "user-1",
+        clientId: "client-1",
+        success: false,
+        detail: { reason: "http_500_after_retry" },
+      })
+    );
+  });
+
+  it("投递成功时应记录成功审计事件", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        clientId: "client-1",
+        backchannelLogoutUri: "https://client.example.com/logout",
+      },
+    ]);
+    mockSignLogoutToken.mockResolvedValue("logout-token-jwt");
+    globalFetch.mockResolvedValue({ ok: true, status: 200 });
+
+    await sendBackchannelLogout("user-1", ["client-1"]);
+
+    expect(globalFetch).toHaveBeenCalledTimes(1);
+    expect(mockRecordSsoEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "backchannel_logout",
+        userId: "user-1",
+        clientId: "client-1",
+        success: true,
+      })
+    );
+  });
+
   it("includeInactive=true 时应包含停用 client", async () => {
     mockFindMany.mockResolvedValue([
       {

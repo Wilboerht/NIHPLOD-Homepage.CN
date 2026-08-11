@@ -111,4 +111,38 @@ describe("token-blacklist-store", () => {
       );
     });
   });
+
+  describe("生产环境强制检查", () => {
+    const env = process.env as Record<string, string | undefined>;
+
+    it("生产环境未显式设置 TOKEN_BLACKLIST_STORAGE 时应启动报错", async () => {
+      const originalNodeEnv = env.NODE_ENV;
+      const originalStorage = env.TOKEN_BLACKLIST_STORAGE;
+      try {
+        delete env.TOKEN_BLACKLIST_STORAGE;
+        env.NODE_ENV = "production";
+        vi.resetModules();
+        await expect(import("@/lib/token-blacklist-store")).rejects.toThrow(
+          /TOKEN_BLACKLIST_STORAGE/
+        );
+      } finally {
+        env.NODE_ENV = originalNodeEnv;
+        env.TOKEN_BLACKLIST_STORAGE = originalStorage;
+      }
+    });
+
+    it("生产环境显式设置 memory 时应允许（单实例部署）", async () => {
+      const originalNodeEnv = env.NODE_ENV;
+      try {
+        env.TOKEN_BLACKLIST_STORAGE = "memory";
+        env.NODE_ENV = "production";
+        vi.resetModules();
+        const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+        await store.blacklistUser("user-prod", "test");
+        expect(await store.isUserBlacklisted("user-prod")).toEqual({ reason: "test" });
+      } finally {
+        env.NODE_ENV = originalNodeEnv;
+      }
+    });
+  });
 });

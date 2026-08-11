@@ -5,8 +5,14 @@ import {
   clearLoginAttempts,
   DEFAULT_BRUTE_FORCE_CONFIG,
   saveRefreshToken,
+  atomicallyRotateRefreshToken,
   extractDeviceInfo,
 } from "@/lib/auth-security";
+
+// 模拟 sso-audit，避免审计写入真实数据库
+vi.mock("@/lib/sso-audit", () => ({
+  recordSsoEvent: vi.fn().mockResolvedValue(undefined),
+}));
 
 // 模拟 prisma 模块，避免连接真实数据库
 vi.mock("@/lib/prisma", () => {
@@ -19,16 +25,22 @@ vi.mock("@/lib/prisma", () => {
   };
 
   const mockRefreshToken = {
+    findFirst: vi.fn(),
     findMany: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
     create: vi.fn(),
   };
 
+  const mockUser = {
+    findUnique: vi.fn(),
+  };
+
   return {
     prisma: {
       loginAttempt: mockLoginAttempt,
       refreshToken: mockRefreshToken,
+      user: mockUser,
       $transaction: vi.fn(),
     },
   };
@@ -49,10 +61,18 @@ async function getMockLoginAttempt() {
 async function getMockRefreshToken() {
   const { prisma } = await import("../prisma");
   return prisma.refreshToken as unknown as {
+    findFirst: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+  };
+}
+
+async function getMockUser() {
+  const { prisma } = await import("../prisma");
+  return prisma.user as unknown as {
+    findUnique: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -234,6 +254,70 @@ describe("auth-security", () => {
       expect(info.ipAddress).toBe("1.2.3.4");
       expect(info.deviceName).toBe("Windows 浏览器");
       expect(info.userAgent).toContain("Windows");
+    });
+  });
+
+  describe("atomicallyRotateRefreshToken 重用检测", () => {
+    it("concurrent_rotation 应吊销该用户该 client 的整个 token 家族并记录审计", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      const mockUser = await getMockUser();
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+
+      mockRt.findFirst.mockResolvedValueOnce({
+        id: "rt-1",
+        userId: "user-1",
+        clientId: "client-1",
+        revokedAt: null,
+      });
+      mockUser.findUnique.mockResolvedValueOnce({ status: "ACTIVE" });
+      mockRt.updateMany
+        // 乐观锁撤销返回 0 → 另一请求已先撤销，判定为并发重用攻击
+        .mockResolvedValueOnce({ count: 0 })
+        // token 家族吊销
+        .mockResolvedValueOnce({ count: 3 });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const result = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+
+      expect(result).toEqual({
+        valid: false,
+        reason: "concurrent_rotation",
+        familyRevokedCount: 3,
+      });
+
+      // RFC 6819 §5.2.2.3：吊销该用户该 client 下全部活跃 refresh token
+      expect(mockRt.updateMany).toHaveBeenNthCalledWith(2, {
+        where: { userId: "user-1", clientId: "client-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+
+      // 不应继续签发新 token
+      expect(mockRt.create).not.toHaveBeenCalled();
+
+      // 记录合规敏感审计事件
+      expect(recordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "status_change",
+          userId: "user-1",
+          clientId: "client-1",
+          success: false,
+          detail: expect.objectContaining({
+            action: "refresh_token_family_revoked",
+            reason: "concurrent_rotation",
+            familyRevokedCount: 3,
+          }),
+        })
+      );
     });
   });
 });
