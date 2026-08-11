@@ -91,6 +91,7 @@ vi.mock("@/lib/oauth-code", async () => {
 
 import { POST } from "../token/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
+import { rateLimit } from "@/lib/ratelimit";
 import { atomicallyRotateRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
 import { prisma } from "@/lib/prisma";
 import { signRefreshToken } from "@/lib/jwt";
@@ -147,6 +148,69 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(401);
       const body = await res.json();
       expect(body.error).toBe("invalid_client");
+    });
+  });
+
+  describe("限流（client_id 定向 DoS 防护）", () => {
+    it("未认证请求不消耗 client 级限流桶，仅走 IP 桶", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: null, reason: "invalid_secret" });
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "victim-client",
+        client_secret: "wrong-secret",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(401);
+      // 只计入 IP 桶；绝不以 client: 前缀消耗受害 client 的全局配额
+      expect(rateLimit).toHaveBeenCalledWith("127.0.0.1", "oauth-token");
+      const limitKeys = vi.mocked(rateLimit).mock.calls.map((c) => String(c[0]));
+      expect(limitKeys.some((k) => k.startsWith("client:"))).toBe(false);
+    });
+
+    it("client 认证成功后才计入 client 级限流桶", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      const req = createRequest({
+        grant_type: "password", // 不支持的 grant_type，认证通过后尽早退出
+        client_id: "test-client",
+        client_secret: "secret",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      expect(rateLimit).toHaveBeenCalledWith("127.0.0.1", "oauth-token");
+      expect(rateLimit).toHaveBeenCalledWith("client:test-client", "oauth-token");
+    });
+
+    it("已认证 client 超出 client 级配额应返回 429", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      // 第一次调用（IP 桶）放行，第二次调用（client 桶）超限
+      vi.mocked(rateLimit)
+        .mockResolvedValueOnce({ success: true } as Awaited<ReturnType<typeof rateLimit>>)
+        .mockResolvedValueOnce({ success: false } as Awaited<ReturnType<typeof rateLimit>>);
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(429);
+      const body = await res.json();
+      expect(body.error).toBe("rate_limited");
+    });
+
+    it("IP 级限流触发时直接 429，不再执行 client 认证", async () => {
+      vi.mocked(rateLimit).mockResolvedValueOnce({
+        success: false,
+      } as Awaited<ReturnType<typeof rateLimit>>);
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(429);
+      const body = await res.json();
+      expect(body.error).toBe("rate_limited");
+      expect(verifyOAuthClientSecret).not.toHaveBeenCalled();
     });
   });
 

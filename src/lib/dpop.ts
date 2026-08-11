@@ -13,6 +13,7 @@ import { jwtVerify, importJWK, calculateJwkThumbprint, type JWK } from "jose";
 import { LRUCache } from "lru-cache";
 import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
 import type { NextRequest } from "next/server";
+import { prisma } from "./prisma";
 
 const DPOP_PROOF_MAX_AGE_MS = 60_000; // 1 分钟
 const DPOP_NONCE_TTL_MS = 5 * 60_000; // 5 分钟
@@ -30,13 +31,16 @@ const supportedAlgorithms = [
   "PS512",
 ];
 
-// 已使用的 DPoP nonce 缓存（防重放）
+// 已使用的 DPoP nonce 缓存（防重放，进程内）
+// 说明：nonce 为 HMAC 签名的无状态 token，本身可跨实例验证（见 isDpopNonceIssued）。
+// 其重放检查仅作纵深防御——攻击者重放 nonce 仍需持有客户端私钥签名新 proof，
+// 且 proof 的 jti 重放已被 DB 共享拦截（见 recordProofJti），因此内存实现可接受。
 const usedNonces = new LRUCache<string, number>({
   max: 100000,
   ttl: DPOP_NONCE_TTL_MS,
 });
 
-// 已使用的 DPoP jti 缓存（防重放）
+// 已使用的 DPoP jti 缓存（本实例快速路径；跨实例防重放由 DB 唯一约束保证）
 const usedProofJtis = new LRUCache<string, number>({
   max: 100000,
   ttl: DPOP_PROOF_MAX_AGE_MS * 2,
@@ -175,6 +179,48 @@ async function withDpopMutex<T>(key: string, fn: () => T | Promise<T>): Promise<
   }
 }
 
+/**
+ * 记录 DPoP proof jti（防重放）。
+ * - 进程内 LRU 为本实例快速路径；
+ * - DB（复用 TokenBlacklist 表，key 前缀 "dpop-jti:"）通过唯一约束实现跨实例原子性，
+ *   参照 internal-api.ts checkAndRecordNonce 先例。
+ * - DB 不可用时 fail-closed：多实例部署下放开内存缓存会造成跨实例重放窗口。
+ *
+ * @returns true 表示 jti 首次使用，false 表示已使用（重放）或存储不可用
+ */
+async function recordProofJti(jti: string): Promise<boolean> {
+  // 内存快速检查（本实例已见 → 直接拒绝，省去 DB 往返）
+  if (usedProofJtis.has(jti)) return false;
+
+  try {
+    await prisma.tokenBlacklist.create({
+      data: {
+        type: "dpop_jti",
+        key: `dpop-jti:${jti}`,
+        // proof 最大有效期 60s，记录保留 2 倍窗口即可覆盖重放判定
+        expiresAt: new Date(Date.now() + DPOP_PROOF_MAX_AGE_MS * 2),
+      },
+    });
+    usedProofJtis.set(jti, Date.now());
+    return true;
+  } catch (error) {
+    // 唯一约束冲突 = jti 已被使用（含跨实例并发场景）。
+    // 注意：proof 本身有 60s maxTokenAge，过期残留记录的 jti 不可能出现在合法新 proof 中，
+    // 因此 P2002 一律按重放拒绝，无需区分记录是否过期。
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
+      usedProofJtis.set(jti, Date.now());
+      return false;
+    }
+    // DB 不可用：fail-closed，拒绝以防止跨实例重放窗口
+    return false;
+  }
+}
+
 export async function validateDPoPProof(
   dpopHeader: string,
   htm: string,
@@ -220,12 +266,8 @@ export async function validateDPoPProof(
     };
   }
 
-  // jti 不得重放（互斥锁保护 has→set 原子性）
-  const jtiOk = await withDpopMutex(`jti:${payload.jti}`, () => {
-    if (usedProofJtis.has(payload.jti)) return false;
-    usedProofJtis.set(payload.jti, Date.now());
-    return true;
-  });
+  // jti 不得重放：进程内互斥锁保证本实例原子性，DB 唯一约束保证跨实例原子性
+  const jtiOk = await withDpopMutex(`jti:${payload.jti}`, () => recordProofJti(payload.jti));
   if (!jtiOk) {
     return {
       valid: false,

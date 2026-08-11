@@ -81,15 +81,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 限流：client_id 级优先，IP 级兜底（避免同 IP 下多子项目互相影响）
-    const client_id_from_req = body.client_id || getClientCredentials(request, body).client_id;
-    if (client_id_from_req) {
-      const clientLimitResult = await rateLimit(`client:${client_id_from_req}`, "oauth-token");
-      if (!clientLimitResult.success) {
-        return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
-      }
-    }
-
+    // 限流（未认证阶段）：仅 IP 级。
+    // 设计理由：client_id 是公开信息，若在认证前就计入 client 级限流桶，
+    // 攻击者可用受害 client 的公开 client_id 从任意来源打满其全局配额，
+    // 造成针对该子项目的定向 DoS（合法流量被 429）。因此 client 级桶延后到
+    // 认证成功后才计数（见下文）；client_secret 暴力破解的限速由 IP 桶承担
+    // （60 次/分钟/IP，叠加 bcrypt cost 12 的计算摩擦，防护能力不下降）。
     const limitResult = await rateLimit(ip, "oauth-token");
     if (!limitResult.success) {
       return resJson({ error: "rate_limited", error_description: "请求过于频繁" }, 429);
@@ -121,6 +118,14 @@ export async function POST(request: NextRequest) {
       return resJson({ error: "invalid_client", error_description: "Client 认证失败" }, 401);
     }
     const client = verifyResult.client;
+
+    // 限流（已认证阶段）：client 级桶仅对认证成功的请求计数。
+    // 攻击者无法通过 client 认证，也就无法消耗受害 client 的配额；
+    // 合法 client 的全局流量仍受此桶塑形（60 次/分钟）。
+    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-token");
+    if (!clientLimitResult.success) {
+      return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
+    }
 
     // Confidential Client 必须提供 client_secret
     if (!client.isPublic && !client_secret) {

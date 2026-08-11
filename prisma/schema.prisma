@@ -327,6 +327,8 @@ model OAuthClient {
   id                  String   @id @default(cuid())
   clientId            String   @unique     // 客户端 ID（公开）
   clientSecret        String               // 客户端密钥（bcrypt 哈希存储）
+  previousSecretHash  String?              // 密钥轮换过渡期旧 secret 的 bcrypt hash（多实例共享，验证时仅 5 分钟过渡期内有效）
+  secretRotatedAt     DateTime?            // 最近一次密钥轮换时间（用于判定过渡期窗口）
   name                String               // 应用名称
   redirectUris        String[]             // 允许的回调 URL 列表
   postLogoutRedirectUris String[]            // 允许的 RP-Initiated Logout 返回地址
@@ -828,12 +830,13 @@ enum TokenBlacklistType {
   logout_jti
   wechat_exchange_token
   internal_api_nonce
+  dpop_jti
 }
 
 model TokenBlacklist {
   id        String              @id @default(cuid())
   type      TokenBlacklistType  // access_token: 单条 token 撤销; user: 用户全局拉黑
-  key       String              @unique // jti 或 userId
+  key       String              @unique // jti、userId 或带前缀的防重放记录（如 nonce:xxx、dpop-jti:xxx）
   reason    String?             // 拉黑原因（仅 user 类型使用）
   expiresAt DateTime            // 自然过期时间，与 token 最大过期一致
   createdAt DateTime            @default(now())

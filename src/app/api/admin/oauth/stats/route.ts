@@ -41,8 +41,13 @@ export async function GET(request: NextRequest) {
       totalEvents,
     ] = await Promise.all([
       prisma.oAuthClient.count({ where: { isActive: true } }),
-      prisma.oAuthSession.count({ where: { revokedAt: null } }),
-      prisma.refreshToken.count({ where: { revokedAt: null } }),
+      // 与会话管理页口径一致：已过期但未标记撤销的不计为活跃
+      prisma.oAuthSession.count({
+        where: { revokedAt: null, expiresAt: { gt: new Date() } },
+      }),
+      prisma.refreshToken.count({
+        where: { revokedAt: null, expiresAt: { gt: new Date() } },
+      }),
       prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.ssoAuditEvent.count({ where: { createdAt: { gte: weekStart } } }),
       prisma.ssoAuditEvent.count({ where: { createdAt: { gte: monthStart } } }),

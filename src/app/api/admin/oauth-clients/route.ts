@@ -36,6 +36,8 @@ async function enrichClientsWithStats(
       where: {
         clientId: { in: clientIds },
         revokedAt: null,
+        // 与会话管理页口径一致：已过期但未标记撤销的不计为活跃
+        expiresAt: { gt: new Date() },
       },
       _count: { userId: true },
     });

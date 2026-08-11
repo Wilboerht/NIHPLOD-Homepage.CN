@@ -20,7 +20,6 @@ import { LRUCache } from "lru-cache";
 import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
 import { maskPhone } from "./mask-phone";
 import { prisma } from "./prisma";
-import { logger } from "./logger";
 import type {
   AdminJWTPayload,
   UserJWTPayload,
@@ -62,6 +61,20 @@ function validateSecret(name: string, value: string | undefined): string {
     );
   }
   return value;
+}
+
+/**
+ * 验证失败的错误摘要输出（可观测性）：
+ * 非生产环境 warn 一行错误摘要，便于排查密钥配置错误（如 PEM 格式损坏）；
+ * jose 的错误信息本身不含 token 本体与密钥内容，可安全输出。
+ * 生产环境保持静默（非法 token 属常态输入，避免刷日志）。
+ * 注意：不使用 @/lib/logger，部分测试以不完整 factory mock 该模块，
+ * 直接 console.warn 避免 mock 缺导出时验证路径抛错。
+ */
+function warnVerifyError(fnName: string, error: unknown): void {
+  if (process.env.NODE_ENV === "production") return;
+  const digest = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  console.warn(`[JWT] ${fnName} 验证失败: ${digest}`);
 }
 
 // 各类型 Token 的 Secret：必须独立配置，确保密钥隔离，禁止跨类型 Token 滥用
@@ -194,16 +207,6 @@ export async function getPrevIdTokenPublicKey(): Promise<CryptoKey | null> {
   return cachedPrevIdTokenPublicKey;
 }
 
-/** ID Token 验签候选公钥：当前 + 上一代（按顺序尝试） */
-async function getIdTokenVerifyPublicKeys(): Promise<CryptoKey[]> {
-  const keys: CryptoKey[] = [];
-  const current = await getIdTokenPublicKey();
-  if (current) keys.push(current);
-  const prev = await getPrevIdTokenPublicKey();
-  if (prev) keys.push(prev);
-  return keys;
-}
-
 // JWT 过期时间
 const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "1d";
 if (!/^\d+[smhd]$/.test(adminExpiresInRaw)) {
@@ -253,13 +256,15 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
     const { payload } = await jwtVerify(token, adminSecret, {
       issuer: ISSUER,
       audience: "admin",
+      algorithms: ["HS256"],
     });
     // 确保是管理员 token，防止用户 token 被用于访问 admin API
     if ((payload as AdminJWTPayload & { type?: string }).type !== "admin") {
       return null;
     }
     return payload as AdminJWTPayload;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyToken", error);
     return null;
   }
 }
@@ -306,6 +311,7 @@ export async function verifyUserToken(
     const { payload } = await jwtVerify(token, accessSecret, {
       issuer: ISSUER,
       audience: "user",
+      algorithms: ["HS256"],
     });
     // 确保是用户 token
     if ((payload as UserJWTPayload).type !== "user") {
@@ -329,7 +335,8 @@ export async function verifyUserToken(
     }
 
     return payload as UserJWTPayload;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyUserToken", error);
     return null;
   }
 }
@@ -374,13 +381,15 @@ export async function verifyRefreshToken(token: string): Promise<RefreshTokenPay
     const { payload } = await jwtVerify(token, refreshSecret, {
       issuer: ISSUER,
       audience: "refresh",
+      algorithms: ["HS256"],
     });
     // 确保是 refresh token
     if ((payload as RefreshTokenPayload).type !== "refresh") {
       return null;
     }
     return payload as RefreshTokenPayload;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyRefreshToken", error);
     return null;
   }
 }
@@ -445,8 +454,9 @@ export async function isWechatExchangeTokenUsed(token: string): Promise<boolean>
 /**
  * 原子化消费 WeChat Exchange Token：检查 + 标记合二为一，消除 TOCTOU 窗口。
  * 通过数据库 INSERT 唯一约束实现原子性：首次插入成功 → 未使用；P2002 冲突 → 已被使用。
- * DB 不可用时回退到内存 LRU。
- * @returns true 表示 token 未被使用（本次消费成功），false 表示已被使用
+ * DB 不可用时 fail-closed：拒绝所有无法在内存中确认已消费的 token，
+ * 避免 DB 故障期间 token 被重放攻击绕过；内存 LRU 仅作为已消费 token 的快速路径。
+ * @returns true 表示 token 未被使用（本次消费成功），false 表示已被使用或无法确认
  */
 export async function consumeWechatExchangeToken(token: string): Promise<boolean> {
   const hash = hashWechatExchangeToken(token);
@@ -473,9 +483,7 @@ export async function consumeWechatExchangeToken(token: string): Promise<boolean
       usedWechatExchangeTokens.set(hash, Date.now());
       return false;
     }
-    // DB 不可用：fail-closed，拒绝所有未在内存中确认的 token
-    // 避免 DB 故障期间 token 被重放攻击绕过
-    if (usedWechatExchangeTokens.has(hash)) return false;
+    // DB 不可用：fail-closed，拒绝消费
     return false;
   }
 }
@@ -515,6 +523,7 @@ export async function verifyWechatExchangeToken(
     const { payload } = await jwtVerify(token, wechatExchangeSecret, {
       issuer: ISSUER,
       audience: "wechat-exchange",
+      algorithms: ["HS256"],
     });
     if ((payload as { type?: string }).type !== "wechat_exchange") {
       return null;
@@ -525,7 +534,8 @@ export async function verifyWechatExchangeToken(
       return null;
     }
     return payload as unknown as WechatExchangePayload;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyWechatExchangeToken", error);
     return null;
   }
 }
@@ -538,12 +548,14 @@ export async function verifyWechatBindToken(token: string): Promise<WechatBindPa
     const { payload } = await jwtVerify(token, wechatBindSecret, {
       issuer: ISSUER,
       audience: "wechat-bind",
+      algorithms: ["HS256"],
     });
     if ((payload as { type?: string }).type !== "wechat_bind") {
       return null;
     }
     return payload as unknown as WechatBindPayload;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyWechatBindToken", error);
     return null;
   }
 }
@@ -600,68 +612,6 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
 
   jwt.setProtectedHeader({ alg: "HS256" });
   return jwt.sign(idTokenSecret);
-}
-
-/**
- * 验证 ID Token
- *
- * 支持 RS256（优先，若配置了公钥）与 HS256（兼容旧 token）。
- */
-export async function verifyIdToken(
-  token: string,
-  audience: string
-): Promise<IdTokenClaims | null> {
-  try {
-    const verifyOptions: { issuer: string; audience: string; algorithms?: string[] } = {
-      issuer: ISSUER,
-      audience,
-      algorithms: ["HS256", "RS256"],
-    };
-
-    const publicKeys = await getIdTokenVerifyPublicKeys();
-    let payload: import("jose").JWTPayload;
-
-    if (publicKeys.length > 0) {
-      let verified: import("jose").JWTPayload | null = null;
-      // 密钥轮换：依次尝试当前公钥与上一代公钥
-      for (const key of publicKeys) {
-        try {
-          const result = await jwtVerify(token, key, {
-            ...verifyOptions,
-            algorithms: ["RS256"],
-          });
-          verified = result.payload;
-          break;
-        } catch {
-          // 尝试下一把公钥
-        }
-      }
-      if (verified) {
-        payload = verified;
-      } else {
-        // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
-        if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, idTokenSecret, {
-            ...verifyOptions,
-            algorithms: ["HS256"],
-          });
-          payload = result.payload;
-        } else {
-          return null;
-        }
-      }
-    } else {
-      const result = await jwtVerify(token, idTokenSecret, verifyOptions);
-      payload = result.payload;
-    }
-
-    if ((payload as { type?: string }).type !== "id_token") {
-      return null;
-    }
-    return payload as unknown as IdTokenClaims;
-  } catch {
-    return null;
-  }
 }
 
 // ============================================
@@ -778,10 +728,10 @@ export async function verifyLogoutToken(
   audience: string
 ): Promise<LogoutTokenClaims | null> {
   try {
-    const verifyOptions: { issuer: string; audience: string; algorithms?: string[] } = {
+    // 基础校验项；algorithms 在各分支显式指定（公钥分支 RS256，对称密钥分支 HS256）
+    const verifyOptions: { issuer: string; audience: string } = {
       issuer: ISSUER,
       audience,
-      algorithms: ["HS256", "RS256"],
     };
 
     const publicKeys = await getLogoutTokenVerifyPublicKeys();
@@ -816,7 +766,10 @@ export async function verifyLogoutToken(
         }
       }
     } else {
-      const result = await jwtVerify(token, logoutSecret, verifyOptions);
+      const result = await jwtVerify(token, logoutSecret, {
+        ...verifyOptions,
+        algorithms: ["HS256"],
+      });
       payload = result.payload;
     }
 
@@ -861,7 +814,8 @@ export async function verifyLogoutToken(
     processedLogoutJtis.set(claims.jti, Date.now());
 
     return claims;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyLogoutToken", error);
     return null;
   }
 }
@@ -944,9 +898,9 @@ export async function verifyOAuthAccessToken(
   expectedClientId?: string
 ): Promise<OAuthAccessTokenPayload | null> {
   try {
-    const verifyOptions: { issuer: string; audience?: string; algorithms?: string[] } = {
+    // 基础校验项；algorithms 在各分支显式指定（公钥分支 RS256，对称密钥分支 HS256）
+    const verifyOptions: { issuer: string; audience?: string } = {
       issuer: ISSUER,
-      algorithms: ["HS256", "RS256"],
     };
     // 仅当调用方明确传入 expectedClientId 时才校验 audience
     // userinfo/introspect 等通用端点不需要限制 audience
@@ -962,7 +916,10 @@ export async function verifyOAuthAccessToken(
       let verified: import("jose").JWTPayload | null = null;
       for (const key of publicKeys) {
         try {
-          const result = await jwtVerify(token, key, verifyOptions);
+          const result = await jwtVerify(token, key, {
+            ...verifyOptions,
+            algorithms: ["RS256"],
+          });
           verified = result.payload;
           break;
         } catch {
@@ -974,14 +931,20 @@ export async function verifyOAuthAccessToken(
       } else {
         // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
         if (process.env.ALLOW_HS256_FALLBACK === "true") {
-          const result = await jwtVerify(token, accessSecret, verifyOptions);
+          const result = await jwtVerify(token, accessSecret, {
+            ...verifyOptions,
+            algorithms: ["HS256"],
+          });
           payload = result.payload;
         } else {
           return null;
         }
       }
     } else {
-      const result = await jwtVerify(token, accessSecret, verifyOptions);
+      const result = await jwtVerify(token, accessSecret, {
+        ...verifyOptions,
+        algorithms: ["HS256"],
+      });
       payload = result.payload;
     }
 
@@ -1004,7 +967,8 @@ export async function verifyOAuthAccessToken(
       return null;
     }
     return payload as unknown as OAuthAccessTokenPayload;
-  } catch {
+  } catch (error) {
+    warnVerifyError("verifyOAuthAccessToken", error);
     return null;
   }
 }

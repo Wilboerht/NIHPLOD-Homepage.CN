@@ -177,29 +177,47 @@ async function verifySecret(secret: string, hash: string): Promise<boolean> {
 }
 
 // ============================================
-// 密钥轮换缓存（5 分钟过渡期）
+// 密钥轮换过渡期（5 分钟）
 // ============================================
 
+/** 密钥轮换过渡期：5 分钟内旧 secret 仍可用于完成进行中的授权 */
+export const SECRET_ROTATION_GRACE_MS = 5 * 60 * 1000;
+
 /**
- * 旧 secret hash 缓存，用于密钥轮换后的平滑过渡。
+ * 旧 secret hash 的进程内缓存（快速路径）。
  * key: clientId, value: { oldHash, expiresAt }
  *
- * ⚠️ 多实例部署注意：此缓存仅在当前进程内存中生效。
- * 密钥轮换请求仅被一个实例处理，其他实例的缓存中不会存储旧 hash，
- * 导致 5 分钟过渡期内其他实例立即拒绝旧密钥。
- * 多实例环境需将旧 hash 存入共享存储（如 Redis）或使用数据库。
+ * 多实例说明：权威状态持久化在 OAuthClient.previousSecretHash / secretRotatedAt
+ * （见 verifyOAuthClientSecret 的回退 2），本缓存仅作为发起轮换的实例在
+ * DB 写入完成前的同步快速路径，以及减少过渡期内的重复 bcrypt 比较。
+ * 缓存未命中不代表旧密钥失效——验证时会继续查 DB 字段。
  */
 const oldSecretCache = new Map<string, { oldHash: string; expiresAt: number }>();
 
 /**
- * 缓存旧 secret hash，供 verifyOAuthClientSecret 在过渡期内回退匹配。
- * 轮换密钥时由 rotate-secret API 调用。
+ * 缓存并持久化旧 secret hash，供 verifyOAuthClientSecret 在过渡期内回退匹配。
+ * 轮换密钥时由 rotate-secret API 调用（同步签名保持不变）。
+ *
+ * DB 持久化为 fire-and-forget：rotate-secret 路由随后会更新 clientSecret，
+ * 两个 update 写不同列，无冲突；持久化失败仅降级为单实例内存行为并记录日志。
  */
 export function cacheOldSecret(clientId: string, oldHash: string): void {
   oldSecretCache.set(clientId, {
     oldHash,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 分钟过渡期
+    expiresAt: Date.now() + SECRET_ROTATION_GRACE_MS,
   });
+  // 持久化到 DB，多实例共享过渡期状态
+  void prisma.oAuthClient
+    .update({
+      where: { clientId },
+      data: { previousSecretHash: oldHash, secretRotatedAt: new Date() },
+    })
+    .catch((err) =>
+      apiConsole.error(
+        "[OAuthClient] 旧 secret hash 持久化失败，过渡期降级为单实例内存缓存:",
+        err
+      )
+    );
 }
 
 // ============================================
@@ -323,11 +341,21 @@ export async function verifyOAuthClientSecret(
     // 优先匹配当前 hash
     valid = await verifySecret(secret, client.clientSecret);
 
-    // 回退：检查旧 secret 缓存（密钥轮换过渡期）
+    // 回退 1：进程内缓存（发起轮换的实例在 DB 写入完成前的快速路径）
     if (!valid) {
       const cached = oldSecretCache.get(clientId);
       if (cached && Date.now() < cached.expiresAt) {
         valid = await verifySecret(secret, cached.oldHash);
+      }
+    }
+
+    // 回退 2：DB 持久化的 previousSecretHash（多实例共享的权威过渡期状态）。
+    // 仅在 secretRotatedAt 起 5 分钟过渡期内接受旧 secret；
+    // 过渡期后 previousSecretHash 留存在行内但不再被接受（惰性失效，无需清理任务）。
+    if (!valid && client.previousSecretHash && client.secretRotatedAt) {
+      const graceElapsed = Date.now() - client.secretRotatedAt.getTime();
+      if (graceElapsed >= 0 && graceElapsed <= SECRET_ROTATION_GRACE_MS) {
+        valid = await verifySecret(secret, client.previousSecretHash);
       }
     }
   }

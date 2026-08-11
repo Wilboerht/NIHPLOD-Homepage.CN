@@ -18,7 +18,23 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
 import { prisma } from "@/lib/prisma";
-import { createHmac, timingSafeEqual, createHash } from "crypto";
+import { createHmac, timingSafeEqual, createHash, randomBytes } from "crypto";
+
+/**
+ * 生成 cuid 兼容 ID（与 Prisma @default(cuid()) 生成的格式一致：
+ * 24 位小写字母数字、首字符为字母）。用于 raw SQL INSERT 时应用层生成主键，
+ * 避免使用 gen_random_uuid() 造成与全库 cuid 风格不一致。
+ */
+function generateConsentId(): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const alphabet = letters + "0123456789";
+  const bytes = randomBytes(24);
+  let id = letters[bytes[0] % 26];
+  for (let i = 1; i < 24; i++) {
+    id += alphabet[bytes[i] % 36];
+  }
+  return id;
+}
 
 // OAuth 参数临时存储：HMAC 签名的无状态 token，多实例安全
 // 将 OAuth 参数编码到 oauth_id 中，无需服务端存储
@@ -80,9 +96,11 @@ async function ensureUserConsent(
   clientId: string,
   scopes: string[]
 ): Promise<void> {
+  // 应用层生成 cuid 主键（与 schema @default(cuid()) 同风格），保持 ON CONFLICT 合并 scope 逻辑
+  const id = generateConsentId();
   await prisma.$executeRaw`
     INSERT INTO "UserConsent" ("id", "userId", "clientId", "scopes", "grantedAt")
-    VALUES (gen_random_uuid(), ${userId}, ${clientId}, ${scopes}::text[], NOW())
+    VALUES (${id}, ${userId}, ${clientId}, ${scopes}::text[], NOW())
     ON CONFLICT ("userId", "clientId")
     DO UPDATE SET
       "scopes" = ARRAY(SELECT DISTINCT unnest(array_cat("UserConsent"."scopes", ${scopes}::text[]))),
