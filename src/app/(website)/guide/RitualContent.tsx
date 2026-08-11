@@ -310,6 +310,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   // 使用默认数据
   const moduleData = defaultModuleData;
 
+  // Level 3 顶部 Tab 数量：≥3 时切换紧凑文字胶囊（去图标、收紧间距），避免窄屏溢出换行
+  const guideTabCount =
+    nav.scheme?.subPlans && nav.scheme.subPlans.length > 1
+      ? nav.scheme.subPlans.length
+      : nav.module && ["portable", "professional", "spa"].includes(nav.module)
+        ? moduleData[nav.module].length
+        : 0;
+  const compactTabs = guideTabCount >= 3;
+
   // ====== 客户端导航函数（使用 window.history，避免 RSC 重新获取数据） ======
 
   const navigate = useCallback(
@@ -467,8 +476,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 (["portable", "professional", "spa"].includes(nav.module) &&
                   moduleData[nav.module].length > 1)) && (
                 <div className="sticky top-[88px] z-40 shrink-0 bg-brand-cream/95 backdrop-blur-sm">
+                  {/* Texture Overlay for Tab bar to match drawer body */}
+                  <div className="texture-overlay absolute inset-0 z-[-1]" />
                   <div
-                    className="flex items-center justify-center gap-3 px-6"
+                    className={cn(
+                      "flex items-center justify-center",
+                      compactTabs ? "gap-2 px-3" : "gap-3 px-6"
+                    )}
                     role="tablist"
                     aria-label="切换护理方案"
                   >
@@ -500,7 +514,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   mobileScrollRef.current?.scrollTo({ top: 0 });
                                 }}
                                 className={cn(
-                                  "relative flex items-center gap-1.5 rounded-full px-4 py-2.5 transition-colors",
+                                  "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-2.5 transition-colors",
+                                  compactTabs ? "px-3.5" : "px-4",
                                   isActive
                                     ? "font-normal text-brand-primary"
                                     : "font-light text-brand-charcoal/40"
@@ -513,7 +528,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     transition={{ type: "spring", stiffness: 400, damping: 32 }}
                                   />
                                 )}
-                                <Icon size={18} strokeWidth={1.5} className="relative" />
+                                {!compactTabs && (
+                                  <Icon size={18} strokeWidth={1.5} className="relative" />
+                                )}
                                 <span className="relative text-[12px] tracking-[0.06em]">
                                   {subPlan.name}
                                 </span>
@@ -546,7 +563,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                   mobileScrollRef.current?.scrollTo({ top: 0 });
                                 }}
                                 className={cn(
-                                  "relative flex items-center gap-1.5 rounded-full px-4 py-2.5 transition-colors",
+                                  "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-2.5 transition-colors",
+                                  compactTabs ? "px-3.5" : "px-4",
                                   isActive
                                     ? "font-normal text-brand-primary"
                                     : "font-light text-brand-charcoal/40"
@@ -559,7 +577,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                     transition={{ type: "spring", stiffness: 400, damping: 32 }}
                                   />
                                 )}
-                                <Icon size={18} strokeWidth={1.5} className="relative" />
+                                {!compactTabs && (
+                                  <Icon size={18} strokeWidth={1.5} className="relative" />
+                                )}
                                 <span className="relative text-[12px] tracking-[0.06em]">
                                   {scheme.name}
                                 </span>

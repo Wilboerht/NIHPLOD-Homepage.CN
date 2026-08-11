@@ -167,6 +167,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       {/* 顶部 Tab 栏 - 紧贴 Header 下方吸顶，仅在产品列表/分类列表时显示，详情态隐藏 */}
       {mobileView !== "products" && mobileView !== "categories" ? null : (
         <div className="sticky top-[88px] z-40 shrink-0 bg-brand-cream/95 backdrop-blur-sm">
+          {/* Texture Overlay for Tab bar to match drawer body */}
+          <div className="texture-overlay absolute inset-0 z-[-1]" />
           <div
             className="flex items-center justify-center gap-3 px-6"
             role="tablist"

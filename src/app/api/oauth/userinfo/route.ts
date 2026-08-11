@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         detail: { reason: "blacklisted", blacklistReason: blacklisted.reason },
       });
       return resJson({ error: "account_disabled", error_description: "账户已被限制" }, 403, {
-        "WWW-Authenticate": 'Bearer error="account_disabled", error_description="账户已被限制"',
+        "WWW-Authenticate": 'Bearer error="account_disabled", error_description="Account disabled"',
       });
     }
 

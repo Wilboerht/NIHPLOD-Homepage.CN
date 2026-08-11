@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
-import { m, AnimatePresence, LayoutGroup } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, BookOpen, Compass, Lightbulb, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
@@ -193,14 +193,16 @@ export function StoryContent() {
 
             {/* 顶部 Tab 栏 - 紧贴 Header 下方吸顶（与 /products 移动端胶囊 Tab 对齐） */}
             <div className="sticky top-[88px] z-40 shrink-0 bg-brand-cream/95 backdrop-blur-sm">
+              {/* Texture Overlay for Tab bar to match drawer body */}
+              <div className="texture-overlay absolute inset-0 z-[-1]" />
               <div
-                className="flex items-center justify-center gap-2.5 px-3"
+                className="flex items-center justify-center gap-6 px-6"
                 role="tablist"
                 aria-label="切换关于我们板块"
               >
-                <LayoutGroup id="about-mobile-tab">
-                  {navItems.map((item, index) => {
+                {navItems.map((item, index) => {
                     const isActive = activeSection === item.id;
+                    const Icon = item.icon;
                     return (
                       <button
                         key={item.id}
@@ -222,26 +224,22 @@ export function StoryContent() {
                           contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                         }}
                         className={cn(
-                          "relative rounded-full px-3.5 py-2.5 transition-colors",
-                          isActive
-                            ? "font-normal text-brand-primary"
-                            : "font-light text-brand-charcoal/40"
+                          "flex flex-col items-center gap-1 whitespace-nowrap transition-colors",
+                          isActive ? "text-brand-primary" : "text-brand-charcoal/40"
                         )}
                       >
-                        {isActive && (
-                          <m.div
-                            layoutId="about-tab-pill"
-                            className="absolute inset-0 rounded-full border border-[#00263e]/[0.08] bg-[#00263e]/[0.04]"
-                            transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                          />
-                        )}
-                        <span className="relative text-[12px] tracking-[0.06em]">
+                        <Icon size={20} strokeWidth={1.5} />
+                        <span
+                          className={cn(
+                            "text-[11px] tracking-[0.06em]",
+                            isActive ? "font-normal" : "font-light"
+                          )}
+                        >
                           {item.pcLabel}
                         </span>
                       </button>
                     );
                   })}
-                </LayoutGroup>
               </div>
             </div>
 
