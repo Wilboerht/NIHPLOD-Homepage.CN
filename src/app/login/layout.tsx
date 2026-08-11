@@ -5,7 +5,7 @@ import type { Metadata } from "next";
  * （page.tsx 为客户端组件，metadata 需通过 layout 导出）
  */
 export const metadata: Metadata = {
-  title: "SSO",
+  title: "登录 / 注册",
   description: "登录或注册 NIHPLOD 旎柏账户，管理订单、地址、会员权益与护肤方案。",
   robots: {
     index: false,
