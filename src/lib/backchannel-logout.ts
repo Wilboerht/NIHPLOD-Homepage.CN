@@ -14,14 +14,38 @@ import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 
 const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
-const PRIVATE_IP_PATTERNS = [/^10\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./, /^169\.254\./];
+const PRIVATE_IP_PATTERNS = [
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^169\.254\./,
+  // CGNAT 保留段 100.64.0.0/10（运营商级 NAT，非公网可路由）
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
+];
+
+/**
+ * 判断主机名是否为保留/私网地址（仅字面匹配，不做 DNS 解析）。
+ *
+ * 权衡：对"域名解析到私网 IP"的 DNS rebinding 场景不在此防护范围——
+ * 完整防护需在连接建立时校验实际解析结果，代价是每次回调都引入 DNS 查询。
+ * 当前实现覆盖字面 IP、IPv6 ULA/link-local、IPv4 映射地址与已知保留名。
+ */
+export function isBlockedHostname(rawHostname: string): boolean {
+  // WHATWG URL 的 IPv6 hostname 带方括号（如 "[::1]"），先归一化再匹配
+  const hostname = rawHostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (BLOCKED_HOSTS.has(hostname)) return true;
+  if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
+  if (hostname.startsWith("::ffff:")) return true; // IPv4 映射地址（绕过 IPv4 段检查）
+  if (/^f[cd]/.test(hostname)) return true; // IPv6 ULA fc00::/7
+  if (hostname.startsWith("fe80:")) return true; // IPv6 link-local
+  return false;
+}
 
 function isSafeBackchannelUrl(uri: string): boolean {
   try {
     const u = new URL(uri);
     if (u.protocol !== "https:") return false;
-    if (BLOCKED_HOSTS.has(u.hostname)) return false;
-    if (PRIVATE_IP_PATTERNS.some((p) => p.test(u.hostname))) return false;
+    if (isBlockedHostname(u.hostname)) return false;
     return true;
   } catch {
     return false;
@@ -84,16 +108,22 @@ export async function sendBackchannelLogout(
         });
 
         let delivered = false;
+        let failureReason = "http_request_failed_after_retry";
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            await fetch(client.backchannelLogoutUri, {
+            const res = await fetch(client.backchannelLogoutUri, {
               method: "POST",
               headers: { "Content-Type": "application/x-www-form-urlencoded" },
               body: new URLSearchParams({ logout_token: logoutToken }),
               signal: AbortSignal.timeout(5000),
             });
-            delivered = true;
-            break;
+            if (res.ok) {
+              delivered = true;
+              break;
+            }
+            // RP 返回非 2xx：视为投递失败，进入重试
+            failureReason = `http_${res.status}_after_retry`;
+            if (attempt < 1) await new Promise((r) => setTimeout(r, 2000));
           } catch {
             if (attempt < 1) await new Promise((r) => setTimeout(r, 2000));
           }
@@ -106,7 +136,15 @@ export async function sendBackchannelLogout(
             userId,
             clientId: client.clientId,
             success: false,
-            detail: { reason: "http_request_failed_after_retry" },
+            detail: { reason: failureReason },
+          });
+        } else {
+          // 成功投递也记录一条审计事件，便于核对通知过哪些 RP
+          recordSsoEvent({
+            event: "backchannel_logout",
+            userId,
+            clientId: client.clientId,
+            success: true,
           });
         }
       } catch (err) {

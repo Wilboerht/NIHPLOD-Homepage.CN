@@ -29,14 +29,14 @@ export interface SsoEventContext {
 }
 
 /**
- * 记录 SSO 事件（异步写入，不阻塞主流程）
+ * 记录 SSO 事件
  *
- * 注意：使用 fire-and-forget 模式写入数据库，若进程在写入前崩溃可能丢失记录。
- * 对于合规要求严格的场景，考虑使用同步写入或可靠消息队列。
+ * 默认 fire-and-forget 写入数据库，不阻塞主流程；函数返回 Promise，
+ * 合规敏感事件（consent 吊销、status_change、token 家族吊销等）的调用方
+ * 应 `await recordSsoEvent(...)` 同步等待，防止进程崩溃导致审计记录丢失。
+ * console 日志始终先写（DB 宕机时仍有冗余日志）。
  */
-export function recordSsoEvent(context: SsoEventContext): void {
-  // 先写 console（DB 宕机时仍有冗余日志），
-  // 再异步写数据库（不阻塞主流程）
+export function recordSsoEvent(context: SsoEventContext): Promise<void> {
   const info = {
     event: context.event,
     userId: context.userId,
@@ -46,7 +46,7 @@ export function recordSsoEvent(context: SsoEventContext): void {
   };
   apiConsole.info(`[SsoAudit] ${context.event}`, info);
 
-  prisma.ssoAuditEvent
+  return prisma.ssoAuditEvent
     .create({
       data: {
         event: context.event,
@@ -59,9 +59,28 @@ export function recordSsoEvent(context: SsoEventContext): void {
         success: context.success ?? true,
       },
     })
+    .then(() => undefined)
     .catch((error) => {
       apiConsole.error(`[SsoAudit] 持久化失败 (${context.event}):`, error);
     });
+}
+
+/**
+ * CSV 单元格转义（SSO 审计日志导出用）
+ *
+ * 顺序要求：先做公式注入防护（前置单引号），再做引号转义与包裹——
+ * 若先包裹引号再判断开头字符，"=..."开头且含逗号的单元格会以引号开头而绕过防护。
+ */
+export function escapeCSV(val: string): string {
+  // 1. 防公式注入：以 = + - @ 或制表符开头的单元格先加单引号前缀
+  let escaped = /^[=+\-@\t]/.test(val) ? `'${val}` : val;
+  // 2. 转义双引号（CSV 标准：用两个双引号表示一个引号字符）
+  escaped = escaped.replace(/"/g, '""');
+  // 3. 包含逗号、双引号、换行或制表符时用双引号包裹
+  if (/[",\n\r\t]/.test(escaped)) {
+    escaped = `"${escaped}"`;
+  }
+  return escaped;
 }
 
 /**

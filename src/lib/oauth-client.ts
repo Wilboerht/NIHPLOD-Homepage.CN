@@ -9,56 +9,56 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { getInternalApiKeys } from "./internal-api";
 import { apiConsole } from "@/lib/logger";
-import { sendBackchannelLogout } from "./backchannel-logout";
+import { sendBackchannelLogout, isBlockedHostname } from "./backchannel-logout";
+import { SUPPORTED_SCOPES } from "./oauth-constants";
 
 // ============================================
 // 参数校验
 // ============================================
 
+/**
+ * 公网 https URI 校验（与 backchannel-logout 的 SSRF 防护共用主机名黑名单）
+ * @param rejectFragment - redirect URI 按 OAuth 2.0 规范（RFC 6749 §3.1.2）不允许带 fragment
+ */
+function isPublicHttpsUrl(u: string, rejectFragment = false): boolean {
+  try {
+    const parsed = new URL(u);
+    if (parsed.protocol !== "https:") return false;
+    if (rejectFragment && parsed.hash) return false;
+    if (isBlockedHostname(parsed.hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const uriSchema = z
   .string()
   .url()
   .max(500)
-  .refine(
-    (u) => {
-      try {
-        const parsed = new URL(u);
-        if (parsed.protocol !== "https:") return false;
-        if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    { message: "必须是 https:// 公网地址" }
-  );
+  .refine((u) => isPublicHttpsUrl(u, true), { message: "必须是 https:// 公网地址，且不允许带 fragment" });
+
+/** scope 白名单收敛：仅允许系统支持的 scope */
+const scopesSchema = z
+  .array(z.string().min(1).max(50))
+  .min(1)
+  .refine((scopes) => scopes.every((s) => SUPPORTED_SCOPES.includes(s)), {
+    message: `scopes 仅支持: ${SUPPORTED_SCOPES.join(", ")}`,
+  });
+
+const backchannelLogoutUriSchema = z
+  .string()
+  .url()
+  .max(500)
+  .refine((u) => isPublicHttpsUrl(u), { message: "必须是 https:// 公网地址" });
 
 const createClientSchema = z.object({
   name: z.string().min(1).max(100),
   redirectUris: z.array(uriSchema).min(1),
   postLogoutRedirectUris: z.array(uriSchema).optional().default([]),
-  scopes: z.array(z.string().min(1).max(50)).min(1),
+  scopes: scopesSchema,
   isPublic: z.boolean().optional().default(false),
-  backchannelLogoutUri: z
-    .string()
-    .url()
-    .max(500)
-    .refine(
-      (u) => {
-        try {
-          const parsed = new URL(u);
-          if (parsed.protocol !== "https:") return false;
-          if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
-          if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname))
-            return false;
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "必须是 https:// 公网地址" }
-    )
-    .optional(),
+  backchannelLogoutUri: backchannelLogoutUriSchema.optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional().default(300),
   accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional().default(900),
 });
@@ -67,30 +67,10 @@ const updateClientSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   redirectUris: z.array(uriSchema).min(1).optional(),
   postLogoutRedirectUris: z.array(uriSchema).optional(),
-  scopes: z.array(z.string().min(1).max(50)).min(1).optional(),
+  scopes: scopesSchema.optional(),
   isActive: z.boolean().optional(),
   isPublic: z.boolean().optional(),
-  backchannelLogoutUri: z
-    .string()
-    .url()
-    .max(500)
-    .refine(
-      (u) => {
-        try {
-          const parsed = new URL(u);
-          if (parsed.protocol !== "https:") return false;
-          if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(parsed.hostname)) return false;
-          if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(parsed.hostname))
-            return false;
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "必须是 https:// 公网地址" }
-    )
-    .nullable()
-    .optional(),
+  backchannelLogoutUri: backchannelLogoutUriSchema.nullable().optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional(),
   accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional(),
 });
@@ -161,10 +141,12 @@ function generateClientId(): string {
       result += chars[bytes[i] % chars.length];
     }
   }
-  // 兜底：若 rejection sampling 不足（极不可能），使用 fallback 补足
-  if (result.length < 24) {
-    const fallback = randomBytes(48);
+  // 兜底：若 rejection sampling 不足（极不可能），继续用 rejection sampling 补足
+  // （不能直接用取模，256 不能被 36 整除会产生取模偏置）
+  while (result.length < 24) {
+    const fallback = randomBytes(24);
     for (let i = 0; i < fallback.length && result.length < 24; i++) {
+      if (fallback[i] >= maxValid) continue;
       result += chars[fallback[i] % chars.length];
     }
   }
@@ -302,6 +284,12 @@ export interface VerifyClientResult {
 }
 
 /**
+ * 预计算的 bcrypt dummy hash（cost 12，与真实 secret 一致）。
+ * clientId 不存在时也执行一次比较，消除 clientId 枚举的时序侧信道。
+ */
+const DUMMY_SECRET_HASH = "$2b$12$Lx3ziMGPANWOQnKuh61SCOW6fsmL4T9HANUEOxkKtShykBMdeFcpC";
+
+/**
  * 按 clientId 验证 client_secret
  * - Confidential Client：必须提供并验证 client_secret
  * - Public Client：当 allowPublic=true 且未提供 secret 时直接通过（用于 token 端点）
@@ -318,6 +306,9 @@ export async function verifyOAuthClientSecret(
   });
 
   if (!client) {
+    // 时序侧信道缓解：clientId 不存在时也执行一次 dummy bcrypt 比较，
+    // 使响应时间与"client 存在但 secret 错误"的情况一致
+    await verifySecret(secret ?? "", DUMMY_SECRET_HASH);
     return { client: null, reason: "not_found" };
   }
 
@@ -431,6 +422,8 @@ export async function updateOAuthClient(
  *
  * 删除前会清理该 client 关联的会话、授权、 consent 与 refresh token 记录，
  * 避免已删除 client 的历史数据残留。
+ * 注意：ssoAuditEvent 刻意保留不级联删除——审计事件中的 clientName 字段
+ * 本为冗余留存设计，用于 client 删除后仍可追溯历史事件。
  */
 export async function deleteOAuthClient(id: string): Promise<boolean> {
   try {
@@ -458,8 +451,7 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
       await tx.userConsent.deleteMany({ where: { clientId: client.clientId } });
       await tx.refreshToken.deleteMany({ where: { clientId: client.clientId } });
       await tx.oAuthAuthorizationCode.deleteMany({ where: { clientId: client.clientId } });
-      await tx.ssoAuditEvent.deleteMany({ where: { clientId: client.clientId } });
-      // 删除 client 本身
+      // 删除 client 本身（ssoAuditEvent 审计日志刻意保留，用于合规追溯）
       await tx.oAuthClient.delete({ where: { id } });
     });
 

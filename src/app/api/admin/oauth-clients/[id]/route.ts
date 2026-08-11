@@ -13,6 +13,8 @@ import {
   toSafeClientResponse,
 } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
+import { recordSsoEvent } from "@/lib/sso-audit";
+import { getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -145,6 +147,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     }
 
+    // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
+    await recordSsoEvent({
+      event: "status_change",
+      clientId: client.clientId,
+      clientName: client.name,
+      ip: getClientIP(request),
+      success: true,
+      detail: {
+        action: "client_updated",
+        isActiveTransition:
+          previousClient.isActive !== client.isActive
+            ? `${previousClient.isActive} -> ${client.isActive}`
+            : undefined,
+      },
+    });
+
     await createAuditLog({
       action: "oauth_client_update",
       targetType: "oauth_client",
@@ -229,6 +247,16 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         { status: 404 }
       );
     }
+
+    // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
+    await recordSsoEvent({
+      event: "status_change",
+      clientId: client.clientId,
+      clientName: client.name,
+      ip: getClientIP(request),
+      success: true,
+      detail: { action: "client_deleted", affectedUserCount: activeSessions.length },
+    });
 
     await createAuditLog({
       action: "oauth_client_delete",

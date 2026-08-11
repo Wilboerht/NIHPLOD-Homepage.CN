@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { escapeCSV } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -73,20 +74,6 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         take: 5000,
       });
-
-      const escapeCSV = (val: string): string => {
-        // 先转义双引号（CSV 标准：用两个双引号表示一个引号字符）
-        let escaped = val.replace(/"/g, '""');
-        // 包含逗号、双引号、换行或制表符时用双引号包裹
-        if (/[",\n\r\t]/.test(escaped)) {
-          escaped = `"${escaped}"`;
-        }
-        // 防公式注入：以 = + - @ 或制表符开头的单元格加单引号前缀
-        if (/^[=+\-@\t]/.test(escaped)) {
-          escaped = `'${escaped}`;
-        }
-        return escaped;
-      };
 
       const csvHeaders = "id,event,userId,clientId,clientName,ip,success,createdAt\n";
       const csvRows = items

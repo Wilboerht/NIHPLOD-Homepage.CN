@@ -11,6 +11,7 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { createOAuthClient, listOAuthClients, toSafeClientResponse } from "@/lib/oauth-client";
 import { createAuditLog } from "@/lib/audit";
+import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
@@ -152,6 +153,16 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const result = await createOAuthClient(body);
+
+    // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
+    await recordSsoEvent({
+      event: "status_change",
+      clientId: result.client.clientId,
+      clientName: result.client.name,
+      ip: getClientIP(request),
+      success: true,
+      detail: { action: "client_created", scopes: result.client.scopes },
+    });
 
     await createAuditLog({
       action: "oauth_client_create",

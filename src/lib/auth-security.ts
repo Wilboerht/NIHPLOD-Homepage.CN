@@ -8,6 +8,7 @@ import { createHash } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { getClientIP } from "./client-ip";
 import { logAuthEvent } from "./auth-logger";
+import { recordSsoEvent } from "./sso-audit";
 
 // ============================================
 // 标识符哈希（LoginAttempt 表中不存储明文手机号）
@@ -338,6 +339,8 @@ export type RefreshTokenValidationResult =
       valid: false;
       reason:
         "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" | "error";
+      /** 仅 concurrent_rotation 时存在：本次吊销的 token 家族成员数（RFC 6819 §5.2.2.3） */
+      familyRevokedCount?: number;
     };
 
 /**
@@ -399,7 +402,20 @@ export async function atomicallyRotateRefreshToken(
 
       if (revokeResult.count === 0) {
         // 并发场景：另一个请求已先撤销此 Token → 视为重用攻击
-        return { valid: false as const, reason: "concurrent_rotation" as const };
+        // 按 RFC 6819 §5.2.2.3：吊销该用户在该 client 下的整个 token 家族
+        const familyRevoked = await tx.refreshToken.updateMany({
+          where: {
+            userId,
+            clientId: clientId ?? null,
+            revokedAt: null,
+          },
+          data: { revokedAt: new Date() },
+        });
+        return {
+          valid: false as const,
+          reason: "concurrent_rotation" as const,
+          familyRevokedCount: familyRevoked.count,
+        };
       }
 
       // 4. 查找同用户、同 client 下的活跃 Token（按 client 隔离设备复用）
@@ -467,6 +483,21 @@ export async function atomicallyRotateRefreshToken(
 
       return { valid: true as const };
     });
+
+    // 检测到 refresh token 重用攻击：记录合规敏感的审计事件（同步 await，防止丢失）
+    if (!result.valid && result.reason === "concurrent_rotation") {
+      await recordSsoEvent({
+        event: "status_change",
+        userId,
+        clientId,
+        success: false,
+        detail: {
+          action: "refresh_token_family_revoked",
+          reason: "concurrent_rotation",
+          familyRevokedCount: result.familyRevokedCount ?? 0,
+        },
+      });
+    }
 
     return result;
   } catch (error) {

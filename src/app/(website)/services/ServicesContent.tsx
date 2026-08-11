@@ -271,6 +271,15 @@ export function ServicesContent({ content }: ServicesContentProps) {
           >
             <Menu className="h-5 w-5 text-brand-charcoal" />
           </button>
+
+          {/* 手机端返回首页按钮 - 与左侧菜单镜像 */}
+          <Link
+            href="/"
+            className="absolute right-0 flex h-10 w-10 items-center justify-center rounded-full transition-colors active:bg-brand-charcoal/5 md:hidden"
+            aria-label="返回首页"
+          >
+            <Home className="h-5 w-5 text-brand-charcoal" strokeWidth={1.5} />
+          </Link>
         </div>
       </nav>
 
