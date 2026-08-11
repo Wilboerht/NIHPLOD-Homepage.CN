@@ -76,7 +76,7 @@ export function KineticBackground() {
       const dock = document.querySelector<HTMLElement>('nav[aria-label="主要导航"]')?.parentElement;
 
       if (!drawerButton || !dock) {
-        container.style.top = "";
+        // 缺少参照元素时保持当前位置，避免页面切换时回退到 CSS 默认值产生抖动
         return;
       }
 
@@ -91,8 +91,18 @@ export function KineticBackground() {
       // 由于 Logo 位于 container 上方 logoOffset 处，container 中心需向下偏移 logoOffset/2
       const containerCenter = targetCenter + logoOffset / 2;
       container.style.top = `${containerCenter}px`;
+      console.log("[KineticBackground] position updated", {
+        upperBound,
+        lowerBound,
+        targetCenter,
+        logoOffset,
+        containerHeight,
+        containerCenter,
+        top: container.style.top,
+      });
     };
 
+    console.log("[KineticBackground] effect running", { showCards, isDrawerAnimating });
     updatePosition();
     window.addEventListener("resize", updatePosition);
 
@@ -112,7 +122,6 @@ export function KineticBackground() {
       window.removeEventListener("resize", updatePosition);
       ro.disconnect();
       cancelAnimationFrame(rafId);
-      container.style.top = "";
     };
   }, [isDrawerAnimating, showCards]);
 
