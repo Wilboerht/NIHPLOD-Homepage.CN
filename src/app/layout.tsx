@@ -124,9 +124,8 @@ export const metadata: Metadata = {
     },
   },
 
-  // 验证
+  // 验证（接入 Google Search Console 时在此填入真实 code：google: "your-code"）
   verification: {
-    google: "",
     // yandex: "your-yandex-verification-code",
     other: {
       "baidu-site-verification": "codeva-Gp1L3OAokH",

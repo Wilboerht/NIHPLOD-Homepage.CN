@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { verifyAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { pushUrlsToBaidu } from "@/lib/baidu-push";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -64,6 +65,14 @@ export async function POST(request: NextRequest) {
         );
       }
       revalidatePath(path);
+    }
+
+    // 内容更新后主动推送给百度加速收录（token 未配置时静默跳过）；
+    // 排除后台路径与 noindex 页面；推送失败不影响主流程，故不 await
+    const NOINDEX_PATHS = ["/services", "/terms", "/privacy"];
+    const pushPaths = paths.filter((p) => !p.startsWith("/admin/") && !NOINDEX_PATHS.includes(p));
+    if (pushPaths.length > 0) {
+      void pushUrlsToBaidu(pushPaths);
     }
 
     return NextResponse.json({

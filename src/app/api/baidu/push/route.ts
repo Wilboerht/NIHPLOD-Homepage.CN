@@ -9,13 +9,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
-import { apiConsole } from "@/lib/logger";
-
-const BAIDU_PUSH_TOKEN = process.env.BAIDU_PUSH_TOKEN;
-const BAIDU_PUSH_API = "http://data.zz.baidu.com/urls";
+import { pushUrlsToBaidu } from "@/lib/baidu-push";
 
 export async function POST(request: NextRequest) {
-  if (!BAIDU_PUSH_TOKEN) {
+  if (!process.env.BAIDU_PUSH_TOKEN) {
     return NextResponse.json({ error: "BAIDU_PUSH_TOKEN 未配置" }, { status: 500 });
   }
 
@@ -32,35 +29,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
-  try {
-    const { urls } = (await request.json()) as { urls: string[] };
+  const { urls } = (await request.json()) as { urls: string[] };
 
-    if (!urls || !Array.isArray(urls) || urls.length === 0) {
-      return NextResponse.json({ error: "urls 参数必填" }, { status: 400 });
-    }
+  if (!urls || !Array.isArray(urls) || urls.length === 0) {
+    return NextResponse.json({ error: "urls 参数必填" }, { status: 400 });
+  }
 
-    const body = urls.join("\n");
+  // 兼容旧入参：既支持完整 URL，也支持站内相对路径
+  const paths = urls.map((u) => (u.startsWith("http") ? new URL(u).pathname : u));
 
-    const response = await fetch(
-      `${BAIDU_PUSH_API}?site=${process.env.NEXT_PUBLIC_SITE_URL}&token=${BAIDU_PUSH_TOKEN}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body,
-      }
-    );
-
-    const result = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      pushed: result.success || 0,
-      remain: result.remain || 0,
-      notSameSite: result.not_same_site || [],
-      notValid: result.not_valid || [],
-    });
-  } catch (error) {
-    apiConsole.error("百度推送失败:", error);
+  const result = await pushUrlsToBaidu(paths);
+  if (!result) {
     return NextResponse.json({ error: "推送失败" }, { status: 500 });
   }
+
+  return NextResponse.json({ success: true, ...result });
 }

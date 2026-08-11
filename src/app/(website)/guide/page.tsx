@@ -10,7 +10,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "护肤仪式与指南",
   description:
-    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
+    "NIHPLOD 旎柏官方护肤仪式指南：晨间与晚间护肤步骤、脂质体护肤品科学使用方法。简单，从不妥协，教你正确使用高端护肤品，让护肤更有效。",
   keywords: [
     "NIHPLOD",
     "旎柏",

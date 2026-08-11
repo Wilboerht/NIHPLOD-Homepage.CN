@@ -9,7 +9,7 @@ export const revalidate = 86400; // 24小时
 export const metadata: Metadata = {
   title: "联系我们",
   description:
-    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
+    "联系 NIHPLOD 旎柏官方客服：产品咨询、售后服务、商务合作一站直达。源自摩纳哥的高端护肤品牌，专属服务始终在线。",
   alternates: {
     canonical: "/contact",
   },

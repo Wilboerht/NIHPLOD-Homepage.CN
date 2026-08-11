@@ -9,7 +9,7 @@ export const revalidate = 3600; // 1小时
 export const metadata: Metadata = {
   title: "加入我们",
   description:
-    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
+    "加入 NIHPLOD 旎柏：源自摩纳哥的高端护肤品牌诚聘品牌运营、电商、市场等岗位人才。与专注美好的团队一起，逆转时光。",
   alternates: {
     canonical: "/careers",
   },
