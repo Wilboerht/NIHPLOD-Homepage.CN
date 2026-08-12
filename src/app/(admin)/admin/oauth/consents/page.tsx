@@ -71,9 +71,12 @@ function OAuthConsentsPage() {
   const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
 
-  const [revokeTarget, setRevokeTarget] = useState<{ userId: string; clientId: string } | null>(
-    null
-  );
+  const [revokeTarget, setRevokeTarget] = useState<{
+    userId: string;
+    phone: string;
+    clientId: string;
+    clientName: string;
+  } | null>(null);
   const [showRevoke, setShowRevoke] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
@@ -217,7 +220,7 @@ function OAuthConsentsPage() {
                   <td className="px-4 py-3 text-sm">
                     <Tooltip content="查看用户详情" side="top">
                       <Link
-                        href={c.phone ? `/admin/users?search=${encodeURIComponent(c.phone)}` : "#"}
+                        href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
                         className="inline-flex text-blue-600 hover:underline"
                       >
                         {c.phone ? maskPhone(c.phone) : c.userId}
@@ -255,8 +258,14 @@ function OAuthConsentsPage() {
                     {c.status === "active" ? (
                       <Tooltip content="撤销授权" side="top">
                         <button
+                          aria-label="撤销授权"
                           onClick={() => {
-                            setRevokeTarget({ userId: c.userId, clientId: c.clientId });
+                            setRevokeTarget({
+                              userId: c.userId,
+                              phone: c.phone,
+                              clientId: c.clientId,
+                              clientName: c.clientName,
+                            });
                             setShowRevoke(true);
                           }}
                           className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-red-600"
@@ -293,7 +302,7 @@ function OAuthConsentsPage() {
         onConfirm={handleRevoke}
         type="danger"
         title="撤销用户授权"
-        description={`确定要撤销用户 ${revokeTarget?.userId} 对 ${revokeTarget?.clientId} 的授权吗？撤销后该用户将需要重新授权。`}
+        description={`确定要撤销用户 ${revokeTarget?.phone || revokeTarget?.userId} 对 ${revokeTarget?.clientName || revokeTarget?.clientId} 的授权吗？撤销后该用户将需要重新授权。`}
         confirmText="确定撤销"
         loading={revoking}
       />

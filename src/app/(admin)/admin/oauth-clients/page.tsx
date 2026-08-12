@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Plus,
   Pencil,
@@ -149,6 +150,9 @@ function OAuthClientsPage() {
   // Delete confirm modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+
+  // Disable confirm modal（禁用会级联撤销会话并 backchannel 登出子项目用户，需二次确认）
+  const [disableClient, setDisableClient] = useState<OAuthClient | null>(null);
 
   // Detail drawer
   const [detailClient, setDetailClient] = useState<OAuthClient | null>(null);
@@ -335,6 +339,7 @@ function OAuthClientsPage() {
   };
 
   const handleToggleActive = async (client: OAuthClient) => {
+    setSaving(true);
     try {
       await apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${client.id}`, {
         isActive: !client.isActive,
@@ -343,6 +348,9 @@ function OAuthClientsPage() {
       fetchClients();
     } catch {
       toast.error("网络错误");
+    } finally {
+      setSaving(false);
+      setDisableClient(null);
     }
   };
 
@@ -496,6 +504,9 @@ if (!payload) {
               className="w-64 pl-9"
             />
           </div>
+          <Link href="/admin/oauth-clients/wizard">
+            <Button variant="outline">向导创建</Button>
+          </Link>
           <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
             新建 Client
           </Button>
@@ -507,7 +518,9 @@ if (!payload) {
         <table className="w-full">
           <thead className="border-b bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
+              <th className="min-w-[10rem] px-4 py-3 text-left text-sm font-medium text-gray-500">
+                名称
+              </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Client ID</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">类型</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">回调 URL</th>
@@ -516,7 +529,9 @@ if (!payload) {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">最近活跃</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">操作</th>
+              <th className="sticky right-0 bg-gray-50 px-4 py-3 text-right text-sm font-medium text-gray-500">
+                操作
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -531,7 +546,7 @@ if (!payload) {
             ) : (
               clients.map((c) => (
                 <tr key={c.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium">
+                  <td className="min-w-[10rem] px-4 py-3 text-sm font-medium">
                     <button
                       onClick={() => setDetailClient(c)}
                       className="text-left hover:text-blue-600 hover:underline"
@@ -546,6 +561,7 @@ if (!payload) {
                       </span>
                       <Tooltip content="复制 Client ID" side="top">
                         <button
+                          aria-label="复制 Client ID"
                           onClick={() => copyToClipboard(c.clientId)}
                           className="inline-flex text-gray-400 hover:text-gray-600"
                         >
@@ -589,10 +605,11 @@ if (!payload) {
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(c.createdAt)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="sticky right-0 bg-white px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip content="查看详情" side="top">
                         <button
+                          aria-label="查看详情"
                           onClick={() => setDetailClient(c)}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
                         >
@@ -601,6 +618,7 @@ if (!payload) {
                       </Tooltip>
                       <Tooltip content="生成接入配置" side="top">
                         <button
+                          aria-label="生成接入配置"
                           onClick={() => openSdkConfig(c)}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-green-600"
                         >
@@ -609,6 +627,7 @@ if (!payload) {
                       </Tooltip>
                       <Tooltip content="在线测试" side="top">
                         <button
+                          aria-label="在线测试"
                           onClick={() => openTest(c)}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-green-600"
                         >
@@ -617,6 +636,7 @@ if (!payload) {
                       </Tooltip>
                       <Tooltip content="编辑" side="top">
                         <button
+                          aria-label="编辑"
                           onClick={() => openEdit(c)}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
                         >
@@ -625,6 +645,7 @@ if (!payload) {
                       </Tooltip>
                       <Tooltip content="轮换密钥" side="top">
                         <button
+                          aria-label="轮换密钥"
                           onClick={() => {
                             setRotateClientId(c.id);
                             setShowRotateConfirm(true);
@@ -636,7 +657,8 @@ if (!payload) {
                       </Tooltip>
                       <Tooltip content={c.isActive ? "禁用" : "启用"} side="top">
                         <button
-                          onClick={() => handleToggleActive(c)}
+                          aria-label={c.isActive ? "禁用" : "启用"}
+                          onClick={() => (c.isActive ? setDisableClient(c) : handleToggleActive(c))}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-orange-600"
                         >
                           <Power className="h-4 w-4" />
@@ -644,6 +666,7 @@ if (!payload) {
                       </Tooltip>
                       <Tooltip content="删除 Client" side="top">
                         <button
+                          aria-label="删除 Client"
                           onClick={() => {
                             setDeleteClientId(c.id);
                             setShowDeleteConfirm(true);
@@ -767,7 +790,7 @@ if (!payload) {
                 label="Public Client"
                 description={
                   formIsPublic
-                    ? "SPA / 移动端 / 桌面端，不传输 client_secret"
+                    ? "SPA / 移动端 / 桌面端，不传输 client_secret，使用 PKCE"
                     : "Next.js / 服务端应用，必须保密 client_secret"
                 }
               />
@@ -832,7 +855,7 @@ if (!payload) {
               label="Public Client"
               description={
                 formIsPublic
-                  ? "SPA / 移动端 / 桌面端，不传输 client_secret"
+                  ? "SPA / 移动端 / 桌面端，不传输 client_secret，使用 PKCE"
                   : "Next.js / 服务端应用，必须保密 client_secret"
               }
             />
@@ -866,7 +889,7 @@ if (!payload) {
         }}
         onConfirm={handleRotateSecret}
         title="轮换 Client 密钥"
-        description="确定要轮换该 Client 的密钥？轮换后旧密钥将在 5 分钟内失效，所有使用旧密钥的子项目需要立即更新配置。"
+        description="确定要轮换该 Client 的密钥？旧 Secret 在 5 分钟过渡期内仍可使用，之后自动失效。所有使用旧密钥的子项目需要在过渡期内更新配置。"
         confirmText="确定轮换"
         loading={saving}
       />
@@ -886,6 +909,18 @@ if (!payload) {
         loading={saving}
       />
 
+      {/* Disable Confirm（启用无需确认，直接生效） */}
+      <ConfirmDialog
+        open={!!disableClient}
+        onClose={() => setDisableClient(null)}
+        onConfirm={() => (disableClient ? handleToggleActive(disableClient) : undefined)}
+        type="danger"
+        title="禁用 Client"
+        description={`确定要禁用「${disableClient?.name || ""}」吗？禁用后该 Client 的所有用户会话将立即失效，子项目用户会被登出。`}
+        confirmText="确定禁用"
+        loading={saving}
+      />
+
       {/* Rotated Secret Display Modal */}
       <Modal
         open={showRotatedSecret}
@@ -899,7 +934,8 @@ if (!payload) {
           <div className="rounded-lg border border-green-200 bg-green-50 p-4">
             <p className="mb-2 text-sm font-medium text-green-800">新 Secret 已生成</p>
             <p className="mb-3 text-xs text-green-600">
-              请立即复制并安全保存。旧 Secret 将在 5 分钟内失效，关闭后无法再次查看新 Secret。
+              请立即复制并安全保存。旧 Secret 在 5 分钟过渡期内仍可使用，之后自动失效，关闭后无法再次查看新
+              Secret。
             </p>
             <div className="flex items-center gap-2">
               <Input
@@ -1064,6 +1100,7 @@ if (!payload) {
             <span className="absolute right-2 top-2">
               <Tooltip content="复制代码" side="top">
                 <button
+                  aria-label="复制代码"
                   onClick={() => copyToClipboard(sdkConfigCode)}
                   className="inline-flex rounded bg-gray-700 p-1.5 text-white hover:bg-gray-600"
                 >

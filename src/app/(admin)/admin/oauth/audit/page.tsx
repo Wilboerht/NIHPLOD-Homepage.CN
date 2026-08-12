@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ interface AuditEntry {
   id: string;
   event: string;
   userId: string;
+  userPhone: string | null;
   clientId: string;
   clientName: string;
   ip: string;
@@ -307,7 +308,7 @@ function OAuthAuditPage() {
                 事件类型
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
-                用户 ID
+                用户
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
                 Client ID
@@ -349,7 +350,7 @@ function OAuthAuditPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
-                      {entry.userId}
+                      {entry.userPhone || "-"}
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
                       {entry.clientId}

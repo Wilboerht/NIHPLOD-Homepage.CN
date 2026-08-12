@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { escapeCSV } from "@/lib/sso-audit";
+import { maskPhone } from "@/lib/mask-phone";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -109,11 +110,25 @@ export async function GET(request: NextRequest) {
       prisma.ssoAuditEvent.count({ where }),
     ]);
 
+    // 联表 User 取手机号并脱敏，供管理端列表展示（userId 为空或用户已删除时为 null）
+    const userIds = [
+      ...new Set(items.map((i) => i.userId).filter((id): id is string => !!id)),
+    ];
+    const users =
+      userIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, phone: true },
+          })
+        : [];
+    const phoneMap = new Map(users.map((u) => [u.id, u.phone ? maskPhone(u.phone) : null]));
+
     return NextResponse.json({
       success: true,
       data: {
         items: items.map((item) => ({
           ...item,
+          userPhone: (item.userId && phoneMap.get(item.userId)) || null,
           createdAt: item.createdAt.toISOString(),
         })),
         pagination: { page, pageSize, total },

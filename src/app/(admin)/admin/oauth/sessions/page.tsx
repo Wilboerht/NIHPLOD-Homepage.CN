@@ -90,6 +90,8 @@ function OAuthSessionsPage() {
   const [terminateTarget, setTerminateTarget] = useState<{
     id: string;
     userId: string;
+    phone: string;
+    nickname: string;
     clientId: string;
   } | null>(null);
   const [showTerminate, setShowTerminate] = useState(false);
@@ -327,6 +329,7 @@ function OAuthSessionsPage() {
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip content="查看详情" side="top">
                         <button
+                          aria-label="查看详情"
                           onClick={() => setDetailSession(s)}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
                         >
@@ -335,10 +338,13 @@ function OAuthSessionsPage() {
                       </Tooltip>
                       <Tooltip content="终止会话" side="top">
                         <button
+                          aria-label="终止会话"
                           onClick={() => {
                             setTerminateTarget({
                               id: s.id,
                               userId: s.userId,
+                              phone: s.phone,
+                              nickname: s.nickname,
                               clientId: s.clientId,
                             });
                             setShowTerminate(true);
@@ -370,7 +376,7 @@ function OAuthSessionsPage() {
         onConfirm={handleTerminate}
         type="danger"
         title="终止会话"
-        description={`确定要终止用户 ${terminateTarget?.userId} 在 ${terminateTarget?.clientId} 的这条会话吗？该操作将立即注销该会话的 Token。`}
+        description={`确定要终止用户 ${terminateTarget?.phone || terminateTarget?.userId}${terminateTarget?.nickname ? `（${terminateTarget.nickname}）` : ""} 在 ${terminateTarget?.clientId} 的这条会话吗？该操作将立即注销该会话的 Token。`}
         confirmText="确定终止"
         loading={terminating}
       />
@@ -502,6 +508,8 @@ function OAuthSessionsPage() {
                     setTerminateTarget({
                       id: detailSession.id,
                       userId: detailSession.userId,
+                      phone: detailSession.phone,
+                      nickname: detailSession.nickname,
                       clientId: detailSession.clientId,
                     });
                     setShowTerminate(true);

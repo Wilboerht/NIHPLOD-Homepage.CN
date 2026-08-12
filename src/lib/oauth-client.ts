@@ -154,10 +154,12 @@ function generateClientId(): string {
 }
 
 /**
- * 生成 clientSecret：32 字节 base64
+ * 生成 clientSecret：32 字节 base64url
+ * 与轮换路径（rotate-secret 路由）保持一致的编码：base64url 不含 +/=，
+ * 避免 client_secret 经 form 编码传输时 + 被解码为空格导致认证失败。
  */
 function generateClientSecret(): string {
-  return randomBytes(32).toString("base64");
+  return randomBytes(32).toString("base64url");
 }
 
 /**

@@ -28,6 +28,7 @@ const { mockVerifyAuth, mockCheckAdminRateLimit, prismaMock } = vi.hoisted(() =>
     mockCheckAdminRateLimit: vi.fn(),
     prismaMock: {
       ssoAuditEvent: createMockModel(),
+      user: createMockModel(),
     } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
   };
 });
@@ -96,6 +97,7 @@ describe("GET /api/admin/oauth/audit", () => {
     vi.clearAllMocks();
     mockVerifyAuth.mockResolvedValue(OWNER);
     mockCheckAdminRateLimit.mockResolvedValue(null);
+    prismaMock.user.findMany.mockResolvedValue([]);
   });
 
   it("非 owner 角色应返回 403", async () => {
@@ -138,6 +140,33 @@ describe("GET /api/admin/oauth/audit", () => {
     const where2 = (prismaMock.ssoAuditEvent.findMany.mock.calls[1][0] as { where: Record<string, unknown> })
       .where;
     expect(where2).not.toHaveProperty("event");
+  });
+
+  it("JSON 分页查询：联表 User 返回脱敏手机号，无关联用户时为 null", async () => {
+    prismaMock.ssoAuditEvent.findMany.mockResolvedValue([
+      makeAuditItem({ userId: "user-1" }),
+      makeAuditItem({ id: "evt-2", userId: null }),
+      makeAuditItem({ id: "evt-3", userId: "deleted-user" }),
+    ]);
+    prismaMock.ssoAuditEvent.count.mockResolvedValue(3);
+    prismaMock.user.findMany.mockResolvedValue([
+      { id: "user-1", phone: "13812341234" },
+    ]);
+
+    const { GET } = await import("@/app/api/admin/oauth/audit/route");
+    const res = await GET(createRequest("/api/admin/oauth/audit"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.items[0].userPhone).toBe("138****1234");
+    expect(data.data.items[1].userPhone).toBeNull();
+    // 已删除用户（联表无记录）同样为 null
+    expect(data.data.items[2].userPhone).toBeNull();
+    // userId 为空/已删除的记录不应带入口查询条件
+    const userQuery = prismaMock.user.findMany.mock.calls[0][0] as {
+      where: { id: { in: string[] } };
+    };
+    expect(userQuery.where.id.in).toEqual(["user-1", "deleted-user"]);
   });
 
   it("CSV 导出：响应头正确，且以 = 开头含逗号的单元格被加 ' 前缀（公式注入防护）", async () => {

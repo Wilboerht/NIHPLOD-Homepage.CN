@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
 
     if (params.search) {
       where.OR = [
+        { id: { equals: params.search } },
         { phone: { contains: params.search, mode: "insensitive" } },
         { nickname: { contains: params.search, mode: "insensitive" } },
       ];
