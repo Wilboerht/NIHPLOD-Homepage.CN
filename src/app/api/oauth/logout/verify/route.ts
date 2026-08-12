@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyLogoutToken } from "@/lib/jwt";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { recordSsoEvent } from "@/lib/sso-audit";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // 验证 client
     const verifyResult = await verifyOAuthClientSecret(client_id, client_secret);
     if (!verifyResult.client) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "backchannel_logout",
         clientId: client_id,
         ip,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     // 验证 logout_token 签名（aud 必须匹配 client_id）
     const payload = await verifyLogoutToken(logout_token, client_id);
     if (!payload) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "backchannel_logout",
         clientId: client_id,
         clientName: client.name,
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     const hasSub = typeof payload.sub === "string" && payload.sub.length > 0;
     const hasSid = typeof payload.sid === "string" && payload.sid.length > 0;
     if (!hasSub && !hasSid) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "backchannel_logout",
         clientId: client_id,
         clientName: client.name,
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         ? (payload.events as Record<string, unknown>)
         : null;
     if (!events || !(expectedEvent in events)) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "backchannel_logout",
         userId: payload.sub,
         clientId: client_id,
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    recordSsoEvent({
+    scheduleSsoEvent({
       event: "backchannel_logout",
       userId: payload.sub,
       clientId: client_id,

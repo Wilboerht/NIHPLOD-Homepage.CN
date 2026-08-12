@@ -14,7 +14,7 @@ import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { prisma } from "@/lib/prisma";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { recordSsoEvent } from "@/lib/sso-audit";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
 import { validateDPoPProof, computeDPoPAth, dpopNonceHeader, getDPoPHtu } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     //   userinfo 端点不进行 client 认证。通过 DPoP token binding 防止 token 被盗后在不同 client 重用）
     const payload = await verifyOAuthAccessToken(token);
     if (!payload) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "userinfo",
         ip,
         success: false,
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     // 检查 access token 黑名单（封禁后 15 分钟窗口期内的 token）
     const blacklisted = await isTokenBlacklisted(payload.id);
     if (blacklisted) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "userinfo",
         userId: payload.id,
         clientId: payload.client_id,
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
       (payload as { client_type?: string }).client_type === "m2m" ||
       payload.id.startsWith("client:");
     if (isM2m) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "userinfo",
         clientId: payload.client_id,
         ip,
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!user || user.status !== "ACTIVE") {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "userinfo",
         userId: payload.id,
         clientId: payload.client_id,
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
       response.total_points = user.totalPoints;
     }
 
-    recordSsoEvent({
+    scheduleSsoEvent({
       event: "userinfo",
       userId: payload.id,
       clientId: payload.client_id,

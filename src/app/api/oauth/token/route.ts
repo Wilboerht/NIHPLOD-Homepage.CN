@@ -35,7 +35,7 @@ import {
   revokeRefreshToken,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { recordSsoEvent } from "@/lib/sso-audit";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     });
     if (!verifyResult.client) {
       const reason = verifyResult.reason;
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "token",
         clientId: client_id,
         ip,
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     // Confidential Client 必须提供 client_secret
     if (!client.isPublic && !client_secret) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "token",
         clientId: client_id,
         clientName: client.name,
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
           });
           // 授权码与 refresh token 无直接关联，按 userId+clientId 撤销整个会话族
           await revokeRefreshToken(usedCode.userId, undefined, usedCode.clientId);
-          recordSsoEvent({
+          scheduleSsoEvent({
             event: "token",
             userId: usedCode.userId,
             clientId: client_id,
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
             detail: { grant_type, reason: "code_replay_all_tokens_revoked" },
           });
         } else {
-          recordSsoEvent({
+          scheduleSsoEvent({
             event: "token",
             userId: undefined,
             clientId: client_id,
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
 
       // 校验 client_id 与授权码一致
       if (codeData.clientId !== client_id) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: codeData.userId,
           clientId: client_id,
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
         return resJson({ error: "invalid_grant", error_description: "缺少 redirect_uri" }, 400);
       }
       if (redirect_uri !== codeData.redirectUri) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: codeData.userId,
           clientId: client_id,
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
       if (
         !verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")
       ) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: codeData.userId,
           clientId: client_id,
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!user || user.status !== "ACTIVE") {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: codeData.userId,
           clientId: client_id,
@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
         where: { userId_clientId: { userId: user.id, clientId: client_id } },
       });
       if (consent && consent.revokedAt) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: user.id,
           clientId: client_id,
@@ -319,7 +319,7 @@ export async function POST(request: NextRequest) {
         (s) => OIDC_IMPLICIT_SCOPES.includes(s) || grantedScopes.includes(s)
       );
       if (!allScopesCovered) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: user.id,
           clientId: client_id,
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
       const idToken = await signIdToken(idTokenClaims);
 
       // 审计日志
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "token",
         userId: user.id,
         clientId: client_id,
@@ -486,7 +486,7 @@ export async function POST(request: NextRequest) {
       // Refresh Token 所有权校验：OAuth 流程签发的 token 必须携带 client_id，
       // 且与请求方一致。无 client_id 的旧版内部 token 不允许在 OAuth 端点刷新。
       if (!refreshPayload.client_id) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -498,7 +498,7 @@ export async function POST(request: NextRequest) {
         return resJson({ error: "invalid_grant", error_description: "Refresh token 无效" }, 400);
       }
       if (refreshPayload.client_id !== client_id) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -532,7 +532,7 @@ export async function POST(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
       if (!session) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -555,7 +555,7 @@ export async function POST(request: NextRequest) {
         where: { userId_clientId: { userId: refreshPayload.id, clientId: client_id } },
       });
       if (consent?.revokedAt) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -599,7 +599,7 @@ export async function POST(request: NextRequest) {
       );
 
       if (!rotationResult.valid) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -629,7 +629,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!user || user.status !== "ACTIVE") {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "token",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -662,7 +662,7 @@ export async function POST(request: NextRequest) {
 
       const idToken = await signIdToken(idTokenClaims);
 
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "token",
         userId: refreshPayload.id,
         clientId: client_id,
@@ -741,7 +741,7 @@ export async function POST(request: NextRequest) {
         getExpiresInFromToken(accessToken) ??
         (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);
 
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "token",
         clientId: client_id,
         clientName: client.name,

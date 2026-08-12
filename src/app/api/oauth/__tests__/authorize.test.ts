@@ -19,6 +19,7 @@ vi.mock("@/lib/ratelimit", () => ({
 // === Mock sso-audit ===
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn(),
+  scheduleSsoEvent: vi.fn(),
 }));
 
 // === Mock Prisma（UserConsent 查询）===

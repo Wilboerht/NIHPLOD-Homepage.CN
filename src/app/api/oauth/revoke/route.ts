@@ -21,7 +21,7 @@ import { verifyRefreshToken, verifyOAuthAccessToken } from "@/lib/jwt";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { revokeAccessToken } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { recordSsoEvent } from "@/lib/sso-audit";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       allowPublic: true,
     });
     if (!verifyResult.client) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "logout",
         clientId: client_id,
         ip,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
       // 所有权校验：OAuth refresh token 携带 client_id 时，必须与本请求 client_id 一致
       if (refreshPayload.client_id && refreshPayload.client_id !== client_id) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "logout",
           userId: refreshPayload.id,
           clientId: client_id,
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         data: { revokedAt: new Date() },
       });
 
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "logout",
         userId: refreshPayload.id,
         clientId: client_id,
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
 
       // 所有权校验：client 只能撤销颁发给自己的 access_token
       if (accessPayload.client_id !== client_id) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "logout",
           userId: accessPayload.id,
           clientId: client_id,
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       if (accessPayload.jti) {
         await revokeAccessToken(accessPayload.jti);
       }
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "logout",
         userId: accessPayload.id,
         clientId: client_id,

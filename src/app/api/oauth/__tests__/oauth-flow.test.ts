@@ -145,6 +145,7 @@ vi.mock("@/lib/ratelimit", () => ({
 // === 审计日志：静默 ===
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn(),
+  scheduleSsoEvent: vi.fn(),
 }));
 
 // === 日志：静默 ===

@@ -19,7 +19,7 @@ import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyOAuthAccessToken } from "@/lib/jwt";
 import { isTokenBlacklisted, isAccessTokenRevoked } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { recordSsoEvent } from "@/lib/sso-audit";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       allowPublic: true,
     });
     if (!verifyResult.client) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "introspect",
         clientId: client_id,
         ip,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const payload = await verifyOAuthAccessToken(token);
 
     if (!payload) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "introspect",
         clientId: client_id,
         clientName: client.name,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     // Audience 校验：client 只能 introspect 颁发给自己的 token
     if (payload.client_id !== client_id) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "introspect",
         userId: payload.id,
         clientId: client_id,
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     if (!isM2m) {
       const blacklisted = await isTokenBlacklisted(payload.id);
       if (blacklisted) {
-        recordSsoEvent({
+        scheduleSsoEvent({
           event: "introspect",
           userId: payload.id,
           clientId: client_id,
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     // 检查 JTI 级令牌撤销
     if (payload.jti && (await isAccessTokenRevoked(payload.jti as string))) {
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "introspect",
         userId: payload.id,
         clientId: client_id,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
       return resJson({ active: false });
     }
 
-    recordSsoEvent({
+    scheduleSsoEvent({
       event: "introspect",
       userId: payload.id,
       clientId: client_id,

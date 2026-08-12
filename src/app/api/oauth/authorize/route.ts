@@ -14,7 +14,7 @@ import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
-import { recordSsoEvent } from "@/lib/sso-audit";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
 import { prisma } from "@/lib/prisma";
@@ -422,7 +422,7 @@ export async function GET(request: NextRequest) {
       // SDK 弹窗登录：授权成功重定向原样透传 popup_nonce（不入库，仅透传）
       if (popupNonce) redirectUrl.searchParams.set("popup_nonce", popupNonce);
 
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "authorize",
         userId: userPayload.id,
         clientId: client_id,
@@ -662,7 +662,7 @@ export async function POST(request: NextRequest) {
       // 撤销此前对该 client 的 consent（如存在）
       await revokeUserConsent(userPayload.id, client_id);
 
-      recordSsoEvent({
+      scheduleSsoEvent({
         event: "consent",
         userId: userPayload.id,
         clientId: client_id,
@@ -741,7 +741,7 @@ export async function POST(request: NextRequest) {
     // SDK 弹窗登录：授权成功重定向原样透传 popup_nonce（不入库，仅透传）
     if (popup_nonce) redirectUrl.searchParams.set("popup_nonce", popup_nonce);
 
-    recordSsoEvent({
+    scheduleSsoEvent({
       event: "authorize",
       userId: userPayload.id,
       clientId: client_id,

@@ -94,6 +94,7 @@ export async function dispatchStatusChangeWebhook(
 
     if (!success) {
       // 记录失败到 SSO 审计日志
+      // （lib 内部不保证有 request scope，无法使用 scheduleSsoEvent(after)，保持 fire-and-forget）
       recordSsoEvent({
         event: "status_change",
         userId: change.userId,

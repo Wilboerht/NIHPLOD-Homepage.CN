@@ -31,10 +31,9 @@ const supportedAlgorithms = [
   "PS512",
 ];
 
-// 已使用的 DPoP nonce 缓存（防重放，进程内）
+// 已使用的 DPoP nonce 缓存（本实例快速路径；跨实例防重放由 DB 唯一约束保证）
 // 说明：nonce 为 HMAC 签名的无状态 token，本身可跨实例验证（见 isDpopNonceIssued）。
-// 其重放检查仅作纵深防御——攻击者重放 nonce 仍需持有客户端私钥签名新 proof，
-// 且 proof 的 jti 重放已被 DB 共享拦截（见 recordProofJti），因此内存实现可接受。
+// 使用记录与 jti 一样落 TokenBlacklist 表（见 recordUsedNonce），内存 LRU 仅作快速路径。
 const usedNonces = new LRUCache<string, number>({
   max: 100000,
   ttl: DPOP_NONCE_TTL_MS,
@@ -221,6 +220,47 @@ async function recordProofJti(jti: string): Promise<boolean> {
   }
 }
 
+/**
+ * 记录已使用的 DPoP nonce（防重放），与 recordProofJti 同风格：
+ * - 进程内 LRU 为本实例快速路径；
+ * - DB（复用 TokenBlacklist 表，type 复用 "dpop_jti" 枚举值，key 前缀 "dpop-nonce:"）
+ *   通过唯一约束实现跨实例原子性；
+ * - DB 不可用时 fail-closed：多实例部署下放开内存缓存会造成跨实例重放窗口。
+ *
+ * @returns true 表示 nonce 首次使用，false 表示已使用（重放）或存储不可用
+ */
+async function recordUsedNonce(nonce: string): Promise<boolean> {
+  // 内存快速检查（本实例已见 → 直接拒绝，省去 DB 往返）
+  if (usedNonces.has(nonce)) return false;
+
+  try {
+    await prisma.tokenBlacklist.create({
+      data: {
+        type: "dpop_jti",
+        key: `dpop-nonce:${nonce}`,
+        // nonce 有效期 5 分钟，记录保留至自然过期即可覆盖重放判定
+        expiresAt: new Date(Date.now() + DPOP_NONCE_TTL_MS),
+      },
+    });
+    usedNonces.set(nonce, Date.now());
+    return true;
+  } catch (error) {
+    // 唯一约束冲突 = nonce 已被使用（含跨实例并发场景）。
+    // nonce 过期后不可能通过 isDpopNonceIssued 校验，因此 P2002 一律按重放拒绝。
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
+      usedNonces.set(nonce, Date.now());
+      return false;
+    }
+    // DB 不可用：fail-closed，拒绝以防止跨实例重放窗口
+    return false;
+  }
+}
+
 export async function validateDPoPProof(
   dpopHeader: string,
   htm: string,
@@ -333,14 +373,10 @@ export async function validateDPoPProof(
     };
   }
 
-  // nonce 不得重放（互斥锁保护 has→set 原子性）
+  // nonce 不得重放：进程内互斥锁保证本实例原子性，DB 唯一约束保证跨实例原子性
   if (payload.nonce) {
     const nonce = payload.nonce;
-    const nonceOk = await withDpopMutex(`nonce:${nonce}`, () => {
-      if (usedNonces.has(nonce)) return false;
-      usedNonces.set(nonce, Date.now());
-      return true;
-    });
+    const nonceOk = await withDpopMutex(`nonce:${nonce}`, () => recordUsedNonce(nonce));
     if (!nonceOk) {
       return { valid: false, error: "invalid_dpop_proof", errorDescription: "DPoP nonce 已被使用" };
     }

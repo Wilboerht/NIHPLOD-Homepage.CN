@@ -41,6 +41,7 @@ vi.mock("@/lib/oauth-cors", () => ({
 // === Mock sso-audit ===
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn(),
+  scheduleSsoEvent: vi.fn(),
 }));
 
 // === Mock logger ===

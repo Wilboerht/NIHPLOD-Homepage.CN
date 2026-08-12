@@ -2,7 +2,7 @@
  * DPoP (RFC 9449) 工具单元测试
  * - HMAC 签名 nonce 的签发与校验（服务端可验证、客户端不可伪造）
  * - getDPoPHtu 公网 origin 推导（path 区分大小写，scheme/host 不区分）
- * - jti 防重放：DB（TokenBlacklist 表）共享记录 + 内存快速路径
+ * - jti / nonce 防重放：DB（TokenBlacklist 表）共享记录 + 内存快速路径
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -66,11 +66,13 @@ describe("getDPoPHtu", () => {
 
 const TEST_HTU = "https://example.com/api/oauth/token";
 
-/** 生成一个合法签名的 DPoP proof JWT（ES256，jwk 内联） */
-async function makeProof(jti: string): Promise<string> {
+/** 生成一个合法签名的 DPoP proof JWT（ES256，jwk 内联），可携带 nonce claim */
+async function makeProof(jti: string, nonce?: string): Promise<string> {
   const { publicKey, privateKey } = await generateKeyPair("ES256", { extractable: true });
   const jwk = await exportJWK(publicKey);
-  return new SignJWT({ htm: "POST", htu: TEST_HTU })
+  const claims: Record<string, string> = { htm: "POST", htu: TEST_HTU };
+  if (nonce) claims.nonce = nonce;
+  return new SignJWT(claims)
     .setProtectedHeader({ alg: "ES256", typ: "dpop+jwt", jwk })
     .setJti(jti)
     .setIssuedAt()
@@ -125,5 +127,72 @@ describe("DPoP jti 防重放（DB 共享）", () => {
     const result = await validateDPoPProof(proof, "POST", TEST_HTU);
     expect(result.valid).toBe(false);
     expect(result.error).toBe("invalid_dpop_proof");
+  });
+});
+
+describe("DPoP nonce 防重放（DB 共享）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.tokenBlacklist.create).mockResolvedValue({} as never);
+  });
+
+  it("首次使用的 nonce 应通过验证并写入 TokenBlacklist（key 前缀 dpop-nonce:）", async () => {
+    const nonce = getDpopNonce("client:user-nonce-first");
+    const proof = await makeProof("jti-nonce-first", nonce);
+    const result = await validateDPoPProof(proof, "POST", TEST_HTU);
+    expect(result.valid).toBe(true);
+    expect(prisma.tokenBlacklist.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        type: "dpop_jti",
+        key: `dpop-nonce:${nonce}`,
+        expiresAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it("相同 nonce 重放（不同 jti）应被拒绝（内存快速路径）", async () => {
+    const nonce = getDpopNonce("client:user-nonce-replay");
+    const first = await validateDPoPProof(
+      await makeProof("jti-nonce-replay-1", nonce),
+      "POST",
+      TEST_HTU
+    );
+    expect(first.valid).toBe(true);
+
+    const second = await validateDPoPProof(
+      await makeProof("jti-nonce-replay-2", nonce),
+      "POST",
+      TEST_HTU
+    );
+    expect(second.valid).toBe(false);
+    expect(second.error).toBe("invalid_dpop_proof");
+    expect(second.errorDescription).toContain("nonce");
+    // jti 写 2 次 + nonce 写 1 次（第二次命中进程内缓存，不再写 DB）
+    expect(prisma.tokenBlacklist.create).toHaveBeenCalledTimes(3);
+  });
+
+  it("nonce 记录 DB 唯一约束冲突（P2002）应判定为跨实例重放并拒绝", async () => {
+    const nonce = getDpopNonce("client:user-nonce-p2002");
+    // 第一次 create（jti）成功，第二次 create（nonce）P2002 → 模拟另一实例已消费该 nonce
+    vi.mocked(prisma.tokenBlacklist.create)
+      .mockResolvedValueOnce({} as never)
+      .mockRejectedValueOnce({ code: "P2002" });
+    const proof = await makeProof("jti-nonce-p2002", nonce);
+    const result = await validateDPoPProof(proof, "POST", TEST_HTU);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("invalid_dpop_proof");
+    expect(result.errorDescription).toContain("nonce");
+  });
+
+  it("nonce 记录 DB 不可用时应 fail-closed 拒绝（防止跨实例重放窗口）", async () => {
+    const nonce = getDpopNonce("client:user-nonce-dbdown");
+    vi.mocked(prisma.tokenBlacklist.create)
+      .mockResolvedValueOnce({} as never)
+      .mockRejectedValueOnce(new Error("db down"));
+    const proof = await makeProof("jti-nonce-dbdown", nonce);
+    const result = await validateDPoPProof(proof, "POST", TEST_HTU);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("invalid_dpop_proof");
+    expect(result.errorDescription).toContain("nonce");
   });
 });

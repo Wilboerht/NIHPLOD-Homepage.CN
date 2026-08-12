@@ -56,6 +56,7 @@ vi.mock("@/lib/ratelimit", () => ({
 // === Mock sso-audit ===
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn(),
+  scheduleSsoEvent: vi.fn(),
 }));
 
 // === Mock auth-security (refresh token rotation, device info) ===

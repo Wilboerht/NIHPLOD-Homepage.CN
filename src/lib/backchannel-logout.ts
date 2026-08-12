@@ -131,6 +131,8 @@ export async function sendBackchannelLogout(
 
         if (!delivered) {
           apiConsole.warn(`[SLO] Backchannel logout 通知失败（已重试）(${client.clientId})`);
+          // lib 内部不保证有 request scope，无法使用 scheduleSsoEvent(after)，
+          // 保持 fire-and-forget；投递本身已重试，审计丢失风险可接受
           recordSsoEvent({
             event: "backchannel_logout",
             userId,
@@ -140,6 +142,7 @@ export async function sendBackchannelLogout(
           });
         } else {
           // 成功投递也记录一条审计事件，便于核对通知过哪些 RP
+          // （lib 内部无 request scope，保持 fire-and-forget，见上方失败分支注释）
           recordSsoEvent({
             event: "backchannel_logout",
             userId,

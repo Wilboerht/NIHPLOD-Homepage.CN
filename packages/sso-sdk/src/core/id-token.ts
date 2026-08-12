@@ -110,10 +110,18 @@ async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | nu
   }
 }
 
+export interface FetchJwksOptions {
+  /**
+   * 绕过内存缓存与浏览器 HTTP 缓存（cache: "no-cache"）强制重取 JWKS，
+   * 并同步刷新模块级缓存。用于密钥轮换后 kid 失配的自愈重试。
+   */
+  forceRefresh?: boolean;
+}
+
 /** 从 SSO 中心拉取 JWKS（带内存缓存；优先 Discovery 的 jwks_uri，回退硬编码路径） */
-export async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
+export async function fetchJwks(baseUrl: string, options: FetchJwksOptions = {}): Promise<Jwks | null> {
   const now = Date.now();
-  if (cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
+  if (!options.forceRefresh && cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
     return cachedJwks.jwks;
   }
 
@@ -121,7 +129,7 @@ export async function fetchJwks(baseUrl: string): Promise<Jwks | null> {
   const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
 
   try {
-    const res = await fetch(jwksUri);
+    const res = await fetch(jwksUri, options.forceRefresh ? { cache: "no-cache" } : undefined);
     if (!res.ok) return null;
     const jwks = (await res.json()) as Jwks;
     cachedJwks = { baseUrl, jwks, fetchedAt: now };
@@ -214,22 +222,36 @@ export async function validateIdToken(
     }
     const kid = typeof header.kid === "string" ? header.kid : undefined;
     // 有 kid 时精确匹配；无 kid 时逐个尝试所有 RS256 签名公钥
-    const candidates = jwks.keys.filter(
-      (k) =>
-        k.kty === "RSA" &&
-        k.alg === "RS256" &&
-        k.use === "sig" &&
-        (kid ? k.kid === kid : true)
-    );
+    const matchCandidates = (set: Jwks) =>
+      set.keys.filter(
+        (k) =>
+          k.kty === "RSA" &&
+          k.alg === "RS256" &&
+          k.use === "sig" &&
+          (kid ? k.kid === kid : true)
+      );
+    const verifyAny = async (keys: JwksKey[]): Promise<boolean> => {
+      for (const key of keys) {
+        if (await verifyRs256Signature(idToken, key)) return true;
+      }
+      return false;
+    };
+
+    let candidates = matchCandidates(jwks);
+    let validSig = candidates.length > 0 ? await verifyAny(candidates) : false;
+
+    // 密钥轮换自愈：按 kid 过滤无候选，或所有候选验签失败时，
+    // 可能是本地 JWKS 缓存陈旧 —— 强制重取一次 JWKS 后重试，仍失败才抛错
+    if (candidates.length === 0 || !validSig) {
+      const freshJwks = await fetchJwks(baseUrl, { forceRefresh: true });
+      if (freshJwks) {
+        candidates = matchCandidates(freshJwks);
+        validSig = candidates.length > 0 ? await verifyAny(candidates) : false;
+      }
+    }
+
     if (candidates.length === 0) {
       throw new SsoError("id_token_invalid_signature", "JWKS 中未找到匹配的 RS256 公钥");
-    }
-    let validSig = false;
-    for (const key of candidates) {
-      if (await verifyRs256Signature(idToken, key)) {
-        validSig = true;
-        break;
-      }
     }
     if (!validSig) {
       throw new SsoError("id_token_invalid_signature", "ID Token 签名验证失败");
