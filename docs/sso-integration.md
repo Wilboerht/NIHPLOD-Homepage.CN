@@ -457,6 +457,8 @@ const payload = await verifier.verify(token);
 
 > ⚠️ **不要将 `JWT_ACCESS_SECRET`（HS256 对称密钥）分发给外部子项目。** 外部子项目请优先使用 Introspection；本地 JWT 验证仅适用于已与主站安全共享 RS256 公钥的内部服务。
 
+> ⚠️ **本地 JWKS 验签无法实时感知撤销。** 用户撤销授权或管理员终止会话后，access token 在主站侧会立即失效（按 token 的 `sid` claim 校验会话状态），但本地验签只做离线签名校验，被撤销的 token 在其 TTL（默认 15 分钟）内仍会通过。需要即时获知撤销的子项目（如涉及敏感操作）应改用 Introspection 端点验证。
+
 ### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
 
 A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心 `/logout` 页面；用户确认后，SSO 中心会撤销其所有会话并触发 backchannel logout。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。

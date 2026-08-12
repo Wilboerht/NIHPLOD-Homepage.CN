@@ -644,6 +644,17 @@ export async function POST(request: NextRequest) {
       redirectUrl.searchParams.set("state", state);
     }
 
+    // consent 页通过 fetch 提交：浏览器对 302 + redirect:manual 返回 opaqueredirect，
+    // 前端读不到 Location。AJAX 请求改为 200 JSON 返回 redirectUrl，由前端自行跳转；
+    // 非 AJAX 调用（如直接表单提交）保持规范 302 行为。
+    const wantsJsonRedirect =
+      request.headers.get("x-requested-with") === "XMLHttpRequest" ||
+      (request.headers.get("accept") || "").includes("application/json");
+    const respondWithRedirect = (url: URL) =>
+      wantsJsonRedirect
+        ? NextResponse.json({ success: true, data: { redirectUrl: url.toString() } })
+        : NextResponse.redirect(url, 302);
+
     if (action === "deny") {
       redirectUrl.searchParams.set("error", "access_denied");
       redirectUrl.searchParams.set("error_description", "用户拒绝了授权请求");
@@ -661,7 +672,7 @@ export async function POST(request: NextRequest) {
         detail: { action: "deny", scope },
       });
 
-      return NextResponse.redirect(redirectUrl, 302);
+      return respondWithRedirect(redirectUrl);
     }
 
     // action === "approve"
@@ -740,7 +751,7 @@ export async function POST(request: NextRequest) {
       detail: { scope, scopes: requestedScopes },
     });
 
-    return NextResponse.redirect(redirectUrl, 302);
+    return respondWithRedirect(redirectUrl);
   } catch (error) {
     apiConsole.error("[OAuth Authorize POST] 异常:", error);
     return NextResponse.json(

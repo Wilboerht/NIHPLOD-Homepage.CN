@@ -15,7 +15,6 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { revokeRefreshToken } from "@/lib/auth-security";
-import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -185,8 +184,8 @@ export async function POST(request: NextRequest) {
     // 同步撤销该用户在该 client 下的所有 Refresh Token
     await revokeRefreshToken(userId, undefined, clientId);
 
-    // 联动拉黑该用户已签发的 access token，消除 15 分钟有效窗口
-    await blacklistUserTokens(userId, "oauth_consent_revoked").catch(() => {});
+    // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
+    // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
 
     // 记录 SSO 审计事件（合规敏感，同步等待写入）
     await recordSsoEvent({

@@ -361,7 +361,33 @@ export async function POST(request: NextRequest) {
         dpopJkt = dpopResult.jkt;
       }
 
-      // 签发 Access Token（OAuth 类型），使用 client 自定义 TTL
+      const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      // 记录 OAuth Session（关联授权码用于追溯），提前到签发 Access Token 之前：
+      // access token 需要携带 sid claim（= sessionId），撤销 session 后
+      // verifyOAuthAccessToken 按 sid 查库即时失效。
+      // 确保同一 authorizationCode 不会创建重复 session（重试时复用已有 sessionId）
+      const existingSession = await prisma.oAuthSession.findFirst({
+        where: { authorizationCodeId: codeData.id },
+      });
+      let sessionId: string;
+      if (existingSession) {
+        sessionId = existingSession.sessionId;
+      } else {
+        sessionId = crypto.randomUUID();
+        await prisma.oAuthSession.create({
+          data: {
+            userId: user.id,
+            clientId: client_id,
+            sessionId,
+            authorizationCodeId: codeData.id,
+            scopes: codeData.scopes,
+            expiresAt: refreshExpiresAt,
+          },
+        });
+      }
+
+      // 签发 Access Token（OAuth 类型），使用 client 自定义 TTL，携带 sid claim
       const accessToken = await signOAuthAccessToken({
         id: user.id,
         phone: user.phone,
@@ -369,6 +395,7 @@ export async function POST(request: NextRequest) {
         scope: scopeStr,
         expiresIn: `${client.accessTokenTtlSeconds}s`,
         dpopJkt,
+        sid: sessionId,
       });
 
       // 签发 Refresh Token（携带 client_id / scope，用于所有权校验）
@@ -378,7 +405,6 @@ export async function POST(request: NextRequest) {
         clientId: client_id,
         scope: scopeStr,
       });
-      const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       // 保存 Refresh Token（复用现有设备管理）
       const deviceInfo = extractDeviceInfo(request);
@@ -403,24 +429,6 @@ export async function POST(request: NextRequest) {
       }
 
       const idToken = await signIdToken(idTokenClaims);
-
-      // 记录 OAuth Session（关联授权码用于追溯）
-      // 确保同一 authorizationCode 不会创建重复 session
-      const existingSession = await prisma.oAuthSession.findFirst({
-        where: { authorizationCodeId: codeData.id },
-      });
-      if (!existingSession) {
-        await prisma.oAuthSession.create({
-          data: {
-            userId: user.id,
-            clientId: client_id,
-            sessionId: crypto.randomUUID(),
-            authorizationCodeId: codeData.id,
-            scopes: codeData.scopes,
-            expiresAt: refreshExpiresAt,
-          },
-        });
-      }
 
       // 审计日志
       recordSsoEvent({
@@ -509,23 +517,38 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 签发新的 Access Token（OAuth 类型）
+      // 查找当前活跃 OAuthSession：既用于 scope 回退，也用于签发 sid claim。
+      // fail-closed：所有撤销路径都会同时撤销 OAuthSession 与 RefreshToken，
+      // 若此处找不到活跃 session（已撤销/已过期），说明授权状态已不一致，
+      // 直接拒绝刷新，而不是放行无 sid 的 token（无 sid token 不参与会话级即时失效）。
+      const now = new Date();
+      const session = await prisma.oAuthSession.findFirst({
+        where: {
+          userId: refreshPayload.id,
+          clientId: client_id,
+          revokedAt: null,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!session) {
+        recordSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "session_not_found" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "会话已失效，请重新授权" },
+          400
+        );
+      }
       // 优先使用原 Refresh Token payload 中的 scope，保证刷新不会扩大权限；
       // 仅当旧 token 未携带 scope 时才从 OAuthSession 回退获取。
-      const now = new Date();
-      let scopeStr = refreshPayload.scope || "";
-      if (!scopeStr) {
-        const session = await prisma.oAuthSession.findFirst({
-          where: {
-            userId: refreshPayload.id,
-            clientId: client_id,
-            revokedAt: null,
-            expiresAt: { gt: now },
-          },
-          orderBy: { createdAt: "desc" },
-        });
-        scopeStr = session?.scopes?.join(" ") || "openid";
-      }
+      const scopeStr = refreshPayload.scope || session.scopes?.join(" ") || "openid";
 
       // 检查用户是否仍授权了该 client（consent 撤销后拒绝刷新）
       const consent = await prisma.userConsent.findUnique({
@@ -553,6 +576,7 @@ export async function POST(request: NextRequest) {
         clientId: client_id,
         scope: scopeStr,
         expiresIn: `${client.accessTokenTtlSeconds}s`,
+        sid: session.sessionId,
       });
 
       // 签发新的 Refresh Token 并原子化轮换（继承所有权与 scope）

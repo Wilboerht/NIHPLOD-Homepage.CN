@@ -44,6 +44,20 @@ export function DrawerPageContainer({
   const { isDrawerOpen, setDrawerOpen, setDrawerAnimating } = useLayout();
   const prefersReducedMotion = useReducedMotion();
 
+  // 从登录页返回时抽屉保持收起（标记一次性消费）
+  const [returnCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      if (sessionStorage.getItem("nihplod_drawer_return_collapsed")) {
+        sessionStorage.removeItem("nihplod_drawer_return_collapsed");
+        return true;
+      }
+    } catch {
+      /* sessionStorage 不可用时忽略 */
+    }
+    return false;
+  });
+
   useLayoutEffect(() => {
     if (!handleRef.current || typeof ResizeObserver === "undefined") return;
 
@@ -59,6 +73,13 @@ export function DrawerPageContainer({
   }, []);
 
   useEffect(() => {
+    // 从登录页返回：不自动展开，保持收起态
+    if (returnCollapsed) {
+      setDrawerAnimating(false);
+      setDrawerOpen(false);
+      return;
+    }
+
     // 入场动画由 framer-motion 的 initial（收起位置）→ animate（展开位置）在挂载时
     // 自动播放，这里只需保证挂载后全局状态为展开。
     // 减少动画偏好时 MotionConfig 已把动画时长降为 0.01s，等价于直接展开。
@@ -85,7 +106,13 @@ export function DrawerPageContainer({
       if (raf2) cancelAnimationFrame(raf2);
       setDrawerAnimating(false);
     };
-  }, [defaultExpanded, prefersReducedMotion, setDrawerOpen, setDrawerAnimating]);
+  }, [
+    defaultExpanded,
+    prefersReducedMotion,
+    returnCollapsed,
+    setDrawerOpen,
+    setDrawerAnimating,
+  ]);
 
   const handleToggle = () => {
     const newState = !isDrawerOpen;

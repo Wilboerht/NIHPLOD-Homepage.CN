@@ -21,7 +21,6 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
-import { blacklistUserTokens } from "@/lib/token-blacklist";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -233,8 +232,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         data: { revokedAt: new Date() },
       });
       const userIds = [...new Set(activeSessions.map((s) => s.userId))];
+      // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
+      // sid 查到 OAuthSession.revokedAt 即拒绝），不再逐用户拉黑 token，避免误登出主站会话。
       for (const userId of userIds) {
-        await blacklistUserTokens(userId, "oauth_client_deleted").catch(() => {});
         await sendBackchannelLogout(userId, [client.clientId], { includeInactive: true });
       }
     }

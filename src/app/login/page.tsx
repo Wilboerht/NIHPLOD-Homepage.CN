@@ -162,6 +162,12 @@ function LoginPageContent() {
   );
 
   const handleClose = useCallback(() => {
+    // 返回时目标页抽屉保持收起
+    try {
+      sessionStorage.setItem("nihplod_drawer_return_collapsed", "1");
+    } catch {
+      /* sessionStorage 不可用时忽略 */
+    }
     navigateToReturnTo(returnTo);
   }, [navigateToReturnTo, returnTo]);
 
@@ -507,6 +513,8 @@ function LoginPageContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // 标识 AJAX 请求：服务端将以 200 JSON 返回 redirectUrl（fetch 读不到 302 的 Location）
+          "X-Requested-With": "XMLHttpRequest",
           ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
         },
         body: JSON.stringify({
@@ -534,6 +542,11 @@ function LoginPageContent() {
       }
 
       const data = await res.json();
+      // AJAX 模式下服务端以 200 JSON 返回 redirectUrl（approve/deny 均是）
+      if (data.success && data.data?.redirectUrl) {
+        window.location.href = data.data.redirectUrl;
+        return;
+      }
       setConsentError(data.error_description || "操作失败");
     } catch {
       setConsentError("网络错误");
@@ -792,14 +805,16 @@ function LoginPageContent() {
               className="fixed inset-y-0 right-0 z-[99999] hidden w-full flex-col bg-white md:flex"
               style={{ willChange: "transform" }}
             >
-              {/* Back button (non-login, non-wechat-bind, non-consent) */}
-              {mode !== "login" && mode !== "wechat-bind" && mode !== "consent" && (
+              {/* Back button：login 模式返回 return_to（默认首页），reset/register 返回登录 */}
+              {mode !== "wechat-bind" && mode !== "consent" && (
                 <button
-                  onClick={handleSwitchToLogin}
+                  onClick={mode === "login" ? handleClose : handleSwitchToLogin}
                   disabled={loading}
-                  className="absolute left-8 top-8 z-20 flex h-10 w-10 items-center justify-center text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  aria-label={mode === "login" ? "返回首页" : "返回登录"}
+                  className="absolute left-8 top-8 z-20 flex h-10 items-center gap-1.5 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
                 >
                   <ArrowLeft size={20} strokeWidth={1.5} />
+                  <span className="text-[14px] font-light tracking-[0.15em]">返回</span>
                 </button>
               )}
 

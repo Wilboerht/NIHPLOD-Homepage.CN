@@ -39,4 +39,25 @@ describe("getParentTargetOrigin", () => {
     );
     expect(getParentTargetOrigin("http://localhost:4000/x", "http://localhost:3000")).toBeNull();
   });
+
+  it("ancestorOrigin 优先于 referrer（referrer 被裁剪或变为自身 URL 时仍可推导）", () => {
+    // referrer 因页面内部跳转变为 iframe 自身 URL 的真实场景
+    expect(
+      getParentTargetOrigin(
+        "http://localhost:3000/account/embed",
+        "http://localhost:3100",
+        "http://localhost:3100"
+      )
+    ).toBe("http://localhost:3100");
+    // referrer 为空（Referrer-Policy: no-referrer）时 ancestorOrigin 兜底
+    expect(getParentTargetOrigin("", "http://localhost:3100", "http://localhost:3100")).toBe(
+      "http://localhost:3100"
+    );
+  });
+
+  it("ancestorOrigin 同样受白名单约束", () => {
+    expect(
+      getParentTargetOrigin("", "http://localhost:3100", "https://evil.example.com")
+    ).toBeNull();
+  });
 });

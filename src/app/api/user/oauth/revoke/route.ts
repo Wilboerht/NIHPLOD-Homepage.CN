@@ -17,7 +17,6 @@ import { rateLimit } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { revokeRefreshToken } from "@/lib/auth-security";
-import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -92,8 +91,9 @@ export async function POST(request: NextRequest) {
     // 同步撤销该 client 对应的所有 Refresh Token，防止旧 refresh_token 继续换发 access_token
     await revokeRefreshToken(user.id, undefined, clientId);
 
-    // 联动拉黑已签发的 access token，消除 15 分钟有效窗口（与 client 删除路径一致）
-    await blacklistUserTokens(user.id, "oauth_consent_revoked").catch(() => {});
+    // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
+    // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，
+    // 避免误登出主站会话。blacklistUserTokens 仅保留给封禁用户等全局踢出场景。
 
     // 记录审计日志（合规敏感，同步等待写入）
     await recordSsoEvent({

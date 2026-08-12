@@ -128,7 +128,8 @@ function buildCspHeader(nonce: string, pathname: string): string {
     // style-src 仍保留 'unsafe-inline'：项目中存在少量动态生成的内联样式与高德地图样式，
     // 完全移除需逐步重构，当前作为已知债务保留并单独标注
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.amap.com",
-    "img-src 'self' data: blob: https://**.nihplod.cn https://**.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
+    // 注意：CSP 通配符只支持单 *（** 为无效源，浏览器会忽略整条规则）
+    "img-src 'self' data: blob: https://*.nihplod.cn https://*.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
     "worker-src 'self' blob:",

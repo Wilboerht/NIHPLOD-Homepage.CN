@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLayout } from "@/contexts/LayoutContext";
 import { Link } from "next-view-transitions";
-import { ChevronRight } from "lucide-react";
 
 /**
  * 便当盒卡片完整渲染的页面白名单（精确匹配）。
@@ -237,8 +236,8 @@ export function KineticBackground() {
             onClick={handleLoginClick}
           >
             <div className="kinetic-btn-group pointer-events-none">
-              <div className="flex w-full flex-col items-center justify-center gap-1.5 sm:mb-2">
-                {/* 头像圆：手机端 56px + 下方文字 caption，sm+（含 PC）恢复 80px 纯图标圆 + 独立按钮 */}
+              <div className="flex w-full flex-col items-center justify-center gap-1.5 sm:gap-2.5">
+                {/* 头像圆：手机端 56px，sm+ 80px；整卡即点击热区 */}
                 <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
                   {user?.avatar ? (
                     <Image
@@ -258,21 +257,11 @@ export function KineticBackground() {
                     </div>
                   )}
                 </div>
-                {/* 手机端：文字从圈内拿出，作圆下方的细体小字 caption（非按钮）；sm+ 隐藏 */}
-                <span className="max-w-full truncate px-2 text-[11px] font-light tracking-[0.15em] text-brand-charcoal/70 sm:hidden">
+                {/* 圆下方单行文字 caption（全端一致，非独立按钮） */}
+                <span className="max-w-full truncate px-2 text-[11px] font-light tracking-[0.15em] text-brand-charcoal/70 sm:text-[14px]">
                   {user ? user.nickname || "会员中心" : "会员登录"}
                 </span>
               </div>
-              {user ? (
-                <div className="group hidden w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/15 bg-white/80 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal shadow-sm backdrop-blur-sm sm:flex sm:h-11">
-                  <span>进入会员中心</span>
-                  <ChevronRight className="h-4 w-4 opacity-70" />
-                </div>
-              ) : (
-                <div className="group hidden w-full items-center justify-center gap-1.5 rounded-xl border border-brand-charcoal/10 bg-white/70 px-4 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80 sm:flex sm:h-11 sm:border-0 sm:bg-white/40 sm:text-brand-charcoal/70">
-                  <span>会员登录</span>
-                </div>
-              )}
             </div>
           </button>
         </div>

@@ -87,6 +87,12 @@ vi.mock("@/lib/prisma", () => {
       create: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      // sid 会话校验：access token 携带 sid 后 verifyOAuthAccessToken 按 sessionId 查库，
+      // 模拟一条活跃 session 放行
+      findUnique: vi.fn().mockResolvedValue({
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }),
     },
     userConsent: {
       findUnique: vi.fn().mockResolvedValue({

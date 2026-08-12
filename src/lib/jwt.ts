@@ -843,6 +843,8 @@ export async function signOAuthAccessToken(payload: {
   scope: string;
   expiresIn?: string;
   dpopJkt?: string;
+  /** 关联的 OAuthSession.sessionId，验证时按 sid 查会话状态，撤销后即时失效 */
+  sid?: string;
 }): Promise<string> {
   const scopes = payload.scope.split(" ").filter(Boolean);
   const isM2m = payload.id.startsWith("client:");
@@ -862,6 +864,10 @@ export async function signOAuthAccessToken(payload: {
 
   if (payload.dpopJkt) {
     claims.cnf = { jkt: payload.dpopJkt };
+  }
+
+  if (payload.sid) {
+    claims.sid = payload.sid;
   }
 
   const jwt = new SignJWT(claims)
@@ -966,6 +972,22 @@ export async function verifyOAuthAccessToken(
     if (jti && (await isAccessTokenRevoked(jti))) {
       return null;
     }
+
+    // sid 会话校验（fail-closed）：携带 sid 的 token 必须对应一条未撤销、未过期的
+    // OAuthSession。撤销授权/终止会话仅标记 OAuthSession.revokedAt，access token 依此
+    // 即时失效，无需拉黑用户全部 token（避免误登出主站会话）。
+    // 无 sid 的 token（上线前签发的旧 token、M2M token）跳过此校验，保持向后兼容。
+    const sid = (payload as { sid?: string }).sid;
+    if (sid) {
+      const session = await prisma.oAuthSession.findUnique({
+        where: { sessionId: sid },
+        select: { revokedAt: true, expiresAt: true },
+      });
+      if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+        return null;
+      }
+    }
+
     return payload as unknown as OAuthAccessTokenPayload;
   } catch (error) {
     warnVerifyError("verifyOAuthAccessToken", error);

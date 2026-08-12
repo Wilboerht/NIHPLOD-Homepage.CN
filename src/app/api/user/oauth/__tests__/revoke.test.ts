@@ -4,9 +4,9 @@
  *
  * 覆盖：
  * - CSRF 403 / 未认证 401 / 用户级限流 429 / 参数错误 400 / 无授权记录 404
- * - 撤销成功：级联撤销 session + consent + refreshToken，
- *   联动 blacklistUserTokens 消除 access token 15 分钟有效窗口，
- *   触发 Backchannel Logout 并记录审计
+ * - 撤销成功：级联撤销 session + consent + refreshToken，触发 Backchannel Logout 并记录审计；
+ *   不再调用 blacklistUserTokens（access token 即时失效由 sid 会话校验承担，
+ *   避免用户被误登出主站）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
@@ -185,7 +185,7 @@ describe("POST /api/user/oauth/revoke", () => {
     expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
   });
 
-  it("撤销成功：级联撤销并联动 blacklistUserTokens 与 Backchannel Logout", async () => {
+  it("撤销成功：级联撤销并触发 Backchannel Logout，不再调用 blacklistUserTokens", async () => {
     prismaMock.oAuthSession.findMany.mockResolvedValue([
       { id: "s1", sessionId: "sess-1" },
       { id: "s2", sessionId: "sess-2" },
@@ -212,8 +212,9 @@ describe("POST /api/user/oauth/revoke", () => {
     });
     // 撤销 refresh token，防止旧 refresh_token 继续换发 access_token
     expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
-    // 联动拉黑已签发 access token，消除 15 分钟有效窗口
-    expect(mockBlacklistUserTokens).toHaveBeenCalledWith("user-1", "oauth_consent_revoked");
+    // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
+    // access token 即时失效由 sid 会话校验承担
+    expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
     // Backchannel Logout 通知 RP
     expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
     // 审计：SSO 事件 + 用户认证日志
@@ -229,18 +230,5 @@ describe("POST /api/user/oauth/revoke", () => {
       "user_oauth_revoke",
       expect.objectContaining({ userId: "user-1", clientId: "client-abc", success: true })
     );
-  });
-
-  it("blacklistUserTokens 失败不应影响撤销主流程（catch 容错）", async () => {
-    prismaMock.oAuthSession.findMany.mockResolvedValue([{ id: "s1", sessionId: "sess-1" }]);
-    prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 1 });
-    prismaMock.userConsent.updateMany.mockResolvedValue({ count: 1 });
-    mockBlacklistUserTokens.mockRejectedValue(new Error("redis down"));
-
-    const { POST } = await import("@/app/api/user/oauth/revoke/route");
-    const res = await POST(createRequest({ clientId: "client-abc" }));
-
-    expect(res.status).toBe(200);
-    expect((await res.json()).success).toBe(true);
   });
 });

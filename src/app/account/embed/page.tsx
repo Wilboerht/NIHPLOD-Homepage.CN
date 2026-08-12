@@ -40,7 +40,10 @@ function csrfHeaders(extra?: Record<string, string>): Record<string, string> {
  */
 function postToParent(message: Record<string, unknown>): void {
   if (typeof window === "undefined" || window.parent === window) return;
-  const targetOrigin = getParentTargetOrigin(document.referrer, EMBED_ALLOWED_ORIGINS);
+  // ancestorOrigins[0] 是直接父框架 origin，比 document.referrer 更可靠
+  // （referrer 受 Referrer-Policy 与页面内部跳转影响，可能为空或变成自身 URL）
+  const ancestorOrigin = window.location.ancestorOrigins?.[0] || "";
+  const targetOrigin = getParentTargetOrigin(document.referrer, EMBED_ALLOWED_ORIGINS, ancestorOrigin);
   if (!targetOrigin) {
     console.warn("[SSO Embed] 父窗口 origin 无法推导或未通过白名单校验，跳过 postMessage", {
       referrer: document.referrer,

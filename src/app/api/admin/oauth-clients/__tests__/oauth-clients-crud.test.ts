@@ -10,7 +10,7 @@
  * - PATCH  /api/admin/oauth-clients/:id  非 owner 403 / 404 / 停用时级联撤销 session
  * - DELETE /api/admin/oauth-clients/:id  非 owner 403 / 404 / 删除后审计事件保留
  *                                        （ssoAuditEvent.deleteMany 不被调用）/
- *                                        联动 blacklistUserTokens
+ *                                        不再调用 blacklistUserTokens（即时失效由 sid 会话校验承担）
  *
  * 注意：@/lib/oauth-client 使用真实实现（zod 校验、toSafeClientResponse 白名单、
  * deleteOAuthClient 级联清理逻辑均真实执行），仅 mock prisma / auth / 限流 / CSRF 等外部依赖。
@@ -562,7 +562,7 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(res.status).toBe(404);
     });
 
-    it("删除成功：撤销会话、拉黑用户 token，且审计事件保留不被级联删除", async () => {
+    it("删除成功：撤销会话、不再拉黑用户 token，且审计事件保留不被级联删除", async () => {
       const record = makeClientRecord();
       // 路由层 findUnique（无 select）与 lib 层 findUnique（带 select）均命中同一 mock
       prismaMock.oAuthClient.findUnique.mockResolvedValue(record);
@@ -586,9 +586,10 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { clientId: record.clientId, revokedAt: null } })
       );
-      // 受影响用户 token 拉黑 + Backchannel Logout
-      expect(mockBlacklistUserTokens).toHaveBeenCalledWith("user-1", "oauth_client_deleted");
-      expect(mockBlacklistUserTokens).toHaveBeenCalledWith("user-2", "oauth_client_deleted");
+      // 受影响用户 Backchannel Logout；
+      // 关键回归点：不再逐用户拉黑 token（会把用户误登出主站），
+      // access token 即时失效由 sid 会话校验承担
+      expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
       expect(mockSendBackchannelLogout).toHaveBeenCalledTimes(2);
 
       // 关联数据级联清理

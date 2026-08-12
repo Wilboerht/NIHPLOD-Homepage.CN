@@ -139,6 +139,8 @@ export interface OAuthAccessTokenPayload extends JWTPayload {
   scope?: string;
   /** DPoP 绑定：RFC 9449 cnf.jkt (JWK Thumbprint) */
   cnf?: { jkt?: string };
+  /** 关联的 OAuthSession.sessionId，验证时按此查会话状态实现撤销即时失效 */
+  sid?: string;
 }
 
 /**

@@ -433,6 +433,37 @@ describe("POST /api/oauth/authorize", () => {
     expect(location).toContain("popup_nonce=popup123");
   });
 
+  it("AJAX 请求（X-Requested-With）授权成功应返回 200 JSON 携带 redirectUrl 而非 302", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // consent 页 fetch 场景：浏览器对 302 + redirect:manual 返回 opaqueredirect 读不到 Location，
+    // 服务端对 AJAX 调用方改为 200 JSON 返回 redirectUrl，由前端自行跳转
+    const req = new NextRequest("http://localhost/api/oauth/authorize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: "__Host-user_token=dummy-token",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({
+        action: "approve",
+        client_id: "test-client",
+        redirect_uri: "https://example.com/cb",
+        scope: "openid",
+        state: VALID_STATE,
+        code_challenge: VALID_CODE_CHALLENGE,
+        code_challenge_method: "S256",
+        popup_nonce: "popup123",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.redirectUrl).toContain("code=test-auth-code");
+    expect(body.data.redirectUrl).toContain("popup_nonce=popup123");
+    expect(body.data.redirectUrl).toContain(`state=${VALID_STATE}`);
+  });
+
   it("请求体非法 JSON 应返回 400 invalid_request 而非 500", async () => {
     const req = new NextRequest("http://localhost/api/oauth/authorize", {
       method: "POST",

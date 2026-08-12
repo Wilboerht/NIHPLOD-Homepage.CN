@@ -6,7 +6,8 @@
  * - GET：非 owner 403 / 查的是 userConsent 而非 oAuthSession / 手机号脱敏
  * - POST：参数缺失 400 / 无活跃授权 404 /
  *         吊销仅更新已有 UserConsent（不创建 scopes:[] 空记录）/
- *         联动 revokeRefreshToken + blacklistUserTokens + Backchannel Logout
+ *         联动 revokeRefreshToken + Backchannel Logout，
+ *         不再调用 blacklistUserTokens（即时失效由 sid 会话校验承担，避免误登出主站）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
@@ -261,7 +262,7 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
     });
 
-    it("吊销成功：仅更新已有 consent（不创建空记录），联动拉黑与登出通知", async () => {
+    it("吊销成功：仅更新已有 consent（不创建空记录），联动登出通知但不再拉黑 token", async () => {
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 2 });
       prismaMock.userConsent.updateMany.mockResolvedValue({ count: 1 });
 
@@ -291,9 +292,11 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       expect(prismaMock.userConsent.create).not.toHaveBeenCalled();
       expect(prismaMock.userConsent.upsert).not.toHaveBeenCalled();
 
-      // 同步撤销 refresh token + 拉黑 access token + backchannel 通知
+      // 同步撤销 refresh token + backchannel 通知；
+      // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
+      // access token 即时失效由 sid 会话校验承担
       expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
-      expect(mockBlacklistUserTokens).toHaveBeenCalledWith("user-1", "oauth_consent_revoked");
+      expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
 
       // SSO 审计事件

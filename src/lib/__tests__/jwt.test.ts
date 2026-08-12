@@ -1,6 +1,16 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
 import { generateKeyPairSync } from "crypto";
-import { SignJWT } from "jose";
+import { SignJWT, decodeJwt } from "jose";
+
+// === Mock Prisma（sid 会话校验会查询 OAuthSession）===
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    oAuthSession: {
+      findUnique: vi.fn(),
+    },
+  },
+}));
+
 import {
   signToken,
   verifyToken,
@@ -11,6 +21,7 @@ import {
   signOAuthAccessToken,
   verifyOAuthAccessToken,
 } from "@/lib/jwt";
+import { prisma } from "@/lib/prisma";
 
 describe("JWT 工具", () => {
   describe("管理员 Token", () => {
@@ -145,6 +156,95 @@ describe("JWT 工具", () => {
       const hs256Token = await signHs256OAuthToken();
       const payload = await verifyOAuthAccessToken(hs256Token, "client-1");
       expect(payload).toMatchObject({ id: "user-1" });
+    });
+  });
+
+  // sid 会话校验：携带 sid 的 access token 按 OAuthSession 状态即时失效
+  describe("OAuth Access Token sid 会话校验", () => {
+    const mockFindUnique = prisma.oAuthSession.findUnique as ReturnType<typeof vi.fn>;
+
+    function activeSession() {
+      return { revokedAt: null, expiresAt: new Date(Date.now() + 3600_000) };
+    }
+
+    async function signSidToken(sid = "sess-1") {
+      return signOAuthAccessToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "client-1",
+        scope: "openid",
+        sid,
+      });
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("传入 sid 时签发的 token 应携带 sid claim", async () => {
+      mockFindUnique.mockResolvedValue(activeSession());
+      const token = await signSidToken();
+      expect(decodeJwt(token).sid).toBe("sess-1");
+    });
+
+    it("sid 对应有效 session 时验证通过", async () => {
+      mockFindUnique.mockResolvedValue(activeSession());
+      const token = await signSidToken();
+      const payload = await verifyOAuthAccessToken(token, "client-1");
+      expect(payload).toMatchObject({ id: "user-1", sid: "sess-1" });
+      expect(mockFindUnique).toHaveBeenCalledWith({
+        where: { sessionId: "sess-1" },
+        select: { revokedAt: true, expiresAt: true },
+      });
+    });
+
+    it("session 被撤销（revokedAt 非空）应返回 null", async () => {
+      mockFindUnique.mockResolvedValue({
+        revokedAt: new Date(),
+        expiresAt: new Date(Date.now() + 3600_000),
+      });
+      const token = await signSidToken();
+      expect(await verifyOAuthAccessToken(token, "client-1")).toBeNull();
+    });
+
+    it("session 不存在应返回 null（fail-closed）", async () => {
+      mockFindUnique.mockResolvedValue(null);
+      const token = await signSidToken();
+      expect(await verifyOAuthAccessToken(token, "client-1")).toBeNull();
+    });
+
+    it("session 已过期应返回 null", async () => {
+      mockFindUnique.mockResolvedValue({
+        revokedAt: null,
+        expiresAt: new Date(Date.now() - 1000),
+      });
+      const token = await signSidToken();
+      expect(await verifyOAuthAccessToken(token, "client-1")).toBeNull();
+    });
+
+    it("无 sid 的旧 token 行为不变：仍按原逻辑验证通过且不查库", async () => {
+      const token = await signOAuthAccessToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "client-1",
+        scope: "openid",
+      });
+      expect(decodeJwt(token).sid).toBeUndefined();
+      const payload = await verifyOAuthAccessToken(token, "client-1");
+      expect(payload).toMatchObject({ id: "user-1" });
+      expect(mockFindUnique).not.toHaveBeenCalled();
+    });
+
+    it("M2M client_credentials token 无 sid 不受影响（不查库）", async () => {
+      const token = await signOAuthAccessToken({
+        id: "client:client-1",
+        phone: "",
+        clientId: "client-1",
+        scope: "",
+      });
+      const payload = await verifyOAuthAccessToken(token, "client-1");
+      expect(payload).toMatchObject({ id: "client:client-1", client_type: "m2m" });
+      expect(mockFindUnique).not.toHaveBeenCalled();
     });
   });
 });

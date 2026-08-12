@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { decodeJwt } from "jose";
 
 // === Mock Prisma（factory 内联，避免 hoisting 引用问题）===
 vi.mock("@/lib/prisma", () => {
@@ -481,6 +482,104 @@ describe("POST /api/oauth/token", () => {
       expect(body.error).toBe("invalid_grant");
       expect(body.error_description).toContain("PKCE");
     });
+
+    it("签发成功：先创建 OAuthSession，access token 携带其 sessionId 作为 sid claim", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+        nonce: null,
+      });
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      // 无已有 session → 新建
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      // session 在签发 access token 前创建，sid 与 sessionId 一致
+      expect(prisma.oAuthSession.create).toHaveBeenCalled();
+      const createArg = (prisma.oAuthSession.create as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as { data: { sessionId: string } };
+      expect(createArg.data.sessionId).toBeTruthy();
+      expect(decodeJwt(body.access_token).sid).toBe(createArg.data.sessionId);
+    });
+
+    it("授权码已有 session（重试）时复用其 sessionId 作为 sid，不重复创建", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+        nonce: null,
+      });
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "session-row-1",
+        sessionId: "sess-existing",
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      expect(prisma.oAuthSession.create).not.toHaveBeenCalled();
+      expect(decodeJwt(body.access_token).sid).toBe("sess-existing");
+    });
   });
 
   describe("grant_type=refresh_token", () => {
@@ -577,6 +676,88 @@ describe("POST /api/oauth/token", () => {
       expect(body.access_token).toBeDefined();
       expect(body.refresh_token).toBeDefined();
       expect(body.scope).toBe("openid phone");
+    });
+
+    it("refresh 签发的新 access token 携带活跃 session 的 sessionId 作为 sid claim", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-refresh-1",
+        scopes: ["openid", "phone"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid phone",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(decodeJwt(body.access_token).sid).toBe("sess-refresh-1");
+    });
+
+    it("无活跃 OAuthSession 时应拒绝刷新（fail-closed），不执行轮换", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("grant_type=client_credentials", () => {
+    it("M2M token 无 session，不携带 sid claim", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      const req = createRequest({
+        grant_type: "client_credentials",
+        client_id: "test-client",
+        client_secret: "secret",
+        scope: "openid",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      const payload = decodeJwt(body.access_token);
+      expect(payload.client_type).toBe("m2m");
+      expect(payload.sid).toBeUndefined();
+      expect(prisma.oAuthSession.findFirst).not.toHaveBeenCalled();
     });
   });
 
