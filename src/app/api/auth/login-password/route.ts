@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 手机号+密码登录 API
  * POST /api/auth/login-password
  *
@@ -35,6 +35,13 @@ const loginSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   password: z.string().min(8, "密码至少8位").max(32, "密码最多32位"),
 });
+
+/**
+ * 预计算的 bcrypt dummy hash（cost 12，与真实密码哈希一致）。
+ * 用户不存在/未设置密码/账号非 ACTIVE 时也执行一次比较，
+ * 消除"有效手机号枚举"的时序侧信道。
+ */
+const DUMMY_PASSWORD_HASH = "$2b$12$AyjtwQqCYG.hGK52B6QhFu9sRyDY4DvhbtRSi3FneLI7JztzHaF..";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -103,6 +110,9 @@ export async function POST(request: NextRequest) {
     if (!user || !user.password) {
       // 统一错误响应：不区分"用户不存在"、"未设置密码"和"密码错误"
       // 防止攻击者通过不同错误码枚举有效手机号
+      // 时序侧信道缓解：执行一次 dummy bcrypt 比较，使"用户不存在"与"密码错误"
+      // 响应时间一致（verifyPassword 占登录失败路径的主要耗时）
+      await verifyPassword(password, DUMMY_PASSWORD_HASH);
       await recordLoginAttempt(
         phone,
         false,
@@ -126,6 +136,8 @@ export async function POST(request: NextRequest) {
     // 检查账号状态
     if (user.status !== "ACTIVE") {
       // 账号被禁用/冻结时也返回统一错误，不暴露状态
+      // 同样先做 dummy 比较，避免与"密码错误"路径产生时序差异
+      await verifyPassword(password, DUMMY_PASSWORD_HASH);
       await recordLoginAttempt(
         phone,
         false,
