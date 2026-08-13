@@ -96,13 +96,25 @@ export async function sendSMS(options: SMSParams): Promise<SMSResult> {
 
 /**
  * Mock 短信（开发测试用）
+ *
+ * 安全约定：默认不记录 params（含明文验证码）。
+ * 仅在显式设置 SMS_DEBUG_LOG_CODE=true 时打印明文验证码，
+ * 用于未接入真实短信服务商期间的联调测试；正式启用短信服务前必须移除该变量。
  */
 async function sendMockSMS(options: SMSParams): Promise<SMSResult> {
-  apiConsole.info("[Mock SMS] 发送短信:", {
-    phone: options.phone,
-    template: options.template,
-    // 不记录 params（含明文验证码）
-  });
+  if (process.env.SMS_DEBUG_LOG_CODE === "true") {
+    apiConsole.warn("[Mock SMS] SMS_DEBUG_LOG_CODE 已开启，明文打印验证码（仅限联调，上线前必须关闭）:", {
+      phone: options.phone,
+      template: options.template,
+      params: options.params,
+    });
+  } else {
+    apiConsole.info("[Mock SMS] 发送短信:", {
+      phone: options.phone,
+      template: options.template,
+      // 不记录 params（含明文验证码）
+    });
+  }
 
   // 模拟延迟
   await new Promise((resolve) => setTimeout(resolve, 100));
