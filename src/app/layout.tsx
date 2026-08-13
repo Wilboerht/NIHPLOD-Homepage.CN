@@ -97,8 +97,15 @@ export const metadata: Metadata = {
     creator: "@nihplod",
   },
 
+  // 搜索引擎（Google/Bing/百度）要求 favicon 至少 48x48、大于 48 时边长须为 48 的倍数，
+  // 否则搜索结果回退为默认地球图标；故提供 96/192 高分辨率 PNG，ico 仅作旧浏览器兜底
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/images/icons/favicon-96.png", type: "image/png", sizes: "96x96" },
+      { url: "/images/icons/favicon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: "/images/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 
   // PWA 清单
