@@ -103,11 +103,10 @@ export async function sendSMS(options: SMSParams): Promise<SMSResult> {
  */
 async function sendMockSMS(options: SMSParams): Promise<SMSResult> {
   if (process.env.SMS_DEBUG_LOG_CODE === "true") {
-    apiConsole.warn("[Mock SMS] SMS_DEBUG_LOG_CODE 已开启，明文打印验证码（仅限联调，上线前必须关闭）:", {
-      phone: options.phone,
-      template: options.template,
-      params: options.params,
-    });
+    // 注意：apiConsole.warn 会把对象 String() 化成 [object Object]，必须拼成字符串
+    apiConsole.warn(
+      `[Mock SMS] SMS_DEBUG_LOG_CODE 已开启，明文打印验证码（仅限联调，上线前必须关闭）: phone=${options.phone} template=${options.template} params=${JSON.stringify(options.params)}`
+    );
   } else {
     apiConsole.info("[Mock SMS] 发送短信:", {
       phone: options.phone,
