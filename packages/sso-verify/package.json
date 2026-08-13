@@ -1,6 +1,6 @@
 {
   "name": "@nihplod/sso-verify",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "NIHPLOD 一网通 SSO Token 验证工具包 — 供子项目在后端验证主站签发的 Access Token",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

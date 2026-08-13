@@ -54,6 +54,17 @@ interface SsoVerifierOptions {
     /** Introspection 结果缓存 TTL（毫秒），默认 30 秒 */
     introspectCacheTtl?: number;
     /**
+     * Introspection 请求超时时间（毫秒），默认 10 秒。
+     * 超时按验证失败处理（返回 null）。
+     */
+    introspectTimeoutMs?: number;
+    /**
+     * Introspection 返回 active:false（已撤销/无效）结果的缓存 TTL（毫秒），默认 5 秒。
+     * 明显短于 active:true 的 TTL，以降低 token 撤销后的生效延迟。
+     * 设为 0 表示不缓存 active:false 结果。
+     */
+    introspectNegativeCacheTtl?: number;
+    /**
      * Access Token RS256 公钥（PEM 格式，可选）。
      * 主站已迁移至 RS256 签名，子项目可传入此公钥进行本地验证，
      * 避免每次都调用 Introspection 端点。
@@ -71,6 +82,15 @@ interface SsoVerifierOptions {
      * 若未提供，将回退使用 accessTokenSecret 进行验证。
      */
     logoutTokenSecret?: string;
+    /**
+     * Logout Token RS256 公钥（PEM 格式，可选）。
+     * 主站 logout_token 使用独立密钥对（kid: logout-token-rs256-v1）签名，
+     * 与 access token 密钥不同，因此不能使用 accessTokenPublicKey 验证。
+     * 若未提供但配置了 jwksUri，将通过 JWKS 按 kid 匹配获取对应公钥。
+     * RS256 签名的 logout_token 在无任何可用公钥时验证失败（返回 null），
+     * 不会静默回退到 HS256。
+     */
+    logoutTokenPublicKey?: string;
 }
 interface VerifiedTokenPayload extends JWTPayload {
     sub: string;
@@ -153,6 +173,20 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
      */
     verifyLogoutToken(token: string): Promise<LogoutTokenPayload | null>;
 };
+/** 框架无关的最小中间件请求类型（兼容 Express/Connect 风格） */
+interface SsoMiddlewareRequest {
+    headers?: Record<string, string | undefined>;
+    /** 验证通过后由中间件挂载的用户信息 */
+    user?: VerifiedTokenPayload;
+    [key: string]: unknown;
+}
+/** 框架无关的最小中间件响应类型 */
+interface SsoMiddlewareResponse {
+    status?: (code: number) => {
+        json: (body: unknown) => unknown;
+    };
+    [key: string]: unknown;
+}
 /**
  * Express/Next.js 兼容中间件
  *
@@ -177,7 +211,7 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
  * }
  * ```
  */
-declare function ssoMiddleware(options: SsoVerifierOptions): (req: any, res: any, next: () => void) => Promise<void>;
+declare function ssoMiddleware(options: SsoVerifierOptions): (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: () => void) => Promise<void>;
 /**
  * 创建 Logout Token 专用验证器
  *
@@ -214,4 +248,4 @@ declare function createLogoutTokenVerifier(options: SsoVerifierOptions): {
     verify(token: string): Promise<LogoutTokenPayload | null>;
 };
 
-export { type LogoutTokenPayload, type SsoVerifierOptions, type VerifiedTokenPayload, createLogoutTokenVerifier, createTokenVerifier, ssoMiddleware };
+export { type LogoutTokenPayload, type SsoMiddlewareRequest, type SsoMiddlewareResponse, type SsoVerifierOptions, type VerifiedTokenPayload, createLogoutTokenVerifier, createTokenVerifier, ssoMiddleware };

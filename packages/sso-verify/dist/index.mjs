@@ -1,5 +1,10 @@
 // src/index.ts
-import { jwtVerify, importSPKI, createRemoteJWKSet } from "jose";
+import {
+  jwtVerify,
+  importSPKI,
+  createRemoteJWKSet,
+  decodeProtectedHeader
+} from "jose";
 import { LRUCache } from "lru-cache";
 function createIntrospectCache(ttlMs) {
   return new LRUCache({
@@ -22,7 +27,10 @@ function createTokenVerifier(options) {
     accessTokenPublicKey,
     jwksUri,
     logoutTokenSecret,
-    introspectCacheTtl = 30 * 1e3
+    logoutTokenPublicKey,
+    introspectCacheTtl = 30 * 1e3,
+    introspectTimeoutMs = 10 * 1e3,
+    introspectNegativeCacheTtl = 5 * 1e3
   } = options;
   const introspectCache = createIntrospectCache(introspectCacheTtl);
   let _jwksKeySet = null;
@@ -53,6 +61,23 @@ function createTokenVerifier(options) {
     }
     return _rs256PublicKey;
   }
+  let _logoutRs256PublicKey = null;
+  let _logoutRs256KeyInitialized = false;
+  async function getLogoutRS256PublicKey() {
+    if (!_logoutRs256KeyInitialized) {
+      _logoutRs256KeyInitialized = true;
+      if (!logoutTokenPublicKey) {
+        _logoutRs256PublicKey = null;
+      } else {
+        try {
+          _logoutRs256PublicKey = await importSPKI(logoutTokenPublicKey, "RS256");
+        } catch {
+          _logoutRs256PublicKey = null;
+        }
+      }
+    }
+    return _logoutRs256PublicKey;
+  }
   async function introspect(token) {
     if (!introspectionEndpoint || !clientId) {
       return null;
@@ -69,7 +94,8 @@ function createTokenVerifier(options) {
       const response = await fetch(introspectionEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params
+        body: params,
+        signal: AbortSignal.timeout(introspectTimeoutMs)
       });
       if (!response.ok) return null;
       const data = await response.json();
@@ -84,7 +110,13 @@ function createTokenVerifier(options) {
           exp: data.exp
         };
       }
-      introspectCache.set(token, { active: data.active, payload });
+      if (data.active) {
+        introspectCache.set(token, { active: true, payload });
+      } else if (introspectNegativeCacheTtl > 0) {
+        introspectCache.set(token, { active: false, payload: null }, {
+          ttl: introspectNegativeCacheTtl
+        });
+      }
       return data;
     } catch {
       return null;
@@ -96,7 +128,8 @@ function createTokenVerifier(options) {
       const secret = new TextEncoder().encode(accessTokenSecret);
       const { payload } = await jwtVerify(token, secret, {
         issuer,
-        audience
+        audience,
+        algorithms: ["HS256"]
       });
       if (payload.type !== "access_token") {
         return null;
@@ -155,9 +188,9 @@ function createTokenVerifier(options) {
       const rs256Result = await verifyWithRS256(token);
       if (rs256Result) return rs256Result;
       const result = await introspect(token);
-      if (!result?.active) return null;
+      if (!result?.active || !result.sub) return null;
       return {
-        sub: result.sub || "",
+        sub: result.sub,
         aud: audience,
         iss: issuer,
         client_id: result.client_id,
@@ -188,15 +221,7 @@ function createTokenVerifier(options) {
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
     async verifyLogoutToken(token) {
-      const secret = logoutTokenSecret || accessTokenSecret;
-      if (!secret) return null;
-      try {
-        const key = new TextEncoder().encode(secret);
-        const { payload } = await jwtVerify(token, key, {
-          issuer,
-          audience,
-          algorithms: ["HS256"]
-        });
+      const validateLogoutPayload = (payload) => {
         if (payload.type !== "logout_token") {
           return null;
         }
@@ -208,14 +233,65 @@ function createTokenVerifier(options) {
         if (!jti || typeof jti !== "string") {
           return null;
         }
-        if (processedLogoutJtis.has(jti)) {
+        const iss = payload.iss || issuer;
+        const jtiKey = `${iss}:${jti}`;
+        if (processedLogoutJtis.has(jtiKey)) {
           return null;
         }
-        processedLogoutJtis.set(jti, Date.now());
+        processedLogoutJtis.set(jtiKey, Date.now());
         return payload;
+      };
+      let alg;
+      try {
+        alg = decodeProtectedHeader(token).alg;
       } catch {
         return null;
       }
+      if (alg === "RS256") {
+        const directKey = await getLogoutRS256PublicKey();
+        if (directKey) {
+          try {
+            const { payload } = await jwtVerify(token, directKey, {
+              issuer,
+              audience,
+              algorithms: ["RS256"]
+            });
+            return validateLogoutPayload(payload);
+          } catch {
+            return null;
+          }
+        }
+        const jwks = getJwksKeySet();
+        if (jwks) {
+          try {
+            const { payload } = await jwtVerify(token, jwks, {
+              issuer,
+              audience,
+              algorithms: ["RS256"]
+            });
+            return validateLogoutPayload(payload);
+          } catch {
+            return null;
+          }
+        }
+        return null;
+      }
+      if (alg === "HS256") {
+        const secret = logoutTokenSecret || accessTokenSecret;
+        if (!secret) return null;
+        try {
+          const key = new TextEncoder().encode(secret);
+          const { payload } = await jwtVerify(token, key, {
+            issuer,
+            audience,
+            algorithms: ["HS256"]
+          });
+          return validateLogoutPayload(payload);
+        } catch {
+          return null;
+        }
+      }
+      return null;
     }
   };
 }
