@@ -365,6 +365,14 @@ npx tsx scripts/generate-oauth-rs256-keys.ts
 SSO 中心不会直接返回 JSON 400，而是按 OAuth 2.0 规范 302 重定向到 `redirect_uri?error=...&error_description=...&state=...`。
 子项目回调处理必须同时检查 `code` 和 `error` 参数。
 
+### 登录页取消（返回）行为
+
+用户在 SSO 登录页点击"返回"按钮时，SSO 中心会取消本次授权（而非回主站首页或死循环重定向）：
+`GET /api/oauth/cancel` 校验 `client_id` / `redirect_uri` 归属后，302 回传
+`redirect_uri?error=access_denied&error_description=用户取消了登录&state=...&iss=...`（弹窗登录额外透传 `popup_nonce`）。
+子项目 `handleCallback` 会解析 `error` 参数并抛错，回调页可展示"已取消登录"。
+因此子项目无需为登录页返回按钮做特殊处理，但应保证回调页对 `error` 分支有友好提示。
+
 ### 弹窗登录（Popup）
 
 SPA 场景可使用 `sso.loginPopup()` 在小窗口中完成登录，主页面不丢失状态（适合表单填写中途登录等场景）：

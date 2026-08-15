@@ -168,6 +168,32 @@ function LoginPageContent() {
     } catch {
       /* sessionStorage 不可用时忽略 */
     }
+    // SSO 授权场景：返回 = 取消授权。从 return_to 解析原 authorize 参数，
+    // 经 /api/oauth/cancel 服务端校验 redirect_uri 归属后 302 回子项目 callback
+    // （error=access_denied）。避免直接跳回 authorize 死循环或错误回到主站首页。
+    if (returnTo?.startsWith("/api/oauth/authorize")) {
+      try {
+        const authorizeUrl = new URL(returnTo, window.location.origin);
+        const clientId = authorizeUrl.searchParams.get("client_id");
+        const redirectUri = authorizeUrl.searchParams.get("redirect_uri");
+        const state = authorizeUrl.searchParams.get("state");
+        if (clientId && redirectUri && state) {
+          const cancelParams = new URLSearchParams({
+            client_id: clientId,
+            redirect_uri: redirectUri,
+            state,
+          });
+          const popupNonce = authorizeUrl.searchParams.get("popup_nonce");
+          if (popupNonce) cancelParams.set("popup_nonce", popupNonce);
+          // 必须完整页面导航：cancel 端点 302 重定向到跨域子项目回调
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign(`/api/oauth/cancel?${cancelParams.toString()}`);
+          return;
+        }
+      } catch {
+        // 解析失败：回退到原有返回逻辑
+      }
+    }
     navigateToReturnTo(returnTo);
   }, [navigateToReturnTo, returnTo]);
 
@@ -805,12 +831,18 @@ function LoginPageContent() {
               className="fixed inset-y-0 right-0 z-[99999] hidden w-full flex-col bg-white md:flex"
               style={{ willChange: "transform" }}
             >
-              {/* Back button：login 模式返回 return_to（默认首页），reset/register 返回登录 */}
+              {/* Back button：login 模式返回 return_to（默认首页）；SSO 授权场景走取消授权（access_denied）；reset/register 返回登录 */}
               {mode !== "wechat-bind" && mode !== "consent" && (
                 <button
                   onClick={mode === "login" ? handleClose : handleSwitchToLogin}
                   disabled={loading}
-                  aria-label={mode === "login" ? "返回首页" : "返回登录"}
+                  aria-label={
+                    mode === "login"
+                      ? returnTo?.startsWith("/api/oauth/authorize")
+                        ? "取消登录"
+                        : "返回首页"
+                      : "返回登录"
+                  }
                   className="absolute left-8 top-8 z-20 flex h-10 items-center gap-1.5 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
                 >
                   <ArrowLeft size={20} strokeWidth={1.5} />
