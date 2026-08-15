@@ -238,6 +238,32 @@ describe("GET /api/oauth/authorize", () => {
     expect(location).toContain("popup_nonce=popup123");
   });
 
+  it("错误与成功重定向均应携带 iss 参数（RFC 9207）", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+
+    // 错误重定向
+    const errReq = new NextRequest(buildAuthorizeUrl({ response_type: "token" }));
+    const errRes = await GET(errReq);
+    expect(errRes.status).toBe(302);
+    const errLocation = new URL(errRes.headers.get("location")!);
+    expect(errLocation.searchParams.get("error")).toBe("unsupported_response_type");
+    expect(errLocation.searchParams.get("iss")).toBe("http://localhost:3000");
+
+    // 成功重定向（auto-approve）
+    (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      scopes: ["openid"],
+      revokedAt: null,
+    });
+    const okReq = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const okRes = await GET(okReq);
+    expect(okRes.status).toBe(302);
+    const okLocation = new URL(okRes.headers.get("location")!);
+    expect(okLocation.searchParams.get("code")).toBe("test-auth-code");
+    expect(okLocation.searchParams.get("iss")).toBe("http://localhost:3000");
+  });
+
   it("popup_nonce 超过 64 字符应 302 回传 invalid_request", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
     const req = new NextRequest(buildAuthorizeUrl({ popup_nonce: "x".repeat(65) }));
@@ -432,6 +458,42 @@ describe("POST /api/oauth/authorize", () => {
     const location = res.headers.get("location")!;
     expect(location).toContain("code=test-auth-code");
     expect(location).toContain("popup_nonce=popup123");
+  });
+
+  it("授权成功与拒绝重定向均应携带 iss 参数（RFC 9207）", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+
+    // 成功（approve）
+    const approveReq = createPostRequest({
+      action: "approve",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+    });
+    const approveRes = await POST(approveReq);
+    expect(approveRes.status).toBe(302);
+    const approveLocation = new URL(approveRes.headers.get("location")!);
+    expect(approveLocation.searchParams.get("code")).toBe("test-auth-code");
+    expect(approveLocation.searchParams.get("iss")).toBe("http://localhost:3000");
+
+    // 拒绝（deny）
+    const denyReq = createPostRequest({
+      action: "deny",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+    });
+    const denyRes = await POST(denyReq);
+    expect(denyRes.status).toBe(302);
+    const denyLocation = new URL(denyRes.headers.get("location")!);
+    expect(denyLocation.searchParams.get("error")).toBe("access_denied");
+    expect(denyLocation.searchParams.get("iss")).toBe("http://localhost:3000");
   });
 
   it("AJAX 请求（X-Requested-With）授权成功应返回 200 JSON 携带 redirectUrl 而非 302", async () => {

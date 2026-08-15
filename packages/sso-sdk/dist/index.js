@@ -29,6 +29,7 @@ __export(src_exports, {
   generateCodeChallenge: () => generateCodeChallenge,
   generateCodeVerifier: () => generateCodeVerifier,
   generateState: () => generateState,
+  getLogoutState: () => getLogoutState,
   getOAuthState: () => getOAuthState,
   getPkceVerifier: () => getPkceVerifier,
   getReturnUrl: () => getReturnUrl,
@@ -36,10 +37,12 @@ __export(src_exports, {
   getTokenStorage: () => getTokenStorage,
   isTrustedReturnUrl: () => isTrustedReturnUrl,
   mapOAuthErrorToSsoCode: () => mapOAuthErrorToSsoCode,
+  removeLogoutState: () => removeLogoutState,
   removeOAuthState: () => removeOAuthState,
   removePkceVerifier: () => removePkceVerifier,
   removeReturnUrl: () => removeReturnUrl,
   removeTokenData: () => removeTokenData,
+  saveLogoutState: () => saveLogoutState,
   saveOAuthState: () => saveOAuthState,
   savePkceVerifier: () => savePkceVerifier,
   saveReturnUrl: () => saveReturnUrl,
@@ -134,6 +137,7 @@ var TOKEN_KEY = "token";
 var VERIFIER_KEY_PREFIX = "pkce_verifier_";
 var STATE_KEY = "oauth_state";
 var RETURN_URL_KEY = "return_url";
+var LOGOUT_STATE_KEY = "logout_state";
 function buildKey(base, clientId) {
   return clientId ? `${base}:${clientId}` : base;
 }
@@ -243,6 +247,15 @@ function getOAuthState(clientId) {
 function removeOAuthState(clientId) {
   _transient.remove(buildKey(STATE_KEY, clientId));
 }
+function saveLogoutState(state, clientId) {
+  _transient.set(buildKey(LOGOUT_STATE_KEY, clientId), state);
+}
+function getLogoutState(clientId) {
+  return _transient.get(buildKey(LOGOUT_STATE_KEY, clientId));
+}
+function removeLogoutState(clientId) {
+  _transient.remove(buildKey(LOGOUT_STATE_KEY, clientId));
+}
 function saveReturnUrl(url, clientId) {
   _transient.set(buildKey(RETURN_URL_KEY, clientId), url);
 }
@@ -257,6 +270,7 @@ function clearAllSsoData(clientId) {
     removeTokenData(clientId);
     removeOAuthState(clientId);
     removeReturnUrl(clientId);
+    removeLogoutState(clientId);
     removePkceVerifier(clientId);
     removePkceVerifier(`${clientId}_popup_nonce`);
     return;
@@ -264,6 +278,7 @@ function clearAllSsoData(clientId) {
   removeTokenData();
   removeOAuthState();
   removeReturnUrl();
+  removeLogoutState();
   const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
   const stores = [
     typeof sessionStorage !== "undefined" ? sessionStorage : null,
@@ -291,6 +306,7 @@ function clearVerifiersForClients(clientIds) {
 // src/core/security.ts
 function isTrustedReturnUrl(url, currentOrigin) {
   if (!url) return false;
+  if (url.includes("\\")) return false;
   if (url.startsWith("/") && !url.startsWith("//")) return true;
   try {
     return new URL(url).origin === currentOrigin;
@@ -849,8 +865,6 @@ var _SsoClient = class _SsoClient {
       );
     }
     const data = await res.json();
-    removeOAuthState(this.config.clientId);
-    removePkceVerifier(this.config.clientId);
     if (data.id_token) {
       try {
         await validateIdToken(
@@ -864,6 +878,8 @@ var _SsoClient = class _SsoClient {
         throw err;
       }
     }
+    removeOAuthState(this.config.clientId);
+    removePkceVerifier(this.config.clientId);
     const now = Date.now();
     const tokenData = {
       access_token: data.access_token,
@@ -1032,7 +1048,9 @@ var _SsoClient = class _SsoClient {
    * 登出
    *
    * 清除本地所有 token 和临时数据，并尝试撤销服务端 refresh_token。
-   * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）
+   * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）。
+   *   为 true 时携带 state 参数（已保存到 sessionStorage），
+   *   回跳页面应调用 validateLogoutState() 校验防登出 CSRF。
    */
   async logout(redirectToSso = false) {
     const tokenData = getTokenData(this.config.clientId);
@@ -1075,9 +1093,35 @@ var _SsoClient = class _SsoClient {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }
       const state = generateState();
+      saveLogoutState(state, this.config.clientId);
       logoutUrl.searchParams.set("state", state);
       window.location.href = logoutUrl.toString();
     }
+  }
+  /**
+   * 校验 RP-Initiated Logout 回跳的 state 参数（登出 CSRF 防护）
+   *
+   * 在 post_logout_redirect_uri 指向的页面加载时调用；
+   * 仅在 URL 携带 state 且与 logout(redirectToSso=true) 保存的值一致时返回 true，
+   * 校验后清除已保存的 logout state（一次性）。
+   *
+   * @param url - 当前页面完整 URL（window.location.href）
+   *
+   * @example
+   * ```typescript
+   * if (sso.validateLogoutState(window.location.href)) {
+   *   // 来自 SSO 登出的可信回跳
+   * }
+   * ```
+   */
+  validateLogoutState(url) {
+    const returnedState = new URL(url).searchParams.get("state");
+    if (!returnedState) return false;
+    const savedState = getLogoutState(this.config.clientId);
+    if (!savedState) return false;
+    if (!timingSafeEqualString(savedState, returnedState)) return false;
+    removeLogoutState(this.config.clientId);
+    return true;
   }
   /**
    * 获取 OIDC Discovery 文档
@@ -1105,6 +1149,7 @@ var SsoClient = _SsoClient;
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
+  getLogoutState,
   getOAuthState,
   getPkceVerifier,
   getReturnUrl,
@@ -1112,10 +1157,12 @@ var SsoClient = _SsoClient;
   getTokenStorage,
   isTrustedReturnUrl,
   mapOAuthErrorToSsoCode,
+  removeLogoutState,
   removeOAuthState,
   removePkceVerifier,
   removeReturnUrl,
   removeTokenData,
+  saveLogoutState,
   saveOAuthState,
   savePkceVerifier,
   saveReturnUrl,

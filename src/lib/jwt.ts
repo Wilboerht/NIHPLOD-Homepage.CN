@@ -19,6 +19,7 @@ import { SignJWT, jwtVerify, importPKCS8, importSPKI } from "jose";
 import { LRUCache } from "lru-cache";
 import { isAccessTokenRevoked, isTokenBlacklisted } from "./token-blacklist";
 import { maskPhone } from "./mask-phone";
+import { getIssuer } from "./oauth-constants";
 import { prisma } from "./prisma";
 import type {
   AdminJWTPayload,
@@ -28,7 +29,8 @@ import type {
   AdminRole,
 } from "@/types/auth";
 
-const ISSUER = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+// issuer 统一由 oauth-constants.getIssuer() 生成（APP_URL → BASE_URL → VERCEL_URL → localhost）
+const ISSUER = getIssuer();
 const MIN_SECRET_LENGTH = 32;
 
 // 生产环境保护：NEXT_PUBLIC_APP_URL 必须是公网地址，否则子项目发现端点失效
@@ -43,13 +45,6 @@ if (
       "OIDC Discovery 端点依赖此值生成 issuer 和端点 URL。"
   );
 }
-
-// 已处理的 logout_token jti 缓存（主站自身验证入口）
-// TTL 10 分钟：logout token 本身有效期 5 分钟，留足时钟偏移余量。
-const processedLogoutJtis = new LRUCache<string, number>({
-  max: 10000,
-  ttl: 10 * 60 * 1000,
-});
 
 function validateSecret(name: string, value: string | undefined): string {
   if (!value) {
@@ -346,12 +341,16 @@ export async function verifyUserToken(
  *
  * @param payload.clientId - OAuth client_id，可选。传入时写入 payload，用于 refresh 时校验所有权。
  * @param payload.scope - 授权 scope，可选。传入时写入 payload，便于后续审计与最小权限校验。
+ * @param payload.sid - 关联的 OAuthSession.sessionId，可选。revoke 时据此定位单个会话撤销。
+ * @param payload.dpopJkt - DPoP 绑定的 JWK Thumbprint，可选。refresh 时据此要求并验证 DPoP proof。
  */
 export async function signRefreshToken(payload: {
   id: string;
   phone: string;
   clientId?: string;
   scope?: string;
+  sid?: string;
+  dpopJkt?: string;
 }): Promise<string> {
   const jwtPayload: Record<string, unknown> = {
     id: payload.id,
@@ -361,6 +360,8 @@ export async function signRefreshToken(payload: {
   // 仅在传入时写入，保持内部非 OAuth token 的向后兼容
   if (payload.clientId) jwtPayload.client_id = payload.clientId;
   if (payload.scope) jwtPayload.scope = payload.scope;
+  if (payload.sid) jwtPayload.sid = payload.sid;
+  if (payload.dpopJkt) jwtPayload.dpop_jkt = payload.dpopJkt;
 
   const token = await new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: "HS256" })
@@ -614,6 +615,84 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
   return jwt.sign(idTokenSecret);
 }
 
+/**
+ * 验证 OIDC ID Token（验签 + iss/aud/type 校验）
+ *
+ * 用于 RP-Initiated Logout 的 id_token_hint 验证等主站侧场景。
+ * 与 signIdToken 的密钥策略对称：优先 RS256 公钥（含上一代轮换公钥），
+ * 未配置 RS256 或显式启用 ALLOW_HS256_FALLBACK 时回退 HS256。
+ *
+ * @param token - ID Token 字符串
+ * @param expectedAudience - 可选，预期 aud（通常为发起方的 client_id）
+ */
+export async function verifyIdToken(
+  token: string,
+  expectedAudience?: string
+): Promise<IdTokenClaims | null> {
+  try {
+    // 基础校验项；algorithms 在各分支显式指定（公钥分支 RS256，对称密钥分支 HS256）
+    const verifyOptions: { issuer: string; audience?: string } = {
+      issuer: ISSUER,
+    };
+    if (expectedAudience) {
+      verifyOptions.audience = expectedAudience;
+    }
+
+    // 优先尝试 RS256 公钥验证（若已配置），密钥轮换期依次尝试当前与上一代公钥
+    const publicKeys: CryptoKey[] = [];
+    const currentKey = await getIdTokenPublicKey();
+    if (currentKey) publicKeys.push(currentKey);
+    const prevKey = await getPrevIdTokenPublicKey();
+    if (prevKey) publicKeys.push(prevKey);
+
+    let payload: import("jose").JWTPayload;
+    if (publicKeys.length > 0) {
+      let verified: import("jose").JWTPayload | null = null;
+      for (const key of publicKeys) {
+        try {
+          const result = await jwtVerify(token, key, {
+            ...verifyOptions,
+            algorithms: ["RS256"],
+          });
+          verified = result.payload;
+          break;
+        } catch {
+          // 尝试下一把公钥
+        }
+      }
+      if (verified) {
+        payload = verified;
+      } else {
+        // RS256 验证失败，仅在显式启用时回退 HS256（兼容旧 token）
+        if (process.env.ALLOW_HS256_FALLBACK === "true") {
+          const result = await jwtVerify(token, idTokenSecret, {
+            ...verifyOptions,
+            algorithms: ["HS256"],
+          });
+          payload = result.payload;
+        } else {
+          return null;
+        }
+      }
+    } else {
+      const result = await jwtVerify(token, idTokenSecret, {
+        ...verifyOptions,
+        algorithms: ["HS256"],
+      });
+      payload = result.payload;
+    }
+
+    if ((payload as { type?: string }).type !== "id_token") {
+      return null;
+    }
+
+    return payload as unknown as IdTokenClaims;
+  } catch (error) {
+    warnVerifyError("verifyIdToken", error);
+    return null;
+  }
+}
+
 // ============================================
 // OAuth Logout Token RS256 迁移支持（可选）
 // ============================================
@@ -721,7 +800,11 @@ export async function signLogoutToken(claims: LogoutTokenClaims): Promise<string
 }
 
 /**
- * 验证 Logout Token
+ * 验证 Logout Token（仅验证，不消费 jti）
+ *
+ * jti 一次性消费/防重放不属于本函数职责：同一 logout_token 可能被 RP 重试验证
+ * 或在多节点间转发，验证成功即标记已处理会造成误报。真正的防重放由 RP 侧
+ * 处理登出时自行实现（sso-verify 已内置 jti LRU 去重）。
  */
 export async function verifyLogoutToken(
   token: string,
@@ -781,37 +864,6 @@ export async function verifyLogoutToken(
     if (!claims.jti || typeof claims.jti !== "string") {
       return null;
     }
-    // jti 重放检查：同一 logout_token 仅处理一次
-    // 内存 LRU 作为快速路径；数据库模式额外提供多实例共享保护
-    if (processedLogoutJtis.has(claims.jti)) {
-      return null;
-    }
-
-    // 数据库模式：atomic upsert 防止多实例下的 jti 重用
-    if (process.env.TOKEN_BLACKLIST_STORAGE === "database") {
-      try {
-        const dbKey = `logout_jti:${claims.jti}`;
-        await prisma.tokenBlacklist.create({
-          data: {
-            type: "logout_jti",
-            key: dbKey,
-            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-          },
-        });
-      } catch (err) {
-        if (
-          err &&
-          typeof err === "object" &&
-          "code" in err &&
-          (err as { code: string }).code === "P2002"
-        ) {
-          return null;
-        }
-        // 数据库故障不影响单实例保护
-      }
-    }
-
-    processedLogoutJtis.set(claims.jti, Date.now());
 
     return claims;
   } catch (error) {

@@ -30,7 +30,10 @@ function createTokenVerifier(options) {
     logoutTokenPublicKey,
     introspectCacheTtl = 30 * 1e3,
     introspectTimeoutMs = 10 * 1e3,
-    introspectNegativeCacheTtl = 5 * 1e3
+    introspectNegativeCacheTtl = 5 * 1e3,
+    introspectRetries = 1,
+    clockToleranceSeconds = 60,
+    logoutJtiStore
   } = options;
   const introspectCache = createIntrospectCache(introspectCacheTtl);
   let _jwksKeySet = null;
@@ -78,6 +81,14 @@ function createTokenVerifier(options) {
     }
     return _logoutRs256PublicKey;
   }
+  function matchesAudience(data) {
+    const aud = data.aud;
+    if (typeof aud === "string") return aud === audience;
+    if (Array.isArray(aud)) return aud.includes(audience);
+    if (typeof data.client_id === "string") return data.client_id === audience;
+    return true;
+  }
+  const inflightIntrospects = /* @__PURE__ */ new Map();
   async function introspect(token) {
     if (!introspectionEndpoint || !clientId) {
       return null;
@@ -86,41 +97,73 @@ function createTokenVerifier(options) {
     if (cached) {
       return { active: cached.active, ...cached.payload || {} };
     }
-    try {
-      const params = new URLSearchParams({ token, client_id: clientId });
-      if (clientSecret) {
-        params.set("client_secret", clientSecret);
+    const inflight = inflightIntrospects.get(token);
+    if (inflight) {
+      return inflight;
+    }
+    const promise = doIntrospect(token).finally(() => {
+      inflightIntrospects.delete(token);
+    });
+    inflightIntrospects.set(token, promise);
+    return promise;
+  }
+  async function doIntrospect(token) {
+    const params = new URLSearchParams({ token, client_id: clientId });
+    if (clientSecret) {
+      params.set("client_secret", clientSecret);
+    }
+    let data = null;
+    for (let attempt = 0; ; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
       }
-      const response = await fetch(introspectionEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params,
-        signal: AbortSignal.timeout(introspectTimeoutMs)
-      });
-      if (!response.ok) return null;
-      const data = await response.json();
-      let payload = null;
-      if (data.active && data.sub) {
-        payload = {
-          sub: data.sub,
-          aud: audience,
-          iss: issuer,
-          client_id: data.client_id,
-          scope: data.scope,
-          exp: data.exp
-        };
+      let response;
+      try {
+        response = await fetch(introspectionEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params,
+          signal: AbortSignal.timeout(introspectTimeoutMs)
+        });
+      } catch {
+        if (attempt < introspectRetries) continue;
+        return null;
       }
-      if (data.active) {
-        introspectCache.set(token, { active: true, payload });
-      } else if (introspectNegativeCacheTtl > 0) {
+      if (!response.ok) {
+        if (response.status >= 500 && attempt < introspectRetries) continue;
+        return null;
+      }
+      data = await response.json();
+      break;
+    }
+    if (!data) return null;
+    if (data.active && !matchesAudience(data)) {
+      if (introspectNegativeCacheTtl > 0) {
         introspectCache.set(token, { active: false, payload: null }, {
           ttl: introspectNegativeCacheTtl
         });
       }
-      return data;
-    } catch {
-      return null;
+      return { active: false };
     }
+    let payload = null;
+    if (data.active && data.sub) {
+      payload = {
+        sub: data.sub,
+        aud: audience,
+        iss: issuer,
+        client_id: data.client_id,
+        scope: data.scope,
+        exp: data.exp
+      };
+    }
+    if (data.active) {
+      introspectCache.set(token, { active: true, payload });
+    } else if (introspectNegativeCacheTtl > 0) {
+      introspectCache.set(token, { active: false, payload: null }, {
+        ttl: introspectNegativeCacheTtl
+      });
+    }
+    return data;
   }
   async function verifyLocally(token) {
     if (!accessTokenSecret) return null;
@@ -129,7 +172,8 @@ function createTokenVerifier(options) {
       const { payload } = await jwtVerify(token, secret, {
         issuer,
         audience,
-        algorithms: ["HS256"]
+        algorithms: ["HS256"],
+        clockTolerance: clockToleranceSeconds
       });
       if (payload.type !== "access_token") {
         return null;
@@ -149,7 +193,8 @@ function createTokenVerifier(options) {
         const { payload } = await jwtVerify(token, directKey, {
           issuer,
           audience,
-          algorithms: ["RS256"]
+          algorithms: ["RS256"],
+          clockTolerance: clockToleranceSeconds
         });
         if (payload.type !== "access_token") return null;
         return payload;
@@ -159,7 +204,8 @@ function createTokenVerifier(options) {
         const { payload } = await jwtVerify(token, jwks, {
           issuer,
           audience,
-          algorithms: ["RS256"]
+          algorithms: ["RS256"],
+          clockTolerance: clockToleranceSeconds
         });
         if (payload.type !== "access_token") return null;
         return payload;
@@ -216,17 +262,22 @@ function createTokenVerifier(options) {
      * 1. type === "logout_token"
      * 2. iss 匹配配置的 issuer
      * 3. aud 包含当前 client_id
-     * 4. events 包含 backchannel-logout 事件
+     * 4. exp 存在（规范要求）
+     * 5. events 包含 backchannel-logout 事件，且事件值为对象
      *
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
     async verifyLogoutToken(token) {
-      const validateLogoutPayload = (payload) => {
+      const validateLogoutPayload = async (payload) => {
         if (payload.type !== "logout_token") {
           return null;
         }
+        if (typeof payload.exp !== "number") {
+          return null;
+        }
         const events = payload.events;
-        if (!events || !events["http://schemas.openid.net/event/backchannel-logout"]) {
+        const logoutEvent = events?.["http://schemas.openid.net/event/backchannel-logout"];
+        if (!logoutEvent || typeof logoutEvent !== "object" || Array.isArray(logoutEvent)) {
           return null;
         }
         const jti = payload.jti;
@@ -235,10 +286,17 @@ function createTokenVerifier(options) {
         }
         const iss = payload.iss || issuer;
         const jtiKey = `${iss}:${jti}`;
-        if (processedLogoutJtis.has(jtiKey)) {
-          return null;
+        if (logoutJtiStore) {
+          if (await logoutJtiStore.has(jtiKey)) {
+            return null;
+          }
+          await logoutJtiStore.add(jtiKey, 10 * 60);
+        } else {
+          if (processedLogoutJtis.has(jtiKey)) {
+            return null;
+          }
+          processedLogoutJtis.set(jtiKey, Date.now());
         }
-        processedLogoutJtis.set(jtiKey, Date.now());
         return payload;
       };
       let alg;
@@ -254,9 +312,10 @@ function createTokenVerifier(options) {
             const { payload } = await jwtVerify(token, directKey, {
               issuer,
               audience,
-              algorithms: ["RS256"]
+              algorithms: ["RS256"],
+              clockTolerance: clockToleranceSeconds
             });
-            return validateLogoutPayload(payload);
+            return await validateLogoutPayload(payload);
           } catch {
             return null;
           }
@@ -267,9 +326,10 @@ function createTokenVerifier(options) {
             const { payload } = await jwtVerify(token, jwks, {
               issuer,
               audience,
-              algorithms: ["RS256"]
+              algorithms: ["RS256"],
+              clockTolerance: clockToleranceSeconds
             });
-            return validateLogoutPayload(payload);
+            return await validateLogoutPayload(payload);
           } catch {
             return null;
           }
@@ -284,9 +344,10 @@ function createTokenVerifier(options) {
           const { payload } = await jwtVerify(token, key, {
             issuer,
             audience,
-            algorithms: ["HS256"]
+            algorithms: ["HS256"],
+            clockTolerance: clockToleranceSeconds
           });
-          return validateLogoutPayload(payload);
+          return await validateLogoutPayload(payload);
         } catch {
           return null;
         }
@@ -303,14 +364,18 @@ function ssoMiddleware(options) {
     if (!token) {
       if (res.status) {
         res.status(401).json({ error: "Unauthorized", message: "\u8BF7\u63D0\u4F9B Bearer token" });
+        return;
       }
+      next(new Error("Unauthorized: \u8BF7\u63D0\u4F9B Bearer token"));
       return;
     }
     const payload = await verifier.verify(token);
     if (!payload) {
       if (res.status) {
         res.status(401).json({ error: "Unauthorized", message: "Token \u65E0\u6548\u6216\u5DF2\u8FC7\u671F" });
+        return;
       }
+      next(new Error("Unauthorized: Token \u65E0\u6548\u6216\u5DF2\u8FC7\u671F"));
       return;
     }
     req.user = payload;

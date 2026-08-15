@@ -26,7 +26,11 @@ export async function GET(request: NextRequest) {
     const ip = getClientIP(request);
     const corsHeaders = await getOAuthCorsHeaders(request);
     const resJson = (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
-      NextResponse.json(body, { status, headers: { ...corsHeaders, ...extraHeaders } });
+      NextResponse.json(body, {
+        status,
+        // 与 token/revoke 端点一致：userinfo 响应含用户数据，不得被缓存
+        headers: { "Cache-Control": "no-store", Pragma: "no-cache", ...corsHeaders, ...extraHeaders },
+      });
 
     // 限流
     const limitResult = await rateLimit(ip, "oauth-userinfo");

@@ -125,6 +125,10 @@ export interface RefreshTokenPayload extends JWTPayload {
   type: "refresh";
   client_id?: string;
   scope?: string;
+  /** 关联的 OAuthSession.sessionId，revoke 时据此定位单个会话撤销 */
+  sid?: string;
+  /** DPoP 绑定的 JWK Thumbprint（RFC 9449），refresh 时据此要求并验证 DPoP proof */
+  dpop_jkt?: string;
 }
 
 /**

@@ -1,24 +1,13 @@
 /**
  * JWKS (JSON Web Key Set) 端点
- * GET /api/oauth/jwks.json
+ * GET /api/oauth/jwks
  *
- * ⚠️ 安全警告：当前使用 HS256 对称密钥。
- * 对称密钥无法安全地通过 JWKS 公开分发，因此本端点**不暴露** k 值。
+ * 发布 RS256 公钥（access token / ID token / logout token 三类），
+ * 供子项目本地验签。密钥轮换过渡期同时暴露当前与上一代公钥（各自 kid），
+ * 验证侧按 kid 匹配。
  *
- * 推荐做法：
- *   1. 子项目使用 Introspection 端点验证 token（`POST /api/oauth/introspect`）
- *   2. 若确需本地验证，使用共享的环境变量 JWT_ACCESS_SECRET 自行计算
- *   3. 计划升级至 RS256 非对称密钥后，本端点将公开公钥用于第三方验证
- *
- * 迁移路线图：
- *   Phase 1: 生成 RSA 密钥对，同时支持 HS256 + RS256（2 周内）
- *   Phase 2: 子项目迁移至 RS256 验证（2-4 周）
- *   Phase 3: 移除 HS256，JWKS 端点正式公开 RSA 公钥（4 周后）
- *
- * 当前缓解措施：
- *   - 速率限制（IP 级）
- *   - 仅返回 key 标识符（kid），不返回签名密钥
- *   - 生产环境通过反向代理限制访问来源 IP
+ * 响应内存缓存 1 小时（ stale-while-revalidate 1 天），CORS 开放 *（公钥本就公开）。
+ * 对称密钥（HS256 secret）永不在此暴露。
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";

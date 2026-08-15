@@ -3,6 +3,8 @@
  * GET /api/user/oauth/sessions
  *
  * 返回当前用户所有活跃的 OAuth 授权记录（含 client 名称）。
+ * 同一 client 可能存在多条 session（多次授权/多设备），按 clientId 去重，
+ * 每 client 仅返回最近创建的一条。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
@@ -43,12 +45,19 @@ export async function GET(request: NextRequest) {
 
     const clientNameMap = new Map(clients.map((c) => [c.clientId, c.name]));
 
-    const data = sessions.map((s) => ({
-      clientId: s.clientId,
-      clientName: clientNameMap.get(s.clientId) || s.clientId,
-      scopes: s.scopes,
-      createdAt: s.createdAt.toISOString(),
-    }));
+    // 按 clientId 去重：sessions 已按 createdAt 倒序，首个出现的即该 client 最近的 session
+    const seen = new Set<string>();
+    const data = [];
+    for (const s of sessions) {
+      if (seen.has(s.clientId)) continue;
+      seen.add(s.clientId);
+      data.push({
+        clientId: s.clientId,
+        clientName: clientNameMap.get(s.clientId) || s.clientId,
+        scopes: s.scopes,
+        createdAt: s.createdAt.toISOString(),
+      });
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {

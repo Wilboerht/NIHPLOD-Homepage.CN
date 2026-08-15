@@ -17,7 +17,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyOAuthAccessToken } from "@/lib/jwt";
-import { isTokenBlacklisted, isAccessTokenRevoked } from "@/lib/token-blacklist";
+import { getIssuer } from "@/lib/oauth-constants";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
@@ -115,41 +115,8 @@ export async function POST(request: NextRequest) {
       return resJson({ active: false });
     }
 
-    // 优先按显式 client_type claim 识别 M2M token，兼容旧 token 的 client: 前缀
-    const isM2m =
-      (payload as { client_type?: string }).client_type === "m2m" ||
-      payload.id.startsWith("client:");
-
-    // 用户级黑名单检查（M2M token 无需检查，无关联用户）
-    if (!isM2m) {
-      const blacklisted = await isTokenBlacklisted(payload.id);
-      if (blacklisted) {
-        scheduleSsoEvent({
-          event: "introspect",
-          userId: payload.id,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: true,
-          detail: { active: false, reason: "blacklisted" },
-        });
-        return resJson({ active: false });
-      }
-    }
-
-    // 检查 JTI 级令牌撤销
-    if (payload.jti && (await isAccessTokenRevoked(payload.jti as string))) {
-      scheduleSsoEvent({
-        event: "introspect",
-        userId: payload.id,
-        clientId: client_id,
-        clientName: client.name,
-        ip,
-        success: true,
-        detail: { active: false, reason: "token_revoked" },
-      });
-      return resJson({ active: false });
-    }
+    // 用户级黑名单与 JTI 级撤销检查由 verifyOAuthAccessToken 内部统一完成，
+    // 此处不重复检查（payload 非 null 即已通过全部校验）
 
     scheduleSsoEvent({
       event: "introspect",
@@ -169,7 +136,7 @@ export async function POST(request: NextRequest) {
       scope: payload.scope || "openid",
       exp: payload.exp,
       iat: payload.iat,
-      iss: process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn",
+      iss: getIssuer(),
     });
   } catch (error) {
     apiConsole.error("[OAuth Introspect] 异常:", error);

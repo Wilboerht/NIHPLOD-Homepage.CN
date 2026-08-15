@@ -91,10 +91,19 @@ vi.mock("@/lib/oauth-code", async () => {
   };
 });
 
+// === Mock dpop ===
+vi.mock("@/lib/dpop", () => ({
+  validateDPoPProof: vi.fn(),
+  dpopNonceHeader: vi.fn((nonce: string) => ({ "DPoP-Nonce": nonce })),
+  getDPoPHtu: vi.fn().mockReturnValue("http://localhost/api/oauth/token"),
+  getDpopNonce: vi.fn().mockReturnValue("test-nonce"),
+}));
+
 import { POST } from "../token/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { rateLimit } from "@/lib/ratelimit";
 import { atomicallyRotateRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
+import { validateDPoPProof } from "@/lib/dpop";
 import { prisma } from "@/lib/prisma";
 import { signRefreshToken } from "@/lib/jwt";
 
@@ -740,6 +749,120 @@ describe("POST /api/oauth/token", () => {
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
       expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it("refresh token 已绑定 DPoP 时，缺少 DPoP proof 应返回 400 且不执行轮换", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-dpop-1",
+        scopes: ["openid"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+        dpopJkt: "jkt-bound",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_dpop_proof");
+      expect(validateDPoPProof).not.toHaveBeenCalled();
+      expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it("DPoP proof 的 jkt 与绑定不一致应返回 400", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-dpop-1",
+        scopes: ["openid"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      vi.mocked(validateDPoPProof).mockResolvedValue({ valid: true, jkt: "jkt-other" });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+        dpopJkt: "jkt-bound",
+      });
+
+      const req = new Request("http://localhost/api/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", DPoP: "proof-jwt" },
+        body: JSON.stringify({
+          grant_type: "refresh_token",
+          client_id: "test-client",
+          client_secret: "secret",
+          refresh_token: refreshToken,
+        }),
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_dpop_proof");
+      expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it("DPoP proof 验证通过时，新 access token 携带 cnf.jkt 且新 refresh token 延续绑定", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(validateDPoPProof).mockResolvedValue({ valid: true, jkt: "jkt-bound" });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-dpop-1",
+        scopes: ["openid"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+        dpopJkt: "jkt-bound",
+      });
+
+      const req = new Request("http://localhost/api/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", DPoP: "proof-jwt" },
+        body: JSON.stringify({
+          grant_type: "refresh_token",
+          client_id: "test-client",
+          client_secret: "secret",
+          refresh_token: refreshToken,
+        }),
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      // 签发新的服务端 nonce，供下一次 proof 使用
+      expect(res.headers.get("dpop-nonce")).toBe("test-nonce");
+      const body = await res.json();
+      // cnf.jkt 延续到新 access token
+      expect((decodeJwt(body.access_token).cnf as { jkt?: string }).jkt).toBe("jkt-bound");
+      // 绑定延续到新 refresh token（下一次刷新仍要求 DPoP proof）
+      expect(decodeJwt(body.refresh_token).dpop_jkt).toBe("jkt-bound");
     });
   });
 

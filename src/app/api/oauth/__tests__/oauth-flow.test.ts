@@ -209,7 +209,8 @@ import { GET as userinfoGet } from "@/app/api/oauth/userinfo/route";
 import { POST as revokePost } from "@/app/api/oauth/revoke/route";
 
 import { getOAuthClientByClientId, verifyOAuthClientSecret } from "@/lib/oauth-client";
-import { signUserToken } from "@/lib/jwt";
+import { signUserToken, signRefreshToken } from "@/lib/jwt";
+import { prisma } from "@/lib/prisma";
 
 // ============================================
 // 辅助函数
@@ -366,6 +367,12 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     // 验证 refresh token 已触发撤销逻辑
     expect(mockRevokeRefreshToken).toHaveBeenCalledWith(userId, refresh_token);
 
+    // refresh token 携带 sid，仅撤销该会话（不波及同 user+client 的其它设备会话）
+    expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+      where: { sessionId: expect.any(String), revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+
     // 6. 再次调用 revoke 撤销 access_token，使后续 userinfo 返回 401
     // （注：OAuth 2.0 Token Revocation 中撤销 refresh_token 不会自动使 access_token 失效；
     //  这里通过撤销 access_token 验证最终用户会话失效，符合题目“access token 已被撤销”的断言。）
@@ -396,5 +403,56 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
 
     const userinfoAgainBody = await userinfoAgainRes.json();
     expect(userinfoAgainBody.error).toBe("invalid_token");
+  });
+
+  it("revoke：refresh token 携带 sid 时仅撤销该会话；无 sid 的旧 token 回退 user+client 全量撤销", async () => {
+    function revokeRequest(token: string) {
+      return new NextRequest("http://localhost/api/oauth/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          token_type_hint: "refresh_token",
+          client_id: "test-client",
+          client_secret: "test-secret",
+        }),
+      });
+    }
+
+    // 带 sid：仅撤销该 sessionId 对应的会话
+    const withSid = await signRefreshToken({
+      id: "user-flow-1",
+      phone: "13800138000",
+      clientId: "test-client",
+      scope: "openid",
+      sid: "sess-device-a",
+    });
+    const res1 = await revokePost(revokeRequest(withSid));
+    expect(res1.status).toBe(200);
+    expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+      where: { sessionId: "sess-device-a", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(prisma.oAuthSession.updateMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: "user-flow-1" }),
+      })
+    );
+
+    vi.mocked(prisma.oAuthSession.updateMany).mockClear();
+
+    // 无 sid 的旧版 refresh token：回退撤销 user+client 全部 session
+    const noSid = await signRefreshToken({
+      id: "user-flow-1",
+      phone: "13800138000",
+      clientId: "test-client",
+      scope: "openid",
+    });
+    const res2 = await revokePost(revokeRequest(noSid));
+    expect(res2.status).toBe(200);
+    expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+      where: { userId: "user-flow-1", clientId: "test-client", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
   });
 });

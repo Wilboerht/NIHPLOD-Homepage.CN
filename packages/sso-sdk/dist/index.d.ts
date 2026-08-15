@@ -61,6 +61,9 @@ declare function removePkceVerifier(clientId: string): void;
 declare function saveOAuthState(state: string, clientId?: string): void;
 declare function getOAuthState(clientId?: string): string | null;
 declare function removeOAuthState(clientId?: string): void;
+declare function saveLogoutState(state: string, clientId?: string): void;
+declare function getLogoutState(clientId?: string): string | null;
+declare function removeLogoutState(clientId?: string): void;
 declare function saveReturnUrl(url: string, clientId?: string): void;
 declare function getReturnUrl(clientId?: string): string | null;
 declare function removeReturnUrl(clientId?: string): void;
@@ -261,9 +264,28 @@ declare class SsoClient {
      * 登出
      *
      * 清除本地所有 token 和临时数据，并尝试撤销服务端 refresh_token。
-     * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）
+     * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）。
+     *   为 true 时携带 state 参数（已保存到 sessionStorage），
+     *   回跳页面应调用 validateLogoutState() 校验防登出 CSRF。
      */
     logout(redirectToSso?: boolean): Promise<void>;
+    /**
+     * 校验 RP-Initiated Logout 回跳的 state 参数（登出 CSRF 防护）
+     *
+     * 在 post_logout_redirect_uri 指向的页面加载时调用；
+     * 仅在 URL 携带 state 且与 logout(redirectToSso=true) 保存的值一致时返回 true，
+     * 校验后清除已保存的 logout state（一次性）。
+     *
+     * @param url - 当前页面完整 URL（window.location.href）
+     *
+     * @example
+     * ```typescript
+     * if (sso.validateLogoutState(window.location.href)) {
+     *   // 来自 SSO 登出的可信回跳
+     * }
+     * ```
+     */
+    validateLogoutState(url: string): boolean;
     /**
      * 获取 OIDC Discovery 文档
      *
@@ -348,6 +370,8 @@ declare class OAuthError extends Error {
 /**
  * 校验 returnUrl 是否可信（防开放重定向）。
  * 仅允许：相对路径（且不以 // 开头）或与 currentOrigin 完全同源的绝对 URL。
+ * 拒绝一切含反斜杠 \ 的值：浏览器会把 "/\evil.com" 归一化为 "//evil.com"，
+ * 形成协议相对 URL 开放重定向。
  */
 declare function isTrustedReturnUrl(url: string, currentOrigin: string): boolean;
 /**
@@ -356,4 +380,4 @@ declare function isTrustedReturnUrl(url: string, currentOrigin: string): boolean
  */
 declare function timingSafeEqualString(a: string, b: string): boolean;
 
-export { OAuthError, type OidcDiscovery, SsoClient, type SsoClientConfig, SsoError, type SsoErrorCode, type SsoUser, type TokenData, type TokenResponse, type TokenStorage, clearAllSsoData, clearVerifiersForClients, createSecureStorage, generateCodeChallenge, generateCodeVerifier, generateState, getOAuthState, getPkceVerifier, getReturnUrl, getTokenData, getTokenStorage, isTrustedReturnUrl, mapOAuthErrorToSsoCode, removeOAuthState, removePkceVerifier, removeReturnUrl, removeTokenData, saveOAuthState, savePkceVerifier, saveReturnUrl, saveTokenData, setTokenStorage, timingSafeEqualString };
+export { OAuthError, type OidcDiscovery, SsoClient, type SsoClientConfig, SsoError, type SsoErrorCode, type SsoUser, type TokenData, type TokenResponse, type TokenStorage, clearAllSsoData, clearVerifiersForClients, createSecureStorage, generateCodeChallenge, generateCodeVerifier, generateState, getLogoutState, getOAuthState, getPkceVerifier, getReturnUrl, getTokenData, getTokenStorage, isTrustedReturnUrl, mapOAuthErrorToSsoCode, removeLogoutState, removeOAuthState, removePkceVerifier, removeReturnUrl, removeTokenData, saveLogoutState, saveOAuthState, savePkceVerifier, saveReturnUrl, saveTokenData, setTokenStorage, timingSafeEqualString };

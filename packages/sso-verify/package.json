@@ -34,8 +34,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nihplod/nihplod.cn",
+    "url": "https://github.com/Wilboerht/NIHPLOD-Homepage.CN",
     "directory": "packages/sso-verify"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "peerDependencies": {},
   "dependencies": {

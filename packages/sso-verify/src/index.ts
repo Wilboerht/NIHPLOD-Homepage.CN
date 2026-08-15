@@ -115,6 +115,38 @@ export interface SsoVerifierOptions {
    * 不会静默回退到 HS256。
    */
   logoutTokenPublicKey?: string;
+
+  /**
+   * Introspection 请求失败重试次数，默认 1。
+   * 仅对网络错误与 5xx 响应重试（短退避），4xx 不重试。
+   * 设为 0 表示不重试。
+   */
+  introspectRetries?: number;
+
+  /**
+   * JWT 时钟偏移容忍（秒），默认 60。
+   * 应用于所有本地验签路径（HS256/RS256/logout token），
+   * 用于容忍子项目与主站之间的时钟偏差。
+   */
+  clockToleranceSeconds?: number;
+
+  /**
+   * Logout Token jti 外部存储（可选）。
+   * 默认使用进程内 LRU 缓存（重启即清空、多实例不共享）；
+   * 多实例部署时应注入共享存储（如 Redis 实现）以防跨实例重放。
+   */
+  logoutJtiStore?: LogoutJtiStore;
+}
+
+/**
+ * Logout Token jti 防重放存储接口（可注入 Redis 等共享存储实现）。
+ * has/add 均支持同步或异步返回。
+ */
+export interface LogoutJtiStore {
+  /** 判断 jti 是否已处理过 */
+  has(key: string): boolean | Promise<boolean>;
+  /** 记录已处理的 jti，ttlSeconds 后过期 */
+  add(key: string, ttlSeconds: number): void | Promise<void>;
 }
 
 export interface VerifiedTokenPayload extends JWTPayload {
@@ -161,6 +193,7 @@ export interface LogoutTokenPayload {
 interface IntrospectResponse {
   active: boolean;
   sub?: string;
+  aud?: string | string[];
   client_id?: string;
   scope?: string;
   exp?: number;
@@ -215,6 +248,9 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     introspectCacheTtl = 30 * 1000,
     introspectTimeoutMs = 10 * 1000,
     introspectNegativeCacheTtl = 5 * 1000,
+    introspectRetries = 1,
+    clockToleranceSeconds = 60,
+    logoutJtiStore,
   } = options;
 
   const introspectCache = createIntrospectCache(introspectCacheTtl);
@@ -270,6 +306,23 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
   }
 
   /**
+   * Introspection 响应的 aud 归属校验（防 confused deputy）：
+   * - 响应携带 aud（字符串或数组）时必须包含配置的 audience；
+   * - 否则若携带 client_id，必须等于 audience（audience 即 client_id）；
+   * - 两者都缺失时保持信任（兼容不返回归属字段的端点，见 README）。
+   */
+  function matchesAudience(data: IntrospectResponse): boolean {
+    const aud = data.aud;
+    if (typeof aud === "string") return aud === audience;
+    if (Array.isArray(aud)) return aud.includes(audience);
+    if (typeof data.client_id === "string") return data.client_id === audience;
+    return true;
+  }
+
+  // 同一 token 的并发 introspect 共享同一个 Promise，避免重复请求主站
+  const inflightIntrospects = new Map<string, Promise<IntrospectResponse | null>>();
+
+  /**
    * 调用主站 Introspection 端点验证 token
    *
    * Public Client 可省略 client_secret，仅传 client_id。
@@ -285,47 +338,83 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
       return { active: cached.active, ...(cached.payload || {}) };
     }
 
-    try {
-      const params = new URLSearchParams({ token, client_id: clientId });
-      if (clientSecret) {
-        params.set("client_secret", clientSecret);
+    const inflight = inflightIntrospects.get(token);
+    if (inflight) {
+      return inflight;
+    }
+
+    const promise = doIntrospect(token).finally(() => {
+      inflightIntrospects.delete(token);
+    });
+    inflightIntrospects.set(token, promise);
+    return promise;
+  }
+
+  async function doIntrospect(token: string): Promise<IntrospectResponse | null> {
+    const params = new URLSearchParams({ token, client_id: clientId! });
+    if (clientSecret) {
+      params.set("client_secret", clientSecret);
+    }
+
+    // 网络错误 / 5xx 短退避重试（introspectRetries 次），4xx 不重试
+    let data: IntrospectResponse | null = null;
+    for (let attempt = 0; ; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
       }
-
-      const response = await fetch(introspectionEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params,
-        signal: AbortSignal.timeout(introspectTimeoutMs),
-      });
-
-      if (!response.ok) return null;
-      const data = (await response.json()) as IntrospectResponse;
-
-      let payload: VerifiedTokenPayload | null = null;
-      if (data.active && data.sub) {
-        payload = {
-          sub: data.sub,
-          aud: audience,
-          iss: issuer,
-          client_id: data.client_id,
-          scope: data.scope,
-          exp: data.exp,
-        } as VerifiedTokenPayload;
+      let response: Response;
+      try {
+        response = await fetch(introspectionEndpoint!, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params,
+          signal: AbortSignal.timeout(introspectTimeoutMs),
+        });
+      } catch {
+        if (attempt < introspectRetries) continue;
+        return null;
       }
+      if (!response.ok) {
+        if (response.status >= 500 && attempt < introspectRetries) continue;
+        return null;
+      }
+      data = (await response.json()) as IntrospectResponse;
+      break;
+    }
+    if (!data) return null;
 
-      // active:false（已撤销）结果使用更短的 TTL，降低撤销生效延迟；
-      // introspectNegativeCacheTtl 为 0 时不缓存。
-      if (data.active) {
-        introspectCache.set(token, { active: true, payload });
-      } else if (introspectNegativeCacheTtl > 0) {
+    // aud 归属不匹配（token 颁发给其他 client）视为无效，按负缓存处理
+    if (data.active && !matchesAudience(data)) {
+      if (introspectNegativeCacheTtl > 0) {
         introspectCache.set(token, { active: false, payload: null }, {
           ttl: introspectNegativeCacheTtl,
         });
       }
-      return data;
-    } catch {
-      return null;
+      return { active: false };
     }
+
+    let payload: VerifiedTokenPayload | null = null;
+    if (data.active && data.sub) {
+      payload = {
+        sub: data.sub,
+        aud: audience,
+        iss: issuer,
+        client_id: data.client_id,
+        scope: data.scope,
+        exp: data.exp,
+      } as VerifiedTokenPayload;
+    }
+
+    // active:false（已撤销）结果使用更短的 TTL，降低撤销生效延迟；
+    // introspectNegativeCacheTtl 为 0 时不缓存。
+    if (data.active) {
+      introspectCache.set(token, { active: true, payload });
+    } else if (introspectNegativeCacheTtl > 0) {
+      introspectCache.set(token, { active: false, payload: null }, {
+        ttl: introspectNegativeCacheTtl,
+      });
+    }
+    return data;
   }
 
   /**
@@ -340,6 +429,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         issuer,
         audience,
         algorithms: ["HS256"],
+        clockTolerance: clockToleranceSeconds,
       });
 
       if ((payload as { type?: string }).type !== "access_token") {
@@ -369,6 +459,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           issuer,
           audience,
           algorithms: ["RS256"],
+          clockTolerance: clockToleranceSeconds,
         });
         if ((payload as { type?: string }).type !== "access_token") return null;
         return payload as unknown as VerifiedTokenPayload;
@@ -381,6 +472,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           issuer,
           audience,
           algorithms: ["RS256"],
+          clockTolerance: clockToleranceSeconds,
         });
         if ((payload as { type?: string }).type !== "access_token") return null;
         return payload as unknown as VerifiedTokenPayload;
@@ -449,22 +541,31 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
      * 1. type === "logout_token"
      * 2. iss 匹配配置的 issuer
      * 3. aud 包含当前 client_id
-     * 4. events 包含 backchannel-logout 事件
+     * 4. exp 存在（规范要求）
+     * 5. events 包含 backchannel-logout 事件，且事件值为对象
      *
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
     async verifyLogoutToken(token: string): Promise<LogoutTokenPayload | null> {
-      // 辅助：通用 payload 校验（type / events / jti 防重放）
-      const validateLogoutPayload = (
+      // 辅助：通用 payload 校验（type / exp / events / jti 防重放）
+      const validateLogoutPayload = async (
         payload: Record<string, unknown>
-      ): LogoutTokenPayload | null => {
+      ): Promise<LogoutTokenPayload | null> => {
         if ((payload as { type?: string }).type !== "logout_token") {
           return null;
         }
+        // 规范要求 logout_token 必须携带 exp
+        if (typeof (payload as { exp?: unknown }).exp !== "number") {
+          return null;
+        }
         const events = (payload as { events?: Record<string, unknown> }).events;
+        const logoutEvent =
+          events?.["http://schemas.openid.net/event/backchannel-logout"];
+        // 事件值必须是对象（通常为空对象 {}）
         if (
-          !events ||
-          !events["http://schemas.openid.net/event/backchannel-logout"]
+          !logoutEvent ||
+          typeof logoutEvent !== "object" ||
+          Array.isArray(logoutEvent)
         ) {
           return null;
         }
@@ -475,10 +576,18 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         // jti 缓存 key 带 issuer 前缀，避免跨 issuer / 跨 verifier 实例的 jti 冲突
         const iss = (payload as { iss?: string }).iss || issuer;
         const jtiKey = `${iss}:${jti}`;
-        if (processedLogoutJtis.has(jtiKey)) {
-          return null;
+        if (logoutJtiStore) {
+          // 注入了外部存储（多实例部署应注入共享存储，如 Redis）
+          if (await logoutJtiStore.has(jtiKey)) {
+            return null;
+          }
+          await logoutJtiStore.add(jtiKey, 10 * 60);
+        } else {
+          if (processedLogoutJtis.has(jtiKey)) {
+            return null;
+          }
+          processedLogoutJtis.set(jtiKey, Date.now());
         }
-        processedLogoutJtis.set(jtiKey, Date.now());
         return payload as unknown as LogoutTokenPayload;
       };
 
@@ -500,8 +609,9 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
               issuer,
               audience,
               algorithms: ["RS256"],
+              clockTolerance: clockToleranceSeconds,
             });
-            return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+            return await validateLogoutPayload(payload as unknown as Record<string, unknown>);
           } catch {
             return null;
           }
@@ -514,8 +624,9 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
               issuer,
               audience,
               algorithms: ["RS256"],
+              clockTolerance: clockToleranceSeconds,
             });
-            return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+            return await validateLogoutPayload(payload as unknown as Record<string, unknown>);
           } catch {
             return null;
           }
@@ -535,8 +646,9 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
             issuer,
             audience,
             algorithms: ["HS256"],
+            clockTolerance: clockToleranceSeconds,
           });
-          return validateLogoutPayload(payload as unknown as Record<string, unknown>);
+          return await validateLogoutPayload(payload as unknown as Record<string, unknown>);
         } catch {
           return null;
         }
@@ -588,14 +700,17 @@ export interface SsoMiddlewareResponse {
 export function ssoMiddleware(options: SsoVerifierOptions) {
   const verifier = createTokenVerifier(options);
 
-  return async (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: () => void) => {
+  return async (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: (err?: unknown) => void) => {
     const authHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
     if (!token) {
       if (res.status) {
         res.status(401).json({ error: "Unauthorized", message: "请提供 Bearer token" });
+        return;
       }
+      // res 不支持 status/json 时通过 next(err) 交由错误处理中间件，避免请求挂起
+      next(new Error("Unauthorized: 请提供 Bearer token"));
       return;
     }
 
@@ -603,7 +718,9 @@ export function ssoMiddleware(options: SsoVerifierOptions) {
     if (!payload) {
       if (res.status) {
         res.status(401).json({ error: "Unauthorized", message: "Token 无效或已过期" });
+        return;
       }
+      next(new Error("Unauthorized: Token 无效或已过期"));
       return;
     }
 

@@ -398,12 +398,15 @@ export async function POST(request: NextRequest) {
         sid: sessionId,
       });
 
-      // 签发 Refresh Token（携带 client_id / scope，用于所有权校验）
+      // 签发 Refresh Token（携带 client_id / scope，用于所有权校验；
+      // 同时携带 sid 与 DPoP 绑定 jkt，使刷新/撤销时能定位会话并延续 DPoP 绑定）
       const refreshToken = await signRefreshToken({
         id: user.id,
         phone: user.phone,
         clientId: client_id,
         scope: scopeStr,
+        sid: sessionId,
+        dpopJkt,
       });
 
       // 保存 Refresh Token（复用现有设备管理）
@@ -570,21 +573,74 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // DPoP 绑定延续：原 token 已绑定 DPoP（dpop_jkt）时，刷新必须携带同一密钥的
+      // DPoP proof，并把 cnf.jkt 延续到新 access token；否则绑定会在首次刷新后丢失
+      const boundJkt = refreshPayload.dpop_jkt;
+      let dpopJkt: string | undefined;
+      const dpopExtraHeaders: Record<string, string> = {};
+      if (boundJkt) {
+        const dpopProof = request.headers.get("DPoP");
+        if (!dpopProof) {
+          return resJson(
+            {
+              error: "invalid_dpop_proof",
+              error_description: "此会话已绑定 DPoP，刷新必须携带 DPoP proof",
+            },
+            400
+          );
+        }
+        // htu 基于公网 origin（反向代理后 request.url 可能是内网地址），path 区分大小写
+        const htu = getDPoPHtu(request);
+        const dpopResult = await validateDPoPProof(
+          dpopProof,
+          "POST",
+          htu,
+          undefined,
+          undefined,
+          `${client_id}:${refreshPayload.id}`
+        );
+        if (!dpopResult.valid) {
+          const errorHeaders: Record<string, string> = {};
+          if (dpopResult.newNonce) {
+            Object.assign(errorHeaders, dpopNonceHeader(dpopResult.newNonce));
+          }
+          return NextResponse.json(
+            { error: dpopResult.error, error_description: dpopResult.errorDescription },
+            { status: 400, headers: { ...corsHeaders, ...errorHeaders } }
+          );
+        }
+        if (dpopResult.jkt !== boundJkt) {
+          return resJson(
+            {
+              error: "invalid_dpop_proof",
+              error_description: "DPoP 密钥与绑定的密钥不匹配",
+            },
+            400
+          );
+        }
+        dpopJkt = boundJkt;
+        // 服务端签发的可验证 nonce（HMAC 签名，后续 validateDPoPProof 会校验）
+        Object.assign(dpopExtraHeaders, dpopNonceHeader(getDpopNonce(`${client_id}:${refreshPayload.id}`)));
+      }
+
       const newAccessToken = await signOAuthAccessToken({
         id: refreshPayload.id,
         phone: refreshPayload.phone,
         clientId: client_id,
         scope: scopeStr,
         expiresIn: `${client.accessTokenTtlSeconds}s`,
+        dpopJkt,
         sid: session.sessionId,
       });
 
-      // 签发新的 Refresh Token 并原子化轮换（继承所有权与 scope）
+      // 签发新的 Refresh Token 并原子化轮换（继承所有权、scope、sid 与 DPoP 绑定）
       const newRefreshToken = await signRefreshToken({
         id: refreshPayload.id,
         phone: refreshPayload.phone,
         clientId: client_id,
         scope: scopeStr,
+        sid: session.sessionId,
+        dpopJkt,
       });
       const newRefreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
@@ -690,7 +746,7 @@ export async function POST(request: NextRequest) {
         refreshResponse.id_token = idToken;
       }
 
-      return resJson(refreshResponse);
+      return resJson(refreshResponse, 200, dpopExtraHeaders);
     }
 
     // === grant_type: client_credentials ===

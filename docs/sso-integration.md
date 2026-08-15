@@ -304,6 +304,8 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 
 每次登录请求自动生成 32 字节随机 state，回调时严格比对。开发者无需手动处理。
 
+⚠️ 服务端对 state 有强制长度约束：**32–512 字符**（比 RFC 6749 更严格）。SDK 生成的 state 天然满足；若你自行实现授权请求而未使用 SDK，必须发送足够长度的 state，否则 `/api/oauth/authorize` 会回传 `invalid_request`。
+
 ### Token 存储策略
 
 - **token 默认存储在内存中**（Public Client 浏览器默认）：refresh_token 不落盘，XSS 无法窃取长期凭证；代价是页面刷新后需重新授权
@@ -325,6 +327,8 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - `membership` — 会员等级、积分
 
 示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`
+
+> ⚠️ 手机号 claim 名为**非标准的 `phone`**（非 OIDC 标准的 `phone_number`），id_token 与 userinfo 均如此。且手机号始终**脱敏**返回（如 `138****8000`），无法通过 SSO 获取明文手机号。
 
 ### Token 刷新
 

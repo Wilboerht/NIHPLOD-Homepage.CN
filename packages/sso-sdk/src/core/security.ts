@@ -5,9 +5,12 @@
 /**
  * 校验 returnUrl 是否可信（防开放重定向）。
  * 仅允许：相对路径（且不以 // 开头）或与 currentOrigin 完全同源的绝对 URL。
+ * 拒绝一切含反斜杠 \ 的值：浏览器会把 "/\evil.com" 归一化为 "//evil.com"，
+ * 形成协议相对 URL 开放重定向。
  */
 export function isTrustedReturnUrl(url: string, currentOrigin: string): boolean {
   if (!url) return false;
+  if (url.includes("\\")) return false;
   if (url.startsWith("/") && !url.startsWith("//")) return true;
   try {
     return new URL(url).origin === currentOrigin;

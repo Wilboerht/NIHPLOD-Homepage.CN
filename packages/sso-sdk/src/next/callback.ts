@@ -238,6 +238,17 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       id_token?: string;
     } = await res.json();
 
+    // 服务端异常可能省略必要字段；不校验会把字符串 "undefined" 写进 cookie
+    if (!tokenData.access_token || !tokenData.refresh_token) {
+      return NextResponse.json(
+        {
+          error: "server_error",
+          error_description: "Token 响应缺少 access_token 或 refresh_token",
+        },
+        { status: 502 }
+      );
+    }
+
     // 在设置 Cookie 前预校验 ID Token：防止伪造 token 写入浏览器
     if (tokenData.id_token) {
       try {

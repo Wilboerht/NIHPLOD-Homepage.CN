@@ -44,6 +44,7 @@ const TOKEN_KEY = "token";
 const VERIFIER_KEY_PREFIX = "pkce_verifier_";
 const STATE_KEY = "oauth_state";
 const RETURN_URL_KEY = "return_url";
+const LOGOUT_STATE_KEY = "logout_state";
 
 function buildKey(base: string, clientId?: string): string {
   return clientId ? `${base}:${clientId}` : base;
@@ -235,9 +236,24 @@ export function removeOAuthState(clientId?: string): void {
 }
 
 // ============================================
-// 返回 URL 存取（transient）
+// Logout State 存取（transient，RP-Initiated Logout CSRF 防护）
 // ============================================
 
+export function saveLogoutState(state: string, clientId?: string): void {
+  _transient.set(buildKey(LOGOUT_STATE_KEY, clientId), state);
+}
+
+export function getLogoutState(clientId?: string): string | null {
+  return _transient.get(buildKey(LOGOUT_STATE_KEY, clientId));
+}
+
+export function removeLogoutState(clientId?: string): void {
+  _transient.remove(buildKey(LOGOUT_STATE_KEY, clientId));
+}
+
+// ============================================
+// 返回 URL 存取（transient）
+// ============================================
 export function saveReturnUrl(url: string, clientId?: string): void {
   _transient.set(buildKey(RETURN_URL_KEY, clientId), url);
 }
@@ -259,6 +275,7 @@ export function clearAllSsoData(clientId?: string): void {
     removeTokenData(clientId);
     removeOAuthState(clientId);
     removeReturnUrl(clientId);
+    removeLogoutState(clientId);
     removePkceVerifier(clientId);
     // popup nonce 复用 verifier key 空间（`${clientId}_popup_nonce`）
     removePkceVerifier(`${clientId}_popup_nonce`);
@@ -268,6 +285,7 @@ export function clearAllSsoData(clientId?: string): void {
   removeTokenData();
   removeOAuthState();
   removeReturnUrl();
+  removeLogoutState();
 
   // 清理所有 PKCE verifier：当前版本存于 sessionStorage，同时清 localStorage 中可能的旧版本残留
   const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;

@@ -113,7 +113,20 @@ Clear local token data and attempt to revoke the server-side refresh_token.
 |------|------|------|------|
 | `redirectToSso` | `boolean` | `false` | Whether to redirect to the SSO logout page (OIDC RP-Initiated Logout) |
 
-When `redirectToSso=true`, the user is redirected to `/logout?client_id=...&post_logout_redirect_uri=...`. The main site clears the session and then returns to the sub-project callback address.
+When `redirectToSso=true`, the user is redirected to `/logout?client_id=...&post_logout_redirect_uri=...&state=...`. The generated `state` is saved to sessionStorage; the main site clears the session and then returns to the sub-project callback address. Validate the `state` on the return page with `sso.validateLogoutState()` to prevent logout CSRF.
+
+### `sso.validateLogoutState(url)`
+
+Validate the `state` parameter of an RP-Initiated Logout redirect-back (logout CSRF protection). Call this on the page that `post_logout_redirect_uri` points to. Returns `true` only when the URL carries a `state` matching the one saved by `sso.logout(true)`; on success the saved state is cleared (one-time).
+
+```typescript
+// On the post_logout_redirect_uri page:
+if (sso.validateLogoutState(window.location.href)) {
+  // Trusted redirect-back from the SSO logout page
+}
+```
+
+Returns `boolean`.
 
 ### `sso.getDiscovery()`
 

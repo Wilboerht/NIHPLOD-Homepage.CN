@@ -13,7 +13,7 @@ import { checkUserStatus } from "@/lib/auth";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
+import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
@@ -133,6 +133,7 @@ function getPublicOrigin(request: NextRequest): string {
  * 构造 OAuth 2.0 错误重定向响应。
  * 当 client_id / redirect_uri 已识别并合法时，按规范把错误通过 302
  * 回传给回调地址，而非直接返回 JSON 400。
+ * RFC 9207：统一附带 iss 参数，便于 client 区分响应来源（防混叠攻击）。
  */
 function buildErrorRedirect(
   redirectUri: string,
@@ -144,6 +145,7 @@ function buildErrorRedirect(
   url.searchParams.set("error", error);
   url.searchParams.set("error_description", errorDescription);
   if (state) url.searchParams.set("state", state);
+  url.searchParams.set("iss", getIssuer());
   return NextResponse.redirect(url, 302);
 }
 
@@ -396,7 +398,7 @@ export async function GET(request: NextRequest) {
       existingConsent && !existingConsent.revokedAt ? existingConsent.scopes : [];
     const alreadyConsented = requestedScopes.every((s) => grantedScopes.includes(s));
 
-    // 12. prompt=consent 或 select_account: 强制展示 consent 页
+    // 12. prompt=consent: 强制展示 consent 页（select_account 不支持，已在上方参数校验中拒绝）
     if (alreadyConsented && prompt !== "consent") {
       // 已授权且 scope 未扩大：直接签发授权码并跳转回回调地址
       let codeData;
@@ -419,6 +421,8 @@ export async function GET(request: NextRequest) {
       const redirectUrl = new URL(redirect_uri);
       redirectUrl.searchParams.set("code", codeData.code);
       if (state) redirectUrl.searchParams.set("state", state);
+      // RFC 9207：成功重定向同样附带 iss
+      redirectUrl.searchParams.set("iss", getIssuer());
       // SDK 弹窗登录：授权成功重定向原样透传 popup_nonce（不入库，仅透传）
       if (popupNonce) redirectUrl.searchParams.set("popup_nonce", popupNonce);
 
@@ -639,7 +643,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建重定向 URL（成功或错误都用它）
+    // RFC 9207：统一附带 iss 参数，便于 client 区分响应来源
     const redirectUrl = new URL(safeRedirectUri);
+    redirectUrl.searchParams.set("iss", getIssuer());
     if (state) {
       redirectUrl.searchParams.set("state", state);
     }

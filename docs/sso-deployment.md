@@ -144,6 +144,12 @@ NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS=https://advisor.nihplod.cn,https://mall.nihplo
 
 `ALLOW_HS256_FALLBACK=true` 允许 access_token / id_token 在 RS256 验证失败后回退 HS256 验签，**仅供新旧密钥体系迁移过渡期临时启用**。过渡期结束必须改回 `false`（生产默认值）。长期开启会让 HS256 secret 泄露可直接伪造 token。
 
+### 2.7 SSRF 防护的已知边界（DNS rebinding）
+
+主站对子项目注册的 `redirect_uri` / `backchannel_logout_uri` 做 SSRF 校验时，采用的是**字面主机名黑名单**（拦截 localhost、私网/保留 IP 段字面量），**不做 DNS 解析**。因此存在 DNS rebinding 绕过空间：攻击者可注册一个解析结果在公网与私网之间切换的域名，通过校验后在实际回调时解析到内网地址。
+
+完整防护需在连接建立时校验实际解析结果，代价是每次回调都引入 DNS 查询，当前实现未覆盖。生产部署建议配合网络层防护兜底：为应用出口配置防火墙/代理规则，禁止主站 Pod（或实例）访问内网网段与云元数据地址（169.254.169.254 等）。
+
 ---
 
 ## 3. 上线后冒烟清单

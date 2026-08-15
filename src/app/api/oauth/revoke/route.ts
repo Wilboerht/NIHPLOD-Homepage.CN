@@ -124,11 +124,21 @@ export async function POST(request: NextRequest) {
       // 使用 auth-security 的 revokeRefreshToken 撤销（自动处理 SHA-256 哈希比对）
       const revokedCount = await revokeRefreshToken(refreshPayload.id, token);
 
-      // 同步撤销该 user+client 对应的 OAuthSession（登出后会话一并失效）
-      await prisma.oAuthSession.updateMany({
-        where: { userId: refreshPayload.id, clientId: client_id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      // 同步撤销关联的 OAuthSession（登出后会话一并失效）。
+      // refresh token 携带 sid 时仅撤销该会话：多设备同 client 场景下，
+      // A 设备登出不应打死 B 设备的会话。无 sid 的旧版 token 回退为
+      // 撤销 user+client 全部 session（无法定位单个会话，保持原行为）。
+      if (refreshPayload.sid) {
+        await prisma.oAuthSession.updateMany({
+          where: { sessionId: refreshPayload.sid, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      } else {
+        await prisma.oAuthSession.updateMany({
+          where: { userId: refreshPayload.id, clientId: client_id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
 
       scheduleSsoEvent({
         event: "logout",

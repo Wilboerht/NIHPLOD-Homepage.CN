@@ -10,8 +10,10 @@ import {
   saveTokenData,
   getTokenData,
   saveOAuthState,
+  getOAuthState,
   savePkceVerifier,
   getPkceVerifier,
+  getLogoutState,
   getReturnUrl,
   setTokenStorage,
 } from "../core/storage";
@@ -510,6 +512,55 @@ describe("SsoClient", () => {
       // 网络层失败时保留临时数据，允许用户重试回调
       expect(getPkceVerifier(CLIENT_ID)).toBe("test-verifier");
     });
+
+    it("id_token 验签失败（JWKS 暂不可达）时保留 state/verifier，刷新可重试成功", async () => {
+      const accessToken = "new-access-token";
+      const idToken = await buildRs256IdToken(
+        validPayload({ at_hash: await computeAtHash(accessToken) })
+      );
+      const tokenResponse = () =>
+        jsonResponse({
+          access_token: accessToken,
+          token_type: "Bearer",
+          expires_in: 900,
+          refresh_token: "new-refresh-token",
+          id_token: idToken,
+        });
+
+      // JWKS 端点暂不可达（HTTP 500）→ 验签失败
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/.well-known/openid-configuration")) {
+          return jsonResponse(mockDiscovery);
+        }
+        if (url.includes("/api/oauth/token")) return tokenResponse();
+        if (url.includes("jwks")) return jsonResponse({}, 500);
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("retry-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      const callbackUrl =
+        "https://test-app.com/callback?code=auth-code&state=retry-state";
+
+      await expect(client.handleCallback(callbackUrl)).rejects.toThrow(
+        "无法获取 JWKS"
+      );
+      // 验签失败：不保存 token，但保留 state/verifier 允许重试
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+      expect(getOAuthState(CLIENT_ID)).toBe("retry-state");
+      expect(getPkceVerifier(CLIENT_ID)).toBe("test-verifier");
+
+      // JWKS 恢复后刷新回调页重试 → 成功
+      vi.restoreAllMocks();
+      installFetchRouter({ token: tokenResponse });
+      const result = await client.handleCallback(callbackUrl);
+      expect(result.access_token).toBe("new-access-token");
+      // 成功后一次性临时数据被清除
+      expect(getPkceVerifier(CLIENT_ID)).toBeNull();
+    });
   });
 
   describe("getAccessToken", () => {
@@ -748,6 +799,38 @@ describe("SsoClient", () => {
 
       expect(getTokenData(CLIENT_ID)).toBeNull();
       expect(client.isAuthenticated()).toBe(false);
+    });
+
+    it("redirectToSso=true 时保存 logout state，validateLogoutState 校验并一次性清除", async () => {
+      installFetchRouter();
+
+      const client = new SsoClient(defaultConfig);
+      await client.logout(true);
+
+      const saved = getLogoutState(CLIENT_ID);
+      expect(saved).toBeTruthy();
+
+      // state 不匹配 / 缺失 → false，且不影响已保存的 state
+      expect(
+        client.validateLogoutState("https://test-app.com/callback?state=wrong-state")
+      ).toBe(false);
+      expect(client.validateLogoutState("https://test-app.com/callback")).toBe(false);
+      expect(getLogoutState(CLIENT_ID)).toBe(saved);
+
+      // state 匹配 → true，并立即清除（一次性）
+      expect(
+        client.validateLogoutState(
+          `https://test-app.com/callback?state=${saved}`
+        )
+      ).toBe(true);
+      expect(getLogoutState(CLIENT_ID)).toBeNull();
+
+      // 已清除后同样的回跳不再可信
+      expect(
+        client.validateLogoutState(
+          `https://test-app.com/callback?state=${saved}`
+        )
+      ).toBe(false);
     });
   });
 });

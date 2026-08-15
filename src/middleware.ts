@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { getIssuer } from "@/lib/oauth-constants";
 
 const AUTH_COOKIE_NAME = "__Host-admin_token";
 
@@ -48,7 +49,8 @@ const PUBLIC_API_PREFIXES = [
 
 async function verifyToken(token: string): Promise<boolean> {
   try {
-    const issuer = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
+    // issuer 与 jwt.ts 签发侧保持一致（统一由 oauth-constants.getIssuer() 生成）
+    const issuer = getIssuer();
     const { payload } = await jwtVerify(token, getSecret(), {
       issuer,
       audience: "admin",

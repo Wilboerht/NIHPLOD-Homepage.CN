@@ -20,8 +20,11 @@ import {
   verifyRefreshToken,
   signOAuthAccessToken,
   verifyOAuthAccessToken,
+  signLogoutToken,
+  verifyLogoutToken,
 } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
+import { getIssuer } from "@/lib/oauth-constants";
 
 describe("JWT 工具", () => {
   describe("管理员 Token", () => {
@@ -128,7 +131,8 @@ describe("JWT 工具", () => {
       })
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
-        .setIssuer("https://nihplod.cn")
+        // issuer 与签发侧统一（oauth-constants.getIssuer() 的回退链）
+        .setIssuer(getIssuer())
         .setAudience("client-1")
         .setExpirationTime("15m")
         .sign(new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!));
@@ -245,6 +249,38 @@ describe("JWT 工具", () => {
       const payload = await verifyOAuthAccessToken(token, "client-1");
       expect(payload).toMatchObject({ id: "client:client-1", client_type: "m2m" });
       expect(mockFindUnique).not.toHaveBeenCalled();
+    });
+  });
+
+  // Logout Token 验证仅做验签与 claims 校验，不消费 jti：
+  // 同一 logout_token 可能被 RP 重试验证，防重放由 RP 侧（sso-verify）负责
+  describe("Logout Token 验证（不消费 jti）", () => {
+    async function signTestLogoutToken(jti = "jti-1") {
+      return signLogoutToken({
+        sub: "user-1",
+        aud: "client-1",
+        events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+        jti,
+      });
+    }
+
+    it("验签通过并返回 claims", async () => {
+      const token = await signTestLogoutToken();
+      const claims = await verifyLogoutToken(token, "client-1");
+      expect(claims).toMatchObject({ sub: "user-1", aud: "client-1", jti: "jti-1" });
+    });
+
+    it("同一 logout_token 重复验证应均成功（jti 不在验证侧消费）", async () => {
+      const token = await signTestLogoutToken("jti-retry");
+      const first = await verifyLogoutToken(token, "client-1");
+      const second = await verifyLogoutToken(token, "client-1");
+      expect(first?.jti).toBe("jti-retry");
+      expect(second?.jti).toBe("jti-retry");
+    });
+
+    it("aud 不匹配应返回 null", async () => {
+      const token = await signTestLogoutToken();
+      expect(await verifyLogoutToken(token, "other-client")).toBeNull();
     });
   });
 });

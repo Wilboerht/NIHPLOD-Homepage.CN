@@ -209,9 +209,28 @@ declare class SsoClient {
      * 登出
      *
      * 清除本地所有 token 和临时数据，并尝试撤销服务端 refresh_token。
-     * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）
+     * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）。
+     *   为 true 时携带 state 参数（已保存到 sessionStorage），
+     *   回跳页面应调用 validateLogoutState() 校验防登出 CSRF。
      */
     logout(redirectToSso?: boolean): Promise<void>;
+    /**
+     * 校验 RP-Initiated Logout 回跳的 state 参数（登出 CSRF 防护）
+     *
+     * 在 post_logout_redirect_uri 指向的页面加载时调用；
+     * 仅在 URL 携带 state 且与 logout(redirectToSso=true) 保存的值一致时返回 true，
+     * 校验后清除已保存的 logout state（一次性）。
+     *
+     * @param url - 当前页面完整 URL（window.location.href）
+     *
+     * @example
+     * ```typescript
+     * if (sso.validateLogoutState(window.location.href)) {
+     *   // 来自 SSO 登出的可信回跳
+     * }
+     * ```
+     */
+    validateLogoutState(url: string): boolean;
     /**
      * 获取 OIDC Discovery 文档
      *

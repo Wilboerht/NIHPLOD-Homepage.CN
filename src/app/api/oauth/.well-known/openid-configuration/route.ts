@@ -6,7 +6,7 @@
  * SDK 初始化时自动 fetch 此端点获取完整配置。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { SUPPORTED_SCOPES } from "@/lib/oauth-constants";
+import { SUPPORTED_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { DPOP_SUPPORTED_ALGORITHMS } from "@/lib/dpop";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
@@ -35,13 +35,6 @@ function getIdTokenSigningAlgValues(): string[] {
   const allowHs256 =
     process.env.ALLOW_HS256_FALLBACK === "true" || process.env.NODE_ENV !== "production";
   return allowHs256 ? ["RS256", "HS256"] : ["RS256"];
-}
-
-/** OpenID Connect issuer / 公开 base URL（生产环境必须是 https://nihplod.cn） */
-function getIssuer(): string {
-  const publicUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
-  if (publicUrl) return publicUrl.replace(/\/$/, "");
-  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
 }
 
 export async function GET(request: NextRequest) {

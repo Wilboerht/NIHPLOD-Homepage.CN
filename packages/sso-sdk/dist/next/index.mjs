@@ -239,6 +239,7 @@ var SsoError = class extends Error {
 // src/core/security.ts
 function isTrustedReturnUrl(url, currentOrigin) {
   if (!url) return false;
+  if (url.includes("\\")) return false;
   if (url.startsWith("/") && !url.startsWith("//")) return true;
   try {
     return new URL(url).origin === currentOrigin;
@@ -584,6 +585,15 @@ function createCallbackRouteHandler(config) {
       );
     }
     const tokenData = await res.json();
+    if (!tokenData.access_token || !tokenData.refresh_token) {
+      return NextResponse2.json(
+        {
+          error: "server_error",
+          error_description: "Token \u54CD\u5E94\u7F3A\u5C11 access_token \u6216 refresh_token"
+        },
+        { status: 502 }
+      );
+    }
     if (tokenData.id_token) {
       try {
         await validateIdToken(

@@ -136,8 +136,10 @@ describe("createTokenVerifier", () => {
       expect(payload).toBeNull();
     });
 
-    it("introspection 网络失败时拒绝", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("network failure"));
+    it("introspection 网络失败时拒绝（重试后仍失败）", async () => {
+      const mockFetch = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new Error("network failure"));
 
       const verifier = createTokenVerifier({
         audience,
@@ -149,6 +151,8 @@ describe("createTokenVerifier", () => {
 
       const payload = await verifier.verify("some-token");
       expect(payload).toBeNull();
+      // 默认 introspectRetries=1：首次失败后重试一次
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     it("未配置 introspection 时本地验证失败后拒绝", async () => {
@@ -512,5 +516,364 @@ describe("Introspection 安全性", () => {
     await verifier.verify("signal-token");
     const [, init] = mockFetch.mock.calls[0];
     expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe("Introspection aud 归属校验", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function createIntrospectVerifier() {
+    return createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+    });
+  }
+
+  it("client_id 与 audience 不匹配时拒绝", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1", client_id: "other-client" }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("token-other-client")).toBeNull();
+  });
+
+  it("aud 数组不包含 audience 时拒绝", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1", aud: ["other-client"] }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("token-aud-array-miss")).toBeNull();
+  });
+
+  it("aud 字符串等于 audience 时通过", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1", aud: audience }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    const payload = await verifier.verify("token-aud-string-ok");
+    expect(payload).not.toBeNull();
+    expect(payload!.sub).toBe("user-1");
+  });
+
+  it("aud 数组包含 audience 时通过", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1", aud: ["other", audience] }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("token-aud-array-hit")).not.toBeNull();
+  });
+
+  it("aud 与 client_id 都缺失时保持信任", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1" }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("token-no-aud-fields")).not.toBeNull();
+  });
+});
+
+describe("Introspection 重试与并发去重", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function createIntrospectVerifier() {
+    return createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+    });
+  }
+
+  it("5xx 首次失败后重试成功", async () => {
+    const mockFetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({ ok: false, status: 500 } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ active: true, sub: "user-retry", client_id: audience }),
+      } as Response);
+
+    const verifier = createIntrospectVerifier();
+    const payload = await verifier.verify("retry-token");
+    expect(payload).not.toBeNull();
+    expect(payload!.sub).toBe("user-retry");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("4xx 不重试", async () => {
+    const mockFetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: false, status: 400 } as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("bad-request-token")).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("introspectRetries: 0 时不重试", async () => {
+    const mockFetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("network failure"));
+
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+      introspectRetries: 0,
+    });
+
+    expect(await verifier.verify("no-retry-token")).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("同一 token 并发 verify 共享一次 introspection 请求", async () => {
+    const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-concurrent", client_id: audience }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => verifier.verify("concurrent-token"))
+    );
+
+    expect(results.every((p) => p?.sub === "user-concurrent")).toBe(true);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Introspection 缓存行为", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function createIntrospectVerifier(extra: Record<string, unknown> = {}) {
+    return createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+      ...extra,
+    });
+  }
+
+  it("active:false 结果按负缓存 TTL 缓存", async () => {
+    const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ active: false }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("revoked-cache-token")).toBeNull();
+    expect(await verifier.verify("revoked-cache-token")).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("introspectNegativeCacheTtl: 0 时不缓存 active:false", async () => {
+    const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ active: false }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier({ introspectNegativeCacheTtl: 0 });
+    expect(await verifier.verify("revoked-nocache-token")).toBeNull();
+    expect(await verifier.verify("revoked-nocache-token")).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidateCache 清除指定 token 缓存", async () => {
+    const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-inv", client_id: audience }),
+    } as Response);
+
+    const verifier = createIntrospectVerifier();
+    await verifier.verify("invalidate-token");
+    verifier.invalidateCache("invalidate-token");
+    await verifier.verify("invalidate-token");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("clockTolerance", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function createExpiredToken(expiredSecondsAgo: number): Promise<string> {
+    return new SignJWT({
+      type: "access_token",
+      sub: "user-123",
+      client_id: audience,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - expiredSecondsAgo)
+      .sign(accessSecret);
+  }
+
+  it("过期 30 秒的 token 在默认容忍窗口（60s）内通过", async () => {
+    const token = await createExpiredToken(30);
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+    });
+
+    const payload = await verifier.verify(token);
+    expect(payload).not.toBeNull();
+    expect(payload!.sub).toBe("user-123");
+  });
+
+  it("clockToleranceSeconds: 0 时过期 token 被拒绝", async () => {
+    const token = await createExpiredToken(30);
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+      clockToleranceSeconds: 0,
+    });
+
+    expect(await verifier.verify(token)).toBeNull();
+  });
+
+  it("超出容忍窗口的过期 token 被拒绝", async () => {
+    const token = await createExpiredToken(120);
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+    });
+
+    expect(await verifier.verify(token)).toBeNull();
+  });
+});
+
+describe("verifyLogoutToken 补充校验", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function createLogoutToken(
+    claims: Record<string, unknown> = {},
+    withExp = true
+  ): Promise<string> {
+    const jwt = new SignJWT({
+      type: "logout_token",
+      sub: "user-123",
+      events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+      ...claims,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setIssuedAt();
+    if (withExp) {
+      jwt.setExpirationTime("5m");
+    }
+    return jwt.sign(logoutSecret);
+  }
+
+  it("backchannel-logout 事件值不是对象时拒绝", async () => {
+    const token = await createLogoutToken({
+      events: { "http://schemas.openid.net/event/backchannel-logout": "yes" },
+      jti: "logout-events-not-object-1",
+    });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+    });
+
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("backchannel-logout 事件值为数组时拒绝", async () => {
+    const token = await createLogoutToken({
+      events: { "http://schemas.openid.net/event/backchannel-logout": [] },
+      jti: "logout-events-array-1",
+    });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+    });
+
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("缺少 exp 的 logout token 被拒绝", async () => {
+    const token = await createLogoutToken({ jti: "logout-no-exp-1" }, false);
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+    });
+
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("注入 logoutJtiStore 时使用外部存储防重放", async () => {
+    const store = {
+      has: vi.fn().mockResolvedValue(false),
+      add: vi.fn().mockResolvedValue(undefined),
+    };
+    const token = await createLogoutToken({ jti: "logout-ext-store-1" });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+      logoutJtiStore: store,
+    });
+
+    const payload = await verifier.verifyLogoutToken(token);
+    expect(payload).not.toBeNull();
+    expect(store.has).toHaveBeenCalledWith(`${issuer}:logout-ext-store-1`);
+    expect(store.add).toHaveBeenCalledWith(`${issuer}:logout-ext-store-1`, 600);
+
+    // 外部存储报告 jti 已处理时拒绝
+    store.has.mockResolvedValueOnce(true);
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+});
+
+describe("ssoMiddleware 错误处理", () => {
+  it("res 无 status 方法时通过 next(err) 传递错误而非挂起", async () => {
+    const middleware = ssoMiddleware({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+    });
+
+    const req: SsoMiddlewareRequest = { headers: {} };
+    const res: SsoMiddlewareResponse = {};
+    const next = vi.fn();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
   });
 });

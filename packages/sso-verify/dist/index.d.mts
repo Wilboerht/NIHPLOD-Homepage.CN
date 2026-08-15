@@ -91,6 +91,34 @@ interface SsoVerifierOptions {
      * 不会静默回退到 HS256。
      */
     logoutTokenPublicKey?: string;
+    /**
+     * Introspection 请求失败重试次数，默认 1。
+     * 仅对网络错误与 5xx 响应重试（短退避），4xx 不重试。
+     * 设为 0 表示不重试。
+     */
+    introspectRetries?: number;
+    /**
+     * JWT 时钟偏移容忍（秒），默认 60。
+     * 应用于所有本地验签路径（HS256/RS256/logout token），
+     * 用于容忍子项目与主站之间的时钟偏差。
+     */
+    clockToleranceSeconds?: number;
+    /**
+     * Logout Token jti 外部存储（可选）。
+     * 默认使用进程内 LRU 缓存（重启即清空、多实例不共享）；
+     * 多实例部署时应注入共享存储（如 Redis 实现）以防跨实例重放。
+     */
+    logoutJtiStore?: LogoutJtiStore;
+}
+/**
+ * Logout Token jti 防重放存储接口（可注入 Redis 等共享存储实现）。
+ * has/add 均支持同步或异步返回。
+ */
+interface LogoutJtiStore {
+    /** 判断 jti 是否已处理过 */
+    has(key: string): boolean | Promise<boolean>;
+    /** 记录已处理的 jti，ttlSeconds 后过期 */
+    add(key: string, ttlSeconds: number): void | Promise<void>;
 }
 interface VerifiedTokenPayload extends JWTPayload {
     sub: string;
@@ -134,6 +162,7 @@ interface LogoutTokenPayload {
 interface IntrospectResponse {
     active: boolean;
     sub?: string;
+    aud?: string | string[];
     client_id?: string;
     scope?: string;
     exp?: number;
@@ -167,7 +196,8 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
      * 1. type === "logout_token"
      * 2. iss 匹配配置的 issuer
      * 3. aud 包含当前 client_id
-     * 4. events 包含 backchannel-logout 事件
+     * 4. exp 存在（规范要求）
+     * 5. events 包含 backchannel-logout 事件，且事件值为对象
      *
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
@@ -211,7 +241,7 @@ interface SsoMiddlewareResponse {
  * }
  * ```
  */
-declare function ssoMiddleware(options: SsoVerifierOptions): (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: () => void) => Promise<void>;
+declare function ssoMiddleware(options: SsoVerifierOptions): (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: (err?: unknown) => void) => Promise<void>;
 /**
  * 创建 Logout Token 专用验证器
  *
@@ -248,4 +278,4 @@ declare function createLogoutTokenVerifier(options: SsoVerifierOptions): {
     verify(token: string): Promise<LogoutTokenPayload | null>;
 };
 
-export { type LogoutTokenPayload, type SsoMiddlewareRequest, type SsoMiddlewareResponse, type SsoVerifierOptions, type VerifiedTokenPayload, createLogoutTokenVerifier, createTokenVerifier, ssoMiddleware };
+export { type LogoutJtiStore, type LogoutTokenPayload, type SsoMiddlewareRequest, type SsoMiddlewareResponse, type SsoVerifierOptions, type VerifiedTokenPayload, createLogoutTokenVerifier, createTokenVerifier, ssoMiddleware };

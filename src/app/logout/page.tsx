@@ -56,11 +56,14 @@ function LogoutContent() {
   const postLogoutRedirectUri = searchParams.get("post_logout_redirect_uri") || "";
   const clientId = searchParams.get("client_id") || "";
   const state = searchParams.get("state") || "";
+  const idTokenHint = searchParams.get("id_token_hint") || "";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [trustedUri, setTrustedUri] = useState<string | null>(null);
   const [trustCheckDone, setTrustCheckDone] = useState(false);
+  // id_token_hint 验签通过但其 sub 与当前 SSO 会话用户不一致时给出提示
+  const [hintMismatch, setHintMismatch] = useState(false);
 
   useEffect(() => {
     ensureCsrfToken().catch(() => {});
@@ -72,6 +75,26 @@ function LogoutContent() {
       setTrustCheckDone(true);
     });
   }, [postLogoutRedirectUri, clientId]);
+
+  // 验证 id_token_hint（OIDC RP-Initiated Logout）：
+  // 验证失败不阻断登出，照常走确认流程并忽略 hint；
+  // 验证通过但身份与当前会话不一致时提示用户确认。
+  useEffect(() => {
+    if (!idTokenHint) return;
+    const url = new URL("/api/oauth/logout/verify-hint", window.location.origin);
+    url.searchParams.set("id_token_hint", idTokenHint);
+    if (clientId) url.searchParams.set("client_id", clientId);
+    fetch(url.toString())
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.valid && data?.matchesSession === false) {
+          setHintMismatch(true);
+        }
+      })
+      .catch(() => {
+        // 验证接口异常时忽略 hint，不影响正常登出流程
+      });
+  }, [idTokenHint, clientId]);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -133,6 +156,14 @@ function LogoutContent() {
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
             <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {hintMismatch && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm text-amber-700">
+              发起登出的应用所标识的账号与当前登录账号不一致，请确认后再退出。
+            </p>
           </div>
         )}
 

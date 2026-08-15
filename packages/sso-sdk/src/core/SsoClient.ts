@@ -26,6 +26,9 @@ import {
   saveOAuthState,
   getOAuthState,
   removeOAuthState,
+  saveLogoutState,
+  getLogoutState,
+  removeLogoutState,
   saveReturnUrl,
   clearAllSsoData,
   type TokenData,
@@ -524,10 +527,6 @@ export class SsoClient {
     // 若 JSON 畸形导致解析抛错，保留 state/verifier 允许用户重试回调
     const data: TokenResponse = await res.json();
 
-    // Token 交换成功后清除 state 和 verifier（一次性临时数据）
-    removeOAuthState(this.config.clientId);
-    removePkceVerifier(this.config.clientId);
-
     // OIDC：验证 ID Token 签名、基本声明及 at_hash
     if (data.id_token) {
       try {
@@ -543,6 +542,12 @@ export class SsoClient {
         throw err;
       }
     }
+
+    // 全部校验通过后清除 state 和 verifier（一次性临时数据）。
+    // 推迟到验签之后：若 JWKS 暂时不可达导致验签失败，
+    // 保留 state/verifier，用户刷新回调页即可重试
+    removeOAuthState(this.config.clientId);
+    removePkceVerifier(this.config.clientId);
 
     const now = Date.now();
     const tokenData: TokenData = {
@@ -735,7 +740,9 @@ export class SsoClient {
    * 登出
    *
    * 清除本地所有 token 和临时数据，并尝试撤销服务端 refresh_token。
-   * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）
+   * @param redirectToSso - 是否重定向到 SSO 登出页（默认 false）。
+   *   为 true 时携带 state 参数（已保存到 sessionStorage），
+   *   回跳页面应调用 validateLogoutState() 校验防登出 CSRF。
    */
   async logout(redirectToSso: boolean = false): Promise<void> {
     // 获取 refresh_token 用于服务端撤销（需在 clearAllSsoData 之前）
@@ -788,10 +795,39 @@ export class SsoClient {
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }
+      // 携带 state 防登出 CSRF：回跳时用 validateLogoutState() 校验
       const state = generateState();
+      saveLogoutState(state, this.config.clientId);
       logoutUrl.searchParams.set("state", state);
       window.location.href = logoutUrl.toString();
     }
+  }
+
+  /**
+   * 校验 RP-Initiated Logout 回跳的 state 参数（登出 CSRF 防护）
+   *
+   * 在 post_logout_redirect_uri 指向的页面加载时调用；
+   * 仅在 URL 携带 state 且与 logout(redirectToSso=true) 保存的值一致时返回 true，
+   * 校验后清除已保存的 logout state（一次性）。
+   *
+   * @param url - 当前页面完整 URL（window.location.href）
+   *
+   * @example
+   * ```typescript
+   * if (sso.validateLogoutState(window.location.href)) {
+   *   // 来自 SSO 登出的可信回跳
+   * }
+   * ```
+   */
+  validateLogoutState(url: string): boolean {
+    const returnedState = new URL(url).searchParams.get("state");
+    if (!returnedState) return false;
+    const savedState = getLogoutState(this.config.clientId);
+    if (!savedState) return false;
+    if (!timingSafeEqualString(savedState, returnedState)) return false;
+    // 校验通过：logout state 为一次性临时数据，立即清除
+    removeLogoutState(this.config.clientId);
+    return true;
   }
 
   /**
