@@ -14,11 +14,12 @@
  * - Refresh Token 原子化轮换（复用 atomicallyRotateRefreshToken）
  * - CORS：仅允许已注册 redirect_uri 的 origin
  */
+import { LRUCache } from "lru-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
-import { consumeAuthorizationCode, findUsedAuthorizationCode, verifyPKCE } from "@/lib/oauth-code";
+import { consumeAuthorizationCode, findUsedAuthorizationCode, hashCode, verifyPKCE } from "@/lib/oauth-code";
 import {
   signOAuthAccessToken,
   signIdToken,
@@ -47,6 +48,20 @@ export const dynamic = "force-dynamic";
 
 /** Access Token 默认有效期（秒）：15 分钟，client 可自定义覆盖 */
 const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = 900;
+
+/** 同一 user+client 的活跃 OAuthSession 上限（参照 MAX_REFRESH_TOKEN_DEVICES 模式） */
+const MAX_OAUTH_SESSIONS_PER_CLIENT = 10;
+
+/**
+ * 授权码首次消费时间的进程内记录（key 为 code 的 SHA-256 hash）。
+ * 用于重放处理时区分"良性重试"（客户端超时重试/双击）与真实重放攻击，
+ * 详见 authorization_code 分支的良性重试判定注释。
+ * 多实例部署不共享，跨实例重试以首次换取创建的 OAuthSession.createdAt 兜底。
+ */
+const recentCodeConsumptions = new LRUCache<string, number>({ max: 5000, ttl: 60 * 1000 });
+
+/** 良性重试判定窗口：距首次消费 ≤ 10 秒 */
+const CODE_BENIGN_RETRY_WINDOW_MS = 10 * 1000;
 
 export async function POST(request: NextRequest) {
   const corsHeaders = await getOAuthCorsHeaders(request);
@@ -164,6 +179,55 @@ export async function POST(request: NextRequest) {
         // RFC 9700 §4.5：授权码重放（code 已使用）时，撤销该 code 签发出的所有 token
         const usedCode = await findUsedAuthorizationCode(code);
         if (usedCode) {
+          // 良性重试判定（缓解误杀，不削弱真实重放防护）：
+          // 客户端超时自动重试/双击会在首次消费后极短时间内，由同一 client
+          // 携带同一 PKCE verifier 重放同一 code。同时满足以下条件才放行
+          // （返回与原换取一致的 invalid_grant 错误，但不吊销 session / refresh token）：
+          //   ① 距首次消费 ≤ 10 秒（优先取本实例消费记录；跨实例以首次换取创建的
+          //      OAuthSession.createdAt 兜底——session 在换取流程中紧随消费创建）；
+          //   ② 本次请求 client 认证已通过（路由入口处完成）且 PKCE verifier
+          //      与原 code_challenge 匹配。
+          // 任一不满足（间隔超窗、verifier 不符、无消费时间依据）即维持吊销。
+          // 注：OAuthAuthorizationCode 无 usedAt 字段，消费时间按上述方式近似。
+          const consumedAtMem = recentCodeConsumptions.get(hashCode(code));
+          const [codeRecord, firstSession] = await Promise.all([
+            prisma.oAuthAuthorizationCode.findUnique({
+              where: { id: usedCode.id },
+              select: { codeChallenge: true, codeChallengeMethod: true },
+            }),
+            prisma.oAuthSession.findFirst({
+              where: { authorizationCodeId: usedCode.id },
+              select: { createdAt: true },
+            }),
+          ]);
+          const consumedAt = consumedAtMem ?? firstSession?.createdAt?.getTime() ?? null;
+          const withinWindow =
+            consumedAt !== null && Date.now() - consumedAt <= CODE_BENIGN_RETRY_WINDOW_MS;
+          const pkceMatches =
+            !!codeRecord?.codeChallenge &&
+            !!code_verifier &&
+            verifyPKCE(
+              code_verifier,
+              codeRecord.codeChallenge,
+              codeRecord.codeChallengeMethod || "S256"
+            );
+
+          if (withinWindow && pkceMatches) {
+            scheduleSsoEvent({
+              event: "token",
+              userId: usedCode.userId,
+              clientId: client_id,
+              clientName: client.name,
+              ip,
+              success: false,
+              detail: { grant_type, reason: "code_replay_benign_retry" },
+            });
+            return resJson(
+              { error: "invalid_grant", error_description: "Authorization code 无效或已被使用" },
+              400
+            );
+          }
+
           // OAuthSession 通过 authorizationCodeId 关联授权码，可直接撤销
           await prisma.oAuthSession.updateMany({
             where: { authorizationCodeId: usedCode.id, revokedAt: null },
@@ -196,6 +260,9 @@ export async function POST(request: NextRequest) {
           400
         );
       }
+
+      // 记录首次消费时间，供重放时的良性重试判定使用
+      recentCodeConsumptions.set(hashCode(code), Date.now());
 
       // 校验 client_id 与授权码一致
       if (codeData.clientId !== client_id) {
@@ -374,6 +441,23 @@ export async function POST(request: NextRequest) {
       if (existingSession) {
         sessionId = existingSession.sessionId;
       } else {
+        // 限制同一 user+client 的活跃 session 数：达到上限时撤销最旧的会话
+        // （参照 RefreshToken 的 MAX_REFRESH_TOKEN_DEVICES 模式），防止无限增长
+        const activeSessions = await prisma.oAuthSession.findMany({
+          where: { userId: user.id, clientId: client_id, revokedAt: null },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        });
+        if (activeSessions.length >= MAX_OAUTH_SESSIONS_PER_CLIENT) {
+          const sessionsToRevoke = activeSessions.slice(
+            0,
+            activeSessions.length - MAX_OAUTH_SESSIONS_PER_CLIENT + 1
+          );
+          await prisma.oAuthSession.updateMany({
+            where: { id: { in: sessionsToRevoke.map((s) => s.id) } },
+            data: { revokedAt: new Date() },
+          });
+        }
         sessionId = crypto.randomUUID();
         await prisma.oAuthSession.create({
           data: {
@@ -564,7 +648,36 @@ export async function POST(request: NextRequest) {
       }
       // 优先使用原 Refresh Token payload 中的 scope，保证刷新不会扩大权限；
       // 仅当旧 token 未携带 scope 时才从 OAuthSession 回退获取。
-      const scopeStr = refreshPayload.scope || session.scopes?.join(" ") || "openid";
+      const grantedScopeStr = refreshPayload.scope || session.scopes?.join(" ") || "openid";
+
+      // RFC 6749 §6：refresh 请求可携带 scope 参数收窄授权范围。
+      // 不传：沿用原 scope；传入：必须是原授权 scope 的子集，否则 invalid_scope。
+      let scopeStr = grantedScopeStr;
+      if (body.scope) {
+        const grantedScopes = grantedScopeStr.split(" ").filter(Boolean);
+        const requestedScopes = body.scope.split(" ").filter(Boolean);
+        const isSubset =
+          requestedScopes.length > 0 && requestedScopes.every((s) => grantedScopes.includes(s));
+        if (!isSubset) {
+          scheduleSsoEvent({
+            event: "token",
+            userId: refreshPayload.id,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type: "refresh_token", reason: "scope_exceeds_grant" },
+          });
+          return resJson(
+            {
+              error: "invalid_scope",
+              error_description: "请求的 scope 超出原授权范围",
+            },
+            400
+          );
+        }
+        scopeStr = requestedScopes.join(" ");
+      }
 
       // 检查用户是否仍授权了该 client（consent 撤销后拒绝刷新）
       const consent = await prisma.userConsent.findUnique({

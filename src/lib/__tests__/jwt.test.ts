@@ -2,10 +2,13 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vites
 import { generateKeyPairSync } from "crypto";
 import { SignJWT, decodeJwt } from "jose";
 
-// === Mock Prisma（sid 会话校验会查询 OAuthSession）===
+// === Mock Prisma（sid 会话校验查 OAuthSession；M2M 校验查 OAuthClient）===
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     oAuthSession: {
+      findUnique: vi.fn(),
+    },
+    oAuthClient: {
       findUnique: vi.fn(),
     },
   },
@@ -22,6 +25,7 @@ import {
   verifyOAuthAccessToken,
   signLogoutToken,
   verifyLogoutToken,
+  invalidateM2mClientCache,
 } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { getIssuer } from "@/lib/oauth-constants";
@@ -259,7 +263,11 @@ describe("JWT 工具", () => {
       expect(mockFindUnique).not.toHaveBeenCalled();
     });
 
-    it("M2M client_credentials token 无 sid 不受影响（不查库）", async () => {
+    it("M2M client_credentials token 无 sid 不受影响（不查 session）", async () => {
+      (prisma.oAuthClient.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+        isActive: true,
+      });
+      invalidateM2mClientCache("client-1");
       const token = await signOAuthAccessToken({
         id: "client:client-1",
         phone: "",
@@ -269,6 +277,76 @@ describe("JWT 工具", () => {
       const payload = await verifyOAuthAccessToken(token, "client-1");
       expect(payload).toMatchObject({ id: "client:client-1", client_type: "m2m" });
       expect(mockFindUnique).not.toHaveBeenCalled();
+    });
+  });
+
+  // M2M token 即时失效：client 停用/删除后已签发 token 拒绝验证
+  describe("M2M client 状态校验", () => {
+    const mockFindClient = prisma.oAuthClient.findUnique as ReturnType<typeof vi.fn>;
+
+    async function signM2mToken(clientId = "client-m2m") {
+      return signOAuthAccessToken({
+        id: `client:${clientId}`,
+        phone: "",
+        clientId,
+        scope: "",
+      });
+    }
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      invalidateM2mClientCache("client-m2m");
+    });
+
+    it("client 存在且活跃时验证通过，并缓存结果（30s 内不重复查库）", async () => {
+      mockFindClient.mockResolvedValue({ isActive: true });
+      const token = await signM2mToken();
+      const payload = await verifyOAuthAccessToken(token, "client-m2m");
+      expect(payload).toMatchObject({ id: "client:client-m2m", client_type: "m2m" });
+      expect(mockFindClient).toHaveBeenCalledWith({
+        where: { clientId: "client-m2m" },
+        select: { isActive: true },
+      });
+      // 第二次验证命中进程内缓存，不再查库
+      mockFindClient.mockClear();
+      const again = await verifyOAuthAccessToken(token, "client-m2m");
+      expect(again).not.toBeNull();
+      expect(mockFindClient).not.toHaveBeenCalled();
+    });
+
+    it("client 被停用（isActive=false）后已签发 token 立即失效", async () => {
+      mockFindClient.mockResolvedValue({ isActive: false });
+      const token = await signM2mToken();
+      expect(await verifyOAuthAccessToken(token, "client-m2m")).toBeNull();
+    });
+
+    it("client 被删除（查不到记录）后已签发 token 立即失效", async () => {
+      mockFindClient.mockResolvedValue(null);
+      const token = await signM2mToken();
+      expect(await verifyOAuthAccessToken(token, "client-m2m")).toBeNull();
+    });
+
+    it("invalidateM2mClientCache 后重新查库，停用即时生效（不等缓存 TTL）", async () => {
+      mockFindClient.mockResolvedValue({ isActive: true });
+      const token = await signM2mToken();
+      expect(await verifyOAuthAccessToken(token, "client-m2m")).not.toBeNull();
+
+      // 停用 client 并主动失效缓存（updateOAuthClient/deleteOAuthClient 的路径）
+      mockFindClient.mockResolvedValue({ isActive: false });
+      invalidateM2mClientCache("client-m2m");
+      expect(await verifyOAuthAccessToken(token, "client-m2m")).toBeNull();
+    });
+
+    it("用户 token 不走 client 状态校验（行为不变）", async () => {
+      const token = await signOAuthAccessToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "client-m2m",
+        scope: "openid",
+      });
+      const payload = await verifyOAuthAccessToken(token, "client-m2m");
+      expect(payload).toMatchObject({ id: "user-1" });
+      expect(mockFindClient).not.toHaveBeenCalled();
     });
   });
 
@@ -301,6 +379,27 @@ describe("JWT 工具", () => {
     it("aud 不匹配应返回 null", async () => {
       const token = await signTestLogoutToken();
       expect(await verifyLogoutToken(token, "other-client")).toBeNull();
+    });
+
+    it("携带 nonce 的 logout_token 应返回 null（OIDC Back-Channel Logout 规范禁止 nonce）", async () => {
+      // signLogoutToken 不签 nonce，直接用 HS256 对称密钥手工签一个带 nonce 的
+      const token = await new SignJWT({
+        sub: "user-1",
+        aud: "client-1",
+        events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+        jti: "jti-nonce",
+        nonce: "should-not-exist",
+        type: "logout_token",
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setIssuer(getIssuer())
+        .setAudience("client-1")
+        .setSubject("user-1")
+        .setJti("jti-nonce")
+        .setExpirationTime("5m")
+        .sign(new TextEncoder().encode(process.env.JWT_LOGOUT_SECRET!));
+      expect(await verifyLogoutToken(token, "client-1")).toBeNull();
     });
   });
 });

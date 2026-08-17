@@ -86,6 +86,7 @@ vi.mock("@/lib/prisma", () => {
     oAuthSession: {
       create: vi.fn().mockResolvedValue({}),
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       // sid 会话校验：access token 携带 sid 后 verifyOAuthAccessToken 按 sessionId 查库，
       // 模拟一条活跃 session 放行

@@ -1,6 +1,7 @@
 /**
  * id_token_hint 验证端点
- * GET /api/oauth/logout/verify-hint
+ * GET /api/oauth/logout/verify-hint（兼容旧调用）
+ * POST /api/oauth/logout/verify-hint（推荐：id_token_hint 放请求体，避免进入 URL/日志）
  *
  * OIDC RP-Initiated Logout：/logout 页收到 id_token_hint 后调用此端点验证。
  * - 验签 + iss/aud 校验（aud 为发起方 client_id）
@@ -17,7 +18,11 @@ import { USER_COOKIE_NAME } from "@/types/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+async function handleVerifyHint(
+  request: NextRequest,
+  idTokenHint: string | null,
+  clientId: string | undefined
+) {
   try {
     const ip = getClientIP(request);
     const limitResult = await rateLimit(ip, "oauth-check-post-logout-uri");
@@ -27,10 +32,6 @@ export async function GET(request: NextRequest) {
         { status: 429 }
       );
     }
-
-    const { searchParams } = request.nextUrl;
-    const idTokenHint = searchParams.get("id_token_hint");
-    const clientId = searchParams.get("client_id") || undefined;
 
     if (!idTokenHint) {
       return NextResponse.json({ valid: false });
@@ -57,4 +58,24 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
+  return handleVerifyHint(
+    request,
+    searchParams.get("id_token_hint"),
+    searchParams.get("client_id") || undefined
+  );
+}
+
+export async function POST(request: NextRequest) {
+  // id_token 是凭证：POST body 传递，避免经 query 进入浏览器历史/服务器日志
+  let body: { id_token_hint?: string; client_id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ valid: false });
+  }
+  return handleVerifyHint(request, body.id_token_hint ?? null, body.client_id || undefined);
 }

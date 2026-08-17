@@ -112,17 +112,28 @@ describe("oauth-code", () => {
   });
 
   describe("cleanupExpiredCodes", () => {
-    it("应删除过期或已使用的授权码", async () => {
+    it("未使用的过期授权码应立即删除，已使用的保留至过期 30 天后（重放检测）", async () => {
       mockDeleteMany.mockResolvedValue({ count: 3 });
       const result = await cleanupExpiredCodes();
       expect(result).toBe(3);
       expect(mockDeleteMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            OR: [{ expiresAt: { lt: expect.any(Date) } }, { used: true }],
+            OR: [
+              { used: false, expiresAt: { lt: expect.any(Date) } },
+              { used: true, expiresAt: { lt: expect.any(Date) } },
+            ],
           },
         })
       );
+
+      // 已使用 code 的删除阈值应比"现在"早约 30 天（保留期供重放检测）
+      const call = mockDeleteMany.mock.calls[0][0] as {
+        where: { OR: [{ expiresAt: { lt: Date } }, { expiresAt: { lt: Date } }] };
+      };
+      const usedThreshold = call.where.OR[1].expiresAt.lt;
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+      expect(Math.abs(Date.now() - usedThreshold.getTime() - thirtyDaysMs)).toBeLessThan(60 * 1000);
     });
   });
 

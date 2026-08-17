@@ -516,6 +516,12 @@ curl -X POST https://nihplod.cn/api/oauth/introspect \
   -d "client_id=YOUR_CLIENT_ID&client_secret=YOUR_SECRET&token=ACCESS_TOKEN"
 ```
 
+> ℹ️ **Public Client 的免密 introspect**：Public Client（SPA/移动端，无 client_secret）可仅凭 `client_id` 调用 introspect，这是 RFC 7662 的常见取舍。服务端强制 audience 校验——**只能查询签发给该 client 自己的 token**，查询其它 client 的 token 一律返回 `active: false`（与"token 无效"不可区分），不会泄露其它子项目的会话信息。安全注意事项：
+>
+> - introspect 响应仅表示 token 状态，**不要把 `active: true` 当作用户身份凭证**；鉴权仍应基于有效 access token（userinfo / 本地 JWKS 验签）；
+> - 浏览器端直接调用 introspect 会把 access token 暴露给前端代码，敏感后端服务建议由 Confidential Client 在服务端调用；
+> - 免密路径与付费路径一样受 IP 与 client 级限流约束，请勿将其用作高频探活接口。
+
 2. **本地 JWT 验证（仅内部 Confidential Client，需共享 RS256 公钥）**：
 
 ```typescript

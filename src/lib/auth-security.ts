@@ -671,6 +671,7 @@ export async function cleanupExpiredSmsCodes(): Promise<number> {
 
 /**
  * 清理已撤销的 OAuth Session 和 Refresh Token（30 天后物理删除）
+ * OAuth Session 额外清理过期 30 天但未撤销的记录，避免表无限增长
  */
 export async function cleanupRevokedSessionsAndTokens(): Promise<{
   sessions: number;
@@ -680,18 +681,37 @@ export async function cleanupRevokedSessionsAndTokens(): Promise<{
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [sessions, tokens] = await Promise.all([
       prisma.oAuthSession.deleteMany({
-        where: { revokedAt: { lt: thirtyDaysAgo } },
+        where: {
+          OR: [{ revokedAt: { lt: thirtyDaysAgo } }, { expiresAt: { lt: thirtyDaysAgo } }],
+        },
       }),
       prisma.refreshToken.deleteMany({
         where: { revokedAt: { lt: thirtyDaysAgo } },
       }),
     ]);
     apiConsole.info(
-      `[CleanupRevoked] 清理了 ${sessions.count} 个已撤销会话, ${tokens.count} 个已撤销 Token`
+      `[CleanupRevoked] 清理了 ${sessions.count} 个已撤销/过期会话, ${tokens.count} 个已撤销 Token`
     );
     return { sessions: sessions.count, tokens: tokens.count };
   } catch (error) {
     apiConsole.error("[CleanupRevoked] 清理失败:", error);
     return { sessions: 0, tokens: 0 };
+  }
+}
+
+/**
+ * 清理已撤销的 UserConsent 记录（撤销 30 天后物理删除）
+ */
+export async function cleanupRevokedUserConsents(): Promise<number> {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const result = await prisma.userConsent.deleteMany({
+      where: { revokedAt: { lt: thirtyDaysAgo } },
+    });
+    apiConsole.info(`[CleanupUserConsents] 清理了 ${result.count} 条已撤销授权记录`);
+    return result.count;
+  } catch (error) {
+    apiConsole.error("[CleanupUserConsents] 清理失败:", error);
+    return 0;
   }
 }

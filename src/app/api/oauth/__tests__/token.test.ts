@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => {
     oAuthSession: {
       create: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     userConsent: {
@@ -107,6 +108,7 @@ import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { validateDPoPProof } from "@/lib/dpop";
 import { prisma } from "@/lib/prisma";
 import { signRefreshToken } from "@/lib/jwt";
+import { verifyPKCE } from "@/lib/oauth-code";
 
 function createRequest(body: Record<string, string>, contentType = "application/json"): Request {
   return new Request("http://localhost/api/oauth/token", {
@@ -289,6 +291,117 @@ describe("POST /api/oauth/token", () => {
         data: { revokedAt: expect.any(Date) },
       });
       // 撤销该 user+client 的 refresh token（会话族）
+      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+    });
+
+    it("良性重试（10s 内、client 认证通过且 PKCE 匹配）返回 invalid_grant 但不吊销会话族", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      // consumeAuthorizationCode 原子消费失败
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 0,
+      });
+      // findUsedAuthorizationCode 发现 code 已被使用
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        used: true,
+      });
+      // 良性判定查询：code 携带 PKCE challenge，首次换取刚刚创建了 session（≤10s）
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+      });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        createdAt: new Date(),
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "benign-retry-code",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      // 良性重试：不吊销 session 与 refresh token 会话族
+      expect(prisma.oAuthSession.updateMany).not.toHaveBeenCalled();
+      expect(revokeRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it("重放间隔超过 10 秒（session 创建于 60s 前）仍吊销全部 token", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 0,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        used: true,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+      });
+      // 首次换取发生在 60 秒前，超出良性重试窗口
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        createdAt: new Date(Date.now() - 60 * 1000),
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "slow-replay-code",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+        where: { authorizationCodeId: "code-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+    });
+
+    it("重放请求 PKCE verifier 不符仍吊销（真实重放防护不削弱）", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 0,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        used: true,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+      });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        createdAt: new Date(),
+      });
+      // verifier 与 code_challenge 不匹配
+      vi.mocked(verifyPKCE).mockReturnValueOnce(false);
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "evil-replay-code",
+        code_verifier: "wrong-verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+        where: { authorizationCodeId: "code-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
       expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
     });
 
@@ -591,6 +704,106 @@ describe("POST /api/oauth/token", () => {
       expect(prisma.oAuthSession.create).not.toHaveBeenCalled();
       expect(decodeJwt(body.access_token).sid).toBe("sess-existing");
     });
+
+    it("同一 user+client 活跃 session 达到上限（10）时撤销最旧会话后再新建", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+        nonce: null,
+      });
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      // 无同 code 的已有 session → 走新建分支
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      // 已有 10 个活跃 session（最旧为 s-oldest）
+      (prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+        { id: "s-oldest" },
+        ...Array.from({ length: 9 }, (_, i) => ({ id: `s-${i + 2}` })),
+      ]);
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code-session-cap",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      // 撤销最旧的 1 个会话（revokedAt 标记，不删除记录）
+      expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ["s-oldest"] } },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(prisma.oAuthSession.create).toHaveBeenCalled();
+    });
+
+    it("活跃 session 未达上限时不撤销任何会话", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
+      });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+        nonce: null,
+      });
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+        { id: "s-1" },
+        { id: "s-2" },
+      ]);
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "code-under-cap",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      expect(prisma.oAuthSession.updateMany).not.toHaveBeenCalled();
+      expect(prisma.oAuthSession.create).toHaveBeenCalled();
+    });
   });
 
   describe("grant_type=refresh_token", () => {
@@ -687,6 +900,76 @@ describe("POST /api/oauth/token", () => {
       expect(body.access_token).toBeDefined();
       expect(body.refresh_token).toBeDefined();
       expect(body.scope).toBe("openid phone");
+    });
+
+    it("传入原授权 scope 子集时按子集签发新 token（RFC 6749 §6 scope 收窄）", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-scope-1",
+        scopes: ["openid", "phone"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid phone",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+        scope: "openid", // 收窄：仅请求原授权 scope 的子集
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.scope).toBe("openid");
+      expect(decodeJwt(body.access_token).scope).toBe("openid");
+      expect(decodeJwt(body.refresh_token).scope).toBe("openid");
+    });
+
+    it("请求的 scope 超出原授权范围应返回 invalid_scope，且不执行轮换", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-scope-2",
+        scopes: ["openid"],
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+        scope: "openid phone", // phone 不在原授权 scope 中
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_scope");
+      expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
     });
 
     it("refresh 签发的新 access token 携带活跃 session 的 sessionId 作为 sid claim", async () => {

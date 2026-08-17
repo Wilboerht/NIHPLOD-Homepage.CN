@@ -462,6 +462,36 @@ function hashWechatExchangeToken(token: string): string {
 
 const WECHAT_EXCHANGE_TOKEN_TTL_MS = 15 * 60 * 1000;
 
+/**
+ * M2M client 活跃状态的进程内短 TTL 缓存。
+ * M2M token 无用户黑名单与 sid 会话兜底，client 停用/删除后已签发的 token
+ * 只能靠验证时实时查 client 状态即时失效；30s 短缓存是性能与即时性的折衷
+ * （进程内缓存惯例参照 oauth-client.ts 的 oldSecretCache）。
+ * 停用/删除操作经 invalidateM2mClientCache 主动清除本实例缓存，做到同实例立即生效；
+ * 多实例部署时其它实例最长 30s 后生效。
+ */
+const m2mClientActiveCache = new LRUCache<string, boolean>({
+  max: 1000,
+  ttl: 30 * 1000,
+});
+
+/** 使指定 client 的 M2M 活跃状态缓存失效（停用/删除 client 时调用） */
+export function invalidateM2mClientCache(clientId: string): void {
+  m2mClientActiveCache.delete(clientId);
+}
+
+async function isM2mClientActive(clientId: string): Promise<boolean> {
+  const cached = m2mClientActiveCache.get(clientId);
+  if (cached !== undefined) return cached;
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId },
+    select: { isActive: true },
+  });
+  const active = client?.isActive === true;
+  m2mClientActiveCache.set(clientId, active);
+  return active;
+}
+
 export async function isWechatExchangeTokenUsed(token: string): Promise<boolean> {
   const hash = hashWechatExchangeToken(token);
   return usedWechatExchangeTokens.has(hash);
@@ -875,6 +905,12 @@ export async function verifyLogoutToken(
       return null;
     }
 
+    // OIDC Back-Channel Logout 规范：logout_token 禁止携带 nonce claim
+    // （nonce 用于将 ID Token 绑定到客户端会话，logout token 不适用）
+    if ((payload as { nonce?: unknown }).nonce !== undefined) {
+      return null;
+    }
+
     const claims = payload as unknown as LogoutTokenClaims;
     if (!claims.jti || typeof claims.jti !== "string") {
       return null;
@@ -1026,11 +1062,18 @@ export async function verifyOAuthAccessToken(
       return null;
     }
     // 用户级黑名单检查（封禁后 15 分钟窗口期内拒绝）
-    // M2M token（显式 client_type="m2m" 或旧格式 sub = "client:xxx"）无需检查，无关联用户
+    // M2M token（显式 client_type="m2m" 或旧格式 sub = "client:xxx"）无关联用户，
+    // 不查用户黑名单，改为校验签发 client 仍存在且 isActive：
+    // client 停用/删除后已签发的 M2M token 立即失效（M2M 无 sid 会话校验兜底）。
     const userId = (payload as { id?: string }).id;
     const clientType = (payload as { client_type?: string }).client_type;
     const isM2m = clientType === "m2m" || (userId?.startsWith("client:") ?? false);
-    if (userId && !isM2m && (await isTokenBlacklisted(userId))) {
+    if (isM2m) {
+      const m2mClientId = (payload as { client_id?: string }).client_id;
+      if (!m2mClientId || !(await isM2mClientActive(m2mClientId))) {
+        return null;
+      }
+    } else if (userId && (await isTokenBlacklisted(userId))) {
       return null;
     }
 

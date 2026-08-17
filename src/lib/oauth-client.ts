@@ -427,6 +427,12 @@ export async function updateOAuthClient(
       where: { id },
       data: parsed,
     });
+    // isActive 变更可能影响 M2M token 有效性：主动失效进程内缓存，
+    // 使停用后已签发的 M2M token 立即失效（不等待 30s TTL）
+    if (parsed.isActive !== undefined) {
+      const { invalidateM2mClientCache } = await import("./jwt");
+      invalidateM2mClientCache(client.clientId);
+    }
     return {
       id: client.id,
       clientId: client.clientId,
@@ -485,6 +491,10 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
       // 删除 client 本身（ssoAuditEvent 审计日志刻意保留，用于合规追溯）
       await tx.oAuthClient.delete({ where: { id } });
     });
+
+    // 失效 M2M 活跃状态缓存：已签发的 M2M token 在本实例立即失效
+    const { invalidateM2mClientCache } = await import("./jwt");
+    invalidateM2mClientCache(client.clientId);
 
     return true;
   } catch (err) {

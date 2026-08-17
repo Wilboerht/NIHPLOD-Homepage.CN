@@ -4,25 +4,18 @@
  * OIDC 规范允许 client 单独注册 post_logout_redirect_uris。
  * 当前实现：
  * - 空值或站内相对路径：信任
- * - 绝对 URL：必须与任意已注册 redirect_uri 或 postLogoutRedirectUri 同 origin
- *
- * 注：精确匹配更安全；这里先用 origin 匹配兼容常见子项目部署。
+ * - 绝对 URL：必须能解析出 client_id，且与该 client 注册的
+ *   postLogoutRedirectUris 精确匹配（禁止跨 client 借用他人注册地址，
+ *   也不做"前缀+子路径"宽松匹配）
+ * - client_id 缺失或无法解析：拒绝，调用方回退到首页
  */
 import { prisma } from "./prisma";
-
-function getOrigin(url: string): string | null {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * 校验 post_logout_redirect_uri 是否可信
  *
  * @param uri - 用户提供的返回地址
- * @param clientId - 可选，发起登出的 client
+ * @param clientId - 发起登出的 client（绝对 URL 场景必填）
  * @returns boolean
  */
 export async function isTrustedPostLogoutRedirectUri(
@@ -32,34 +25,16 @@ export async function isTrustedPostLogoutRedirectUri(
   if (!uri) return true;
   if (uri.startsWith("/") && !uri.startsWith("//")) return true;
 
-  const uriOrigin = getOrigin(uri);
-  if (!uriOrigin) return false;
+  // 绝对 URL 必须绑定到具体 client：无法解析 client_id 时拒绝回跳（调用方兜底跳首页）
+  if (!clientId) return false;
 
-  // 查询该 client 注册的返回地址
-  // 未指定 clientId 时：仅允许所有活跃 client 注册的 URI（用于通用登出场景）
-  const where = clientId ? { clientId, isActive: true } : { isActive: true };
-  const clients = await prisma.oAuthClient.findMany({
-    where,
-    select: { redirectUris: true, postLogoutRedirectUris: true },
+  // 精确匹配该 client 注册的 postLogoutRedirectUris（OIDC 规范将其与 redirect_uri 区分，
+  // 不做前缀/子路径宽松匹配，避免 https://a.com/app 匹配 https://a.com/app-evil 之类绕过）
+  const client = await prisma.oAuthClient.findFirst({
+    where: { clientId, isActive: true },
+    select: { postLogoutRedirectUris: true },
   });
+  if (!client) return false;
 
-  for (const client of clients) {
-    // post_logout_redirect_uri 仅应匹配 postLogoutRedirectUris（OIDC 规范将其与 redirect_uri 区分）
-    const registered = client.postLogoutRedirectUris;
-    for (const url of registered) {
-      try {
-        const reg = new URL(url);
-        if (reg.origin !== uriOrigin) continue;
-        // 严格匹配：注册 URL 完全相同，或注册 URL 为前缀且后接 "/" 再加子路径
-        // 防止 https://a.com/app 匹配 https://a.com/app-evil
-        if (uri === url || (uri.startsWith(url + "/") && uri.length > url.length + 1)) {
-          return true;
-        }
-      } catch {
-        /* skip */
-      }
-    }
-  }
-
-  return false;
+  return client.postLogoutRedirectUris.includes(uri);
 }

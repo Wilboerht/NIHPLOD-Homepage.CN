@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import { recordSsoEvent } from "@/lib/sso-audit";
+import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
 import type { UserStatus } from "@/generated/prisma/client";
@@ -213,6 +215,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       request,
     });
 
+    // SSO 审计：用户状态变更（合规敏感，同步等待写入）
+    await recordSsoEvent({
+      event: "status_change",
+      userId: user.id,
+      ip: getClientIP(request),
+      success: true,
+      detail: {
+        action:
+          status === "ACTIVE"
+            ? "user_unbanned"
+            : status === "SUSPENDED"
+              ? "user_suspended"
+              : "user_banned",
+        previousStatus: user.status,
+        newStatus: status,
+        adminId: admin.id,
+      },
+    });
+
     // === 通知子项目账户状态变更 + 撤销 OAuth 会话 ===
     if (status !== "ACTIVE") {
       try {
@@ -378,6 +399,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       detail: { anonymizedPhone, previousStatus: user.status },
       adminId: admin.id,
       request,
+    });
+
+    // SSO 审计：用户删除（合规敏感，同步等待写入）
+    await recordSsoEvent({
+      event: "status_change",
+      userId: user.id,
+      ip: getClientIP(request),
+      success: true,
+      detail: {
+        action: "user_deleted",
+        previousStatus: user.status,
+        newStatus: "BANNED",
+        adminId: admin.id,
+      },
     });
 
     return NextResponse.json({ success: true, data: { message: "用户数据已删除" } });

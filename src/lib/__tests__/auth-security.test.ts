@@ -7,6 +7,8 @@ import {
   saveRefreshToken,
   atomicallyRotateRefreshToken,
   extractDeviceInfo,
+  cleanupRevokedSessionsAndTokens,
+  cleanupRevokedUserConsents,
 } from "@/lib/auth-security";
 
 // 模拟 sso-audit，避免审计写入真实数据库
@@ -30,6 +32,7 @@ vi.mock("@/lib/prisma", () => {
     update: vi.fn(),
     updateMany: vi.fn(),
     create: vi.fn(),
+    deleteMany: vi.fn(),
   };
 
   const mockUser = {
@@ -38,6 +41,11 @@ vi.mock("@/lib/prisma", () => {
 
   const mockOAuthSession = {
     updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+  };
+
+  const mockUserConsent = {
+    deleteMany: vi.fn(),
   };
 
   return {
@@ -46,6 +54,7 @@ vi.mock("@/lib/prisma", () => {
       refreshToken: mockRefreshToken,
       user: mockUser,
       oAuthSession: mockOAuthSession,
+      userConsent: mockUserConsent,
       $transaction: vi.fn(),
     },
   };
@@ -71,6 +80,7 @@ async function getMockRefreshToken() {
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+    deleteMany: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -85,6 +95,14 @@ async function getMockOAuthSession() {
   const { prisma } = await import("../prisma");
   return prisma.oAuthSession as unknown as {
     updateMany: ReturnType<typeof vi.fn>;
+    deleteMany: ReturnType<typeof vi.fn>;
+  };
+}
+
+async function getMockUserConsent() {
+  const { prisma } = await import("../prisma");
+  return prisma.userConsent as unknown as {
+    deleteMany: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -485,6 +503,61 @@ describe("auth-security", () => {
 
       expect(first.valid).toBe(false);
       expect(second).toEqual({ valid: false, reason: "revoked", familyRevokedCount: 0 });
+    });
+  });
+
+  describe("cleanupRevokedSessionsAndTokens", () => {
+    it("应物理删除撤销超过 30 天或过期超过 30 天的会话、撤销超过 30 天的 Token", async () => {
+      const mockSession = await getMockOAuthSession();
+      const mockRt = await getMockRefreshToken();
+      mockSession.deleteMany.mockResolvedValue({ count: 2 });
+      mockRt.deleteMany.mockResolvedValue({ count: 5 });
+
+      const result = await cleanupRevokedSessionsAndTokens();
+
+      expect(result).toEqual({ sessions: 2, tokens: 5 });
+      // 过期但未撤销的会话也需被清理（OR 条件），阈值均为 30 天前
+      expect(mockSession.deleteMany).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { revokedAt: { lt: expect.any(Date) } },
+            { expiresAt: { lt: expect.any(Date) } },
+          ],
+        },
+      });
+      expect(mockRt.deleteMany).toHaveBeenCalledWith({
+        where: { revokedAt: { lt: expect.any(Date) } },
+      });
+    });
+
+    it("清理失败应返回零计数而不抛错", async () => {
+      const mockSession = await getMockOAuthSession();
+      mockSession.deleteMany.mockRejectedValue(new Error("db down"));
+
+      const result = await cleanupRevokedSessionsAndTokens();
+      expect(result).toEqual({ sessions: 0, tokens: 0 });
+    });
+  });
+
+  describe("cleanupRevokedUserConsents", () => {
+    it("应物理删除撤销超过 30 天的用户授权记录", async () => {
+      const mockConsent = await getMockUserConsent();
+      mockConsent.deleteMany.mockResolvedValue({ count: 4 });
+
+      const result = await cleanupRevokedUserConsents();
+
+      expect(result).toBe(4);
+      expect(mockConsent.deleteMany).toHaveBeenCalledWith({
+        where: { revokedAt: { lt: expect.any(Date) } },
+      });
+    });
+
+    it("清理失败应返回 0 而不抛错", async () => {
+      const mockConsent = await getMockUserConsent();
+      mockConsent.deleteMany.mockRejectedValue(new Error("db down"));
+
+      const result = await cleanupRevokedUserConsents();
+      expect(result).toBe(0);
     });
   });
 });

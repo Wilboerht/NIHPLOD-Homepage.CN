@@ -389,6 +389,7 @@ model OAuthSession {
 
   @@index([userId, clientId])
   @@index([userId, revokedAt])
+  @@index([revokedAt])
   @@index([expiresAt])
   @@index([clientId])
 }
@@ -426,6 +427,7 @@ model SsoAuditEvent {
   @@index([clientId, createdAt(sort: Desc)])
   @@index([event, createdAt(sort: Desc)])
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([createdAt])
 }
 
 /**

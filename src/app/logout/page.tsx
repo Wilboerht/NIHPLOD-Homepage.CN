@@ -56,7 +56,15 @@ function LogoutContent() {
   const postLogoutRedirectUri = searchParams.get("post_logout_redirect_uri") || "";
   const clientId = searchParams.get("client_id") || "";
   const state = searchParams.get("state") || "";
-  const idTokenHint = searchParams.get("id_token_hint") || "";
+  // id_token_hint 由 end-session 经 URL fragment 传入（凭证不进 query/浏览器历史），
+  // 客户端从 location.hash 读取（惰性初始化，仅在挂载时读取一次）；
+  // 读不到时按无 hint 处理（既有行为）
+  const [idTokenHint] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const hash = window.location.hash;
+    if (hash.length <= 1) return "";
+    return new URLSearchParams(hash.slice(1)).get("id_token_hint") || "";
+  });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -109,12 +117,17 @@ function LogoutContent() {
   // 验证 id_token_hint（OIDC RP-Initiated Logout）：
   // 验证失败不阻断登出，照常走确认流程并忽略 hint；
   // 验证通过但身份与当前会话不一致时提示用户确认。
+  // hint 经 POST body 传递（不再放 query，避免进入访问日志）
   useEffect(() => {
     if (!idTokenHint) return;
-    const url = new URL("/api/oauth/logout/verify-hint", window.location.origin);
-    url.searchParams.set("id_token_hint", idTokenHint);
-    if (clientId) url.searchParams.set("client_id", clientId);
-    fetch(url.toString())
+    fetch("/api/oauth/logout/verify-hint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_token_hint: idTokenHint,
+        ...(clientId ? { client_id: clientId } : {}),
+      }),
+    })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.valid && data?.matchesSession === false) {

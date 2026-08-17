@@ -160,11 +160,18 @@ export async function findUsedAuthorizationCode(
 
 /**
  * 清理过期授权码（可由 cron 任务定期调用）
+ *
+ * 已使用（used）的授权码是重放检测（findUsedAuthorizationCode）的唯一信号，
+ * 故保留至过期 30 天后再删除；未使用的过期 code 到期即删。
  */
 export async function cleanupExpiredCodes(): Promise<number> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const result = await prisma.oAuthAuthorizationCode.deleteMany({
     where: {
-      OR: [{ expiresAt: { lt: new Date() } }, { used: true }],
+      OR: [
+        { used: false, expiresAt: { lt: new Date() } },
+        { used: true, expiresAt: { lt: thirtyDaysAgo } },
+      ],
     },
   });
   return result.count;

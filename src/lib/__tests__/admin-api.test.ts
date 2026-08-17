@@ -17,6 +17,7 @@ const {
   mockHashPassword,
   mockRateLimit,
   mockValidateCSRFToken,
+  mockRecordSsoEvent,
 } = vi.hoisted(() => {
   const createMockModel = () => ({
     findUnique: vi.fn(),
@@ -38,6 +39,7 @@ const {
     mockHashPassword: vi.fn(),
     mockRateLimit: vi.fn(),
     mockValidateCSRFToken: vi.fn(),
+    mockRecordSsoEvent: vi.fn(),
   };
 });
 
@@ -132,6 +134,13 @@ vi.mock("@/lib/audit", () => ({
   }),
   AUDIT_ACTIONS: ["login", "logout"],
   AUDIT_TARGET_TYPES: ["system", "admin"],
+}));
+
+// Mock sso-audit（SSO 审计事件写库）
+mockRecordSsoEvent.mockResolvedValue(undefined);
+vi.mock("@/lib/sso-audit", () => ({
+  recordSsoEvent: (...args: unknown[]) => mockRecordSsoEvent(...args),
+  scheduleSsoEvent: vi.fn(),
 }));
 
 // Mock logger
@@ -598,6 +607,90 @@ describe("管理端 API 集成测试", () => {
       // 验证清理购物车
       expect(mockPrisma.cartItem.deleteMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: "user-1" } })
+      );
+      // 验证写入 SSO 审计事件
+      expect(mockRecordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "status_change",
+          userId: "user-1",
+          success: true,
+          detail: expect.objectContaining({
+            action: "user_banned",
+            previousStatus: "ACTIVE",
+            newStatus: "BANNED",
+          }),
+        })
+      );
+    });
+
+    it("解冻用户应写入 SSO 审计事件（user_unbanned）", async () => {
+      const req = createRequest("/api/admin/users/user-1", {
+        method: "PATCH",
+        body: { status: "ACTIVE" },
+      });
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        status: "BANNED",
+      });
+      mockPrisma.user.update.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        status: "ACTIVE",
+      });
+
+      const { PATCH } = await import("@/app/api/admin/users/[id]/route");
+      const res = await PATCH(req, { params: Promise.resolve({ id: "user-1" }) });
+
+      expect(res.status).toBe(200);
+      expect(mockRecordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "status_change",
+          userId: "user-1",
+          detail: expect.objectContaining({
+            action: "user_unbanned",
+            previousStatus: "BANNED",
+            newStatus: "ACTIVE",
+          }),
+        })
+      );
+    });
+
+    it("删除用户应匿名化 PII 并写入 SSO 审计事件（user_deleted）", async () => {
+      const req = createRequest("/api/admin/users/user-1", { method: "DELETE" });
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        status: "ACTIVE",
+      });
+      mockPrisma.oAuthSession.findMany.mockResolvedValue([]);
+
+      const { DELETE } = await import("@/app/api/admin/users/[id]/route");
+      const res = await DELETE(req, { params: Promise.resolve({ id: "user-1" }) });
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      // 软删除：封禁 + 匿名化
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "BANNED", nickname: "[已删除]" }),
+        })
+      );
+      // 验证写入 SSO 审计事件
+      expect(mockRecordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "status_change",
+          userId: "user-1",
+          success: true,
+          detail: expect.objectContaining({
+            action: "user_deleted",
+            previousStatus: "ACTIVE",
+            newStatus: "BANNED",
+          }),
+        })
       );
     });
 
