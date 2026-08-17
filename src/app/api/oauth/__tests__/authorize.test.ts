@@ -69,6 +69,7 @@ vi.mock("@/lib/csrf", () => ({
 
 import { GET, POST } from "../authorize/route";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
+import { createAuthorizationCode } from "@/lib/oauth-code";
 import { verifyUserToken } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
@@ -300,6 +301,26 @@ describe("GET /api/oauth/authorize", () => {
     expect(location).toContain("error=login_required");
   });
 
+  it("max_age 以固化的 auth_time 为准：token 刷新（新 iat）后仍正确触发 re-auth", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 模拟 token 已经过多轮 refresh：iat 是刚换发的新时间，
+    // auth_time 才是 1 小时前的真实认证时间；若以 iat 计算会错误放行
+    vi.mocked(verifyUserToken).mockResolvedValueOnce({
+      id: "user-1",
+      phone: "13800138000",
+      type: "user",
+      iat: Math.floor(Date.now() / 1000) - 60, // 1 分钟前刚刷新
+      auth_time: Math.floor(Date.now() / 1000) - 3600, // 实际 1 小时前认证
+    } as never);
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none", max_age: "600" }), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location).toContain("error=login_required");
+  });
+
   it("prompt=none 且需要 consent 时应回传 consent_required 而非跳转 consent 页", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
     // 默认 userConsent.findUnique → null（未授权）
@@ -323,6 +344,20 @@ describe("POST /api/oauth/authorize", () => {
       new Response(JSON.stringify({ error: "csrf_forbidden" }), { status: 403 })
     );
   });
+
+  // 通过一次真实 GET 让服务端 storeOAuthParams 存储授权参数，取得有效 oauth_id
+  // （POST approve 强制要求 oauth_id 防篡改比对）
+  async function issueOauthId(extra: Record<string, string> = {}): Promise<string> {
+    const getReq = new NextRequest(buildAuthorizeUrl(extra), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const getRes = await GET(getReq);
+    expect(getRes.status).toBe(302);
+    const consentUrl = new URL(getRes.headers.get("location")!);
+    const oauthId = consentUrl.searchParams.get("oauth_id");
+    expect(oauthId).toBeTruthy();
+    return oauthId!;
+  }
 
   it("CSRF token 无效应返回 403", async () => {
     mockValidateCSRFToken.mockReturnValue(false);
@@ -441,7 +476,7 @@ describe("POST /api/oauth/authorize", () => {
     expect(location).toContain("error=invalid_request");
   });
 
-  it("授权成功重定向应原样透传 popup_nonce", async () => {
+  it("无 oauth_id 的 POST approve 应被拒绝（无法做防篡改比对）", async () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
     const req = createPostRequest({
       action: "approve",
@@ -451,7 +486,49 @@ describe("POST /api/oauth/authorize", () => {
       state: VALID_STATE,
       code_challenge: VALID_CODE_CHALLENGE,
       code_challenge_method: "S256",
+      // 故意不传 oauth_id
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+    expect(body.error_description).toContain("oauth_id");
+    // 不得持久化 consent、不得签发授权码
+    expect(prisma.$executeRaw).not.toHaveBeenCalled();
+    expect(createAuthorizationCode).not.toHaveBeenCalled();
+  });
+
+  it("approve 携带空 scope 应 302 回传 invalid_scope", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = createPostRequest({
+      action: "approve",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location).toContain("error=invalid_scope");
+    expect(location).toContain(`state=${VALID_STATE}`);
+  });
+
+  it("授权成功重定向应原样透传 popup_nonce", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const oauthId = await issueOauthId({ popup_nonce: "popup123" });
+    const req = createPostRequest({
+      action: "approve",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
       popup_nonce: "popup123",
+      oauth_id: oauthId,
     });
     const res = await POST(req);
     expect(res.status).toBe(302);
@@ -464,6 +541,7 @@ describe("POST /api/oauth/authorize", () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
 
     // 成功（approve）
+    const oauthId = await issueOauthId();
     const approveReq = createPostRequest({
       action: "approve",
       client_id: "test-client",
@@ -472,6 +550,7 @@ describe("POST /api/oauth/authorize", () => {
       state: VALID_STATE,
       code_challenge: VALID_CODE_CHALLENGE,
       code_challenge_method: "S256",
+      oauth_id: oauthId,
     });
     const approveRes = await POST(approveReq);
     expect(approveRes.status).toBe(302);
@@ -500,6 +579,7 @@ describe("POST /api/oauth/authorize", () => {
     vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
     // consent 页 fetch 场景：浏览器对 302 + redirect:manual 返回 opaqueredirect 读不到 Location，
     // 服务端对 AJAX 调用方改为 200 JSON 返回 redirectUrl，由前端自行跳转
+    const oauthId = await issueOauthId({ popup_nonce: "popup123" });
     const req = new NextRequest("http://localhost/api/oauth/authorize", {
       method: "POST",
       headers: {
@@ -516,6 +596,7 @@ describe("POST /api/oauth/authorize", () => {
         code_challenge: VALID_CODE_CHALLENGE,
         code_challenge_method: "S256",
         popup_nonce: "popup123",
+        oauth_id: oauthId,
       }),
     });
     const res = await POST(req);

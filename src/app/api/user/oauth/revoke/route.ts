@@ -63,10 +63,11 @@ export async function POST(request: NextRequest) {
     const { clientId } = parsed.data;
     const ip = getClientIP(request);
 
-    // 查找该 client 的活跃 session
+    // 查找该 client 的活跃 session（撤销前查询，sid 供 backchannel logout_token 携带）
     const activeSessions = await prisma.oAuthSession.findMany({
-      where: { userId: user.id, clientId, revokedAt: null },
+      where: { userId: user.id, clientId, revokedAt: null, expiresAt: { gt: new Date() } },
       select: { id: true, sessionId: true },
+      orderBy: { createdAt: "desc" },
     });
 
     if (activeSessions.length === 0) {
@@ -113,8 +114,10 @@ export async function POST(request: NextRequest) {
       ip,
     });
 
-    // 触发 Backchannel Logout（非阻塞）
-    await sendBackchannelLogout(user.id, [clientId]);
+    // 触发 Backchannel Logout（非阻塞；sid 取撤销前查出的最新活跃会话）
+    await sendBackchannelLogout(user.id, [clientId], {
+      sids: { [clientId]: activeSessions[0].sessionId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

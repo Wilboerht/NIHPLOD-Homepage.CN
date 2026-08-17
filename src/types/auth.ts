@@ -110,6 +110,8 @@ export interface UserJWTPayload extends JWTPayload {
   phone: string;
   type: "user"; // 区分管理员和普通用户
   jti?: string; // token 唯一标识，用于单条 token 级别撤销
+  /** 原始认证时间（Unix 秒）。refresh 换发时透传不重置，max_age 计算以 auth_time ?? iat 为准 */
+  auth_time?: number;
 }
 
 /**
@@ -129,6 +131,8 @@ export interface RefreshTokenPayload extends JWTPayload {
   sid?: string;
   /** DPoP 绑定的 JWK Thumbprint（RFC 9449），refresh 时据此要求并验证 DPoP proof */
   dpop_jkt?: string;
+  /** 原始认证时间（Unix 秒），refresh 换发时透传，跨轮换不丢失 */
+  auth_time?: number;
 }
 
 /**

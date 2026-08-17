@@ -161,6 +161,13 @@ export async function POST(request: NextRequest) {
     const { userId, clientId } = parsed.data;
     const ip = getClientIP(request);
 
+    // 撤销前先查出最新活跃会话的 sid，供 backchannel logout_token 携带
+    const activeSessions = await prisma.oAuthSession.findMany({
+      where: { userId, clientId, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { sessionId: true },
+      orderBy: { createdAt: "desc" },
+    });
+
     // 撤销所有活跃 session；同步撤销已有 UserConsent，确保授权状态一致性
     // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
     // 两者任一存在即可执行撤销，都不存在才判定为无活跃授权
@@ -202,8 +209,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 触发 Backchannel Logout
-    await sendBackchannelLogout(userId, [clientId]);
+    // 触发 Backchannel Logout（sid 取撤销前查出的最新活跃会话）
+    await sendBackchannelLogout(userId, [clientId], {
+      sids: activeSessions.length > 0 ? { [clientId]: activeSessions[0].sessionId } : {},
+    });
 
     await createAuditLog({
       action: "oauth_consent_revoke",

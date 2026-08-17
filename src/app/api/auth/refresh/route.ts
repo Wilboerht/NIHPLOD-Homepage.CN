@@ -139,13 +139,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. 签发新双 Token（先签发，后续在原子事务中与旧 Token 一起处理）
+    // 原始认证时间固化：优先透传旧 token 的 auth_time；首次换发时以旧 refresh token 的
+    // iat（登录时刻）为准写入 auth_time，后续换发不再重置，防止 max_age 被新 iat 架空
+    const authTime = payload.auth_time ?? payload.iat;
     const newAccessToken = await signUserToken({
       id: payload.id,
       phone: payload.phone,
+      authTime,
     });
     const newRefreshToken = await signRefreshToken({
       id: payload.id,
       phone: payload.phone,
+      authTime,
     });
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 

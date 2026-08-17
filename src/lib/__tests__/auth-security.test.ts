@@ -36,11 +36,16 @@ vi.mock("@/lib/prisma", () => {
     findUnique: vi.fn(),
   };
 
+  const mockOAuthSession = {
+    updateMany: vi.fn(),
+  };
+
   return {
     prisma: {
       loginAttempt: mockLoginAttempt,
       refreshToken: mockRefreshToken,
       user: mockUser,
+      oAuthSession: mockOAuthSession,
       $transaction: vi.fn(),
     },
   };
@@ -73,6 +78,13 @@ async function getMockUser() {
   const { prisma } = await import("../prisma");
   return prisma.user as unknown as {
     findUnique: ReturnType<typeof vi.fn>;
+  };
+}
+
+async function getMockOAuthSession() {
+  const { prisma } = await import("../prisma");
+  return prisma.oAuthSession as unknown as {
+    updateMany: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -318,6 +330,161 @@ describe("auth-security", () => {
           }),
         })
       );
+    });
+
+    it("revoked（顺序重用已撤销 token）应吊销整个 token 家族、撤销 OAuthSession 并记录审计", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      const mockSession = await getMockOAuthSession();
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+
+      // token 存在但已被撤销 → 顺序重用攻击
+      mockRt.findFirst.mockResolvedValueOnce({
+        id: "rt-1",
+        userId: "user-1",
+        clientId: "client-1",
+        revokedAt: new Date(),
+      });
+      mockRt.updateMany.mockResolvedValueOnce({ count: 2 });
+      mockSession.updateMany.mockResolvedValueOnce({ count: 1 });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const result = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+
+      expect(result).toEqual({
+        valid: false,
+        reason: "revoked",
+        familyRevokedCount: 2,
+      });
+
+      // RFC 6819 §5.2.2.3：吊销该用户该 client 下全部活跃 refresh token
+      expect(mockRt.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+
+      // 同步撤销对应 OAuthSession（携带 sid 的 access token 即时失效）
+      expect(mockSession.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+
+      // 不应继续签发新 token
+      expect(mockRt.create).not.toHaveBeenCalled();
+
+      // 记录合规敏感审计事件
+      expect(recordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "status_change",
+          userId: "user-1",
+          clientId: "client-1",
+          success: false,
+          detail: expect.objectContaining({
+            action: "refresh_token_family_revoked",
+            reason: "revoked",
+            familyRevokedCount: 2,
+          }),
+        })
+      );
+    });
+
+    it("missing（token 不存在/已过期）应吊销整个 token 家族、撤销 OAuthSession 并记录审计", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      const mockSession = await getMockOAuthSession();
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+
+      mockRt.findFirst.mockResolvedValueOnce(null);
+      mockRt.updateMany.mockResolvedValueOnce({ count: 1 });
+      mockSession.updateMany.mockResolvedValueOnce({ count: 0 });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const result = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+
+      expect(result).toEqual({
+        valid: false,
+        reason: "missing",
+        familyRevokedCount: 1,
+      });
+
+      expect(mockRt.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(mockSession.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(mockRt.create).not.toHaveBeenCalled();
+      expect(recordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "status_change",
+          userId: "user-1",
+          clientId: "client-1",
+          success: false,
+          detail: expect.objectContaining({
+            action: "refresh_token_family_revoked",
+            reason: "missing",
+          }),
+        })
+      );
+    });
+
+    it("重用检测的家族吊销是幂等的：重复触发不报错", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      const mockSession = await getMockOAuthSession();
+
+      mockRt.findFirst.mockResolvedValue({
+        id: "rt-1",
+        userId: "user-1",
+        clientId: "client-1",
+        revokedAt: new Date(),
+      });
+      // 第二次触发时家族已无活跃 token（updateMany count=0），不应抛错
+      mockRt.updateMany.mockResolvedValue({ count: 0 });
+      mockSession.updateMany.mockResolvedValue({ count: 0 });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const first = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+      const second = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+
+      expect(first.valid).toBe(false);
+      expect(second).toEqual({ valid: false, reason: "revoked", familyRevokedCount: 0 });
     });
   });
 });

@@ -266,6 +266,7 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
     });
 
     it("有 consent 但无活跃 session 时仍可撤销（不再误报 404）", async () => {
+      prismaMock.oAuthSession.findMany.mockResolvedValue([]);
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 0 });
       prismaMock.userConsent.updateMany.mockResolvedValue({ count: 1 });
 
@@ -284,10 +285,13 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
         where: { userId: "user-1", clientId: "client-abc", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
+        sids: {},
+      });
     });
 
     it("吊销成功：仅更新已有 consent（不创建空记录），联动登出通知但不再拉黑 token", async () => {
+      prismaMock.oAuthSession.findMany.mockResolvedValue([{ sessionId: "sid-latest" }]);
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 2 });
       prismaMock.userConsent.updateMany.mockResolvedValue({ count: 1 });
 
@@ -323,7 +327,10 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       // access token 即时失效由 sid 会话校验承担
       expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
+      // sid 取撤销前查出的最新活跃会话
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
+        sids: { "client-abc": "sid-latest" },
+      });
 
       // SSO 审计事件
       expect(mockRecordSsoEvent).toHaveBeenCalledWith(

@@ -428,6 +428,23 @@ model SsoAuditEvent {
   @@index([tenantId, createdAt(sort: Desc)])
 }
 
+/**
+ * Backchannel Logout 投递失败补偿队列
+ * 同步重试耗尽后落库，由 cron 任务按 nextRetryAt 指数退避周期重投
+ */
+model BackchannelLogoutFailure {
+  id          String   @id @default(cuid())
+  userId      String
+  clientId    String
+  payload     Json                 // 重投所需数据（如 logout_token 的 sid）
+  attempts    Int      @default(0) // 已重投次数
+  nextRetryAt DateTime             // 下一次重投时间
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([nextRetryAt])
+}
+
 model PaymentNotification {
   id               String            @id @default(cuid())
   gateway          String            // "wechat" 或 "alipay"

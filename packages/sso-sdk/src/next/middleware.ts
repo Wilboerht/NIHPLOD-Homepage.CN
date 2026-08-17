@@ -29,6 +29,7 @@ import {
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
   getSecureCookieOptions,
+  resolveInsecureLocalDev,
   toInsecureCookieName,
 } from "./constants";
 
@@ -93,7 +94,9 @@ export interface SsoMiddlewareConfig {
    * ⚠️ 仅限 http://localhost 开发：关闭 Cookie 的 Secure 属性并去除
    * __Host-/__Secure- 前缀（浏览器拒绝在 HTTP 下写入带这两个前缀的 Cookie，
    * 否则会出现「登录后 cookie 写不进去 → middleware 永远判定未登录 →
-   * 反复跳 SSO」的无限重定向）。开启时启动告警；生产环境严禁启用。
+   * 反复跳 SSO」的无限重定向）。开启时启动告警；生产环境严禁启用——
+   * 生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）下该开关会被
+   * 强制忽略并告警，仍走 secure cookie。
    * middleware / callback / logout 三处配置需保持一致。
    */
   insecureLocalDev?: boolean;
@@ -266,8 +269,11 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
     validateSsoCookie = true,
-    insecureLocalDev = false,
+    insecureLocalDev: insecureLocalDevOpt = false,
   } = config;
+
+  // 生产守卫：NODE_ENV=production 且 ssoBaseUrl 为 https 时强制忽略该开关（仍走 secure cookie）
+  const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
 
   // insecureLocalDev：HTTP 本地开发下去除 Cookie 前缀（浏览器拒绝无 Secure 的前缀 Cookie）
   const secureCookies = !insecureLocalDev;
@@ -286,13 +292,6 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
 
   // 规范化 ssoBaseUrl
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
-
-  if (insecureLocalDev) {
-    console.warn(
-      "[SSO SDK] insecureLocalDev=true：Cookie 的 Secure 属性已关闭且去除 __Host-/__Secure- 前缀。" +
-      "仅限 http://localhost 本地开发使用，生产环境必须移除该配置（生产必须用 HTTPS）。"
-    );
-  }
 
   if (process.env.NODE_ENV !== "production") {
     if (!validateSsoCookie) {

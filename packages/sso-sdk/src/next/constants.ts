@@ -28,6 +28,31 @@ export function toInsecureCookieName(name: string): string {
   return name.replace(/^__(Host|Secure)-/, "");
 }
 
+/**
+ * 解析 insecureLocalDev 开关并输出告警（middleware / callback / logout 三处共用，保证行为一致）。
+ *
+ * 生产守卫：当 NODE_ENV=production 且 ssoBaseUrl 为 https 时强制忽略该开关，
+ * Cookie 仍使用 Secure 属性并保留 __Host-/__Secure- 前缀，
+ * 避免误配置把生产环境的 Cookie 降级为 HTTP 可写。
+ *
+ * 返回值为实际生效的 insecureLocalDev 状态。
+ */
+export function resolveInsecureLocalDev(enabled: boolean, ssoBaseUrl: string): boolean {
+  if (!enabled) return false;
+  if (process.env.NODE_ENV === "production" && /^https:\/\//i.test(ssoBaseUrl)) {
+    console.warn(
+      "[SSO SDK] insecureLocalDev=true 已被忽略：当前为生产环境（NODE_ENV=production）且 ssoBaseUrl 使用 HTTPS，" +
+      "Cookie 仍保持 Secure 属性与 __Host-/__Secure- 前缀。请从生产配置中移除该开关。"
+    );
+    return false;
+  }
+  console.warn(
+    "[SSO SDK] insecureLocalDev=true：Cookie 的 Secure 属性已关闭且去除 __Host-/__Secure- 前缀。" +
+    "仅限 http://localhost 本地开发使用，生产环境必须移除该配置（生产必须用 HTTPS）。"
+  );
+  return true;
+}
+
 /** __Host- 前缀 Cookie 的安全选项（Path 必须为 /） */
 export function getHostCookieOptions(
   maxAge?: number,

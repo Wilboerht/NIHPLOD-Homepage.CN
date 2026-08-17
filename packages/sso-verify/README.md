@@ -125,6 +125,8 @@ Back-channel `logout_token`s are signed with a dedicated key pair (`kid: logout-
 
 Per OIDC Back-Channel Logout 1.0, a `logout_token` must carry an `exp` claim and an `events` claim whose `http://schemas.openid.net/event/backchannel-logout` member is an object (typically `{}`); tokens failing either check are rejected. Verified `jti`s are replay-guarded per issuer for 10 minutes.
 
+When the IdP revokes sessions administratively (consent revoke, session termination, user ban/deletion), the `logout_token` also carries a `sid` claim matching the terminated IdP session — RPs that track IdP `sid`s should invalidate the matching local session and may fall back to `sub`-level logout when `sid` is absent (e.g. user-initiated IdP logout without a known session). Failed deliveries are retried by the IdP with exponential backoff (up to 10 attempts), so RPs may receive a delayed `logout_token`; the `jti` replay guard still applies.
+
 ### Multi-instance deployments (logout jti replay store)
 
 By default, processed `logout_token` jtis are kept in an in-process LRU cache — it is emptied on restart and **not shared across instances**, so a replayed logout token could be accepted by another instance. When running multiple instances, inject a shared store (e.g. backed by Redis) via `logoutJtiStore`:

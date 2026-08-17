@@ -67,7 +67,9 @@ interface SsoMiddlewareConfig {
      * ⚠️ 仅限 http://localhost 开发：关闭 Cookie 的 Secure 属性并去除
      * __Host-/__Secure- 前缀（浏览器拒绝在 HTTP 下写入带这两个前缀的 Cookie，
      * 否则会出现「登录后 cookie 写不进去 → middleware 永远判定未登录 →
-     * 反复跳 SSO」的无限重定向）。开启时启动告警；生产环境严禁启用。
+     * 反复跳 SSO」的无限重定向）。开启时启动告警；生产环境严禁启用——
+     * 生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）下该开关会被
+     * 强制忽略并告警，仍走 secure cookie。
      * middleware / callback / logout 三处配置需保持一致。
      */
     insecureLocalDev?: boolean;
@@ -128,7 +130,9 @@ interface CallbackRouteConfig {
     /**
      * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
      * __Host-/__Secure- 前缀；必须与 createSsoMiddleware 的配置保持一致，
-     * 否则读不到 middleware 写入的 state/verifier Cookie。生产严禁启用。
+     * 否则读不到 middleware 写入的 state/verifier Cookie。生产严禁启用——
+     * 生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）下该开关会被
+     * 强制忽略并告警。
      */
     insecureLocalDev?: boolean;
 }
@@ -195,7 +199,8 @@ interface LogoutRouteConfig {
     /**
      * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
      * __Host-/__Secure- 前缀；必须与 middleware / callback 的配置保持一致，
-     * 否则无法清除它们写入的 Cookie。生产严禁启用。
+     * 否则无法清除它们写入的 Cookie。生产严禁启用——生产环境
+     * （NODE_ENV=production 且 ssoBaseUrl 为 https）下该开关会被强制忽略并告警。
      */
     insecureLocalDev?: boolean;
 }

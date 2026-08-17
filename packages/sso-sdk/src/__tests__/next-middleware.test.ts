@@ -30,6 +30,7 @@ describe("createSsoMiddleware", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("静态资源与 Next.js 内部路由直接放行", async () => {
@@ -147,5 +148,46 @@ describe("createSsoMiddleware", () => {
         ? res.headers.getSetCookie()
         : [res.headers.get("set-cookie") ?? ""];
     expect(setCookies.join("\n")).not.toMatch(/;\s*secure\b/i);
+  });
+
+  it("insecureLocalDev=true 但生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）：强制忽略，仍走 secure cookie", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware({ ...config, insecureLocalDev: true });
+    // 告警明确说明开关被忽略
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("已被忽略"));
+
+    const res = await middleware(
+      new NextRequest("https://myapp.com/dashboard")
+    );
+    expect(res.status).toBe(307);
+
+    // 前缀保留、Secure 仍开启
+    expect(res.cookies.get("__Host-nihplod_sso_state")?.value).toBeTruthy();
+    expect(res.cookies.get("__Secure-nihplod_sso_verifier")?.value).toBeTruthy();
+    expect(res.cookies.get("nihplod_sso_state")).toBeUndefined();
+    const setCookies =
+      typeof res.headers.getSetCookie === "function"
+        ? res.headers.getSetCookie()
+        : [res.headers.get("set-cookie") ?? ""];
+    expect(setCookies.join("\n")).toMatch(/;\s*secure\b/i);
+  });
+
+  it("insecureLocalDev=true 且 ssoBaseUrl 为 http（如本地 http SSO）：生产环境也不触发守卫", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware({
+      ...config,
+      ssoBaseUrl: "http://localhost:3000",
+      insecureLocalDev: true,
+    });
+    // http 地址不触发生产守卫，走常规开发告警
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("仅限 http://localhost"));
+
+    const res = await middleware(
+      new NextRequest("http://localhost:3002/dashboard")
+    );
+    expect(res.cookies.get("nihplod_sso_state")?.value).toBeTruthy();
+    expect(res.cookies.get("__Host-nihplod_sso_state")).toBeUndefined();
   });
 });

@@ -103,6 +103,7 @@ import { POST } from "../token/route";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { rateLimit } from "@/lib/ratelimit";
 import { atomicallyRotateRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { validateDPoPProof } from "@/lib/dpop";
 import { prisma } from "@/lib/prisma";
 import { signRefreshToken } from "@/lib/jwt";
@@ -748,6 +749,129 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
+      expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
+    });
+
+    it("重用已撤销 RT：轮换返回 revoked 时应拒绝并记录审计（家族吊销由轮换事务内完成）", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-1",
+        scopes: ["openid"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      // 轮换层检测到顺序重用：事务内已吊销家族 + 撤销 session + recordSsoEvent，
+      // 此处验证路由据此拒绝并记录失败事件
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: false,
+        reason: "revoked",
+        familyRevokedCount: 2,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+        sid: "sess-1",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      expect(scheduleSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "token",
+          userId: "user-1",
+          clientId: "test-client",
+          success: false,
+        })
+      );
+    });
+
+    it("RT 携带 sid 时按 sessionId 精确查找会话，新 token 保持原 sid", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-bound-1",
+        scopes: ["openid"],
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        totalPoints: null,
+        status: "ACTIVE",
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+        sid: "sess-bound-1",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      // 按 sid 精确定位会话，而非 user+client 取最新（防 sid 漂移）
+      expect(prisma.oAuthSession.findFirst).toHaveBeenCalledWith({
+        where: {
+          sessionId: "sess-bound-1",
+          userId: "user-1",
+          clientId: "test-client",
+          revokedAt: null,
+          expiresAt: { gt: expect.any(Date) },
+        },
+      });
+      const body = await res.json();
+      expect(decodeJwt(body.access_token).sid).toBe("sess-bound-1");
+      expect(decodeJwt(body.refresh_token).sid).toBe("sess-bound-1");
+    });
+
+    it("RT 携带的 sid 对应会话已撤销/不存在时应拒绝刷新（fail-closed）", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      // 按 sid 精确查找：该会话已撤销 → 查不到活跃 session
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "test-client",
+        scope: "openid",
+        sid: "sess-revoked-1",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      expect(prisma.oAuthSession.findFirst).toHaveBeenCalledWith({
+        where: expect.objectContaining({ sessionId: "sess-revoked-1" }),
+      });
       expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
     });
 

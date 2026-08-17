@@ -220,9 +220,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 撤销指定 OAuthSession
-      await prisma.oAuthSession.update({
-        where: { id: sessionId },
+      // RefreshToken 表无 sid 列，撤销粒度是"用户 + client"；为对齐粒度，
+      // 终止单会话时级联撤销该用户在此 client 下的全部 session，
+      // 避免其余 session 留存活但无法刷新的不一致状态。
+      // 撤销前先查出活跃会话的 sid，供 backchannel logout_token 携带
+      const activeSessions = await prisma.oAuthSession.findMany({
+        where: {
+          userId: session.userId,
+          clientId: session.clientId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true, sessionId: true },
+        orderBy: { createdAt: "desc" },
+      });
+
+      await prisma.oAuthSession.updateMany({
+        where: { userId: session.userId, clientId: session.clientId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
 
@@ -233,8 +247,12 @@ export async function POST(request: NextRequest) {
       // sid 查到本 session 的 revokedAt 即拒绝），不再拉黑用户全部 token，
       // 避免误登出主站会话。
 
-      // Backchannel Logout 通知
-      await sendBackchannelLogout(session.userId, [session.clientId]);
+      // Backchannel Logout 通知（sid 取撤销前查出的最新活跃会话）
+      await sendBackchannelLogout(session.userId, [session.clientId], {
+        sids: activeSessions.length > 0 ? { [session.clientId]: activeSessions[0].sessionId } : {},
+      });
+
+      const terminatedCount = activeSessions.length > 0 ? activeSessions.length : 1;
 
       await recordSsoEvent({
         event: "status_change",
@@ -242,7 +260,12 @@ export async function POST(request: NextRequest) {
         clientId: session.clientId,
         ip,
         success: true,
-        detail: { action: "session_terminated", sessionId, terminatedCount: 1 },
+        detail: {
+          action: "session_terminated",
+          sessionId,
+          terminatedCount,
+          cascaded: terminatedCount > 1,
+        },
       });
 
       await createAuditLog({
@@ -253,7 +276,8 @@ export async function POST(request: NextRequest) {
           userId: session.userId,
           clientId: session.clientId,
           sessionId,
-          terminatedCount: 1,
+          terminatedCount,
+          cascaded: terminatedCount > 1,
         },
         adminId: admin.id,
         request,
@@ -261,19 +285,24 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: { terminatedCount: 1 },
+        data: { terminatedCount },
       });
     }
 
     // 模式 B：按 userId (+ clientId) 批量终止该用户全部或某 Client 下的会话
     const { userId, clientId } = parsed.data;
 
-    const sessionWhere: Record<string, unknown> = { userId, revokedAt: null };
+    const sessionWhere: Record<string, unknown> = {
+      userId,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    };
     if (clientId) sessionWhere.clientId = clientId;
 
     const sessions = await prisma.oAuthSession.findMany({
       where: sessionWhere,
-      select: { id: true, clientId: true },
+      select: { id: true, clientId: true, sessionId: true },
+      orderBy: { createdAt: "desc" },
     });
 
     if (sessions.length === 0) {
@@ -294,7 +323,12 @@ export async function POST(request: NextRequest) {
     // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
 
     const uniqueClientIds = [...new Set(sessions.map((s) => s.clientId))];
-    await sendBackchannelLogout(userId, uniqueClientIds);
+    // 撤销前已查出各 client 的最新活跃会话 sid，供 logout_token 携带
+    const sids: Record<string, string> = {};
+    for (const s of sessions) {
+      if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
+    }
+    await sendBackchannelLogout(userId, uniqueClientIds, { sids });
 
     await recordSsoEvent({
       event: "status_change",
@@ -360,10 +394,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 查询所有活跃会话用于 backchannel logout
+    // 查询所有活跃会话用于 backchannel logout（撤销前查询，sid 供 logout_token 携带）
     const activeSessions = await prisma.oAuthSession.findMany({
-      where: { revokedAt: null },
-      select: { userId: true, clientId: true },
+      where: { revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { userId: true, clientId: true, sessionId: true },
+      orderBy: { createdAt: "desc" },
     });
 
     // 批量撤销
@@ -381,13 +416,23 @@ export async function DELETE(request: NextRequest) {
     // Backchannel Logout：按用户聚合通知；已签发 access token 的即时失效由
     // sid 会话校验承担（verifyOAuthAccessToken 按 sid 查到 revokedAt 即拒绝），
     // 不再逐用户拉黑 token，避免误登出主站会话。
-    const userClients = new Map<string, Set<string>>();
+    const userClients = new Map<string, { clientIds: Set<string>; sids: Record<string, string> }>();
     for (const s of activeSessions) {
-      if (!userClients.has(s.userId)) userClients.set(s.userId, new Set());
-      userClients.get(s.userId)!.add(s.clientId);
+      if (!userClients.has(s.userId)) userClients.set(s.userId, { clientIds: new Set(), sids: {} });
+      const entry = userClients.get(s.userId)!;
+      entry.clientIds.add(s.clientId);
+      // 各 client 取撤销前最新活跃会话的 sid
+      if (!entry.sids[s.clientId]) entry.sids[s.clientId] = s.sessionId;
     }
-    for (const [userId, clients] of userClients) {
-      await sendBackchannelLogout(userId, [...clients]);
+    // 并发通知，分批限流（每批 10 个用户），单用户失败不影响其他用户
+    const entries = [...userClients];
+    for (let i = 0; i < entries.length; i += 10) {
+      const batch = entries.slice(i, i + 10);
+      await Promise.allSettled(
+        batch.map(([userId, { clientIds, sids }]) =>
+          sendBackchannelLogout(userId, [...clientIds], { sids })
+        )
+      );
     }
 
     await createAuditLog({

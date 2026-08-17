@@ -86,6 +86,19 @@ describe("JWT 工具", () => {
       const result = await verifyUserToken("invalid.token.here");
       expect(result).toBeNull();
     });
+
+    it("传入 authTime 时应写入 auth_time claim 且验证后可读回", async () => {
+      const authTime = Math.floor(Date.now() / 1000) - 3600; // 1 小时前认证
+      const token = await signUserToken({ id: "user-1", phone: "13800138000", authTime });
+      const payload = await verifyUserToken(token);
+      expect(payload?.auth_time).toBe(authTime);
+    });
+
+    it("未传 authTime 时不携带 auth_time claim（向后兼容）", async () => {
+      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const payload = await verifyUserToken(token);
+      expect(payload?.auth_time).toBeUndefined();
+    });
   });
 
   describe("Refresh Token", () => {
@@ -103,6 +116,13 @@ describe("JWT 工具", () => {
       const accessToken = await signUserToken({ id: "user-1", phone: "13800138000" });
       const result = await verifyRefreshToken(accessToken);
       expect(result).toBeNull();
+    });
+
+    it("传入 authTime 时应写入 auth_time claim（refresh 换发跨轮穿透传）", async () => {
+      const authTime = Math.floor(Date.now() / 1000) - 3600;
+      const token = await signRefreshToken({ id: "user-1", phone: "13800138000", authTime });
+      const payload = await verifyRefreshToken(token);
+      expect(payload?.auth_time).toBe(authTime);
     });
   });
 

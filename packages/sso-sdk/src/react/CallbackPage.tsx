@@ -22,7 +22,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSso } from "./SsoProvider";
 import { getReturnUrl, removeReturnUrl, type TokenData } from "../core/storage";
 import { isTrustedReturnUrl } from "../core/security";
@@ -76,6 +76,16 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
 
+  // useLatest 惯例：用 ref 保存最新的 onSuccess/onError，
+  // 避免调用方传内联回调时父组件重渲染导致下方 effect 重跑、
+  // 已消费的 code 被重复交换 token（闪现假错误页）。
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  });
+
   useEffect(() => {
     // 弹窗模式：通过 postMessage 将回调 URL 传回主窗口，不自行处理
     if (window.opener && !window.opener.closed) {
@@ -115,8 +125,9 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
         removeReturnUrl(clientId);
 
         // 传入 onSuccess 时由调用方接管跳转（SPA 路由），跳过默认整页跳转
-        if (onSuccess) {
-          onSuccess(tokenData);
+        const onSuccessCb = onSuccessRef.current;
+        if (onSuccessCb) {
+          onSuccessCb(tokenData);
           return;
         }
 
@@ -129,7 +140,7 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
       } catch (err) {
         if (cancelled) return;
         const errorObj = err instanceof Error ? err : new Error(String(err));
-        onError?.(errorObj);
+        onErrorRef.current?.(errorObj);
         if (errorObj instanceof SsoError) {
           // SsoError 携带 code + description，可直接展示
           setError(errorObj.description || `SSO 错误 (${errorObj.code})`);
@@ -143,7 +154,7 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
     handleCallback();
 
     return () => { cancelled = true; };
-  }, [client, refreshUser, onSuccess, onError]);
+  }, [client, refreshUser]);
 
   if (error) {
     if (renderError) return React.createElement(React.Fragment, null, renderError(error));

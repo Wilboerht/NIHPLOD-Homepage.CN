@@ -1362,7 +1362,7 @@ function withAuth(Component) {
 }
 
 // src/react/CallbackPage.tsx
-import React3, { useEffect as useEffect3, useState as useState3 } from "react";
+import React3, { useEffect as useEffect3, useRef as useRef3, useState as useState3 } from "react";
 function DefaultCallbackError({ error }) {
   return React3.createElement(
     "div",
@@ -1392,6 +1392,12 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
   const { client, refreshUser } = useSso();
   const [error, setError] = useState3(null);
   const [processing, setProcessing] = useState3(true);
+  const onSuccessRef = useRef3(onSuccess);
+  const onErrorRef = useRef3(onError);
+  useEffect3(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  });
   useEffect3(() => {
     if (window.opener && !window.opener.closed) {
       const nonce = new URL(window.location.href).searchParams.get("popup_nonce");
@@ -1417,15 +1423,16 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
         const clientId = client.config.clientId;
         const returnUrl = getReturnUrl(clientId);
         removeReturnUrl(clientId);
-        if (onSuccess) {
-          onSuccess(tokenData);
+        const onSuccessCb = onSuccessRef.current;
+        if (onSuccessCb) {
+          onSuccessCb(tokenData);
           return;
         }
         window.location.href = returnUrl && isTrustedReturnUrl(returnUrl, window.location.origin) ? returnUrl : "/";
       } catch (err) {
         if (cancelled) return;
         const errorObj = err instanceof Error ? err : new Error(String(err));
-        onError?.(errorObj);
+        onErrorRef.current?.(errorObj);
         if (errorObj instanceof SsoError) {
           setError(errorObj.description || `SSO \u9519\u8BEF (${errorObj.code})`);
         } else {
@@ -1438,7 +1445,7 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [client, refreshUser, onSuccess, onError]);
+  }, [client, refreshUser]);
   if (error) {
     if (renderError) return React3.createElement(React3.Fragment, null, renderError(error));
     return React3.createElement(DefaultCallbackError, { error });

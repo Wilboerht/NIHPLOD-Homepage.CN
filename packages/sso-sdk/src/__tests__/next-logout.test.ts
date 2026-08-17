@@ -47,6 +47,7 @@ describe("createLogoutRouteHandler", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("回跳 state 不匹配时返回 400（登出 CSRF 防护）", async () => {
@@ -143,5 +144,41 @@ describe("createLogoutRouteHandler", () => {
     expect(location.origin + location.pathname).toBe(
       "https://nihplod.cn/api/oauth/end-session"
     );
+  });
+
+  it("insecureLocalDev=true（非生产）：启动时告警并清除无前缀 cookie", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({})
+    );
+    const handler = createLogoutRouteHandler({
+      ...config,
+      redirectToSso: false,
+      insecureLocalDev: true,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("仅限 http://localhost"));
+
+    const res = await handler(buildRequest());
+    expect(res.cookies.get("nihplod_sso_at")?.value).toBe("");
+    expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
+  });
+
+  it("insecureLocalDev=true 但生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）：强制忽略，仍清除 __Host- 前缀 cookie", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({})
+    );
+    const handler = createLogoutRouteHandler({
+      ...config,
+      redirectToSso: false,
+      insecureLocalDev: true,
+    });
+    // 告警明确说明开关被忽略
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("已被忽略"));
+
+    const res = await handler(buildRequest());
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
+    expect(res.cookies.get("nihplod_sso_at")).toBeUndefined();
   });
 });

@@ -524,16 +524,29 @@ export async function POST(request: NextRequest) {
       // fail-closed：所有撤销路径都会同时撤销 OAuthSession 与 RefreshToken，
       // 若此处找不到活跃 session（已撤销/已过期），说明授权状态已不一致，
       // 直接拒绝刷新，而不是放行无 sid 的 token（无 sid token 不参与会话级即时失效）。
+      // sid 定位：refresh token 携带 sid 时按 sessionId 精确查找，防止 sid 漂移
+      // （按 user+client 取最新 session 会把 token 绑到无关的新会话上）；
+      // 仅无 sid 的旧版 token 保留 user+client 最新活跃会话的回退。
       const now = new Date();
-      const session = await prisma.oAuthSession.findFirst({
-        where: {
-          userId: refreshPayload.id,
-          clientId: client_id,
-          revokedAt: null,
-          expiresAt: { gt: now },
-        },
-        orderBy: { createdAt: "desc" },
-      });
+      const session = refreshPayload.sid
+        ? await prisma.oAuthSession.findFirst({
+            where: {
+              sessionId: refreshPayload.sid,
+              userId: refreshPayload.id,
+              clientId: client_id,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+          })
+        : await prisma.oAuthSession.findFirst({
+            where: {
+              userId: refreshPayload.id,
+              clientId: client_id,
+              revokedAt: null,
+              expiresAt: { gt: now },
+            },
+            orderBy: { createdAt: "desc" },
+          });
       if (!session) {
         scheduleSsoEvent({
           event: "token",

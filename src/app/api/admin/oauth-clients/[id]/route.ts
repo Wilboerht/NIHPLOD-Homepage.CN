@@ -119,6 +119,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       try {
         const clientId = client.clientId;
 
+        // 撤销前先查出活跃会话（sid 供 backchannel logout_token 携带）
+        const affectedSessions = await prisma.oAuthSession.findMany({
+          where: { clientId, revokedAt: null, expiresAt: { gt: new Date() } },
+          select: { userId: true, sessionId: true },
+          orderBy: { createdAt: "desc" },
+        });
+
         // 撤销所有活跃 OAuthSession 与 RefreshToken
         await prisma.$transaction(async (tx) => {
           await tx.oAuthSession.updateMany({
@@ -132,14 +139,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         });
 
         // 通知所有受影响用户登出（按 userId 去重，减少请求）
-        const affectedSessions = await prisma.oAuthSession.findMany({
-          where: { clientId },
-          select: { userId: true },
-          distinct: ["userId"],
-        });
-
-        for (const { userId } of affectedSessions) {
-          await sendBackchannelLogout(userId, [clientId], { includeInactive: true });
+        const sidsByUser = new Map<string, string>();
+        for (const s of affectedSessions) {
+          if (!sidsByUser.has(s.userId)) sidsByUser.set(s.userId, s.sessionId);
+        }
+        for (const [userId, sid] of sidsByUser) {
+          await sendBackchannelLogout(userId, [clientId], {
+            includeInactive: true,
+            sids: { [clientId]: sid },
+          });
         }
       } catch (err) {
         apiConsole.error("[AdminOAuthClient PATCH] 停用 Client 级联撤销失败:", err);
@@ -218,9 +226,11 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // 级联撤销：通知所有活跃用户并撤销 session，发送 Backchannel Logout
+    // 撤销前先查出活跃会话（sid 供 backchannel logout_token 携带）
     const activeSessions = await prisma.oAuthSession.findMany({
-      where: { clientId: client.clientId, revokedAt: null },
-      select: { userId: true },
+      where: { clientId: client.clientId, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { userId: true, sessionId: true },
+      orderBy: { createdAt: "desc" },
     });
     if (activeSessions.length > 0) {
       await prisma.oAuthSession.updateMany({
@@ -231,11 +241,17 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         where: { clientId: client.clientId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-      const userIds = [...new Set(activeSessions.map((s) => s.userId))];
       // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
       // sid 查到 OAuthSession.revokedAt 即拒绝），不再逐用户拉黑 token，避免误登出主站会话。
-      for (const userId of userIds) {
-        await sendBackchannelLogout(userId, [client.clientId], { includeInactive: true });
+      const sidsByUser = new Map<string, string>();
+      for (const s of activeSessions) {
+        if (!sidsByUser.has(s.userId)) sidsByUser.set(s.userId, s.sessionId);
+      }
+      for (const [userId, sid] of sidsByUser) {
+        await sendBackchannelLogout(userId, [client.clientId], {
+          includeInactive: true,
+          sids: { [client.clientId]: sid },
+        });
       }
     }
 

@@ -1426,6 +1426,12 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
   const { client, refreshUser } = useSso();
   const [error, setError] = (0, import_react3.useState)(null);
   const [processing, setProcessing] = (0, import_react3.useState)(true);
+  const onSuccessRef = (0, import_react3.useRef)(onSuccess);
+  const onErrorRef = (0, import_react3.useRef)(onError);
+  (0, import_react3.useEffect)(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  });
   (0, import_react3.useEffect)(() => {
     if (window.opener && !window.opener.closed) {
       const nonce = new URL(window.location.href).searchParams.get("popup_nonce");
@@ -1451,15 +1457,16 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
         const clientId = client.config.clientId;
         const returnUrl = getReturnUrl(clientId);
         removeReturnUrl(clientId);
-        if (onSuccess) {
-          onSuccess(tokenData);
+        const onSuccessCb = onSuccessRef.current;
+        if (onSuccessCb) {
+          onSuccessCb(tokenData);
           return;
         }
         window.location.href = returnUrl && isTrustedReturnUrl(returnUrl, window.location.origin) ? returnUrl : "/";
       } catch (err) {
         if (cancelled) return;
         const errorObj = err instanceof Error ? err : new Error(String(err));
-        onError?.(errorObj);
+        onErrorRef.current?.(errorObj);
         if (errorObj instanceof SsoError) {
           setError(errorObj.description || `SSO \u9519\u8BEF (${errorObj.code})`);
         } else {
@@ -1472,7 +1479,7 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [client, refreshUser, onSuccess, onError]);
+  }, [client, refreshUser]);
   if (error) {
     if (renderError) return import_react3.default.createElement(import_react3.default.Fragment, null, renderError(error));
     return import_react3.default.createElement(DefaultCallbackError, { error });

@@ -436,6 +436,64 @@ Token/UserInfo/Introspect 端点白名单由已注册 `redirectUris` 自动推�
 
 ---
 
+## 账户状态变更 Webhook
+
+管理员在 SSO 中心封禁/解冻/删除用户时，会向运维配置的 Webhook URL 列表（`SSO_STATUS_CHANGE_WEBHOOK_URLS`，逗号分隔）推送 `account_status_change` 事件：
+
+```json
+{
+  "event": "account_status_change",
+  "sub": "<userId>",
+  "old_status": "active",
+  "new_status": "banned",
+  "source": "admin",
+  "timestamp": "2026-08-17T08:00:00.000Z"
+}
+```
+
+`new_status` 取值：`active`（解冻）、`banned`（冻结/封禁）、`deleted`（删除）。
+
+### 签名验证
+
+每个请求携带签名头（配置了 `SSO_WEBHOOK_SECRET` 时）：
+
+```
+X-Webhook-Signature: t=<unix秒时间戳>,v1=<HMAC-SHA256 hex>
+```
+
+签名串为 `<t>.<原始请求体>`（注意是 body 原文，不要先反序列化再重新 stringify），密钥为运维侧配置的 `SSO_WEBHOOK_SECRET`。
+
+验证步骤：
+
+1. 读取原始请求体（raw body）与 `X-Webhook-Signature` 头；
+2. 解析头中的 `t` 与 `v1`；`t` 与当前时间相差超过 5 分钟应拒绝（防重放）；
+3. 用共享密钥对 `${t}.${rawBody}` 计算 HMAC-SHA256（hex），与 `v1` 做常量时间比较。
+
+Node.js 示例：
+
+```js
+const crypto = require("crypto");
+
+function verifyWebhookSignature(rawBody, signatureHeader, secret) {
+  const params = Object.fromEntries(
+    signatureHeader.split(",").map((kv) => kv.split("=", 2))
+  );
+  const t = Number(params.t);
+  if (!t || Math.abs(Date.now() / 1000 - t) > 300) return false;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${t}.${rawBody}`)
+    .digest("hex");
+  const actual = params.v1 || "";
+  return (
+    expected.length === actual.length &&
+    crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(actual))
+  );
+}
+```
+
+---
+
 ## 常见问题
 
 ### Q: 回调页面报 "State 参数不匹配" 错误？

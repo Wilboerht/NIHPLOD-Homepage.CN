@@ -311,9 +311,14 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(prismaMock.oAuthSession.update).not.toHaveBeenCalled();
     });
 
-    it("sessionId 模式：终止成功应联动 revokeRefreshToken，不再调用 blacklistUserTokens", async () => {
+    it("sessionId 模式：终止成功应级联撤销同 client 全部会话并联动 revokeRefreshToken，不再调用 blacklistUserTokens", async () => {
       prismaMock.oAuthSession.findUnique.mockResolvedValue(makeSession());
-      prismaMock.oAuthSession.update.mockResolvedValue(makeSession({ revokedAt: new Date() }));
+      // 该用户在此 client 下有 2 条活跃会话（撤销前查询，sid 供 logout_token 携带）
+      prismaMock.oAuthSession.findMany.mockResolvedValue([
+        { id: "session-1", sessionId: "sid-1" },
+        { id: "session-2", sessionId: "sid-2" },
+      ]);
+      prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 2 });
 
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
@@ -322,10 +327,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       const data = await res.json();
 
       expect(res.status).toBe(200);
-      expect(data.data.terminatedCount).toBe(1);
-      // 标记撤销
-      expect(prismaMock.oAuthSession.update).toHaveBeenCalledWith({
-        where: { id: "session-1" },
+      // RefreshToken 无 sid 列，撤销粒度是 user+client，会话撤销与之对齐（级联）
+      expect(data.data.terminatedCount).toBe(2);
+      expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-abc", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
       // 同步撤销该 user+client 的 refresh token
@@ -333,8 +338,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      // Backchannel Logout 通知
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
+      // Backchannel Logout 通知，sid 取撤销前查出的最新活跃会话
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
+        sids: { "client-abc": "sid-1" },
+      });
     });
 
     it("userId 模式：无活跃会话应返回 404", async () => {
@@ -348,8 +355,8 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
 
     it("userId+clientId 模式：批量终止该 client 下会话，不再调用 blacklistUserTokens", async () => {
       prismaMock.oAuthSession.findMany.mockResolvedValue([
-        { id: "s1", clientId: "client-abc" },
-        { id: "s2", clientId: "client-abc" },
+        { id: "s1", clientId: "client-abc", sessionId: "sid-1" },
+        { id: "s2", clientId: "client-abc", sessionId: "sid-2" },
       ]);
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 2 });
 
@@ -365,12 +372,20 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(res.status).toBe(200);
       expect(data.data.terminatedCount).toBe(2);
       expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith({
-        where: { userId: "user-1", revokedAt: null, clientId: "client-abc" },
+        where: {
+          userId: "user-1",
+          revokedAt: null,
+          expiresAt: { gt: expect.any(Date) },
+          clientId: "client-abc",
+        },
         data: { revokedAt: expect.any(Date) },
       });
       expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
+      // sid 取撤销前查出的最新活跃会话
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
+        sids: { "client-abc": "sid-1" },
+      });
     });
   });
 
@@ -400,9 +415,9 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
 
     it("批量撤销所有会话与 refresh token，并逐用户 Backchannel 通知（不再拉黑 token）", async () => {
       prismaMock.oAuthSession.findMany.mockResolvedValue([
-        { userId: "user-1", clientId: "client-a" },
-        { userId: "user-1", clientId: "client-b" },
-        { userId: "user-2", clientId: "client-a" },
+        { userId: "user-1", clientId: "client-a", sessionId: "sid-a1" },
+        { userId: "user-1", clientId: "client-b", sessionId: "sid-b1" },
+        { userId: "user-2", clientId: "client-a", sessionId: "sid-a2" },
       ]);
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 3 });
       prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 5 });
@@ -424,12 +439,16 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
         where: { revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
-      // 按用户聚合 backchannel 通知（user-1 聚合了两个 client）；
+      // 按用户聚合 backchannel 通知（user-1 聚合了两个 client），sid 取撤销前查出的活跃会话；
       // 关键回归点：不再逐用户拉黑 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-a", "client-b"]);
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-2", ["client-a"]);
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-a", "client-b"], {
+        sids: { "client-a": "sid-a1", "client-b": "sid-b1" },
+      });
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-2", ["client-a"], {
+        sids: { "client-a": "sid-a2" },
+      });
     });
   });
 });

@@ -321,8 +321,11 @@ export async function GET(request: NextRequest) {
         const statusCheck = await checkUserStatus(payload.id);
         const blacklisted = await isTokenBlacklisted(payload.id);
         isLoggedIn = statusCheck.valid && !blacklisted;
-        if (isLoggedIn && payload.iat) {
-          userAuthTime = new Date(payload.iat * 1000);
+        // 认证时间以固化的 auth_time 为准（refresh 换发不重置），
+        // 旧 token 无 auth_time 时回退 iat，防止 max_age 被 token 刷新架空
+        const authTime = payload.auth_time ?? payload.iat;
+        if (isLoggedIn && authTime) {
+          userAuthTime = new Date(authTime * 1000);
         }
       }
     }
@@ -595,6 +598,7 @@ export async function POST(request: NextRequest) {
 
     // 纵深防御：携带 oauth_id 时，客户端回传的授权参数必须与 GET 阶段
     // storeOAuthParams 服务端存储的原始请求一致，防篡改
+    // （action=approve 时 oauth_id 为必填，见下方 approve 分支校验）
     const oauthId = typeof body.oauth_id === "string" ? body.oauth_id : "";
     if (oauthId) {
       const storedParams = getOAuthParams(oauthId);
@@ -665,6 +669,11 @@ export async function POST(request: NextRequest) {
     // action === "approve"
     const requestedScopes = scope.split(" ").filter(Boolean);
 
+    // scope 非空校验：空授权无意义，且会导致签发无权限的授权码
+    if (requestedScopes.length === 0) {
+      return buildErrorRedirect(safeRedirectUri, "invalid_scope", "scope 参数不能为空", state);
+    }
+
     // PKCE: 强制要求 code_challenge + S256
     if (!code_challenge || code_challenge_method !== "S256") {
       return buildErrorRedirect(
@@ -701,6 +710,15 @@ export async function POST(request: NextRequest) {
           state
         );
       }
+    }
+
+    // approve 必须携带有效 oauth_id：防篡改比对依赖 GET 阶段 storeOAuthParams 的
+    // 服务端存储，缺失时无法确认回传参数未被篡改，拒绝并提示重新发起授权
+    if (!oauthId) {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "缺少 oauth_id，请重新发起授权" },
+        { status: 400 }
+      );
     }
 
     // 持久化用户 consent：合并 scope、清除撤销标记

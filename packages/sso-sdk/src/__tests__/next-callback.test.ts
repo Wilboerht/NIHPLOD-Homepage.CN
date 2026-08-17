@@ -48,6 +48,7 @@ describe("createCallbackRouteHandler", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("state 不匹配时返回 400，不发起 token 交换", async () => {
@@ -175,5 +176,57 @@ describe("createCallbackRouteHandler", () => {
       )
     );
     expect(res.headers.get("location")).toBe("https://myapp.com/");
+  });
+
+  it("insecureLocalDev=true（非生产）：启动时告警并使用无前缀 cookie", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-1",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-1",
+      })
+    );
+    const handler = createCallbackRouteHandler({ ...config, insecureLocalDev: true });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("仅限 http://localhost"));
+
+    // 无前缀 cookie 可被读取（与 middleware 写入的一致）
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "saved-state" },
+        { nihplod_sso_state: "saved-state", nihplod_sso_verifier: "v" }
+      )
+    );
+    expect(res.status).toBe(307);
+    expect(res.cookies.get("nihplod_sso_at")?.value).toBe("at-1");
+    expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
+  });
+
+  it("insecureLocalDev=true 但生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）：强制忽略，仍使用 __Host- 前缀 cookie", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-1",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-1",
+      })
+    );
+    const handler = createCallbackRouteHandler({ ...config, insecureLocalDev: true });
+    // 告警明确说明开关被忽略
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("已被忽略"));
+
+    // 守卫生效后仍读取 __Host- 前缀的 state/verifier（若未守卫会因找不到无前缀 cookie 返回 400）
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "saved-state" },
+        { [STATE_COOKIE]: "saved-state", [VERIFIER_COOKIE]: "v" }
+      )
+    );
+    expect(res.status).toBe(307);
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-1");
+    expect(res.cookies.get("nihplod_sso_at")).toBeUndefined();
   });
 });

@@ -203,7 +203,7 @@ vi.mock("@/lib/oauth-cors", () => ({
 // ============================================
 // 导入被测路由（必须在所有 vi.mock 之后）
 // ============================================
-import { POST as authorizePost } from "@/app/api/oauth/authorize/route";
+import { GET as authorizeGet, POST as authorizePost } from "@/app/api/oauth/authorize/route";
 import { POST as tokenPost } from "@/app/api/oauth/token/route";
 import { GET as userinfoGet } from "@/app/api/oauth/userinfo/route";
 import { POST as revokePost } from "@/app/api/oauth/revoke/route";
@@ -271,7 +271,29 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     // 1. 使用真实 JWT 签发用户登录 cookie
     const userToken = await signUserToken({ id: userId, phone });
 
-    // 2. POST /api/oauth/authorize — 用户 consent 通过
+    // 2. GET /api/oauth/authorize — 已登录但未授权该 client → 302 到 consent 页并携带 oauth_id
+    // （POST approve 强制要求 oauth_id 做防篡改比对，需先经 GET 让服务端存储原始参数）
+    (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const authorizeGetParams = new URLSearchParams({
+      response_type: "code",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid phone profile",
+      state,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+    const authorizeGetReq = new NextRequest(
+      `http://localhost/api/oauth/authorize?${authorizeGetParams.toString()}`,
+      { headers: { Cookie: `__Host-user_token=${userToken}` } }
+    );
+    const authorizeGetRes = await authorizeGet(authorizeGetReq);
+    expect(authorizeGetRes.status).toBe(302);
+    const consentUrl = new URL(authorizeGetRes.headers.get("location")!);
+    const oauthId = consentUrl.searchParams.get("oauth_id");
+    expect(oauthId).toBeTruthy();
+
+    // 3. POST /api/oauth/authorize — 用户 consent 通过
     const authorizeReq = new NextRequest("http://localhost/api/oauth/authorize", {
       method: "POST",
       headers: {
@@ -287,6 +309,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
         state,
         code_challenge: challenge,
         code_challenge_method: "S256",
+        oauth_id: oauthId,
       }),
     });
     const authorizeRes = await authorizePost(authorizeReq);
@@ -302,7 +325,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     expect(code).toBeTruthy();
     expect(code.length).toBeGreaterThanOrEqual(43); // 32 bytes hex = 64 chars
 
-    // 3. POST /api/oauth/token — authorization_code + PKCE
+    // 4. POST /api/oauth/token — authorization_code + PKCE
     const tokenReq = new NextRequest("http://localhost/api/oauth/token", {
       method: "POST",
       headers: {
@@ -332,7 +355,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
 
     const { access_token, refresh_token } = tokenBody;
 
-    // 4. GET /api/oauth/userinfo — Bearer access_token
+    // 5. GET /api/oauth/userinfo — Bearer access_token
     const userinfoReq = new NextRequest("http://localhost/api/oauth/userinfo", {
       headers: {
         Authorization: `Bearer ${access_token}`,
@@ -345,7 +368,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     expect(userinfoBody.sub).toBe(userId);
     expect(userinfoBody.phone).toBe("138****8000");
 
-    // 5. POST /api/oauth/revoke — 先撤销 refresh_token
+    // 6. POST /api/oauth/revoke — 先撤销 refresh_token
     const revokeRefreshReq = new NextRequest("http://localhost/api/oauth/revoke", {
       method: "POST",
       headers: {
@@ -373,7 +396,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
       data: { revokedAt: expect.any(Date) },
     });
 
-    // 6. 再次调用 revoke 撤销 access_token，使后续 userinfo 返回 401
+    // 7. 再次调用 revoke 撤销 access_token，使后续 userinfo 返回 401
     // （注：OAuth 2.0 Token Revocation 中撤销 refresh_token 不会自动使 access_token 失效；
     //  这里通过撤销 access_token 验证最终用户会话失效，符合题目“access token 已被撤销”的断言。）
     const revokeAccessReq = new NextRequest("http://localhost/api/oauth/revoke", {
@@ -392,7 +415,7 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     expect(revokeAccessRes.status).toBe(200);
     expect(await revokeAccessRes.json()).toEqual({});
 
-    // 7. 再次 GET /api/oauth/userinfo — access_token 已被撤销，返回 401
+    // 8. 再次 GET /api/oauth/userinfo — access_token 已被撤销，返回 401
     const userinfoAgainReq = new NextRequest("http://localhost/api/oauth/userinfo", {
       headers: {
         Authorization: `Bearer ${access_token}`,

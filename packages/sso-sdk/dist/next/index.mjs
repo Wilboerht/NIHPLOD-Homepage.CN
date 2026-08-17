@@ -12,6 +12,19 @@ var DEFAULT_LOGOUT_STATE_COOKIE_NAME = "__Host-nihplod_sso_logout_state";
 function toInsecureCookieName(name) {
   return name.replace(/^__(Host|Secure)-/, "");
 }
+function resolveInsecureLocalDev(enabled, ssoBaseUrl) {
+  if (!enabled) return false;
+  if (process.env.NODE_ENV === "production" && /^https:\/\//i.test(ssoBaseUrl)) {
+    console.warn(
+      "[SSO SDK] insecureLocalDev=true \u5DF2\u88AB\u5FFD\u7565\uFF1A\u5F53\u524D\u4E3A\u751F\u4EA7\u73AF\u5883\uFF08NODE_ENV=production\uFF09\u4E14 ssoBaseUrl \u4F7F\u7528 HTTPS\uFF0CCookie \u4ECD\u4FDD\u6301 Secure \u5C5E\u6027\u4E0E __Host-/__Secure- \u524D\u7F00\u3002\u8BF7\u4ECE\u751F\u4EA7\u914D\u7F6E\u4E2D\u79FB\u9664\u8BE5\u5F00\u5173\u3002"
+    );
+    return false;
+  }
+  console.warn(
+    "[SSO SDK] insecureLocalDev=true\uFF1ACookie \u7684 Secure \u5C5E\u6027\u5DF2\u5173\u95ED\u4E14\u53BB\u9664 __Host-/__Secure- \u524D\u7F00\u3002\u4EC5\u9650 http://localhost \u672C\u5730\u5F00\u53D1\u4F7F\u7528\uFF0C\u751F\u4EA7\u73AF\u5883\u5FC5\u987B\u79FB\u9664\u8BE5\u914D\u7F6E\uFF08\u751F\u4EA7\u5FC5\u987B\u7528 HTTPS\uFF09\u3002"
+  );
+  return true;
+}
 function getHostCookieOptions(maxAge, secure = true) {
   return {
     httpOnly: true,
@@ -142,19 +155,15 @@ function createSsoMiddleware(config) {
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
     validateSsoCookie = true,
-    insecureLocalDev = false
+    insecureLocalDev: insecureLocalDevOpt = false
   } = config;
+  const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
   const secureCookies = !insecureLocalDev;
   const accessTokenCookieName = insecureLocalDev ? toInsecureCookieName(config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME) : config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME;
   const stateCookieName = insecureLocalDev ? toInsecureCookieName(config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME) : config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME;
   const returnUrlCookieName = insecureLocalDev ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME) : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
   const verifierCookieName = insecureLocalDev ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME) : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
-  if (insecureLocalDev) {
-    console.warn(
-      "[SSO SDK] insecureLocalDev=true\uFF1ACookie \u7684 Secure \u5C5E\u6027\u5DF2\u5173\u95ED\u4E14\u53BB\u9664 __Host-/__Secure- \u524D\u7F00\u3002\u4EC5\u9650 http://localhost \u672C\u5730\u5F00\u53D1\u4F7F\u7528\uFF0C\u751F\u4EA7\u73AF\u5883\u5FC5\u987B\u79FB\u9664\u8BE5\u914D\u7F6E\uFF08\u751F\u4EA7\u5FC5\u987B\u7528 HTTPS\uFF09\u3002"
-    );
-  }
   if (process.env.NODE_ENV !== "production") {
     if (!validateSsoCookie) {
       console.warn(
@@ -481,8 +490,9 @@ function createCallbackRouteHandler(config) {
     redirectUri,
     clientSecret,
     defaultReturnPath = "/",
-    insecureLocalDev = false
+    insecureLocalDev: insecureLocalDevOpt = false
   } = config;
+  const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
   const secureCookies = !insecureLocalDev;
   const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
   const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
@@ -704,8 +714,9 @@ function createLogoutRouteHandler(config) {
     postLogoutRedirectUri = new URL(redirectUri).origin + "/",
     redirectToSso = true,
     callbackPath = "/api/auth/callback",
-    insecureLocalDev = false
+    insecureLocalDev: insecureLocalDevOpt = false
   } = config;
+  const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
   const secureCookies = !insecureLocalDev;
   const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
   const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);

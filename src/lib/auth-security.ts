@@ -339,7 +339,7 @@ export type RefreshTokenValidationResult =
       valid: false;
       reason:
         "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" | "error";
-      /** 仅 concurrent_rotation 时存在：本次吊销的 token 家族成员数（RFC 6819 §5.2.2.3） */
+      /** concurrent_rotation / revoked / missing 时存在：本次吊销的 token 家族成员数（RFC 6819 §5.2.2.3） */
       familyRevokedCount?: number;
     };
 
@@ -374,11 +374,63 @@ export async function atomicallyRotateRefreshToken(
       });
 
       if (!existing) {
-        return { valid: false as const, reason: "missing" as const };
+        // Token 不存在（或已过期）：可能是重用已被清除/轮换的 token，按泄漏信号处理，
+        // 与 revoked 分支一致吊销该用户在该 client 下的整个 token 家族（幂等，重复触发不报错）
+        const familyRevoked = await tx.refreshToken.updateMany({
+          where: {
+            userId,
+            clientId: clientId ?? null,
+            revokedAt: null,
+          },
+          data: { revokedAt: new Date() },
+        });
+        // 同步撤销对应 OAuthSession，确保携带 sid 的 access token 即时失效
+        // （仅 OAuth 场景有会话；内部 token 无 clientId，跳过）
+        if (clientId) {
+          await tx.oAuthSession.updateMany({
+            where: {
+              userId,
+              clientId,
+              revokedAt: null,
+            },
+            data: { revokedAt: new Date() },
+          });
+        }
+        return {
+          valid: false as const,
+          reason: "missing" as const,
+          familyRevokedCount: familyRevoked.count,
+        };
       }
 
       if (existing.revokedAt) {
-        return { valid: false as const, reason: "revoked" as const };
+        // 顺序重用已撤销的 Refresh Token：明确的泄漏信号（RFC 6819 §5.2.2.3），
+        // 吊销该用户在该 client 下的整个 token 家族（此前仅并发竞态分支有吊销，此处补齐）
+        const familyRevoked = await tx.refreshToken.updateMany({
+          where: {
+            userId,
+            clientId: clientId ?? null,
+            revokedAt: null,
+          },
+          data: { revokedAt: new Date() },
+        });
+        // 同步撤销对应 OAuthSession，确保携带 sid 的 access token 即时失效
+        // （仅 OAuth 场景有会话；内部 token 无 clientId，跳过）
+        if (clientId) {
+          await tx.oAuthSession.updateMany({
+            where: {
+              userId,
+              clientId,
+              revokedAt: null,
+            },
+            data: { revokedAt: new Date() },
+          });
+        }
+        return {
+          valid: false as const,
+          reason: "revoked" as const,
+          familyRevokedCount: familyRevoked.count,
+        };
       }
 
       // 2. 校验账号状态
@@ -485,7 +537,13 @@ export async function atomicallyRotateRefreshToken(
     });
 
     // 检测到 refresh token 重用攻击：记录合规敏感的审计事件（同步 await，防止丢失）
-    if (!result.valid && result.reason === "concurrent_rotation") {
+    // revoked / missing 分支已在事务内完成家族吊销，此处统一补记审计
+    if (
+      !result.valid &&
+      (result.reason === "concurrent_rotation" ||
+        result.reason === "revoked" ||
+        result.reason === "missing")
+    ) {
       await recordSsoEvent({
         event: "status_change",
         userId,
@@ -493,7 +551,7 @@ export async function atomicallyRotateRefreshToken(
         success: false,
         detail: {
           action: "refresh_token_family_revoked",
-          reason: "concurrent_rotation",
+          reason: result.reason,
           familyRevokedCount: result.familyRevokedCount ?? 0,
         },
       });

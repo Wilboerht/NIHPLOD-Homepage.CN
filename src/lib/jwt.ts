@@ -279,8 +279,20 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
  * - 内部：type="user"，audience="user"，由本函数签发
  * - 两者使用不同的 token type，verifyOAuthAccessToken 仅接受 access_token 类型
  */
-export async function signUserToken(payload: { id: string; phone: string }): Promise<string> {
-  const token = await new SignJWT({ ...payload, type: "user" as const })
+export async function signUserToken(payload: {
+  id: string;
+  phone: string;
+  /** 原始认证时间（Unix 秒）。refresh 换发时透传，防止 max_age 被新 iat 架空 */
+  authTime?: number;
+}): Promise<string> {
+  const jwtPayload: Record<string, unknown> = {
+    id: payload.id,
+    phone: payload.phone,
+    type: "user" as const,
+  };
+  if (payload.authTime) jwtPayload.auth_time = payload.authTime;
+
+  const token = await new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setIssuer(ISSUER)
@@ -343,6 +355,7 @@ export async function verifyUserToken(
  * @param payload.scope - 授权 scope，可选。传入时写入 payload，便于后续审计与最小权限校验。
  * @param payload.sid - 关联的 OAuthSession.sessionId，可选。revoke 时据此定位单个会话撤销。
  * @param payload.dpopJkt - DPoP 绑定的 JWK Thumbprint，可选。refresh 时据此要求并验证 DPoP proof。
+ * @param payload.authTime - 原始认证时间（Unix 秒），可选。refresh 换发时透传，跨轮换不丢失。
  */
 export async function signRefreshToken(payload: {
   id: string;
@@ -351,6 +364,7 @@ export async function signRefreshToken(payload: {
   scope?: string;
   sid?: string;
   dpopJkt?: string;
+  authTime?: number;
 }): Promise<string> {
   const jwtPayload: Record<string, unknown> = {
     id: payload.id,
@@ -362,6 +376,7 @@ export async function signRefreshToken(payload: {
   if (payload.scope) jwtPayload.scope = payload.scope;
   if (payload.sid) jwtPayload.sid = payload.sid;
   if (payload.dpopJkt) jwtPayload.dpop_jkt = payload.dpopJkt;
+  if (payload.authTime) jwtPayload.auth_time = payload.authTime;
 
   const token = await new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: "HS256" })

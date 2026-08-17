@@ -320,7 +320,9 @@ export const middleware = createSsoMiddleware({
   // insecureLocalDev: false by default; set true ONLY for http://localhost
   // development (disables the Secure cookie attribute and strips __Host-/__Secure-
   // prefixes, which browsers refuse to write over HTTP). Must be set consistently
-  // on the middleware, callback and logout handlers. Never enable in production.
+  // on the middleware, callback and logout handlers. Never enable in production —
+  // as a safety guard, the option is force-ignored (with a warning) when
+  // NODE_ENV=production and ssoBaseUrl uses https, keeping cookies secure.
 });
 
 export const config = {
@@ -388,7 +390,7 @@ Default cookie names:
 | return_url | `__Host-nihplod_sso_return` | Requires Secure + Path=/ + no Domain |
 | verifier | `__Secure-nihplod_sso_verifier` | Requires Secure + no Domain; Path is the callback path, therefore uses `__Secure-` prefix |
 
-> For local development with `http://localhost`, browsers reject `Secure` cookies — and cookies named with `__Host-`/`__Secure-` prefixes are refused outright when `Secure` is missing (Chrome, Edge and Firefox all enforce this; behavior on `localhost` varies by browser, some treat it as a secure context for `Secure` cookies, none accept prefixed names without `Secure`). The visible symptom: the login callback appears to succeed but the cookies are never written, so the middleware keeps judging you as logged out and redirects to the SSO authorize page in an infinite loop. Fix: set `insecureLocalDev: true` on `createSsoMiddleware`, `createCallbackRouteHandler` and `createLogoutRouteHandler` (it disables `Secure` and strips the prefixes, with a startup warning), or serve local dev over HTTPS. HTTPS is mandatory in production.
+> For local development with `http://localhost`, browsers reject `Secure` cookies — and cookies named with `__Host-`/`__Secure-` prefixes are refused outright when `Secure` is missing (Chrome, Edge and Firefox all enforce this; behavior on `localhost` varies by browser, some treat it as a secure context for `Secure` cookies, none accept prefixed names without `Secure`). The visible symptom: the login callback appears to succeed but the cookies are never written, so the middleware keeps judging you as logged out and redirects to the SSO authorize page in an infinite loop. Fix: set `insecureLocalDev: true` on `createSsoMiddleware`, `createCallbackRouteHandler` and `createLogoutRouteHandler` (it disables `Secure` and strips the prefixes, with a startup warning), or serve local dev over HTTPS. HTTPS is mandatory in production — and as a production guard, all three helpers force-ignore `insecureLocalDev` (keeping `Secure` and the `__Host-`/`__Secure-` prefixes, with a warning) when `NODE_ENV=production` and `ssoBaseUrl` uses HTTPS.
 
 ---
 

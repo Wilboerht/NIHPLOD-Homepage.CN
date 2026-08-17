@@ -215,8 +215,10 @@ describe("POST /api/user/oauth/revoke", () => {
     // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
     // access token 即时失效由 sid 会话校验承担
     expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-    // Backchannel Logout 通知 RP
-    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
+    // Backchannel Logout 通知 RP（sid 取撤销前查出的最新活跃会话）
+    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
+      sids: { "client-abc": "sess-1" },
+    });
     // 审计：SSO 事件 + 用户认证日志
     expect(mockRecordSsoEvent).toHaveBeenCalledWith(
       expect.objectContaining({
