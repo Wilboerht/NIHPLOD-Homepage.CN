@@ -214,18 +214,27 @@ export const middleware = createSsoMiddleware({
   redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
   publicPaths: ["/", "/public", "/api/auth/logout"], // 不需要登录的路径
   // ⚠️ 校验强度说明：
-  // - 对主站 SSO 会话 Cookie（__Host-user_token）默认仅检查存在性（低延迟），
-  //   存在即视为已登录；这只能防"未登录访问"，不能防伪造 Cookie。
-  // - 需要精确校验时显式设置 validateSsoCookie: true，Middleware 会对主站
-  //   Cookie 调用 Introspection 端点二次验证（每请求一次网络调用，有 30s 进程内缓存）。
+  // - validateSsoCookie 默认为 true：对主站 SSO 会话 Cookie（__Host-user_token）会调用
+  //   Introspection 端点二次验证（每请求一次网络调用，有 30s 进程内缓存）。
+  // - 显式设置 validateSsoCookie: false 可降为仅检查 Cookie 存在性（低延迟），
+  //   但这只能防"未登录访问"，不能防伪造/已撤销的 Cookie。
   // - 对子项目自身的 access_token Cookie（回调 handler 写入的）始终会做 Introspection 校验。
-  // validateSsoCookie: true,
+  // validateSsoCookie: false,
+  // 本地 HTTP 开发（http://localhost）需开启 insecureLocalDev（middleware/callback/logout
+  // 三处同时设置），否则浏览器拒绝写入 Secure Cookie，middleware 会永远判定未登录而
+  // 反复跳转 SSO（详见下方说明）。生产严禁启用。
+  // insecureLocalDev: true,
 });
 
 export const config = {
   matcher: ["/((?!_next|favicon.ico).*)", "/api/auth/:path*"],
 };
 ```
+
+> **Token 过期后的预期行为**：Middleware **不会刷新 token**。当 access_token Cookie 过期
+> 或 Introspection 判定失效时，Middleware 会清除该 Cookie 并重定向到 `/api/oauth/authorize`；
+> 由于用户在主站仍持有 SSO 会话，authorize 端点会立即携带新授权码 302 回来（silent re-auth），
+> 回调 handler 重新写入 Cookie —— 用户通常只感知到一次快速跳转，无需任何额外处理。
 
 ### 回调 Route Handler
 
@@ -265,7 +274,11 @@ export const GET = logoutHandler;  // 兼容 OIDC RP-Initiated Logout（GET）
 export const POST = logoutHandler; // UI 层推荐用 POST 触发，避免 GET 被跨站请求滥用（CSRF）
 ```
 
-> 本地开发若使用 `http://localhost`，浏览器会拒绝 `Secure` Cookie。建议在 `.env.local` 中使用 HTTPS 地址，或仅在本地临时关闭 Secure（生产必须启用 HTTPS）。
+> ⚠️ 本地开发使用 `http://localhost` 时，浏览器会拒绝 `Secure` Cookie——且 `__Host-`/`__Secure-` 前缀的 Cookie 缺少 `Secure` 属性时会被直接拒写（Chrome/Edge/Firefox 均强制；部分浏览器把 localhost 视为 secure context 而接受普通 `Secure` Cookie，但任何浏览器都不会接受无前缀要求却缺 Secure 的前缀 Cookie）。**后果**：登录回调看似成功，但 Cookie 根本写不进去，Middleware 永远判定未登录，于是反复跳转 SSO 授权页形成无限重定向。
+>
+> 解决办法（二选一）：
+> 1. 在 `createSsoMiddleware` / `createCallbackRouteHandler` / `createLogoutRouteHandler` 三处同时设置 `insecureLocalDev: true`（关闭 Secure 并去除前缀，启动时打印告警；**生产必须移除**）；
+> 2. 或手动绕过：在 `.env.local` 使用 HTTPS 地址（如 `next dev --experimental-https`），或自行覆写 `accessTokenCookieName` 等配置为无前缀名称并自行处理 Secure 属性。
 
 ---
 
@@ -308,9 +321,9 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 
 ### Token 存储策略
 
-- **token 默认存储在内存中**（Public Client 浏览器默认）：refresh_token 不落盘，XSS 无法窃取长期凭证；代价是页面刷新后需重新授权
+- **token 默认存储在 sessionStorage**（标签页级持久化）：登录回调的整页跳转和页面刷新后登录态保留，关闭标签页即自动清除，且不跨 Tab 共享，缩小了 XSS 窃取 refresh_token 的暴露面；SSR/隐私模式写入失败时降级为内存（此时刷新后需重新授权）
 - **PKCE verifier / state / return_url 等临时数据存储在 sessionStorage**（按标签页隔离），因此授权跳转与回调必须在同一标签页完成
-- 需要多 Tab 间同步 token 时，必须**显式**注入 localStorage 适配器（见下方"如何切换 Token 存储方式"）；⚠️ persist 到 localStorage 会让 refresh_token 明文落盘，仅建议在 BFF/Confidential Client 场景使用
+- 需要多 Tab 间同步 token 时，必须**显式**注入 localStorage 适配器（见下方"如何切换 Token 存储方式"）；⚠️ persist 到 localStorage 会让 refresh_token 明文落盘且长期保留，仅建议在 BFF/Confidential Client 场景使用
 - Next.js（Middleware + Route Handler）方式将 token 存入 httpOnly Secure cookie，浏览器 JS 无法读取
 
 ### redirect_uri 规范
@@ -473,7 +486,7 @@ const payload = await verifier.verify(token);
 
 ### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
 
-A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心 `/logout` 页面；用户确认后，SSO 中心会撤销其所有会话并触发 backchannel logout。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
+A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；用户确认后，SSO 中心会撤销其所有会话并触发 backchannel logout。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
 
 ### Q: Next.js middleware 是否支持 PKCE？
 
@@ -482,7 +495,7 @@ A: 支持。`@nihplod/sso-sdk/next` 的 `createSsoMiddleware` 在 Edge Runtime �
 
 ### Q: 如何切换 Token 存储方式？
 
-token **默认存储在内存中**（页面刷新后需重新登录）。如需多 Tab 共享 / 刷新后保持登录，
+token **默认存储在 sessionStorage**（标签页级持久化：刷新/整页跳转后登录态保留，关闭标签页清除）。如需多 Tab 共享 / 关闭浏览器后保持登录，
 可显式注入 localStorage 适配器：
 
 ```typescript
@@ -491,7 +504,7 @@ import { setTokenStorage, createSecureStorage } from "@nihplod/sso-sdk";
 // persist: true → 使用 localStorage（多 Tab 同步，但 refresh_token 明文落盘，XSS 可窃取）
 setTokenStorage(createSecureStorage({ persist: true }));
 
-// persist: false（默认）→ 内存存储，最安全
+// persist: false（默认）→ sessionStorage（标签页级，隐私模式下降级为内存）
 setTokenStorage(createSecureStorage({ persist: false }));
 ```
 

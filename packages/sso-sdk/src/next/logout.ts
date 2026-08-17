@@ -35,6 +35,7 @@ import {
   DEFAULT_LOGOUT_STATE_COOKIE_NAME,
   getHostCookieOptions,
   getSecureCookieOptions,
+  toInsecureCookieName,
 } from "./constants";
 
 // ============================================
@@ -86,6 +87,13 @@ export interface LogoutRouteConfig {
 
   /** Logout State Cookie 名称（RP-Initiated Logout CSRF 防护），默认 __Host-nihplod_sso_logout_state */
   logoutStateCookieName?: string;
+
+  /**
+   * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
+   * __Host-/__Secure- 前缀；必须与 middleware / callback 的配置保持一致，
+   * 否则无法清除它们写入的 Cookie。生产严禁启用。
+   */
+  insecureLocalDev?: boolean;
 }
 
 interface OidcDiscovery {
@@ -145,15 +153,21 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     clientSecret,
     postLogoutRedirectUri = new URL(redirectUri).origin + "/",
     redirectToSso = true,
-    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
-    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
-    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
-    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
-    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
-    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
     callbackPath = "/api/auth/callback",
-    logoutStateCookieName = DEFAULT_LOGOUT_STATE_COOKIE_NAME,
+    insecureLocalDev = false,
   } = config;
+
+  // insecureLocalDev：与 middleware/callback 一致地去前缀 + 关 Secure
+  const secureCookies = !insecureLocalDev;
+  const pickName = (explicit: string | undefined, fallback: string) =>
+    insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
+  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
+  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+  const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
+  const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
+  const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
+  const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
 
@@ -180,7 +194,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
         );
       }
       const res = NextResponse.redirect(request.nextUrl.origin + "/");
-      res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
     }
 
@@ -213,13 +227,13 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
 
     // 2. 准备本地清除 SSO cookie 的响应
     const clearCookies = (res: NextResponse) => {
-      res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(stateCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
-      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath));
+      res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
       return res;
     };
 
@@ -227,7 +241,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     if (redirectToSso) {
       const discovery = await fetchDiscovery(normalizedBase);
       const endSessionEndpoint =
-        discovery?.end_session_endpoint || `${normalizedBase}/logout`;
+        discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", clientId);
       logoutUrl.searchParams.set(
@@ -241,7 +255,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       const logoutState = generateRandomString(32);
       logoutUrl.searchParams.set("state", logoutState);
       const res = clearCookies(NextResponse.redirect(logoutUrl.toString()));
-      res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600));
+      res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600, secureCookies));
       return res;
     }
 

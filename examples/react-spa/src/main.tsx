@@ -1,10 +1,20 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { SsoProvider } from "@nihplod/sso-sdk/react";
 import { CallbackPage } from "@nihplod/sso-sdk/react";
 import { HomePage } from "./HomePage";
 import { DashboardPage } from "./DashboardPage";
+
+/**
+ * 回调路由：传入 onSuccess 跳过默认的整页跳转，
+ * 由 react-router 接管（不丢失 SPA 应用状态）。
+ * token 默认存 sessionStorage，即使整页跳转/刷新登录态也会保留。
+ */
+function CallbackRoute() {
+  const navigate = useNavigate();
+  return <CallbackPage onSuccess={() => navigate("/", { replace: true })} />;
+}
 
 /**
  * ⚠️ 使用前请替换为你的实际配置
@@ -26,7 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/callback" element={<CallbackPage />} />
+          <Route path="/callback" element={<CallbackRoute />} />
           <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
       </BrowserRouter>

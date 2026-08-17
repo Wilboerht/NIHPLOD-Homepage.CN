@@ -34,6 +34,7 @@ import {
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
   getSecureCookieOptions,
+  toInsecureCookieName,
 } from "./constants";
 
 // ============================================
@@ -77,6 +78,13 @@ export interface CallbackRouteConfig {
 
   /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
   verifierCookieName?: string;
+
+  /**
+   * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
+   * __Host-/__Secure- 前缀；必须与 createSsoMiddleware 的配置保持一致，
+   * 否则读不到 middleware 写入的 state/verifier Cookie。生产严禁启用。
+   */
+  insecureLocalDev?: boolean;
 }
 
 // ============================================
@@ -98,13 +106,19 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     redirectUri,
     clientSecret,
     defaultReturnPath = "/",
-    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
-    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
-    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
-    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
-    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
-    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
+    insecureLocalDev = false,
   } = config;
+
+  // insecureLocalDev：与 middleware 一致地去前缀 + 关 Secure，否则读不到 state/verifier
+  const secureCookies = !insecureLocalDev;
+  const pickName = (explicit: string | undefined, fallback: string) =>
+    insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
+  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
+  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+  const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
+  const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
+  const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
 
@@ -281,7 +295,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
 
     // 设置 access_token cookie (httpOnly, Secure, SameSite=Lax, Path=/)
     response.cookies.set(accessTokenCookieName, tokenData.access_token, {
-      ...getHostCookieOptions(tokenData.expires_in),
+      ...getHostCookieOptions(tokenData.expires_in, secureCookies),
     });
 
     // 设置 refresh_token cookie（使用服务端返回的过期时间动态计算）
@@ -293,7 +307,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
         : 30 * 24 * 60 * 60;
 
     response.cookies.set(refreshTokenCookieName, tokenData.refresh_token, {
-      ...getHostCookieOptions(refreshMaxAge),
+      ...getHostCookieOptions(refreshMaxAge, secureCookies),
     });
 
     // 设置 id_token cookie，用于 RP-Initiated Logout 的 id_token_hint
@@ -316,20 +330,20 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       }
       if (idTokenMaxAge > 0) {
         response.cookies.set(idTokenCookieName, tokenData.id_token, {
-          ...getHostCookieOptions(idTokenMaxAge),
+          ...getHostCookieOptions(idTokenMaxAge, secureCookies),
         });
       }
     }
 
     // 清除临时 cookies: state / return URL
-    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
+    response.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
 
     // 清除 PKCE verifier cookie，必须使用写入时的 path（callbackPath）
     // 由于 callback handler 不知道 middleware 的 callbackPath，这里保守地
     // 同时清除 path=/ 和 path=当前请求路径两种可能
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname));
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname, secureCookies));
 
     return response;
   };

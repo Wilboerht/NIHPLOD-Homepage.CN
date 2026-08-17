@@ -295,11 +295,11 @@ export async function validateIdToken(
     throw new SsoError("id_token_audience_mismatch", "ID Token 多 audience 时 azp 必须为当前 client");
   }
 
-  // exp 必需且不得过期
+  // exp 必需且不得过期（允许 60s clock skew，与 iat 校验对称）
   if (typeof payload.exp !== "number") {
     throw new SsoError("id_token_invalid", "ID Token 缺少 exp 声明");
   }
-  if (Date.now() >= payload.exp * 1000) {
+  if (Date.now() >= payload.exp * 1000 + 60_000) {
     throw new SsoError("id_token_expired", "ID Token 已过期");
   }
 

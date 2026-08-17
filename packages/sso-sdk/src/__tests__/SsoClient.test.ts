@@ -18,6 +18,7 @@ import {
   setTokenStorage,
 } from "../core/storage";
 import type { TokenData } from "../core/storage";
+import { SsoError } from "../core/errors";
 import { clearIdTokenCaches } from "../core/id-token";
 
 // Mock storage (in-memory Map)
@@ -282,25 +283,25 @@ describe("SsoClient", () => {
   });
 
   describe("login / getLoginUrl returnUrl 开放重定向校验", () => {
-    it("相对路径 returnUrl 被保存", async () => {
+    it("相对路径 returnUrl 被保存（按 clientId 隔离）", async () => {
       installFetchRouter();
       const client = new SsoClient(defaultConfig);
       await client.getLoginUrl("/dashboard");
-      expect(getReturnUrl()).toBe("/dashboard");
+      expect(getReturnUrl(CLIENT_ID)).toBe("/dashboard");
     });
 
     it("跨域绝对 URL returnUrl 被拒绝", async () => {
       installFetchRouter();
       const client = new SsoClient(defaultConfig);
       await client.getLoginUrl("https://evil.com/phish");
-      expect(getReturnUrl()).toBeNull();
+      expect(getReturnUrl(CLIENT_ID)).toBeNull();
     });
 
     it("协议相对 URL（//evil.com）被拒绝", async () => {
       installFetchRouter();
       const client = new SsoClient(defaultConfig);
       await client.getLoginUrl("//evil.com/phish");
-      expect(getReturnUrl()).toBeNull();
+      expect(getReturnUrl(CLIENT_ID)).toBeNull();
     });
   });
 
@@ -319,9 +320,10 @@ describe("SsoClient", () => {
       expect(getPkceVerifier(CLIENT_ID)).toBeNull();
     });
 
-    it("缺少 code 时抛出错误", async () => {
+    it("缺少 code 时抛出错误，并清理 state/verifier", async () => {
       const client = new SsoClient(defaultConfig);
       saveOAuthState("test-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
 
       const callbackUrl =
         "https://test-app.com/callback?state=test-state";
@@ -329,17 +331,24 @@ describe("SsoClient", () => {
       await expect(client.handleCallback(callbackUrl)).rejects.toThrow(
         "缺少 authorization code"
       );
+      expect(getOAuthState(CLIENT_ID)).toBeNull();
+      expect(getPkceVerifier(CLIENT_ID)).toBeNull();
     });
 
-    it("回调包含 error 参数时抛出错误", async () => {
+    it("回调包含 error 参数时按 OAuth error 映射错误码（access_denied → user_denied_authorization），并清理 state/verifier", async () => {
       const client = new SsoClient(defaultConfig);
+      saveOAuthState("test-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
 
       const callbackUrl =
         "https://test-app.com/callback?error=access_denied&error_description=用户拒绝了授权";
 
-      await expect(client.handleCallback(callbackUrl)).rejects.toThrow(
-        "授权失败"
-      );
+      const err = await client.handleCallback(callbackUrl).catch((e) => e);
+      expect(err).toBeInstanceOf(SsoError);
+      expect(err.code).toBe("user_denied_authorization");
+      expect(err.message).toContain("用户拒绝了授权");
+      expect(getOAuthState(CLIENT_ID)).toBeNull();
+      expect(getPkceVerifier(CLIENT_ID)).toBeNull();
     });
 
     it("成功交换 token（RS256 id_token + at_hash，JWKS 走 Discovery jwks_uri）", async () => {

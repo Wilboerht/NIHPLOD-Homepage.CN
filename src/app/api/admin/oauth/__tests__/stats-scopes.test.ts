@@ -134,7 +134,7 @@ describe("GET /api/admin/oauth/stats", () => {
     });
   });
 
-  it("本月无事件时成功率默认为 100，避免除零", async () => {
+  it("本月无事件时成功率返回 null（前端展示暂无数据，避免误导性的 100%）", async () => {
     prismaMock.oAuthClient.count.mockResolvedValue(0);
     prismaMock.oAuthSession.count.mockResolvedValue(0);
     prismaMock.refreshToken.count.mockResolvedValue(0);
@@ -146,7 +146,7 @@ describe("GET /api/admin/oauth/stats", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.successRate).toBe(100);
+    expect(data.data.successRate).toBeNull();
   });
 });
 

@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const client = await getOAuthClientByClientId(client_id);
     if (!client || !client.redirectUris.includes(redirect_uri)) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
+        { error: "invalid_request", error_description: "client_id 或 redirect_uri 无效" },
         { status: 400 }
       );
     }

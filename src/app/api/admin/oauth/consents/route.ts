@@ -161,25 +161,26 @@ export async function POST(request: NextRequest) {
     const { userId, clientId } = parsed.data;
     const ip = getClientIP(request);
 
-    // 撤销所有活跃 session
-    const result = await prisma.oAuthSession.updateMany({
-      where: { userId, clientId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+    // 撤销所有活跃 session；同步撤销已有 UserConsent，确保授权状态一致性
+    // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
+    // 两者任一存在即可执行撤销，都不存在才判定为无活跃授权
+    const [sessionResult, consentResult] = await Promise.all([
+      prisma.oAuthSession.updateMany({
+        where: { userId, clientId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      prisma.userConsent.updateMany({
+        where: { userId, clientId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
 
-    if (result.count === 0) {
+    if (sessionResult.count === 0 && consentResult.count === 0) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "未找到活跃授权" } },
         { status: 404 }
       );
     }
-
-    // 同步撤销已有 UserConsent，确保授权状态一致性
-    // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
-    await prisma.userConsent.updateMany({
-      where: { userId, clientId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
 
     // 同步撤销该用户在该 client 下的所有 Refresh Token
     await revokeRefreshToken(userId, undefined, clientId);
@@ -194,7 +195,11 @@ export async function POST(request: NextRequest) {
       clientId,
       ip,
       success: true,
-      detail: { action: "admin_revoke", sessionCount: result.count },
+      detail: {
+        action: "admin_revoke",
+        sessionCount: sessionResult.count,
+        consentCount: consentResult.count,
+      },
     });
 
     // 触发 Backchannel Logout
@@ -204,12 +209,20 @@ export async function POST(request: NextRequest) {
       action: "oauth_consent_revoke",
       targetType: "oauth_consent",
       targetId: `${userId}:${clientId}`,
-      detail: { userId, clientId, sessionCount: result.count },
+      detail: {
+        userId,
+        clientId,
+        sessionCount: sessionResult.count,
+        consentCount: consentResult.count,
+      },
       adminId: admin.id,
       request,
     });
 
-    return NextResponse.json({ success: true, data: { revokedCount: result.count } });
+    return NextResponse.json({
+      success: true,
+      data: { revokedCount: sessionResult.count + consentResult.count },
+    });
   } catch (error) {
     apiConsole.error("[AdminOAuthConsents POST] 异常:", error);
     return NextResponse.json(

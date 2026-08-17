@@ -16,6 +16,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
+import { respondOAuthError } from "@/lib/oauth-error-page";
 import { USER_COOKIE_NAME } from "@/types/auth";
 import { prisma } from "@/lib/prisma";
 import { createHmac, timingSafeEqual, createHash, randomBytes } from "crypto";
@@ -110,15 +111,9 @@ async function ensureUserConsent(
 }
 
 /**
- * 用户拒绝授权时，撤销此前已授予的 consent（如存在）。
+ * 用户拒绝授权（deny）时仅回传 access_denied，不撤销此前已授予的 consent：
+ * 拒绝"扩大 scope"不应把用户历史授权一并作废。
  */
-async function revokeUserConsent(userId: string, clientId: string): Promise<void> {
-  // 使用 updateMany + revokedAt: null 条件消除 TOCTOU：并发 approve + deny 中 approve 优先
-  await prisma.userConsent.updateMany({
-    where: { userId, clientId, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-}
 
 /** 获取公网 origin（反向代理后 request.url 可能为 localhost） */
 function getPublicOrigin(request: NextRequest): string {
@@ -157,10 +152,8 @@ export async function GET(request: NextRequest) {
     // 多租户：限流 key 应为 {tenantId}:oauth-authorize:{ip}，当前使用 "" 作为默认 tenantId
     const limitResult = await rateLimit(ip, "oauth-authorize");
     if (!limitResult.success) {
-      return NextResponse.json(
-        { error: "rate_limited", error_description: "请求过于频繁" },
-        { status: 429 }
-      );
+      // 浏览器直接访问时渲染品牌化错误页，API 调用返回 JSON
+      return respondOAuthError(request, 429, "rate_limited", "请求过于频繁");
     }
 
     const { searchParams } = request.nextUrl;
@@ -184,45 +177,30 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get("state");
 
     // 1. client_id / redirect_uri 前置校验：若无法识别合法回调地址，
-    //    按 OAuth 2.0 规范禁止自动重定向，直接返回 JSON 400
+    //    按 OAuth 2.0 规范禁止自动重定向；浏览器访问渲染品牌化错误页，API 返回 JSON 400
     if (!client_id || !redirect_uri) {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "缺少 client_id 或 redirect_uri" },
-        { status: 400 }
-      );
+      return respondOAuthError(request, 400, "invalid_request", "缺少 client_id 或 redirect_uri");
     }
     try {
       new URL(redirect_uri);
     } catch {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "redirect_uri 不是合法 URL" },
-        { status: 400 }
-      );
+      return respondOAuthError(request, 400, "invalid_request", "redirect_uri 不是合法 URL");
     }
 
     // 参数长度限制（防滥用）
     if (client_id.length > 128 || redirect_uri.length > 1024) {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "client_id 或 redirect_uri 过长" },
-        { status: 400 }
-      );
+      return respondOAuthError(request, 400, "invalid_request", "client_id 或 redirect_uri 过长");
     }
 
     // 2. 校验 client
     const client = await getOAuthClientByClientId(client_id);
     if (!client) {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
-        { status: 400 }
-      );
+      return respondOAuthError(request, 400, "invalid_request", "client_id 或 redirect_uri 无效");
     }
 
     // 3. redirect_uri 精确匹配
     if (!client.redirectUris.includes(redirect_uri)) {
-      return NextResponse.json(
-        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
-        { status: 400 }
-      );
+      return respondOAuthError(request, 400, "invalid_request", "client_id 或 redirect_uri 无效");
     }
 
     // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
@@ -319,7 +297,7 @@ export async function GET(request: NextRequest) {
         return buildErrorRedirect(
           safeRedirectUri,
           "invalid_scope",
-          `Scope '${s}' not supported`,
+          `权限范围 '${s}' 不受支持`,
           state
         );
       }
@@ -327,7 +305,7 @@ export async function GET(request: NextRequest) {
         return buildErrorRedirect(
           safeRedirectUri,
           "invalid_scope",
-          `Scope '${s}' not allowed for this client`,
+          `该应用未被授予权限范围 '${s}'`,
           state
         );
       }
@@ -455,14 +433,17 @@ export async function GET(request: NextRequest) {
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
     consentUrl.searchParams.set("oauth_id", storedId);
+    // 额外透传 client_id/redirect_uri/state：oauth_id 过期（10 分钟 TTL）后，
+    // consent 页仍可经 /api/oauth/cancel 取消授权返回应用（cancel 会重新校验归属）
+    consentUrl.searchParams.set("client_id", client_id);
+    consentUrl.searchParams.set("redirect_uri", redirect_uri);
+    consentUrl.searchParams.set("state", state);
 
     return NextResponse.redirect(consentUrl, 302);
   } catch (error) {
     apiConsole.error("[OAuth Authorize GET] 异常:", error);
-    return NextResponse.json(
-      { error: "server_error", error_description: "服务器内部错误" },
-      { status: 500 }
-    );
+    // 浏览器直接访问时渲染品牌化错误页，API 调用返回 JSON
+    return respondOAuthError(request, 500, "server_error", "服务器内部错误");
   }
 }
 
@@ -562,7 +543,7 @@ export async function POST(request: NextRequest) {
     const client = await getOAuthClientByClientId(client_id);
     if (!client) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
+        { error: "invalid_request", error_description: "client_id 或 redirect_uri 无效" },
         { status: 400 }
       );
     }
@@ -570,7 +551,7 @@ export async function POST(request: NextRequest) {
     // redirect_uri 精确匹配
     if (!client.redirectUris.includes(redirect_uri)) {
       return NextResponse.json(
-        { error: "invalid_request", error_description: "Invalid client_id or redirect_uri" },
+        { error: "invalid_request", error_description: "client_id 或 redirect_uri 无效" },
         { status: 400 }
       );
     }
@@ -665,8 +646,8 @@ export async function POST(request: NextRequest) {
       redirectUrl.searchParams.set("error", "access_denied");
       redirectUrl.searchParams.set("error_description", "用户拒绝了授权请求");
 
-      // 撤销此前对该 client 的 consent（如存在）
-      await revokeUserConsent(userPayload.id, client_id);
+      // 注意：deny 不再撤销既有 consent——用户拒绝的是本次扩大的 scope，
+      // 历史授权保持有效，避免一次"拒绝"把既有登录态全部作废
 
       scheduleSsoEvent({
         event: "consent",
@@ -689,7 +670,7 @@ export async function POST(request: NextRequest) {
       return buildErrorRedirect(
         safeRedirectUri,
         "invalid_request",
-        "code_challenge (S256) is required",
+        "缺少 code_challenge（必须为 S256）",
         state
       );
     }
@@ -708,7 +689,7 @@ export async function POST(request: NextRequest) {
         return buildErrorRedirect(
           safeRedirectUri,
           "invalid_scope",
-          `Scope '${s}' not supported`,
+          `权限范围 '${s}' 不受支持`,
           state
         );
       }
@@ -716,7 +697,7 @@ export async function POST(request: NextRequest) {
         return buildErrorRedirect(
           safeRedirectUri,
           "invalid_scope",
-          `Scope '${s}' not allowed for this client`,
+          `该应用未被授予权限范围 '${s}'`,
           state
         );
       }

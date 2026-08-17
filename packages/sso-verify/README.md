@@ -86,9 +86,9 @@ After successful verification, the token payload is attached to `req.user`.
 
 ## Notes
 
-- The main site currently uses HS256 symmetric signing by default. For external sub-projects, we recommend verifying access tokens via **Introspection**.
-- If your sub-project is an internal service and already shares the RS256 public key with the main site, you can configure `accessTokenPublicKey` or `jwksUri` for local JWT verification.
-- **Never distribute `JWT_ACCESS_SECRET` (the HS256 symmetric key) to external sub-projects.**
+- The main site signs access tokens with **RS256 when `JWT_ACCESS_PRIVATE_KEY` is configured (recommended, enables local verification via JWKS)**, and falls back to HS256 symmetric signing when it is not. For external sub-projects, we recommend verifying access tokens via **Introspection** regardless of the signing algorithm — it always works and reflects revocations in real time.
+- If your sub-project is an internal service and the main site has RS256 enabled, you can configure `accessTokenPublicKey` or `jwksUri` for local JWT verification.
+- **Never distribute `JWT_ACCESS_SECRET` (the HS256 symmetric key) to external sub-projects.** `accessTokenSecret` local verification only applies to internal services that legitimately share the HS256 secret.
 
 ## Advanced Options
 

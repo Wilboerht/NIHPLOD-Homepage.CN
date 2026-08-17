@@ -61,6 +61,16 @@ interface SsoMiddlewareConfig {
     returnUrlCookieName?: string;
     /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
     verifierCookieName?: string;
+    /**
+     * 本地 HTTP 开发模式（默认 false）。
+     *
+     * ⚠️ 仅限 http://localhost 开发：关闭 Cookie 的 Secure 属性并去除
+     * __Host-/__Secure- 前缀（浏览器拒绝在 HTTP 下写入带这两个前缀的 Cookie，
+     * 否则会出现「登录后 cookie 写不进去 → middleware 永远判定未登录 →
+     * 反复跳 SSO」的无限重定向）。开启时启动告警；生产环境严禁启用。
+     * middleware / callback / logout 三处配置需保持一致。
+     */
+    insecureLocalDev?: boolean;
 }
 declare function createSsoMiddleware(config: SsoMiddlewareConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
@@ -115,6 +125,12 @@ interface CallbackRouteConfig {
     returnUrlCookieName?: string;
     /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
     verifierCookieName?: string;
+    /**
+     * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
+     * __Host-/__Secure- 前缀；必须与 createSsoMiddleware 的配置保持一致，
+     * 否则读不到 middleware 写入的 state/verifier Cookie。生产严禁启用。
+     */
+    insecureLocalDev?: boolean;
 }
 declare function createCallbackRouteHandler(config: CallbackRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
@@ -176,6 +192,12 @@ interface LogoutRouteConfig {
     callbackPath?: string;
     /** Logout State Cookie 名称（RP-Initiated Logout CSRF 防护），默认 __Host-nihplod_sso_logout_state */
     logoutStateCookieName?: string;
+    /**
+     * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
+     * __Host-/__Secure- 前缀；必须与 middleware / callback 的配置保持一致，
+     * 否则无法清除它们写入的 Cookie。生产严禁启用。
+     */
+    insecureLocalDev?: boolean;
 }
 declare function createLogoutRouteHandler(config: LogoutRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
@@ -196,21 +218,27 @@ declare const DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
 declare const DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
 declare const DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
 declare const DEFAULT_LOGOUT_STATE_COOKIE_NAME = "__Host-nihplod_sso_logout_state";
+/**
+ * insecureLocalDev 场景：去除 __Host-/__Secure- 前缀。
+ * 浏览器强制要求带这两个前缀的 Cookie 必须设置 Secure，
+ * HTTP 本地开发时若保留前缀，即使 secure=false 也会被拒绝写入。
+ */
+declare function toInsecureCookieName(name: string): string;
 /** __Host- 前缀 Cookie 的安全选项（Path 必须为 /） */
-declare function getHostCookieOptions(maxAge?: number): {
+declare function getHostCookieOptions(maxAge?: number, secure?: boolean): {
     httpOnly: true;
-    secure: true;
+    secure: boolean;
     sameSite: "lax";
     path: "/";
     maxAge?: number;
 };
 /** __Secure- 前缀 Cookie 的安全选项（允许自定义 Path） */
-declare function getSecureCookieOptions(maxAge?: number, path?: string): {
+declare function getSecureCookieOptions(maxAge?: number, path?: string, secure?: boolean): {
     httpOnly: true;
-    secure: true;
+    secure: boolean;
     sameSite: "lax";
     path: string;
     maxAge?: number;
 };
 
-export { type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions };
+export { type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };

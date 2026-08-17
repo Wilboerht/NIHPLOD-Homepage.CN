@@ -151,9 +151,9 @@ function createSessionStorageAdapter() {
 }
 var _transient = createSessionStorageAdapter();
 function createSecureStorage(options = {}) {
-  return options.persist ? localStorageAdapter : memoryStorageAdapter;
+  return options.persist ? localStorageAdapter : createSessionStorageAdapter();
 }
-var _storage = memoryStorageAdapter;
+var _storage = createSessionStorageAdapter();
 function setTokenStorage(storage) {
   _storage = storage;
 }
@@ -458,7 +458,7 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
   if (typeof payload.exp !== "number") {
     throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 exp \u58F0\u660E");
   }
-  if (Date.now() >= payload.exp * 1e3) {
+  if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
   }
   if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
@@ -551,7 +551,7 @@ var _SsoClient = class _SsoClient {
    */
   _saveReturnUrlIfTrusted(returnUrl) {
     if (isTrustedReturnUrl(returnUrl, window.location.origin)) {
-      saveReturnUrl(returnUrl);
+      saveReturnUrl(returnUrl, this.config.clientId);
     } else {
       console.warn(`[SSO SDK] returnUrl \u672A\u901A\u8FC7\u540C\u6E90\u6821\u9A8C\uFF0C\u5DF2\u5FFD\u7565: ${returnUrl}`);
     }
@@ -567,6 +567,10 @@ var _SsoClient = class _SsoClient {
    *
    * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
    *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+   *
+   * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+   * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+   * 同一次登录只使用其中一个入口。
    */
   async login(returnUrl) {
     const verifier = generateCodeVerifier();
@@ -592,6 +596,10 @@ var _SsoClient = class _SsoClient {
    * 构建登录 URL（不跳转，返回 URL 字符串）
    *
    * 适用于需要手动处理跳转的场景。
+   *
+   * ⚠️ 不要与 login() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+   * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+   * 同一次登录只使用其中一个入口。
    */
   async getLoginUrl(returnUrl) {
     const verifier = generateCodeVerifier();
@@ -744,7 +752,7 @@ var _SsoClient = class _SsoClient {
    * 处理 OAuth 回调
    *
    * 解析回调 URL，校验 state 参数，用授权码交换 token。
-   * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
+   * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
    * @returns TokenData 或 null
@@ -754,12 +762,16 @@ var _SsoClient = class _SsoClient {
     const params = url.searchParams;
     const error = params.get("error");
     if (error) {
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       const desc = params.get("error_description") || error;
-      throw new SsoError("token_request_failed", `\u6388\u6743\u5931\u8D25: ${desc}`);
+      throw new SsoError(mapOAuthErrorToSsoCode(error), `\u6388\u6743\u5931\u8D25: ${desc}`);
     }
     const code = params.get("code");
     const returnedState = params.get("state");
     if (!code) {
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       throw new SsoError("token_request_failed", "\u56DE\u8C03 URL \u4E2D\u7F3A\u5C11 authorization code");
     }
     const savedState = getOAuthState(this.config.clientId);

@@ -64,9 +64,31 @@ function LogoutContent() {
   const [trustCheckDone, setTrustCheckDone] = useState(false);
   // id_token_hint 验签通过但其 sub 与当前 SSO 会话用户不一致时给出提示
   const [hintMismatch, setHintMismatch] = useState(false);
+  // 会话探测：无会话时无需确认，直接回跳
+  const [sessionState, setSessionState] = useState<"unknown" | "active" | "none">("unknown");
+
+  // 取消/无会话时的回跳：优先回可信的 post_logout_redirect_uri（附 state），否则回首页
+  const goBack = () => {
+    if (trustedUri) {
+      const url = new URL(trustedUri, window.location.origin);
+      if (state) url.searchParams.set("state", state);
+      window.location.href = url.toString();
+    } else {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/";
+    }
+  };
 
   useEffect(() => {
     ensureCsrfToken().catch(() => {});
+  }, []);
+
+  // 探测当前会话（复用现有用户资料接口）：未登录则跳过确认直接回跳
+  useEffect(() => {
+    fetch("/api/user/profile", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setSessionState(d?.success ? "active" : "none"))
+      .catch(() => setSessionState("none"));
   }, []);
 
   useEffect(() => {
@@ -75,6 +97,14 @@ function LogoutContent() {
       setTrustCheckDone(true);
     });
   }, [postLogoutRedirectUri, clientId]);
+
+  // 无会话：等可信地址校验完成后直接回跳，不做无意义的"确认退出"
+  useEffect(() => {
+    if (sessionState === "none" && trustCheckDone) {
+      goBack();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionState, trustCheckDone, trustedUri, state]);
 
   // 验证 id_token_hint（OIDC RP-Initiated Logout）：
   // 验证失败不阻断登出，照常走确认流程并忽略 hint；
@@ -145,6 +175,15 @@ function LogoutContent() {
     }
   };
 
+  // 会话探测中 / 无会话正在回跳：显示加载态而非确认框
+  if (sessionState !== "active") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
@@ -169,9 +208,7 @@ function LogoutContent() {
 
         <div className="flex justify-center gap-3">
           <button
-            onClick={() => {
-              window.location.href = "/";
-            }}
+            onClick={goBack}
             disabled={loading}
             className="rounded-lg border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >

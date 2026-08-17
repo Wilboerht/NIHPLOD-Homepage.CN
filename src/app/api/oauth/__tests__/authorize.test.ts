@@ -587,4 +587,80 @@ describe("POST /api/oauth/authorize", () => {
     expect(location).toContain("code=test-auth-code");
     expect(location).toContain("popup_nonce=popup123");
   });
+
+  it("拒绝授权（deny）不再撤销既有 consent，仅回传 access_denied", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = createPostRequest({
+      action: "deny",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid profile", // 模拟"拒绝扩大 scope"场景
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("error=access_denied");
+    // 不得撤销历史授权
+    expect(prisma.userConsent.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/oauth/authorize 品牌化错误页", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("浏览器访问（Accept: text/html）且 client_id 无法识别时返回品牌化 HTML 错误页", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(null);
+    const req = new NextRequest(buildAuthorizeUrl({ client_id: "nonexistent" }), {
+      headers: { Accept: "text/html,application/xhtml+xml" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain("应用配置有误或链接已失效");
+    expect(html).toContain("invalid_request");
+    expect(html).toContain("返回首页");
+  });
+
+  it("API 调用（无 text/html Accept）仍返回 JSON 错误", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(null);
+    const req = new NextRequest(buildAuthorizeUrl({ client_id: "nonexistent" }));
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("限流时浏览器访问返回 429 品牌化 HTML 错误页", async () => {
+    const { rateLimit } = await import("@/lib/ratelimit");
+    vi.mocked(rateLimit).mockResolvedValueOnce({ success: false } as never);
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Accept: "text/html" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(429);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain("rate_limited");
+  });
+
+  it("consent 页重定向应附带 client_id/redirect_uri/state（供参数过期后取消授权）", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 已登录但未授权 → 302 到 consent 页
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const consentUrl = new URL(res.headers.get("location")!);
+    expect(consentUrl.searchParams.get("mode")).toBe("consent");
+    expect(consentUrl.searchParams.get("client_id")).toBe("test-client");
+    expect(consentUrl.searchParams.get("redirect_uri")).toBe("https://example.com/cb");
+    expect(consentUrl.searchParams.get("state")).toBe(VALID_STATE);
+  });
 });

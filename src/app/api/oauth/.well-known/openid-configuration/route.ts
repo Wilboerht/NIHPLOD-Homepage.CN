@@ -78,8 +78,8 @@ export async function GET(request: NextRequest) {
     backchannel_logout_session_supported: true,
     frontchannel_logout_supported: false,
     frontchannel_logout_session_supported: false,
-    // 非标准扩展
-    service_documentation: `${origin}/docs/sso-integration`,
+    // 非标准扩展（主站无 /docs/sso-integration 页面路由，指向公开 API 文档端点）
+    service_documentation: `${origin}/api/oauth/docs`,
   };
 
   return NextResponse.json(discovery, {

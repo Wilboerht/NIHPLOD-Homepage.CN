@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost } from "@/lib/api-client";
+import { maskPhone } from "@/lib/mask-phone";
 import { validatePasswordStrength, getErrorMessage } from "@/components/website/auth/auth-utils";
 import { LoginForm } from "@/components/website/auth/LoginForm";
 import { RegisterForm } from "@/components/website/auth/RegisterForm";
@@ -28,6 +29,29 @@ import { WechatBindForm } from "@/components/website/auth/WechatBindForm";
 type AuthMode = "login" | "register" | "reset" | "consent" | "wechat-bind";
 
 const VALID_MODES: AuthMode[] = ["login", "register", "reset", "consent", "wechat-bind"];
+
+/**
+ * consent 提交失败时的用户友好文案映射（按 error code）。
+ * error_description 仅作兜底，且过滤纯英文技术文案，避免暴露实现细节。
+ */
+const CONSENT_ERROR_MESSAGES: Record<string, string> = {
+  invalid_request: "授权请求参数有误，请返回应用重新发起授权",
+  unauthorized: "登录状态已过期，请刷新页面后重试",
+  account_disabled: "账户不可用，请联系客服",
+  rate_limited: "操作过于频繁，请稍后重试",
+  server_error: "服务器繁忙，请稍后重试",
+  csrf_forbidden: "安全校验失败，请刷新页面后重试",
+};
+
+function friendlyConsentError(data: { error?: string; error_description?: string }): string {
+  if (data.error && CONSENT_ERROR_MESSAGES[data.error]) {
+    return CONSENT_ERROR_MESSAGES[data.error];
+  }
+  const desc = data.error_description || "";
+  // 仅当描述包含中文时才直接展示（服务端面向用户的文案已中文化）
+  if (desc && /[一-龥]/.test(desc)) return desc;
+  return "操作失败，请稍后重试";
+}
 
 function buildLoginUrl(
   mode: AuthMode,
@@ -54,11 +78,16 @@ function LoginPageContent() {
   const mode: AuthMode = VALID_MODES.includes(rawMode as AuthMode)
     ? (rawMode as AuthMode)
     : "login";
-  const clientName = (searchParams.get("client_name") || "第三方应用")
+  const clientNameParam = searchParams.get("client_name");
+  const clientName = (clientNameParam || "第三方应用")
     .replace(/[<>"'&`\/\\;]/g, "")
     .slice(0, 50);
   const oauthId = searchParams.get("oauth_id") || "";
   const oauthParamsFromUrl = searchParams.get("oauth_params") || "";
+  // SSO 登录上下文：authorize 重定向登录页时透传 reauth / login_hint
+  const reauth = searchParams.get("reauth") === "1";
+  const loginHint = (searchParams.get("login_hint") || "").replace(/\D/g, "").slice(0, 11);
+  const isSsoLogin = !!returnTo?.startsWith("/api/oauth/authorize");
 
   const mounted = useMounted();
   const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
@@ -81,15 +110,38 @@ function LoginPageContent() {
     fetch("/api/auth/csrf").catch(() => {});
   }, []);
 
-  const [loading, setLoading] = useState(false);
+  // consent 模式：拉取当前登录用户（authorize GET 已验证登录态，此处走会话接口取展示信息）
+  const [consentUser, setConsentUser] = useState<{
+    nickname: string | null;
+    phone: string;
+  } | null>(null);
+  useEffect(() => {
+    if (mode !== "consent") return;
+    fetch("/api/user/profile")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && d.data?.user) {
+          setConsentUser({
+            nickname: d.data.user.nickname ?? null,
+            phone: d.data.user.phone || "",
+          });
+        }
+      })
+      .catch(() => {});
+  }, [mode]);
 
   // Login Fields
-  const [loginPhone, setLoginPhone] = useState("");
+  // login_hint 预填手机号（仅当它是合法手机号格式时）
+  const [loginPhone, setLoginPhone] = useState(() =>
+    /^1[3-9]\d{9}$/.test(loginHint) ? loginHint : ""
+  );
   const [loginPassword, setLoginPassword] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [loginMethod, setLoginMethod] = useState<"password" | "code">("password");
   const [loginCodeCountdown, setLoginCodeCountdown] = useState(0);
   const [loginCodeSending, setLoginCodeSending] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   // Register Fields
   const [regName, setRegName] = useState("");
@@ -199,16 +251,14 @@ function LoginPageContent() {
 
   const switchMode = useCallback(
     (nextMode: AuthMode) => {
+      // 模式切换只保留 oauth_id（新格式），不再把完整 oauth_params 写回 URL
       const extra: Record<string, string> = {};
-      if (mode === "consent" && oauthParams) {
-        extra.oauth_params = oauthParams;
-      }
       if (mode === "consent" && oauthId) {
         extra.oauth_id = oauthId;
       }
       router.replace(buildLoginUrl(nextMode, returnTo, extra));
     },
-    [mode, oauthParams, oauthId, returnTo, router]
+    [mode, oauthId, returnTo, router]
   );
 
   // 模式切换时重置表单状态与字段数据（渲染阶段同步，避免 effect 内 setState）
@@ -573,12 +623,38 @@ function LoginPageContent() {
         window.location.href = data.data.redirectUrl;
         return;
       }
-      setConsentError(data.error_description || "操作失败");
+      setConsentError(friendlyConsentError(data));
     } catch {
       setConsentError("网络错误");
     } finally {
       setConsentLoading(false);
     }
+  };
+
+  // consent 页"切换账号"：回到登录模式，登录成功后经 return_to 重新走 authorize（会生成新的 oauth_id）
+  const handleSwitchAccount = () => {
+    const authorizeReturnTo = oauthParams ? `/api/oauth/authorize?${oauthParams}` : returnTo;
+    router.push(buildLoginUrl("login", authorizeReturnTo, { client_name: clientName }));
+  };
+
+  // consent 参数过期错误态"取消并返回应用"：oauth_id 已过期无法取回参数，
+  // 利用 authorize 透传的 client_id/redirect_uri/state 走 cancel 端点（服务端重新校验归属）
+  const handleCancelExpired = () => {
+    const clientId = searchParams.get("client_id");
+    const redirectUri = searchParams.get("redirect_uri");
+    const stateParam = searchParams.get("state");
+    if (clientId && redirectUri && stateParam) {
+      const cancelParams = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        state: stateParam,
+      });
+      // 必须完整页面导航：cancel 端点 302 重定向到跨域子项目回调
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/api/oauth/cancel?${cancelParams.toString()}`);
+      return;
+    }
+    router.push("/");
   };
 
   const handleSwitchToLogin = () => switchMode("login");
@@ -704,18 +780,41 @@ function LoginPageContent() {
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {
+    // 直接访问 /login?mode=consent（无 oauth_id / oauth_params）：参数缺失，显示错误态而非假 consent 页
+    if (!oauthId && !oauthParams) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-4 py-20">
+          <p className="text-sm text-red-500">授权链接无效，请返回应用重新发起授权</p>
+          <button
+            onClick={() => router.push("/")}
+            className="border border-brand-charcoal/25 px-6 py-2 text-sm font-light tracking-[0.12em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03]"
+          >
+            返回首页
+          </button>
+        </div>
+      );
+    }
+
     // oauth_id 参数仍在加载中或已失效
     if (oauthId && !oauthParams) {
       if (oauthParamsError) {
         return (
-          <div
-            className={
-              variant === "mobile"
-                ? "flex flex-col items-center justify-center gap-4 py-20"
-                : "flex flex-col items-center justify-center gap-4 py-20"
-            }
-          >
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
             <p className="text-sm text-red-500">授权参数已过期或不存在，请返回应用重新发起授权</p>
+            <div className="flex w-full max-w-[280px] flex-col gap-3">
+              <button
+                onClick={handleCancelExpired}
+                className="bg-brand-charcoal py-3 text-sm font-light tracking-[0.12em] text-white transition-all hover:bg-brand-charcoal/90"
+              >
+                取消并返回应用
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="border border-brand-charcoal/25 py-3 text-sm font-light tracking-[0.12em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03]"
+              >
+                返回首页
+              </button>
+            </div>
           </div>
         );
       }
@@ -755,14 +854,40 @@ function LoginPageContent() {
         )}
 
         <div className="space-y-10">
+          {/* 当前登录用户身份 + 切换账号 */}
+          {consentUser && (
+            <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/10 px-4 py-3">
+              <p className="text-sm text-brand-charcoal/80">
+                当前账号：
+                <strong>{consentUser.nickname || maskPhone(consentUser.phone)}</strong>
+                {consentUser.nickname && consentUser.phone && (
+                  <span className="ml-1 text-xs text-brand-charcoal/40">
+                    {maskPhone(consentUser.phone)}
+                  </span>
+                )}
+              </p>
+              <button
+                onClick={handleSwitchAccount}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                切换账号
+              </button>
+            </div>
+          )}
+
           <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
             <p className="text-sm text-brand-charcoal/80">
               <strong>{clientName}</strong> 请求访问您的账户信息
             </p>
             {params.get("client_id") && (
-              <p className="mt-1 text-xs text-brand-charcoal/40">
-                应用 ID: <code className="text-brand-charcoal/50">{params.get("client_id")}</code>
-              </p>
+              <details className="mt-1">
+                <summary className="cursor-pointer text-xs text-brand-charcoal/40">
+                  查看应用 ID
+                </summary>
+                <p className="mt-1 text-xs text-brand-charcoal/40">
+                  应用 ID: <code className="text-brand-charcoal/50">{params.get("client_id")}</code>
+                </p>
+              </details>
             )}
             <ul className="mt-2 space-y-1">
               {requestedScopes.map((scope) => (
@@ -787,6 +912,7 @@ function LoginPageContent() {
             <button
               onClick={() => handleConsent("deny")}
               disabled={consentLoading}
+              aria-busy={consentLoading}
               className="flex-1 border border-brand-charcoal/25 py-3 text-sm font-light tracking-[0.12em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] disabled:opacity-40"
             >
               拒绝
@@ -794,6 +920,7 @@ function LoginPageContent() {
             <button
               onClick={() => handleConsent("approve")}
               disabled={consentLoading}
+              aria-busy={consentLoading}
               className="flex-1 bg-brand-charcoal py-3 text-sm font-light tracking-[0.12em] text-white transition-all hover:bg-brand-charcoal/90 disabled:opacity-40"
             >
               {consentLoading ? "处理中..." : "授权登录"}
@@ -873,6 +1000,18 @@ function LoginPageContent() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                     >
+                      {mode === "login" && isSsoLogin && clientNameParam && (
+                        <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
+                          <p className="text-sm text-brand-charcoal/80">
+                            登录以继续使用 <strong>{clientName}</strong>
+                          </p>
+                          {reauth && (
+                            <p className="mt-1 text-xs text-brand-charcoal/60">
+                              应用要求重新验证身份，请重新登录
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {mode === "consent" ? renderConsent("pc") : renderForm("pc")}
                     </m.div>
                   </AnimatePresence>
@@ -894,22 +1033,32 @@ function LoginPageContent() {
             >
               {/* Mobile top bar */}
               <div className="relative flex h-[56px] w-full flex-shrink-0 items-center justify-center">
-                <button
-                  type="button"
-                  onClick={
-                    mode === "wechat-bind"
-                      ? handleClose
-                      : mode === "reset"
-                        ? () => {
-                            handleSwitchToLogin();
-                            setMobileForgotStep("phone");
-                          }
-                        : handleClose
-                  }
-                  className="absolute bottom-0 left-0 top-0 flex items-center justify-center px-4 py-[10px]"
-                >
-                  <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
-                </button>
+                {/* consent 模式隐藏返回箭头（与 PC 对齐），避免误触抛弃授权流程 */}
+                {mode !== "consent" && (
+                  <button
+                    type="button"
+                    aria-label={
+                      mode === "reset"
+                        ? "返回登录"
+                        : returnTo?.startsWith("/api/oauth/authorize")
+                          ? "取消登录"
+                          : "返回"
+                    }
+                    onClick={
+                      mode === "wechat-bind"
+                        ? handleClose
+                        : mode === "reset"
+                          ? () => {
+                              handleSwitchToLogin();
+                              setMobileForgotStep("phone");
+                            }
+                          : handleClose
+                    }
+                    className="absolute bottom-0 left-0 top-0 flex items-center justify-center px-4 py-[10px]"
+                  >
+                    <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
+                  </button>
+                )}
                 {mode !== "login" && (
                   <Image
                     src="/images/NIHPLOD-logo.svg"
@@ -931,6 +1080,18 @@ function LoginPageContent() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                     >
+                      {mode === "login" && isSsoLogin && clientNameParam && (
+                        <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
+                          <p className="text-sm text-brand-charcoal/80">
+                            登录以继续使用 <strong>{clientName}</strong>
+                          </p>
+                          {reauth && (
+                            <p className="mt-1 text-xs text-brand-charcoal/60">
+                              应用要求重新验证身份，请重新登录
+                            </p>
+                          )}
+                        </div>
+                      )}
                       {mode === "consent" ? renderConsent("mobile") : renderForm("mobile")}
                     </m.div>
                   </AnimatePresence>

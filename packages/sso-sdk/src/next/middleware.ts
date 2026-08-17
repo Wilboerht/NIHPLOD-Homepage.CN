@@ -29,6 +29,7 @@ import {
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
   getSecureCookieOptions,
+  toInsecureCookieName,
 } from "./constants";
 
 // ============================================
@@ -85,6 +86,17 @@ export interface SsoMiddlewareConfig {
 
   /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
   verifierCookieName?: string;
+
+  /**
+   * 本地 HTTP 开发模式（默认 false）。
+   *
+   * ⚠️ 仅限 http://localhost 开发：关闭 Cookie 的 Secure 属性并去除
+   * __Host-/__Secure- 前缀（浏览器拒绝在 HTTP 下写入带这两个前缀的 Cookie，
+   * 否则会出现「登录后 cookie 写不进去 → middleware 永远判定未登录 →
+   * 反复跳 SSO」的无限重定向）。开启时启动告警；生产环境严禁启用。
+   * middleware / callback / logout 三处配置需保持一致。
+   */
+  insecureLocalDev?: boolean;
 }
 
 // ============================================
@@ -254,14 +266,33 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
     validateSsoCookie = true,
-    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
-    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
-    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
-    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
+    insecureLocalDev = false,
   } = config;
+
+  // insecureLocalDev：HTTP 本地开发下去除 Cookie 前缀（浏览器拒绝无 Secure 的前缀 Cookie）
+  const secureCookies = !insecureLocalDev;
+  const accessTokenCookieName = insecureLocalDev
+    ? toInsecureCookieName(config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME)
+    : config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME;
+  const stateCookieName = insecureLocalDev
+    ? toInsecureCookieName(config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME)
+    : config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME;
+  const returnUrlCookieName = insecureLocalDev
+    ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME)
+    : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
+  const verifierCookieName = insecureLocalDev
+    ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME)
+    : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
 
   // 规范化 ssoBaseUrl
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+
+  if (insecureLocalDev) {
+    console.warn(
+      "[SSO SDK] insecureLocalDev=true：Cookie 的 Secure 属性已关闭且去除 __Host-/__Secure- 前缀。" +
+      "仅限 http://localhost 本地开发使用，生产环境必须移除该配置（生产必须用 HTTPS）。"
+    );
+  }
 
   if (process.env.NODE_ENV !== "production") {
     if (!validateSsoCookie) {
@@ -361,19 +392,19 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     const response = NextResponse.redirect(loginUrl);
 
     // Set state cookie for CSRF verification on callback
-    response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
+    response.cookies.set(stateCookieName, state, getHostCookieOptions(600, secureCookies));
 
     // Set PKCE verifier cookie（httpOnly，供 callback handler 使用）
     // 使用 __Secure- 前缀，允许写入 callbackPath
-    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath));
+    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath, secureCookies));
 
     // Set return URL cookie（仅存储 pathname + search，截断至安全长度）
     const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
-    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600));
+    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600, secureCookies));
 
     // 如果存在过期的 access_token cookie，立即清除
     if (accessTokenCookie?.value) {
-      response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+      response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
     }
 
     return response;

@@ -244,8 +244,9 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       expect((await res.json()).error.code).toBe("INVALID_PARAMS");
     });
 
-    it("无活跃授权应返回 404，且不产生任何 consent 写入", async () => {
+    it("无活跃授权（session 与 consent 均无）应返回 404，且不产生任何 consent 写入", async () => {
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 0 });
+      prismaMock.userConsent.updateMany.mockResolvedValue({ count: 0 });
 
       const { POST } = await import("@/app/api/admin/oauth/consents/route");
       const res = await POST(
@@ -257,9 +258,33 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
 
       expect(res.status).toBe(404);
       expect((await res.json()).error.code).toBe("NOT_FOUND");
-      expect(prismaMock.userConsent.updateMany).not.toHaveBeenCalled();
+      // session 与 consent 均匹配 0 条（无实际写入），且不创建空 consent 记录
       expect(prismaMock.userConsent.create).not.toHaveBeenCalled();
+      expect(prismaMock.userConsent.upsert).not.toHaveBeenCalled();
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
+      expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
+    });
+
+    it("有 consent 但无活跃 session 时仍可撤销（不再误报 404）", async () => {
+      prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 0 });
+      prismaMock.userConsent.updateMany.mockResolvedValue({ count: 1 });
+
+      const { POST } = await import("@/app/api/admin/oauth/consents/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth/consents", {
+          method: "POST",
+          body: { userId: "user-1", clientId: "client-abc" },
+        })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.data.revokedCount).toBe(1);
+      expect(prismaMock.userConsent.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-abc", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
     });
 
     it("吊销成功：仅更新已有 consent（不创建空记录），联动登出通知但不再拉黑 token", async () => {
@@ -276,7 +301,8 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       const data = await res.json();
 
       expect(res.status).toBe(200);
-      expect(data.data.revokedCount).toBe(2);
+      // revokedCount = 撤销的 session 数 + consent 数
+      expect(data.data.revokedCount).toBe(3);
 
       // 撤销活跃 session
       expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith({

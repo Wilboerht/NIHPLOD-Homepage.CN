@@ -23,6 +23,8 @@ const sso = new SsoClient({
 await sso.login();
 
 // 2. Handle callback (inside the callback page)
+//    Token is persisted to sessionStorage by default, so it survives
+//    the full-page redirect back from the SSO center.
 const token = await sso.handleCallback(window.location.href);
 
 // 3. Get user info
@@ -59,6 +61,8 @@ Initiate SSO login. Generates PKCE parameters and redirects to the SSO login pag
 ### `sso.getLoginUrl(returnUrl?)`
 
 Build the login URL string without redirecting. Returns `Promise<string>`.
+
+> ⚠️ Do NOT mix `getLoginUrl()` with `login()` for the same login attempt: both regenerate and overwrite the `state` / PKCE verifier in sessionStorage, so the flow started first will fail with a state mismatch. Use only one entry point per login.
 
 ### `sso.handleCallback(callbackUrl)`
 
@@ -113,7 +117,7 @@ Clear local token data and attempt to revoke the server-side refresh_token.
 |------|------|------|------|
 | `redirectToSso` | `boolean` | `false` | Whether to redirect to the SSO logout page (OIDC RP-Initiated Logout) |
 
-When `redirectToSso=true`, the user is redirected to `/logout?client_id=...&post_logout_redirect_uri=...&state=...`. The generated `state` is saved to sessionStorage; the main site clears the session and then returns to the sub-project callback address. Validate the `state` on the return page with `sso.validateLogoutState()` to prevent logout CSRF.
+When `redirectToSso=true`, the user is redirected to the `end_session_endpoint` from OIDC Discovery (fallback: `/api/oauth/end-session`) with `client_id`, `post_logout_redirect_uri`, `id_token_hint` and `state` parameters. The generated `state` is saved to sessionStorage; the main site clears the session and then returns to the sub-project callback address. Validate the `state` on the return page with `sso.validateLogoutState()` to prevent logout CSRF.
 
 ### `sso.validateLogoutState(url)`
 
@@ -132,7 +136,7 @@ Returns `boolean`.
 
 Fetch the OIDC Discovery document.
 
-Returns `Promise<OidcDiscovery>`.
+Returns `Promise<OidcDiscovery | null>` — may be `null` when the discovery endpoint is unreachable and no cached document exists.
 
 ---
 
@@ -217,6 +221,7 @@ const {
   user,              // SsoUser | null
   isAuthenticated,   // boolean
   isLoading,         // boolean
+  error,             // SsoError | null — set when loading user info fails (e.g. session revoked)
   login,             // (returnUrl?: string) => Promise<void>
   logout,            // (redirectToSso?: boolean) => Promise<void>
   refreshUser,       // () => Promise<void>
@@ -225,12 +230,29 @@ const {
 } = useSso();
 ```
 
+Authentication state is three-valued: `isLoading` (initializing/refreshing) → `error` (load failed, e.g. session expired) → `user` (authenticated). Render your UI accordingly.
+
 ### `<RequireAuth>`
 
 ```tsx
 import { RequireAuth } from "@nihplod/sso-sdk/react";
 
 <RequireAuth>
+  <ProtectedContent />
+</RequireAuth>
+```
+
+If starting the login flow fails (e.g. the user closes the popup, `popup_closed`), the component resets its internal trigger flag and shows a retry entry point instead of getting stuck on "please log in". Use `onError` to observe the failure and `renderLoginError(error, retry)` to customize the UI.
+
+```tsx
+<RequireAuth
+  autoLogin
+  usePopup
+  onError={(err) => console.warn("login failed", err)}
+  renderLoginError={(err, retry) => (
+    <button onClick={retry}>登录未完成，点击重试</button>
+  )}
+>
   <ProtectedContent />
 </RequireAuth>
 ```
@@ -255,6 +277,23 @@ export default function AuthCallback() {
 }
 ```
 
+By default the component performs a full-page redirect (`window.location.href`) to the saved `returnUrl` (or `/`) after the token exchange — safe because tokens are persisted to sessionStorage by default. For SPAs that prefer router navigation (no page reload, app state preserved), pass `onSuccess` to take over the redirect; `onError` / `renderError` customize failure handling:
+
+```tsx
+function CallbackRoute() {
+  const navigate = useNavigate();
+  return (
+    <CallbackPage
+      onSuccess={(tokenData) => navigate("/dashboard", { replace: true })}
+      onError={(err) => console.warn("sso callback failed", err)}
+      renderError={(message) => <MyErrorPage message={message} />}
+    />
+  );
+}
+```
+
+The default error UI is also exported as `DefaultCallbackError` if you want to reuse it.
+
 ---
 
 ## Next.js Bindings
@@ -270,7 +309,7 @@ export const middleware = createSsoMiddleware({
   ssoBaseUrl: "https://nihplod.cn",
   redirectUri: "https://yourapp.com/api/auth/callback",
   scopes: "openid profile",
-  publicPaths: ["/", "/public"],
+  publicPaths: ["/", "/public", "/api/auth/logout"],
   // Confidential Client (BFF) can pass clientSecret
   // clientSecret: process.env.SSO_CLIENT_SECRET,
   // validateSsoCookie defaults to true: the middleware calls the introspection
@@ -278,12 +317,23 @@ export const middleware = createSsoMiddleware({
   // "cookie exists = logged in" semantics (lowest latency, but may pass revoked
   // sessions). Either way, the middleware is only a UX gate — always re-verify
   // tokens in Route Handlers / Server Components before serving sensitive data.
+  // insecureLocalDev: false by default; set true ONLY for http://localhost
+  // development (disables the Secure cookie attribute and strips __Host-/__Secure-
+  // prefixes, which browsers refuse to write over HTTP). Must be set consistently
+  // on the middleware, callback and logout handlers. Never enable in production.
 });
 
 export const config = {
   matcher: ["/((?!_next|favicon.ico).*)"],
 };
 ```
+
+> **Token expiry behavior (expected):** the middleware does NOT refresh tokens. When the
+> `access_token` cookie expires or fails introspection, the middleware clears it and
+> redirects to `/api/oauth/authorize`. Because the user still holds an SSO session on the
+> main site, the authorize endpoint immediately redirects back with a fresh authorization
+> code (silent re-auth), and the callback handler issues new cookies — the user typically
+> only sees a quick redirect loop through the SSO center. No client-side action is needed.
 
 ```typescript
 // src/app/api/auth/callback/route.ts
@@ -338,13 +388,15 @@ Default cookie names:
 | return_url | `__Host-nihplod_sso_return` | Requires Secure + Path=/ + no Domain |
 | verifier | `__Secure-nihplod_sso_verifier` | Requires Secure + no Domain; Path is the callback path, therefore uses `__Secure-` prefix |
 
-> For local development with `http://localhost`, the browser will reject `Secure` cookies. You may disable `secure` locally, but HTTPS is mandatory in production.
+> For local development with `http://localhost`, browsers reject `Secure` cookies — and cookies named with `__Host-`/`__Secure-` prefixes are refused outright when `Secure` is missing (Chrome, Edge and Firefox all enforce this; behavior on `localhost` varies by browser, some treat it as a secure context for `Secure` cookies, none accept prefixed names without `Secure`). The visible symptom: the login callback appears to succeed but the cookies are never written, so the middleware keeps judging you as logged out and redirects to the SSO authorize page in an infinite loop. Fix: set `insecureLocalDev: true` on `createSsoMiddleware`, `createCallbackRouteHandler` and `createLogoutRouteHandler` (it disables `Secure` and strips the prefixes, with a startup warning), or serve local dev over HTTPS. HTTPS is mandatory in production.
 
 ---
 
 ## Security Recommendations and Token Storage
 
-By default, the SDK stores tokens in **memory**. Public Clients (SPA / mobile / desktop) should **never** write the `refresh_token` to `localStorage` to prevent XSS from stealing long-lived credentials.
+By default, the SDK stores tokens in **sessionStorage** (tab-scoped persistence). This keeps the login state across page reloads and the full-page redirect that `CallbackPage` performs after the token exchange, while the data is cleared automatically when the tab closes and is never shared with other tabs. In SSR environments or privacy modes where `sessionStorage` is unavailable/unwritable, it falls back to an in-memory map (login state is lost on reload in that case).
+
+> ⚠️ XSS note: any token readable by JavaScript can be stolen by XSS. sessionStorage narrows the exposure compared with `localStorage` (tab-scoped, auto-cleared), but a `refresh_token` readable by JS is still exfiltratable while the tab is open. If you need stronger guarantees, use the Next.js BFF pattern below (tokens in `httpOnly` cookies) or keep the refresh token inside a Service Worker.
 
 Transient OAuth data (PKCE `code_verifier`, `state`, `returnUrl`, popup nonce) is stored separately in **sessionStorage**, because it must survive the full-page redirect to the SSO center and back; it is cleared automatically when the tab closes. In SSR environments without `sessionStorage`, it falls back to an in-memory map.
 
@@ -382,6 +434,6 @@ const challenge = await generateCodeChallenge(verifier);
 // State
 const state = generateState();
 
-// Custom token storage (default is memory storage)
+// Custom token storage (default is sessionStorage; persist: true → localStorage)
 setTokenStorage(createSecureStorage({ persist: false }));
 ```

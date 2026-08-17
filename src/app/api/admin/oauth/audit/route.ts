@@ -14,12 +14,14 @@ import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
+// 与 src/lib/sso-audit.ts 的 SsoEventType 保持一致（实际产生的事件全集）
 const EVENT_TYPES = [
   "authorize",
   "token",
   "introspect",
   "userinfo",
   "backchannel_logout",
+  "logout",
   "consent",
   "status_change",
 ];
@@ -53,7 +55,14 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    if (event && EVENT_TYPES.includes(event)) {
+    if (event) {
+      // 不在白名单内的 event 参数直接拒绝，避免筛选条件被静默忽略造成误解
+      if (!EVENT_TYPES.includes(event)) {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_PARAMS", message: "不支持的事件类型" } },
+          { status: 400 }
+        );
+      }
       where.event = event;
     }
     if (clientId) where.clientId = clientId;
@@ -64,7 +73,14 @@ export async function GET(request: NextRequest) {
     if (startDate || endDate) {
       const createdAt: Record<string, Date> = {};
       if (startDate) createdAt.gte = new Date(startDate);
-      if (endDate) createdAt.lte = new Date(endDate);
+      if (endDate) {
+        // endDate 为 YYYY-MM-DD 时按次日零点（不含）处理，避免漏掉当天事件
+        const end = new Date(endDate);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+          end.setUTCDate(end.getUTCDate() + 1);
+        }
+        createdAt.lt = end;
+      }
       where.createdAt = createdAt;
     }
 
@@ -92,7 +108,8 @@ export async function GET(request: NextRequest) {
         )
         .join("\n");
 
-      return new NextResponse(csvHeaders + csvRows, {
+      // 前置 BOM，防止 Excel 打开 UTF-8 CSV 时中文乱码
+      return new NextResponse("\uFEFF" + csvHeaders + csvRows, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition": `attachment; filename="sso-audit-${new Date().toISOString().slice(0, 10)}.csv"`,

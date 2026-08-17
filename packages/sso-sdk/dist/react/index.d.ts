@@ -4,8 +4,10 @@ import React, { ReactNode, ComponentType } from 'react';
  * Token 存储抽象层
  *
  * 分两类存储：
- * - Token 数据：默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，
- *   XSS 无法窃取长期凭证。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
+ * - Token 数据：默认使用 sessionStorage（标签页级持久化）。登录回调后 CallbackPage
+ *   默认整页跳转，内存存储会丢失登录态，因此默认改为 sessionStorage：
+ *   整页跳转与刷新后登录态保留，关闭标签页自动清除；SSR / 隐私模式写入失败时
+ *   降级为内存 Map。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
  *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
  * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
  *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
@@ -121,12 +123,20 @@ declare class SsoClient {
      *
      * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
      *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+     *
+     * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+     * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+     * 同一次登录只使用其中一个入口。
      */
     login(returnUrl?: string): Promise<void>;
     /**
      * 构建登录 URL（不跳转，返回 URL 字符串）
      *
      * 适用于需要手动处理跳转的场景。
+     *
+     * ⚠️ 不要与 login() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+     * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+     * 同一次登录只使用其中一个入口。
      */
     getLoginUrl(returnUrl?: string): Promise<string>;
     /**
@@ -171,7 +181,7 @@ declare class SsoClient {
      * 处理 OAuth 回调
      *
      * 解析回调 URL，校验 state 参数，用授权码交换 token。
-     * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
+     * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
      *
      * @param callbackUrl - 完整的回调 URL（window.location.href）
      * @returns TokenData 或 null
@@ -241,6 +251,21 @@ declare class SsoClient {
 }
 
 /**
+ * SSO SDK 错误类型
+ */
+/** SSO 错误码 */
+type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "authorization_code_expired" | "authorization_code_used" | "client_disabled" | "user_denied_authorization" | "account_disabled" | "sso_server_error" | "rate_limited" | "network_error" | "popup_blocked" | "popup_closed" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_hs256_unsupported" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch";
+/**
+ * SSO SDK 自定义错误
+ */
+declare class SsoError extends Error {
+    readonly code: SsoErrorCode;
+    readonly description: string;
+    readonly cause?: unknown;
+    constructor(code: SsoErrorCode, description: string, cause?: unknown);
+}
+
+/**
  * SsoProvider - React Context Provider
  *
  * 包裹子项目根组件，提供全局 SSO 认证状态管理：
@@ -249,6 +274,12 @@ declare class SsoClient {
  * - 提供 useSso() hook
  */
 
+/**
+ * 认证状态为三态：
+ * - isLoading=true：初始化/刷新中，user 与 error 均可能为 null
+ * - error 非 null：加载用户信息失败（如会话已失效），user 为 null
+ * - isAuthenticated=true 且 user 非 null：已登录
+ */
 interface SsoContextValue {
     /** 当前用户信息 */
     user: SsoUser | null;
@@ -256,6 +287,8 @@ interface SsoContextValue {
     isAuthenticated: boolean;
     /** 是否正在加载（初始化/刷新中） */
     isLoading: boolean;
+    /** 最近一次加载用户信息失败的错误（成功或登出后为 null） */
+    error: SsoError | null;
     /** 发起登录（同页重定向） */
     login: (returnUrl?: string) => Promise<void>;
     /** 弹窗模式登录（保持当前页面状态不丢失） */
@@ -285,8 +318,9 @@ interface SsoProviderProps {
      */
     refreshThreshold?: number;
     /**
-     * API 请求函数（可选）
-     * 用于在 token 刷新后自动重试失败的 API 请求。
+     * Token 静默刷新成功后的回调（可选）。
+     * 每次刷新成功时以新的 access_token 调用，可用于同步 token 到外部状态；
+     * SDK 不会据此自动重试先前失败的 API 请求，重试需由调用方自行实现。
      */
     onTokenRefreshed?: (token: string) => void;
 }
@@ -328,11 +362,22 @@ interface RequireAuthProps {
      * 仅在 autoLogin=true 时生效。弹窗被拦截时自动回退到同页重定向。
      */
     usePopup?: boolean;
+    /**
+     * 登录发起失败时的回调（如弹窗被关闭 popup_closed）。
+     * 失败后组件会展示重试入口，不会永久停在"请先登录"。
+     */
+    onError?: (error: unknown) => void;
+    /**
+     * 自定义登录失败 UI。不传时显示默认的错误提示与"重试"按钮。
+     * retry() 会重新发起登录。
+     */
+    renderLoginError?: (error: unknown, retry: () => void) => React.ReactNode;
 }
 /**
  * 路由保护组件
  *
  * 未登录时自动触发登录跳转或显示回退内容。
+ * 登录发起失败（如弹窗被关闭）时显示重试入口，并通过 onError 上报。
  *
  * @example
  * ```tsx
@@ -342,7 +387,7 @@ interface RequireAuthProps {
  * </RequireAuth>
  * ```
  */
-declare function RequireAuth({ children, fallback, autoLogin, usePopup, }: RequireAuthProps): string | number | bigint | true | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | React.FunctionComponentElement<React.FragmentProps>;
+declare function RequireAuth({ children, fallback, autoLogin, usePopup, onError, renderLoginError, }: RequireAuthProps): string | number | bigint | true | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | React.FunctionComponentElement<React.FragmentProps>;
 /**
  * 高阶组件：包装页面组件，要求认证后才能访问
  *
@@ -358,7 +403,8 @@ declare function withAuth<P extends object>(Component: ComponentType<P>): Compon
  * CallbackPage — 通用 OAuth 回调页面组件
  *
  * 子项目只需在回调路由渲染此组件即可完成 code → token 交换。
- * 交换成功后自动跳转到 returnUrl 或首页。
+ * 交换成功后默认整页跳转到 returnUrl 或首页；
+ * 传入 onSuccess 可跳过默认跳转，由 SPA 路由接管（保持应用状态）。
  *
  * @example
  * ```tsx
@@ -368,9 +414,42 @@ declare function withAuth<P extends object>(Component: ComponentType<P>): Compon
  *   return <CallbackPage />;
  * }
  * ```
+ *
+ * @example SPA 路由接管跳转（不整页刷新）：
+ * ```tsx
+ * <CallbackPage onSuccess={() => navigate("/dashboard", { replace: true })} />
+ * ```
  */
 
-declare function CallbackPage(): React.DetailedReactHTMLElement<{
+interface CallbackPageProps {
+    /**
+     * 登录成功回调。传入后跳过默认的整页跳转（window.location.href），
+     * 由调用方用 SPA 路由接管跳转，避免丢失应用内状态。
+     */
+    onSuccess?: (tokenData: TokenData) => void;
+    /** 登录失败回调（错误同时会展示在错误页，除非提供了 renderError） */
+    onError?: (error: Error) => void;
+    /**
+     * 自定义错误页渲染。不传时使用默认错误 UI（DefaultCallbackError）。
+     */
+    renderError?: (error: string) => React.ReactNode;
+}
+/** 默认错误页 UI（可通过 renderError 完全替换） */
+declare function DefaultCallbackError({ error }: {
+    error: string;
+}): React.DetailedReactHTMLElement<{
+    style: {
+        display: "flex";
+        flexDirection: "column";
+        alignItems: "center";
+        justifyContent: "center";
+        minHeight: string;
+        fontFamily: "system-ui, sans-serif";
+    };
+}, HTMLElement>;
+declare function CallbackPage({ onSuccess, onError, renderError }?: CallbackPageProps): React.FunctionComponentElement<React.FragmentProps> | React.FunctionComponentElement<{
+    error: string;
+}> | React.DetailedReactHTMLElement<{
     style: {
         display: "flex";
         alignItems: "center";
@@ -380,4 +459,4 @@ declare function CallbackPage(): React.DetailedReactHTMLElement<{
     };
 }, HTMLElement> | null;
 
-export { CallbackPage, RequireAuth, SsoProvider, useSso, withAuth };
+export { CallbackPage, type CallbackPageProps, DefaultCallbackError, RequireAuth, SsoProvider, useSso, withAuth };

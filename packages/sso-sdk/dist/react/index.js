@@ -31,6 +31,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var react_exports = {};
 __export(react_exports, {
   CallbackPage: () => CallbackPage,
+  DefaultCallbackError: () => DefaultCallbackError,
   RequireAuth: () => RequireAuth,
   SsoProvider: () => SsoProvider,
   useSso: () => useSso,
@@ -164,7 +165,7 @@ function createSessionStorageAdapter() {
   };
 }
 var _transient = createSessionStorageAdapter();
-var _storage = memoryStorageAdapter;
+var _storage = createSessionStorageAdapter();
 function saveTokenData(data, clientId) {
   _storage.set(buildKey(TOKEN_KEY, clientId), JSON.stringify(data));
 }
@@ -458,7 +459,7 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
   if (typeof payload.exp !== "number") {
     throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 exp \u58F0\u660E");
   }
-  if (Date.now() >= payload.exp * 1e3) {
+  if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
   }
   if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
@@ -551,7 +552,7 @@ var _SsoClient = class _SsoClient {
    */
   _saveReturnUrlIfTrusted(returnUrl) {
     if (isTrustedReturnUrl(returnUrl, window.location.origin)) {
-      saveReturnUrl(returnUrl);
+      saveReturnUrl(returnUrl, this.config.clientId);
     } else {
       console.warn(`[SSO SDK] returnUrl \u672A\u901A\u8FC7\u540C\u6E90\u6821\u9A8C\uFF0C\u5DF2\u5FFD\u7565: ${returnUrl}`);
     }
@@ -567,6 +568,10 @@ var _SsoClient = class _SsoClient {
    *
    * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
    *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+   *
+   * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+   * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+   * 同一次登录只使用其中一个入口。
    */
   async login(returnUrl) {
     const verifier = generateCodeVerifier();
@@ -592,6 +597,10 @@ var _SsoClient = class _SsoClient {
    * 构建登录 URL（不跳转，返回 URL 字符串）
    *
    * 适用于需要手动处理跳转的场景。
+   *
+   * ⚠️ 不要与 login() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+   * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+   * 同一次登录只使用其中一个入口。
    */
   async getLoginUrl(returnUrl) {
     const verifier = generateCodeVerifier();
@@ -744,7 +753,7 @@ var _SsoClient = class _SsoClient {
    * 处理 OAuth 回调
    *
    * 解析回调 URL，校验 state 参数，用授权码交换 token。
-   * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
+   * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
    * @returns TokenData 或 null
@@ -754,12 +763,16 @@ var _SsoClient = class _SsoClient {
     const params = url.searchParams;
     const error = params.get("error");
     if (error) {
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       const desc = params.get("error_description") || error;
-      throw new SsoError("token_request_failed", `\u6388\u6743\u5931\u8D25: ${desc}`);
+      throw new SsoError(mapOAuthErrorToSsoCode(error), `\u6388\u6743\u5931\u8D25: ${desc}`);
     }
     const code = params.get("code");
     const returnedState = params.get("state");
     if (!code) {
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       throw new SsoError("token_request_failed", "\u56DE\u8C03 URL \u4E2D\u7F3A\u5C11 authorization code");
     }
     const savedState = getOAuthState(this.config.clientId);
@@ -1152,6 +1165,7 @@ function SsoProvider({
   const [user, setUser] = (0, import_react.useState)(null);
   const [isLoading, setIsLoading] = (0, import_react.useState)(true);
   const [isAuthenticated, setIsAuthenticated] = (0, import_react.useState)(false);
+  const [error, setError] = (0, import_react.useState)(null);
   const [client] = (0, import_react.useState)(() => new SsoClient(config));
   const refreshTimerRef = (0, import_react.useRef)(null);
   const loadedRef = (0, import_react.useRef)(false);
@@ -1160,6 +1174,7 @@ function SsoProvider({
     if (!tokenData) {
       setUser(null);
       setIsAuthenticated(false);
+      setError(null);
       setIsLoading(false);
       return;
     }
@@ -1167,9 +1182,13 @@ function SsoProvider({
       const u = await client.getUserInfo();
       setUser(u);
       setIsAuthenticated(true);
-    } catch {
+      setError(null);
+    } catch (err) {
       setUser(null);
       setIsAuthenticated(false);
+      setError(
+        err instanceof SsoError ? err : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err))
+      );
       removeTokenData(client.config.clientId);
     } finally {
       setIsLoading(false);
@@ -1264,6 +1283,7 @@ function SsoProvider({
       await client.logout(redirectToSso);
       setUser(null);
       setIsAuthenticated(false);
+      setError(null);
     },
     [client]
   );
@@ -1277,6 +1297,7 @@ function SsoProvider({
     user,
     isAuthenticated,
     isLoading,
+    error,
     login,
     loginPopup,
     logout,
@@ -1300,29 +1321,62 @@ function RequireAuth({
   children,
   fallback,
   autoLogin = true,
-  usePopup = false
+  usePopup = false,
+  onError,
+  renderLoginError
 }) {
   const { isAuthenticated, isLoading, login, loginPopup } = useSso();
   const loginTriggeredRef = (0, import_react2.useRef)(false);
+  const [loginError, setLoginError] = (0, import_react2.useState)(null);
+  const triggerLogin = () => {
+    loginTriggeredRef.current = true;
+    const currentPath = window.location.pathname + window.location.search;
+    const handleFailure = (err) => {
+      loginTriggeredRef.current = false;
+      setLoginError(err);
+      onError?.(err);
+    };
+    if (usePopup) {
+      loginPopup({ returnUrl: currentPath }).catch((err) => {
+        if (err.code === "popup_blocked") {
+          login(currentPath).catch(handleFailure);
+          return;
+        }
+        handleFailure(err);
+      });
+    } else {
+      login(currentPath).catch(handleFailure);
+    }
+  };
+  const retry = () => {
+    setLoginError(null);
+    triggerLogin();
+  };
   (0, import_react2.useEffect)(() => {
     if (!isLoading && !isAuthenticated && autoLogin && !loginTriggeredRef.current) {
-      loginTriggeredRef.current = true;
-      const currentPath = window.location.pathname + window.location.search;
-      if (usePopup) {
-        loginPopup({ returnUrl: currentPath }).catch((err) => {
-          if (err.code === "popup_blocked") {
-            login(currentPath);
-          }
-        });
-      } else {
-        login(currentPath);
-      }
+      triggerLogin();
     }
   }, [isLoading, isAuthenticated, autoLogin, usePopup, login, loginPopup]);
   if (isLoading) {
     return fallback || import_react2.default.createElement("div", null, "\u6B63\u5728\u9A8C\u8BC1\u767B\u5F55\u72B6\u6001...");
   }
   if (!isAuthenticated) {
+    if (loginError) {
+      if (renderLoginError) {
+        return import_react2.default.createElement(
+          import_react2.default.Fragment,
+          null,
+          renderLoginError(loginError, retry)
+        );
+      }
+      const message = loginError instanceof Error ? loginError.message : "\u767B\u5F55\u5931\u8D25";
+      return import_react2.default.createElement(
+        "div",
+        null,
+        import_react2.default.createElement("p", null, `\u767B\u5F55\u672A\u5B8C\u6210\uFF1A${message}`),
+        import_react2.default.createElement("button", { onClick: retry }, "\u91CD\u8BD5\u767B\u5F55")
+      );
+    }
     if (fallback) return import_react2.default.createElement(import_react2.default.Fragment, null, fallback);
     return import_react2.default.createElement("div", null, "\u8BF7\u5148\u767B\u5F55");
   }
@@ -1343,7 +1397,32 @@ function withAuth(Component) {
 
 // src/react/CallbackPage.tsx
 var import_react3 = __toESM(require("react"));
-function CallbackPage() {
+function DefaultCallbackError({ error }) {
+  return import_react3.default.createElement(
+    "div",
+    {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        fontFamily: "system-ui, sans-serif"
+      }
+    },
+    import_react3.default.createElement(
+      "p",
+      { style: { color: "#dc2626", marginBottom: "1rem" } },
+      error
+    ),
+    import_react3.default.createElement(
+      "a",
+      { href: "/", style: { color: "#2563eb", textDecoration: "underline" } },
+      "\u8FD4\u56DE\u9996\u9875"
+    )
+  );
+}
+function CallbackPage({ onSuccess, onError, renderError } = {}) {
   const { client, refreshUser } = useSso();
   const [error, setError] = (0, import_react3.useState)(null);
   const [processing, setProcessing] = (0, import_react3.useState)(true);
@@ -1365,22 +1444,26 @@ function CallbackPage() {
     let cancelled = false;
     async function handleCallback() {
       try {
-        await client.handleCallback(window.location.href);
+        const tokenData = await client.handleCallback(window.location.href);
         if (cancelled) return;
         await refreshUser();
-        const returnUrl = getReturnUrl();
-        removeReturnUrl();
+        if (cancelled) return;
+        const clientId = client.config.clientId;
+        const returnUrl = getReturnUrl(clientId);
+        removeReturnUrl(clientId);
+        if (onSuccess) {
+          onSuccess(tokenData);
+          return;
+        }
         window.location.href = returnUrl && isTrustedReturnUrl(returnUrl, window.location.origin) ? returnUrl : "/";
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof SsoError) {
-          setError(err.description || `SSO \u9519\u8BEF (${err.code})`);
-        } else if (err instanceof TypeError && err.message.includes("fetch")) {
-          setError("\u7F51\u7EDC\u8FDE\u63A5\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5");
-        } else if (err instanceof Error) {
-          setError(`\u767B\u5F55\u56DE\u8C03\u5904\u7406\u5931\u8D25: ${err.message}`);
+        const errorObj = err instanceof Error ? err : new Error(String(err));
+        onError?.(errorObj);
+        if (errorObj instanceof SsoError) {
+          setError(errorObj.description || `SSO \u9519\u8BEF (${errorObj.code})`);
         } else {
-          setError("\u767B\u5F55\u56DE\u8C03\u5904\u7406\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5");
+          setError(`\u767B\u5F55\u56DE\u8C03\u5904\u7406\u5931\u8D25: ${errorObj.message}`);
         }
         setProcessing(false);
       }
@@ -1389,31 +1472,10 @@ function CallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [client, refreshUser]);
+  }, [client, refreshUser, onSuccess, onError]);
   if (error) {
-    return import_react3.default.createElement(
-      "div",
-      {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          fontFamily: "system-ui, sans-serif"
-        }
-      },
-      import_react3.default.createElement(
-        "p",
-        { style: { color: "#dc2626", marginBottom: "1rem" } },
-        error
-      ),
-      import_react3.default.createElement(
-        "a",
-        { href: "/", style: { color: "#2563eb", textDecoration: "underline" } },
-        "\u8FD4\u56DE\u9996\u9875"
-      )
-    );
+    if (renderError) return import_react3.default.createElement(import_react3.default.Fragment, null, renderError(error));
+    return import_react3.default.createElement(DefaultCallbackError, { error });
   }
   if (processing) {
     return import_react3.default.createElement(
@@ -1435,6 +1497,7 @@ function CallbackPage() {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   CallbackPage,
+  DefaultCallbackError,
   RequireAuth,
   SsoProvider,
   useSso,

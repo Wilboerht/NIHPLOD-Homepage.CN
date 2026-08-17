@@ -31,7 +31,8 @@ __export(next_exports, {
   createLogoutRouteHandler: () => createLogoutRouteHandler,
   createSsoMiddleware: () => createSsoMiddleware,
   getHostCookieOptions: () => getHostCookieOptions,
-  getSecureCookieOptions: () => getSecureCookieOptions
+  getSecureCookieOptions: () => getSecureCookieOptions,
+  toInsecureCookieName: () => toInsecureCookieName
 });
 module.exports = __toCommonJS(next_exports);
 
@@ -46,19 +47,22 @@ var DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
 var DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
 var DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
 var DEFAULT_LOGOUT_STATE_COOKIE_NAME = "__Host-nihplod_sso_logout_state";
-function getHostCookieOptions(maxAge) {
+function toInsecureCookieName(name) {
+  return name.replace(/^__(Host|Secure)-/, "");
+}
+function getHostCookieOptions(maxAge, secure = true) {
   return {
     httpOnly: true,
-    secure: true,
+    secure,
     sameSite: "lax",
     path: "/",
     ...maxAge !== void 0 ? { maxAge } : {}
   };
 }
-function getSecureCookieOptions(maxAge, path = "/") {
+function getSecureCookieOptions(maxAge, path = "/", secure = true) {
   return {
     httpOnly: true,
-    secure: true,
+    secure,
     sameSite: "lax",
     path,
     ...maxAge !== void 0 ? { maxAge } : {}
@@ -176,12 +180,19 @@ function createSsoMiddleware(config) {
     callbackPath = "/api/auth/callback",
     ssoCookieName = "__Host-user_token",
     validateSsoCookie = true,
-    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
-    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
-    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
-    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME
+    insecureLocalDev = false
   } = config;
+  const secureCookies = !insecureLocalDev;
+  const accessTokenCookieName = insecureLocalDev ? toInsecureCookieName(config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME) : config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME;
+  const stateCookieName = insecureLocalDev ? toInsecureCookieName(config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME) : config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME;
+  const returnUrlCookieName = insecureLocalDev ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME) : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
+  const verifierCookieName = insecureLocalDev ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME) : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  if (insecureLocalDev) {
+    console.warn(
+      "[SSO SDK] insecureLocalDev=true\uFF1ACookie \u7684 Secure \u5C5E\u6027\u5DF2\u5173\u95ED\u4E14\u53BB\u9664 __Host-/__Secure- \u524D\u7F00\u3002\u4EC5\u9650 http://localhost \u672C\u5730\u5F00\u53D1\u4F7F\u7528\uFF0C\u751F\u4EA7\u73AF\u5883\u5FC5\u987B\u79FB\u9664\u8BE5\u914D\u7F6E\uFF08\u751F\u4EA7\u5FC5\u987B\u7528 HTTPS\uFF09\u3002"
+    );
+  }
   if (process.env.NODE_ENV !== "production") {
     if (!validateSsoCookie) {
       console.warn(
@@ -248,12 +259,12 @@ function createSsoMiddleware(config) {
     const loginUrl = new URL("/api/oauth/authorize", normalizedBase);
     loginUrl.search = authorizeParams.toString();
     const response = import_server.NextResponse.redirect(loginUrl);
-    response.cookies.set(stateCookieName, state, getHostCookieOptions(600));
-    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath));
+    response.cookies.set(stateCookieName, state, getHostCookieOptions(600, secureCookies));
+    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath, secureCookies));
     const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
-    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600));
+    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600, secureCookies));
     if (accessTokenCookie?.value) {
-      response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
+      response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
     }
     return response;
   };
@@ -482,7 +493,7 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
   if (typeof payload.exp !== "number") {
     throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 exp \u58F0\u660E");
   }
-  if (Date.now() >= payload.exp * 1e3) {
+  if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
   }
   if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
@@ -508,13 +519,16 @@ function createCallbackRouteHandler(config) {
     redirectUri,
     clientSecret,
     defaultReturnPath = "/",
-    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
-    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
-    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
-    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
-    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
-    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME
+    insecureLocalDev = false
   } = config;
+  const secureCookies = !insecureLocalDev;
+  const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
+  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
+  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+  const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
+  const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
+  const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   return async function GET(request) {
     const { searchParams } = request.nextUrl;
@@ -653,11 +667,11 @@ function createCallbackRouteHandler(config) {
     const returnUrl = isTrustedReturnUrl(rawReturnUrl, request.nextUrl.origin) ? rawReturnUrl : "/";
     const response = import_server2.NextResponse.redirect(new URL(returnUrl, request.url));
     response.cookies.set(accessTokenCookieName, tokenData.access_token, {
-      ...getHostCookieOptions(tokenData.expires_in)
+      ...getHostCookieOptions(tokenData.expires_in, secureCookies)
     });
     const refreshMaxAge = tokenData.refresh_expires_in != null ? tokenData.refresh_expires_in : 30 * 24 * 60 * 60;
     response.cookies.set(refreshTokenCookieName, tokenData.refresh_token, {
-      ...getHostCookieOptions(refreshMaxAge)
+      ...getHostCookieOptions(refreshMaxAge, secureCookies)
     });
     if (tokenData.id_token) {
       let idTokenMaxAge = 3600;
@@ -675,14 +689,14 @@ function createCallbackRouteHandler(config) {
       }
       if (idTokenMaxAge > 0) {
         response.cookies.set(idTokenCookieName, tokenData.id_token, {
-          ...getHostCookieOptions(idTokenMaxAge)
+          ...getHostCookieOptions(idTokenMaxAge, secureCookies)
         });
       }
     }
-    response.cookies.set(stateCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname));
+    response.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
+    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname, secureCookies));
     return response;
   };
 }
@@ -727,15 +741,18 @@ function createLogoutRouteHandler(config) {
     clientSecret,
     postLogoutRedirectUri = new URL(redirectUri).origin + "/",
     redirectToSso = true,
-    accessTokenCookieName = DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
-    refreshTokenCookieName = DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
-    idTokenCookieName = DEFAULT_ID_TOKEN_COOKIE_NAME,
-    stateCookieName = DEFAULT_STATE_COOKIE_NAME,
-    returnUrlCookieName = DEFAULT_RETURN_COOKIE_NAME,
-    verifierCookieName = DEFAULT_VERIFIER_COOKIE_NAME,
     callbackPath = "/api/auth/callback",
-    logoutStateCookieName = DEFAULT_LOGOUT_STATE_COOKIE_NAME
+    insecureLocalDev = false
   } = config;
+  const secureCookies = !insecureLocalDev;
+  const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
+  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
+  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+  const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
+  const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
+  const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
+  const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   return async function handler(request) {
     const returnedState = request.nextUrl.searchParams.get("state");
@@ -748,7 +765,7 @@ function createLogoutRouteHandler(config) {
         );
       }
       const res = import_server3.NextResponse.redirect(request.nextUrl.origin + "/");
-      res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0));
+      res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
     }
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
@@ -774,18 +791,18 @@ function createLogoutRouteHandler(config) {
       }
     }
     const clearCookies = (res) => {
-      res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(stateCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0));
-      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/"));
-      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath));
+      res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
+      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
       return res;
     };
     if (redirectToSso) {
       const discovery = await fetchDiscovery(normalizedBase);
-      const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/logout`;
+      const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", clientId);
       logoutUrl.searchParams.set(
@@ -798,7 +815,7 @@ function createLogoutRouteHandler(config) {
       const logoutState = generateRandomString2(32);
       logoutUrl.searchParams.set("state", logoutState);
       const res = clearCookies(import_server3.NextResponse.redirect(logoutUrl.toString()));
-      res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600));
+      res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600, secureCookies));
       return res;
     }
     return clearCookies(
@@ -819,6 +836,7 @@ function createLogoutRouteHandler(config) {
   createLogoutRouteHandler,
   createSsoMiddleware,
   getHostCookieOptions,
-  getSecureCookieOptions
+  getSecureCookieOptions,
+  toInsecureCookieName
 });
 //# sourceMappingURL=index.js.map

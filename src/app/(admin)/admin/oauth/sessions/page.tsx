@@ -80,6 +80,7 @@ function OAuthSessionsPage() {
 
   // Filters
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
   const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [clientOptions, setClientOptions] = useState<ClientOption[]>([]);
 
@@ -108,9 +109,9 @@ function OAuthSessionsPage() {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
-      if (search.trim()) params.set("search", search.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
-      // Sync URL params
+      // Sync URL params（仅在生效查询值变化后同步，避免每次击键都写 URL）
       const qs = params.toString();
       router.replace(`/admin/oauth/sessions${qs ? `?${qs}` : ""}`, { scroll: false });
       const data = await apiGet<SessionsResponse>(`/api/admin/oauth/sessions?${params.toString()}`);
@@ -122,7 +123,7 @@ function OAuthSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, searchClientId, toast, router]);
+  }, [page, debouncedSearch, searchClientId, toast, router]);
 
   useEffect(() => {
     deferInEffect(fetchSessions);
@@ -135,17 +136,18 @@ function OAuthSessionsPage() {
       .catch(() => setClientOptions([]));
   }, []);
 
-  // 搜索防抖
+  // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchSessions 统一发起请求
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (page !== 1) setPage(1);
-      else fetchSessions();
+      setPage(1);
+      setDebouncedSearch(search);
     }, 400);
     return () => clearTimeout(handler);
   }, [search]);
 
   const handleSearch = () => {
     setPage(1);
+    setDebouncedSearch(search);
   };
 
   const handleTerminate = async () => {
@@ -172,7 +174,7 @@ function OAuthSessionsPage() {
     }
     setBatchTerminating(true);
     try {
-      await apiDelete("/api/admin/oauth/sessions");
+      await apiDelete("/api/admin/oauth/sessions", { confirm: true });
       toast.success("全部会话已终止");
       setShowBatchTerminate(false);
       setBatchConfirmText("");
@@ -297,6 +299,7 @@ function OAuthSessionsPage() {
               <tr>
                 <td colSpan={7} className="py-8 text-center text-brand-charcoal/50">
                   暂无数据
+                  {(debouncedSearch || searchClientId) && "，请调整筛选条件后重试"}
                 </td>
               </tr>
             ) : (
@@ -391,7 +394,7 @@ function OAuthSessionsPage() {
         onConfirm={handleBatchTerminate}
         type="danger"
         title="批量终止全部会话"
-        description="此操作将使所有已登录用户强制注销，且不可撤销。请在下方输入 TERMINATE ALL 以确认。"
+        description={`此操作将终止当前 ${stats.activeSessions} 个活跃会话，使所有已登录用户强制注销，且不可撤销。请在下方输入 TERMINATE ALL 以确认。`}
         confirmText="确定全部终止"
         loading={batchTerminating}
         confirmDisabled={batchConfirmText !== "TERMINATE ALL"}

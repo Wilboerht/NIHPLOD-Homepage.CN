@@ -21,12 +21,19 @@ import React, {
 import { SsoClient } from "../core/SsoClient";
 import { getTokenData, removeTokenData } from "../core/storage";
 import type { TokenData } from "../core/storage";
+import { SsoError } from "../core/errors";
 import type { SsoClientConfig, SsoUser } from "../core/SsoClient";
 
 // ============================================
 // Context 类型
 // ============================================
 
+/**
+ * 认证状态为三态：
+ * - isLoading=true：初始化/刷新中，user 与 error 均可能为 null
+ * - error 非 null：加载用户信息失败（如会话已失效），user 为 null
+ * - isAuthenticated=true 且 user 非 null：已登录
+ */
 export interface SsoContextValue {
   /** 当前用户信息 */
   user: SsoUser | null;
@@ -36,6 +43,9 @@ export interface SsoContextValue {
 
   /** 是否正在加载（初始化/刷新中） */
   isLoading: boolean;
+
+  /** 最近一次加载用户信息失败的错误（成功或登出后为 null） */
+  error: SsoError | null;
 
   /** 发起登录（同页重定向） */
   login: (returnUrl?: string) => Promise<void>;
@@ -77,8 +87,9 @@ export interface SsoProviderProps {
   refreshThreshold?: number;
 
   /**
-   * API 请求函数（可选）
-   * 用于在 token 刷新后自动重试失败的 API 请求。
+   * Token 静默刷新成功后的回调（可选）。
+   * 每次刷新成功时以新的 access_token 调用，可用于同步 token 到外部状态；
+   * SDK 不会据此自动重试先前失败的 API 请求，重试需由调用方自行实现。
    */
   onTokenRefreshed?: (token: string) => void;
 }
@@ -188,6 +199,7 @@ export function SsoProvider({
   const [user, setUser] = useState<SsoUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<SsoError | null>(null);
   // 实例用 useState 懒初始化保持稳定引用（避免渲染期读取 ref）
   const [client] = useState(() => new SsoClient(config));
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -202,6 +214,7 @@ export function SsoProvider({
     if (!tokenData) {
       setUser(null);
       setIsAuthenticated(false);
+      setError(null);
       setIsLoading(false);
       return;
     }
@@ -210,9 +223,16 @@ export function SsoProvider({
       const u = await client.getUserInfo();
       setUser(u);
       setIsAuthenticated(true);
-    } catch {
+      setError(null);
+    } catch (err) {
       setUser(null);
       setIsAuthenticated(false);
+      // 写入 error 状态，调用方可据此展示"会话失效，请重新登录"等提示
+      setError(
+        err instanceof SsoError
+          ? err
+          : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err))
+      );
       removeTokenData(client.config.clientId);
     } finally {
       setIsLoading(false);
@@ -347,6 +367,7 @@ export function SsoProvider({
       await client.logout(redirectToSso);
       setUser(null);
       setIsAuthenticated(false);
+      setError(null);
     },
     [client]
   );
@@ -365,6 +386,7 @@ export function SsoProvider({
     user,
     isAuthenticated,
     isLoading,
+    error,
     login,
     loginPopup,
     logout,

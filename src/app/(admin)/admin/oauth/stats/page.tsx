@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * SSO 统计概览页
@@ -8,6 +8,7 @@
  * 仅 owner 角色可访问（API 层强制校验）
  */
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Users, KeyRound, RefreshCw, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 import { StatsCard } from "@/components/admin/StatsCard";
@@ -23,7 +24,7 @@ interface OAuthStats {
     thisWeek: number;
     thisMonth: number;
   };
-  successRate: number;
+  successRate: number | null;
   eventsByType: Record<string, number>;
 }
 
@@ -113,12 +114,30 @@ export default function OAuthStatsPage() {
           />
           <StatsCard
             title="本月授权成功率"
-            value={stats ? `${stats.successRate}%` : "—"}
+            value={
+              stats ? (stats.successRate === null ? "暂无数据" : `${stats.successRate}%`) : "—"
+            }
             icon={<ShieldCheck className="h-5 w-5" />}
-            description="本月 SSO 事件成功比例"
+            description="本月 SSO 授权事件成功比例"
             loading={loading}
           />
         </div>
+
+        {/* 全部无数据时引导创建第一个 Client */}
+        {stats &&
+          !loading &&
+          stats.activeClients === 0 &&
+          stats.activeSessions === 0 &&
+          stats.activeRefreshTokens === 0 &&
+          stats.events.thisMonth === 0 && (
+            <div className="rounded-xl border border-dashed border-brand-charcoal/20 bg-white p-4 text-sm text-brand-charcoal/60">
+              还没有任何 SSO 数据，
+              <Link href="/admin/oauth-clients/wizard" className="text-blue-600 hover:underline">
+                去创建第一个 Client
+              </Link>
+              开始接入。
+            </div>
+          )}
 
         {/* 事件趋势 */}
         <div className="grid gap-4 sm:grid-cols-3">

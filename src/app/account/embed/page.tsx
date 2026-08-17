@@ -78,6 +78,9 @@ export default function EmbedAccountPage() {
   const [error, setError] = useState("");
   const [nickname, setNickname] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveHint, setSaveHint] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [revoking, setRevoking] = useState<string | null>(null);
   const [sessions, setSessions] = useState<OAuthSession[]>([]);
 
   const fetchProfile = useCallback(async () => {
@@ -133,6 +136,9 @@ export default function EmbedAccountPage() {
       if (data.success) {
         setUser((prev) => (prev ? { ...prev, nickname } : prev));
         setError("");
+        // 保存成功提示（2 秒后自动消失）
+        setSaveHint("已保存");
+        setTimeout(() => setSaveHint(""), 2000);
       } else {
         setError(data.error?.message || "保存失败");
       }
@@ -143,7 +149,13 @@ export default function EmbedAccountPage() {
     }
   };
 
-  const handleRevoke = async (clientId: string) => {
+  const handleRevoke = async (clientId: string, clientName: string) => {
+    if (
+      !window.confirm(`确定要撤销对「${clientName}」的授权吗？撤销后该应用将无法再访问您的账户信息。`)
+    ) {
+      return;
+    }
+    setRevoking(clientId);
     try {
       const res = await fetch("/api/user/oauth/revoke", {
         method: "POST",
@@ -158,14 +170,23 @@ export default function EmbedAccountPage() {
       }
     } catch {
       setError("撤销失败");
+    } finally {
+      setRevoking(null);
     }
   };
 
   const handleLogout = async () => {
-    const res = await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
-    if (!res.ok) return;
-    // 通知父窗口用户已登出
-    postToParent({ type: "NIHPLOD_SSO_LOGOUT" });
+    setLoggingOut(true);
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
+      if (!res.ok) return;
+      // 刷新本地用户状态：登出后立即切换为未登录视图
+      setUser(null);
+      // 通知父窗口用户已登出
+      postToParent({ type: "NIHPLOD_SSO_LOGOUT" });
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   if (loading) {
@@ -249,6 +270,7 @@ export default function EmbedAccountPage() {
                 {saving ? "保存中" : "保存"}
               </button>
             </div>
+            {saveHint && <p className="mt-1 text-xs text-green-600">{saveHint}</p>}
           </div>
           <div>
             <label className="mb-1 block text-xs text-gray-500">会员等级</label>
@@ -266,9 +288,10 @@ export default function EmbedAccountPage() {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full rounded-lg border border-red-200 py-2 text-sm text-red-600 hover:bg-red-50"
+            disabled={loggingOut}
+            className="w-full rounded-lg border border-red-200 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
-            退出登录
+            {loggingOut ? "退出中..." : "退出登录"}
           </button>
         </div>
       )}
@@ -293,10 +316,11 @@ export default function EmbedAccountPage() {
                     <p className="text-xs text-gray-400">权限: {s.scopes.join(", ")}</p>
                   </div>
                   <button
-                    onClick={() => handleRevoke(s.clientId)}
-                    className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                    onClick={() => handleRevoke(s.clientId, s.clientName)}
+                    disabled={revoking === s.clientId}
+                    className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                   >
-                    撤销
+                    {revoking === s.clientId ? "撤销中..." : "撤销"}
                   </button>
                 </div>
               ))}

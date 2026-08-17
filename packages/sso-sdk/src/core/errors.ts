@@ -13,9 +13,11 @@ export type SsoErrorCode =
   | "userinfo_failed"
   | "not_authenticated"
   | "authorization_code_expired"
+  // 保留：当前 SDK 不主动抛出，预留给服务端错误透传/未来版本使用
   | "authorization_code_used"
   | "client_disabled"
   | "user_denied_authorization"
+  // 保留：当前 SDK 不主动抛出，预留给服务端错误透传/未来版本使用
   | "account_disabled"
   | "sso_server_error"
   | "rate_limited"
@@ -25,6 +27,7 @@ export type SsoErrorCode =
   | "id_token_invalid"
   | "id_token_unsupported_alg"
   | "id_token_hs256_unsupported"
+  // 保留：当前 SDK 不主动抛出（HS256 一律拒绝，见 id_token_hs256_unsupported）
   | "id_token_missing_secret"
   | "id_token_invalid_signature"
   | "id_token_issuer_mismatch"
@@ -87,8 +90,9 @@ export class SsoError extends Error {
 /**
  * OAuth 2.0 协议层错误（RFC 6749 §5.2）
  *
- * 用于表示服务端原样返回的 OAuth 错误（error / error_description / error_uri），
- * 与 SDK 语义的 SsoError 区分。
+ * 保留用于表示服务端原样返回的 OAuth 错误（error / error_description / error_uri），
+ * 与 SDK 语义的 SsoError 区分。当前 SDK 内部不抛出此类型（统一使用 SsoError +
+ * mapOAuthErrorToSsoCode 映射），作为公共类型导出供子项目自行解析 OAuth 响应时使用。
  */
 export class OAuthError extends Error {
   public readonly code: string;

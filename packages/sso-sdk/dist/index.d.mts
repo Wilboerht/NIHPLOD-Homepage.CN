@@ -2,8 +2,10 @@
  * Token 存储抽象层
  *
  * 分两类存储：
- * - Token 数据：默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，
- *   XSS 无法窃取长期凭证。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
+ * - Token 数据：默认使用 sessionStorage（标签页级持久化）。登录回调后 CallbackPage
+ *   默认整页跳转，内存存储会丢失登录态，因此默认改为 sessionStorage：
+ *   整页跳转与刷新后登录态保留，关闭标签页自动清除；SSR / 隐私模式写入失败时
+ *   降级为内存 Map。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
  *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
  * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
  *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
@@ -34,12 +36,13 @@ interface TokenStorage {
 /**
  * 创建存储实现
  *
- * @param options.persist 是否持久化到 localStorage。默认 false（内存存储）。
+ * @param options.persist 是否持久化到 localStorage。默认 false（sessionStorage）。
+ *   - false（默认）：sessionStorage，标签页级持久化（刷新/整页跳转后登录态保留，
+ *     关闭标签页即清除），多 Tab 间不共享；隐私模式等写入失败时降级为内存。
+ *   - true：localStorage，多 Tab 共享、关闭浏览器后仍保留。
  *   ⚠️ 安全警告：persist=true 会将 refresh_token 明文写入 localStorage，
  *   任何 XSS 均可在不被检测的情况下读取。仅在 BFF/Confidential Client
  *   且 refresh_token 不直接暴露给浏览器的场景下使用。
- *   - Confidential/BFF 子项目可设为 true。
- *   - Public Client 在浏览器中应保持 false（默认）。
  */
 declare function createSecureStorage(options?: {
     persist?: boolean;
@@ -176,12 +179,20 @@ declare class SsoClient {
      *
      * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
      *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+     *
+     * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+     * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+     * 同一次登录只使用其中一个入口。
      */
     login(returnUrl?: string): Promise<void>;
     /**
      * 构建登录 URL（不跳转，返回 URL 字符串）
      *
      * 适用于需要手动处理跳转的场景。
+     *
+     * ⚠️ 不要与 login() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+     * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+     * 同一次登录只使用其中一个入口。
      */
     getLoginUrl(returnUrl?: string): Promise<string>;
     /**
@@ -226,7 +237,7 @@ declare class SsoClient {
      * 处理 OAuth 回调
      *
      * 解析回调 URL，校验 state 参数，用授权码交换 token。
-     * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
+     * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
      *
      * @param callbackUrl - 完整的回调 URL（window.location.href）
      * @returns TokenData 或 null
@@ -354,8 +365,9 @@ declare class SsoError extends Error {
 /**
  * OAuth 2.0 协议层错误（RFC 6749 §5.2）
  *
- * 用于表示服务端原样返回的 OAuth 错误（error / error_description / error_uri），
- * 与 SDK 语义的 SsoError 区分。
+ * 保留用于表示服务端原样返回的 OAuth 错误（error / error_description / error_uri），
+ * 与 SDK 语义的 SsoError 区分。当前 SDK 内部不抛出此类型（统一使用 SsoError +
+ * mapOAuthErrorToSsoCode 映射），作为公共类型导出供子项目自行解析 OAuth 响应时使用。
  */
 declare class OAuthError extends Error {
     readonly code: string;

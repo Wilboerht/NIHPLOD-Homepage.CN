@@ -12,6 +12,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -44,6 +45,7 @@ interface TestResultData {
 
 export default function OAuthWizardPage() {
   const toast = useToast();
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -55,14 +57,18 @@ export default function OAuthWizardPage() {
   // Step 2: Scopes
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["openid", "profile"]);
   const [availableScopes, setAvailableScopes] = useState<ScopeDef[]>([]);
+  const [scopesLoadFailed, setScopesLoadFailed] = useState(false);
 
   useEffect(() => {
     apiGet<{ scopes: ScopeDef[] }>("/api/admin/oauth/scopes")
       .then((d) => {
         if (d.scopes) setAvailableScopes(d.scopes);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        setScopesLoadFailed(true);
+        toast.error("权限范围加载失败，请刷新页面重试");
+      });
+  }, [toast]);
 
   // Step 3: Result
   const [result, setResult] = useState<StepResult>({});
@@ -121,8 +127,8 @@ export default function OAuthWizardPage() {
       });
       setStep(4);
       toast.success("Client 创建成功");
-    } catch {
-      toast.error("网络错误");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建 Client 失败");
     } finally {
       setLoading(false);
     }
@@ -319,6 +325,11 @@ const user = await userRes.json();`;
             选择你的应用需要获取的用户信息权限。仅选择必需的最小权限。
           </p>
           <div className="mb-6 max-w-md space-y-3">
+            {availableScopes.length === 0 && scopesLoadFailed && (
+              <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                权限范围加载失败，请刷新页面重试。
+              </p>
+            )}
             {availableScopes.map((s) => (
               <label
                 key={s.value}
@@ -513,10 +524,7 @@ const user = await userRes.json();`;
             >
               在线测试连接
             </Button>
-            <Button
-              onClick={() => (window.location.href = "/admin/oauth-clients")}
-              disabled={!secretSaved}
-            >
+            <Button onClick={() => router.push("/admin/oauth-clients")} disabled={!secretSaved}>
               完成，前往管理
             </Button>
           </div>

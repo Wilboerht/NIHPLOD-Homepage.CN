@@ -119,7 +119,7 @@ describe("GET /api/admin/oauth/audit", () => {
     expect(res.status).toBe(429);
   });
 
-  it("JSON 分页查询：event 白名单内类型进入 where，非法类型被忽略", async () => {
+  it("JSON 分页查询：event 白名单内类型进入 where，非法类型返回 400", async () => {
     prismaMock.ssoAuditEvent.findMany.mockResolvedValue([makeAuditItem()]);
     prismaMock.ssoAuditEvent.count.mockResolvedValue(1);
 
@@ -135,11 +135,27 @@ describe("GET /api/admin/oauth/audit", () => {
     expect(data.data.pagination.total).toBe(1);
     expect(data.data.items[0].createdAt).toBe("2026-08-10T12:00:00.000Z");
 
-    // 非法 event 类型不进入查询条件（防注入/防无意义过滤）
-    await GET(createRequest("/api/admin/oauth/audit?event=evil_type"));
-    const where2 = (prismaMock.ssoAuditEvent.findMany.mock.calls[1][0] as { where: Record<string, unknown> })
-      .where;
-    expect(where2).not.toHaveProperty("event");
+    // 非法 event 类型返回 400 而非静默忽略，避免筛选条件失效造成误解
+    const badRes = await GET(createRequest("/api/admin/oauth/audit?event=evil_type"));
+    expect(badRes.status).toBe(400);
+    expect((await badRes.json()).error.code).toBe("INVALID_PARAMS");
+  });
+
+  it("endDate 为 YYYY-MM-DD 时按次日零点（不含）过滤，包含当天事件", async () => {
+    prismaMock.ssoAuditEvent.findMany.mockResolvedValue([]);
+    prismaMock.ssoAuditEvent.count.mockResolvedValue(0);
+
+    const { GET } = await import("@/app/api/admin/oauth/audit/route");
+    const res = await GET(
+      createRequest("/api/admin/oauth/audit?startDate=2026-08-01&endDate=2026-08-10")
+    );
+    expect(res.status).toBe(200);
+
+    const where = (prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as {
+      where: { createdAt: { gte: Date; lt: Date } };
+    }).where;
+    expect(where.createdAt.gte).toEqual(new Date("2026-08-01T00:00:00.000Z"));
+    expect(where.createdAt.lt).toEqual(new Date("2026-08-11T00:00:00.000Z"));
   });
 
   it("JSON 分页查询：联表 User 返回脱敏手机号，无关联用户时为 null", async () => {
@@ -181,9 +197,12 @@ describe("GET /api/admin/oauth/audit", () => {
     expect(res.headers.get("Content-Type")).toContain("text/csv");
     expect(res.headers.get("Content-Disposition")).toMatch(/attachment; filename="sso-audit-\d{4}-\d{2}-\d{2}\.csv"/);
 
-    const csv = await res.text();
+    // BOM 防 Excel 中文乱码（res.text() 的 UTF-8 解码会剥离 BOM，改按字节校验）
+    const buf = new Uint8Array(await res.arrayBuffer());
+    expect([...buf.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    const csv = new TextDecoder("utf-8", { ignoreBOM: true }).decode(buf);
     const lines = csv.split("\n");
-    expect(lines[0]).toBe("id,event,userId,clientId,clientName,ip,success,createdAt");
+    expect(lines[0]).toBe("\uFEFFid,event,userId,clientId,clientName,ip,success,createdAt");
     // 防护顺序：先加 ' 前缀（'=HYPERLINK...），内部双引号转义为 ""，
     // 因含逗号整体再用双引号包裹。绝不允许多行文本中出现裸 = 开头单元格。
     expect(csv).toContain(`"'=HYPERLINK(""https://evil.com""),x"`);

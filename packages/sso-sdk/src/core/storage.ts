@@ -2,8 +2,10 @@
  * Token 存储抽象层
  *
  * 分两类存储：
- * - Token 数据：默认使用内存存储，Public Client 浏览器中 refresh_token 不落盘，
- *   XSS 无法窃取长期凭证。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
+ * - Token 数据：默认使用 sessionStorage（标签页级持久化）。登录回调后 CallbackPage
+ *   默认整页跳转，内存存储会丢失登录态，因此默认改为 sessionStorage：
+ *   整页跳转与刷新后登录态保留，关闭标签页自动清除；SSR / 隐私模式写入失败时
+ *   降级为内存 Map。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
  *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
  * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
  *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
@@ -51,11 +53,10 @@ function buildKey(base: string, clientId?: string): string {
 }
 
 /**
- * 内存存储适配器（Public Client 浏览器默认）
+ * 内存存储适配器
  *
- * 安全优势：
- * - refresh_token 不落盘，XSS 无法窃取长期凭证。
- * - 页面刷新后用户需重新授权，符合纯前端 Public Client 的安全模型。
+ * 仅作为 sessionStorage 不可用（SSR / 隐私模式写入失败）时的降级方案，
+ * 或显式注入使用。页面刷新后用户需重新登录。
  *
  * 代价：多 Tab 间不会自动同步 token；SDK 内部已用锁机制避免并发刷新。
  */
@@ -109,11 +110,14 @@ const localStorageAdapter: TokenStorage = {
 };
 
 /**
- * 浏览器 sessionStorage 实现（临时数据专用）
+ * 浏览器 sessionStorage 实现
  *
- * PKCE verifier / state / returnUrl / popup nonce 必须跨整页重定向存活
- * （login() 跳转到 SSO 中心后回调页面仍需读取），不能放模块级内存；
- * sessionStorage 在整页跳转后保留，且随标签页关闭自动清除，恰好匹配其生命周期。
+ * 同时承担两个角色：
+ * - Token 数据的默认存储：整页重定向（CallbackPage 默认行为）与页面刷新后
+ *   登录态仍保留；sessionStorage 随标签页关闭自动清除，且不跨 Tab 共享，
+ *   比 localStorage 缩小了 XSS 窃取 refresh_token 的暴露面。
+ * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）专用：
+ *   必须跨整页重定向存活，不能放模块级内存。
  * SSR / 隐私模式写入失败时降级为内存 Map，保证不抛异常。
  */
 function createSessionStorageAdapter(): TokenStorage {
@@ -151,18 +155,23 @@ const _transient: TokenStorage = createSessionStorageAdapter();
 /**
  * 创建存储实现
  *
- * @param options.persist 是否持久化到 localStorage。默认 false（内存存储）。
+ * @param options.persist 是否持久化到 localStorage。默认 false（sessionStorage）。
+ *   - false（默认）：sessionStorage，标签页级持久化（刷新/整页跳转后登录态保留，
+ *     关闭标签页即清除），多 Tab 间不共享；隐私模式等写入失败时降级为内存。
+ *   - true：localStorage，多 Tab 共享、关闭浏览器后仍保留。
  *   ⚠️ 安全警告：persist=true 会将 refresh_token 明文写入 localStorage，
  *   任何 XSS 均可在不被检测的情况下读取。仅在 BFF/Confidential Client
  *   且 refresh_token 不直接暴露给浏览器的场景下使用。
- *   - Confidential/BFF 子项目可设为 true。
- *   - Public Client 在浏览器中应保持 false（默认）。
  */
 export function createSecureStorage(options: { persist?: boolean } = {}): TokenStorage {
-  return options.persist ? localStorageAdapter : memoryStorageAdapter;
+  return options.persist ? localStorageAdapter : createSessionStorageAdapter();
 }
 
-let _storage: TokenStorage = memoryStorageAdapter;
+/**
+ * 默认 token 存储：sessionStorage（标签页级持久化），SSR/隐私模式降级为内存。
+ * 可通过 setTokenStorage() 覆盖。
+ */
+let _storage: TokenStorage = createSessionStorageAdapter();
 
 /**
  * 设置自定义存储实现

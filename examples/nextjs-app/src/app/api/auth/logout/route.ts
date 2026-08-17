@@ -11,6 +11,9 @@ import { createLogoutRouteHandler } from "@nihplod/sso-sdk/next";
 
 export const runtime = "nodejs";
 
+// 与 middleware 保持一致：本地 HTTP 开发开启 insecureLocalDev
+const isHttpLocalDev = (process.env.SSO_REDIRECT_URI || "").startsWith("http://");
+
 const logoutHandler = createLogoutRouteHandler({
   clientId: process.env.SSO_CLIENT_ID || "your-client-id",
   clientSecret: process.env.SSO_CLIENT_SECRET,
@@ -18,6 +21,7 @@ const logoutHandler = createLogoutRouteHandler({
   redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
   postLogoutRedirectUri: process.env.SSO_POST_LOGOUT_REDIRECT_URI || "http://localhost:3002/",
   redirectToSso: true,
+  insecureLocalDev: isHttpLocalDev,
 });
 
 // GET：兼容 RP-Initiated Logout 规范（end_session_endpoint 支持 GET）

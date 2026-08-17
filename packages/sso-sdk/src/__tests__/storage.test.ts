@@ -17,6 +17,7 @@ import {
   removeReturnUrl,
   clearAllSsoData,
   setTokenStorage,
+  createSecureStorage,
   type TokenData,
 } from "../core/storage";
 
@@ -74,6 +75,23 @@ describe("Token Storage", () => {
       saveTokenData(sampleToken);
       removeTokenData();
       expect(getTokenData()).toBeNull();
+    });
+  });
+
+  describe("createSecureStorage", () => {
+    it("persist=false（默认）使用 sessionStorage：整页跳转/刷新后 token 仍保留", () => {
+      setTokenStorage(createSecureStorage());
+      saveTokenData(sampleToken);
+      // token 落在 sessionStorage 而非模块内存
+      expect(sessionStorage.getItem("nihplod_sso_token")).not.toBeNull();
+      expect(getTokenData()?.access_token).toBe("test-access-token");
+    });
+
+    it("persist=true 使用 localStorage（多 Tab 共享）", () => {
+      setTokenStorage(createSecureStorage({ persist: true }));
+      saveTokenData(sampleToken);
+      expect(localStorage.getItem("nihplod_sso_token")).not.toBeNull();
+      expect(getTokenData()?.access_token).toBe("test-access-token");
     });
   });
 

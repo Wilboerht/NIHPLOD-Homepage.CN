@@ -13,9 +13,13 @@ import { createCallbackRouteHandler } from "@nihplod/sso-sdk/next";
 
 export const runtime = "nodejs";
 
+// 与 middleware 保持一致：本地 HTTP 开发开启 insecureLocalDev
+const isHttpLocalDev = (process.env.SSO_REDIRECT_URI || "").startsWith("http://");
+
 export const GET = createCallbackRouteHandler({
   clientId: process.env.SSO_CLIENT_ID || "your-client-id",
   clientSecret: process.env.SSO_CLIENT_SECRET,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
   redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
+  insecureLocalDev: isHttpLocalDev,
 });

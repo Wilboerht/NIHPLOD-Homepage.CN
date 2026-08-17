@@ -131,4 +131,17 @@ describe("createLogoutRouteHandler", () => {
     expect(res.headers.get("location")).toBe("https://myapp.com/");
     expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
   });
+
+  it("Discovery 不可达时回退到 /api/oauth/end-session（与 SsoClient 一致）", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      throw new Error("network down");
+    });
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(buildRequest());
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.origin + location.pathname).toBe(
+      "https://nihplod.cn/api/oauth/end-session"
+    );
+  });
 });

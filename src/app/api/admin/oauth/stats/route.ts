@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
           thisWeek: weekEvents,
           thisMonth: monthEvents,
         },
-        successRate: totalEvents > 0 ? Math.round((successfulEvents / totalEvents) * 100) : 100,
+        // 无数据时返回 null，由前端展示"暂无数据"，避免误导性的 100%
+        successRate: totalEvents > 0 ? Math.round((successfulEvents / totalEvents) * 100) : null,
         eventsByType: Object.fromEntries(eventsByType.map((e) => [e.event, e._count.event])),
       },
     });

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { DEFAULT_ACCESS_TOKEN_COOKIE_NAME } from "@nihplod/sso-sdk/next";
+import { DEFAULT_ACCESS_TOKEN_COOKIE_NAME, toInsecureCookieName } from "@nihplod/sso-sdk/next";
 
 /**
  * Next.js 首页 — Middleware 接入方式（推荐）
@@ -16,10 +16,16 @@ import { DEFAULT_ACCESS_TOKEN_COOKIE_NAME } from "@nihplod/sso-sdk/next";
  */
 export const dynamic = "force-dynamic";
 
+// 本地 HTTP 开发（insecureLocalDev）下 Cookie 名称会去除 __Host- 前缀
+const isHttpLocalDev = (process.env.SSO_REDIRECT_URI || "").startsWith("http://");
+const ACCESS_TOKEN_COOKIE = isHttpLocalDev
+  ? toInsecureCookieName(DEFAULT_ACCESS_TOKEN_COOKIE_NAME)
+  : DEFAULT_ACCESS_TOKEN_COOKIE_NAME;
+
 export default async function Home() {
   const cookieStore = await cookies();
   const isAuthenticated = Boolean(
-    cookieStore.get(DEFAULT_ACCESS_TOKEN_COOKIE_NAME)?.value
+    cookieStore.get(ACCESS_TOKEN_COOKIE)?.value
   );
 
   return (

@@ -6,4 +6,5 @@
 
 export { SsoProvider, useSso } from "./SsoProvider";
 export { RequireAuth, withAuth } from "./RequireAuth";
-export { CallbackPage } from "./CallbackPage";
+export { CallbackPage, DefaultCallbackError } from "./CallbackPage";
+export type { CallbackPageProps } from "./CallbackPage";

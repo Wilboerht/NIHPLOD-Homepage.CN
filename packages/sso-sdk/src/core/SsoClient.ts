@@ -207,7 +207,8 @@ export class SsoClient {
    */
   private _saveReturnUrlIfTrusted(returnUrl: string): void {
     if (isTrustedReturnUrl(returnUrl, window.location.origin)) {
-      saveReturnUrl(returnUrl);
+      // 按 clientId 隔离存储，与 CallbackPage 读取的 key 对应
+      saveReturnUrl(returnUrl, this.config.clientId);
     } else {
       console.warn(`[SSO SDK] returnUrl 未通过同源校验，已忽略: ${returnUrl}`);
     }
@@ -225,6 +226,10 @@ export class SsoClient {
    *
    * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
    *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+   *
+   * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+   * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+   * 同一次登录只使用其中一个入口。
    */
   async login(returnUrl?: string): Promise<void> {
     const verifier = generateCodeVerifier();
@@ -258,6 +263,10 @@ export class SsoClient {
    * 构建登录 URL（不跳转，返回 URL 字符串）
    *
    * 适用于需要手动处理跳转的场景。
+   *
+   * ⚠️ 不要与 login() 混用：两者都会重新生成并覆盖 sessionStorage 中的
+   * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
+   * 同一次登录只使用其中一个入口。
    */
   async getLoginUrl(returnUrl?: string): Promise<string> {
     const verifier = generateCodeVerifier();
@@ -266,7 +275,7 @@ export class SsoClient {
 
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
-    // 统一使用全局 returnUrl key，与 login() / CallbackPage 保持一致
+    // returnUrl 按 clientId 隔离，与 login() / CallbackPage 保持一致
     if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
 
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
@@ -444,7 +453,7 @@ export class SsoClient {
    * 处理 OAuth 回调
    *
    * 解析回调 URL，校验 state 参数，用授权码交换 token。
-   * 成功后 token 自动保存到 token 存储（默认内存，可通过 setTokenStorage 定制）。
+   * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
    * @returns TokenData 或 null
@@ -455,17 +464,23 @@ export class SsoClient {
     const url = new URL(callbackUrl);
     const params = url.searchParams;
 
-    // 检查错误
+    // 检查错误（SSO 中心按 OAuth 2.0 规范回传 error 参数）
     const error = params.get("error");
     if (error) {
+      // 授权已失败，本次流程的临时数据（state/verifier）不再有用，一并清理避免残留
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       const desc = params.get("error_description") || error;
-      throw new SsoError("token_request_failed", `授权失败: ${desc}`);
+      throw new SsoError(mapOAuthErrorToSsoCode(error), `授权失败: ${desc}`);
     }
 
     const code = params.get("code");
     const returnedState = params.get("state");
 
     if (!code) {
+      // 缺 code 的回调无法继续，清理临时数据避免残留
+      removeOAuthState(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
       throw new SsoError("token_request_failed", "回调 URL 中缺少 authorization code");
     }
 

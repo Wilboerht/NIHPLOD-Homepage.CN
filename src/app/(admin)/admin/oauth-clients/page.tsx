@@ -131,6 +131,7 @@ function OAuthClientsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
   const pageSize = 20;
 
   // Modal states
@@ -139,17 +140,17 @@ function OAuthClientsPage() {
   const [editClient, setEditClient] = useState<OAuthClient | null>(null);
 
   // Rotate secret confirm modal
-  const [showRotateConfirm, setShowRotateConfirm] = useState(false);
-  const [rotateClientId, setRotateClientId] = useState<string | null>(null);
+  const [rotateClient, setRotateClient] = useState<OAuthClient | null>(null);
 
   // Rotated secret display modal
   const [showRotatedSecret, setShowRotatedSecret] = useState(false);
   const [rotatedSecret, setRotatedSecret] = useState<string | null>(null);
   const [showRotatedSecretValue, setShowRotatedSecretValue] = useState(false);
+  const [rotatedSecretSaved, setRotatedSecretSaved] = useState(false);
 
   // Delete confirm modal
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [deleteClient, setDeleteClient] = useState<OAuthClient | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Disable confirm modal（禁用会级联撤销会话并 backchannel 登出子项目用户，需二次确认）
   const [disableClient, setDisableClient] = useState<OAuthClient | null>(null);
@@ -176,6 +177,7 @@ function OAuthClientsPage() {
   // Newly created secret
   const [newSecret, setNewSecret] = useState<string | null>(null);
   const [showNewSecret, setShowNewSecret] = useState(false);
+  const [newSecretSaved, setNewSecretSaved] = useState(false);
 
   // SDK config
   const [showSdkConfig, setShowSdkConfig] = useState(false);
@@ -189,7 +191,7 @@ function OAuthClientsPage() {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
-      if (search.trim()) params.set("search", search.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       const data = await apiGet<ClientsResponse>(`/api/admin/oauth-clients?${params.toString()}`);
       setClients(data.clients);
       setTotal(data.pagination.total);
@@ -198,26 +200,28 @@ function OAuthClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, toast]);
+  }, [page, debouncedSearch, toast]);
 
   useEffect(() => {
     deferInEffect(fetchClients);
   }, [fetchClients]);
 
+  // URL 仅在生效查询值变化后同步，避免每次击键都写 URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (search.trim()) params.set("search", search.trim());
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
     else params.delete("search");
     if (page !== 1) params.set("page", String(page));
     else params.delete("page");
     const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
     window.history.replaceState(null, "", newUrl);
-  }, [search, page]);
+  }, [debouncedSearch, page]);
 
+  // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchClients 统一发起请求
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (page !== 1) setPage(1);
-      else fetchClients();
+      setPage(1);
+      setDebouncedSearch(search);
     }, 400);
     return () => clearTimeout(handler);
   }, [search]);
@@ -257,10 +261,11 @@ function OAuthClientsPage() {
         backchannelLogoutUri: formBackchannelUri.trim() || undefined,
       });
       setNewSecret(data.plainSecret);
+      setNewSecretSaved(false);
       toast.success("Client 创建成功");
       fetchClients();
-    } catch {
-      toast.error("网络错误");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建 Client 失败");
     } finally {
       setSaving(false);
     }
@@ -295,46 +300,50 @@ function OAuthClientsPage() {
       toast.success("Client 更新成功");
       setShowEdit(false);
       fetchClients();
-    } catch {
-      toast.error("网络错误");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "更新 Client 失败");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteClientId) return;
+    if (!deleteClient) return;
+    if (deleteConfirmText !== deleteClient.name) {
+      toast.error("请输入 Client 名称以确认删除");
+      return;
+    }
     setSaving(true);
     try {
-      await apiDelete(`/api/admin/oauth-clients/${deleteClientId}`);
+      await apiDelete(`/api/admin/oauth-clients/${deleteClient.id}`);
       toast.success("Client 已删除");
       fetchClients();
-    } catch {
-      toast.error("删除 Client 失败");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "删除 Client 失败");
     } finally {
       setSaving(false);
-      setShowDeleteConfirm(false);
-      setDeleteClientId(null);
+      setDeleteClient(null);
+      setDeleteConfirmText("");
     }
   };
 
   const handleRotateSecret = async () => {
-    if (!rotateClientId) return;
+    if (!rotateClient) return;
     setSaving(true);
     try {
       const data = await apiPost<{ plainSecret: string }>(
-        `/api/admin/oauth-clients/${rotateClientId}/rotate-secret`,
+        `/api/admin/oauth-clients/${rotateClient.id}/rotate-secret`,
         { confirm: true }
       );
       setRotatedSecret(data.plainSecret);
+      setRotatedSecretSaved(false);
       setShowRotatedSecret(true);
       toast.success("密钥轮换成功");
-    } catch {
-      toast.error("密钥轮换失败");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "密钥轮换失败");
     } finally {
       setSaving(false);
-      setShowRotateConfirm(false);
-      setRotateClientId(null);
+      setRotateClient(null);
     }
   };
 
@@ -346,8 +355,8 @@ function OAuthClientsPage() {
       });
       toast.success(client.isActive ? "Client 已禁用" : "Client 已启用");
       fetchClients();
-    } catch {
-      toast.error("网络错误");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "操作失败");
     } finally {
       setSaving(false);
       setDisableClient(null);
@@ -491,9 +500,9 @@ if (!payload) {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">OAuth Client 管理</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-medium text-brand-charcoal">SSO 应用（OAuth Client）管理</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -514,7 +523,7 @@ if (!payload) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <table className="w-full">
           <thead className="border-b bg-gray-50">
             <tr>
@@ -541,6 +550,7 @@ if (!payload) {
               <tr>
                 <td colSpan={10} className="py-8 text-center text-gray-500">
                   暂无数据
+                  {debouncedSearch && "，请调整筛选条件后重试"}
                 </td>
               </tr>
             ) : (
@@ -646,10 +656,7 @@ if (!payload) {
                       <Tooltip content="轮换密钥" side="top">
                         <button
                           aria-label="轮换密钥"
-                          onClick={() => {
-                            setRotateClientId(c.id);
-                            setShowRotateConfirm(true);
-                          }}
+                          onClick={() => setRotateClient(c)}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-purple-600"
                         >
                           <RotateCw className="h-4 w-4" />
@@ -668,8 +675,8 @@ if (!payload) {
                         <button
                           aria-label="删除 Client"
                           onClick={() => {
-                            setDeleteClientId(c.id);
-                            setShowDeleteConfirm(true);
+                            setDeleteClient(c);
+                            setDeleteConfirmText("");
                           }}
                           className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
                         >
@@ -732,8 +739,25 @@ if (!payload) {
                 </Button>
               </div>
             </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={newSecretSaved}
+                  onChange={(e) => setNewSecretSaved(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <p className="text-sm font-medium text-amber-800">我已安全保存 Client Secret</p>
+                  <p className="mt-0.5 text-xs text-amber-600">
+                    Secret 仅显示一次，关闭后无法再次查看。未完成保存前请勿关闭。
+                  </p>
+                </div>
+              </label>
+            </div>
             <div className="flex justify-end">
               <Button
+                disabled={!newSecretSaved}
                 onClick={() => {
                   setShowCreate(false);
                   setNewSecret(null);
@@ -882,32 +906,38 @@ if (!payload) {
 
       {/* Rotate Secret Confirm */}
       <ConfirmDialog
-        open={showRotateConfirm}
-        onClose={() => {
-          setShowRotateConfirm(false);
-          setRotateClientId(null);
-        }}
+        open={!!rotateClient}
+        onClose={() => setRotateClient(null)}
         onConfirm={handleRotateSecret}
+        type="danger"
         title="轮换 Client 密钥"
-        description="确定要轮换该 Client 的密钥？旧 Secret 在 5 分钟过渡期内仍可使用，之后自动失效。所有使用旧密钥的子项目需要在过渡期内更新配置。"
+        description={`确定要轮换「${rotateClient?.name || ""}」（${rotateClient?.clientId || ""}）的密钥？旧 Secret 在 5 分钟过渡期内仍可使用，之后自动失效。所有使用旧密钥的子项目需要在过渡期内更新配置。`}
         confirmText="确定轮换"
         loading={saving}
       />
 
       {/* Delete Confirm */}
       <ConfirmDialog
-        open={showDeleteConfirm}
+        open={!!deleteClient}
         onClose={() => {
-          setShowDeleteConfirm(false);
-          setDeleteClientId(null);
+          setDeleteClient(null);
+          setDeleteConfirmText("");
         }}
         onConfirm={handleDelete}
         type="danger"
         title="删除 Client"
-        description="确定要删除该 Client 吗？删除后该 Client 将无法继续接入 SSO，所有已授权用户需要重新授权。"
+        description={`确定要删除「${deleteClient?.name || ""}」（${deleteClient?.clientId || ""}）吗？删除后该 Client 将无法继续接入 SSO，所有已授权用户需要重新授权。请在下方输入 Client 名称以确认。`}
         confirmText="确定删除"
         loading={saving}
-      />
+        confirmDisabled={deleteConfirmText !== (deleteClient?.name || "")}
+      >
+        <Input
+          value={deleteConfirmText}
+          onChange={(e) => setDeleteConfirmText(e.target.value)}
+          placeholder={`输入 ${deleteClient?.name || "Client 名称"}`}
+          className="mt-2"
+        />
+      </ConfirmDialog>
 
       {/* Disable Confirm（启用无需确认，直接生效） */}
       <ConfirmDialog
@@ -966,8 +996,25 @@ if (!payload) {
               </Button>
             </div>
           </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={rotatedSecretSaved}
+                onChange={(e) => setRotatedSecretSaved(e.target.checked)}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium text-amber-800">我已安全保存 Client Secret</p>
+                <p className="mt-0.5 text-xs text-amber-600">
+                  Secret 仅显示一次，关闭后无法再次查看。未完成保存前请勿关闭。
+                </p>
+              </div>
+            </label>
+          </div>
           <div className="flex justify-end">
             <Button
+              disabled={!rotatedSecretSaved}
               onClick={() => {
                 setShowRotatedSecret(false);
                 setRotatedSecret(null);
@@ -990,6 +1037,9 @@ if (!payload) {
           <p className="text-xs text-gray-500">
             输入 Client Secret 与回调地址，验证凭据、JWKS、authorize、token、userinfo、introspect
             全链路连通性。
+          </p>
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+            如果没有保存 secret，请先轮换密钥获取新 secret。
           </p>
           <div className="space-y-3">
             <div>

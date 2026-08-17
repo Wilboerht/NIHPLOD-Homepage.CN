@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
       { name: "Token", description: "Token 端点" },
       { name: "UserInfo", description: "用户信息" },
       { name: "Introspection", description: "Token 验证" },
+      { name: "Revocation", description: "Token 撤销" },
+      { name: "Session", description: "会话管理" },
       { name: "Discovery", description: "服务发现" },
     ],
     paths: {
@@ -277,6 +279,155 @@ export async function GET(request: NextRequest) {
           },
         },
       },
+      "/api/oauth/revoke": {
+        post: {
+          tags: ["Revocation"],
+          summary: "Token 撤销端点",
+          description:
+            "RFC 7009 兼容的 Token 撤销端点。\n" +
+            "子项目登出时调用此端点撤销 refresh_token / access_token。\n\n" +
+            "认证方式：`client_secret_basic`（Authorization: Basic）、`client_secret_post`（请求体携带 client_id + client_secret）；Public Client 可仅携带 client_id。\n\n" +
+            "注意：即使 token 不存在也返回 200（防信息泄漏），响应不缓存。",
+          requestBody: {
+            required: true,
+            content: {
+              "application/x-www-form-urlencoded": {
+                schema: { $ref: "#/components/schemas/RevokeRequest" },
+              },
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RevokeRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "撤销成功（或 token 不存在）" },
+            "401": {
+              description: "Client 认证失败",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
+            "429": {
+              description: "请求过于频繁（限流）",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/oauth/end-session": {
+        get: {
+          tags: ["Session"],
+          summary: "OIDC RP-Initiated Logout 端点",
+          description:
+            "结束用户 SSO 会话。校验 post_logout_redirect_uri 是否可信后，" +
+            "302 重定向到主站 `/logout` 确认页；用户确认后主站登出并回到 post_logout_redirect_uri。",
+          parameters: [
+            {
+              name: "id_token_hint",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description: "当前用户的 ID Token（可选，用于标识登出身份）",
+            },
+            {
+              name: "post_logout_redirect_uri",
+              in: "query",
+              required: false,
+              schema: { type: "string", format: "uri" },
+              description: "登出后回跳地址（需在 Client 注册的 post_logout_redirect_uris 中）",
+            },
+            {
+              name: "state",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description: "防 CSRF 状态参数，回跳时原样返回",
+            },
+            {
+              name: "client_id",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description: "发起登出的 OAuth Client ID",
+            },
+          ],
+          responses: {
+            "302": { description: "重定向到主站 /logout 确认页" },
+            "429": {
+              description: "请求过于频繁（限流）",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/oauth/cancel": {
+        get: {
+          tags: ["Authorization"],
+          summary: "取消授权端点",
+          description:
+            "用户在 SSO 登录/consent 页点击\"取消\"时调用。\n" +
+            "校验 client_id / redirect_uri 归属后，302 回传 `error=access_denied` 到子项目回调地址。",
+          parameters: [
+            {
+              name: "client_id",
+              in: "query",
+              required: true,
+              schema: { type: "string" },
+              description: "OAuth Client ID",
+            },
+            {
+              name: "redirect_uri",
+              in: "query",
+              required: true,
+              schema: { type: "string", format: "uri" },
+              description: "回调 URL（需与注册时一致）",
+            },
+            {
+              name: "state",
+              in: "query",
+              required: true,
+              schema: { type: "string", minLength: 32, maxLength: 512 },
+              description: "原授权请求的 state 参数",
+            },
+            {
+              name: "popup_nonce",
+              in: "query",
+              required: false,
+              schema: { type: "string", maxLength: 64 },
+              description: "SDK 弹窗登录的 popup_nonce（原样透传）",
+            },
+          ],
+          responses: {
+            "302": { description: "回传 error=access_denied 到 redirect_uri" },
+            "400": {
+              description: "参数错误或 client_id/redirect_uri 归属校验失败",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
+            "429": {
+              description: "请求过于频繁（与 authorize 共用限流桶）",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/OAuthError" },
+                },
+              },
+            },
+          },
+        },
+      },
       "/api/oauth/.well-known/openid-configuration": {
         get: {
           tags: ["Discovery"],
@@ -429,10 +580,13 @@ export async function GET(request: NextRequest) {
         },
         IntrospectRequest: {
           type: "object",
-          required: ["client_id", "client_secret", "token"],
+          required: ["client_id", "token"],
           properties: {
             client_id: { type: "string" },
-            client_secret: { type: "string" },
+            client_secret: {
+              type: "string",
+              description: "OAuth Client Secret（Confidential Client 必填；Public Client 无需提供）",
+            },
             token: {
               type: "string",
               description: "待验证的 access_token",
@@ -450,6 +604,26 @@ export async function GET(request: NextRequest) {
             client_id: { type: "string" },
             scope: { type: "string" },
             exp: { type: "integer" },
+          },
+        },
+        RevokeRequest: {
+          type: "object",
+          required: ["client_id", "token"],
+          properties: {
+            client_id: { type: "string", description: "OAuth Client ID" },
+            client_secret: {
+              type: "string",
+              description: "OAuth Client Secret（Confidential Client 必填；Public Client 无需提供）",
+            },
+            token: {
+              type: "string",
+              description: "待撤销的 refresh_token 或 access_token",
+            },
+            token_type_hint: {
+              type: "string",
+              enum: ["refresh_token", "access_token"],
+              description: "可选的 token 类型提示",
+            },
           },
         },
         JWK: {

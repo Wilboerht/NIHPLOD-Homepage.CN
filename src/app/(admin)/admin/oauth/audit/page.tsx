@@ -33,19 +33,17 @@ interface AuditResponse {
   pagination: { page: number; pageSize: number; total: number };
 }
 
+// 与服务端白名单及实际产生的事件全集（src/lib/sso-audit.ts SsoEventType）保持一致
 const EVENT_TYPE_OPTIONS = [
   { value: "", label: "全部事件" },
   { value: "authorize", label: "授权请求" },
   { value: "token", label: "Token 签发" },
-  { value: "refresh", label: "Token 刷新" },
   { value: "introspect", label: "Token 验证" },
   { value: "userinfo", label: "用户信息" },
-  { value: "revoke", label: "Token 吊销" },
   { value: "consent", label: "授权确认/撤销" },
   { value: "status_change", label: "状态变更" },
   { value: "logout", label: "登出" },
   { value: "backchannel_logout", label: "Backchannel 登出" },
-  { value: "login", label: "登录" },
 ];
 
 const SUCCESS_OPTIONS = [
@@ -70,15 +68,12 @@ const formatEventType = (type: string): string => {
   const map: Record<string, string> = {
     authorize: "授权请求",
     token: "Token 签发",
-    refresh: "Token 刷新",
     introspect: "Token 验证",
     userinfo: "用户信息",
-    revoke: "Token 吊销",
     consent: "授权确认/撤销",
     status_change: "状态变更",
     logout: "登出",
     backchannel_logout: "Backchannel 登出",
-    login: "登录",
   };
   return map[type] || type;
 };
@@ -92,15 +87,12 @@ const getEventBadgeVariant = (
   > = {
     authorize: "primary",
     token: "success",
-    refresh: "secondary",
     introspect: "secondary",
     userinfo: "secondary",
-    revoke: "warning",
     consent: "danger",
     status_change: "warning",
     logout: "outline",
     backchannel_logout: "outline",
-    login: "primary",
   };
   return map[type] || "secondary";
 };
@@ -123,6 +115,10 @@ function OAuthAuditPage() {
   const [eventType, setEventType] = useState(() => searchParams.get("event") || "");
   const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [searchUserId, setSearchUserId] = useState(() => searchParams.get("userId") || "");
+  const [debouncedClientId, setDebouncedClientId] = useState(
+    () => searchParams.get("clientId") || ""
+  );
+  const [debouncedUserId, setDebouncedUserId] = useState(() => searchParams.get("userId") || "");
   const [dateFrom, setDateFrom] = useState(() => searchParams.get("startDate") || "");
   const [dateTo, setDateTo] = useState(() => searchParams.get("endDate") || "");
   const [successFilter, setSuccessFilter] = useState(() => searchParams.get("success") || "");
@@ -137,11 +133,12 @@ function OAuthAuditPage() {
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
       if (eventType) params.set("event", eventType);
-      if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
-      if (searchUserId.trim()) params.set("userId", searchUserId.trim());
+      if (debouncedClientId.trim()) params.set("clientId", debouncedClientId.trim());
+      if (debouncedUserId.trim()) params.set("userId", debouncedUserId.trim());
       if (dateFrom) params.set("startDate", dateFrom);
       if (dateTo) params.set("endDate", dateTo);
       if (successFilter) params.set("success", successFilter);
+      // URL 仅在生效查询值变化后同步，避免每次击键都写 URL
       const qs = params.toString();
       router.replace(`/admin/oauth/audit${qs ? `?${qs}` : ""}`, { scroll: false });
       const data = await apiGet<AuditResponse>(`/api/admin/oauth/audit?${params.toString()}`);
@@ -155,8 +152,8 @@ function OAuthAuditPage() {
   }, [
     page,
     eventType,
-    searchClientId,
-    searchUserId,
+    debouncedClientId,
+    debouncedUserId,
     dateFrom,
     dateTo,
     successFilter,
@@ -168,14 +165,28 @@ function OAuthAuditPage() {
     deferInEffect(fetchAudit);
   }, [fetchAudit]);
 
+  // 文本筛选防抖：输入停止 400ms 后才更新生效查询值，由 fetchAudit 统一发起请求
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPage(1);
+      setDebouncedClientId(searchClientId);
+      setDebouncedUserId(searchUserId);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchClientId, searchUserId]);
+
   const handleSearch = () => {
     setPage(1);
+    setDebouncedClientId(searchClientId);
+    setDebouncedUserId(searchUserId);
   };
 
   const handleReset = () => {
     setEventType("");
     setSearchClientId("");
     setSearchUserId("");
+    setDebouncedClientId("");
+    setDebouncedUserId("");
     setDateFrom("");
     setDateTo("");
     setSuccessFilter("");
@@ -189,8 +200,8 @@ function OAuthAuditPage() {
       const params = new URLSearchParams();
       params.set("export", "csv");
       if (eventType) params.set("event", eventType);
-      if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
-      if (searchUserId.trim()) params.set("userId", searchUserId.trim());
+      if (debouncedClientId.trim()) params.set("clientId", debouncedClientId.trim());
+      if (debouncedUserId.trim()) params.set("userId", debouncedUserId.trim());
       if (dateFrom) params.set("startDate", dateFrom);
       if (dateTo) params.set("endDate", dateTo);
       if (successFilter) params.set("success", successFilter);
@@ -219,7 +230,7 @@ function OAuthAuditPage() {
           disabled={exporting}
           leftIcon={<Download className="h-4 w-4" />}
         >
-          {exporting ? "导出中..." : "导出 CSV"}
+          {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
         </Button>
       </div>
 
@@ -335,6 +346,13 @@ function OAuthAuditPage() {
               <tr>
                 <td colSpan={8} className="py-8 text-center text-brand-charcoal/50">
                   暂无数据
+                  {(eventType ||
+                    debouncedClientId ||
+                    debouncedUserId ||
+                    dateFrom ||
+                    dateTo ||
+                    successFilter) &&
+                    "，请调整筛选条件后重试"}
                 </td>
               </tr>
             ) : (

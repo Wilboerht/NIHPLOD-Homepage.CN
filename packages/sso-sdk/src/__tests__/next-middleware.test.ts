@@ -125,4 +125,27 @@ describe("createSsoMiddleware", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/api/oauth/authorize");
   });
+
+  it("insecureLocalDev=true：Cookie 去除 __Host-/__Secure- 前缀且不设置 Secure", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware({ ...config, insecureLocalDev: true });
+    expect(warnSpy).toHaveBeenCalled();
+
+    const res = await middleware(
+      new NextRequest("http://localhost:3002/dashboard")
+    );
+    expect(res.status).toBe(307);
+
+    // 前缀已去除，浏览器在 HTTP 下可写入
+    expect(res.cookies.get("nihplod_sso_state")?.value).toBeTruthy();
+    expect(res.cookies.get("nihplod_sso_verifier")?.value).toBeTruthy();
+    expect(res.cookies.get("nihplod_sso_return")?.value).toBe("/dashboard");
+    expect(res.cookies.get("__Host-nihplod_sso_state")).toBeUndefined();
+    // Secure 属性已关闭
+    const setCookies =
+      typeof res.headers.getSetCookie === "function"
+        ? res.headers.getSetCookie()
+        : [res.headers.get("set-cookie") ?? ""];
+    expect(setCookies.join("\n")).not.toMatch(/;\s*secure\b/i);
+  });
 });

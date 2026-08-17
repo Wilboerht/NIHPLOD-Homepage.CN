@@ -26,4 +26,5 @@ export {
   DEFAULT_LOGOUT_STATE_COOKIE_NAME,
   getHostCookieOptions,
   getSecureCookieOptions,
+  toInsecureCookieName,
 } from "./constants";

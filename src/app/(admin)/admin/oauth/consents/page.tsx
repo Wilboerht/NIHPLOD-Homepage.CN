@@ -129,8 +129,8 @@ function OAuthConsentsPage() {
       toast.success("授权已撤销");
       setShowRevoke(false);
       fetchConsents();
-    } catch {
-      toast.error("撤销授权失败");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "撤销授权失败");
     } finally {
       setRevoking(false);
     }
@@ -302,7 +302,7 @@ function OAuthConsentsPage() {
         onConfirm={handleRevoke}
         type="danger"
         title="撤销用户授权"
-        description={`确定要撤销用户 ${revokeTarget?.phone || revokeTarget?.userId} 对 ${revokeTarget?.clientName || revokeTarget?.clientId} 的授权吗？撤销后该用户将需要重新授权。`}
+        description={`确定要撤销用户 ${revokeTarget?.phone || revokeTarget?.userId} 对 ${revokeTarget?.clientName || revokeTarget?.clientId} 的授权吗？该用户在该应用的现有会话将立即失效并被登出，撤销后该用户将需要重新授权。`}
         confirmText="确定撤销"
         loading={revoking}
       />
