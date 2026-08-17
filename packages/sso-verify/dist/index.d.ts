@@ -7,10 +7,11 @@ import { JWTPayload } from 'jose';
  *
  * 供子项目在后端验证主站签发的 Access Token。
  *
- * 由于主站当前使用 HS256 对称签名，JWKS 端点不公开签名密钥，
- * 因此本工具包默认采用 OAuth 2.0 Token Introspection（RFC 7662）
- * 端点进行验证。对于已知共享密钥的内部服务，也可传入
- * accessTokenSecret 做本地 JWT 验证。
+ * 由于主站 access_token 的签名算法取决于部署配置（配置 JWT_ACCESS_PRIVATE_KEY
+ * 后以 RS256 签名，未配置时回退 HS256 对称签名），JWKS 端点仅在 RS256
+ * 模式下公开公钥，因此本工具包默认采用 OAuth 2.0 Token Introspection
+ * （RFC 7662）端点进行验证。对于已知共享密钥/公钥的内部服务，也可传入
+ * accessTokenSecret（HS256）或 accessTokenPublicKey / jwksUri（RS256）做本地 JWT 验证。
  *
  * 安装：npm install @nihplod/sso-verify
  *
@@ -38,7 +39,7 @@ interface SsoVerifierOptions {
     issuer?: string;
     /**
      * Token Introspection 端点 URL。
-     * 推荐优先使用，适配当前 HS256 对称签名场景。
+     * 推荐优先使用，与主站签名算法（HS256/RS256）无关，且能实时感知撤销。
      */
     introspectionEndpoint?: string;
     /** 子项目的 client_id（用于 introspection） */
@@ -66,8 +67,9 @@ interface SsoVerifierOptions {
     introspectNegativeCacheTtl?: number;
     /**
      * Access Token RS256 公钥（PEM 格式，可选）。
-     * 主站已迁移至 RS256 签名，子项目可传入此公钥进行本地验证，
-     * 避免每次都调用 Introspection 端点。
+     * 主站在配置 JWT_ACCESS_PRIVATE_KEY 后以 RS256 签名 access_token，
+     * 子项目可传入此公钥进行本地验证，避免每次都调用 Introspection 端点。
+     * 若主站未配置 RS256 密钥（回退 HS256 签名），此选项不生效。
      */
     accessTokenPublicKey?: string;
     /**
