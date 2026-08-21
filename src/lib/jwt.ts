@@ -350,6 +350,25 @@ export async function verifyUserToken(
       return null;
     }
 
+    // 改密即时失效：token 签发时间早于最近一次密码变更 → 拒绝。
+    // 替代 user 级黑名单方案：重置/修改密码后，旧 token 全部失效，
+    // 而受害者重新登录签发的新 token（iat >= 改密时刻）不受影响，无自锁窗口。
+    // 比对以秒为粒度（iat 为 Unix 秒），同一秒内签发的 token 放行（可忽略窗口）。
+    const userRecord = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { passwordChangedAt: true },
+    });
+    if (!userRecord) {
+      return null;
+    }
+    if (
+      userRecord.passwordChangedAt &&
+      typeof payload.iat === "number" &&
+      payload.iat < Math.floor(userRecord.passwordChangedAt.getTime() / 1000)
+    ) {
+      return null;
+    }
+
     return payload as UserJWTPayload;
   } catch (error) {
     warnVerifyError("verifyUserToken", error);
@@ -430,7 +449,7 @@ export interface WechatBindPayload {
   nickname?: string;
   avatar?: string;
   /** 外部身份归属平台（签发入口已知时携带，bind 端点据此写入 ExternalIdentity） */
-  provider?: "wechat_open" | "wechat_mp" | "wechat_miniprogram";
+  provider?: "wechat_open" | "wechat_mp" | "wechat_miniprogram" | "douyin";
 }
 
 /**

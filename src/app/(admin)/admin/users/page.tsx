@@ -15,7 +15,7 @@ import {
   MapPin,
   Ticket,
   Smartphone,
-  MessageCircle,
+  Link2,
   Shield,
   Ban,
   CheckCircle,
@@ -90,6 +90,15 @@ interface UserDetail {
   totalPoints: number | null;
   totalSpent: number | null;
   wechatOpenId: string | null;
+  // 多平台外部身份（聚合框架单一数据源）
+  externalIdentities?: {
+    id: string;
+    provider: string;
+    subjectId: string;
+    unionId: string | null;
+    metadata: unknown;
+    createdAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
   orders: {
@@ -118,6 +127,23 @@ interface UserDetail {
     };
   }[];
   _count: { orders: number };
+}
+
+// 外部身份平台标签（与后端 ExternalIdentity.provider 枚举一一对应；未知 provider 原样显示）
+const providerLabelMap: Record<string, string> = {
+  wechat_open: "微信开放平台",
+  wechat_mp: "微信服务号",
+  wechat_miniprogram: "微信小程序",
+  douyin: "抖音",
+};
+
+/** 安全读取 ExternalIdentity metadata（Json 字段）中的平台昵称 */
+function getIdentityNickname(metadata: unknown): string | null {
+  if (metadata && typeof metadata === "object" && "nickname" in metadata) {
+    const nickname = (metadata as { nickname?: unknown }).nickname;
+    return typeof nickname === "string" && nickname ? nickname : null;
+  }
+  return null;
 }
 
 const orderStatusMap: Record<
@@ -606,15 +632,32 @@ export default function AdminUsersPage() {
                       )}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      微信绑定
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
+                      <Link2 className="h-3.5 w-3.5" />
+                      第三方平台绑定
                     </dt>
-                    <dd>
-                      {detailUser.wechatOpenId ? (
+                    <dd className="flex flex-col items-end gap-1.5">
+                      {detailUser.externalIdentities && detailUser.externalIdentities.length > 0 ? (
+                        detailUser.externalIdentities.map((identity) => (
+                          <div key={identity.id} className="flex items-center gap-2">
+                            <Badge variant="outline" className="px-1.5 py-0 text-xs">
+                              {providerLabelMap[identity.provider] || identity.provider}
+                            </Badge>
+                            {getIdentityNickname(identity.metadata) && (
+                              <span className="max-w-[10rem] truncate text-brand-charcoal/70">
+                                {getIdentityNickname(identity.metadata)}
+                              </span>
+                            )}
+                            <span className="text-xs text-brand-charcoal/40">
+                              {formatDate(identity.createdAt)}
+                            </span>
+                          </div>
+                        ))
+                      ) : detailUser.wechatOpenId ? (
+                        // 双写过渡期兜底：迁移前历史数据可能仅有旧列
                         <Badge variant="success" className="px-1.5 py-0 text-xs">
-                          已绑定
+                          微信已绑定（历史数据）
                         </Badge>
                       ) : (
                         <span className="text-brand-charcoal/50">未绑定</span>

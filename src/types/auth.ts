@@ -77,6 +77,16 @@ export const WECHAT_NONCE_COOKIE_OPTIONS = {
   maxAge: 10 * 60, // 10 分钟
 };
 
+// 抖音 OAuth 防 CSRF nonce Cookie（与微信同机制：Lax 兼容跨站顶级导航回调）
+export const DOUYIN_NONCE_COOKIE_NAME = "__Host-douyin_oauth_nonce";
+export const DOUYIN_NONCE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 10 * 60, // 10 分钟
+};
+
 // 微信绑定临时 Token Cookie
 // 使用 Lax 以兼容从微信 OAuth 回调页面发起的请求（顶级导航携带 Cookie）
 export const WECHAT_BIND_COOKIE_NAME = "__Host-wechat_bind_token";

@@ -346,9 +346,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const intervalId = setInterval(
       () => {
-        refreshAccessToken().catch(() => {
-          // 静默刷新失败：token 可能已过期，下次 API 调用时会触发完整登录流程
-        });
+        refreshAccessToken()
+          .then((ok) => {
+            if (ok) {
+              localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
+            } else {
+              // 静默刷新最终失败（refresh token 已过期/被吊销）：
+              // 主动清除登录态，避免 UI 仍显示已登录而各面板 401 假空态
+              localStorage.removeItem(AUTH_HINT_KEY);
+              localStorage.removeItem(REFRESH_FAIL_COUNT_KEY);
+              setUser(null);
+            }
+          })
+          .catch(() => {
+            localStorage.removeItem(AUTH_HINT_KEY);
+            localStorage.removeItem(REFRESH_FAIL_COUNT_KEY);
+            setUser(null);
+          });
       },
       14 * 60 * 1000
     );

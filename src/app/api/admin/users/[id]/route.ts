@@ -54,6 +54,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
         totalSpent: true,
         wechatOpenId: true,
         wechatUnionId: true,
+        // 多平台外部身份（聚合框架单一数据源；旧列仅作双写过渡期前端兜底展示）
+        externalIdentities: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            provider: true,
+            subjectId: true,
+            unionId: true,
+            metadata: true,
+            createdAt: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
         orders: {

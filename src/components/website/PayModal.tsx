@@ -36,7 +36,7 @@ interface OrderData {
 }
 
 export default function PayModal() {
-  const { payOpen, payOrderId, closePay, openUserCenter } = useAuth();
+  const { payOpen, payOrderId, closePay, openUserCenter, refreshUser } = useAuth();
 
   const mounted = useMounted();
   const [loading, setLoading] = useState(false);
@@ -182,6 +182,8 @@ export default function PayModal() {
             })),
           });
           closePay();
+          // 支付成功后刷新用户信息，侧边栏积分/等级即时更新
+          void refreshUser(true);
           // 支付成功后打开用户中心订单详情
           openUserCenter("orders", order.id);
         }
@@ -208,6 +210,8 @@ export default function PayModal() {
               })),
             });
             closePay();
+            // 支付成功后刷新用户信息，侧边栏积分/等级即时更新
+            void refreshUser(true);
             // 支付成功后打开用户中心订单详情
             openUserCenter("orders", order.id);
           } else if (r.err_msg === "get_brand_wcpay_request:cancel") {

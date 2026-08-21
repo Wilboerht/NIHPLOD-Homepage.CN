@@ -85,14 +85,9 @@ export async function POST(request: NextRequest) {
               where: { userId: user.id, clientId: targetClientId, revokedAt: null },
               data: { revokedAt: new Date() },
             });
-          } else {
-            const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-            await sendBackchannelLogout(user.id, clientIds);
-            await prisma.oAuthSession.updateMany({
-              where: { userId: user.id, revokedAt: null },
-              data: { revokedAt: new Date() },
-            });
           }
+          // 当前会话无关联 OAuth client（普通浏览器登录，clientId=null）：
+          // 单设备登出不触碰其他客户端的第三方授权会话；仅 allDevices 时才全量广播
         } else {
           const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
           await sendBackchannelLogout(user.id, clientIds);

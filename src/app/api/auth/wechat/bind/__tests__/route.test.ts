@@ -95,12 +95,15 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
     );
   });
 
-  it("body provider 应优先于 bindToken 载荷中的 provider", async () => {
+  it("body provider 应被忽略，平台归属以 bindToken 载荷为准（防错标污染）", async () => {
     await POST(
       createRequest({ ...validBody, bindToken: "body-bind-token", provider: "wechat_open" })
     );
 
-    expect(mockResolve).toHaveBeenCalledWith(expect.objectContaining({ provider: "wechat_open" }));
+    // body 覆盖无效，provider 仍取载荷中的 wechat_miniprogram
+    expect(mockResolve).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "wechat_miniprogram" })
+    );
   });
 
   it("Cookie 通道（无 body bindToken）无 CSRF 应返回 403", async () => {

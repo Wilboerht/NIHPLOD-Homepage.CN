@@ -18,7 +18,7 @@ import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost } from "@/lib/api-client";
+import { apiPost, ApiError } from "@/lib/api-client";
 import { maskPhone } from "@/lib/mask-phone";
 import { validatePasswordStrength, getErrorMessage } from "@/components/website/auth/auth-utils";
 import { LoginForm } from "@/components/website/auth/LoginForm";
@@ -369,7 +369,13 @@ function LoginPageContent() {
       toast.success("欢迎回来！");
       await handleAuthSuccess();
     } catch (error) {
-      toast.error(getErrorMessage(error, "登录失败，请检查账号密码"));
+      // 密码过期（密码登录/短信登录均可能）：引导进入"忘记密码"短信重置闭环
+      if (error instanceof ApiError && error.code === "PASSWORD_EXPIRED") {
+        toast.error("密码已过期，请通过短信验证码重置密码");
+        handleForgotPassword();
+      } else {
+        toast.error(getErrorMessage(error, "登录失败，请检查账号密码"));
+      }
     } finally {
       setLoading(false);
     }

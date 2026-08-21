@@ -25,6 +25,8 @@ vi.mock("framer-motion", () => ({
 const mockOpenPay = vi.fn();
 const mockCloseUserCenter = vi.fn();
 const mockClearInitialOrderId = vi.fn();
+const mockRedirectToLogin = vi.fn();
+const mockRefreshUser = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
@@ -32,6 +34,8 @@ vi.mock("@/contexts/AuthContext", () => ({
     clearInitialOrderId: mockClearInitialOrderId,
     openPay: mockOpenPay,
     closeUserCenter: mockCloseUserCenter,
+    redirectToLogin: mockRedirectToLogin,
+    refreshUser: mockRefreshUser,
   }),
 }));
 
@@ -46,10 +50,21 @@ vi.mock("@/components/ui/Toast", () => ({
   }),
 }));
 
-// Mock fetchWithAuth
+// Mock fetchWithAuth（列表加载与写操作均走此通道；UnauthorizedError 供 instanceof 判断）
 const mockFetchWithAuth = vi.fn();
+// vi.mock 工厂会被提升：类定义必须放进 vi.hoisted
+const { UnauthorizedError } = vi.hoisted(() => {
+  class UnauthorizedError extends Error {
+    constructor(message = "登录已过期，请重新登录") {
+      super(message);
+      this.name = "UnauthorizedError";
+    }
+  }
+  return { UnauthorizedError };
+});
 vi.mock("@/lib/fetch-with-auth", () => ({
   fetchWithAuth: (...args: unknown[]) => mockFetchWithAuth(...args),
+  UnauthorizedError,
 }));
 
 import { OrdersPanel } from "@/components/website/user-center/OrdersPanel";
@@ -77,21 +92,18 @@ function makeOrder(overrides = {}) {
   };
 }
 
-let mockFetch: ReturnType<typeof vi.fn>;
-
-/** 渲染并等待数据加载完成（debounceMs=0 消除防抖延迟） */
+/** 渲染并等待数据加载完成（debounceMs=0 消除防抖延迟；列表加载走 fetchWithAuth） */
 async function renderAndLoad(orders: unknown[] = []) {
-  mockFetch = vi.fn().mockResolvedValue({
+  mockFetchWithAuth.mockResolvedValue({
     json: () => Promise.resolve({ success: true, data: { orders } }),
   });
-  vi.stubGlobal("fetch", mockFetch);
 
   const utils = render(<OrdersPanel debounceMs={0} />);
 
-  // 等待 fetch resolve
+  // 等待 fetchWithAuth resolve
   await waitFor(
     () => {
-      expect(mockFetch).toHaveBeenCalled();
+      expect(mockFetchWithAuth).toHaveBeenCalled();
     },
     { timeout: 2000 }
   );
@@ -148,7 +160,7 @@ describe("OrdersPanel", () => {
 
     await waitFor(
       () => {
-        const calls = mockFetch.mock.calls;
+        const calls = mockFetchWithAuth.mock.calls;
         const lastCall = calls[calls.length - 1];
         expect(lastCall[0]).toContain("status=PENDING");
       },

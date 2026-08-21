@@ -116,20 +116,21 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const { isDefault, ...updateData } = result.data;
 
-    // 如果设为默认，先取消其他默认地址
-    if (isDefault) {
-      await prisma.address.updateMany({
-        where: { userId: payload.id, isDefault: true },
-        data: { isDefault: false },
+    // "清默认 → 更新"包入事务，避免并发下出现多个默认地址（对齐 [id]/default 路由口径）
+    const address = await prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.address.updateMany({
+          where: { userId: payload.id, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+      return tx.address.update({
+        where: { id },
+        data: {
+          ...updateData,
+          ...(isDefault !== undefined && { isDefault }),
+        },
       });
-    }
-
-    const address = await prisma.address.update({
-      where: { id },
-      data: {
-        ...updateData,
-        ...(isDefault !== undefined && { isDefault }),
-      },
     });
 
     return NextResponse.json({ success: true, data: { address } });

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import { maskPhone } from "@/lib/mask-phone";
+import { maskPhone, maskIp } from "@/lib/mask-phone";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,8 @@ export async function GET(request: NextRequest) {
       type: a.type,
       success: a.success,
       reason: a.reason,
-      ipAddress: a.ipAddress || "未知 IP",
+      // 末段脱敏：不向用户端暴露精确主机 IP
+      ipAddress: a.ipAddress ? maskIp(a.ipAddress) : "未知 IP",
       createdAt: a.createdAt.toISOString(),
     }));
 

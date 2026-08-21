@@ -97,12 +97,13 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
     });
 
     if (!smsCode) {
+      // 反枚举：与"码不匹配"统一错误码
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或不存在",
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
@@ -115,7 +116,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
           success: false,
           error: {
             code: "CODE_INVALID",
-            message: "验证码错误",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
@@ -131,8 +132,8 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
         {
           success: false,
           error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或已被使用",
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }

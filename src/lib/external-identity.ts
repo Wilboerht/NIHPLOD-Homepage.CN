@@ -30,14 +30,23 @@ export async function findUserByIdentity(provider: string, subjectId: string) {
 }
 
 /**
- * 按 UnionID 聚合查找用户（跨平台）
- * UnionID 的意义就是跨应用聚合（开放平台/服务号/小程序同一用户 unionid 相同），
- * 因此默认不限定 provider；如需限定可传 provider 参数走 [provider, unionId] 复合索引。
+ * 按 UnionID 聚合查找用户（跨应用）
+ * UnionID 的意义就是跨应用聚合（开放平台/服务号/小程序同一用户 unionid 相同）。
+ * 不同平台的 unionid 属不同命名空间（如微信 UnionID 与抖音 union_id 互不相通），
+ * 调用方应显式传入 provider（单个或同系数组）限定查找范围，避免跨命名空间串扰；
+ * 不传时全表查找（仅限确知无串扰风险的场景）。
  * @returns 绑定该 unionId 的 User（取最早绑定的身份），未找到返回 null
  */
-export async function findUserByUnionId(unionId: string, provider?: string) {
+export async function findUserByUnionId(unionId: string, provider?: string | string[]) {
   const identity = await prisma.externalIdentity.findFirst({
-    where: { unionId, ...(provider ? { provider } : {}) },
+    where: {
+      unionId,
+      ...(provider
+        ? Array.isArray(provider)
+          ? { provider: { in: provider } }
+          : { provider }
+        : {}),
+    },
     orderBy: { createdAt: "asc" },
     select: { userId: true },
   });

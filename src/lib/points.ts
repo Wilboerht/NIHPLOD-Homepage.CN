@@ -107,9 +107,10 @@ export async function creditPointsForOrder(params: {
         },
       });
       if (newTotalSpent !== user.totalSpent || newLevel !== user.membershipLevel) {
+        // 原子增减：避免并发支付时先读后写丢失更新（余额与流水不一致）
         await db.user.update({
           where: { id: userId },
-          data: { totalSpent: newTotalSpent, membershipLevel: newLevel },
+          data: { totalSpent: { increment: Math.floor(payAmount) }, membershipLevel: newLevel },
         });
         invalidateProfileCache();
       }
@@ -143,11 +144,13 @@ export async function creditPointsForOrder(params: {
     });
 
     // 更新用户积分、累计消费和等级
+    // 原子增减：避免两笔订单并发支付时先读后写丢失更新（余额少于流水之和）；
+    // 等级基于读取快照计算，并发下最多滞后一次结算，下次结算自动纠正
     await db.user.update({
       where: { id: userId },
       data: {
-        totalPoints: user.totalPoints + totalPointsEarned,
-        totalSpent: newTotalSpent,
+        totalPoints: { increment: totalPointsEarned },
+        totalSpent: { increment: Math.floor(payAmount) },
         membershipLevel: newLevel,
       },
     });
@@ -237,11 +240,12 @@ export async function refundPointsForOrder(params: {
     });
 
     // 更新用户积分、累计消费和等级
+    // 原子增减（与发放路径对齐）：totalSpent 扣减额以当前余额封顶，不下穿 0
     await db.user.update({
       where: { id: userId },
       data: {
-        totalPoints: newTotalPoints,
-        totalSpent: newTotalSpent,
+        totalPoints: { decrement: deducted },
+        totalSpent: { decrement: Math.min(Math.floor(refundAmount), user.totalSpent) },
         membershipLevel: newLevel,
       },
     });

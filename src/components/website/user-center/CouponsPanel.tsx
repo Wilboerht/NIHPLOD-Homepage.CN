@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Ticket, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface UserCoupon {
@@ -29,18 +31,25 @@ export function CouponsPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const { error: showError } = useToast();
+  const { redirectToLogin } = useAuth();
 
   const fetchCoupons = async (status?: string) => {
     setLoading(true);
     try {
       const url =
         status && status !== "all" ? `/api/user/coupons?status=${status}` : "/api/user/coupons";
-      const res = await fetch(url);
+      // fetchWithAuth：401 时自动静默刷新重试，避免会话过期后误渲染"暂无优惠券"假空态
+      const res = await fetchWithAuth(url);
       const data = await res.json();
       if (data.success) {
         setCoupons(data.data);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        showError("登录已过期，请重新登录");
+        redirectToLogin();
+        return;
+      }
       console.error("获取优惠券失败");
       showError("获取优惠券失败，请稍后重试");
     } finally {

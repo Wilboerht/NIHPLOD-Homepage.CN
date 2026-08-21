@@ -13,7 +13,7 @@ vi.mock("@/lib/prisma", () => {
       update: vi.fn(),
       create: vi.fn(),
     },
-    externalIdentity: { upsert: vi.fn() },
+    externalIdentity: { upsert: vi.fn(), findUnique: vi.fn() },
   };
   return {
     prisma: {
@@ -66,7 +66,10 @@ type TxClient = {
     update: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
   };
-  externalIdentity: { upsert: ReturnType<typeof vi.fn> };
+  externalIdentity: {
+    upsert: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
+  };
 };
 
 const mockPrisma = prisma as unknown as {
@@ -106,6 +109,7 @@ describe("resolveWechatBinding provider 写入语义", () => {
     mockPrisma.__tx.user.findUnique.mockResolvedValue(null); // 无该手机号用户
     mockPrisma.__tx.user.create.mockResolvedValue(createdUser);
     mockPrisma.__tx.externalIdentity.upsert.mockResolvedValue({ id: "ei-1" });
+    mockPrisma.__tx.externalIdentity.findUnique.mockResolvedValue(null); // 身份行不存在（无冲突）
   });
 
   it("provider=wechat_miniprogram 时创建用户不应写入 wechatOpenId 旧列", async () => {
@@ -134,6 +138,73 @@ describe("resolveWechatBinding provider 写入语义", () => {
     expect(mockPrisma.__tx.externalIdentity.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { provider_subjectId: { provider: "wechat_open", subjectId: "mini-openid" } },
+      })
+    );
+  });
+
+  it("provider=douyin 创建用户时不写 wechatOpenId/wechatUnionId 微信系旧列", async () => {
+    const result = await resolveWechatBinding(buildInput("douyin"));
+
+    expect(result.success).toBe(true);
+    const createData = mockPrisma.__tx.user.create.mock.calls[0][0].data;
+    // 抖音 openid/unionid 均不得写入微信系旧列
+    expect(createData.wechatOpenId).toBeNull();
+    expect(createData.wechatUnionId).toBeNull();
+    // ExternalIdentity 按 douyin provider 双写（unionId 正常保存用于跨应用聚合）
+    expect(mockPrisma.__tx.externalIdentity.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { provider_subjectId: { provider: "douyin", subjectId: "mini-openid" } },
+        create: expect.objectContaining({ provider: "douyin", unionId: "union-1" }),
+      })
+    );
+  });
+
+  it("provider=douyin 更新已有用户时不覆盖微信系旧列", async () => {
+    mockPrisma.__tx.user.findUnique.mockResolvedValue({
+      ...createdUser,
+      wechatOpenId: "open-platform-openid",
+      wechatUnionId: "wx-union",
+    });
+    mockPrisma.__tx.user.update.mockResolvedValue(createdUser);
+
+    const result = await resolveWechatBinding(buildInput("douyin"));
+
+    expect(result.success).toBe(true);
+    const updateData = mockPrisma.__tx.user.update.mock.calls[0][0].data;
+    // update 载荷中不应出现任何微信系旧列字段（保持原值）
+    expect("wechatOpenId" in updateData).toBe(false);
+    expect("wechatUnionId" in updateData).toBe(false);
+  });
+
+  it("身份已归属真实账户时应拒绝改绑（WECHAT_ALREADY_BOUND）", async () => {
+    mockPrisma.__tx.externalIdentity.findUnique.mockResolvedValue({ userId: "user-other" });
+    mockPrisma.__tx.user.findUnique
+      .mockResolvedValueOnce(null) // 按手机号查无用户
+      .mockResolvedValueOnce({ id: "user-other", phone: "13900139000" }); // 原归属为真实账户
+
+    const result = await resolveWechatBinding(buildInput("douyin"));
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("WECHAT_ALREADY_BOUND");
+    }
+    expect(mockPrisma.__tx.externalIdentity.upsert).not.toHaveBeenCalled();
+  });
+
+  it("身份已归属占位账户时应允许抢占并改挂到目标用户", async () => {
+    mockPrisma.__tx.externalIdentity.findUnique.mockResolvedValue({ userId: "user-placeholder" });
+    mockPrisma.__tx.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "user-placeholder", phone: "wx_placeholder_abc" });
+
+    const result = await resolveWechatBinding(buildInput("douyin"));
+
+    expect(result.success).toBe(true);
+    // 身份行随 upsert 改挂到新建用户
+    expect(mockPrisma.__tx.externalIdentity.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ userId: "user-1" }),
+        create: expect.objectContaining({ userId: "user-1", provider: "douyin" }),
       })
     );
   });

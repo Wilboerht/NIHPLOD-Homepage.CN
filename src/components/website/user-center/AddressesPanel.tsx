@@ -106,7 +106,7 @@ export function AddressesPanel() {
         {!loading && addresses.length > 0 && (
           <div className="pb-4 pt-6 md:hidden">
             <button
-              onClick={() => setEditing({} as Address)}
+              onClick={() => setShowForm(true)}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-stone-300 py-3.5 text-[13px] font-medium tracking-wide text-stone-500 transition-all hover:border-stone-400 hover:bg-stone-50/50 hover:text-stone-800"
             >
               <Plus className="h-4 w-4" />

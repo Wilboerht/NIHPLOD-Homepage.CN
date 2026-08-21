@@ -11,6 +11,7 @@ const PAGE_SIZE = 20;
 
 const POINT_TYPE_LABELS: Record<string, string> = {
   ORDER_REWARD: "消费奖励",
+  ORDER_REWARD_REVERSAL: "退款扣回",
   BIRTHDAY_GIFT: "生日礼赠",
   ADMIN_ADJUST: "管理员调整",
   REDEEM: "积分兑换",

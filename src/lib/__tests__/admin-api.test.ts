@@ -568,6 +568,65 @@ describe("管理端 API 集成测试", () => {
   // 用户管理
   // ============================================
 
+  describe("GET /api/admin/users/:id", () => {
+    it("用户详情响应应包含 externalIdentities 多平台身份列表", async () => {
+      const req = createRequest("/api/admin/users/user-1");
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        phoneVerified: true,
+        nickname: "测试用户",
+        avatar: null,
+        status: "ACTIVE",
+        membershipLevel: "REGULAR",
+        totalPoints: 0,
+        totalSpent: 0,
+        wechatOpenId: null,
+        wechatUnionId: null,
+        externalIdentities: [
+          {
+            id: "ei-1",
+            provider: "douyin",
+            subjectId: "dy-openid",
+            unionId: "dy-union",
+            metadata: { nickname: "抖音昵称", avatar: null },
+            createdAt: "2026-08-21T00:00:00.000Z",
+          },
+          {
+            id: "ei-2",
+            provider: "wechat_miniprogram",
+            subjectId: "mp-openid",
+            unionId: null,
+            metadata: null,
+            createdAt: "2026-08-21T01:00:00.000Z",
+          },
+        ],
+        createdAt: "2026-08-01T00:00:00.000Z",
+        updatedAt: "2026-08-21T00:00:00.000Z",
+        orders: [],
+        addresses: [],
+        userCoupons: [],
+        _count: { orders: 0 },
+      });
+
+      const { GET } = await import("@/app/api/admin/users/[id]/route");
+      const res = await GET(req, { params: Promise.resolve({ id: "user-1" }) });
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(data.data.user.externalIdentities)).toBe(true);
+      expect(data.data.user.externalIdentities).toHaveLength(2);
+      expect(data.data.user.externalIdentities[0]).toMatchObject({
+        provider: "douyin",
+        subjectId: "dy-openid",
+        unionId: "dy-union",
+      });
+      // 手机号仍应脱敏（平台身份字段不受影响）
+      expect(data.data.user.phone).not.toBe("13800138000");
+    });
+  });
+
   describe("PATCH /api/admin/users/:id", () => {
     it("CSRF Token 无效应返回 403", async () => {
       mockValidateCSRFToken.mockReturnValue(false);

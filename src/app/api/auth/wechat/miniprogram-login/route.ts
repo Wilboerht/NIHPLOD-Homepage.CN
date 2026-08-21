@@ -84,10 +84,10 @@ export async function POST(request: NextRequest) {
     // session_key 立即丢弃：不解密手机号、不落库、不进日志
     const { openid, unionid } = session;
 
-    // 2. 查找用户：先按本 provider 身份，再按 UnionID 聚合（兼容历史 wechat 列）
+    // 2. 查找用户：先按本 provider 身份，再按 UnionID 聚合（限定微信系，避免与抖音等他系 unionid 串扰；兼容历史 wechat 列）
     let user = await findUserByIdentity(PROVIDER, openid);
     if (!user && unionid) {
-      user = await findUserByUnionId(unionid);
+      user = await findUserByUnionId(unionid, ["wechat_open", "wechat_mp", "wechat_miniprogram"]);
     }
     if (!user && unionid) {
       user = await prisma.user.findFirst({ where: { wechatUnionId: unionid } });

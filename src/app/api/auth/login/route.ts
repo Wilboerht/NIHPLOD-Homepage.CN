@@ -33,7 +33,7 @@ import { z } from "zod";
 // 请求参数验证
 const loginSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  code: z.string().length(6, "验证码为6位数字"),
+  code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
 });
 
 // 强制动态渲染，禁止静态预渲染
@@ -110,54 +110,20 @@ export async function POST(request: NextRequest) {
       // 记录失败尝试
       await recordLoginAttempt(phone, false, request, "code_expired", "sms");
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或不存在",
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    // 4. 验证码校验
-    if (!verifyCode(phone, code, "login", smsCode.codeHash)) {
-      // 记录失败尝试
-      await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
-
+      // 反枚举：与"码不匹配"统一错误码（配合 send-code 假发送）
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "CODE_INVALID",
-            message: "验证码错误",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
       );
     }
 
-    // 原子核销验证码（updateMany + used:false 防止并发重用）
-    const consumeResult = await prisma.smsCode.updateMany({
-      where: { id: smsCode.id, used: false },
-      data: { used: true },
-    });
-    if (consumeResult.count === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或已被使用",
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    // IP 绑定校验：验证码使用 IP 需与发送 IP 一致（可配置）
+    // IP 绑定校验（核销之前执行，失败不烧码）：验证码使用 IP 需与发送 IP 一致（可配置）
     if (process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress) {
       const verifyIp = getRateLimitClientIP(request);
       if (verifyIp !== smsCode.ipAddress) {
@@ -175,6 +141,41 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // 4. 验证码校验
+    if (!verifyCode(phone, code, "login", smsCode.codeHash)) {
+      // 记录失败尝试
+      await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 原子核销验证码（updateMany + used:false 防止并发重用）
+    const consumeResult = await prisma.smsCode.updateMany({
+      where: { id: smsCode.id, used: false },
+      data: { used: true },
+    });
+    if (consumeResult.count === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
+          },
+        },
+        { status: 400 }
+      );
     }
 
     // 5. 查找用户（验证码登录不再自动注册，用户必须先通过 /api/auth/register 注册）
@@ -214,6 +215,21 @@ export async function POST(request: NextRequest) {
           error: {
             code: "ACCOUNT_DISABLED",
             message: `账号${statusText}，请联系客服`,
+          },
+        },
+        { status: 403 }
+      );
+    }
+
+    // 5.2 密码过期策略：与密码登录入口统一口径，引导短信重置闭环
+    if (user.passwordExpiresAt && user.passwordExpiresAt < new Date()) {
+      await recordLoginAttempt(phone, false, request, "password_expired", "sms");
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PASSWORD_EXPIRED",
+            message: "密码已过期，请通过“忘记密码”重置后登录",
           },
         },
         { status: 403 }

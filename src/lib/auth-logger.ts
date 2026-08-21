@@ -24,7 +24,8 @@ export type AuthEventType =
   | "admin_update"
   | "internal_api_call"
   | "wechat_bind"
-  | "user_oauth_revoke";
+  | "user_oauth_revoke"
+  | "device_force_logout";
 
 interface AuthLogContext {
   identifier?: string;

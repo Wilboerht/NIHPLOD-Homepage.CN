@@ -21,8 +21,8 @@ import { rateLimit } from "@/lib/ratelimit";
  * 微信绑定表单
  * 密码现在是可选的（如果不提供，会自动生成）
  * bindToken：可选，小程序等无 Cookie 环境通过 body 传递（优先于 Cookie）
- * provider：可选，外部身份归属标识（小程序传 wechat_miniprogram），限定枚举防任意值；
- *   未传时回退 bindToken 载荷中的 provider（签发入口已知平台），最终默认 wechat_open
+ * 注意：provider 不接受客户端指定——平台归属以 bindToken 载荷为准（签发入口已知平台），
+ * 避免恶意客户端错标平台污染 ExternalIdentity 数据
  */
 const bindSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
@@ -30,7 +30,6 @@ const bindSchema = z.object({
   password: passwordSchema.optional(),
   allowAutoPassword: z.boolean().default(false),
   bindToken: z.string().max(4096).optional(),
-  provider: z.enum(["wechat_open", "wechat_mp", "wechat_miniprogram"]).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
       return csrfForbiddenResponse();
     }
 
-    const { phone, code, password, allowAutoPassword, provider } = result.data;
+    const { phone, code, password, allowAutoPassword } = result.data;
 
     // body 中的 bindToken 优先（小程序等无 Cookie 环境），其次读 Cookie（官网浏览器场景）
     const bindToken = result.data.bindToken || request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
@@ -115,10 +114,8 @@ export async function POST(request: NextRequest) {
       allowAutoPassword,
       wechatInfo,
       request,
-      // provider 优先级：body 显式指定 > bindToken 载荷（签发入口已知平台）> 默认 wechat_open
-      provider:
-        provider ||
-        (wechatInfo.type === "wechat_bind" ? wechatInfo.provider : undefined),
+      // provider 只取 bindToken 载荷（签发入口已知平台），缺省回落 wechat_open（resolveWechatBinding 内默认）
+      provider: wechatInfo.type === "wechat_bind" ? wechatInfo.provider : undefined,
     });
 
     if (!bindingResult.success) {

@@ -10,12 +10,11 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
-import { rateLimit } from "@/lib/ratelimit";
+import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
-import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { updateUserPassword } from "@/lib/password-policy";
 
 // 请求参数验证
@@ -103,16 +102,37 @@ export async function POST(request: NextRequest) {
 
     if (!smsCode) {
       await recordLoginAttempt(phone, false, request, "code_expired", "sms");
+      // 反枚举：与"码不匹配"统一错误码（配合 send-code 假发送）
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或不存在",
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
       );
+    }
+
+    // IP 绑定校验（核销之前执行，失败不烧码）：验证码使用 IP 需与发送 IP 一致（可配置）
+    if (process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress) {
+      const verifyIp = getRateLimitClientIP(request);
+      if (verifyIp !== smsCode.ipAddress) {
+        apiConsole.warn(
+          `[ResetPassword] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${phone}`
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "IP_MISMATCH",
+              message: "验证环境异常，请重新获取验证码",
+            },
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (!verifyCode(phone, code, "reset", smsCode.codeHash)) {
@@ -139,8 +159,8 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或已被使用",
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
@@ -199,13 +219,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 使所有 access_token 立即失效（15 分钟窗口期内不能继续使用）
-    // 先于 session 撤销执行：即使此步骤失败，密码已改+session 已撤销，风险窗口仅 15 分钟
-    try {
-      await blacklistUserTokens(user.id, "password_reset");
-    } catch (err) {
-      apiConsole.error("[ResetPassword] blacklistUserTokens 失败，access token 黑名单未更新:", err);
-    }
+    // 旧 access token 即时失效：由 updateUserPassword 写入的 passwordChangedAt 实现
+    //（verifyUserToken 比对 token iat < passwordChangedAt 即拒绝）。
+    // 不再使用 user 级黑名单：那会连受害者本人重新登录后签发的新 token 一并封锁 15 分钟。
 
     // 密码重置后撤销所有 session，在事务中完成保证一致性
     await prisma.$transaction(async (tx) => {

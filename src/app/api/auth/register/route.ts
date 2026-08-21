@@ -105,6 +105,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 手机号查重前置：已注册号码在验证码核销之前短路返回，避免白烧验证码
+    // （事务内 findUnique + P2002 兜底仍保留，防并发双注册）
+    const existingUser = await prisma.user.findUnique({
+      where: { phone },
+      select: { id: true },
+    });
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PHONE_EXISTS",
+            message: "该手机号已注册，请直接登录",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // 查找验证码
     const smsCode = await prisma.smsCode.findFirst({
       where: {
@@ -116,29 +135,35 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    if (!smsCode) {
-      await recordLoginAttempt(phone, false, request, "code_expired", "sms");
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或不存在",
+    // IP 绑定校验（核销之前执行，失败不烧码）：验证码使用 IP 需与发送 IP 一致（可配置）
+    if (smsCode && process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress) {
+      const verifyIp = getRateLimitClientIP(request);
+      if (verifyIp !== smsCode.ipAddress) {
+        apiConsole.warn(
+          `[Register] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${phone}`
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "IP_MISMATCH",
+              message: "验证环境异常，请重新获取验证码",
+            },
           },
-        },
-        { status: 400 }
-      );
+          { status: 400 }
+        );
+      }
     }
 
-    // 验证码校验
-    if (!verifyCode(phone, code, "register", smsCode.codeHash)) {
-      await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
+    // 反枚举："无可用码"与"码不匹配"统一返回同一错误码（配合 send-code 假发送）
+    // 验证码类失败不计入账户锁定池：否则攻击者无需任何验证码即可锁住任意手机号
+    if (!smsCode || !verifyCode(phone, code, "register", smsCode.codeHash)) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "CODE_INVALID",
-            message: "验证码错误",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
@@ -151,13 +176,12 @@ export async function POST(request: NextRequest) {
       data: { used: true },
     });
     if (consumeResult.count === 0) {
-      await recordLoginAttempt(phone, false, request, "code_already_used", "sms");
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "CODE_EXPIRED",
-            message: "验证码已过期或已被使用",
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
           },
         },
         { status: 400 }
@@ -208,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
-      await recordLoginAttempt(phone, false, request, "phone_exists", "sms");
+      // 并发场景下事务内查重命中：不计入锁定池（非凭据失败）
       return NextResponse.json(
         {
           success: false,

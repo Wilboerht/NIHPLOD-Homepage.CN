@@ -89,10 +89,11 @@ export async function resolveWechatBinding(
   const { phone, code, allowAutoPassword, wechatInfo, request } = input;
   let { password } = input;
   const provider = input.provider || "wechat_open";
-  // 小程序 openid 与服务号/开放平台 openid 属不同应用，不得写入 User.wechatOpenId 旧列
-  // （该列语义为开放平台/服务号 openid）；小程序 openid 仅写入 ExternalIdentity。
-  // wechatUnionId 不受此限：UnionID 本身就是跨应用聚合标识，语义一致。
-  const isMiniProgram = provider === "wechat_miniprogram";
+  // 仅微信开放平台/服务号写 User.wechatOpenId 旧列（该列语义即开放平台/服务号 openid）；
+  // 小程序/抖音等其他平台 openid 仅写入 ExternalIdentity，不得污染旧列。
+  // wechatUnionId 同理仅接受微信系 UnionID：抖音 unionid 是抖音主体内标识，不得混入。
+  const isWechatProvider = provider.startsWith("wechat_");
+  const writesLegacyWechatColumn = provider === "wechat_open" || provider === "wechat_mp";
 
   // 1. 验证码校验
   const smsResult = await verifyAndConsumeSmsCode(phone, code);
@@ -116,9 +117,11 @@ export async function resolveWechatBinding(
   try {
     user = await prisma.$transaction(async (tx) => {
       const oldWechatUser = await tx.user.findFirst({
-        where: wechatInfo.unionid
-          ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
-          : { wechatOpenId: wechatInfo.openid },
+        // unionid 分支仅限微信系 provider：非微信 unionid 不得与 wechatUnionId 列比对
+        where:
+          wechatInfo.unionid && isWechatProvider
+            ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
+            : { wechatOpenId: wechatInfo.openid },
       });
 
       let foundUser = await tx.user.findUnique({ where: { phone } });
@@ -149,8 +152,11 @@ export async function resolveWechatBinding(
                   ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
                   : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
                 avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
-                ...(isMiniProgram ? {} : { wechatOpenId: wechatInfo.openid }),
-                wechatUnionId: wechatInfo.unionid || oldWechatUser.wechatUnionId,
+                ...(writesLegacyWechatColumn ? { wechatOpenId: wechatInfo.openid } : {}),
+                // 非微信系 provider 完全不触碰 wechatUnionId 列（保持原值）
+                ...(isWechatProvider
+                  ? { wechatUnionId: wechatInfo.unionid || oldWechatUser.wechatUnionId }
+                  : {}),
               },
             });
           }
@@ -174,8 +180,11 @@ export async function resolveWechatBinding(
         foundUser = await tx.user.update({
           where: { id: foundUser.id },
           data: {
-            ...(isMiniProgram ? {} : { wechatOpenId: wechatInfo.openid }),
-            wechatUnionId: wechatInfo.unionid || foundUser.wechatUnionId,
+            ...(writesLegacyWechatColumn ? { wechatOpenId: wechatInfo.openid } : {}),
+            // 非微信系 provider 完全不触碰 wechatUnionId 列（保持原值）
+            ...(isWechatProvider
+              ? { wechatUnionId: wechatInfo.unionid || foundUser.wechatUnionId }
+              : {}),
             // 仅当用户尚无密码时才设置（新用户/临时账户升级）；已有密码的用户不受影响
             password: foundUser.password || hashedPassword,
             nickname: foundUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
@@ -190,10 +199,31 @@ export async function resolveWechatBinding(
             phoneVerified: true,
             nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
             avatar: wechatInfo.avatar || null,
-            wechatOpenId: isMiniProgram ? null : wechatInfo.openid,
-            wechatUnionId: wechatInfo.unionid || null,
+            wechatOpenId: writesLegacyWechatColumn ? wechatInfo.openid : null,
+            wechatUnionId: isWechatProvider ? wechatInfo.unionid || null : null,
           },
         });
+      }
+
+      // 身份冲突检测（全 provider 覆盖）：旧列 oldWechatUser 检测仅覆盖微信系，
+      // 小程序/抖音等 openid 从不进旧列，ExternalIdentity 是其唯一冲突检测源。
+      // 语义与旧列对齐：原归属为占位账户→允许抢占（身份行随 upsert 自动改挂）；
+      // 原归属为真实账户→拒绝改绑（WECHAT_ALREADY_BOUND）。
+      const existingIdentity = await tx.externalIdentity.findUnique({
+        where: { provider_subjectId: { provider, subjectId: wechatInfo.openid } },
+        select: { userId: true },
+      });
+      if (existingIdentity && existingIdentity.userId !== foundUser.id) {
+        const previousOwner = await tx.user.findUnique({
+          where: { id: existingIdentity.userId },
+          select: { phone: true },
+        });
+        if (
+          previousOwner &&
+          !previousOwner.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)
+        ) {
+          throw new Error("WECHAT_ALREADY_BOUND");
+        }
       }
 
       // 双写 ExternalIdentity（多平台聚合框架）：upsert by [provider, subjectId]，

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { levelDisplay } from "@/lib/membership";
+import { validatePasswordStrength } from "@/components/website/auth/auth-utils";
 
 /** 从 Cookie 读取 CSRF Token */
 function getCsrfToken(): string {
@@ -77,6 +78,19 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // 密码设置模式：change = 旧密码修改；set = 首次设置（短信验证码，未设过密码的账号）
+  const [pwdMode, setPwdMode] = useState<"change" | "set">("change");
+  const [setCode, setSetCode] = useState("");
+  const [countdown, setCountdown] = useState(0);
+
+  // 短信倒计时
+  useEffect(() => {
+    if (countdown > 0) {
+      const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [countdown]);
+
   // Toast 自动消失
   useEffect(() => {
     if (toast) {
@@ -137,35 +151,106 @@ export default function AccountPage() {
     }
   };
 
+  /** 首次设置密码：发送短信验证码（复用 reset 场景） */
+  const handleSendSetCode = async () => {
+    if (countdown > 0 || !user) return;
+    try {
+      const res = await fetch("/api/auth/send-code", {
+        method: "POST",
+        headers: csrfHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ phone: user.phone, type: "reset" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCountdown(60);
+        setToast({ message: "验证码已发送", type: "success" });
+      } else {
+        setError(data.error?.message || "验证码发送失败");
+      }
+    } catch {
+      setError("网络错误");
+    }
+  };
+
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       setError("两次输入的密码不一致");
       return;
     }
-    if (newPassword.length < 8) {
-      setError("密码长度不少于8位");
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      setError(strength.message || "密码强度不足");
       return;
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: csrfHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ oldPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setOldPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-        setToast({ message: "密码修改成功", type: "success" });
+      if (pwdMode === "change") {
+        // 修改密码：需旧密码验证（成功后撤销其他设备会话）
+        const res = await fetch("/api/user/password", {
+          method: "PUT",
+          headers: csrfHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ oldPassword, newPassword, confirmPassword }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setOldPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+          setToast({ message: "密码修改成功", type: "success" });
+        } else if (data.error?.code === "PASSWORD_NOT_SET") {
+          // 未设过密码的账号（如短信注册）：切换到短信验证码设置流程
+          setPwdMode("set");
+          setError("");
+        } else {
+          setError(data.error?.message || "修改失败");
+        }
       } else {
-        setError(data.error?.message || "修改失败");
+        // 首次设置密码：短信验证码 + 新密码
+        if (!/^\d{6}$/.test(setCode)) {
+          setError("请输入 6 位数字验证码");
+          setSaving(false);
+          return;
+        }
+        const res = await fetch("/api/user/password/set", {
+          method: "POST",
+          headers: csrfHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ code: setCode, password: newPassword, confirmPassword }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setPwdMode("change");
+          setSetCode("");
+          setNewPassword("");
+          setConfirmPassword("");
+          setToast({ message: "密码设置成功", type: "success" });
+        } else {
+          setError(data.error?.message || "设置失败");
+        }
       }
     } catch {
       setError("网络错误");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** 强制下线指定设备（撤销对应会话，不允许撤销当前设备） */
+  const handleForceLogoutDevice = async (deviceId: string) => {
+    if (!window.confirm("确定要将该设备强制下线吗？")) return;
+    try {
+      const res = await fetch(`/api/user/devices/${deviceId}`, {
+        method: "DELETE",
+        headers: csrfHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDevices((prev) => prev.filter((d) => d.id !== deviceId));
+        setToast({ message: "已将该设备强制下线", type: "success" });
+      } else {
+        setError(data.error?.message || "强制下线失败");
+      }
+    } catch {
+      setError("网络错误");
     }
   };
 
@@ -368,18 +453,52 @@ export default function AccountPage() {
             <div data-testid="account-security">
               <h2 className="mb-6 text-lg font-semibold">安全设置</h2>
               <div className="max-w-md space-y-4">
-                <h3 className="text-sm font-medium text-gray-700">修改密码</h3>
+                <h3 className="text-sm font-medium text-gray-700">
+                  {pwdMode === "change" ? "修改密码" : "设置密码（短信验证）"}
+                </h3>
+                {pwdMode === "set" && (
+                  <p className="text-xs text-gray-500">
+                    您的账号尚未设置密码，请通过手机验证码设置。
+                  </p>
+                )}
+                {pwdMode === "change" && (
+                  <div>
+                    <label className="mb-1 block text-sm text-gray-600">旧密码</label>
+                    <input
+                      type="password"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+                {pwdMode === "set" && (
+                  <div>
+                    <label className="mb-1 block text-sm text-gray-600">短信验证码</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={setCode}
+                        onChange={(e) => setSetCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="6位验证码"
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={handleSendSetCode}
+                        disabled={countdown > 0}
+                        className="shrink-0 rounded-lg border border-blue-200 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                      >
+                        {countdown > 0 ? `${countdown}s 后重发` : "发送验证码"}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">旧密码</label>
-                  <input
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm text-gray-600">新密码</label>
+                  <label className="mb-1 block text-sm text-gray-600">
+                    {pwdMode === "change" ? "新密码" : "密码"}
+                  </label>
                   <input
                     type="password"
                     value={newPassword}
@@ -388,7 +507,9 @@ export default function AccountPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">确认新密码</label>
+                  <label className="mb-1 block text-sm text-gray-600">
+                    {pwdMode === "change" ? "确认新密码" : "确认密码"}
+                  </label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -401,7 +522,7 @@ export default function AccountPage() {
                   disabled={saving}
                   className="rounded-lg bg-blue-600 px-6 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {saving ? "修改中..." : "修改密码"}
+                  {saving ? "提交中..." : pwdMode === "change" ? "修改密码" : "设置密码"}
                 </button>
               </div>
             </div>
@@ -470,7 +591,7 @@ export default function AccountPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => setError("暂不支持该功能，请联系客服")}
+                        onClick={() => handleForceLogoutDevice(d.id)}
                         className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         强制下线

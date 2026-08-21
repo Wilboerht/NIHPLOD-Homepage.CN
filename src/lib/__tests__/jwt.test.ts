@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vites
 import { generateKeyPairSync } from "crypto";
 import { SignJWT, decodeJwt } from "jose";
 
-// === Mock Prisma（sid 会话校验查 OAuthSession；M2M 校验查 OAuthClient）===
+// === Mock Prisma（sid 会话校验查 OAuthSession；M2M 校验查 OAuthClient；改密即时失效查 user.passwordChangedAt）===
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     oAuthSession: {
@@ -10,6 +10,10 @@ vi.mock("@/lib/prisma", () => ({
     },
     oAuthClient: {
       findUnique: vi.fn(),
+    },
+    user: {
+      // 默认未改过密码：不影响既有验证用例
+      findUnique: vi.fn().mockResolvedValue({ passwordChangedAt: null }),
     },
   },
 }));
@@ -116,6 +120,23 @@ describe("JWT 工具", () => {
       // 登出语义：撤销 jti 后该 token 立即失效
       await revokeAccessToken(claims.jti as string);
       expect(await verifyUserToken(token)).toBeNull();
+    });
+
+    it("改密后签发的旧 token 应被拒绝，改密前签发的新 token 不受影响", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+
+      // 密码在 token 签发之后被修改 → 旧 token 立即失效（无需黑名单，无自锁窗口）
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        passwordChangedAt: new Date(Date.now() + 5_000),
+      } as never);
+      expect(await verifyUserToken(token)).toBeNull();
+
+      // 密码变更早于签发时间 → 正常验证（受害者重新登录后的新 token）
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        passwordChangedAt: new Date(Date.now() - 60_000),
+      } as never);
+      expect(await verifyUserToken(token)).toMatchObject({ id: "user-1" });
     });
   });
 

@@ -7,6 +7,8 @@
 import { useEffect, useState } from "react";
 import { Crown, Gift, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface BenefitItem {
@@ -83,15 +85,23 @@ export function VipPanel() {
   const [txPage, setTxPage] = useState(1);
   const [txTotal, setTxTotal] = useState(0);
   const { error: showError } = useToast();
+  const { redirectToLogin } = useAuth();
 
   const loadVIPData = async () => {
     try {
-      const res = await fetch("/api/user/vip");
+      // fetchWithAuth：401 时自动静默刷新重试；刷新失败抛 UnauthorizedError，
+      // 避免会话过期后误渲染"暂无会员信息"假空态
+      const res = await fetchWithAuth("/api/user/vip");
       const data = await res.json();
       if (data.success) {
         setVipData(data.data);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        showError("登录已过期，请重新登录");
+        redirectToLogin();
+        return;
+      }
       showError("加载会员信息失败");
     }
   };
@@ -99,14 +109,19 @@ export function VipPanel() {
   const loadTransactions = async (page: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/user/points/history?page=${page}`);
+      const res = await fetchWithAuth(`/api/user/points/history?page=${page}`);
       const data = await res.json();
       if (data.success) {
         setTransactions(data.data.transactions);
         setTxTotal(data.data.pagination.total);
         setTxPage(page);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedError) {
+        showError("登录已过期，请重新登录");
+        redirectToLogin();
+        return;
+      }
       showError("加载积分记录失败");
     } finally {
       setLoading(false);

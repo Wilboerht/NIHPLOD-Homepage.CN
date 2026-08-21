@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Package, ChevronRight, Loader2, XCircle, CheckCircle, RotateCcw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
-import { fetchWithAuth } from "@/lib/fetch-with-auth";
+import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { m } from "framer-motion";
 
 interface OrderItem {
@@ -56,13 +56,15 @@ const TABS = [
 ];
 
 export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
-  const { initialOrderId, clearInitialOrderId } = useAuth();
+  const { initialOrderId, clearInitialOrderId, redirectToLogin } = useAuth();
   const { error: showError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const requestIdRef = useRef(0);
+  // 列表滚动容器：页签切换时复位到顶部，避免继承上一页签的滚动位置
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,7 +76,8 @@ export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
       setLoading(true);
       try {
         const url = activeTab === "all" ? "/api/orders" : `/api/orders?status=${activeTab}`;
-        const res = await fetch(url, { signal: controller.signal });
+        // fetchWithAuth：401 时自动静默刷新重试，避免会话过期后误渲染"暂无订单"假空态
+        const res = await fetchWithAuth(url, { signal: controller.signal });
         const data = await res.json();
 
         if (requestId !== requestIdRef.current) return;
@@ -94,6 +97,11 @@ export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
         }
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
+        if (e instanceof UnauthorizedError) {
+          showError("登录已过期，请重新登录");
+          redirectToLogin();
+          return;
+        }
         console.error("获取订单失败:", e);
         showError("获取订单失败，请稍后重试");
       } finally {
@@ -106,7 +114,7 @@ export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
       clearTimeout(debounceTimer);
       controller.abort();
     };
-  }, [activeTab, initialOrderId, clearInitialOrderId, debounceMs]);
+  }, [activeTab, initialOrderId, clearInitialOrderId, debounceMs, redirectToLogin, showError]);
 
   if (selectedOrder) {
     return <OrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} />;
@@ -125,7 +133,13 @@ export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
           {TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => {
+                setActiveTab(tab.key);
+                // 部分环境（如 jsdom）无 scrollTo 实现，守卫调用
+                if (typeof listRef.current?.scrollTo === "function") {
+                  listRef.current.scrollTo({ top: 0 });
+                }
+              }}
               className={`relative whitespace-nowrap pb-2 text-[13px] tracking-wider transition-all ${
                 activeTab === tab.key
                   ? "font-medium text-stone-800"
@@ -145,7 +159,10 @@ export function OrdersPanel({ debounceMs = 250 }: { debounceMs?: number }) {
         </div>
       </div>
 
-      <div className="scrollbar-hide relative flex flex-1 flex-col overflow-y-auto px-16 py-6">
+      <div
+        ref={listRef}
+        className="scrollbar-hide relative flex flex-1 flex-col overflow-y-auto px-16 py-6"
+      >
         {/* 持久化加载遮罩层 - 防止 DOM 塌陷导致高度抖动 */}
         {loading && orders.length > 0 && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#FBF8F0]/60 backdrop-blur-[2px]">
@@ -252,7 +269,7 @@ function OrderCard({ order, onClick }: { order: Order; onClick: () => void }) {
 }
 
 function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
-  const { openPay, closeUserCenter } = useAuth();
+  const { openPay, closeUserCenter, refreshUser } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState(order.status);
@@ -342,6 +359,8 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
       if (data.success && data.data?.fulfilled) {
         showSuccess("订单已支付");
         setCurrentStatus("PAID");
+        // 支付完成：刷新侧边栏积分/等级
+        void refreshUser(true);
       } else {
         showError(data.data?.message || "订单尚未支付");
       }
@@ -350,7 +369,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack: () => void }) {
     } finally {
       setActionLoading(null);
     }
-  }, [order.id, showSuccess, showError]);
+  }, [order.id, showSuccess, showError, refreshUser]);
 
   return (
     <div className="flex h-full flex-col pt-6 md:pt-10">

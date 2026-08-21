@@ -28,6 +28,7 @@ vi.mock("@/lib/prisma", () => {
 
   const mockRefreshToken = {
     findFirst: vi.fn(),
+    findUnique: vi.fn(),
     findMany: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
@@ -76,6 +77,7 @@ async function getMockRefreshToken() {
   const { prisma } = await import("../prisma");
   return prisma.refreshToken as unknown as {
     findFirst: ReturnType<typeof vi.fn>;
+    findUnique: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
@@ -302,10 +304,12 @@ describe("auth-security", () => {
       });
       mockUser.findUnique.mockResolvedValueOnce({ status: "ACTIVE" });
       mockRt.updateMany
-        // 乐观锁撤销返回 0 → 另一请求已先撤销，判定为并发重用攻击
+        // 乐观锁撤销返回 0 → 另一请求已先撤销，重读 revokedAt 判定良性/攻击
         .mockResolvedValueOnce({ count: 0 })
         // token 家族吊销
         .mockResolvedValueOnce({ count: 3 });
+      // 重读旧 token：撤销时间超出 10 秒良性窗口 → 判定为并发重用攻击
+      mockRt.findUnique.mockResolvedValueOnce({ revokedAt: new Date(Date.now() - 60_000) });
       vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
         return callback(prisma as unknown as never);
       });
@@ -356,12 +360,12 @@ describe("auth-security", () => {
       const mockSession = await getMockOAuthSession();
       const { recordSsoEvent } = await import("@/lib/sso-audit");
 
-      // token 存在但已被撤销 → 顺序重用攻击
+      // token 存在但已被撤销且超出 10 秒良性窗口 → 顺序重用攻击
       mockRt.findFirst.mockResolvedValueOnce({
         id: "rt-1",
         userId: "user-1",
         clientId: "client-1",
-        revokedAt: new Date(),
+        revokedAt: new Date(Date.now() - 60_000),
       });
       mockRt.updateMany.mockResolvedValueOnce({ count: 2 });
       mockSession.updateMany.mockResolvedValueOnce({ count: 1 });
@@ -475,7 +479,7 @@ describe("auth-security", () => {
         id: "rt-1",
         userId: "user-1",
         clientId: "client-1",
-        revokedAt: new Date(),
+        revokedAt: new Date(Date.now() - 60_000),
       });
       // 第二次触发时家族已无活跃 token（updateMany count=0），不应抛错
       mockRt.updateMany.mockResolvedValue({ count: 0 });
@@ -503,6 +507,86 @@ describe("auth-security", () => {
 
       expect(first.valid).toBe(false);
       expect(second).toEqual({ valid: false, reason: "revoked", familyRevokedCount: 0 });
+    });
+
+    it("良性并发（撤销后 ≤10 秒内重发）应仅拒绝本次请求、不吊销家族、不记审计", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+
+      // 刚被另一请求轮换（revokedAt 在 10 秒内）：多 Tab / 拦截器重发的良性场景
+      mockRt.findFirst.mockResolvedValueOnce({
+        id: "rt-1",
+        userId: "user-1",
+        clientId: "client-1",
+        revokedAt: new Date(),
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const result = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+
+      expect(result).toEqual({
+        valid: false,
+        reason: "concurrent_rotation",
+        familyRevokedCount: 0,
+      });
+
+      // 不吊销家族（不误伤同一用户其他设备）、不签发新 token
+      expect(mockRt.updateMany).not.toHaveBeenCalled();
+      expect(mockRt.create).not.toHaveBeenCalled();
+      // 未产生家族吊销 → 不记录审计噪音
+      expect(recordSsoEvent).not.toHaveBeenCalled();
+    });
+
+    it("乐观锁竞态分支：重读 revokedAt ≤10 秒视为良性并发，不吊销家族", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      const mockUser = await getMockUser();
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+
+      mockRt.findFirst.mockResolvedValueOnce({
+        id: "rt-1",
+        userId: "user-1",
+        clientId: "client-1",
+        revokedAt: null,
+      });
+      mockUser.findUnique.mockResolvedValueOnce({ status: "ACTIVE" });
+      // 乐观锁撤销返回 0：另一请求刚先撤销
+      mockRt.updateMany.mockResolvedValueOnce({ count: 0 });
+      // 重读：撤销时间在 10 秒良性窗口内
+      mockRt.findUnique.mockResolvedValueOnce({ revokedAt: new Date() });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const result = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        undefined,
+        "client-1"
+      );
+
+      expect(result).toEqual({
+        valid: false,
+        reason: "concurrent_rotation",
+        familyRevokedCount: 0,
+      });
+
+      // 仅第一次乐观锁撤销，无家族吊销、无新 token、无审计
+      expect(mockRt.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockRt.create).not.toHaveBeenCalled();
+      expect(recordSsoEvent).not.toHaveBeenCalled();
     });
   });
 

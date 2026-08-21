@@ -85,29 +85,41 @@ export async function POST(request: NextRequest) {
 
     const { name, phone, province, city, district, detail, isDefault } = result.data;
 
-    // 如果设为默认，先取消其他默认地址
-    if (isDefault) {
-      await prisma.address.updateMany({
-        where: { userId: payload.id, isDefault: true },
-        data: { isDefault: false },
-      });
+    // 条数上限：防止脚本批量写入与列表无限膨胀
+    const count = await prisma.address.count({ where: { userId: payload.id } });
+    if (count >= 20) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "ADDRESS_LIMIT", message: "地址数量已达上限（20个）" },
+        },
+        { status: 400 }
+      );
     }
 
-    // 检查是否是第一个地址，如果是则默认设为默认
-    const count = await prisma.address.count({ where: { userId: payload.id } });
+    // 首条地址自动设为默认
     const shouldDefault = isDefault || count === 0;
 
-    const address = await prisma.address.create({
-      data: {
-        userId: payload.id,
-        name,
-        phone,
-        province,
-        city,
-        district,
-        detail,
-        isDefault: shouldDefault,
-      },
+    // "清默认 → 创建"包入事务，避免并发下出现多个默认地址（对齐 [id]/default 路由口径）
+    const address = await prisma.$transaction(async (tx) => {
+      if (shouldDefault) {
+        await tx.address.updateMany({
+          where: { userId: payload.id, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+      return tx.address.create({
+        data: {
+          userId: payload.id,
+          name,
+          phone,
+          province,
+          city,
+          district,
+          detail,
+          isDefault: shouldDefault,
+        },
+      });
     });
 
     return NextResponse.json({

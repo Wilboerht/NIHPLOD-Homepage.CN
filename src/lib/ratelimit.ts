@@ -150,6 +150,8 @@ export const RATE_LIMIT_PRESETS = {
   "oauth-revoke": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 微信 OAuth 回调 - 每分钟 30 次 */
   "wechat-callback": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** 抖音 OAuth 回调 - 每分钟 30 次（与 wechat-callback 口径一致） */
+  "douyin-callback": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 微信绑定 - 每分钟 5 次 */
   "wechat-bind": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 微信小程序登录 - 每分钟 5 次（与 wechat-bind 口径一致，防 code 爆破） */

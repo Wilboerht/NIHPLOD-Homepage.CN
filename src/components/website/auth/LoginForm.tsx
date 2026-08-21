@@ -275,8 +275,10 @@ export function LoginForm({
           <div className="animate-fade-scale-in relative flex gap-2">
             <input
               type="text"
+              required
               inputMode="numeric"
               pattern="[0-9]*"
+              maxLength={6}
               value={loginCode}
               onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="验证码"

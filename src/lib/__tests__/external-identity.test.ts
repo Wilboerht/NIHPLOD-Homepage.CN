@@ -89,6 +89,21 @@ describe("external-identity 辅助模块", () => {
       });
       expect(user).toBeNull();
     });
+
+    it("传入 provider 数组时应以 in 限定（同系 UnionID 聚合，隔离他系命名空间）", async () => {
+      mockExternalIdentity.findFirst.mockResolvedValue(null);
+
+      await findUserByUnionId("union-1", ["wechat_open", "wechat_mp", "wechat_miniprogram"]);
+
+      expect(mockExternalIdentity.findFirst).toHaveBeenCalledWith({
+        where: {
+          unionId: "union-1",
+          provider: { in: ["wechat_open", "wechat_mp", "wechat_miniprogram"] },
+        },
+        orderBy: { createdAt: "asc" },
+        select: { userId: true },
+      });
+    });
   });
 
   describe("upsertIdentity", () => {

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { maskIp } from "@/lib/mask-phone";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,8 @@ export async function GET(request: NextRequest) {
     const data = tokens.map((t) => ({
       id: t.id,
       deviceName: t.deviceName || "未知设备",
-      ipAddress: t.ipAddress || "未知 IP",
+      // 末段脱敏：用户端展示只需辨识大致网络，不暴露精确主机 IP
+      ipAddress: t.ipAddress ? maskIp(t.ipAddress) : "未知 IP",
       createdAt: t.createdAt.toISOString(),
       // updatedAt 在每次 token 轮换（刷新）时更新，近似“最后活跃”时间
       lastActiveAt: t.updatedAt.toISOString(),

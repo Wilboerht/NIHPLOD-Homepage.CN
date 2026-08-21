@@ -413,6 +413,16 @@ export async function atomicallyRotateRefreshToken(
       }
 
       if (existing.revokedAt) {
+        // 良性并发窗口：刚被轮换（≤10 秒）视为多 Tab / 拦截器并发重发，
+        // 仅拒绝本次请求、不吊销家族，避免误伤同一用户的所有设备；
+        // 超出窗口才视为顺序重用已撤销的 Refresh Token（泄漏信号）
+        if (Date.now() - existing.revokedAt.getTime() <= 10_000) {
+          return {
+            valid: false as const,
+            reason: "concurrent_rotation" as const,
+            familyRevokedCount: 0,
+          };
+        }
         // 顺序重用已撤销的 Refresh Token：明确的泄漏信号（RFC 6819 §5.2.2.3），
         // 吊销该用户在该 client 下的整个 token 家族（此前仅并发竞态分支有吊销，此处补齐）
         const familyRevoked = await tx.refreshToken.updateMany({
@@ -462,8 +472,20 @@ export async function atomicallyRotateRefreshToken(
       });
 
       if (revokeResult.count === 0) {
-        // 并发场景：另一个请求已先撤销此 Token → 视为重用攻击
-        // 按 RFC 6819 §5.2.2.3：吊销该用户在该 client 下的整个 token 家族
+        // 并发竞态：另一个请求已先撤销此 Token。重读 revokedAt 区分良性并发与重用攻击：
+        // ≤10 秒内刚被轮换 → 良性并发（多 Tab / 拦截器重发），仅拒绝本次请求不吊销家族；
+        // 超出窗口才按 RFC 6819 §5.2.2.3 吊销整个 token 家族
+        const reread = await tx.refreshToken.findUnique({
+          where: { id: existing.id },
+          select: { revokedAt: true },
+        });
+        if (reread?.revokedAt && Date.now() - reread.revokedAt.getTime() <= 10_000) {
+          return {
+            valid: false as const,
+            reason: "concurrent_rotation" as const,
+            familyRevokedCount: 0,
+          };
+        }
         const familyRevoked = await tx.refreshToken.updateMany({
           where: {
             userId,
@@ -546,12 +568,14 @@ export async function atomicallyRotateRefreshToken(
     });
 
     // 检测到 refresh token 重用攻击：记录合规敏感的审计事件（同步 await，防止丢失）
-    // revoked / missing 分支已在事务内完成家族吊销，此处统一补记审计
+    // revoked / missing 分支已在事务内完成家族吊销，此处统一补记审计；
+    // 良性并发（familyRevokedCount = 0，未吊销任何家族成员）不产生审计噪音
     if (
       !result.valid &&
       (result.reason === "concurrent_rotation" ||
         result.reason === "revoked" ||
-        result.reason === "missing")
+        result.reason === "missing") &&
+      (result.familyRevokedCount ?? 0) > 0
     ) {
       await recordSsoEvent({
         event: "status_change",
