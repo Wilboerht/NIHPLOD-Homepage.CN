@@ -258,22 +258,23 @@ async function finalizeLogin(
     );
   }
 
-  // 更新微信信息
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      wechatOpenId: wechatInfo.openid,
-      wechatUnionId: wechatInfo.unionid || undefined,
-      nickname: user.nickname || wechatInfo.nickname || null,
-      avatar: user.avatar || wechatInfo.avatar || null,
-    },
-  });
-
-  // 双写 ExternalIdentity（多平台聚合框架）：子站扫码登录来自开放平台
-  // （exchange token 不携带登录类型，mp 经子站回流的极少数场景统一记为 wechat_open）
-  await upsertIdentity(user.id, "wechat_open", wechatInfo.openid, wechatInfo.unionid, {
-    nickname: wechatInfo.nickname ?? null,
-    avatar: wechatInfo.avatar ?? null,
+  // 更新微信信息 + 双写 ExternalIdentity（多平台聚合框架）：子站扫码登录来自开放平台
+  // （exchange token 不携带登录类型，mp 经子站回流的极少数场景统一记为 wechat_open）；
+  // 同事务执行保证双写一致性
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        wechatOpenId: wechatInfo.openid,
+        wechatUnionId: wechatInfo.unionid || undefined,
+        nickname: user.nickname || wechatInfo.nickname || null,
+        avatar: user.avatar || wechatInfo.avatar || null,
+      },
+    });
+    await upsertIdentity(user.id, "wechat_open", wechatInfo.openid, wechatInfo.unionid, {
+      nickname: wechatInfo.nickname ?? null,
+      avatar: wechatInfo.avatar ?? null,
+    }, tx);
   });
 
   // 签发双 Token

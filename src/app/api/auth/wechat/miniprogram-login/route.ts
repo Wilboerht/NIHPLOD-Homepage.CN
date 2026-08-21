@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         step: "miniprogram_binding_required",
         ip: clientIP,
       });
-      const bindToken = await signWechatBindToken({ openid, unionid });
+      const bindToken = await signWechatBindToken({ openid, unionid, provider: PROVIDER });
       return NextResponse.json({
         success: true,
         data: { needBinding: true, bindToken },
@@ -130,14 +130,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. 双写 ExternalIdentity（unionid 聚合后 openid 归属到已有账户）
-    await upsertIdentity(user.id, PROVIDER, openid, unionid || user.wechatUnionId);
-    if (unionid && !user.wechatUnionId) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { wechatUnionId: unionid },
-      });
-    }
+    // 5. 双写 ExternalIdentity（unionid 聚合后 openid 归属到已有账户）+ UnionID 补写，同事务保证一致性
+    await prisma.$transaction(async (tx) => {
+      await upsertIdentity(user.id, PROVIDER, openid, unionid || user.wechatUnionId, undefined, tx);
+      if (unionid && !user.wechatUnionId) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { wechatUnionId: unionid },
+        });
+      }
+    });
 
     // 6. 签发双 Token（access 携带 jti，登出即失效自动生效）
     const accessToken = await signUserToken({ id: user.id, phone: user.phone });

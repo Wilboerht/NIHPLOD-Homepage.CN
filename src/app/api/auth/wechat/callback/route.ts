@@ -263,25 +263,27 @@ export async function GET(request: NextRequest) {
         return response;
       }
 
-      // 更新微信信息
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          wechatOpenId: wechatUser.openid,
-          wechatUnionId: wechatUser.unionid || user.wechatUnionId,
-          nickname: user.nickname || wechatUser.nickname || null,
-          avatar: user.avatar || wechatUser.headimgurl || null,
-        },
+      // 更新微信信息 + 双写 ExternalIdentity（多平台聚合框架）：
+      // provider 按登录类型区分；同事务执行保证双写一致性
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            wechatOpenId: wechatUser.openid,
+            wechatUnionId: wechatUser.unionid || user.wechatUnionId,
+            nickname: user.nickname || wechatUser.nickname || null,
+            avatar: user.avatar || wechatUser.headimgurl || null,
+          },
+        });
+        await upsertIdentity(
+          user.id,
+          loginType === "mp" ? "wechat_mp" : "wechat_open",
+          wechatUser.openid,
+          wechatUser.unionid || user.wechatUnionId,
+          { nickname: wechatUser.nickname, avatar: wechatUser.headimgurl },
+          tx
+        );
       });
-
-      // 双写 ExternalIdentity（多平台聚合框架）：provider 按登录类型区分
-      await upsertIdentity(
-        user.id,
-        loginType === "mp" ? "wechat_mp" : "wechat_open",
-        wechatUser.openid,
-        wechatUser.unionid || user.wechatUnionId,
-        { nickname: wechatUser.nickname, avatar: wechatUser.headimgurl }
-      );
 
       // 子站场景：通过 URL 传递一次性 exchange token，由子站完成本地 Cookie/session 写入
       if (safeCallback && isSubsiteCallback(safeCallback)) {
@@ -379,12 +381,13 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // 官网场景：保持 Cookie 方式
+    // 官网场景：保持 Cookie 方式（provider 随载荷携带，bind 端点据此写入 ExternalIdentity）
     const bindToken = await signWechatBindToken({
       openid: wechatUser.openid,
       unionid: wechatUser.unionid,
       nickname: wechatUser.nickname,
       avatar: wechatUser.headimgurl,
+      provider: loginType === "mp" ? "wechat_mp" : "wechat_open",
     });
 
     const bindUrl = new URL(baseRedirectUrl);

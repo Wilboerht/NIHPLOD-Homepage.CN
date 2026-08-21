@@ -21,7 +21,8 @@ import { rateLimit } from "@/lib/ratelimit";
  * 微信绑定表单
  * 密码现在是可选的（如果不提供，会自动生成）
  * bindToken：可选，小程序等无 Cookie 环境通过 body 传递（优先于 Cookie）
- * provider：可选，外部身份归属标识（小程序传 wechat_miniprogram），限定枚举防任意值
+ * provider：可选，外部身份归属标识（小程序传 wechat_miniprogram），限定枚举防任意值；
+ *   未传时回退 bindToken 载荷中的 provider（签发入口已知平台），最终默认 wechat_open
  */
 const bindSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
@@ -52,10 +53,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
-    }
-
     const body = await request.json();
 
     const result = bindSchema.safeParse(body);
@@ -70,6 +67,13 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // CSRF 校验：body 携带 bindToken 的非浏览器通道（小程序等）无 Cookie，无法双端比对，予以豁免；
+    // 浏览器 Cookie 通道保持强制校验。豁免安全性：绑定必须通过 SMS 验证码（攻击者无法获取），
+    // 且 bindToken 为服务端签名 JWT，不可伪造。
+    if (!result.data.bindToken && !validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
     }
 
     const { phone, code, password, allowAutoPassword, provider } = result.data;
@@ -111,7 +115,10 @@ export async function POST(request: NextRequest) {
       allowAutoPassword,
       wechatInfo,
       request,
-      provider,
+      // provider 优先级：body 显式指定 > bindToken 载荷（签发入口已知平台）> 默认 wechat_open
+      provider:
+        provider ||
+        (wechatInfo.type === "wechat_bind" ? wechatInfo.provider : undefined),
     });
 
     if (!bindingResult.success) {

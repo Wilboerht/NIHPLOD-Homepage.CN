@@ -429,6 +429,8 @@ export interface WechatBindPayload {
   unionid?: string;
   nickname?: string;
   avatar?: string;
+  /** 外部身份归属平台（签发入口已知时携带，bind 端点据此写入 ExternalIdentity） */
+  provider?: "wechat_open" | "wechat_mp" | "wechat_miniprogram";
 }
 
 /**

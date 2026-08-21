@@ -10,6 +10,9 @@
  */
 import { prisma } from "./prisma";
 
+/** 身份存储客户端（支持传入事务 tx，默认用全局 prisma） */
+type IdentityStore = Pick<typeof prisma, "externalIdentity">;
+
 /** 身份元数据（昵称/头像等快照，可空；JSON 兼容的平坦键值） */
 export type ExternalIdentityMetadata = Record<string, string | number | boolean | null> | null;
 
@@ -45,15 +48,17 @@ export async function findUserByUnionId(unionId: string, provider?: string) {
 /**
  * 写入/更新外部身份（upsert by [provider, subjectId]）
  * 冲突时更新归属用户与 unionId/metadata——调用方必须已完成归属决策。
+ * @param client 可选事务客户端；与 user 更新同事务调用可保证双写一致性
  */
 export async function upsertIdentity(
   userId: string,
   provider: string,
   subjectId: string,
   unionId?: string | null,
-  metadata?: ExternalIdentityMetadata
+  metadata?: ExternalIdentityMetadata,
+  client: IdentityStore = prisma
 ) {
-  return prisma.externalIdentity.upsert({
+  return client.externalIdentity.upsert({
     where: { provider_subjectId: { provider, subjectId } },
     update: {
       userId,

@@ -89,6 +89,10 @@ export async function resolveWechatBinding(
   const { phone, code, allowAutoPassword, wechatInfo, request } = input;
   let { password } = input;
   const provider = input.provider || "wechat_open";
+  // 小程序 openid 与服务号/开放平台 openid 属不同应用，不得写入 User.wechatOpenId 旧列
+  // （该列语义为开放平台/服务号 openid）；小程序 openid 仅写入 ExternalIdentity。
+  // wechatUnionId 不受此限：UnionID 本身就是跨应用聚合标识，语义一致。
+  const isMiniProgram = provider === "wechat_miniprogram";
 
   // 1. 验证码校验
   const smsResult = await verifyAndConsumeSmsCode(phone, code);
@@ -145,7 +149,7 @@ export async function resolveWechatBinding(
                   ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
                   : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
                 avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
-                wechatOpenId: wechatInfo.openid,
+                ...(isMiniProgram ? {} : { wechatOpenId: wechatInfo.openid }),
                 wechatUnionId: wechatInfo.unionid || oldWechatUser.wechatUnionId,
               },
             });
@@ -170,7 +174,7 @@ export async function resolveWechatBinding(
         foundUser = await tx.user.update({
           where: { id: foundUser.id },
           data: {
-            wechatOpenId: wechatInfo.openid,
+            ...(isMiniProgram ? {} : { wechatOpenId: wechatInfo.openid }),
             wechatUnionId: wechatInfo.unionid || foundUser.wechatUnionId,
             // 仅当用户尚无密码时才设置（新用户/临时账户升级）；已有密码的用户不受影响
             password: foundUser.password || hashedPassword,
@@ -186,7 +190,7 @@ export async function resolveWechatBinding(
             phoneVerified: true,
             nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
             avatar: wechatInfo.avatar || null,
-            wechatOpenId: wechatInfo.openid,
+            wechatOpenId: isMiniProgram ? null : wechatInfo.openid,
             wechatUnionId: wechatInfo.unionid || null,
           },
         });
