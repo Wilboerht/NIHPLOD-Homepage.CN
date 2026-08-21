@@ -26,6 +26,7 @@ import {
   WECHAT_BIND_COOKIE_OPTIONS,
 } from "@/types/auth";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { upsertIdentity } from "@/lib/external-identity";
 import { signWechatBindToken, signWechatExchangeToken } from "@/lib/jwt";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -272,6 +273,15 @@ export async function GET(request: NextRequest) {
           avatar: user.avatar || wechatUser.headimgurl || null,
         },
       });
+
+      // 双写 ExternalIdentity（多平台聚合框架）：provider 按登录类型区分
+      await upsertIdentity(
+        user.id,
+        loginType === "mp" ? "wechat_mp" : "wechat_open",
+        wechatUser.openid,
+        wechatUser.unionid || user.wechatUnionId,
+        { nickname: wechatUser.nickname, avatar: wechatUser.headimgurl }
+      );
 
       // 子站场景：通过 URL 传递一次性 exchange token，由子站完成本地 Cookie/session 写入
       if (safeCallback && isSubsiteCallback(safeCallback)) {

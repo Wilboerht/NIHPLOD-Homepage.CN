@@ -99,12 +99,13 @@ export async function finalizeRefund(
       });
     }
 
-    // 扣回该订单发放的积分（防刷：买→赚积分→退款→保留积分）
+    // 扣回该订单发放的积分并扣减累计消费（防刷：买→赚积分→退款→保留积分）
     await refundPointsForOrder({
       tx,
       orderId,
       userId: order.userId,
       orderNo: order.orderNo,
+      refundAmount,
     });
   });
 

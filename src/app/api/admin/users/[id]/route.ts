@@ -13,6 +13,7 @@ import { z } from "zod";
 import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
+import { removeIdentities } from "@/lib/external-identity";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets } from "@/lib/webhook";
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         status: true,
         membershipLevel: true,
         totalPoints: true,
+        totalSpent: true,
         wechatOpenId: true,
         wechatUnionId: true,
         createdAt: true,
@@ -336,6 +338,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         wechatUnionId: null,
       },
     });
+
+    // 同步移除全部外部平台身份（PII 匿名化口径与微信列置 null 一致，不限定微信系）
+    await removeIdentities(id);
 
     // 撤销所有 token + 加入黑名单
     await prisma.refreshToken.updateMany({

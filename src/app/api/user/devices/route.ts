@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         deviceName: true,
         ipAddress: true,
         createdAt: true,
+        updatedAt: true,
         expiresAt: true,
       },
       orderBy: { createdAt: "desc" },
@@ -38,7 +39,9 @@ export async function GET(request: NextRequest) {
       deviceName: t.deviceName || "未知设备",
       ipAddress: t.ipAddress || "未知 IP",
       createdAt: t.createdAt.toISOString(),
-      lastActiveAt: t.expiresAt.toISOString(),
+      // updatedAt 在每次 token 轮换（刷新）时更新，近似“最后活跃”时间
+      lastActiveAt: t.updatedAt.toISOString(),
+      expiresAt: t.expiresAt.toISOString(),
     }));
 
     return NextResponse.json({ success: true, data });

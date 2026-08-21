@@ -232,7 +232,7 @@ export interface ServiceLink {
 
 // 单个服务详情
 export interface ServiceDetail {
-  id: string; // vip / website / influencer
+  id: string; // auth / influencer / advisor / miniprogram
   label: string; // 标签名称
   title: string; // 服务标题
   nameEn: string; // 英文名

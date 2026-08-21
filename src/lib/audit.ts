@@ -57,6 +57,9 @@ export type AuditAction =
   | "user_deleted"
   | "user_points_adjust"
   | "update_vip_benefit"
+  | "create_point_campaign"
+  | "update_point_campaign"
+  | "delete_point_campaign"
   | "oauth_client_create"
   | "oauth_client_update"
   | "oauth_client_delete"
@@ -84,7 +87,8 @@ export type AuditTargetType =
   | "oauth_client"
   | "oauth_consent"
   | "vip"
-  | "oauth_session";
+  | "oauth_session"
+  | "point_campaign";
 
 export const AUDIT_ACTIONS = [
   "login",
@@ -131,6 +135,9 @@ export const AUDIT_ACTIONS = [
   "user_deleted",
   "user_points_adjust",
   "update_vip_benefit",
+  "create_point_campaign",
+  "update_point_campaign",
+  "delete_point_campaign",
   "oauth_client_create",
   "oauth_client_update",
   "oauth_client_delete",
@@ -160,6 +167,7 @@ export const AUDIT_TARGET_TYPES = [
   "oauth_consent",
   "oauth_session",
   "vip",
+  "point_campaign",
 ] as const;
 
 interface AuditLogInput {

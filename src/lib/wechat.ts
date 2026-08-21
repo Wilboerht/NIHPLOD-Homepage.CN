@@ -361,3 +361,53 @@ export async function getWechatUserInfo(
 
   return data as WechatUserInfo;
 }
+
+// ============================================
+// 微信小程序登录（wx.login code 换 session）
+// ============================================
+
+/** 小程序 code2session 结果 */
+export interface WechatSessionInfo {
+  openid: string;
+  unionid?: string;
+  sessionKey: string;
+}
+
+/**
+ * 小程序 wx.login code 换取 openid / unionid / session_key
+ *
+ * 安全约束：
+ * - session_key 仅随返回值传递，调用方不得落库/下发前端/写入日志
+ *   （本项目不解密手机号，绑定统一走 SMS 验证码）
+ * - appId/secret 优先取 WECHAT_MINIPROGRAM_APP_ID/SECRET，回退 WECHAT_APP_ID/SECRET
+ */
+export async function code2session(code: string): Promise<WechatSessionInfo> {
+  const appId = process.env.WECHAT_MINIPROGRAM_APP_ID || process.env.WECHAT_APP_ID;
+  const appSecret = process.env.WECHAT_MINIPROGRAM_APP_SECRET || process.env.WECHAT_APP_SECRET;
+
+  if (!appId || !appSecret) {
+    throw new Error("微信小程序 AppID 或 AppSecret 未配置");
+  }
+
+  const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+
+  const response = await wechatFetch(url);
+  if (!response.ok) {
+    throw new Error(`微信 code2session 请求失败: HTTP ${response.status}`);
+  }
+  const data = await response.json();
+
+  if (data.errcode) {
+    throw new Error(`微信 code2session 失败: ${data.errmsg}`);
+  }
+
+  if (!data.openid || !data.session_key) {
+    throw new Error("微信 code2session 返回数据不完整");
+  }
+
+  return {
+    openid: data.openid,
+    unionid: data.unionid,
+    sessionKey: data.session_key,
+  };
+}

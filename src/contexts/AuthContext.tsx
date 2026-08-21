@@ -18,6 +18,7 @@ interface User {
   phone?: string;
   nickname?: string;
   avatar?: string;
+  birthday?: string | null;
   membershipLevel?: string;
   totalPoints?: number;
 }

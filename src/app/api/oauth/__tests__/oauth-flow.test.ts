@@ -78,7 +78,7 @@ vi.mock("@/lib/prisma", () => {
         phone: "13800138000",
         nickname: "Flow User",
         avatar: "https://example.com/avatar.png",
-        membershipLevel: "GOLD",
+        membershipLevel: "VIP",
         totalPoints: 1000,
         status: "ACTIVE",
       }),

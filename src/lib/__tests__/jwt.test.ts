@@ -29,6 +29,7 @@ import {
 } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { getIssuer } from "@/lib/oauth-constants";
+import { revokeAccessToken } from "@/lib/token-blacklist";
 
 describe("JWT 工具", () => {
   describe("管理员 Token", () => {
@@ -102,6 +103,19 @@ describe("JWT 工具", () => {
       const token = await signUserToken({ id: "user-1", phone: "13800138000" });
       const payload = await verifyUserToken(token);
       expect(payload?.auth_time).toBeUndefined();
+    });
+
+    it("签发时应携带 jti，且 jti 被撤销后验证返回 null", async () => {
+      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const claims = decodeJwt(token);
+      expect(claims.jti).toBeTruthy();
+
+      // 撤销前可验证
+      expect(await verifyUserToken(token)).not.toBeNull();
+
+      // 登出语义：撤销 jti 后该 token 立即失效
+      await revokeAccessToken(claims.jti as string);
+      expect(await verifyUserToken(token)).toBeNull();
     });
   });
 

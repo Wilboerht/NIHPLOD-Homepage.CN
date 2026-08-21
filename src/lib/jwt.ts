@@ -297,6 +297,7 @@ export async function signUserToken(payload: {
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience("user")
+    .setJti(crypto.randomUUID())
     .setExpirationTime(accessTokenExpiresIn)
     .sign(accessSecret);
 
@@ -332,6 +333,14 @@ export async function verifyUserToken(
       if (!isActive) {
         return null;
       }
+    }
+
+    // 单条 token 级撤销检查（登出时 revokeAccessToken(jti) 写入）：
+    // 消除登出后 access token 在剩余 TTL 内仍可使用的窗口。
+    // 无 jti 的旧 token（本改动上线前签发）跳过，自然过期兼容。
+    const jti = (payload as UserJWTPayload).jti;
+    if (jti && (await isAccessTokenRevoked(jti))) {
+      return null;
     }
 
     // 黑名单检查（封禁用户时消除 15 分钟 access token 窗口）

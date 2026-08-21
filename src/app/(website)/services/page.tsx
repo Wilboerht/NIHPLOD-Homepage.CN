@@ -8,28 +8,6 @@ const defaultContent: ServicesPageContent = {
   pageTitle: { en: "SERVICES", zh: "服务入口" },
   services: [
     {
-      id: "vip",
-      label: "会员系统",
-      title: "旎柏会员系统",
-      nameEn: "VIP System",
-      description:
-        "会员积分、权益管理与专属服务平台，为尊贵会员提供积分查询、等级权益、专属优惠等服务。",
-      links: [
-        {
-          label: "用户端",
-          url: "https://vip.nihplod.cn",
-          isAdmin: false,
-          description: "会员登录、积分查询、权益兑换",
-        },
-        {
-          label: "管理端",
-          url: "https://adminvip.nihplod.cn",
-          isAdmin: true,
-          description: "仅授权人员使用",
-        },
-      ],
-    },
-    {
       id: "auth",
       label: "授权验真",
       title: "授权验真系统",
@@ -68,6 +46,21 @@ const defaultContent: ServicesPageContent = {
           url: "https://influencer.nihplod.cn/admin",
           isAdmin: true,
           description: "仅授权人员使用",
+        },
+      ],
+    },
+    {
+      id: "miniprogram",
+      label: "微信小程序",
+      title: "NIHPLOD 微信小程序",
+      nameEn: "WeChat Mini Program",
+      description: "微信小程序，提供便捷的产品浏览与购物体验，敬请期待。",
+      links: [
+        {
+          label: "用户端",
+          url: "#",
+          isAdmin: false,
+          description: "暂未上线",
         },
       ],
     },

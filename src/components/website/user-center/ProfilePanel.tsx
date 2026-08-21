@@ -16,17 +16,24 @@ export function ProfilePanel() {
   const { success: showSuccess, error: showError } = useToast();
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState(user?.nickname || "");
+  const [birthday, setBirthday] = useState(user?.birthday?.slice(0, 10) || "");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 保存昵称
+  // 生日输入上限：今天（本地时区）
+  const now = new Date();
+  const maxBirthday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate()
+  ).padStart(2, "0")}`;
+
+  // 保存昵称与生日
   const handleSave = async () => {
     if (!nickname.trim()) return;
     setSaving(true);
     try {
-      await apiPut("/api/user/profile", { nickname: nickname.trim() });
+      await apiPut("/api/user/profile", { nickname: nickname.trim(), birthday });
       await refreshUser();
       setEditing(false);
       showSuccess("个人信息已更新");
@@ -202,6 +209,7 @@ export function ProfilePanel() {
                     onClick={() => {
                       setEditing(false);
                       setNickname(user.nickname || "");
+                      setBirthday(user.birthday?.slice(0, 10) || "");
                     }}
                     className="text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
                   >
@@ -217,13 +225,50 @@ export function ProfilePanel() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setEditing(true)}
+                  onClick={() => {
+                    setNickname(user.nickname || "");
+                    setBirthday(user.birthday?.slice(0, 10) || "");
+                    setEditing(true);
+                  }}
                   className="group flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
                 >
                   <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>
                   <ChevronRight className="h-3.5 w-3.5 text-stone-300 md:hidden" />
                 </button>
               )}
+            </div>
+          </div>
+
+          <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
+
+          {/* 生日（影响生日月 3 倍积分与生日礼） */}
+          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-6 transition-all hover:bg-white/40">
+            <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
+              <div className="shrink-0 md:w-20">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
+                  生日
+                </p>
+              </div>
+              <div className="flex w-full min-w-0 flex-1 items-center gap-2">
+                {editing ? (
+                  <input
+                    type="date"
+                    value={birthday}
+                    max={maxBirthday}
+                    onChange={(e) => setBirthday(e.target.value)}
+                    className="w-full border-b border-stone-400 bg-transparent py-1 text-sm font-medium text-stone-800 outline-none transition-colors md:w-56 md:text-base"
+                  />
+                ) : (
+                  <p className="truncate text-base font-medium text-stone-800 md:text-sm">
+                    {user.birthday ? user.birthday.slice(0, 10) : "未设置"}
+                    {!user.birthday && (
+                      <span className="ml-2 text-xs font-light text-stone-400">
+                        填写后可享生日月 3 倍积分
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

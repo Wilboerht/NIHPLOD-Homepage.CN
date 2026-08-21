@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { levelDisplay } from "@/lib/membership";
 import { getParentTargetOrigin } from "./parent-origin";
 
 /** 可选白名单：逗号分隔的允许父窗口 origin（未配置则不做白名单校验） */
@@ -275,11 +276,7 @@ export default function EmbedAccountPage() {
           <div>
             <label className="mb-1 block text-xs text-gray-500">会员等级</label>
             <p className="text-sm text-gray-900">
-              {user.membershipLevel === "DIAMOND"
-                ? "💎 钻石会员"
-                : user.membershipLevel === "GOLD"
-                  ? "🥇 金卡会员"
-                  : "🥈 银卡会员"}
+              {levelDisplay(user.membershipLevel)}
             </p>
           </div>
           <div>

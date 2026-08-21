@@ -20,12 +20,16 @@ import { rateLimit } from "@/lib/ratelimit";
 /**
  * 微信绑定表单
  * 密码现在是可选的（如果不提供，会自动生成）
+ * bindToken：可选，小程序等无 Cookie 环境通过 body 传递（优先于 Cookie）
+ * provider：可选，外部身份归属标识（小程序传 wechat_miniprogram），限定枚举防任意值
  */
 const bindSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   code: z.string().length(6, "验证码为6位数字"),
   password: passwordSchema.optional(),
   allowAutoPassword: z.boolean().default(false),
+  bindToken: z.string().max(4096).optional(),
+  provider: z.enum(["wechat_open", "wechat_mp", "wechat_miniprogram"]).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -68,9 +72,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phone, code, password, allowAutoPassword } = result.data;
+    const { phone, code, password, allowAutoPassword, provider } = result.data;
 
-    const bindToken = request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
+    // body 中的 bindToken 优先（小程序等无 Cookie 环境），其次读 Cookie（官网浏览器场景）
+    const bindToken = result.data.bindToken || request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
     if (!bindToken) {
       return NextResponse.json(
         {
@@ -106,6 +111,7 @@ export async function POST(request: NextRequest) {
       allowAutoPassword,
       wechatInfo,
       request,
+      provider,
     });
 
     if (!bindingResult.success) {

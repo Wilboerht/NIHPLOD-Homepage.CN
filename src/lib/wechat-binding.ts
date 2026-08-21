@@ -30,6 +30,8 @@ export interface WechatBindingInput {
   allowAutoPassword: boolean;
   wechatInfo: WechatBindPayload | WechatExchangePayload;
   request: NextRequest;
+  /** 外部身份 provider 标识（默认 wechat_open；小程序登录传 wechat_miniprogram） */
+  provider?: string;
 }
 
 export interface WechatBindingResult {
@@ -86,6 +88,7 @@ export async function resolveWechatBinding(
 > {
   const { phone, code, allowAutoPassword, wechatInfo, request } = input;
   let { password } = input;
+  const provider = input.provider || "wechat_open";
 
   // 1. 验证码校验
   const smsResult = await verifyAndConsumeSmsCode(phone, code);
@@ -188,6 +191,25 @@ export async function resolveWechatBinding(
           },
         });
       }
+
+      // 双写 ExternalIdentity（多平台聚合框架）：upsert by [provider, subjectId]，
+      // 冲突解决分支中归属随 wechatOpenId 列自动转移；占位账户改名 unbound_ 后
+      // 身份行也随 upsert 重新指向最终归属用户
+      await tx.externalIdentity.upsert({
+        where: { provider_subjectId: { provider, subjectId: wechatInfo.openid } },
+        update: {
+          userId: foundUser.id,
+          ...(wechatInfo.unionid ? { unionId: wechatInfo.unionid } : {}),
+          metadata: { nickname: wechatInfo.nickname ?? null, avatar: wechatInfo.avatar ?? null },
+        },
+        create: {
+          userId: foundUser.id,
+          provider,
+          subjectId: wechatInfo.openid,
+          unionId: wechatInfo.unionid ?? null,
+          metadata: { nickname: wechatInfo.nickname ?? null, avatar: wechatInfo.avatar ?? null },
+        },
+      });
 
       return foundUser;
     });

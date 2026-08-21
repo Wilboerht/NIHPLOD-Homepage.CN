@@ -8,6 +8,7 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { grantBirthdayGiftIfDue } from "@/lib/points";
 import { z } from "zod";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
@@ -21,6 +22,20 @@ const updateSchema = z.object({
         .string()
         .url()
         .regex(/^https?:\/\//),
+      z.literal(""),
+    ])
+    .optional(),
+  // 生日：空字符串表示清除；不得晚于今天、不早于 100 年前
+  birthday: z
+    .union([
+      z
+        .coerce.date()
+        .refine((d) => !Number.isNaN(d.getTime()), "无效的生日日期")
+        .refine((d) => d.getTime() <= Date.now(), "生日不能晚于今天")
+        .refine(
+          (d) => d.getFullYear() >= new Date().getFullYear() - 100,
+          "生日日期超出合理范围"
+        ),
       z.literal(""),
     ])
     .optional(),
@@ -42,6 +57,7 @@ const getCachedUserProfile = unstable_cache(
         phone: true,
         nickname: true,
         avatar: true,
+        birthday: true,
         membershipLevel: true,
         totalPoints: true,
         createdAt: true,
@@ -56,6 +72,7 @@ const getCachedUserProfile = unstable_cache(
       phone: user.phone,
       nickname: user.nickname,
       avatar: user.avatar,
+      birthday: user.birthday?.toISOString() ?? null,
       membershipLevel: user.membershipLevel,
       totalPoints: user.totalPoints,
       createdAt: user.createdAt,
@@ -72,77 +89,10 @@ const getCachedUserProfile = unstable_cache(
 // GET - 获取用户资料（含统计）
 export const dynamic = "force-dynamic";
 
-/**
- * 生日礼自动发放检查
- * 在用户首次登录当天检查，无需主动打开会员中心
- */
-async function checkAndGrantBirthdayGift(userId: string): Promise<void> {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { membershipLevel: true, birthday: true, totalPoints: true },
-    });
-
-    if (!user?.birthday) return;
-
-    const now = new Date();
-    const birthdayThisYear = new Date(
-      now.getFullYear(),
-      user.birthday.getMonth(),
-      user.birthday.getDate()
-    );
-    const isToday =
-      birthdayThisYear.getDate() === now.getDate() &&
-      birthdayThisYear.getMonth() === now.getMonth();
-
-    if (!isToday || user.membershipLevel === "SILVER") return;
-
-    // 幂等检查：今年是否已发放过生日礼
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    const existingGift = await prisma.pointTransaction.findFirst({
-      where: {
-        userId,
-        type: "BIRTHDAY_GIFT",
-        createdAt: { gte: yearStart },
-      },
-    });
-
-    if (existingGift) return;
-
-    // 发放生日积分礼
-    const giftPoints = user.membershipLevel === "DIAMOND" ? 1000 : 500;
-    const giftLabel = user.membershipLevel === "DIAMOND" ? "钻石会员生日礼盒" : "金卡会员生日礼遇";
-
-    await prisma.pointTransaction.create({
-      data: {
-        userId,
-        points: giftPoints,
-        type: "BIRTHDAY_GIFT",
-        note: `${giftLabel} — ${now.getFullYear()}年生日赠礼`,
-      },
-    });
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { totalPoints: user.totalPoints + giftPoints },
-    });
-
-    // 失效 profile 缓存，确保 AuthContext 拉取最新积分
-    revalidateTag(USER_PROFILE_TAG, "max");
-
-    apiConsole.info(
-      `[BirthdayGift] 用户 ${userId} (${user.membershipLevel}) 生日赠送 ${giftPoints} 积分 (via profile API)`
-    );
-  } catch (error) {
-    // 生日礼失败不应阻塞用户资料获取
-    apiConsole.error("[BirthdayGift] 发放失败:", error);
-  }
-}
-
 export const GET = withUserAuth(async (request: NextRequest, payload) => {
   try {
-    // 生日礼自动检查：无需用户主动打开会员中心
-    await checkAndGrantBirthdayGift(payload.id);
+    // 生日礼自动检查：共享入口，唯一约束防并发双发
+    await grantBirthdayGiftIfDue(payload.id);
 
     const user = await getCachedUserProfile(payload.id);
 
@@ -185,14 +135,15 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const { nickname, avatar } = result.data;
+    const { nickname, avatar, birthday } = result.data;
     const user = await prisma.user.update({
       where: { id: payload.id },
       data: {
         ...(nickname !== undefined && { nickname: nickname || null }),
         ...(avatar !== undefined && { avatar: avatar || null }),
+        ...(birthday !== undefined && { birthday: birthday === "" ? null : birthday }),
       },
-      select: { id: true, phone: true, nickname: true, avatar: true },
+      select: { id: true, phone: true, nickname: true, avatar: true, birthday: true },
     });
 
     // 资料变更后失效缓存
@@ -254,6 +205,17 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: { code: "INVALID_FILE", message: fileTypeResult.error || "不支持的文件类型" },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 4.2 头像场景仅接受图片（通用上传白名单含 PDF，此处收紧）
+    if (!fileTypeResult.detectedType?.startsWith("image/")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "INVALID_FILE", message: "头像仅支持图片格式（JPG/PNG/WebP/GIF）" },
         },
         { status: 400 }
       );

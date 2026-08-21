@@ -12,16 +12,16 @@ import { cuidSchema } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
+import { LEVEL_DEFAULT_BENEFITS, type LevelBenefitItem } from "@/lib/membership";
 
 // 更新等级权益 schema
 const updateBenefitSchema = z.object({
-  level: z.enum(["SILVER", "GOLD", "DIAMOND"]),
+  level: z.enum(["REGULAR", "ADVANCED", "VIP", "SVIP"]),
   name: z.string().min(1).max(50).optional(),
   nameEn: z.string().max(50).optional(),
   icon: z.string().max(50).optional(),
-  minPoints: z.number().int().min(0).optional(),
-  maxPoints: z.number().int().min(0).nullable().optional(),
-  pointRate: z.number().int().min(1).optional(),
+  minSpent: z.number().int().min(0).optional(),
+  maxSpent: z.number().int().min(0).nullable().optional(),
   benefits: z
     .array(
       z.object({
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     // 会员统计
-    const [totalUsers, levelCounts, totalPoints, benefits] = await Promise.all([
+    const [totalUsers, levelCounts, totalPoints, dbBenefits] = await Promise.all([
       prisma.user.count({ where: { status: "ACTIVE" } }),
       prisma.user.groupBy({
         by: ["membershipLevel"],
@@ -69,18 +69,34 @@ export async function GET(request: NextRequest) {
         _sum: { totalPoints: true },
         where: { status: "ACTIVE" },
       }),
-      prisma.membershipBenefit.findMany({
-        orderBy: { minPoints: "asc" },
-      }),
+      prisma.membershipBenefit.findMany(),
     ]);
+
+    // 四档权益合并：DB 配置优先，缺失的等级返回默认配置（id 为 null，PUT upsert 时自动创建）
+    const benefits = Object.values(LEVEL_DEFAULT_BENEFITS).map((defaults) => {
+      const db = dbBenefits.find((b) => b.level === defaults.level);
+      const dbBenefitItems = db?.benefits as LevelBenefitItem[] | null;
+      return {
+        id: db?.id ?? null,
+        level: defaults.level,
+        name: db?.name ?? defaults.name,
+        nameEn: db?.nameEn ?? defaults.nameEn,
+        icon: db?.icon ?? defaults.icon,
+        minSpent: db?.minSpent ?? defaults.minSpent,
+        maxSpent: db?.maxSpent ?? defaults.maxSpent,
+        benefits: dbBenefitItems?.length ? dbBenefitItems : defaults.benefits,
+        colorClass: db?.colorClass ?? defaults.colorClass,
+      };
+    });
 
     const stats = {
       totalUsers,
       totalPoints: totalPoints._sum.totalPoints ?? 0,
       levels: [
-        { level: "SILVER", count: 0 },
-        { level: "GOLD", count: 0 },
-        { level: "DIAMOND", count: 0 },
+        { level: "REGULAR", count: 0 },
+        { level: "ADVANCED", count: 0 },
+        { level: "VIP", count: 0 },
+        { level: "SVIP", count: 0 },
       ].map((l) => {
         const found = levelCounts.find((lc) => lc.membershipLevel === l.level);
         return { ...l, count: found?._count ?? 0 };
@@ -140,15 +156,16 @@ export async function PUT(request: NextRequest) {
 
     const { level, ...data } = parsed.data;
 
+    // 默认等级配置（与用户端共享）
+    const defaults = LEVEL_DEFAULT_BENEFITS[level];
+
     const benefit = await prisma.membershipBenefit.upsert({
       where: { level },
       create: {
         level,
-        name:
-          data.name ?? `${level === "SILVER" ? "银卡" : level === "GOLD" ? "金卡" : "钻石"}会员`,
-        minPoints: data.minPoints ?? (level === "SILVER" ? 0 : level === "GOLD" ? 5000 : 20000),
-        maxPoints: data.maxPoints ?? (level === "SILVER" ? 4999 : level === "GOLD" ? 19999 : null),
-        pointRate: data.pointRate ?? 1,
+        name: data.name ?? defaults.name,
+        minSpent: data.minSpent ?? defaults.minSpent,
+        maxSpent: data.maxSpent ?? defaults.maxSpent,
         benefits: data.benefits ?? [],
         ...(data.nameEn && { nameEn: data.nameEn }),
         ...(data.icon && { icon: data.icon }),
@@ -158,9 +175,8 @@ export async function PUT(request: NextRequest) {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.nameEn !== undefined && { nameEn: data.nameEn }),
         ...(data.icon !== undefined && { icon: data.icon }),
-        ...(data.minPoints !== undefined && { minPoints: data.minPoints }),
-        ...(data.maxPoints !== undefined && { maxPoints: data.maxPoints }),
-        ...(data.pointRate !== undefined && { pointRate: data.pointRate }),
+        ...(data.minSpent !== undefined && { minSpent: data.minSpent }),
+        ...(data.maxSpent !== undefined && { maxSpent: data.maxSpent }),
         ...(data.benefits !== undefined && { benefits: data.benefits }),
         ...(data.colorClass !== undefined && { colorClass: data.colorClass }),
       },
@@ -229,7 +245,7 @@ export async function POST(request: NextRequest) {
     // 查找用户
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, totalPoints: true, membershipLevel: true },
+      select: { id: true, totalPoints: true },
     });
     if (!user) {
       return NextResponse.json(
@@ -240,12 +256,7 @@ export async function POST(request: NextRequest) {
 
     const newTotal = Math.max(0, user.totalPoints + points);
 
-    // 重新计算等级
-    let newLevel = user.membershipLevel;
-    if (newTotal >= 20000) newLevel = "DIAMOND";
-    else if (newTotal >= 5000) newLevel = "GOLD";
-    else newLevel = "SILVER";
-
+    // 注意：手动调分仅调整积分，不影响等级（等级只随累计消费金额变动）
     await prisma.$transaction(async (tx) => {
       await tx.pointTransaction.create({
         data: {
@@ -260,7 +271,6 @@ export async function POST(request: NextRequest) {
         where: { id: userId },
         data: {
           totalPoints: newTotal,
-          membershipLevel: newLevel,
         },
       });
     });
@@ -269,7 +279,7 @@ export async function POST(request: NextRequest) {
       action: "user_points_adjust",
       targetType: "user",
       targetId: userId,
-      detail: { points, newTotal, newLevel, note },
+      detail: { points, newTotal, note },
       adminId: admin.id,
       request,
     });
@@ -279,8 +289,6 @@ export async function POST(request: NextRequest) {
       data: {
         previousPoints: user.totalPoints,
         newPoints: newTotal,
-        previousLevel: user.membershipLevel,
-        newLevel,
       },
     });
   } catch (error) {

@@ -22,6 +22,7 @@ import {
   Lock,
   Award,
   Coins,
+  Wallet,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
@@ -72,9 +73,10 @@ const membershipLevelMap: Record<
     variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
   }
 > = {
-  SILVER: { label: "银卡", emoji: "🪙", variant: "secondary" },
-  GOLD: { label: "金卡", emoji: "🥇", variant: "warning" },
-  DIAMOND: { label: "钻石", emoji: "💎", variant: "primary" },
+  REGULAR: { label: "普通", emoji: "🪙", variant: "secondary" },
+  ADVANCED: { label: "高级", emoji: "🥈", variant: "success" },
+  VIP: { label: "VIP", emoji: "🥇", variant: "warning" },
+  SVIP: { label: "SVIP", emoji: "💎", variant: "primary" },
 };
 
 interface UserDetail {
@@ -86,6 +88,7 @@ interface UserDetail {
   status: UserStatus;
   membershipLevel: string | null;
   totalPoints: number | null;
+  totalSpent: number | null;
   wechatOpenId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -711,6 +714,17 @@ export default function AdminUsersPage() {
                         {detailUser.totalPoints != null
                           ? detailUser.totalPoints.toLocaleString()
                           : "0"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                        <Wallet className="h-3.5 w-3.5" />
+                        累计消费
+                      </dt>
+                      <dd className="font-mono font-medium">
+                        {detailUser.totalSpent != null
+                          ? `¥${detailUser.totalSpent.toLocaleString()}`
+                          : "¥0"}
                       </dd>
                     </div>
                   </dl>

@@ -38,6 +38,7 @@ import {
 } from "@/lib/internal-api";
 import { signUserToken, signRefreshToken, verifyWechatExchangeToken } from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { upsertIdentity } from "@/lib/external-identity";
 import { checkUserStatus } from "@/lib/auth";
 import { passwordSchema } from "@/lib/password";
 import { resolveWechatBinding } from "@/lib/wechat-binding";
@@ -266,6 +267,13 @@ async function finalizeLogin(
       nickname: user.nickname || wechatInfo.nickname || null,
       avatar: user.avatar || wechatInfo.avatar || null,
     },
+  });
+
+  // 双写 ExternalIdentity（多平台聚合框架）：子站扫码登录来自开放平台
+  // （exchange token 不携带登录类型，mp 经子站回流的极少数场景统一记为 wechat_open）
+  await upsertIdentity(user.id, "wechat_open", wechatInfo.openid, wechatInfo.unionid, {
+    nickname: wechatInfo.nickname ?? null,
+    avatar: wechatInfo.avatar ?? null,
   });
 
   // 签发双 Token

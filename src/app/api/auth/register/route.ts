@@ -15,7 +15,13 @@ import {
   USER_COOKIE_NAME,
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
-import { saveRefreshToken, extractDeviceInfo, recordLoginAttempt } from "@/lib/auth-security";
+import {
+  saveRefreshToken,
+  extractDeviceInfo,
+  recordLoginAttempt,
+  checkAccountLockout,
+  clearLoginAttempts,
+} from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -83,6 +89,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, phone, code, password } = result.data;
+
+    // 账户级防爆破：与 login/reset-password 保持一致（验证码闸门之外的补充防线）
+    const { locked, remainingMinutes } = await checkAccountLockout(phone);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `操作过于频繁，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
 
     // 查找验证码
     const smsCode = await prisma.smsCode.findFirst({
@@ -202,6 +223,10 @@ export async function POST(request: NextRequest) {
 
     // 记录初始密码历史
     await recordPasswordHistory(user.id, hashedPassword);
+
+    // 记录成功注册并清除失败记录（与 login 一致）
+    await recordLoginAttempt(phone, true, request, undefined, "sms", user.id);
+    await clearLoginAttempts(phone, "sms");
 
     logAuthEvent("user_register", {
       userId: user.id,

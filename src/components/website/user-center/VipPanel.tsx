@@ -19,8 +19,8 @@ interface LevelInfo {
   level: string;
   name: string;
   icon: string;
-  minPoints: number;
-  maxPoints: number | null;
+  minSpent: number;
+  maxSpent: number | null;
   benefits: BenefitItem[];
   colorClass: string;
 }
@@ -28,14 +28,15 @@ interface LevelInfo {
 interface NextLevelInfo {
   level: string;
   name: string;
-  minPoints: number;
-  pointsNeeded: number;
+  minSpent: number;
+  spentNeeded: number;
   progress: number;
 }
 
 interface VIPData {
   membershipLevel: string;
   totalPoints: number;
+  totalSpent: number;
   birthday: string | null;
   birthdayGiftGranted?: boolean;
   birthdayGiftPoints?: number;
@@ -55,15 +56,24 @@ interface PointTransaction {
 }
 
 const LEVEL_BG_COLORS: Record<string, string> = {
-  SILVER: "from-slate-100 to-slate-50",
-  GOLD: "from-amber-50 to-yellow-50",
-  DIAMOND: "from-violet-50 to-purple-50",
+  REGULAR: "from-slate-100 to-slate-50",
+  ADVANCED: "from-teal-50 to-cyan-50",
+  VIP: "from-amber-50 to-yellow-50",
+  SVIP: "from-violet-50 to-purple-50",
 };
 
 const LEVEL_BORDER_COLORS: Record<string, string> = {
-  SILVER: "border-slate-200",
-  GOLD: "border-amber-200",
-  DIAMOND: "border-violet-200",
+  REGULAR: "border-slate-200",
+  ADVANCED: "border-teal-200",
+  VIP: "border-amber-200",
+  SVIP: "border-violet-200",
+};
+
+const LEVEL_CROWN_COLORS: Record<string, string> = {
+  REGULAR: "text-slate-400",
+  ADVANCED: "text-teal-500",
+  VIP: "text-amber-500",
+  SVIP: "text-violet-500",
 };
 
 export function VipPanel() {
@@ -130,6 +140,8 @@ export function VipPanel() {
     currentLevel,
     nextLevel,
     totalPoints,
+    totalSpent,
+    birthday,
     allLevels,
     birthdayGiftGranted,
     birthdayGiftPoints,
@@ -170,33 +182,44 @@ export function VipPanel() {
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/60">
               <Crown
-                className={`h-6 w-6 ${currentLevel.level === "GOLD" ? "text-amber-500" : currentLevel.level === "DIAMOND" ? "text-violet-500" : "text-slate-400"}`}
+                className={`h-6 w-6 ${LEVEL_CROWN_COLORS[currentLevel.level] ?? "text-slate-400"}`}
               />
             </div>
           </div>
 
-          {/* 积分信息 */}
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-light text-stone-800">
-              {totalPoints.toLocaleString()}
-            </span>
-            <span className="text-sm text-stone-400">积分</span>
+          {/* 积分与累计消费 */}
+          <div className="mt-4 flex items-baseline gap-6">
+            <div>
+              <span className="text-3xl font-light text-stone-800">
+                {totalPoints.toLocaleString()}
+              </span>
+              <span className="ml-1 text-sm text-stone-400">积分</span>
+            </div>
+            <div>
+              <span className="text-xl font-light text-stone-700">
+                ¥{totalSpent.toLocaleString()}
+              </span>
+              <span className="ml-1 text-sm text-stone-400">累计消费</span>
+            </div>
           </div>
 
-          {/* 升级进度条 */}
+          {/* 生日（影响生日月 3 倍积分与生日礼，在个人信息中修改） */}
+          <p className="mt-2 text-xs text-stone-400">
+            {birthday ? `生日：${birthday.slice(0, 10)}（生日月消费享 3 倍积分）` : "未填写生日，可在个人信息中填写，享生日月 3 倍积分"}
+          </p>
+
+          {/* 升级进度条（按累计消费） */}
           {nextLevel && (
             <div className="mt-4">
               <div className="flex items-center justify-between text-xs text-stone-500">
                 <span>
-                  距 {nextLevel.name} 还需 {nextLevel.pointsNeeded.toLocaleString()} 积分
+                  再消费 ¥{nextLevel.spentNeeded.toLocaleString()} 升级 {nextLevel.name}
                 </span>
                 <span>{nextLevel.progress}%</span>
               </div>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/60">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    currentLevel.level === "SILVER" ? "bg-amber-400" : "bg-violet-400"
-                  }`}
+                  className="h-full rounded-full bg-amber-400 transition-all duration-500"
                   style={{ width: `${nextLevel.progress}%` }}
                 />
               </div>
@@ -224,7 +247,7 @@ export function VipPanel() {
                 <span className="text-base">{level.icon}</span>
                 <span className={`text-sm font-medium ${level.colorClass}`}>{level.name}</span>
                 <span className="ml-auto text-xs text-stone-400">
-                  {level.minPoints.toLocaleString()}+ 积分
+                  消费 ¥{level.minSpent.toLocaleString()}+
                 </span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">

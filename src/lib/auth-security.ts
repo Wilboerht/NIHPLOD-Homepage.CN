@@ -199,6 +199,15 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+/**
+ * 计算 Refresh Token 的 SHA-256 哈希（公开别名）
+ * 供路由层将 Cookie 中的 refresh token 与数据库存储的哈希比对，
+ * 例如改密时保留当前设备、撤销其他设备会话。
+ */
+export function hashRefreshToken(token: string): string {
+  return hashToken(token);
+}
+
 export interface DeviceInfo {
   deviceName?: string;
   deviceInfo?: string;

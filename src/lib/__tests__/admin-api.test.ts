@@ -67,6 +67,8 @@ vi.mock("@/lib/prisma", () => {
     image: mockPrismaModel(),
     purchaseLink: mockPrismaModel(),
     coupon: mockPrismaModel(),
+    // 外部平台身份（多平台聚合）：删除用户时 removeIdentities 调 deleteMany 需返回 count
+    externalIdentity: { ...mockPrismaModel(), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   };
   return { prisma, default: prisma };
 });

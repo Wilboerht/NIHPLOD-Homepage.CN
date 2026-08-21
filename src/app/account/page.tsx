@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { levelDisplay } from "@/lib/membership";
 
 /** 从 Cookie 读取 CSRF Token */
 function getCsrfToken(): string {
@@ -46,6 +47,7 @@ interface Device {
   ipAddress: string;
   createdAt: string;
   lastActiveAt: string;
+  expiresAt?: string;
 }
 
 interface LoginRecord {
@@ -343,11 +345,7 @@ export default function AccountPage() {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">会员等级</label>
                   <p className="text-sm font-medium text-gray-900">
-                    {user.membershipLevel === "DIAMOND"
-                      ? "💎 钻石会员"
-                      : user.membershipLevel === "GOLD"
-                        ? "🥇 金卡会员"
-                        : "🥈 银卡会员"}
+                    {levelDisplay(user.membershipLevel)}
                   </p>
                 </div>
                 <div>

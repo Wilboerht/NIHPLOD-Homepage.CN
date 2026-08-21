@@ -11,6 +11,7 @@ import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket, Crown } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
+import { levelDisplay } from "@/lib/membership";
 import { OrdersPanel } from "./user-center/OrdersPanel";
 import { AddressesPanel } from "./user-center/AddressesPanel";
 import { ProfilePanel } from "./user-center/ProfilePanel";
@@ -233,11 +234,7 @@ export function UserCenterModal() {
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
                         <p className="mt-1 text-xs font-light text-stone-400">
-                          {user.membershipLevel === "DIAMOND"
-                            ? "💎 钻石会员"
-                            : user.membershipLevel === "GOLD"
-                              ? "🥇 金卡会员"
-                              : "🪙 银卡会员"}
+                          {levelDisplay(user.membershipLevel)}
                           {user.totalPoints !== undefined && (
                             <span className="ml-1">· {user.totalPoints} 积分</span>
                           )}

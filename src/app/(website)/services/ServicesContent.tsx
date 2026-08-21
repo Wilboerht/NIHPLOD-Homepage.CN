@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { Crown, ShieldCheck, Users, ScanFace, Home, Menu, X, ChevronDown } from "lucide-react";
+import { Crown, ShieldCheck, Users, ScanFace, Smartphone, Home, Menu, X, ChevronDown } from "lucide-react";
 import type { ServicesPageContent, ServiceDetail, ServiceLink } from "@/types/page-content";
 
 interface ServicesContentProps {
@@ -15,7 +15,7 @@ const ICON_COLOR = "#C3BC9F";
 const ICON_HOVER_COLOR = "#B8A47B";
 const ICON_MOBILE_COLOR = "rgba(0, 38, 62, 0.35)";
 
-function VipIcon({
+function DefaultIcon({
   className,
   isHovered,
   color,
@@ -87,15 +87,38 @@ function AdvisorIcon({
   );
 }
 
+function MiniProgramIcon({
+  className,
+  isHovered,
+  color,
+}: {
+  className?: string;
+  isHovered?: boolean;
+  color?: string;
+}) {
+  return (
+    <Smartphone
+      className={className}
+      stroke={color || (isHovered ? ICON_HOVER_COLOR : ICON_COLOR)}
+      strokeWidth="1.6"
+    />
+  );
+}
+
 const iconMap: Record<
   string,
   React.FC<{ className?: string; isHovered?: boolean; color?: string }>
 > = {
-  vip: VipIcon,
   auth: AuthIcon,
   influencer: InfluencerIcon,
   advisor: AdvisorIcon,
+  miniprogram: MiniProgramIcon,
 };
+
+// 未上线服务：置灰禁用（达人平台、微信小程序）
+function isServiceDisabled(id: string): boolean {
+  return id === "influencer" || id === "miniprogram";
+}
 
 export function ServicesContent({ content }: ServicesContentProps) {
   const pageTitle = content.pageTitle || { en: "SERVICES", zh: "服务入口" };
@@ -387,9 +410,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
             <div className="flex flex-col divide-y divide-brand-charcoal/[0.06] md:hidden">
               {[...mobileServices]
                 .sort((a, b) => {
-                  const aDisabled = a.id === "vip" || a.id === "influencer";
-                  const bDisabled = b.id === "vip" || b.id === "influencer";
-                  return Number(aDisabled) - Number(bDisabled);
+                  return Number(isServiceDisabled(a.id)) - Number(isServiceDisabled(b.id));
                 })
                 .map((service, index) => (
                   <ServiceListItem key={service.id} service={service} index={index} />
@@ -495,8 +516,8 @@ function FreeTag() {
 
 function ServiceListItem({ service, index }: { service: ServiceDetail; index: number }) {
   // 直查模块级 iconMap，避免渲染期经函数调用获取组件类型
-  const Icon = iconMap[service.id] || VipIcon;
-  const isDisabled = service.id === "vip" || service.id === "influencer";
+  const Icon = iconMap[service.id] || DefaultIcon;
+  const isDisabled = isServiceDisabled(service.id);
   const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
 
   return (
@@ -532,8 +553,8 @@ function ServiceListItem({ service, index }: { service: ServiceDetail; index: nu
 
 function ServiceCard({ service, index }: { service: ServiceDetail; index: number }) {
   const [isHovered, setIsHovered] = useState(false);
-  const Icon = iconMap[service.id] || VipIcon;
-  const isDisabled = service.id === "vip" || service.id === "influencer";
+  const Icon = iconMap[service.id] || DefaultIcon;
+  const isDisabled = isServiceDisabled(service.id);
   const targetLink = service.links?.find((l: ServiceLink) => !l.isAdmin) || service.links?.[0];
 
   return (

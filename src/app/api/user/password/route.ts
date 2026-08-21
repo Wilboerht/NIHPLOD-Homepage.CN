@@ -3,8 +3,9 @@
  * PUT /api/user/password
  *
  * 安全说明：
- * - 必须提供旧密码验证身份
- * - 不撤销 Refresh Token（与找回密码不同，这是自主行为）
+ * - 必须提供旧密码验证身份，失败计入账户防爆破（5 次锁 30 分钟）
+ * - 修改成功后撤销其他设备的 Refresh Token 与 OAuth 会话，保留当前设备
+ *   （防止会话被劫持后受害者改密但攻击者仍可续期）
  * - 修改成功后发送安全通知短信
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -18,6 +19,13 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
+import {
+  checkAccountLockout,
+  recordLoginAttempt,
+  clearLoginAttempts,
+  hashRefreshToken,
+} from "@/lib/auth-security";
+import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 
 const changePasswordSchema = z
   .object({
@@ -71,6 +79,21 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
+    // 账户级防爆破：持有会话者也限制旧密码试错次数
+    const { locked, remainingMinutes } = await checkAccountLockout(user.phone);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `操作过于频繁，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     if (!user.password) {
       return NextResponse.json(
         {
@@ -86,6 +109,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
     const isValidOld = await verifyPassword(oldPassword, user.password);
     if (!isValidOld) {
+      await recordLoginAttempt(user.phone, false, request, "password_incorrect", "password");
       return NextResponse.json(
         {
           success: false,
@@ -110,6 +134,43 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
         },
         { status: 400 }
       );
+    }
+
+    // 清除密码类型的失败记录
+    await clearLoginAttempts(user.phone, "password");
+
+    // 撤销其他设备会话，保留当前设备：
+    // 当前设备的 refresh token 通过 Cookie 哈希比对识别；无 Cookie（Bearer 调用）时撤销全部。
+    // OAuth 会话与 OAuth 作用域的 refresh token 一并撤销，与 reset-password 口径一致。
+    try {
+      const currentRefresh = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
+      const currentHash = currentRefresh ? hashRefreshToken(currentRefresh) : null;
+
+      // 内部（非 OAuth）refresh token：保留当前设备，撤销其余
+      await prisma.refreshToken.updateMany({
+        where: {
+          userId: user.id,
+          clientId: null,
+          revokedAt: null,
+          ...(currentHash ? { token: { not: currentHash } } : {}),
+        },
+        data: { revokedAt: new Date() },
+      });
+
+      // OAuth 作用域的 refresh token 全部撤销（属于第三方应用授权，改密后应重新授权）
+      await prisma.refreshToken.updateMany({
+        where: { userId: user.id, clientId: { not: null }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+
+      // 同步撤销 OAuth 会话，使携带 sid 的 access token 即时失效
+      await prisma.oAuthSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    } catch (err) {
+      // 密码已修改成功，会话撤销失败不阻断主流程，仅记录（风险窗口由 token 自然过期兜底）
+      apiConsole.error("[ChangePassword] 撤销其他设备会话失败:", err);
     }
 
     sendPasswordChangedNotification(user.phone).catch((err) => {
