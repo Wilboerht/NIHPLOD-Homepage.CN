@@ -5,14 +5,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    user: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
+vi.mock("@/lib/prisma", () => {
+  const txClient = {
+    user: { update: vi.fn() },
+    externalIdentity: { upsert: vi.fn() },
+  };
+  return {
+    prisma: {
+      user: {
+        findFirst: vi.fn(),
+        update: vi.fn(),
+      },
+      // 事务 mock：直接以 txClient 执行回调
+      $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
     },
-  },
-}));
+  };
+});
 
 vi.mock("@/lib/wechat", () => ({
   code2session: vi.fn(),
@@ -122,7 +130,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     expect(res.status).toBe(200);
     expect(data.data.needBinding).toBe(true);
     expect(data.data.bindToken).toBe("bind-token-1");
-    expect(signWechatBindToken).toHaveBeenCalledWith({ openid: "openid-new", unionid: undefined });
+    expect(signWechatBindToken).toHaveBeenCalledWith({
+      openid: "openid-new",
+      unionid: undefined,
+      provider: "wechat_miniprogram",
+    });
   });
 
   it("占位账户应返回 needBinding", async () => {
@@ -168,8 +180,15 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     expect(data.data.accessToken).toBe("access-token");
     expect(data.data.refreshToken).toBe("refresh-token");
     expect(data.data.user.id).toBe("user-1");
-    // 双写：provider 为 wechat_miniprogram
-    expect(mockUpsert).toHaveBeenCalledWith("user-1", "wechat_miniprogram", "openid-1", "union-1");
+    // 双写：provider 为 wechat_miniprogram（事务内，尾参为 tx 客户端）
+    expect(mockUpsert).toHaveBeenCalledWith(
+      "user-1",
+      "wechat_miniprogram",
+      "openid-1",
+      "union-1",
+      undefined,
+      expect.anything()
+    );
     expect(saveRefreshToken).toHaveBeenCalled();
   });
 
@@ -192,6 +211,13 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
     expect(data.data.needBinding).toBe(false);
     expect(data.data.user.id).toBe("user-9");
-    expect(mockUpsert).toHaveBeenCalledWith("user-9", "wechat_miniprogram", "openid-mp", "union-9");
+    expect(mockUpsert).toHaveBeenCalledWith(
+      "user-9",
+      "wechat_miniprogram",
+      "openid-mp",
+      "union-9",
+      undefined,
+      expect.anything()
+    );
   });
 });
