@@ -11,6 +11,7 @@ import { z } from "zod";
 import { passwordSchema } from "@/lib/password";
 import { verifyWechatBindToken } from "@/lib/jwt";
 import { resolveWechatBinding } from "@/lib/wechat-binding";
+import { getMiniprogramPhone } from "@/lib/wechat";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
@@ -25,8 +26,11 @@ import { rateLimit } from "@/lib/ratelimit";
  * 避免恶意客户端错标平台污染 ExternalIdentity 数据
  */
 const bindSchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  code: z.string().length(6, "验证码为6位数字"),
+  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号").optional(),
+  code: z.string().length(6, "验证码为6位数字").optional(),
+  // 微信手机号快速验证授权码：仅 bindToken 通道（小程序等无 Cookie 环境）可用，
+  // 浏览器 Cookie 通道维持短信验证码不变
+  phoneCode: z.string().min(1).max(256).optional(),
   password: passwordSchema.optional(),
   allowAutoPassword: z.boolean().default(false),
   bindToken: z.string().max(4096).optional(),
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
       return csrfForbiddenResponse();
     }
 
-    const { phone, code, password, allowAutoPassword } = result.data;
+    const { phoneCode, password, allowAutoPassword } = result.data;
 
     // body 中的 bindToken 优先（小程序等无 Cookie 环境），其次读 Cookie（官网浏览器场景）
     const bindToken = result.data.bindToken || request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
@@ -107,9 +111,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 通道解析：
+    // - phoneCode 通道：微信手机号快速验证组件已证明手机号归属，免短信验证码；
+    //   仅限 bindToken（body）通道，浏览器 Cookie 通道不支持（保持短信验证）
+    // - 短信通道：手机号 + 6 位验证码（原有行为）
+    let phone: string | undefined;
+    let smsCode: string | undefined;
+    let wxVerifiedPhone: string | undefined;
+
+    if (phoneCode) {
+      if (!result.data.bindToken) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "INVALID_PARAMS", message: "微信手机号授权仅限 bindToken 通道使用" },
+          },
+          { status: 400 }
+        );
+      }
+      try {
+        wxVerifiedPhone = await getMiniprogramPhone(phoneCode);
+      } catch (error) {
+        apiConsole.error("[WechatBind] getPhoneNumber 换取失败:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "PHONE_CODE_FAILED", message: "获取微信手机号失败，请重试或使用验证码" },
+          },
+          { status: 400 }
+        );
+      }
+      if (!/^1[3-9]\d{9}$/.test(wxVerifiedPhone)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "PHONE_INVALID", message: "微信手机号格式异常，请使用验证码绑定" },
+          },
+          { status: 400 }
+        );
+      }
+      phone = wxVerifiedPhone;
+    } else {
+      phone = result.data.phone;
+      smsCode = result.data.code;
+      if (!phone || !smsCode) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "INVALID_PARAMS", message: "请输入手机号和验证码，或使用微信手机号授权" },
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const bindingResult = await resolveWechatBinding({
       phone,
-      code,
+      code: smsCode,
+      wxVerifiedPhone,
       password,
       allowAutoPassword,
       wechatInfo,
@@ -127,13 +186,16 @@ export async function POST(request: NextRequest) {
 
     const { user, accessToken, refreshToken, passwordGenerated, message } = bindingResult.data;
 
+    // bindToken 通道（小程序等无 Cookie 环境）Cookie 无效，改为在 body 返回双 Token
+    const responseData: Record<string, unknown> = { user, message, passwordGenerated };
+    if (result.data.bindToken) {
+      responseData.accessToken = accessToken;
+      responseData.refreshToken = refreshToken;
+    }
+
     const response = NextResponse.json({
       success: true,
-      data: {
-        user,
-        message,
-        passwordGenerated,
-      },
+      data: responseData,
     });
 
     // 设置 Access Token Cookie（15 分钟）

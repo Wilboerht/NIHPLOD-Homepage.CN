@@ -1,12 +1,17 @@
 /**
- * POST /api/auth/wechat/bind 路由测试（CSRF 豁免部分）
- * 覆盖：body 携带 bindToken 的非浏览器通道豁免 CSRF；Cookie 通道无 CSRF 仍 403
+ * POST /api/auth/wechat/bind 路由测试
+ * 覆盖：body 携带 bindToken 的非浏览器通道豁免 CSRF；Cookie 通道无 CSRF 仍 403；
+ *       bindToken + phoneCode 免短信通道（成功返回双 Token / 非 bindToken 通道拒绝 / 换取失败）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/wechat-binding", () => ({
   resolveWechatBinding: vi.fn(),
+}));
+
+vi.mock("@/lib/wechat", () => ({
+  getMiniprogramPhone: vi.fn(),
 }));
 
 vi.mock("@/lib/jwt", () => ({
@@ -35,6 +40,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { resolveWechatBinding } from "@/lib/wechat-binding";
+import { getMiniprogramPhone } from "@/lib/wechat";
 import { verifyWechatBindToken } from "@/lib/jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit } from "@/lib/ratelimit";
@@ -42,6 +48,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { POST } from "@/app/api/auth/wechat/bind/route";
 
 const mockResolve = resolveWechatBinding as ReturnType<typeof vi.fn>;
+const mockGetPhone = getMiniprogramPhone as ReturnType<typeof vi.fn>;
 const mockVerifyBindToken = verifyWechatBindToken as ReturnType<typeof vi.fn>;
 const mockValidateCSRF = validateCSRFToken as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
@@ -89,6 +96,9 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
     expect(mockValidateCSRF).not.toHaveBeenCalled();
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
+    // bindToken 通道（小程序）在 body 返回双 Token
+    expect(data.data.accessToken).toBe("at");
+    expect(data.data.refreshToken).toBe("rt");
     // provider 回退自 bindToken 载荷
     expect(mockResolve).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "wechat_miniprogram" })
@@ -122,6 +132,72 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
     expect(res.status).toBe(403);
     expect(data.error.code).toBe("CSRF_INVALID");
     expect(mockResolve).not.toHaveBeenCalled();
+  });
+
+  describe("bindToken + phoneCode 免短信通道", () => {
+    it("bindToken 通道带 phoneCode 应免短信绑定并在 body 返回双 Token", async () => {
+      mockGetPhone.mockResolvedValue("13911112222");
+
+      const res = await POST(
+        createRequest({ bindToken: "body-bind-token", phoneCode: "phone-code-1" })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.accessToken).toBe("at");
+      expect(data.data.refreshToken).toBe("rt");
+      // 微信授权即归属证明：跳过短信，走 wxVerifiedPhone
+      expect(mockResolve).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: "13911112222",
+          wxVerifiedPhone: "13911112222",
+          code: undefined,
+        })
+      );
+    });
+
+    it("phoneCode 换取失败应返回 400 PHONE_CODE_FAILED", async () => {
+      mockGetPhone.mockRejectedValue(new Error("getuserphonenumber failed"));
+
+      const res = await POST(
+        createRequest({ bindToken: "body-bind-token", phoneCode: "bad-code" })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error.code).toBe("PHONE_CODE_FAILED");
+      expect(mockResolve).not.toHaveBeenCalled();
+    });
+
+    it("微信手机号格式异常应返回 400 PHONE_INVALID", async () => {
+      mockGetPhone.mockResolvedValue("00852-12345678");
+
+      const res = await POST(
+        createRequest({ bindToken: "body-bind-token", phoneCode: "phone-code-2" })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error.code).toBe("PHONE_INVALID");
+    });
+
+    it("非 bindToken 通道（Cookie）使用 phoneCode 应被拒绝", async () => {
+      mockValidateCSRF.mockReturnValue(true);
+
+      // Cookie 通道：bindToken 来自 Cookie（无 body bindToken）
+      const res = await POST(
+        createRequest(
+          { phoneCode: "phone-code-3" },
+          { headers: { Cookie: "__Host-wechat_bind_token=cookie-bind-token" } }
+        )
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error.code).toBe("INVALID_PARAMS");
+      expect(mockResolve).not.toHaveBeenCalled();
+    });
   });
 });
 

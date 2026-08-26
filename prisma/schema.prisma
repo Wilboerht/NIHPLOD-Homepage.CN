@@ -731,7 +731,7 @@ model PointTransaction {
   id        String   @id @default(cuid())
   userId    String
   points    Int      // 正数为获得，负数为消耗
-  type      String   // ORDER_REWARD | BIRTHDAY_GIFT | ADMIN_ADJUST | REDEEM | LEVEL_UP_BONUS
+  type      String   // ORDER_REWARD | ORDER_REWARD_REVERSAL | BIRTHDAY_GIFT | ADMIN_ADJUST | REDEEM | LEVEL_UP_BONUS | EXTERNAL_SYNC（商城积分同步）
   reference String?  // 关联的订单号/优惠券ID等
   note      String?  @db.Text
   createdAt DateTime @default(now())

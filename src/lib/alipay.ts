@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { prisma } from "./prisma";
 import { OrderStatus } from "@/generated/prisma/client";
 import { formatMoney, moneyStrictEqual, ensureMoneyPrecision } from "./money";
+import { creditPointsForOrder } from "./points";
 import { validateKeyFormat, toPrivateKeyPem, toPublicKeyPem } from "./crypto-utils";
 import { fetchWithTimeout } from "./fetch-utils";
 import { autoRefundCancelledOrder } from "./auto-refund";
@@ -439,7 +440,7 @@ export async function handleAlipayNotify(
         OrderStatus.DELIVERED,
       ];
       if (terminalStatuses.includes(order.status)) {
-        console.warn(`[Alipay] 订单 ${orderNo} 已处于终态 ${order.status}，忽略支付通知`);
+        apiConsole.warn(`[Alipay] 订单 ${orderNo} 已处于终态 ${order.status}，忽略支付通知`);
         return;
       }
 
@@ -459,7 +460,7 @@ export async function handleAlipayNotify(
 
       if (updatedOrder.count === 0) {
         // 已被其他请求处理，直接返回
-        console.warn(`[Alipay] 订单 ${orderNo} 已被并发处理，跳过`);
+        apiConsole.warn(`[Alipay] 订单 ${orderNo} 已被并发处理，跳过`);
         return;
       }
 
@@ -483,6 +484,16 @@ export async function handleAlipayNotify(
           data: { status: "USED", usedAt: new Date() },
         });
       }
+
+      // VIP 积分奖励（与微信回调对齐；creditPointsForOrder 内部按 orderNo 幂等防重，
+      // CAS 已保证仅首次支付成功进入此分支，积分失败不阻塞回调）
+      await creditPointsForOrder({
+        tx,
+        orderId: order.id,
+        userId: order.userId,
+        payAmount: Number(order.payAmount),
+        orderNo,
+      });
 
       // 记录交易流水（在事务内，保证与订单状态更新原子化）
       if (shouldRecordTransaction && capturedOrderId && capturedPayAmount !== undefined) {

@@ -8,10 +8,14 @@ import { createHmac } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 
+// 状态值约定（与商城侧 zod 校验对齐）：发送 User.status 原始大写枚举 ACTIVE/SUSPENDED/BANNED；
+// 删除事件 newStatus 固定为小写 "deleted"（商城侧按此约定映射为禁用账户）
+export type WebhookUserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
+
 export interface StatusChangeWebhook {
   userId: string;
-  oldStatus: string;
-  newStatus: string;
+  oldStatus: WebhookUserStatus;
+  newStatus: WebhookUserStatus | "deleted";
   source?: string;
 }
 

@@ -15,7 +15,8 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 // 请求参数验证
 const sendCodeSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  type: z.enum(["login", "register", "reset"]).default("login"),
+  // bind：小程序「关联官网账户」专用发码通道（无 Cookie 环境）
+  type: z.enum(["login", "register", "reset", "bind"]).default("login"),
 });
 
 // 验证码有效期（分钟）
@@ -46,14 +47,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!validateCSRFToken(request)) {
-      return csrfForbiddenResponse();
-    }
-
     const body = await request.json();
 
     // 参数验证
     const result = sendCodeSchema.safeParse(body);
+
+    // CSRF 校验：type=bind（小程序「关联官网账户」发码通道）豁免 —— 小程序无 Cookie，
+    // 无法完成双提交校验。豁免前提：请求不得携带 Origin/Referer —— 小程序 wx.request
+    // 不携带来源头；浏览器发起的跨站 POST（含 text/plain 简单请求）浏览器强制携带 Origin，
+    // 因此携带来源头的 bind 请求仍走 CSRF 校验，杜绝跨站滥用该豁免发短信/枚举账户。
+    // 豁免安全性由短信验证码本身（攻击者无法获取）+ 60 秒发送间隔 /
+    // 每小时 5 次 / IP 限流保证，与 /api/auth/wechat/bind 对 bindToken 通道的豁免逻辑同理。
+    // 其余 type（浏览器场景）保持强制双提交校验。
+    const hasBrowserOrigin = Boolean(
+      request.headers.get("origin") || request.headers.get("referer")
+    );
+    const csrfExempt = result.success && result.data.type === "bind" && !hasBrowserOrigin;
+    if (!csrfExempt && !validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
     if (!result.success) {
       return NextResponse.json(
         {
@@ -148,6 +161,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === "reset" && !userExists) {
+      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
+      return NextResponse.json(
+        {
+          success: true,
+          data: { message: "验证码已发送" },
+        },
+        { status: 200 }
+      );
+    }
+
+    // 绑定场景（小程序「关联官网账户」）：仅手机号已存在官网账户才真实发码；
+    // 未注册手机号假发送（返回成功但不发码），防枚举口径与 register/login/reset 一致
+    if (type === "bind" && !userExists) {
       await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
       return NextResponse.json(
         {

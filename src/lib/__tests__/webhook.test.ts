@@ -20,7 +20,7 @@ import {
   signWebhookPayload,
 } from "@/lib/webhook";
 
-const change = { userId: "user-1", oldStatus: "active", newStatus: "banned", source: "admin" };
+const change = { userId: "user-1", oldStatus: "ACTIVE", newStatus: "BANNED", source: "admin" } as const;
 const target = {
   url: "https://sub.example.com/webhook",
   clientId: "sub-app",
@@ -65,12 +65,25 @@ describe("webhook", () => {
       .digest("hex");
     expect(v1).toBe(expected);
 
-    // payload 携带事件类型与 timestamp
+    // payload 携带事件类型与 timestamp；状态值发送原始大写枚举（与商城侧 zod 对齐）
     const payload = JSON.parse(init.body as string);
     expect(payload.event).toBe("account_status_change");
     expect(payload.sub).toBe("user-1");
-    expect(payload.new_status).toBe("banned");
+    expect(payload.old_status).toBe("ACTIVE");
+    expect(payload.new_status).toBe("BANNED");
     expect(payload.timestamp).toEqual(expect.any(String));
+  });
+
+  it("删除事件 new_status 固定为小写 deleted，old_status 保持原始大写枚举", async () => {
+    await dispatchStatusChangeWebhook(
+      { userId: "user-1", oldStatus: "SUSPENDED", newStatus: "deleted", source: "admin" },
+      [target]
+    );
+
+    const [, init] = globalFetch.mock.calls[0] as [string, RequestInit];
+    const payload = JSON.parse(init.body as string);
+    expect(payload.old_status).toBe("SUSPENDED");
+    expect(payload.new_status).toBe("deleted");
   });
 
   it("目标级 secret 优先于环境变量", async () => {

@@ -411,3 +411,101 @@ export async function code2session(code: string): Promise<WechatSessionInfo> {
     sessionKey: data.session_key,
   };
 }
+
+// ============================================
+// 小程序手机号快速验证（phoneCode 换真实手机号）
+// ============================================
+
+/** 小程序专用 access_token 缓存（与公众号缓存隔离，appId 可能不同） */
+let cachedMpAccessToken: CachedToken | null = null;
+let mpAccessTokenPromise: Promise<string> | null = null;
+
+/**
+ * 获取小程序 access_token（7200 秒，缓存 + Promise 锁，与 getWechatAccessToken 同策略）
+ * appId/secret 与 code2session 口径一致：WECHAT_MINIPROGRAM_APP_ID/SECRET，回退 WECHAT_APP_ID/SECRET
+ */
+async function getMiniprogramAccessToken(): Promise<string> {
+  const { appId, appSecret } = (() => {
+    const a = process.env.WECHAT_MINIPROGRAM_APP_ID || process.env.WECHAT_APP_ID;
+    const s = process.env.WECHAT_MINIPROGRAM_APP_SECRET || process.env.WECHAT_APP_SECRET;
+    if (!a || !s) {
+      throw new Error("微信小程序 AppID 或 AppSecret 未配置");
+    }
+    return { appId: a, appSecret: s };
+  })();
+
+  const now = Date.now();
+  if (cachedMpAccessToken && cachedMpAccessToken.expiresAt > now) {
+    return cachedMpAccessToken.accessToken;
+  }
+  if (mpAccessTokenPromise) {
+    return mpAccessTokenPromise;
+  }
+
+  mpAccessTokenPromise = (async () => {
+    try {
+      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
+      const response = await wechatFetch(url);
+      if (!response.ok) {
+        throw new Error(`小程序 Access Token 请求失败: HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.errcode) {
+        throw new Error(`获取小程序 Access Token 失败: ${data.errmsg}`);
+      }
+      const expiresIn = validateExpiresIn(data.expires_in, "miniprogram_access_token");
+      cachedMpAccessToken = {
+        accessToken: data.access_token,
+        expiresAt: now + (expiresIn - 300) * 1000,
+      };
+      return data.access_token;
+    } finally {
+      mpAccessTokenPromise = null;
+    }
+  })();
+
+  return mpAccessTokenPromise;
+}
+
+/**
+ * 小程序手机号快速验证组件：phoneCode 换真实手机号
+ *
+ * 调用微信新版服务端接口 /wxa/business/getuserphonenumber（POST JSON body {code}），
+ * 取代已废弃的 session_key 解密方式；每次调用计费，仅用于用户主动授权场景。
+ *
+ * @param phoneCode - <button open-type="getPhoneNumber"> 回调中的 detail.code
+ * @returns 脱敏前纯数字手机号（purePhoneNumber）
+ */
+export async function getMiniprogramPhone(phoneCode: string): Promise<string> {
+  const accessToken = await getMiniprogramAccessToken();
+  const url = `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${accessToken}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WECHAT_API_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: phoneCode }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) {
+    throw new Error(`微信手机号接口请求失败: HTTP ${response.status}`);
+  }
+  const data = await response.json();
+
+  if (data.errcode) {
+    throw new Error(`微信手机号换取失败: ${data.errmsg} (errcode=${data.errcode})`);
+  }
+
+  const phone = data.phone_info?.purePhoneNumber || data.phone_info?.phoneNumber;
+  if (!phone) {
+    throw new Error("微信手机号接口返回数据缺少 phone_info");
+  }
+  return String(phone);
+}

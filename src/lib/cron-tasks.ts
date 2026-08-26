@@ -16,6 +16,7 @@ import {
   cleanupRevokedUserConsents,
 } from "./auth-security";
 import { cleanupExpiredCodes } from "./oauth-code";
+import { cleanupInternalApiNonces } from "./internal-api";
 import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { cleanupRateLimitRecords } from "./ratelimit";
@@ -218,6 +219,21 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);
         markCleanupFailed("过期授权码");
+      }
+    },
+  },
+  {
+    name: "Cleanup Internal API Nonces",
+    cronExpression: "0 * * * *", // 每小时执行一次（nonce 记录随内部 API 调用量增长，需高频清理）
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理过期内部 API nonce 记录...");
+        const count = await cleanupInternalApiNonces();
+        apiConsole.info(`[Cron] 过期 nonce 记录清理完成: ${count} 条`);
+        markCleanupOk("过期 nonce 记录");
+      } catch (error) {
+        apiConsole.error("[Cron] 过期 nonce 记录清理失败:", error);
+        markCleanupFailed("过期 nonce 记录");
       }
     },
   },

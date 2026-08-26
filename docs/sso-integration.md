@@ -494,6 +494,84 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ---
 
+## 积分/等级同步（商城对接）
+
+官网是积分/等级权威账本。商城侧的积分变动通过签名内部 API 上报入账，并可随时拉取官网权威余额对齐。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
+
+### 上报积分变动
+
+`POST /api/v1/internal/points/sync`
+
+```json
+{
+  "phone": "13800138000",
+  "delta": 15,
+  "spentDelta": 150,
+  "reference": "mall-order-N20260823001",
+  "note": "商城订单消费奖励"
+}
+```
+
+- `phone`：中国手机号（`^1[3-9]\d{9}$`，与官网注册手机号一致），联邦账号按手机号关联。
+- `delta`：积分变动，非零整数，正加负减（如积分抵扣传负值）。
+- `spentDelta`：可选，消费额变动（元，整数，默认 0），用于官网侧会员等级重算。
+- `reference`：商城侧唯一单据号，幂等键。重复上报不重复入账，返回 `duplicated: true`。
+- `note`：可选，流水备注。
+
+成功响应（`totalPoints`/`totalSpent`/`membershipLevel` 为入账后的官网权威值，商城应以此对齐本地展示）：
+
+```json
+{
+  "success": true,
+  "data": { "totalPoints": 320, "totalSpent": 5200, "membershipLevel": "VIP" }
+}
+```
+
+### 拉取权威余额
+
+`POST /api/v1/internal/user/balance`
+
+```json
+{ "phone": "13800138000" }
+```
+
+响应：
+
+```json
+{
+  "success": true,
+  "data": { "totalPoints": 320, "totalSpent": 5200, "membershipLevel": "VIP" }
+}
+```
+
+### 错误码
+
+| HTTP | code | 说明 |
+| --- | --- | --- |
+| 401 | `MISSING_AUTH` / `INVALID_TIMESTAMP` / `REPLAY_ATTACK` / `UNAUTHORIZED` | 鉴权失败（缺头 / 时间戳超 ±5 分钟 / nonce 重放 / 签名错误） |
+| 400 | `INVALID_JSON` / `INVALID_PARAMS` | 请求体或参数校验失败 |
+| 404 | `USER_NOT_FOUND` | 手机号在官网不存在（用户尚未在官网注册/绑定） |
+| 429 | `RATE_LIMITED` | 触发 IP 限流 |
+| 500 | `INTERNAL_ERROR` | 服务器内部错误（可重试，`reference` 幂等保证重试安全） |
+
+---
+
+## 小程序「关联官网账户」发码
+
+小程序内「关联官网账户」入口的短信验证码通过官网公开端点 `POST /api/auth/send-code` 发送，`type` 使用专用值 `bind`：
+
+```json
+{ "phone": "13800138000", "type": "bind" }
+```
+
+- **用途**：仅为「小程序微信身份 ↔ 官网手机号账户」绑定流程发码；验证码核销在 `POST /api/auth/wechat/bind`（短信通道，body 携带 `bindToken + phone + code`）完成。
+- **CSRF 豁免**：小程序无 Cookie，无法完成双提交校验，故 `type=bind` 豁免 CSRF（其余 `type` 仍强制校验）。安全性由短信验证码本身 + 限流保证，与 `/api/auth/wechat/bind` 对 `bindToken` 通道的豁免逻辑同理。
+- **防枚举假发送**：仅当手机号**已存在官网账户**时才真实发码；未注册手机号返回同样的成功响应（`{ success: true, data: { message: "验证码已发送" } }`）但不发码、不入库，避免通过该端点枚举官网注册用户。
+- **限流不变**：60 秒发送间隔、每小时最多 5 次、IP 级限流对 `type=bind` 照常生效；频控按 `phone + type` 维度独立计数，不影响 login/register/reset 通道。
+- **验证码语义**：`SmsCode.type = "bind"`，有效期 5 分钟；绑定校验同时兼容 `register` 与 `bind` 两种类型（取最新未使用记录），官网扫码绑定页原有 `register` 通道行为不变。
+
+---
+
 ## 常见问题
 
 ### Q: 回调页面报 "State 参数不匹配" 错误？

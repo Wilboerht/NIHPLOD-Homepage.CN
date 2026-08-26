@@ -278,12 +278,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Webhook 推送账户状态变更（best-effort，不阻断主流程）
+    // 状态发送 User.status 原始大写枚举（ACTIVE/SUSPENDED/BANNED），与商城侧 zod 校验对齐
     try {
       await dispatchStatusChangeWebhook(
         {
           userId: user.id,
-          oldStatus: user.status === "ACTIVE" ? "active" : "banned",
-          newStatus: status === "ACTIVE" ? "active" : "banned",
+          oldStatus: user.status,
+          newStatus: status,
           source: "admin",
         },
         getStatusChangeWebhookTargets()
@@ -388,11 +389,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Webhook 推送账户删除事件（best-effort，不阻断主流程）
+    // oldStatus 发删除前的原始大写枚举；newStatus 固定 "deleted"，商城侧按此约定映射为禁用
     try {
       await dispatchStatusChangeWebhook(
         {
           userId: user.id,
-          oldStatus: user.status === "ACTIVE" ? "active" : "banned",
+          oldStatus: user.status,
           newStatus: "deleted",
           source: "admin",
         },

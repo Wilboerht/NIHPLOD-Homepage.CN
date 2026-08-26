@@ -25,7 +25,14 @@ import type { NextRequest } from "next/server";
 
 export interface WechatBindingInput {
   phone: string;
-  code: string;
+  /** 短信验证码（短信通道必填；微信手机号快速验证通道免验证码） */
+  code?: string;
+  /**
+   * 微信手机号快速验证组件（getPhoneNumber）换得的真实手机号。
+   * 提供时视为微信已证明手机号归属，跳过短信验证码校验；
+   * 必须与 phone 字段一致（调用方负责把两者设为同一值）。
+   */
+  wxVerifiedPhone?: string;
   password?: string;
   allowAutoPassword: boolean;
   wechatInfo: WechatBindPayload | WechatExchangePayload;
@@ -51,17 +58,21 @@ export interface WechatBindingResult {
  * 校验短信验证码并标记为已使用。
  */
 async function verifyAndConsumeSmsCode(phone: string, code: string) {
+  // 同时接受两种验证码类型：register（官网扫码绑定页复用注册通道发码，历史行为不变）与
+  // bind（小程序「关联官网账户」通道，POST /api/auth/send-code type=bind）。
+  // 取最新一条未使用记录；验证码哈希含 type（HMAC(phone:code:type)），
+  // 校验时必须使用记录自身的 type，不能用固定值。
   const smsCode = await prisma.smsCode.findFirst({
     where: {
       phone,
-      type: "register",
+      type: { in: ["register", "bind"] },
       used: false,
       expiresAt: { gte: new Date() },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  if (!smsCode || !verifyCode(phone, code, "register", smsCode.codeHash)) {
+  if (!smsCode || !verifyCode(phone, code, smsCode.type, smsCode.codeHash)) {
     return { valid: false as const, error: "验证码错误或已过期" };
   }
 
@@ -86,7 +97,7 @@ export async function resolveWechatBinding(
 ): Promise<
   { success: true; data: WechatBindingResult } | { success: false; code: string; message: string }
 > {
-  const { phone, code, allowAutoPassword, wechatInfo, request } = input;
+  const { phone, code, allowAutoPassword, wechatInfo, request, wxVerifiedPhone } = input;
   let { password } = input;
   const provider = input.provider || "wechat_open";
   // 仅微信开放平台/服务号写 User.wechatOpenId 旧列（该列语义即开放平台/服务号 openid）；
@@ -95,15 +106,25 @@ export async function resolveWechatBinding(
   const isWechatProvider = provider.startsWith("wechat_");
   const writesLegacyWechatColumn = provider === "wechat_open" || provider === "wechat_mp";
 
-  // 1. 验证码校验
-  const smsResult = await verifyAndConsumeSmsCode(phone, code);
-  if (!smsResult.valid) {
-    return { success: false, code: "INVALID_CODE", message: smsResult.error };
+  // 1. 验证码校验：微信手机号快速验证组件（getPhoneNumber）已由微信证明手机号归属，
+  //    携带 wxVerifiedPhone 的通道跳过短信验证码；其余通道强制短信校验
+  if (wxVerifiedPhone) {
+    if (wxVerifiedPhone !== phone || !/^1[3-9]\d{9}$/.test(phone)) {
+      return { success: false, code: "INVALID_PARAMS", message: "手机号校验失败" };
+    }
+  } else {
+    if (!code) {
+      return { success: false, code: "INVALID_CODE", message: "请输入验证码" };
+    }
+    const smsResult = await verifyAndConsumeSmsCode(phone, code);
+    if (!smsResult.valid) {
+      return { success: false, code: "INVALID_CODE", message: smsResult.error };
+    }
   }
 
   // 2. 密码处理
   let passwordGenerated = false;
-  if (!password && allowAutoPassword) {
+  if (!password && (allowAutoPassword || !!wxVerifiedPhone)) {
     password = generateSecurePassword(24);
     passwordGenerated = true;
   } else if (!password) {

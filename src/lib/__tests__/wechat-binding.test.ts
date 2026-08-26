@@ -57,7 +57,10 @@ vi.mock("@/lib/client-ip", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
+import { verifyCode } from "@/lib/sms";
 import { resolveWechatBinding, type WechatBindingInput } from "@/lib/wechat-binding";
+
+const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
 
 type TxClient = {
   user: {
@@ -229,5 +232,51 @@ describe("resolveWechatBinding provider 写入语义", () => {
     // update 载荷中不应出现 wechatOpenId（保持原值）
     expect("wechatOpenId" in updateData).toBe(false);
     expect(updateData.wechatUnionId).toBe("union-1");
+  });
+});
+
+describe("resolveWechatBinding 短信验证码类型（register/bind 双通道）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockVerifyCode.mockReturnValue(true);
+    mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.__tx.user.findFirst.mockResolvedValue(null);
+    mockPrisma.__tx.user.findUnique.mockResolvedValue(null);
+    mockPrisma.__tx.user.create.mockResolvedValue(createdUser);
+    mockPrisma.__tx.externalIdentity.upsert.mockResolvedValue({ id: "ei-1" });
+    mockPrisma.__tx.externalIdentity.findUnique.mockResolvedValue(null);
+  });
+
+  it("bind 类型验证码（小程序关联官网账户）应通过校验完成绑定", async () => {
+    mockPrisma.smsCode.findFirst.mockResolvedValue({ id: "sms-1", codeHash: "hash", type: "bind" });
+
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram"));
+
+    expect(result.success).toBe(true);
+    // 查询应同时覆盖 register 与 bind 两种类型
+    expect(mockPrisma.smsCode.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ type: { in: ["register", "bind"] } }),
+      })
+    );
+    // 哈希含 type，校验必须使用记录自身的 type=bind
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "bind", "hash");
+    // 验证通过：验证码被原子核销，绑定完成
+    expect(mockPrisma.smsCode.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "sms-1", used: false }) })
+    );
+  });
+
+  it("register 类型验证码仍以 register 校验（原有通道行为不变）", async () => {
+    mockPrisma.smsCode.findFirst.mockResolvedValue({
+      id: "sms-2",
+      codeHash: "hash",
+      type: "register",
+    });
+
+    const result = await resolveWechatBinding(buildInput());
+
+    expect(result.success).toBe(true);
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "register", "hash");
   });
 });

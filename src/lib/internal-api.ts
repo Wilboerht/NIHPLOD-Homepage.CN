@@ -193,6 +193,28 @@ export async function checkAndRecordNonce(nonce: string): Promise<boolean> {
 }
 
 /**
+ * 清理过期的内部 API nonce 防重放记录（可由 cron 任务定期调用）
+ * nonce 有效窗口为时间戳容差 ±5 分钟，创建超过 10 分钟的记录已不可能通过校验，
+ * 保留 10 分钟作为安全边界后物理删除，防止 TokenBlacklist 表无限增长
+ */
+export async function cleanupInternalApiNonces(): Promise<number> {
+  try {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const result = await prisma.tokenBlacklist.deleteMany({
+      where: {
+        type: "internal_api_nonce",
+        createdAt: { lt: tenMinutesAgo },
+      },
+    });
+    apiConsole.info(`[CleanupInternalApiNonces] 清理了 ${result.count} 条过期 nonce 记录`);
+    return result.count;
+  } catch (error) {
+    apiConsole.error("[CleanupInternalApiNonces] 清理失败:", error);
+    return 0;
+  }
+}
+
+/**
  * 计算请求体 SHA-256 哈希
  */
 export function hashRequestBody(body: string): string {
