@@ -1512,6 +1512,46 @@
   }
 }
 
+/* ========== 扁屏桌面适配（如 1080p 开 150% 缩放、浏览器多栏占高的"宽屏+矮高"组合） ========== */
+
+/* 便当盒高度 ≈ 宽度/2，基础规则只按宽度定尺寸，矮屏下会顶到底部导航。
+   这里在保持桌面宽度的前提下，用 vh 约束宽度，并收紧卡片内边距。 */
+@media (min-width: 1025px) and (max-height: 760px) {
+  .kinetic-container {
+    width: min(75vw, 950px, 132vh);
+    gap: 12px;
+  }
+
+  .kinetic-cell {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 1025px) and (max-height: 640px) {
+  .kinetic-container {
+    width: min(75vw, 950px, 118vh);
+    gap: 10px;
+  }
+
+  .kinetic-cell {
+    padding: 16px;
+  }
+
+  .kinetic-title-sm {
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+  }
+
+  /* 登录卡紧缩，防止按钮被 overflow 裁切（对齐移动端矮屏处理） */
+  .kinetic-login-cell {
+    padding: 10px 12px;
+  }
+
+  .kinetic-btn-group {
+    gap: 8px;
+  }
+}
+
 /* 水印端切换与便当盒移动端断点对齐（1025px），避免 Tailwind md=768px 区间混搭 */
 .kinetic-watermark-pc {
   display: none;
