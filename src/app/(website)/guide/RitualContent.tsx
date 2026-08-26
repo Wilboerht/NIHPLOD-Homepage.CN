@@ -22,6 +22,7 @@ import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useCartStore } from "@/store/cart";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 import { ProductDrawer } from "@/components/website";
@@ -222,13 +223,15 @@ export function RitualContent({ products = [] }: RitualContentProps) {
   };
 
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   // 打开产品详情弹窗
   const handleProductClick = (productName: string) => {
     const product = findProduct(productName);
     if (product) {
       // 移动端直接跳转到产品详情页，不使用抽屉
-      if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      // 断点与 CSS 的 lg(1024px) 切换保持一致，避免 769~1023px 区间行为错配
+      if (isMobile) {
         router.push(`/products/${product.slug}`);
         return;
       }
@@ -1636,13 +1639,13 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                             /* <= 3 步骤：直接展示卡片 (无折叠逻辑) */
                             <m.section
                               key={`${nav.module}-simple`}
-                              className="relative flex h-[530px] w-full items-center justify-center"
+                              className="relative flex h-[min(530px,calc(100dvh-220px))] w-full items-center justify-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
                               transition={{ duration: 0.5 }}
                             >
-                              <div className="flex h-[480px] w-full max-w-[1000px] items-stretch justify-center gap-3">
+                              <div className="flex h-[min(480px,calc(100dvh-270px))] w-full max-w-[1000px] items-stretch justify-center gap-3">
                                 {currentSteps.map((step, index) => (
                                   <div
                                     key={`${step.title}-${index}`}
@@ -1655,9 +1658,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                     {/* 内容卡片 */}
                                     <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-brand-warm-light">
-                                      <div className="absolute inset-0 flex flex-col p-6 pt-10">
+                                      <div className="absolute inset-0 flex flex-col p-6 pt-10 [@media(max-height:700px)]:p-4 [@media(max-height:700px)]:pt-8">
                                         {/* 图片区域 */}
-                                        <div className="relative mb-6 flex h-[240px] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20">
+                                        <div className="relative mb-6 flex h-[clamp(96px,22dvh,240px)] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 [@media(max-height:700px)]:mb-3">
                                           <Image
                                             src={
                                               step.imageUrl ||
@@ -1671,8 +1674,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         </div>
 
                                         {/* 文字区域 */}
-                                        <div className="flex flex-1 flex-col items-center">
-                                          <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
+                                        <div className="flex flex-1 flex-col items-center min-h-0 overflow-y-auto">
+                                          <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal [@media(max-height:700px)]:mb-2 [@media(max-height:700px)]:text-xl">
                                             {step.title}
                                           </h3>
                                           <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80">
@@ -1694,7 +1697,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                               exit={{ opacity: 0 }}
                               transition={{ duration: 0.5 }}
                             >
-                              <div className="flex h-[520px] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden pt-5">
+                              <div className="flex h-[min(520px,calc(100dvh-240px))] w-full max-w-[1000px] items-stretch justify-center gap-3 overflow-hidden pt-5">
                                 <AnimatePresence mode="wait" initial={false}>
                                   <m.div
                                     key={currentStepIndex}
@@ -1729,9 +1732,9 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
                                             {/* 内容卡片 */}
                                             <div className="relative h-full w-full overflow-hidden rounded-2xl border border-brand-charcoal/20 bg-brand-warm-light transition-all duration-300 hover:border-brand-charcoal/40">
-                                              <div className="absolute inset-0 flex flex-col p-6 pt-10">
+                                              <div className="absolute inset-0 flex flex-col p-6 pt-10 [@media(max-height:700px)]:p-4 [@media(max-height:700px)]:pt-8">
                                                 {/* 图片区域 */}
-                                                <div className="relative mb-6 flex h-[240px] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 transition-colors group-hover:bg-brand-beige/30">
+                                                <div className="relative mb-6 flex h-[clamp(96px,22dvh,240px)] w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-beige/20 transition-colors group-hover:bg-brand-beige/30 [@media(max-height:700px)]:mb-3">
                                                   <Image
                                                     src={
                                                       step.imageUrl ||
@@ -1745,8 +1748,8 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                 </div>
 
                                                 {/* 文字区域 */}
-                                                <div className="flex flex-1 flex-col items-center">
-                                                  <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal">
+                                                <div className="flex flex-1 flex-col items-center min-h-0 overflow-y-auto">
+                                                  <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal [@media(max-height:700px)]:mb-2 [@media(max-height:700px)]:text-xl">
                                                     {step.title}
                                                   </h3>
                                                   <p className="text-left text-[14px] font-light tracking-[0.08em] text-brand-charcoal/80">

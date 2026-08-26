@@ -494,7 +494,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
               </Link>
 
               {/* 导航链接 */}
-              <div className="flex items-center justify-center gap-6">
+              <div className="flex items-center justify-center gap-3 whitespace-nowrap xl:gap-6">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
@@ -503,7 +503,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       const product = products.find((p) => p.categoryId === cat.id);
                       if (product) handleProductClick(product);
                     }}
-                    className="group relative py-1 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-all hover:opacity-80"
+                    className="group relative py-1 text-[13px] font-light tracking-[0.08em] text-brand-charcoal transition-all hover:opacity-80 xl:text-[15px] xl:tracking-[0.15em]"
                   >
                     {cat.name}
                     <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
@@ -525,7 +525,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                     className="flex-shrink-0"
                   >
-                    <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
+                    <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-brand-charcoal [@media(max-height:700px)]:mb-3">
                       当季热卖
                     </h1>
                   </m.header>
@@ -541,7 +541,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         }}
                         className={cn(
                           "group relative flex cursor-pointer flex-col",
-                          index === 1 && "mt-12" // 中间卡片微调，不宜过大以防超出
+                          index === 1 && "mt-12 [@media(max-height:700px)]:mt-6" // 中间卡片微调，不宜过大以防超出
                         )}
                       >
                         <m.div
@@ -557,8 +557,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             className={cn(
                               "relative w-full overflow-hidden bg-white transition-all duration-700 ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:-translate-y-1 group-hover:shadow-[0_15px_30px_rgba(0,38,62,0.1)]",
                               index === 1
-                                ? "aspect-[4/5.2] max-h-[50vh]"
-                                : "aspect-[4/4.5] max-h-[42vh]"
+                                ? "aspect-[4/5.2] max-h-[50vh] [@media(max-height:700px)]:max-h-[36vh]"
+                                : "aspect-[4/4.5] max-h-[42vh] [@media(max-height:700px)]:max-h-[32vh]"
                             )}
                           >
                             <div className="pointer-events-none absolute inset-3 z-10 border border-brand-charcoal/[0.08]" />
