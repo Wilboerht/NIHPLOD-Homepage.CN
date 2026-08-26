@@ -311,7 +311,6 @@ export async function GET(request: NextRequest) {
       // 签发 Token（使用新的双 Token 机制）
       const accessToken = await signUserToken({
         id: user.id,
-        phone: user.phone,
       });
       const refreshToken = await signRefreshToken({
         id: user.id,

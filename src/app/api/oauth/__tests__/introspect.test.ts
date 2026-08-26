@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OAuth Introspect 端点单元测试
  * POST /api/oauth/introspect (RFC 7662)
  */
@@ -61,6 +61,7 @@ function validVerifyResult() {
       scopes: ["openid"],
       isActive: true,
       backchannelLogoutUri: null,
+      webhookUri: null,
       createdAt: new Date(),
       updatedAt: new Date(),
       isPublic: false,

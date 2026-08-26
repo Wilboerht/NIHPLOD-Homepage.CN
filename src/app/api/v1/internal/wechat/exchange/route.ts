@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 内部 API v1：子站微信授权信息兑换（跨域场景）
  * POST /api/v1/internal/wechat/exchange
  *
@@ -278,7 +278,7 @@ async function finalizeLogin(
   });
 
   // 签发双 Token
-  const accessToken = await signUserToken({ id: user.id, phone: user.phone });
+  const accessToken = await signUserToken({ id: user.id });
   const refreshToken = await signRefreshToken({ id: user.id, phone: user.phone });
   const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));

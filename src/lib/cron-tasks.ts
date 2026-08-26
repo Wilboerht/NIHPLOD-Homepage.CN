@@ -19,6 +19,7 @@ import { cleanupExpiredCodes } from "./oauth-code";
 import { cleanupInternalApiNonces } from "./internal-api";
 import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
+import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { cleanupOldTransactionRawData } from "./transaction";
 import { apiConsole } from "@/lib/logger";
@@ -281,6 +282,21 @@ const tasks: ScheduledTask[] = [
         );
       } catch (error) {
         apiConsole.error("[Cron] Backchannel Logout 重投任务失败:", error);
+      }
+    },
+  },
+  {
+    name: "Retry Failed Webhook Deliveries",
+    cronExpression: "*/15 * * * *", // 每 15 分钟重投一次（与 Backchannel Logout 重投同周期）
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始重投失败的资料变更 Webhook...");
+        const result = await retryFailedWebhookDeliveries();
+        apiConsole.info(
+          `[Cron] 资料变更 Webhook 重投完成: 成功 ${result.delivered} 条, 待下次重试 ${result.failed} 条, 丢弃 ${result.dropped} 条`
+        );
+      } catch (error) {
+        apiConsole.error("[Cron] 资料变更 Webhook 重投任务失败:", error);
       }
     },
   },

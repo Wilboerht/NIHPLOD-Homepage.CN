@@ -46,7 +46,12 @@ if (
   );
 }
 
-function validateSecret(name: string, value: string | undefined): string {
+/**
+ * 启动时校验密钥类环境变量：强制存在性 + 最小长度。
+ * 供 jwt.ts 自身的 JWT Secret 与其他安全密钥（如 auth-security.ts 的
+ * LOGIN_ATTEMPT_HMAC_KEY）复用，保证校验行为一致。
+ */
+export function validateSecret(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(`[JWT] ${name} 环境变量未设置，请配置后再启动应用`);
   }
@@ -278,16 +283,17 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
  * - OAuth：type="access_token"，audience=clientId，由 signOAuthAccessToken 签发
  * - 内部：type="user"，audience="user"，由本函数签发
  * - 两者使用不同的 token type，verifyOAuthAccessToken 仅接受 access_token 类型
+ *
+ * 注意：payload 不再携带明文 phone（与 OAuth 侧脱敏策略一致），
+ * 避免明文手机号经日志/子项目泄漏；业务侧需要手机号时按 id 查库获取。
  */
 export async function signUserToken(payload: {
   id: string;
-  phone: string;
   /** 原始认证时间（Unix 秒）。refresh 换发时透传，防止 max_age 被新 iat 架空 */
   authTime?: number;
 }): Promise<string> {
   const jwtPayload: Record<string, unknown> = {
     id: payload.id,
-    phone: payload.phone,
     type: "user" as const,
   };
   if (payload.authTime) jwtPayload.auth_time = payload.authTime;
@@ -302,6 +308,72 @@ export async function signUserToken(payload: {
     .sign(accessSecret);
 
   return token;
+}
+
+/**
+ * verifyUserToken 的进程内短 TTL 缓存（模式参照下方 m2mClientActiveCache）。
+ *
+ * 作为中心 IDP，verifyUserToken 每次验证需查 jti 撤销状态与 user.passwordChangedAt，
+ * 高并发下是 DB 热点；5s 短缓存是性能与即时性的折衷（与 M2M 30s 缓存取舍一致）。
+ *
+ * 取舍说明：
+ * - jti 撤销缓存（revokedJtiCache）：肯定/否定结果均缓存 5s，
+ *   登出撤销最长延迟 5s 生效（同实例），可接受——access token 本身 TTL 仅 15 分钟。
+ * - 改密时间缓存（passwordChangedAtCache）：同时缓存"用户不存在"的结果，
+ *   改密后旧 token 最长延迟 5s 失效；DB 查询异常不缓存，保持原有 fail-closed 行为。
+ * - 多实例部署时各实例独立缓存，失效延迟同为最长 5s。
+ */
+const VERIFY_CACHE_TTL_MS = 5 * 1000;
+
+const revokedJtiCache = new LRUCache<string, boolean>({
+  max: 10000,
+  ttl: VERIFY_CACHE_TTL_MS,
+});
+
+// value 为 false 表示"用户不存在"；{ changedAt: null } 表示存在但未改过密码
+// （LRUCache 值类型不允许 null/undefined，故用对象包裹；缓存未命中时 get 返回 undefined）
+const passwordChangedAtCache = new LRUCache<string, { changedAt: Date | null } | false>({
+  max: 10000,
+  ttl: VERIFY_CACHE_TTL_MS,
+});
+
+/** 测试辅助：清空 verifyUserToken 的进程内缓存，避免用例间状态串扰 */
+export function _clearVerifyCache(): void {
+  revokedJtiCache.clear();
+  passwordChangedAtCache.clear();
+}
+
+/** jti 撤销检查（5s 缓存）：DB 异常时不缓存，异常沿调用链上抛由 verifyUserToken 统一 fail-closed */
+async function isAccessTokenRevokedCached(jti: string): Promise<boolean> {
+  const cached = revokedJtiCache.get(jti);
+  if (cached !== undefined) return cached;
+  const revoked = await isAccessTokenRevoked(jti);
+  revokedJtiCache.set(jti, revoked);
+  return revoked;
+}
+
+/**
+ * 查询用户最近一次改密时间（5s 缓存，key=userId）。
+ * 返回值语义：undefined = 用户不存在；null = 存在但未改过密码；Date = 改密时间。
+ * "用户不存在"同样缓存 5s，防止对已删除用户的 token 反复打库；
+ * DB 异常不缓存（直接上抛），保持原有失败行为。
+ */
+async function getPasswordChangedAtCached(userId: string): Promise<Date | null | undefined> {
+  const cached = passwordChangedAtCache.get(userId);
+  if (cached !== undefined) {
+    return cached === false ? undefined : cached.changedAt;
+  }
+  const userRecord = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { passwordChangedAt: true },
+  });
+  if (!userRecord) {
+    passwordChangedAtCache.set(userId, false);
+    return undefined;
+  }
+  const changedAt = userRecord.passwordChangedAt ?? null;
+  passwordChangedAtCache.set(userId, { changedAt });
+  return changedAt;
 }
 
 /**
@@ -338,8 +410,9 @@ export async function verifyUserToken(
     // 单条 token 级撤销检查（登出时 revokeAccessToken(jti) 写入）：
     // 消除登出后 access token 在剩余 TTL 内仍可使用的窗口。
     // 无 jti 的旧 token（本改动上线前签发）跳过，自然过期兼容。
+    // 5s 进程内缓存：登出撤销最长延迟 5s 生效，换取高并发下的 DB 减压。
     const jti = (payload as UserJWTPayload).jti;
-    if (jti && (await isAccessTokenRevoked(jti))) {
+    if (jti && (await isAccessTokenRevokedCached(jti))) {
       return null;
     }
 
@@ -354,17 +427,16 @@ export async function verifyUserToken(
     // 替代 user 级黑名单方案：重置/修改密码后，旧 token 全部失效，
     // 而受害者重新登录签发的新 token（iat >= 改密时刻）不受影响，无自锁窗口。
     // 比对以秒为粒度（iat 为 Unix 秒），同一秒内签发的 token 放行（可忽略窗口）。
-    const userRecord = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { passwordChangedAt: true },
-    });
-    if (!userRecord) {
+    // 5s 进程内缓存：改密后旧 token 最长延迟 5s 失效；DB 异常不缓存，保持 fail-closed。
+    const passwordChangedAt = await getPasswordChangedAtCached(userId);
+    if (passwordChangedAt === undefined) {
+      // 用户不存在
       return null;
     }
     if (
-      userRecord.passwordChangedAt &&
+      passwordChangedAt &&
       typeof payload.iat === "number" &&
-      payload.iat < Math.floor(userRecord.passwordChangedAt.getTime() / 1000)
+      payload.iat < Math.floor(passwordChangedAt.getTime() / 1000)
     ) {
       return null;
     }
@@ -951,6 +1023,49 @@ export async function verifyLogoutToken(
     warnVerifyError("verifyLogoutToken", error);
     return null;
   }
+}
+
+// ============================================
+// Profile Event Token（用户资料变更 Webhook）
+// ============================================
+
+export interface ProfileEventTokenClaims {
+  sub: string;
+  aud: string;
+  events: Record<string, unknown>;
+  jti: string;
+  /** 变更后的公开资料快照（与 userinfo profile scope 输出一致，不含手机号） */
+  profile: {
+    nickname: string | null;
+    avatar: string | null;
+    birthday: string | null;
+  };
+}
+
+/**
+ * 签发 Profile Event Token（5分钟，用于用户资料变更 webhook 推送）
+ *
+ * 与 signLogoutToken 相同的 RS256 密钥对（JWT_LOGOUT_TOKEN_*）与签名模式，
+ * 子项目可复用 logout_token 的验签配置（JWKS / 公钥）验证本事件 token。
+ * type 为 "profile_event"，与 logout_token 区分，防止事件类型混用。
+ */
+export async function signProfileEventToken(claims: ProfileEventTokenClaims): Promise<string> {
+  const jwt = new SignJWT({ ...claims, type: "profile_event" as const })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(claims.aud)
+    .setSubject(claims.sub)
+    .setJti(claims.jti || crypto.randomUUID())
+    .setExpirationTime(logoutTokenExpiresIn);
+
+  const rs256PrivateKey = await getLogoutTokenPrivateKey();
+  if (rs256PrivateKey) {
+    jwt.setProtectedHeader({ alg: "RS256", typ: "JWT", kid: getLogoutTokenKeyId() });
+    return jwt.sign(rs256PrivateKey);
+  }
+
+  jwt.setProtectedHeader({ alg: "HS256" });
+  return jwt.sign(logoutSecret);
 }
 
 // ============================================

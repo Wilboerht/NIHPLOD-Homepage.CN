@@ -14,6 +14,7 @@ export type SsoEventType =
   | "introspect"
   | "userinfo"
   | "backchannel_logout"
+  | "profile_webhook"
   | "logout"
   | "consent"
   | "status_change";

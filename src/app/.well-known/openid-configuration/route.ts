@@ -1,10 +1,13 @@
 /**
- * OpenID Connect Discovery 端点（历史路径，保留兼容自家 SDK 硬编码）
- * GET /api/oauth/.well-known/openid-configuration
+ * OpenID Connect Discovery 端点（标准 OIDC Discovery 路径）
+ * GET /.well-known/openid-configuration
  *
- * 返回标准 OpenID Connect Discovery 文档（RFC 8414）。
- * SDK 初始化时自动 fetch 此端点获取完整配置。
- * 文档构建逻辑统一在 @/lib/oidc-discovery，与标准路径 /.well-known/openid-configuration 保持一致。
+ * 第三方 OIDC 库按 issuer 根路径发现配置时会请求此端点。
+ * 内容与 /api/oauth/.well-known/openid-configuration 完全一致（共用 buildOpenIdConfiguration），
+ * 历史路径继续保留以兼容自家 SDK 硬编码地址。
+ *
+ * 注意：middleware.ts 中 isApiPath 已将 "/.well-known/" 视为 API 路径，
+ * 不会被 CSP nonce 注入或后台认证逻辑拦截，无需额外 matcher 配置。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { buildOpenIdConfiguration } from "@/lib/oidc-discovery";
@@ -13,7 +16,7 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  // 公开端点限流：可缓存但需防止流量放大
+  // 公开端点限流：与历史路径使用同一限流桶，防止流量放大
   const ip = getClientIP(request);
   const limitResult = await rateLimit(ip, "oauth-discovery");
   if (!limitResult.success) {

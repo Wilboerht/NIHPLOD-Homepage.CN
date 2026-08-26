@@ -41,7 +41,7 @@ export function isBlockedHostname(rawHostname: string): boolean {
   return false;
 }
 
-function isSafeBackchannelUrl(uri: string): boolean {
+export function isSafeBackchannelUrl(uri: string): boolean {
   try {
     const u = new URL(uri);
     if (u.protocol !== "https:") return false;

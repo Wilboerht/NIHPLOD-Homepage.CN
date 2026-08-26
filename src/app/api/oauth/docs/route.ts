@@ -566,7 +566,11 @@ export async function GET(request: NextRequest) {
             },
             phone: {
               type: "string",
-              description: "手机号（脱敏，需 scope=phone）",
+              description: "手机号（脱敏，需 scope=phone；历史非标准 claim 名，兼容保留）",
+            },
+            phone_number: {
+              type: "string",
+              description: "手机号（脱敏，需 scope=phone；OIDC 标准 claim 名）",
             },
             membership_level: {
               type: "string",
@@ -575,6 +579,10 @@ export async function GET(request: NextRequest) {
             total_points: {
               type: "integer",
               description: "积分总数（需 scope=membership）",
+            },
+            birthday: {
+              type: "string",
+              description: "生日（ISO 8601 格式，未设置为 null，需 scope=birthday）",
             },
           },
         },

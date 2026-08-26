@@ -180,6 +180,7 @@ function makeClientRecord(overrides: Record<string, unknown> = {}) {
     isActive: true,
     isPublic: false,
     backchannelLogoutUri: null,
+    webhookUri: null,
     codeTtlSeconds: 300,
     accessTokenTtlSeconds: 900,
     createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -372,6 +373,60 @@ describe("管理端 OAuth Client CRUD", () => {
       );
       expect(res.status).toBe(400);
       expect(prismaMock.oAuthClient.create).not.toHaveBeenCalled();
+    });
+
+    it("http（非 https）webhookUri 应返回 400", async () => {
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", {
+          method: "POST",
+          body: { ...validBody, webhookUri: "http://app.example.com/webhook" },
+        })
+      );
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("INVALID_PARAMS");
+      expect(prismaMock.oAuthClient.create).not.toHaveBeenCalled();
+    });
+
+    it("私网 webhookUri（192.168.x.x）应返回 400", async () => {
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", {
+          method: "POST",
+          body: { ...validBody, webhookUri: "https://192.168.1.10/webhook" },
+        })
+      );
+      expect(res.status).toBe(400);
+      expect(prismaMock.oAuthClient.create).not.toHaveBeenCalled();
+    });
+
+    it("合法 https webhookUri 创建时应写入数据库", async () => {
+      prismaMock.oAuthClient.create.mockImplementation(
+        async (args: { data: Record<string, unknown> }) =>
+          makeClientRecord({
+            clientId: args.data.clientId,
+            clientSecret: args.data.clientSecret,
+            name: args.data.name,
+            redirectUris: args.data.redirectUris,
+            webhookUri: args.data.webhookUri,
+          })
+      );
+
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", {
+          method: "POST",
+          body: { ...validBody, webhookUri: "https://newapp.example.com/webhook" },
+        })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const createArg = prismaMock.oAuthClient.create.mock.calls[0][0] as {
+        data: { webhookUri: string | null };
+      };
+      expect(createArg.data.webhookUri).toBe("https://newapp.example.com/webhook");
+      expect(data.data.client.webhookUri).toBe("https://newapp.example.com/webhook");
     });
 
     it("scopes 含非白名单值应返回 400", async () => {

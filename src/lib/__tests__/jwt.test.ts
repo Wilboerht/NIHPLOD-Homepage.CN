@@ -30,6 +30,7 @@ import {
   signLogoutToken,
   verifyLogoutToken,
   invalidateM2mClientCache,
+  _clearVerifyCache,
 } from "@/lib/jwt";
 import { prisma } from "@/lib/prisma";
 import { getIssuer } from "@/lib/oauth-constants";
@@ -58,7 +59,7 @@ describe("JWT 工具", () => {
     });
 
     it("应拒绝非管理员 Token", async () => {
-      const userToken = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const userToken = await signUserToken({ id: "user-1" });
       const result = await verifyToken(userToken);
       expect(result).toBeNull();
     });
@@ -71,13 +72,19 @@ describe("JWT 工具", () => {
 
   describe("C 端用户 Token", () => {
     it("应能签发并验证用户 Access Token", async () => {
-      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const token = await signUserToken({ id: "user-1" });
       const payload = await verifyUserToken(token);
       expect(payload).toMatchObject({
         id: "user-1",
-        phone: "13800138000",
         type: "user",
       });
+    });
+
+    it("签发的用户 Access Token 不应携带明文手机号", async () => {
+      const token = await signUserToken({ id: "user-1" });
+      expect(decodeJwt(token).phone).toBeUndefined();
+      const payload = await verifyUserToken(token);
+      expect(payload?.phone).toBeUndefined();
     });
 
     it("应拒绝管理员 Token 作为用户 Token", async () => {
@@ -98,19 +105,19 @@ describe("JWT 工具", () => {
 
     it("传入 authTime 时应写入 auth_time claim 且验证后可读回", async () => {
       const authTime = Math.floor(Date.now() / 1000) - 3600; // 1 小时前认证
-      const token = await signUserToken({ id: "user-1", phone: "13800138000", authTime });
+      const token = await signUserToken({ id: "user-1", authTime });
       const payload = await verifyUserToken(token);
       expect(payload?.auth_time).toBe(authTime);
     });
 
     it("未传 authTime 时不携带 auth_time claim（向后兼容）", async () => {
-      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const token = await signUserToken({ id: "user-1" });
       const payload = await verifyUserToken(token);
       expect(payload?.auth_time).toBeUndefined();
     });
 
     it("签发时应携带 jti，且 jti 被撤销后验证返回 null", async () => {
-      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const token = await signUserToken({ id: "user-1" });
       const claims = decodeJwt(token);
       expect(claims.jti).toBeTruthy();
 
@@ -119,24 +126,30 @@ describe("JWT 工具", () => {
 
       // 登出语义：撤销 jti 后该 token 立即失效
       await revokeAccessToken(claims.jti as string);
+      // 撤销检查有 5s 进程内缓存，测试场景清空缓存以验证撤销后的行为
+      _clearVerifyCache();
       expect(await verifyUserToken(token)).toBeNull();
     });
 
     it("改密后签发的旧 token 应被拒绝，改密前签发的新 token 不受影响", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const token = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const token = await signUserToken({ id: "user-1" });
 
       // 密码在 token 签发之后被修改 → 旧 token 立即失效（无需黑名单，无自锁窗口）
+      _clearVerifyCache();
       vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
         passwordChangedAt: new Date(Date.now() + 5_000),
       } as never);
       expect(await verifyUserToken(token)).toBeNull();
 
       // 密码变更早于签发时间 → 正常验证（受害者重新登录后的新 token）
+      // passwordChangedAt 有 5s 进程内缓存，清空后第二次验证才会重新查库
+      _clearVerifyCache();
       vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
         passwordChangedAt: new Date(Date.now() - 60_000),
       } as never);
       expect(await verifyUserToken(token)).toMatchObject({ id: "user-1" });
+      _clearVerifyCache();
     });
   });
 
@@ -152,7 +165,7 @@ describe("JWT 工具", () => {
     });
 
     it("应拒绝 Access Token 作为 Refresh Token", async () => {
-      const accessToken = await signUserToken({ id: "user-1", phone: "13800138000" });
+      const accessToken = await signUserToken({ id: "user-1" });
       const result = await verifyRefreshToken(accessToken);
       expect(result).toBeNull();
     });

@@ -106,9 +106,15 @@ export async function POST(request: NextRequest) {
       detail: { action: "revoke", sessionCount: activeSessions.length },
     });
 
+    // access token 已不再携带明文手机号，审计日志的 identifier 按 id 查库获取
+    const userRecord = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { phone: true },
+    });
+
     logAuthEvent("user_oauth_revoke", {
       userId: user.id,
-      identifier: user.phone,
+      identifier: userRecord?.phone,
       success: true,
       clientId,
       ip,

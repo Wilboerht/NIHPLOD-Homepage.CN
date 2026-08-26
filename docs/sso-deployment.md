@@ -54,8 +54,9 @@ WHERE pg_type.typname = 'TokenBlacklistType';
 | --- | --- | --- |
 | `20260811161200_oauth_client_secret_rotation` | `OAuthClient` 表新增 `previousSecretHash`（TEXT，可空）与 `secretRotatedAt`（TIMESTAMP，可空），用于 Client 密钥轮换过渡期跨实例共享旧 secret hash | 纯增量加列，旧代码可继续读写该表 |
 | `20260811161300_token_blacklist_dpop_jti` | `TokenBlacklistType` 枚举新增 `dpop_jti`，用于 DPoP proof jti 防重放记录 | 枚举新增值不影响存量数据 |
+| `20260826000000_add_oauth_client_webhook_uri` | `OAuthClient` 表新增 `webhookUri`（TEXT，可空，用户资料变更 webhook 推送地址）；新增 `WebhookDeliveryFailure` 表（webhook 投递失败补偿队列） | 纯增量加列加表，旧代码可继续读写 |
 
-两份迁移均为向后兼容的增量变更，**无需停机**，在应用滚动发布前执行即可。
+三份迁移均为向后兼容的增量变更，**无需停机**，在应用滚动发布前执行即可。
 
 ### 1.4 迁移后验证
 
@@ -102,6 +103,9 @@ openssl rand -hex 32
 | `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY` | RS256 密钥对，生产必须配置。SDK 一律拒绝 HS256 签名的 id_token，未配置时子项目回调会全部失败 |
 | `TOKEN_BLACKLIST_STORAGE` | 必须显式设为 `database`。多实例部署时 memory 模式各实例黑名单不互通，撤销无法即时生效 |
 | `RATE_LIMIT_STORAGE` | 必须显式设置（生产多实例用 `database`），防止限流被多实例绕过 |
+| `LOGIN_ATTEMPT_HMAC_KEY` | 必须配置且不少于 32 字符。LoginAttempt 表以 HMAC-SHA256 存储登录标识符，缺失时应用启动直接报错；生成方式同 2.1（`openssl rand -hex 32`） |
+
+可使用 `npm run check:sso-config` 逐项核对本节全部强制项（输出 PASS/FAIL 清单，任一 FAIL 退出码为 1）。
 
 ### 2.3 推荐项：RS256 密钥对
 
@@ -127,7 +131,7 @@ JWKS 端点支持同时暴露当前与上一代公钥，实现无感轮换：
    - 对应变量：`JWT_OAUTH_ACCESS_PREV_PUBLIC_KEY`、`JWT_OAUTH_ID_TOKEN_PREV_PUBLIC_KEY`、`JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY`
    - kid 默认值：当前 `access-token-rs256-v1` / `id-token-rs256-v1` / `logout-token-rs256-v1`，上一代默认 `-v0`
 3. 再将新密钥对配置为当前密钥（`*_PRIVATE_KEY` / `*_PUBLIC_KEY`），发布上线。过渡期内验证侧按 kid 匹配，旧 token 仍可验签；
-4. 待旧密钥签发的 token 全部过期后，移除 `*_PREV_*` 配置。access/id token 有效期默认为 15 分钟（按 Client 可通过 `accessTokenTtlSeconds` 配置，范围 60–86400 秒），按实际配置的最大值等待即可。
+4. 待旧密钥签发的 token 全部过期后，移除 `*_PREV_*` 配置。access token 有效期默认为 15 分钟（按 Client 可通过 `accessTokenTtlSeconds` 配置，范围 60–86400 秒），id_token 固定为 1 小时（`src/lib/jwt.ts` 硬编码），按实际配置的最大值等待即可。
 
 ### 2.5 Embed 嵌入配置
 
@@ -229,7 +233,7 @@ PostgreSQL 枚举值无法安全删除，因此**不要**尝试回退这两份�
 
 ### 4.2 sid 会话机制的向后兼容
 
-新签发的 token 携带 `sid` claim 关联 `OAuthSession`，撤销后即时失效。上线前签发的旧 token **没有 sid**，验证时会跳过 sid 校验，按其原有过期时间自然过期（access/id token 默认 15 分钟，按 Client 的 `accessTokenTtlSeconds` 配置，上限 86400 秒），不会因为上线新机制而被强制失效，也不会绕过撤销检查以外的任何校验。回滚代码后，带 sid 的 token 由旧代码忽略 sid 字段，同样按原逻辑验证，无兼容问题。
+新签发的 token 携带 `sid` claim 关联 `OAuthSession`，撤销后即时失效。上线前签发的旧 token **没有 sid**，验证时会跳过 sid 校验，按其原有过期时间自然过期（access token 默认 15 分钟，按 Client 的 `accessTokenTtlSeconds` 配置，上限 86400 秒；id_token 固定 1 小时），不会因为上线新机制而被强制失效，也不会绕过撤销检查以外的任何校验。回滚代码后，带 sid 的 token 由旧代码忽略 sid 字段，同样按原逻辑验证，无兼容问题。
 
 ### 4.3 配置回滚
 
@@ -245,6 +249,7 @@ PostgreSQL 枚举值无法安全删除，因此**不要**尝试回退这两份�
 | 信号 | 日志 / 审计事件关键字 | 告警建议 |
 | --- | --- | --- |
 | Backchannel logout 投递失败 | 日志 `[SLO] Backchannel logout 通知失败`；审计事件 `backchannel_logout` 且 `success: false` | 单次失败可观察，同一 clientId 连续失败告警（子站登出状态将不一致） |
+| 资料变更 webhook 投递失败 | 审计事件 `profile_webhook` 且 `success: false`（失败会落 `WebhookDeliveryFailure` 补偿队列，cron 每 15 分钟重投，超 10 次丢弃） | 同一 clientId 连续失败告警（子站用户资料缓存将长期不一致） |
 | Refresh token 重用检测 | 审计事件 `refresh_token_family_revoked` | 出现即告警（可能是 refresh token 泄露后的重放，整个 token family 已被强制撤销） |
 | 授权码重放 | 审计事件 `code_replay_all_tokens_revoked` | 出现即告警（同一 code 二次使用，该 code 签发的所有 token 已被撤销） |
 | Introspect 端点失败率 | `/api/oauth/introspect` 返回非 200 / `active: false` 占比 | 失败率突增告警（可能密钥配置错误或子站 token 大面积失效） |

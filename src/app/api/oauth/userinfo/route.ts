@@ -150,6 +150,7 @@ export async function GET(request: NextRequest) {
         phone: true,
         nickname: true,
         avatar: true,
+        birthday: true,
         status: true,
         membershipLevel: true,
         totalPoints: true,
@@ -180,12 +181,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (scopes.includes("phone")) {
-      response.phone = maskPhone(user.phone);
+      // phone 为历史非标准 claim 名，为兼容已接入子项目保留；
+      // phone_number 为 OIDC 标准 claim 名，两者语义一致（均为脱敏手机号）
+      const maskedPhone = maskPhone(user.phone);
+      response.phone = maskedPhone;
+      response.phone_number = maskedPhone;
     }
 
     if (scopes.includes("membership")) {
       response.membership_level = user.membershipLevel;
       response.total_points = user.totalPoints;
+    }
+
+    if (scopes.includes("birthday")) {
+      // 与 /api/user/profile 输出格式一致：ISO 8601 字符串，未设置时为 null
+      response.birthday = user.birthday ? user.birthday.toISOString() : null;
     }
 
     scheduleSsoEvent({

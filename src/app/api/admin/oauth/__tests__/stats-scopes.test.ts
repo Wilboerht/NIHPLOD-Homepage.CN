@@ -172,7 +172,7 @@ describe("GET /api/admin/oauth/scopes", () => {
 
     expect(res.status).toBe(200);
     const values = data.data.scopes.map((s: { value: string }) => s.value);
-    expect(values).toEqual(["openid", "profile", "phone", "membership"]);
+    expect(values).toEqual(["openid", "profile", "phone", "membership", "birthday"]);
     // 每项带 label/desc，供管理端 Wizard 渲染
     expect(data.data.scopes[0]).toHaveProperty("label");
     expect(data.data.scopes[0]).toHaveProperty("desc");

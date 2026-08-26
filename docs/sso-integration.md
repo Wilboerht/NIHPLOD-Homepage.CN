@@ -303,6 +303,11 @@ export const POST = logoutHandler; // UI 层推荐用 POST 触发，避免 GET �
              refresh_token + id_token
 ```
 
+### OIDC Discovery
+
+- 标准路径：`{issuer}/.well-known/openid-configuration`（第三方 OIDC 库填 issuer 即可自动发现）
+- 兼容路径：`{issuer}/api/oauth/.well-known/openid-configuration`（内容完全一致，供存量接入继续使用）
+
 ---
 
 ## 安全最佳实践
@@ -338,10 +343,11 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - `profile` — 昵称、头像
 - `phone` — 手机号（脱敏）
 - `membership` — 会员等级、积分
+- `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
 
 示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`
 
-> ⚠️ 手机号 claim 名为**非标准的 `phone`**（非 OIDC 标准的 `phone_number`），id_token 与 userinfo 均如此。且手机号始终**脱敏**返回（如 `138****8000`），无法通过 SSO 获取明文手机号。
+> ⚠️ userinfo 会同时返回两个手机号 claim：OIDC 标准的 `phone_number` 与兼容保留的 `phone`（两者内容一致，均**脱敏**，如 `138****8000`）。新接入的子项目请使用 `phone_number`；无法通过 SSO 获取明文手机号。id_token 中的手机号 claim 仍为 `phone`。
 
 ### Token 刷新
 
@@ -491,6 +497,36 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
   );
 }
 ```
+
+---
+
+## 用户资料变更 Webhook（profile_update）
+
+用户在 SSO 中心修改昵称/头像/生日后，主站会向**该用户已授权且配置了 `webhookUri`** 的每个 Client 推送 `profile_update` 事件，子项目可据此失效本地用户缓存，不必轮询 userinfo。
+
+- **配置**：管理员在 `/admin/oauth-clients` 创建/编辑 Client 时填写 `webhookUri`（要求 HTTPS 公网地址，与 redirect_uri 同源的 SSRF 校验）。
+- **投递方式**：`POST {webhookUri}`，`Content-Type: application/json`，body 为 `{ "event_token": "<jwt>" }`。
+- **触发条件**：仅当资料发生实际变更时触发；fire-and-forget，不阻塞主站响应。
+- **重试**：同步失败重试 1 次后落入补偿队列，由 cron 每 15 分钟指数退避重投，超过 10 次丢弃。重投携带落库时的资料快照，**子项目应以 userinfo 拉取的最新数据为准**。
+
+### event_token 验签
+
+`event_token` 为 RS256 签名的 JWT（与 backchannel logout token 同一套密钥，可用 `/api/oauth/jwks` 公钥验签），payload：
+
+```json
+{
+  "type": "profile_event",
+  "sub": "<userId>",
+  "aud": "<clientId>",
+  "jti": "...",
+  "iat": 1724000000,
+  "exp": 1724000300,
+  "events": { "https://nihplod.cn/event/profile_update": {} },
+  "profile": { "nickname": "...", "avatar": "...", "birthday": "..." }
+}
+```
+
+验签要点：校验签名、`type === "profile_event"`、`aud` 等于本 Client 的 clientId、`exp` 未过期；`events` 中须含 `https://nihplod.cn/event/profile_update`；`jti` 建议做短期防重放去重。`profile` 仅含昵称/头像/生日，**不含手机号**。
 
 ---
 

@@ -3,7 +3,7 @@
  * GET /api/user/profile - 获取用户资料
  * PUT /api/user/profile - 更新用户资料
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
@@ -12,6 +12,7 @@ import { grantBirthdayGiftIfDue } from "@/lib/points";
 import { z } from "zod";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
+import { sendProfileUpdateWebhook } from "@/lib/profile-webhook";
 
 // 更新参数验证
 const updateSchema = z.object({
@@ -136,6 +137,13 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     }
 
     const { nickname, avatar, birthday } = result.data;
+
+    // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
+    const previous = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { nickname: true, avatar: true, birthday: true },
+    });
+
     const user = await prisma.user.update({
       where: { id: payload.id },
       data: {
@@ -148,6 +156,27 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
     // 资料变更后失效缓存
     revalidateTag(USER_PROFILE_TAG, "max");
+
+    // 昵称/头像/生日有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
+    // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）
+    const profileChanged =
+      !previous ||
+      previous.nickname !== user.nickname ||
+      previous.avatar !== user.avatar ||
+      (previous.birthday?.getTime() ?? null) !== (user.birthday?.getTime() ?? null);
+    if (profileChanged) {
+      const snapshot = {
+        nickname: user.nickname,
+        avatar: user.avatar,
+        birthday: user.birthday?.toISOString() ?? null,
+      };
+      try {
+        after(() => sendProfileUpdateWebhook(payload.id, snapshot));
+      } catch {
+        // 非请求场景（测试等无 request scope）：降级为 fire-and-forget promise
+        void sendProfileUpdateWebhook(payload.id, snapshot);
+      }
+    }
 
     return NextResponse.json({ success: true, data: { user } });
   } catch (error) {

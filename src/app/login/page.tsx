@@ -783,6 +783,7 @@ function LoginPageContent() {
     profile: "昵称、头像",
     phone: "手机号（脱敏后）",
     membership: "会员等级、积分",
+    birthday: "生日",
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {

@@ -114,6 +114,10 @@ vi.mock("@/lib/prisma", () => {
     oAuthClient: {
       findMany: vi.fn().mockResolvedValue([]),
     },
+    // verifyUserToken 的 jti 撤销检查会查 tokenBlacklist，默认无撤销记录
+    tokenBlacklist: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
   };
 
   return {
@@ -227,6 +231,7 @@ function validClient() {
     isActive: true,
     isPublic: false,
     backchannelLogoutUri: null,
+    webhookUri: null,
     codeTtlSeconds: 300,
     accessTokenTtlSeconds: 900,
     createdAt: new Date(),
@@ -265,12 +270,11 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
 
   it("完整授权码流程：authorize -> token -> userinfo -> revoke -> userinfo 401", async () => {
     const userId = "user-flow-1";
-    const phone = "13800138000";
     const state = "abcdefghijklmnopqrstuvwx12345678"; // 32 chars，符合 authorize 最小长度
     const { verifier, challenge } = generatePKCE();
 
     // 1. 使用真实 JWT 签发用户登录 cookie
-    const userToken = await signUserToken({ id: userId, phone });
+    const userToken = await signUserToken({ id: userId });
 
     // 2. GET /api/oauth/authorize — 已登录但未授权该 client → 302 到 consent 页并携带 oauth_id
     // （POST approve 强制要求 oauth_id 做防篡改比对，需先经 GET 让服务端存储原始参数）

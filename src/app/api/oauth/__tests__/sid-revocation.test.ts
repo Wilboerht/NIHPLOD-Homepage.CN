@@ -88,6 +88,7 @@ function validClient() {
     isActive: true,
     isPublic: false,
     backchannelLogoutUri: null,
+    webhookUri: null,
     codeTtlSeconds: 300,
     accessTokenTtlSeconds: 900,
     createdAt: new Date(),

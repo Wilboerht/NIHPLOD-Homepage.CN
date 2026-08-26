@@ -42,6 +42,8 @@ const {
     prismaMock: {
       oAuthSession: createMockModel(),
       userConsent: createMockModel(),
+      // 审计日志 identifier 改按 id 查库（access token 不再携带明文手机号）
+      user: { findUnique: vi.fn() },
     } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
   };
 });
@@ -135,6 +137,7 @@ describe("POST /api/user/oauth/revoke", () => {
     mockBlacklistUserTokens.mockResolvedValue(undefined);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
     mockRecordSsoEvent.mockResolvedValue(undefined);
+    prismaMock.user.findUnique.mockResolvedValue({ phone: USER.phone });
   });
 
   it("CSRF 校验失败应返回 403", async () => {

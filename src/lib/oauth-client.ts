@@ -52,6 +52,9 @@ const backchannelLogoutUriSchema = z
   .max(500)
   .refine((u) => isPublicHttpsUrl(u), { message: "必须是 https:// 公网地址" });
 
+// Webhook URI 与 backchannelLogoutUri 同属服务端回调地址，校验规则一致（https 公网地址）
+const webhookUriSchema = backchannelLogoutUriSchema;
+
 const createClientSchema = z.object({
   name: z.string().min(1).max(100),
   redirectUris: z.array(uriSchema).min(1),
@@ -59,6 +62,7 @@ const createClientSchema = z.object({
   scopes: scopesSchema,
   isPublic: z.boolean().optional().default(false),
   backchannelLogoutUri: backchannelLogoutUriSchema.optional(),
+  webhookUri: webhookUriSchema.optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional().default(300),
   accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional().default(900),
 });
@@ -71,6 +75,7 @@ const updateClientSchema = z.object({
   isActive: z.boolean().optional(),
   isPublic: z.boolean().optional(),
   backchannelLogoutUri: backchannelLogoutUriSchema.nullable().optional(),
+  webhookUri: webhookUriSchema.nullable().optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional(),
   accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional(),
 });
@@ -96,6 +101,7 @@ export function toSafeClientResponse(
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
@@ -114,6 +120,7 @@ export interface OAuthClientData {
   isActive: boolean;
   isPublic: boolean;
   backchannelLogoutUri: string | null;
+  webhookUri: string | null;
   codeTtlSeconds: number;
   accessTokenTtlSeconds: number;
   createdAt: Date;
@@ -248,6 +255,7 @@ export async function createOAuthClient(
       scopes: parsed.scopes,
       isPublic: parsed.isPublic,
       backchannelLogoutUri: parsed.backchannelLogoutUri || null,
+      webhookUri: parsed.webhookUri || null,
       codeTtlSeconds: parsed.codeTtlSeconds,
       accessTokenTtlSeconds: parsed.accessTokenTtlSeconds,
     },
@@ -265,6 +273,7 @@ export async function createOAuthClient(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       createdAt: client.createdAt,
@@ -292,6 +301,7 @@ export async function getOAuthClientByClientId(clientId: string): Promise<OAuthC
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
@@ -382,6 +392,7 @@ export async function verifyOAuthClientSecret(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       createdAt: client.createdAt,
@@ -407,6 +418,7 @@ export async function getOAuthClientById(id: string): Promise<OAuthClientData | 
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,
@@ -443,6 +455,7 @@ export async function updateOAuthClient(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       createdAt: client.createdAt,
@@ -543,6 +556,7 @@ export async function listOAuthClients(params?: {
       isActive: c.isActive,
       isPublic: c.isPublic,
       backchannelLogoutUri: c.backchannelLogoutUri,
+      webhookUri: c.webhookUri,
       codeTtlSeconds: c.codeTtlSeconds,
       accessTokenTtlSeconds: c.accessTokenTtlSeconds,
       createdAt: c.createdAt,
@@ -593,6 +607,7 @@ export async function findClientByName(name: string): Promise<OAuthClientData | 
     isActive: client.isActive,
     isPublic: client.isPublic,
     backchannelLogoutUri: client.backchannelLogoutUri,
+    webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
     createdAt: client.createdAt,

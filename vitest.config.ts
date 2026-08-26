@@ -23,6 +23,7 @@ export default defineConfig({
       JWT_ID_TOKEN_SECRET: "test-id-token-secret-key-at-least-32-chars",
       JWT_LOGOUT_SECRET: "test-logout-secret-key-at-least-32-chars",
       TOTP_ENCRYPTION_KEY: "test-totp-encryption-key-at-least-32-chars",
+      LOGIN_ATTEMPT_HMAC_KEY: "test-login-attempt-hmac-key-32chars",
       DATABASE_URL: "postgresql://test:test@localhost:5432/test",
       TZ: "Asia/Shanghai",
       ALLOW_HS256_FALLBACK: "true",

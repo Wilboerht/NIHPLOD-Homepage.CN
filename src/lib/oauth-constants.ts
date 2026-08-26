@@ -5,7 +5,13 @@
  */
 
 /** 系统支持的全部 scope */
-export const SUPPORTED_SCOPES: readonly string[] = ["openid", "profile", "phone", "membership"];
+export const SUPPORTED_SCOPES: readonly string[] = [
+  "openid",
+  "profile",
+  "phone",
+  "membership",
+  "birthday",
+];
 
 /**
  * OIDC 隐式 scope：OIDC 核心定义这些 scope 对所有 client 默认允许，

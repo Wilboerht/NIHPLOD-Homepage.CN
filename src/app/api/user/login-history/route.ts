@@ -22,8 +22,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 登录历史按手机号聚合（identifier 字段），access token 已不再携带明文手机号，
+    // 此处按 id 查库获取当前手机号
+    const userRecord = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { phone: true },
+    });
+    if (!userRecord) {
+      return NextResponse.json(
+        { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+
     const attempts = await prisma.loginAttempt.findMany({
-      where: { identifier: user.phone },
+      where: { identifier: userRecord.phone },
       select: {
         id: true,
         identifier: true,

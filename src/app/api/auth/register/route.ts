@@ -262,7 +262,6 @@ export async function POST(request: NextRequest) {
     // 3. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({
       id: user.id,
-      phone: user.phone,
     });
 
     // 4. 签发 Refresh Token（长期，30天）

@@ -134,7 +134,6 @@ export async function POST(request: NextRequest) {
     const authTime = payload.auth_time ?? payload.iat;
     const newAccessToken = await signUserToken({
       id: payload.id,
-      phone: payload.phone,
       authTime,
     });
     const newRefreshToken = await signRefreshToken({

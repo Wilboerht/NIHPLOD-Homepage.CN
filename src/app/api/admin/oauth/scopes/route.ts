@@ -17,6 +17,7 @@ const SCOPE_LABELS: Record<string, { label: string; desc: string }> = {
   profile: { label: "个人信息", desc: "昵称、头像" },
   phone: { label: "手机号", desc: "脱敏手机号（138****1234）" },
   membership: { label: "会员信息", desc: "会员等级、积分" },
+  birthday: { label: "生日", desc: "生日日期（ISO 8601 格式）" },
 };
 
 export async function GET(request: NextRequest) {

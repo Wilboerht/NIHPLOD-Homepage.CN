@@ -44,6 +44,7 @@ interface OAuthClient {
   isActive: boolean;
   isPublic: boolean;
   backchannelLogoutUri: string | null;
+  webhookUri: string | null;
   createdAt: string;
   updatedAt: string;
   activeUserCount?: number;
@@ -171,6 +172,7 @@ function OAuthClientsPage() {
   const [formScopes, setFormScopes] = useState("openid profile phone");
   const [formIsPublic, setFormIsPublic] = useState(false);
   const [formBackchannelUri, setFormBackchannelUri] = useState("");
+  const [formWebhookUri, setFormWebhookUri] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -232,6 +234,7 @@ function OAuthClientsPage() {
     setFormScopes("openid profile phone");
     setFormIsPublic(false);
     setFormBackchannelUri("");
+    setFormWebhookUri("");
   };
 
   const handleCreate = async () => {
@@ -259,6 +262,7 @@ function OAuthClientsPage() {
         scopes,
         isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || undefined,
+        webhookUri: formWebhookUri.trim() || undefined,
       });
       setNewSecret(data.plainSecret);
       setNewSecretSaved(false);
@@ -296,6 +300,7 @@ function OAuthClientsPage() {
         scopes,
         isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || null,
+        webhookUri: formWebhookUri.trim() || null,
       });
       toast.success("Client 更新成功");
       setShowEdit(false);
@@ -371,6 +376,7 @@ function OAuthClientsPage() {
     setFormScopes(client.scopes.join(" "));
     setFormIsPublic(client.isPublic);
     setFormBackchannelUri(client.backchannelLogoutUri || "");
+    setFormWebhookUri(client.webhookUri || "");
     setShowEdit(true);
   };
 
@@ -829,6 +835,19 @@ if (!payload) {
                 placeholder="https://advisor.nihplod.cn/api/sso/logout"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                资料变更 Webhook URI（可选）
+              </label>
+              <Input
+                value={formWebhookUri}
+                onChange={(e) => setFormWebhookUri(e.target.value)}
+                placeholder="https://advisor.nihplod.cn/api/sso/webhook"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                用户昵称/头像/生日变更时推送签名事件，须为 https:// 公网地址
+              </p>
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCreate(false)}>
                 取消
@@ -892,6 +911,15 @@ if (!payload) {
               value={formBackchannelUri}
               onChange={(e) => setFormBackchannelUri(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              资料变更 Webhook URI（可选）
+            </label>
+            <Input value={formWebhookUri} onChange={(e) => setFormWebhookUri(e.target.value)} />
+            <p className="mt-1 text-xs text-gray-400">
+              用户昵称/头像/生日变更时推送签名事件，须为 https:// 公网地址
+            </p>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowEdit(false)}>
@@ -1266,6 +1294,15 @@ if (!payload) {
                     </h3>
                     <p className="break-all rounded bg-gray-50 p-2 font-mono text-sm">
                       {detailClient.backchannelLogoutUri}
+                    </p>
+                  </div>
+                )}
+
+                {detailClient.webhookUri && (
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium text-gray-700">资料变更 Webhook URI</h3>
+                    <p className="break-all rounded bg-gray-50 p-2 font-mono text-sm">
+                      {detailClient.webhookUri}
                     </p>
                   </div>
                 )}

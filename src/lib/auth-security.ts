@@ -4,23 +4,36 @@
  */
 import { prisma } from "./prisma";
 import { NextRequest } from "next/server";
-import { createHash } from "crypto";
+import { createHash, createHmac } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { getClientIP } from "./client-ip";
 import { logAuthEvent } from "./auth-logger";
 import { recordSsoEvent } from "./sso-audit";
+import { validateSecret } from "./jwt";
 
 // ============================================
 // 标识符哈希（LoginAttempt 表中不存储明文手机号）
 // ============================================
 
+// 登录标识符 HMAC 密钥：与 JWT Secret 相同的启动时校验模式（强制存在性 + 最小长度），
+// 未配置或过短时直接阻止应用启动，避免静默回退为弱保护
+const loginAttemptHmacKey = validateSecret(
+  "LOGIN_ATTEMPT_HMAC_KEY",
+  process.env.LOGIN_ATTEMPT_HMAC_KEY
+);
+
 /**
- * 对登录标识符进行单向哈希（SHA-256 前 64 字符 hex）
+ * 对登录标识符进行带密钥哈希（HMAC-SHA256，64 字符 hex）
  * LoginAttempt 表中仅存储哈希值，防止明文手机号泄露。
  * 查询/计数时对输入同样哈希后比对。
+ *
+ * 使用 HMAC 而非无盐 SHA-256：手机号空间仅约 10^11，无盐哈希在拖库后
+ * 可被彩虹表/枚举还原；HMAC 引入服务端密钥，攻击者没有密钥无法复算。
+ * 注意：改用 HMAC 后，历史无盐 SHA-256 哈希的旧记录将无法匹配新计算的哈希
+ * （登录尝试记录时效短，7 天内自动清理，可接受自然过期）。
  */
 function hashIdentifier(identifier: string): string {
-  return createHash("sha256").update(identifier, "utf8").digest("hex");
+  return createHmac("sha256", loginAttemptHmacKey).update(identifier, "utf8").digest("hex");
 }
 
 // ============================================

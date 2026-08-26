@@ -117,7 +117,12 @@ export interface UserInfo {
  */
 export interface UserJWTPayload extends JWTPayload {
   id: string;
-  phone: string;
+  /**
+   * @deprecated 已废弃：新签发的 token 不再携带明文手机号（防日志/子项目泄漏），
+   * 仅为兼容本改动上线前签发的旧 token 而保留（旧 token 15 分钟内自然过期）。
+   * 业务逻辑需要手机号时请按 id 查库（prisma.user.findUnique select phone），不要依赖此字段。
+   */
+  phone?: string;
   type: "user"; // 区分管理员和普通用户
   jti?: string; // token 唯一标识，用于单条 token 级别撤销
   /** 原始认证时间（Unix 秒）。refresh 换发时透传不重置，max_age 计算以 auth_time ?? iat 为准 */

@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
       });
 
       // 签发双 Token（access 携带 jti，登出即失效自动生效）
-      const accessToken = await signUserToken({ id: user.id, phone: user.phone });
+      const accessToken = await signUserToken({ id: user.id });
       const refreshToken = await signRefreshToken({ id: user.id, phone: user.phone });
 
       logAuthEvent("user_login", {

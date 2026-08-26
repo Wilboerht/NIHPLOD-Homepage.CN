@@ -34,6 +34,16 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
+// === Mock prisma ===
+const mockUserFindUnique = vi.fn();
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    user: {
+      findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+    },
+  },
+}));
+
 // === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
 vi.mock("@/lib/oauth-cors", () => ({
   getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
@@ -113,5 +123,85 @@ describe("GET /api/oauth/userinfo", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ sub: "client:test-client" });
+  });
+
+  it("scope 含 phone 时同时返回 phone（兼容保留）与标准 claim phone_number（均脱敏）", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid phone",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      phone: "13812341234",
+      nickname: "测试用户",
+      avatar: null,
+      birthday: null,
+      status: "ACTIVE",
+      membershipLevel: "REGULAR",
+      totalPoints: 0,
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.phone).toBe("138****1234");
+    expect(body.phone_number).toBe("138****1234");
+    expect(body.nickname).toBeUndefined();
+    expect(body.birthday).toBeUndefined();
+  });
+
+  it("scope 含 birthday 时返回 ISO 8601 格式生日", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid birthday",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      phone: "13812341234",
+      nickname: null,
+      avatar: null,
+      birthday: new Date("1990-05-20T00:00:00.000Z"),
+      status: "ACTIVE",
+      membershipLevel: "REGULAR",
+      totalPoints: 0,
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.birthday).toBe("1990-05-20T00:00:00.000Z");
+    expect(body.phone).toBeUndefined();
+    expect(body.phone_number).toBeUndefined();
+  });
+
+  it("scope 含 birthday 但用户未设置生日时返回 null", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid birthday",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      phone: "13812341234",
+      nickname: null,
+      avatar: null,
+      birthday: null,
+      status: "ACTIVE",
+      membershipLevel: "REGULAR",
+      totalPoints: 0,
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.birthday).toBeNull();
   });
 });
