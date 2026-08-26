@@ -5,16 +5,13 @@ import Image from "next/image";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { Link } from "next-view-transitions";
 import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
-import { ChevronLeft, ChevronRight, Share2, Menu, X, Home, ShoppingCart } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, Share2, Menu, X, Home } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { ProductCard, PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
 import { cn, formatPrice } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
-import { useAuth } from "@/contexts/AuthContext";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useToast } from "@/components/ui/Toast";
-import { useCartStore } from "@/store/cart";
 
 interface ProductImage {
   id: string;
@@ -37,17 +34,13 @@ interface Product {
   description: string;
   price: number;
   capacity: string | null;
-  purchaseUrl: string | null;
   purchaseLinks: { id: string; platform: string; url: string }[];
   category: Category;
   images: ProductImage[];
   ingredients: string | null;
   usage: string | null;
   benefits: string[];
-  allowDirectBuy: boolean;
-  stock: number;
   origin?: string | null;
-  salesCount: number;
 }
 
 interface RelatedProduct {
@@ -81,9 +74,7 @@ export function ProductDetailContent({
   navProducts,
 }: ProductDetailContentProps) {
   const { setDrawerOpen } = useLayout();
-  const { success, error: showError } = useToast();
-  const { addToCart } = useCartStore();
-  const { user, redirectToLogin } = useAuth();
+  const { success } = useToast();
 
   useEffect(() => {
     setDrawerOpen(false);
@@ -113,25 +104,6 @@ export function ProductDetailContent({
     }
   }, []);
 
-  const router = useRouter();
-  const autoBuyProcessedRef = useRef(false);
-
-  // 登录后自动恢复“官网购买”：URL 带 autoBuy=1 且用户已登录时加入购物车并清理参数
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("autoBuy") !== "1" || !user || autoBuyProcessedRef.current) return;
-
-    autoBuyProcessedRef.current = true;
-    addToCart(product.id, 1).then((ok) => {
-      if (ok) success("已加入购物车");
-    });
-
-    params.delete("autoBuy");
-    const newQuery = params.toString();
-    router.replace(`/products/${product.slug}${newQuery ? `?${newQuery}` : ""}`, { scroll: false });
-  }, [user, product.id, product.slug, addToCart, success, router]);
-
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -156,7 +128,6 @@ export function ProductDetailContent({
   const justSwipedRef = useRef(false);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [buying, setBuying] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const mobileTrapRef = useFocusTrap(mobileMenuOpen);
   const lightboxTrapRef = useFocusTrap(lightboxOpen);
@@ -373,44 +344,6 @@ export function ProductDetailContent({
     }
   }, [product.name, success]);
 
-  const handleOfficialBuy = useCallback(async () => {
-    if (buying) return;
-    if (!user) {
-      // 未登录时跳转到登录页，登录后自动回到本页并执行加入购物车
-      redirectToLogin(`/products/${product.slug}?autoBuy=1`);
-      return;
-    }
-    if (product.stock <= 0) {
-      showError("商品已售罄");
-      return;
-    }
-    setBuying(true);
-    try {
-      const result = await addToCart(product.id, 1);
-      if (result) {
-        trackEvent("add_to_cart", {
-          currency: "CNY",
-          value: product.price,
-          items: [
-            {
-              item_id: product.id,
-              item_name: product.name,
-              price: product.price,
-              quantity: 1,
-            },
-          ],
-        });
-        success("已加入购物车");
-      } else {
-        showError("添加失败，请重试");
-      }
-    } catch {
-      showError("网络错误，请重试");
-    } finally {
-      setBuying(false);
-    }
-  }, [buying, user, redirectToLogin, product.id, product.stock, addToCart, success, showError]);
-
   const handleThumbnailClick = (index: number) => {
     setCurrentImageIndex(index);
   };
@@ -450,7 +383,7 @@ export function ProductDetailContent({
     </div>
   );
 
-  // 外部购买链接（不含官网直购按钮，桌面/移动端共用）
+  // 外部购买链接（第三方平台外链，桌面/移动端共用）
   const renderExternalPurchaseLinks = () =>
     product.purchaseLinks && product.purchaseLinks.length > 0 ? (
       product.purchaseLinks
@@ -467,27 +400,13 @@ export function ProductDetailContent({
             <PlatformIcon platform={link.platform} />
           </a>
         ))
-    ) : product.purchaseUrl ? (
-      <a
-        href={product.purchaseUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="在官网购买"
-        className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
-      >
-        <PlatformIcon platform="官网" />
-      </a>
     ) : (
-      !product.allowDirectBuy && (
-        <span className="text-sm font-light text-brand-charcoal/50">暂无购买链接</span>
-      )
+      <span className="text-sm font-light text-brand-charcoal/50">暂无购买链接</span>
     );
 
-  // 移动端是否展示外部购买链接区域（官网直购已有底部固定栏，此处只补外部渠道）
+  // 移动端是否展示外部购买链接区域
   const showMobilePurchaseLinks =
-    (product.purchaseLinks && product.purchaseLinks.length > 0) ||
-    !!product.purchaseUrl ||
-    !product.allowDirectBuy;
+    product.purchaseLinks && product.purchaseLinks.length > 0;
 
   return (
     <m.div
@@ -909,28 +828,15 @@ export function ProductDetailContent({
                     className="flex flex-col gap-1 pb-6 lg:pb-7"
                   />
 
-                  {/* 购买按钮区域 - 桌面端内联 */}
+                  {/* 购买链接区域 - 桌面端内联（第三方平台外链为唯一购买入口） */}
                   <div className="pb-6 max-lg:hidden">
                     {/* 外部购买链接 - 图标形式 */}
                     <div className="flex flex-wrap items-center justify-start gap-4">
-                      {product.allowDirectBuy && (
-                        <button
-                          type="button"
-                          onClick={handleOfficialBuy}
-                          disabled={buying}
-                          aria-label="官网购买"
-                          className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <span className="text-xs font-normal tracking-[0.12em] text-brand-charcoal">
-                            {buying ? "加入中…" : "官网"}
-                          </span>
-                        </button>
-                      )}
                       {renderExternalPurchaseLinks()}
                     </div>
                   </div>
 
-                  {/* 购买链接区域 - 移动端（外部渠道，官网直购见底部固定栏） */}
+                  {/* 购买链接区域 - 移动端（第三方平台外链） */}
                   {showMobilePurchaseLinks && (
                     <div className="pb-6 lg:hidden">
                       <div className="flex flex-wrap items-center justify-start gap-4">
@@ -979,30 +885,6 @@ export function ProductDetailContent({
           </div>
         </div>
 
-        {/* 移动端底部固定购买栏 */}
-        {product.allowDirectBuy && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-charcoal/10 bg-[#fefcf8]/95 px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-md lg:hidden">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleOfficialBuy}
-                disabled={buying}
-                className="flex-1 rounded-lg border border-brand-primary bg-transparent py-3 text-center text-sm font-light tracking-[0.08em] text-brand-primary transition-colors hover:bg-brand-primary/5 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 lg:tracking-[0.12em]"
-              >
-                {buying ? "加入中…" : "官网购买"}
-              </button>
-              <button
-                type="button"
-                onClick={handleOfficialBuy}
-                disabled={buying}
-                aria-label="购物车"
-                className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border border-brand-charcoal/15 text-brand-charcoal/70 transition-colors active:bg-brand-charcoal/5 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 底部版权信息 */}
@@ -1010,9 +892,7 @@ export function ProductDetailContent({
         <div
           className={cn(
             "container mx-auto px-6 py-6 text-center md:px-8 lg:px-12 xl:px-16",
-            product.allowDirectBuy
-              ? "max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
-              : "max-lg:pb-6"
+            "max-lg:pb-6"
           )}
         >
           <div className="flex items-center justify-center gap-3">

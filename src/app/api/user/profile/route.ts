@@ -62,7 +62,6 @@ const getCachedUserProfile = unstable_cache(
         membershipLevel: true,
         totalPoints: true,
         createdAt: true,
-        _count: { select: { orders: true, addresses: true } },
       },
     });
 
@@ -77,17 +76,13 @@ const getCachedUserProfile = unstable_cache(
       membershipLevel: user.membershipLevel,
       totalPoints: user.totalPoints,
       createdAt: user.createdAt,
-      stats: {
-        orderCount: user._count.orders,
-        addressCount: user._count.addresses,
-      },
     };
   },
   ["user-profile"],
   { revalidate: 30, tags: [USER_PROFILE_TAG] }
 );
 
-// GET - 获取用户资料（含统计）
+// GET - 获取用户资料
 export const dynamic = "force-dynamic";
 
 export const GET = withUserAuth(async (request: NextRequest, payload) => {

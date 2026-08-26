@@ -7,7 +7,6 @@ import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 import { BaiduAnalytics } from "@/components/seo/BaiduAnalytics";
 import { GoogleAnalytics } from "@/components/seo/GoogleAnalytics";
-import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -171,10 +170,7 @@ export default function RootLayout({
           <ChunkErrorBoundary>
             <MotionProvider>
               <AuthProvider>
-                <ToastProvider>
-                  {children}
-                  <CartDrawer />
-                </ToastProvider>
+                <ToastProvider>{children}</ToastProvider>
               </AuthProvider>
             </MotionProvider>
           </ChunkErrorBoundary>

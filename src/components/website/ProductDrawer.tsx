@@ -5,12 +5,9 @@ import { sanitizeHtml } from "@/lib/html-sanitize";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
-import { ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { XiaohongshuLink } from "@/components/website";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/Toast";
-import { useCartStore } from "@/store/cart";
 import { getPlatformIcon } from "./PlatformIcons";
 
 /**
@@ -33,15 +30,12 @@ interface ProductData {
   description: string;
   price: number;
   capacity?: string;
-  purchaseUrl?: string;
   purchaseLinks?: PurchaseLink[];
   images: { url: string; alt?: string }[];
   category: { name: string };
   ingredients?: string;
   usage?: string;
   benefits: string[];
-  allowDirectBuy?: boolean;
-  stock?: number;
 }
 
 interface ProductDrawerProps {
@@ -51,8 +45,6 @@ interface ProductDrawerProps {
   onClose: () => void;
   /** 产品数据 */
   product: ProductData | null;
-  /** 未登录时触发，由父组件决定重定向方式（如 SSO 登录后恢复抽屉） */
-  onAuthRequired?: (productId: string, action: "addToCart" | "directBuy") => void;
 }
 
 /**
@@ -90,15 +82,13 @@ export function PlatformIcon({ platform }: { platform: string }) {
  * - 锁定背景滚动
  * - 左右分栏布局
  */
-export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: ProductDrawerProps) {
+export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"description" | "ingredients" | "usage">(
     "description"
   );
 
-  const [purchaseMenuOpen, setPurchaseMenuOpen] = useState(false);
-  const purchaseMenuRef = useRef<HTMLDivElement>(null);
   const mobileContentRef = useRef<HTMLDivElement>(null);
 
   // 切换 Tab 时重置滚动位置
@@ -108,18 +98,6 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
       mobileContentRef.current.scrollTop = 0;
     }
   };
-
-  // 点击外部关闭购买菜单
-  useEffect(() => {
-    if (!purchaseMenuOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (purchaseMenuRef.current && !purchaseMenuRef.current.contains(e.target as Node)) {
-        setPurchaseMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [purchaseMenuOpen]);
 
   // 手风琴切换
   const toggleAccordion = (id: string) => {
@@ -158,7 +136,6 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
     if (!isOpen) {
       setCurrentImageIndex(0);
       setOpenAccordion(null);
-      setPurchaseMenuOpen(false);
       setActiveTab("description");
     }
   }
@@ -428,66 +405,23 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                         </div>
 
                         <div className="flex flex-wrap items-center gap-4">
-                          {product.allowDirectBuy && product.stock !== undefined && (
-                            <div className="relative" ref={purchaseMenuRef}>
-                              <button
-                                type="button"
-                                onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
-                                className="flex items-center gap-2 rounded-lg border border-brand-primary bg-transparent px-4 py-2 text-sm font-medium text-brand-primary transition-colors hover:bg-brand-primary/10"
+                          {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                            product.purchaseLinks.map((link) => (
+                              <a
+                                key={link.id}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="transition-opacity hover:opacity-60"
                               >
-                                <ShoppingBag className="h-4 w-4" />
-                                官网购买
-                                <span
-                                  className={cn(
-                                    "ml-1 text-xs transition-transform",
-                                    purchaseMenuOpen ? "rotate-180" : ""
-                                  )}
-                                >
-                                  ▼
-                                </span>
-                              </button>
-
-                              {purchaseMenuOpen && (
-                                <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
-                                  <DrawerAddToCartButton
-                                    productId={product.id}
-                                    stock={product.stock!}
-                                    quantity={1}
-                                    onClose={onClose}
-                                    onAuthRequired={onAuthRequired}
-                                    compact
-                                  />
-                                  <div className="my-1.5 border-t border-brand-charcoal/5" />
-                                  <DrawerDirectBuyButton
-                                    productId={product.id}
-                                    stock={product.stock!}
-                                    quantity={1}
-                                    onClose={onClose}
-                                    onAuthRequired={onAuthRequired}
-                                    compact
-                                  />
-                                </div>
-                              )}
-                            </div>
+                                <PlatformIcon platform={link.platform} />
+                              </a>
+                            ))
+                          ) : (
+                            <span className="text-[14px] text-brand-charcoal/50">
+                              暂无购买链接
+                            </span>
                           )}
-
-                          {product.purchaseLinks && product.purchaseLinks.length > 0
-                            ? product.purchaseLinks.map((link) => (
-                                <a
-                                  key={link.id}
-                                  href={link.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="transition-opacity hover:opacity-60"
-                                >
-                                  <PlatformIcon platform={link.platform} />
-                                </a>
-                              ))
-                            : !product.allowDirectBuy && (
-                                <span className="text-[14px] text-brand-charcoal/50">
-                                  暂无购买链接
-                                </span>
-                              )}
                         </div>
                       </div>
                     </section>
@@ -623,41 +557,9 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
                       ))}
                   </div>
 
-                  {/* 购买渠道 */}
+                  {/* 购买渠道（第三方平台外链） */}
                   <div className="mt-6">
                     <div className="flex flex-wrap gap-2">
-                      {product.allowDirectBuy && product.stock !== undefined && (
-                        <div className="relative" ref={purchaseMenuRef}>
-                          <button
-                            type="button"
-                            onClick={() => setPurchaseMenuOpen(!purchaseMenuOpen)}
-                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
-                          >
-                            <span className="font-medium">NIHPLOD</span>
-                          </button>
-                          {purchaseMenuOpen && (
-                            <div className="absolute bottom-full left-0 z-50 mb-2 w-52 rounded-xl bg-white p-3 shadow-xl ring-1 ring-black/5">
-                              <DrawerAddToCartButton
-                                productId={product.id}
-                                stock={product.stock!}
-                                quantity={1}
-                                onClose={onClose}
-                                onAuthRequired={onAuthRequired}
-                                compact
-                              />
-                              <div className="my-1.5 border-t border-brand-charcoal/5" />
-                              <DrawerDirectBuyButton
-                                productId={product.id}
-                                stock={product.stock!}
-                                quantity={1}
-                                onClose={onClose}
-                                onAuthRequired={onAuthRequired}
-                                compact
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
                       {product.purchaseLinks &&
                         product.purchaseLinks.length > 0 &&
                         product.purchaseLinks.map((link) => (
@@ -691,151 +593,4 @@ export function ProductDrawer({ isOpen, onClose, product, onAuthRequired }: Prod
   );
 }
 
-/**
- * 加入购物车按钮（ProductDrawer 专用）
- */
-function DrawerAddToCartButton({
-  productId,
-  stock,
-  quantity,
-  compact,
-  onClose,
-  onAuthRequired,
-}: {
-  productId: string;
-  stock: number;
-  quantity: number;
-  compact?: boolean;
-  onClose?: () => void;
-  onAuthRequired?: (productId: string, action: "addToCart" | "directBuy") => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const { user, redirectToLogin } = useAuth();
-  const { success, error: showError } = useToast();
-  const { addToCart } = useCartStore();
-
-  const handleAddToCart = async () => {
-    if (!user) {
-      if (onAuthRequired) {
-        onAuthRequired(productId, "addToCart");
-        return;
-      }
-      redirectToLogin();
-      return;
-    }
-    if (stock <= 0) {
-      showError("商品已售罄");
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await addToCart(productId, quantity);
-      if (result) {
-        success("已加入购物车");
-        onClose?.();
-      } else {
-        showError("添加失败，请重试");
-      }
-    } catch {
-      showError("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isOutOfStock = stock <= 0;
-
-  return (
-    <button
-      type="button"
-      onClick={handleAddToCart}
-      disabled={loading || isOutOfStock}
-      className={cn(
-        "flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors",
-        compact ? "flex-1 py-2 text-sm" : "w-full py-3",
-        isOutOfStock
-          ? "cursor-not-allowed bg-gray-300 text-gray-500"
-          : "bg-brand-primary text-white hover:bg-brand-primary/90"
-      )}
-    >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
-      <span>{isOutOfStock ? "已售罄" : "加入购物车"}</span>
-    </button>
-  );
-}
-
-/**
- * 直接购买按钮（ProductDrawer 专用）
- */
-function DrawerDirectBuyButton({
-  productId,
-  stock,
-  quantity,
-  compact,
-  onClose,
-  onAuthRequired,
-}: {
-  productId: string;
-  stock: number;
-  quantity: number;
-  compact?: boolean;
-  onClose?: () => void;
-  onAuthRequired?: (productId: string, action: "addToCart" | "directBuy") => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const { user, openCheckout, redirectToLogin } = useAuth();
-  const { error: showError } = useToast();
-
-  const handleDirectBuy = () => {
-    if (!user) {
-      if (onAuthRequired) {
-        onAuthRequired(productId, "directBuy");
-        return;
-      }
-      redirectToLogin();
-      return;
-    }
-    if (stock <= 0) {
-      showError("商品已售罄");
-      return;
-    }
-    if (quantity > stock) {
-      showError(`库存不足，仅剩 ${stock} 件`);
-      return;
-    }
-    setLoading(true);
-    try {
-      openCheckout([productId], { [productId]: quantity });
-      onClose?.();
-    } catch {
-      showError("网络错误，请重试");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isOutOfStock = stock <= 0;
-
-  return (
-    <button
-      type="button"
-      onClick={handleDirectBuy}
-      disabled={loading || isOutOfStock}
-      className={cn(
-        "flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors",
-        compact ? "flex-1 py-2 text-sm" : "w-full py-3",
-        isOutOfStock
-          ? "cursor-not-allowed bg-gray-300 text-gray-500"
-          : "border border-brand-primary text-brand-primary hover:bg-brand-primary/10"
-      )}
-    >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
-      <span>{isOutOfStock ? "已售罄" : "直接购买"}</span>
-    </button>
-  );
-}
-
-/**
- * 数量选择器组件（ProductDrawer 专用）
- */
 export type { ProductData, ProductDrawerProps };

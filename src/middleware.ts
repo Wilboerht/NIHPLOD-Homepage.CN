@@ -3,7 +3,7 @@
  * 保护管理后台路由和 API，验证认证状态，并为所有 HTML 响应生成 CSP nonce。
  *
  * 中间件在 Edge Runtime 中运行，早于所有 API 路由和页面渲染，
- * 提供纵深防御层：token 校验 / admin 页面重定向 / 支付回调方法限制 / 敏感 API 拦截 / CSP nonce。
+ * 提供纵深防御层：token 校验 / admin 页面重定向 / 敏感 API 拦截 / CSP nonce。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
@@ -32,12 +32,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/oss/sign",
   "/api/auth/",
   "/api/user/",
-  "/api/cart/",
-  "/api/checkout/",
-  "/api/orders/",
-  "/api/pay/",
   "/api/wechat/",
-  "/api/coupons/",
   "/api/revalidate",
   "/api/internal/",
   "/api/v1/internal/",
@@ -222,16 +217,6 @@ export async function middleware(request: NextRequest) {
 
   // 2.1 显式公开的 API → 放行
   if (matchesPath(pathname, PUBLIC_API_PREFIXES)) {
-    const PAYMENT_CALLBACK_PATHS = [
-      "/api/pay/notify",
-      "/api/pay/alipay-notify",
-      "/api/pay/alipay-refund-notify",
-      "/api/pay/refund-notify",
-    ];
-    if (matchesPath(pathname, PAYMENT_CALLBACK_PATHS) && method !== "POST") {
-      console.warn(`[Middleware] 支付回调 ${pathname} 收到非 POST 请求 (${method})，已拦截`);
-      return new NextResponse("Method Not Allowed", { status: 405 });
-    }
     // OAuth 路径的 CORS 由各 route handler 自行处理（getOAuthCorsHeaders 白名单校验）
     return NextResponse.next();
   }

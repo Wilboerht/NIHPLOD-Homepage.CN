@@ -1,14 +1,13 @@
 /**
  * VIP 积分工具模块
- * 处理积分计算、等级升级、交易记录等
+ * 处理等级计算、外部商城积分同步、生日礼发放等
  *
  * 规则（2026-08 重构）：
  * - 等级由历史购买金额（totalSpent）划定：普通(注册) / 高级(消费≥1) / VIP(≥5000) / SVIP(≥20000)
- * - 积分与等级解耦：下单金额 10:1 累积（10 元 = 1 分）
- * - 生日月 3 倍积分（所有注册用户）；电商节倍数后台可配置；重叠取最大倍数不叠加
- * - 退款扣回积分并扣减 totalSpent，等级实时重算（可降级）
+ * - 官网不再直接售卖：积分/消费变动由外部商城通过签名接口同步入账（EXTERNAL_SYNC）
+ * - 等级按 totalSpent 实时重算（可升可降）
  */
-import type { Prisma, MembershipLevel } from "@/generated/prisma/client";
+import type { MembershipLevel } from "@/generated/prisma/client";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -30,238 +29,6 @@ export function calculateLevel(totalSpent: number): MembershipLevel {
     if (totalSpent >= t.minSpent) level = t.level;
   }
   return level;
-}
-
-/**
- * 判断当前月份是否为用户生日月
- */
-function isBirthdayMonth(birthday: Date | null): boolean {
-  if (!birthday) return false;
-  const now = new Date();
-  return birthday.getMonth() === now.getMonth();
-}
-
-/**
- * 获取当前生效活动的最大积分倍数（无活动返回 1）
- */
-export async function getActiveCampaignMultiplier(): Promise<number> {
-  const now = new Date();
-  const campaigns = await prisma.pointCampaign.findMany({
-    where: { active: true, startAt: { lte: now }, endAt: { gte: now } },
-    select: { multiplier: true },
-  });
-  return campaigns.reduce((max, c) => Math.max(max, c.multiplier), 1);
-}
-
-/**
- * 为支付成功的订单增加积分并累计消费金额
- * 调用时机：支付回调/模拟支付成功后
- *
- * @param tx Prisma 事务客户端（可选，传入则使用事务）
- * @param orderId 订单 ID
- * @param userId 用户 ID
- * @param payAmount 实付金额（元，Decimal 值转换为 number）
- * @param orderNo 订单号（用作 reference）
- */
-export async function creditPointsForOrder(params: {
-  tx?: Prisma.TransactionClient;
-  orderId: string;
-  userId: string;
-  payAmount: number;
-  orderNo: string;
-}): Promise<{ points: number; newLevel: MembershipLevel; oldLevel: MembershipLevel } | null> {
-  const { tx, userId, payAmount, orderNo } = params;
-  const db = tx ?? prisma;
-
-  try {
-    // 幂等检查：该订单是否已发放过积分
-    const existing = await db.pointTransaction.findFirst({
-      where: { userId, type: "ORDER_REWARD", reference: orderNo },
-    });
-    if (existing) {
-      apiConsole.debug(`[Points] 订单 ${orderNo} 积分已发放，跳过`);
-      return null;
-    }
-
-    // 获取用户当前等级、积分、累计消费和生日
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { membershipLevel: true, totalPoints: true, totalSpent: true, birthday: true },
-    });
-    if (!user) return null;
-
-    // 计算积分（10 元 = 1 分，取整）
-    const basePoints = Math.floor(payAmount / 10);
-    if (basePoints <= 0) {
-      // 无积分可发，但仍需累计消费金额（可能触发升级）
-      // 写入 0 积分流水作为幂等标记，防止回调重试导致 totalSpent 重复累加
-      const newTotalSpent = user.totalSpent + Math.floor(payAmount);
-      const newLevel = calculateLevel(newTotalSpent);
-      await db.pointTransaction.create({
-        data: {
-          userId,
-          points: 0,
-          type: "ORDER_REWARD",
-          reference: orderNo,
-          note: `订单 ${orderNo} 消费奖励（金额不足 10 元，无积分，仅累计消费）`,
-        },
-      });
-      if (newTotalSpent !== user.totalSpent || newLevel !== user.membershipLevel) {
-        // 原子增减：避免并发支付时先读后写丢失更新（余额与流水不一致）
-        await db.user.update({
-          where: { id: userId },
-          data: { totalSpent: { increment: Math.floor(payAmount) }, membershipLevel: newLevel },
-        });
-        invalidateProfileCache();
-      }
-      return { points: 0, newLevel, oldLevel: user.membershipLevel };
-    }
-
-    // 倍数：生日月 3 倍（所有注册用户）与活动倍数取最大，不叠加
-    const birthdayMultiplier = isBirthdayMonth(user.birthday ?? null) ? 3 : 1;
-    const campaignMultiplier = await getActiveCampaignMultiplier();
-    const multiplier = Math.max(birthdayMultiplier, campaignMultiplier);
-
-    const totalPointsEarned = basePoints * multiplier;
-
-    const newTotalSpent = user.totalSpent + Math.floor(payAmount);
-    const newLevel = calculateLevel(newTotalSpent);
-    const oldLevel = user.membershipLevel;
-
-    // 写入积分交易记录
-    const noteParts = [`订单 ${orderNo} 消费奖励（10:1）`];
-    if (birthdayMultiplier > 1 && multiplier === birthdayMultiplier) noteParts.push("生日3倍积分");
-    if (campaignMultiplier > 1 && multiplier === campaignMultiplier)
-      noteParts.push(`活动${campaignMultiplier}倍积分`);
-    await db.pointTransaction.create({
-      data: {
-        userId,
-        points: totalPointsEarned,
-        type: "ORDER_REWARD",
-        reference: orderNo,
-        note: noteParts.join("，"),
-      },
-    });
-
-    // 更新用户积分、累计消费和等级
-    // 原子增减：避免两笔订单并发支付时先读后写丢失更新（余额少于流水之和）；
-    // 等级基于读取快照计算，并发下最多滞后一次结算，下次结算自动纠正
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        totalPoints: { increment: totalPointsEarned },
-        totalSpent: { increment: Math.floor(payAmount) },
-        membershipLevel: newLevel,
-      },
-    });
-
-    apiConsole.info(
-      `[Points] 用户 ${userId} 获得 ${totalPointsEarned} 积分 (10:1, ${multiplier}倍, 总 ${
-        user.totalPoints + totalPointsEarned
-      }), 消费累计 ${newTotalSpent}, 等级: ${oldLevel} → ${newLevel}`
-    );
-
-    invalidateProfileCache();
-
-    return { points: totalPointsEarned, newLevel, oldLevel };
-  } catch (error) {
-    apiConsole.error("[Points] 积分发放失败:", error);
-    // 积分发放失败不应阻塞支付流程
-    return null;
-  }
-}
-
-/**
- * 订单退款时扣回该订单发放的积分并扣减累计消费
- * 调用时机：退款最终确认（finalizeRefund）后
- *
- * 扣回范围：
- * - ORDER_REWARD（订单消费奖励，含倍数加成）
- * - LEVEL_UP_BONUS（历史遗留的升级奖励记录）
- *
- * 积分不会扣成负数；totalSpent 不下穿 0；等级按剩余消费金额重新计算（可降级）。
- * 幂等：已扣回过（ORDER_REWARD_REVERSAL + orderNo）则跳过。
- */
-export async function refundPointsForOrder(params: {
-  tx?: Prisma.TransactionClient;
-  orderId: string;
-  userId: string;
-  orderNo: string;
-  refundAmount: number;
-}): Promise<{ deductedPoints: number } | null> {
-  const { tx, userId, orderNo, refundAmount } = params;
-  const db = tx ?? prisma;
-
-  try {
-    // 幂等检查：该订单退款积分是否已扣回
-    const existing = await db.pointTransaction.findFirst({
-      where: { userId, type: "ORDER_REWARD_REVERSAL", reference: orderNo },
-    });
-    if (existing) {
-      apiConsole.debug(`[Points] 订单 ${orderNo} 退款积分已扣回，跳过`);
-      return null;
-    }
-
-    // 汇总该订单发放的积分（消费奖励 + 历史升级奖励）
-    const earnedTransactions = await db.pointTransaction.findMany({
-      where: {
-        userId,
-        OR: [
-          { type: "ORDER_REWARD", reference: orderNo },
-          { type: "LEVEL_UP_BONUS", reference: orderNo },
-        ],
-      },
-      select: { points: true },
-    });
-
-    const totalEarned = earnedTransactions.reduce((sum, t) => sum + t.points, 0);
-
-    // 获取用户当前积分与累计消费
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { totalPoints: true, totalSpent: true },
-    });
-    if (!user) return null;
-
-    const deducted = Math.min(Math.max(0, totalEarned), user.totalPoints);
-    const newTotalPoints = user.totalPoints - deducted;
-    const newTotalSpent = Math.max(0, user.totalSpent - Math.floor(refundAmount));
-    const newLevel = calculateLevel(newTotalSpent);
-
-    // 始终写入扣回记录（即使 0 积分）作为幂等标记，防止重复退款重复扣减 totalSpent
-    await db.pointTransaction.create({
-      data: {
-        userId,
-        points: -deducted,
-        type: "ORDER_REWARD_REVERSAL",
-        reference: orderNo,
-        note: `订单 ${orderNo} 退款，扣回消费奖励积分`,
-      },
-    });
-
-    // 更新用户积分、累计消费和等级
-    // 原子增减（与发放路径对齐）：totalSpent 扣减额以当前余额封顶，不下穿 0
-    await db.user.update({
-      where: { id: userId },
-      data: {
-        totalPoints: { decrement: deducted },
-        totalSpent: { decrement: Math.min(Math.floor(refundAmount), user.totalSpent) },
-        membershipLevel: newLevel,
-      },
-    });
-
-    apiConsole.info(
-      `[Points] 订单 ${orderNo} 退款，扣回 ${deducted} 积分 (总 ${newTotalPoints}), 消费累计 ${newTotalSpent}, 等级重算 ${newLevel}`
-    );
-
-    invalidateProfileCache();
-
-    return { deductedPoints: deducted };
-  } catch (error) {
-    apiConsole.error("[Points] 退款扣回积分失败:", error);
-    // 扣回失败不应阻塞退款流程，但记录日志供人工处理
-    return null;
-  }
 }
 
 // 外部同步入账的 CAS 重试上限（快照被并发修改时重读重试）
@@ -304,7 +71,7 @@ export async function applyExternalPointsSync(params: {
         if (!user) return null;
 
         // 钳制下限 0：余额不足时只扣到 0，流水记录**实际生效**的变动量（而非请求值），
-        // 保证流水合计永远等于余额（与 refundPointsForOrder 的扣回口径一致）
+        // 保证流水合计永远等于余额
         const newTotalPoints = Math.max(0, user.totalPoints + delta);
         const newTotalSpent = Math.max(0, user.totalSpent + spentDelta);
         const effectiveDelta = newTotalPoints - user.totalPoints;

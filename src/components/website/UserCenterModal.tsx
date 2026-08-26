@@ -9,22 +9,16 @@ import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { X, User, Package, MapPin, LogOut, ArrowLeft, Ticket, Crown } from "lucide-react";
+import { X, User, LogOut, ArrowLeft, Crown } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelDisplay } from "@/lib/membership";
-import { OrdersPanel } from "./user-center/OrdersPanel";
-import { AddressesPanel } from "./user-center/AddressesPanel";
 import { ProfilePanel } from "./user-center/ProfilePanel";
-import { CouponsPanel } from "./user-center/CouponsPanel";
 import { VipPanel } from "./user-center/VipPanel";
 
 // 菜单项配置
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "vip", label: "会员中心", icon: Crown },
-  { id: "orders", label: "我的订单", icon: Package },
-  { id: "addresses", label: "收货地址", icon: MapPin },
-  { id: "coupons", label: "我的优惠券", icon: Ticket },
 ];
 
 export function UserCenterModal() {
@@ -355,12 +349,6 @@ export function UserCenterModal() {
 // 内容面板路由
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
-    case "orders":
-      return <OrdersPanel />;
-    case "addresses":
-      return <AddressesPanel />;
-    case "coupons":
-      return <CouponsPanel />;
     case "vip":
       return <VipPanel />;
     default:

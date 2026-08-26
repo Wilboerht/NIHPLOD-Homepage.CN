@@ -276,7 +276,7 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
 /**
  * 签发用户 Access Token（短期，15分钟）
  *
- * 用于 C 端用户内部 API（如 /api/user/profile、/api/cart 等）。
+ * 用于 C 端用户内部 API（如 /api/user/profile、/api/user/points 等）。
  * Token type="user"，audience="user"，仅供 verifyUserToken 验证。
  *
  * 与 OAuth Access Token 的区别：

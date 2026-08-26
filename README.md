@@ -2,7 +2,7 @@
 
 **NIHPLOD** is the official digital platform for the Monaco-based luxury skincare brand founded by David Nahmad and Dr. J. Stefan Rokem. This project represents a convergence of high-end beauty, biotechnology, and advanced artificial intelligence, designed to provide users with a personalized and immersive skincare experience.
 
-The platform is not merely a showcase but a comprehensive application featuring AI-driven skin analysis, a deeply interactive user interface, and a robust e-commerce system.
+The platform is not merely a showcase but a comprehensive application featuring AI-driven skin analysis, a deeply interactive user interface, and rich product presentations with referrals to third-party platforms.
 
 ## Project Overview
 
@@ -11,7 +11,7 @@ The NIHPLOD platform is built to reflect the brand's core philosophy: "Reversing
 ### Core Objectives
 *   **Digital Brand Experience:** To establish a premium online presence that conveys the brand's values of family, care, and scientific excellence.
 *   **AI Skin Consultation:** To democratize professional skincare advice through an intelligent, automated advisor that analyzes user skin conditions and lifestyle factors.
-*   **Seamless Commerce:** To facilitate product discovery and acquisition through a streamlined, integrated shopping experience.
+*   **Product Discovery & Referral:** To facilitate product discovery and guide users to official flagship stores on third-party platforms.
 
 ## Key Features
 
@@ -26,19 +26,19 @@ Designed with a "Mobile First" implementation that scales elegantly to desktop.
 *   **Dynamic Interactions:** Powered by Framer Motion and GSAP for fluid transitions and micro-interactions that mimic the physical sensation of premium skincare.
 *   **Visual Storytelling:** Dedicated modules for Brand Story, Rituals (SPA guides), and Product Exploration.
 
-### 3. E-Commerce & User System
-A fully functional commerce engine.
+### 3. Product Showcase & User System
+Product presentation combined with membership features.
 *   **Product Catalog:** Rich product presentations with ingredient breakdowns and usage guides.
-*   **Shopping Cart & Checkout:** Integrated cart management and secure checkout flows.
-*   **User Dashboard:** Personal center for managing orders, shipping addresses, and viewing history.
-*   **Loyalty Program:** Points system and coupon management to retain and reward customers.
+*   **Third-Party Referral:** Purchase links direct users to official flagship stores on platforms such as Tmall, Xiaohongshu, and Douyin.
+*   **User Dashboard:** Personal center for managing profile information and membership status.
+*   **Loyalty Program:** Points system to retain and reward customers.
 
 ### 4. Admin Management Dashboard
 A comprehensive CMS for operational control.
-*   **Product Management:** CRUD operations for the product catalog, inventory, and categories.
-*   **Order & User Management:** Tools for tracking orders, managing user accounts, and handling logistics.
+*   **Product Management:** CRUD operations for the product catalog, purchase links, and categories.
+*   **User Management:** Tools for managing user accounts and permissions.
 *   **Content Management:** Editors for site content, including articles, rituals, and media assets.
-*   **Analytics:** Visual dashboards for tracking sales, user growth, and system health.
+*   **Analytics:** Visual dashboards for tracking user growth and system health.
 
 ## Technology Stack
 
@@ -67,11 +67,10 @@ The project utilizes a modern, type-safe full-stack TypeScript architecture.
 The codebase follows a modular structure optimized for Next.js App Router:
 
 *   `src/app`: Application routes (Pages and API endpoints).
-    *   `(website)`: Public-facing store and brand pages.
+    *   `(website)`: Public-facing product showcase and brand pages.
     *   `(admin)`: Protected administrative dashboard.
 *   `src/components`: Reusable UI components, categorized by domain (web/admin) and atomic design.
 *   `src/lib`: Core utilities, including database clients, AI service wrappers, and helper functions.
-*   `src/store`: Global state definitions.
 *   `docs`: Comprehensive documentation including PRD, Tech Stack, and API references.
 
 ## Getting Started

@@ -265,7 +265,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           price: sanitized.price,
           capacity: sanitized.capacity,
           origin: sanitized.origin,
-          purchaseUrl: sanitized.purchaseUrl,
           ingredients: sanitized.ingredients,
           usage: sanitized.usage,
           benefits: sanitized.benefits || [],
@@ -273,8 +272,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           featured: validated.featured,
           published: validated.published,
           category: { connect: { id: validated.categoryId } },
-          allowDirectBuy: validated.allowDirectBuy,
-          stock: validated.stock,
           geoFaqs: toInputJson(validated.geoFaqs),
         },
       });
@@ -414,24 +411,7 @@ export async function DELETE(
       );
     }
 
-    // 检查是否被订单引用（有历史订单的商品禁止物理删除，返回友好提示）
-    const orderItemCount = await prisma.orderItem.count({
-      where: { productId: id },
-    });
-    if (orderItemCount > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "HAS_ORDERS",
-            message: `该商品已被 ${orderItemCount} 个订单引用，无法删除。建议将商品下架而非删除，以保留历史订单数据。`,
-          },
-        },
-        { status: 409 }
-      );
-    }
-
-    // 订单检查通过后才删除关联的物理图片文件
+    // 删除关联的物理图片文件
     for (const image of existing.images) {
       await deleteUploadedFile(image.url);
     }

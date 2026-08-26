@@ -71,7 +71,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const toast = useToast();
-  const { refreshUser, restorePendingCheckout } = useAuth();
+  const { refreshUser } = useAuth();
 
   const returnTo = searchParams.get("return_to");
   const rawMode = searchParams.get("mode");
@@ -344,11 +344,6 @@ function LoginPageContent() {
       await refreshUser(true);
     } catch {
       // refreshUser 失败时仍然继续导航——认证 Cookie 已由服务端设置
-    }
-    // OAuth 授权端点的重定向是全页面跳转，React state 会丢失；
-    // 此时不清除 pending checkout，让它留在 sessionStorage 等跳转回来再恢复
-    if (!returnTo?.startsWith("/api/oauth/authorize")) {
-      restorePendingCheckout();
     }
     navigateToReturnTo(returnTo);
   };

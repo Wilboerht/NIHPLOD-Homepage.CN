@@ -33,9 +33,6 @@ interface ProductItem {
   } | null;
   featured: boolean;
   published: boolean;
-  salesCount: number;
-  stock: number;
-  allowDirectBuy: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -215,26 +212,6 @@ export function ProductsTable({
         width: "70px",
         render: (_, record) => (
           <span className="text-sm text-brand-charcoal/40">{record.order}</span>
-        ),
-      },
-      {
-        key: "salesCount",
-        title: "销量",
-        align: "right",
-        render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/60">{record.salesCount}</span>
-        ),
-      },
-      {
-        key: "stock",
-        title: "库存",
-        align: "right",
-        render: (_, record) => (
-          <span
-            className={`text-sm ${record.allowDirectBuy && record.stock <= 5 ? "font-medium text-red-500" : "text-brand-charcoal/60"}`}
-          >
-            {record.allowDirectBuy ? record.stock : "-"}
-          </span>
         ),
       },
       {

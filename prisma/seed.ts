@@ -165,7 +165,6 @@ async function main() {
       order: 1,
       featured: true,
       published: true,
-      stock: 100,
     },
     {
       name: "匀衡磨砂膏",
@@ -181,7 +180,6 @@ async function main() {
       order: 2,
       featured: false,
       published: true,
-      stock: 80,
     },
     {
       name: "臻奢赋活莱赛尔面膜",
@@ -197,7 +195,6 @@ async function main() {
       order: 3,
       featured: true,
       published: true,
-      stock: 200,
     },
     {
       name: "时光涅槃臻萃精华露",
@@ -213,7 +210,6 @@ async function main() {
       order: 4,
       featured: true,
       published: true,
-      stock: 50,
     },
     {
       name: "恒采修护面霜",
@@ -229,7 +225,6 @@ async function main() {
       order: 5,
       featured: true,
       published: true,
-      stock: 60,
     },
     {
       name: "抚纹紧致护手霜",
@@ -245,7 +240,6 @@ async function main() {
       order: 6,
       featured: false,
       published: true,
-      stock: 150,
     },
     {
       name: "新生焕活身体乳",
@@ -261,7 +255,6 @@ async function main() {
       order: 7,
       featured: false,
       published: true,
-      stock: 120,
     },
     {
       name: "轻透长护防晒霜",
@@ -277,7 +270,6 @@ async function main() {
       order: 8,
       featured: true,
       published: true,
-      stock: 90,
     },
     {
       name: "臻萃呵护美容油",
@@ -293,7 +285,6 @@ async function main() {
       order: 9,
       featured: false,
       published: true,
-      stock: 70,
     },
     {
       name: "臻享礼盒套装",
@@ -309,7 +300,6 @@ async function main() {
       order: 10,
       featured: true,
       published: true,
-      stock: 30,
     },
   ];
 
@@ -461,16 +451,13 @@ async function main() {
 
 
 
-  // 9. 创建测试用户
-
-  await prisma.address.deleteMany({});
+  // 9. 创建测试用户（密码从环境变量读取；生产环境不创建测试用户）
   await prisma.user.deleteMany({});
 
-  // 9. 创建测试用户（密码从环境变量读取；生产环境不创建测试用户）
   const seedTestPassword = process.env.SEED_TEST_USER_PASSWORD;
   if (seedTestPassword && nodeEnv !== "production") {
     const testUserPasswordHash = await bcrypt.hash(seedTestPassword, 13);
-    const testUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         phone: "13800138000",
         phoneVerified: true,
@@ -479,47 +466,6 @@ async function main() {
       },
     });
     console.log("✅ 测试用户已创建");
-
-    // 9.1 创建测试用户收货地址
-    const addresses = [
-      {
-        userId: testUser.id,
-        name: "张三",
-        phone: "13800138000",
-        province: "上海市",
-        city: "上海市",
-        district: "浦东新区",
-        detail: "陆家嘴环路1000号 恒生银行大厦 28楼",
-        postalCode: "200120",
-        isDefault: true,
-      },
-      {
-        userId: testUser.id,
-        name: "李四",
-        phone: "13900139000",
-        province: "北京市",
-        city: "北京市",
-        district: "朝阳区",
-        detail: "建国门外大街1号 国贸大厦A座 15层",
-        postalCode: "100004",
-        isDefault: false,
-      },
-      {
-        userId: testUser.id,
-        name: "王五",
-        phone: "13700137000",
-        province: "广东省",
-        city: "深圳市",
-        district: "南山区",
-        detail: "科技园南区 腾讯大厦 10楼",
-        postalCode: "518057",
-        isDefault: false,
-      },
-    ];
-    for (const addr of addresses) {
-      await prisma.address.create({ data: addr });
-    }
-    console.log("✅ 测试用户收货地址已创建 (3 个地址)");
   } else {
     console.warn("⚠️ 未设置 SEED_TEST_USER_PASSWORD 环境变量，跳过测试用户创建");
   }

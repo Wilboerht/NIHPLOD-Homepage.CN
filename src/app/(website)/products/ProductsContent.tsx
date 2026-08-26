@@ -34,7 +34,6 @@ interface Product {
   description: string;
   price: number;
   capacity: string | null;
-  purchaseUrl: string | null;
   purchaseLinks: PurchaseLink[];
   categoryId: string;
   category: Category;
@@ -42,8 +41,6 @@ interface Product {
   ingredients: string | null;
   usage: string | null;
   benefits: string[];
-  allowDirectBuy: boolean;
-  stock: number;
 }
 
 interface ProductsContentProps {

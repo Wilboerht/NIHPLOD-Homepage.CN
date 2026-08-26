@@ -69,7 +69,6 @@ async function getProducts() {
       ...p,
       price: Number(p.price),
       capacity: p.capacity ?? undefined,
-      purchaseUrl: p.purchaseUrl ?? undefined,
       ingredients: p.ingredients ?? undefined,
       usage: p.usage ?? undefined,
       images: p.images.map((img) => ({

@@ -64,7 +64,7 @@ export function useSidebar(): UseSidebarReturn {
     }
   }
 
-  // 使用全局共享的滚动锁，与其他弹窗（Modal、CartDrawer）协同，避免互相覆盖
+  // 使用全局共享的滚动锁，与其他弹窗（Modal、导航抽屉）协同，避免互相覆盖
   useScrollLock(isMobile && isOpen);
 
   return {

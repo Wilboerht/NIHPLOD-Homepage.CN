@@ -22,7 +22,6 @@ model Product {
   description   String         @db.Text // 产品描述
   price         Decimal        @db.Decimal(10, 2) // 参考价格
   capacity      String?        // 规格容量
-  purchaseUrl   String?        // 外部购买链接（保留兼容，deprecated）
   categoryId    String
   category      Category       @relation(fields: [categoryId], references: [id])
   images        Image[]        // 产品图片
@@ -34,15 +33,9 @@ model Product {
   order         Int            @default(0) // 排序（数字越小越靠前）
   featured      Boolean        @default(false) // 是否推荐
   published     Boolean        @default(false) // 是否发布
-  // 站内购买设置
-  allowDirectBuy Boolean       @default(false) // 是否允许站内购买
-  stock          Int           @default(0) // 库存数量
-  salesCount     Int           @default(0) // 销量统计
-  cartItems      CartItem[]    // 关联购物车
-  orderItems     OrderItem[]   // 关联订单项
-  geoFaqs        Json?         // AI 生成的 GEO FAQ 数据
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now()) @updatedAt
+  geoFaqs       Json?          // AI 生成的 GEO FAQ 数据
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
 
   @@index([categoryId])
   @@index([published, order])
@@ -161,7 +154,6 @@ model ApplicationFolder {
 }
 
 
-// ============================================
 // 联系留言
 // ============================================
 
@@ -226,10 +218,6 @@ model User {
   birthday        DateTime?
 
   // 关联
-  addresses        Address[]
-  orders           Order[]
-  cartItems        CartItem[]
-  userCoupons      UserCoupon[]
   refreshTokens    RefreshToken[]
   auditLogs        AuditLog[]
   pointTransactions PointTransaction[]
@@ -493,46 +481,6 @@ model WebhookDeliveryFailure {
   @@index([nextRetryAt])
 }
 
-model PaymentNotification {
-  id               String            @id @default(cuid())
-  gateway          String            // "wechat" 或 "alipay"
-  notificationId   String            // 通知ID（微信: out_trade_no, 支付宝: trade_no）
-  transactionId    String            // 交易ID（微信: transaction_id, 支付宝: trade_no）
-  amount           Decimal           @db.Decimal(10, 2) // 金额（元），与 Order.payAmount 等单位一致
-  status           String            @default("PENDING") // "PENDING" | "SUCCESS" | "FAILED"
-  rawData          String            @db.Text // 原始通知数据（JSON）
-  errorMessage     String?           // 错误信息
-  processedAt      DateTime?         // 处理时间
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @default(now()) @updatedAt
-
-  // 复合索引：确保同一个通知在同一个网关上只处理一次
-  @@unique([gateway, notificationId])
-  @@index([gateway, status])
-  @@index([transactionId])
-  @@index([createdAt])
-}
-
-model Address {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String                           // 收件人
-  phone       String                           // 联系电话
-  province    String                           // 省
-  city        String                           // 市
-  district    String                           // 区
-  detail      String                           // 详细地址
-  postalCode  String?                          // 邮政编码
-  isDefault   Boolean  @default(false)
-
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
-
-  @@index([userId])
-}
-
 model SmsCode {
   id        String   @id @default(cuid())
   phone     String
@@ -552,162 +500,14 @@ model SmsCode {
   // CREATE UNIQUE INDEX "SmsCode_phone_type_used_false_key" ON "SmsCode"("phone","type") WHERE "used" = false;
 }
 
-
-
-// ============================================
-// 购物车
-// ============================================
-
-model CartItem {
-  id        String   @id @default(cuid())
-  userId    String
-  productId String
-  quantity  Int      @default(1)
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@unique([userId, productId])
-  @@index([userId])
-}
-
-// ============================================
-// 订单系统
-// ============================================
-
-model Order {
-  id             String      @id @default(cuid())
-  orderNo        String      @unique           // 订单号
-  userId         String
-
-  // 金额
-  totalAmount    Decimal     @db.Decimal(10, 2)
-  shippingFee    Decimal     @default(0) @db.Decimal(10, 2)
-  discountAmount Decimal     @default(0) @db.Decimal(10, 2)
-  payAmount      Decimal     @db.Decimal(10, 2)
-
-  // 收货信息快照
-  recipientName    String
-  recipientPhone   String
-  recipientAddress String    @db.Text
-
-  // 状态
-  status         OrderStatus @default(PENDING)
-  previousStatus OrderStatus? // 申请退款前的状态，用于拒绝退款后恢复
-
-  // 支付
-  paymentMethod  String?                       // wechat | alipay
-  paymentTime    DateTime?
-  paymentNo      String?
-
-  // 退款
-  refundNo       String?                       // 退款单号（微信/支付宝）
-  refundAmount   Decimal?    @db.Decimal(10, 2) // 退款金额
-  refundTime     DateTime?
-  refundStatus   RefundStatus? // PENDING | SUCCESS | FAILED | CLOSED
-
-  // 物流
-  shippingCompany String?
-  trackingNo      String?
-  shippedAt       DateTime?
-  receivedAt      DateTime?
-
-
-  // 备注
-  remark         String?     @db.Text
-  adminNote      String?     @db.Text
-
-  user           User        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  items          OrderItem[]
-  transactions   Transaction[] // 交易流水记录
-  userCoupon     UserCoupon?
-
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @default(now()) @updatedAt
-
-  @@index([userId, createdAt(sort: Desc)])
-  @@index([status, createdAt])
-  @@index([paymentNo])
-  @@index([status, shippedAt])
-}
-
-model OrderItem {
-  id           String   @id @default(cuid())
-  orderId      String
-  productId    String
-  productName  String                          // 快照
-  productImage String?
-  price        Decimal  @db.Decimal(10, 2)
-  quantity     Int
-  subtotal     Decimal  @db.Decimal(10, 2)
-
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-
-  @@index([orderId])
-}
-
-// ============================================
-// 交易流水（支付/退款资金变动记录）
-// ============================================
-
-model Transaction {
-  id              String   @id @default(cuid())
-  orderId         String
-  type            String   // PAYMENT | REFUND
-  gateway         String   // wechat | alipay | mock
-  amount          Decimal  @db.Decimal(10, 2)
-  status          String   // SUCCESS | FAILED
-  gatewayTrxId    String?  // 第三方交易流水号（如微信 transaction_id、支付宝 trade_no）
-  gatewayRefundId String?  // 退款单号
-  rawData         String?  @db.Text // 原始响应/通知数据（JSON）
-  createdAt       DateTime @default(now())
-
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([orderId])
-  @@index([gatewayTrxId])
-  @@index([createdAt])
-}
-
-enum OrderStatus {
-  PENDING      // 待支付
-  PAYING       // 支付中（新增中间状态）
-  PAID         // 已支付
-  PROCESSING   // 处理中
-  SHIPPED      // 已发货
-  DELIVERED    // 已签收
-  COMPLETED    // 已完成
-  CANCELLED    // 已取消
-  REFUNDING    // 退款中
-  REFUNDED     // 已退款
-}
-
-enum RefundStatus {
-  PENDING      // 退款待处理
-  SUCCESS      // 退款成功
-  FAILED       // 退款失败
-  CLOSED       // 退款关闭
-}
-
-enum UserCouponStatus {
-  UNUSED
-  USED
-  EXPIRED
-  LOCKED
-}
-
 // ============================================
 // 审计日志
 // ============================================
 
 model AuditLog {
   id        String   @id @default(cuid())
-  action    String   // 操作类型: ship_order, refund_order, create_admin, update_admin, delete_admin, login, logout 等
-  targetType String  // 目标类型: order, admin, product, category, job, message, application 等
+  action    String   // 操作类型: create_admin, update_admin, delete_admin, login, logout 等
+  targetType String  // 目标类型: admin, product, category, job, message, application 等
   targetId  String?  // 目标记录ID
   detail    Json?    // 操作详情（变更前后数据快照等）
   ipAddress String?  // 操作者IP
@@ -750,8 +550,8 @@ model PointTransaction {
   id        String   @id @default(cuid())
   userId    String
   points    Int      // 正数为获得，负数为消耗
-  type      String   // ORDER_REWARD | ORDER_REWARD_REVERSAL | BIRTHDAY_GIFT | ADMIN_ADJUST | REDEEM | LEVEL_UP_BONUS | EXTERNAL_SYNC（商城积分同步）
-  reference String?  // 关联的订单号/优惠券ID等
+  type      String   // BIRTHDAY_GIFT | ADMIN_ADJUST | EXTERNAL_SYNC（商城积分同步）
+  reference String?  // 关联的外部单据号（如商城侧单据号、生日礼年份标记等）
   note      String?  @db.Text
   createdAt DateTime @default(now())
 
@@ -774,22 +574,6 @@ model MembershipBenefit {
   colorClass  String?         // Tailwind 颜色类名
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @default(now()) @updatedAt
-}
-
-/**
- * 积分倍数活动（电商节等，后台可配置）
- */
-model PointCampaign {
-  id         String   @id @default(cuid())
-  name       String   // 活动名称（如：双11）
-  startAt    DateTime
-  endAt      DateTime
-  multiplier Int      // 积分倍数（如 2 表示 2 倍）
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
-
-  @@index([startAt, endAt])
 }
 
 // ============================================
@@ -827,78 +611,6 @@ model Admin {
   @@index([status])
   @@index([deletedAt])
   @@index([role])
-}
-
-// 系统动态配置存储
-// 当前用途：运费策略 (shipping_config)，支持后台动态调整运费模式、门槛和费率
-// key: "shipping_config" | value: { mode, freeThreshold, baseFee }
-// 注意：此表正在使用中，请勿删除
-model Setting {
-  id        String   @id @default(cuid())
-  key       String   @unique // 设置键名
-  value     Json     // 设置值
-  updatedAt DateTime @default(now()) @updatedAt
-}
-
-
-
-// ============================================
-// 优惠券系统
-// ============================================
-
-model Coupon {
-  id          String   @id @default(cuid())
-  code        String?  @unique // 兑换码 (可选，为空时点击领取)
-  name        String   // 优惠券名称
-  type        String   // DISCOUNT_AMOUNT (满减) | DISCOUNT_PERCENT (折扣)
-  value       Decimal  @db.Decimal(10, 2)
-  minAmount   Decimal  @default(0) @db.Decimal(10, 2)
-
-  // 有效期规则
-  startDate   DateTime? // 固定开始时间
-  endDate     DateTime? // 固定结束时间
-  daysValid   Int?      // 领取后多少天有效 (相对时间)
-
-  // 发放规则
-  totalLimit  Int?      // 总发行量
-  userLimit   Int       @default(1) // 每人限领张数
-
-  // 适用范围
-  scopeType   String    @default("ALL") // ALL | CATEGORY | PRODUCT
-  scopeIds    String[]  @default([])    // 品类ID或商品ID列表
-
-  isActive    Boolean   @default(true) // 上下架
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @default(now()) @updatedAt
-
-  userCoupons UserCoupon[]
-
-  @@index([isActive])
-  @@index([isActive, startDate, endDate])
-}
-
-model UserCoupon {
-  id        String    @id @default(cuid())
-  userId    String
-  couponId  String
-  
-  status    UserCouponStatus @default(UNUSED)
-  
-  acquiredAt DateTime @default(now()) // 领取时间
-  expiresAt  DateTime // 过期时间
-  usedAt     DateTime? // 使用时间
-  
-  // 关联
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  orderId   String?  @unique
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@index([userId, status])
-  @@index([expiresAt])
 }
 
 // ============================================

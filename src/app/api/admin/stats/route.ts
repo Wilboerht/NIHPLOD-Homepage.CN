@@ -12,25 +12,13 @@ interface StatsResponse {
     categories: number;
     unreadMessages: number;
     jobs: number;
-    // 电商统计
     totalUsers: number;
-    pendingOrders: number; // 待支付
-    paidOrders: number; // 已支付待发货
-    refundingOrders: number;
-    todayRevenue: number;
     recentMessages: {
       id: string;
       name: string;
       phone: string;
       content: string;
       read: boolean;
-      createdAt: string;
-    }[];
-    recentOrders: {
-      id: string;
-      orderNo: string;
-      status: string;
-      payAmount: number;
       createdAt: string;
     }[];
   };

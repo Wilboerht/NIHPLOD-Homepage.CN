@@ -8,7 +8,6 @@
  * 通过共享函数保持数据逻辑单一来源，避免重复查询。
  */
 import { unstable_cache } from "next/cache";
-import { OrderStatus } from "@/generated/prisma/client";
 import prisma from "./prisma";
 
 function getTodayUTC8(): Date {
@@ -29,23 +28,12 @@ export interface AdminStatsData {
   unreadMessages: number;
   jobs: number;
   totalUsers: number;
-  pendingOrders: number;
-  paidOrders: number;
-  refundingOrders: number;
-  todayRevenue: number;
   recentMessages: {
     id: string;
     name: string;
     phone: string;
     content: string;
     read: boolean;
-    createdAt: string;
-  }[];
-  recentOrders: {
-    id: string;
-    orderNo: string;
-    status: string;
-    payAmount: number;
     createdAt: string;
   }[];
 }
@@ -61,69 +49,26 @@ const STATS_CACHE_TAGS = ["admin-stats"];
 
 const getCachedStats = unstable_cache(
   async (_: string) => {
-    const todayStart = getTodayUTC8();
-
-    const [
-      productsCount,
-      categoriesCount,
-      unreadMessagesCount,
-      jobsCount,
-      totalUsers,
-      pendingOrders,
-      paidOrders,
-      refundingOrders,
-      todayRevenueData,
-      recentMessages,
-      recentOrders,
-    ] = await Promise.all([
-      prisma.product.count(),
-      prisma.category.count(),
-      prisma.contactMessage.count({ where: { read: false } }),
-      prisma.job.count({ where: { published: true } }),
-      prisma.user.count(),
-      prisma.order.count({ where: { status: OrderStatus.PENDING } }),
-      prisma.order.count({ where: { status: OrderStatus.PAID } }),
-      prisma.order.count({ where: { status: OrderStatus.REFUNDING } }),
-      prisma.order.aggregate({
-        where: {
-          paymentTime: { gte: todayStart },
-          status: {
-            in: [
-              OrderStatus.PAYING,
-              OrderStatus.PAID,
-              OrderStatus.PROCESSING,
-              OrderStatus.SHIPPED,
-              OrderStatus.DELIVERED,
-              OrderStatus.COMPLETED,
-            ],
+    const [productsCount, categoriesCount, unreadMessagesCount, jobsCount, totalUsers, recentMessages] =
+      await Promise.all([
+        prisma.product.count(),
+        prisma.category.count(),
+        prisma.contactMessage.count({ where: { read: false } }),
+        prisma.job.count({ where: { published: true } }),
+        prisma.user.count(),
+        prisma.contactMessage.findMany({
+          take: 5,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            content: true,
+            read: true,
+            createdAt: true,
           },
-        },
-        _sum: { payAmount: true },
-      }),
-      prisma.contactMessage.findMany({
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          name: true,
-          phone: true,
-          content: true,
-          read: true,
-          createdAt: true,
-        },
-      }),
-      prisma.order.findMany({
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          orderNo: true,
-          status: true,
-          payAmount: true,
-          createdAt: true,
-        },
-      }),
-    ]);
+        }),
+      ]);
 
     return {
       productsCount,
@@ -131,12 +76,7 @@ const getCachedStats = unstable_cache(
       unreadMessagesCount,
       jobsCount,
       totalUsers,
-      pendingOrders,
-      paidOrders,
-      refundingOrders,
-      todayRevenueData,
       recentMessages,
-      recentOrders,
     };
   },
   STATS_CACHE_TAGS,
@@ -158,12 +98,7 @@ export async function getAdminStats(): Promise<AdminStatsData> {
     unreadMessagesCount,
     jobsCount,
     totalUsers,
-    pendingOrders,
-    paidOrders,
-    refundingOrders,
-    todayRevenueData,
     recentMessages,
-    recentOrders,
   } = await getCachedStats(dateStr);
 
   return {
@@ -172,21 +107,10 @@ export async function getAdminStats(): Promise<AdminStatsData> {
     unreadMessages: unreadMessagesCount,
     jobs: jobsCount,
     totalUsers,
-    pendingOrders,
-    paidOrders,
-    refundingOrders,
-    todayRevenue: Number(todayRevenueData._sum.payAmount) || 0,
     recentMessages: recentMessages.map((msg) => ({
       ...msg,
       phone: maskPhone(msg.phone),
       createdAt: new Date(msg.createdAt).toISOString(),
-    })),
-    recentOrders: recentOrders.map((order) => ({
-      id: order.id,
-      orderNo: order.orderNo,
-      status: order.status,
-      payAmount: Number(order.payAmount),
-      createdAt: new Date(order.createdAt).toISOString(),
     })),
   };
 }

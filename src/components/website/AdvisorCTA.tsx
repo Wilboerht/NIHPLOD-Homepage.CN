@@ -4,14 +4,13 @@ import { cn } from "@/lib/utils";
 
 interface AdvisorCTAProps {
   /** 引导文案，支持变体 */
-  variant?: "guide" | "discover" | "empty-cart";
+  variant?: "guide" | "discover";
   className?: string;
 }
 
 const COPY = {
   guide: "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
   discover: "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
-  "empty-cart": "参加肌智派素颜测肤，获取您的专属护肤秘籍——更少产品，科学护肤",
 } as const;
 
 /**

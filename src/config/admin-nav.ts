@@ -8,9 +8,7 @@ import {
   Briefcase,
   UserCheck,
   MessageSquare,
-  ShoppingCart,
   Users,
-  Ticket,
   Shield,
   ShieldCheck,
   ScrollText,
@@ -36,13 +34,6 @@ export const adminNavItems: NavItem[] = [
   { title: "仪表盘", href: "/admin", icon: LayoutDashboard, roles: ["owner", "admin"] },
   // 商城管理
   {
-    title: "订单管理",
-    href: "/admin/orders",
-    icon: ShoppingCart,
-    roles: ["owner", "admin"],
-    group: "商城管理",
-  },
-  {
     title: "用户管理",
     href: "/admin/users",
     icon: Users,
@@ -60,13 +51,6 @@ export const adminNavItems: NavItem[] = [
     title: "分类管理",
     href: "/admin/categories",
     icon: FolderTree,
-    roles: ["owner", "admin"],
-    group: "商城管理",
-  },
-  {
-    title: "优惠券管理",
-    href: "/admin/coupons",
-    icon: Ticket,
     roles: ["owner", "admin"],
     group: "商城管理",
   },
@@ -176,10 +160,6 @@ function parseDeepPath(pathname: string): { title: string; href: string } | null
   // 产品新建: /admin/products/new
   if (pathname === "/admin/products/new") {
     return { title: "新增产品", href: "/admin/products/new" };
-  }
-  // 订单详情: /admin/orders/[id]
-  if (pathname.match(/\/admin\/orders\/[^/]+$/)) {
-    return { title: "订单详情", href: pathname };
   }
   // 职位编辑: /admin/jobs/[id]/edit
   if (pathname.match(/\/admin\/jobs\/[^/]+\/edit/)) {

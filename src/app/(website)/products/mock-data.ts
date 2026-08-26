@@ -18,7 +18,6 @@ export interface MockProduct {
   description: string;
   price: number;
   capacity: string | null;
-  purchaseUrl: string | null;
   purchaseLinks: { id: string; platform: string; url: string }[];
   categoryId: string;
   category: MockCategory;
@@ -26,8 +25,6 @@ export interface MockProduct {
   ingredients: string | null;
   usage: string | null;
   benefits: string[];
-  allowDirectBuy: boolean;
-  stock: number;
 }
 
 /**
@@ -162,7 +159,6 @@ export const mockProducts: MockProduct[] = [
       "适合所有肤质的氨基酸洁面慕斯，能够温和去除污垢和化妆品残留，同时不会剥夺皮肤的天然油脂，提供强效抗氧化保护，对抗泛红和刺激，为后续护肤步骤打开通道。",
     price: 680,
     capacity: "100 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("cleanser"),
     category: mockCategories[0],
@@ -170,8 +166,6 @@ export const mockProducts: MockProduct[] = [
     ingredients: "椰油酰甘氨酸钾（氨基酸表活）、扁柏水、牡丹花水、泛醇、透明质酸钠。",
     usage: "取适量泡沫于湿润的面部，轻柔按摩后用温水洗净。",
     benefits: ["温和清洁", "保湿不紧绷", "深层洁净", "适合所有肤质"],
-    allowDirectBuy: true,
-    stock: 100,
   },
   {
     id: pid("face-scrub"),
@@ -182,7 +176,6 @@ export const mockProducts: MockProduct[] = [
       "一款可以为后续肌肤护理创造理想环境的深度清洁类产品。它可以有效排出堵塞毛孔的有害物质，恢复肌肤自然状态下的再生质感，并平衡肌肤的水油，改善肤质不均和表面脱皮，同时缩小毛孔。",
     price: 780,
     capacity: "50 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("scrub"),
     category: mockCategories[1],
@@ -191,8 +184,6 @@ export const mockProducts: MockProduct[] = [
     usage:
       "清洁皮肤可加少量水或不加水直接使用本品。取适量大小的膏体于指尖，轻轻涂抹于面部。以打圈的方式轻柔按摩脸颊和额头后用清水彻底洗净。",
     benefits: ["去角质", "收缩毛孔", "提亮肤色", "平衡水油"],
-    allowDirectBuy: true,
-    stock: 80,
   },
   {
     id: pid("face-mask"),
@@ -203,7 +194,6 @@ export const mockProducts: MockProduct[] = [
       "这款莱赛尔纤维面膜富含滋养和修护成分，能够深入肌肤，延缓初老迹象，强化肌肤天然屏障和免疫力，帮助肌肤更好地应对偶尔出现的失衡状态；尤其适合激光治疗后作为舒缓护理使用。",
     price: 1350,
     capacity: "30g × 4",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("mask"),
     category: mockCategories[2],
@@ -212,8 +202,6 @@ export const mockProducts: MockProduct[] = [
     usage:
       "洁面后，取出面膜敷于面部，静享 10--15 分钟后取下，可适当按摩面部，将剩余精华液彻底吸收。",
     benefits: ["密集修护", "修复屏障", "深层保湿", "提亮焕肤"],
-    allowDirectBuy: true,
-    stock: 200,
   },
   {
     id: pid("serum"),
@@ -224,7 +212,6 @@ export const mockProducts: MockProduct[] = [
       "一款含多种珍贵成分及天然提取物的高品质精华。让真正的营养和修复因子进入皮肤，帮助皮肤保持紧致，恢复健康；可以有效延缓皮肤的自然衰老。让皮肤看起来更年轻、更紧致。",
     price: 4500,
     capacity: "30 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("serum"),
     category: mockCategories[3],
@@ -233,8 +220,6 @@ export const mockProducts: MockProduct[] = [
       "羟丙基四氢吡喃三醇（玻色因）、富勒烯、棕榈酰三肽-5、双歧杆菌发酵溶胞物、α-熊果苷、曲克芦丁、烟酰胺",
     usage: "深层清洁皮肤后，在指尖涂抹精华液，轻轻涂抹在脸上。轻轻按摩你的脸颊、眼睛和脖子。",
     benefits: ["抗老紧致", "淡化细纹", "提升弹性", "修护肌底", "焕亮光采"],
-    allowDirectBuy: true,
-    stock: 50,
   },
   {
     id: pid("face-cream"),
@@ -245,7 +230,6 @@ export const mockProducts: MockProduct[] = [
       "一款珍贵的面部霜，有助于让肌肤呈现出美丽、有弹性且光滑的质感。它有多种保湿和修复成分，能有效改善与皮肤长期不当维护导致的不良状况。",
     price: 2800,
     capacity: "50 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("cream"),
     category: mockCategories[4],
@@ -253,8 +237,6 @@ export const mockProducts: MockProduct[] = [
     ingredients: "羟丙基四氢吡喃三醇（玻色因）、神经酰胺 NP、泛醇、红没药醇、燕麦仁油",
     usage: "深层清洁皮肤后，在指尖涂抹面霜，轻轻涂抹在脸上。轻轻按摩你的脸颊和眼睛。",
     benefits: ["抗衰老", "深层滋养", "紧致提升", "保湿锁水", "修护屏障"],
-    allowDirectBuy: true,
-    stock: 60,
   },
   {
     id: pid("hand-cream"),
@@ -265,7 +247,6 @@ export const mockProducts: MockProduct[] = [
       "一款将滋养与修护成分深入手部肌肤的奢华护手霜。不仅能即时滋润干燥、抚平细纹，更能持续强化手部屏障，改善松弛，促进恢复肌肤原有的弹性和质地。",
     price: 480,
     capacity: "25 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("hand-cream"),
     category: mockCategories[6],
@@ -274,8 +255,6 @@ export const mockProducts: MockProduct[] = [
     usage:
       "取适量乳霜于手掌或手背上，然后均匀涂抹于整个手部。对于特别干燥或严重脱水的肌肤，建议使用较多的频率和用量。",
     benefits: ["深层滋润", "淡化细纹", "柔嫩双手", "长效保湿"],
-    allowDirectBuy: true,
-    stock: 150,
   },
   {
     id: pid("body-lotion"),
@@ -286,7 +265,6 @@ export const mockProducts: MockProduct[] = [
       "一款采用超过 20 种珍贵成分和提取物的身体乳。它能帮助你更好的增强皮肤的天然防御机制，有效滋养和保湿；并能改善皮肤密度和弹性。",
     price: 1000,
     capacity: "250 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("body-care"),
     category: mockCategories[7],
@@ -294,8 +272,6 @@ export const mockProducts: MockProduct[] = [
     ingredients: "羟丙基四氢吡喃三醇（玻色因）、三叶鬼针草、光甘草定、烟酰胺、乳酸菌发酵产物",
     usage: "清洁全身后，取适量本产品涂抹于需要护理的部位，并以打圈的方式轻轻按摩至完全吸收。",
     benefits: ["全身滋养", "持久保湿", "柔滑细腻", "快速吸收"],
-    allowDirectBuy: true,
-    stock: 120,
   },
   {
     id: pid("sunscreen"),
@@ -306,7 +282,6 @@ export const mockProducts: MockProduct[] = [
       "一款清透不粘腻的防晒乳，提供广谱防护的同时滋润肌肤，适合日常使用，质地轻盈易推开，不堵塞毛孔。",
     price: 580,
     capacity: "50 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("sunscreen"),
     category: mockCategories[5],
@@ -314,8 +289,6 @@ export const mockProducts: MockProduct[] = [
     ingredients: "二氧化钛、氧化锌、维生素E、甘油",
     usage: "出门前15分钟取适量均匀涂抹于面部及颈部，每隔2-3小时补涂一次。",
     benefits: ["广谱防护", "清透不粘腻", "滋润保湿", "适合日常"],
-    allowDirectBuy: true,
-    stock: 90,
   },
   {
     id: pid("treatment-oil"),
@@ -325,7 +298,6 @@ export const mockProducts: MockProduct[] = [
     description: "富含多种植物精华油的护理油，深层滋养肌肤，修护干燥损伤，令肌肤重现柔嫩光泽。",
     price: 1600,
     capacity: "30 ml",
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("treatment"),
     category: mockCategories[8],
@@ -333,8 +305,6 @@ export const mockProducts: MockProduct[] = [
     ingredients: "摩洛哥坚果油、玫瑰果油、荷荷巴油、维生素E",
     usage: "取2-3滴于掌心温热后，均匀按压于面部及颈部，可单独使用或加入面霜中。",
     benefits: ["深层滋养", "修护干燥", "提亮肤色", "柔嫩光泽"],
-    allowDirectBuy: true,
-    stock: 70,
   },
   {
     id: pid("gift-box"),
@@ -344,7 +314,6 @@ export const mockProducts: MockProduct[] = [
     description: "甄选NIHPLOD明星产品组合，精美礼盒包装，是馈赠亲友或犒赏自己的理想之选。",
     price: 6350,
     capacity: null,
-    purchaseUrl: null,
     purchaseLinks,
     categoryId: cat("gift-box"),
     category: mockCategories[9],
@@ -352,7 +321,5 @@ export const mockProducts: MockProduct[] = [
     ingredients: null,
     usage: null,
     benefits: ["明星组合", "精美包装", "馈赠佳品", "完整护肤方案"],
-    allowDirectBuy: true,
-    stock: 30,
   },
 ];

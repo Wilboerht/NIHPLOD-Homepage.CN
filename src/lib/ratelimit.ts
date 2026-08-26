@@ -106,24 +106,6 @@ export const RATE_LIMIT_PRESETS = {
   "chat-user": { maxRequests: 15, windowMs: 60 * 1000 },
   /** OSS 签名获取限制 - 每分钟 20 次 */
   "oss-sign": { maxRequests: 20, windowMs: 60 * 1000 },
-  /** 支付创建限制 - 每分钟 10 次（防止恶意支付订单创建） */
-  "payment-create": { maxRequests: 10, windowMs: 60 * 1000 },
-  /** 退款申请限制 - 每分钟 5 次（防止滥用） */
-  "refund-request": { maxRequests: 5, windowMs: 60 * 1000 },
-  /** 用户级支付限制 - 每分钟 20 次 */
-  "payment-user": { maxRequests: 20, windowMs: 60 * 1000 },
-  /** 订单创建 - IP 级 - 每分钟 20 次 */
-  "order-create": { maxRequests: 20, windowMs: 60 * 1000 },
-  /** 订单创建 - 用户级 - 每分钟 5 次 */
-  "order-create-user": { maxRequests: 5, windowMs: 60 * 1000 },
-  /** 微信支付回调 - IP 级 - 每分钟 120 次 */
-  "pay-notify": { maxRequests: 120, windowMs: 60 * 1000 },
-  /** 支付宝支付回调 - IP 级 - 每分钟 120 次 */
-  "alipay-notify": { maxRequests: 120, windowMs: 60 * 1000 },
-  /** 微信退款回调 - IP 级 - 每分钟 120 次 */
-  "refund-notify": { maxRequests: 120, windowMs: 60 * 1000 },
-  /** 支付宝退款回调 - IP 级 - 每分钟 120 次 */
-  "alipay-refund-notify": { maxRequests: 120, windowMs: 60 * 1000 },
   /** Token 刷新限制 - 每 5 分钟 10 次 */
   refresh: { maxRequests: 10, windowMs: 5 * 60 * 1000 },
   /** 密码重置限制 - 每 15 分钟 5 次 */
@@ -132,10 +114,6 @@ export const RATE_LIMIT_PRESETS = {
   "admin-login": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 管理员 TOTP 二次验证限制 - 每 5 分钟 3 次 */
   "admin-totp": { maxRequests: 3, windowMs: 5 * 60 * 1000 },
-  /** 结算数据查询 - IP 级 - 每分钟 30 次（含地址/优惠券敏感信息） */
-  "checkout-data": { maxRequests: 30, windowMs: 60 * 1000 },
-  /** 结算数据查询 - 用户级 - 每分钟 15 次 */
-  "checkout-data-user": { maxRequests: 15, windowMs: 60 * 1000 },
   /** OAuth 授权端点 - 每分钟 30 次 */
   "oauth-authorize": { maxRequests: 30, windowMs: 60 * 1000 },
   /** OAuth Token 端点 - 每分钟 60 次 */

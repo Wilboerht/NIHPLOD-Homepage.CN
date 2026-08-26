@@ -49,7 +49,6 @@ export const ProductSchema = z.object({
   price: z.coerce.number().min(0, "价格不能为负数"),
   capacity: z.string().max(50, "规格容量不能超过50个字符").optional().nullable(),
   origin: z.string().max(100, "产地不能超过100个字符").optional().nullable(),
-  purchaseUrl: z.string().url().or(z.literal("")).optional().nullable(),
   purchaseLinks: z.array(PurchaseLinkSchema).optional(), // 多平台购买链接
   description: z.string().min(1, "产品描述不能为空").max(5000, "描述不能超过5000个字符"),
   ingredients: z.string().max(5000, "成分说明不能超过5000个字符").optional().nullable(),
@@ -62,9 +61,6 @@ export const ProductSchema = z.object({
   order: z.number().int().min(0).default(0),
   featured: z.boolean().default(false),
   published: z.boolean().default(false),
-  // 站内购买
-  allowDirectBuy: z.boolean().default(false),
-  stock: z.number().int().min(0, "库存不能为负数").default(0),
   // GEO FAQ 数据
   geoFaqs: z
     .array(

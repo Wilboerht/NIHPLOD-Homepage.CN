@@ -68,26 +68,6 @@ export async function POST(request: NextRequest) {
         break;
 
       case "delete": {
-        // 检查是否有产品被订单引用
-        const referencedItems = await prisma.orderItem.findMany({
-          where: { productId: { in: ids } },
-          select: { productId: true },
-          distinct: ["productId"],
-        });
-        if (referencedItems.length > 0) {
-          const referencedIds = referencedItems.map((i) => i.productId);
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: "REFERENCED_PRODUCTS",
-                message: "部分产品已被订单引用，无法删除",
-                referencedIds,
-              },
-            },
-            { status: 409 }
-          );
-        }
         // 删除关联的物理图片文件（先查，后删DB，最后删文件）
         const images = await prisma.image.findMany({
           where: { productId: { in: ids } },

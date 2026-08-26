@@ -12,7 +12,6 @@ import {
   Shield,
   Users,
   TrendingUp,
-  ShoppingCart,
 } from "lucide-react";
 import { StatsCard } from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
@@ -42,32 +41,6 @@ const quickActions = [
   { title: "发布职位", href: "/admin/jobs/new", icon: Briefcase },
   { title: "查看网站", href: "/", icon: Eye, external: true },
 ];
-
-// 订单状态徽章
-const ORDER_STATUS_MAP: Record<string, { label: string; className: string }> = {
-  PENDING: { label: "待支付", className: "bg-amber-50 text-amber-600 border-amber-200" },
-  PAYING: { label: "支付中", className: "bg-blue-50 text-blue-600 border-blue-200" },
-  PAID: { label: "已支付", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  PROCESSING: { label: "处理中", className: "bg-blue-50 text-blue-600 border-blue-200" },
-  SHIPPED: { label: "已发货", className: "bg-purple-50 text-purple-600 border-purple-200" },
-  DELIVERED: { label: "已签收", className: "bg-teal-50 text-teal-600 border-teal-200" },
-  COMPLETED: { label: "已完成", className: "bg-gray-50 text-gray-600 border-gray-200" },
-  CANCELLED: { label: "已取消", className: "bg-gray-100 text-gray-500 border-gray-200" },
-  REFUNDING: { label: "退款中", className: "bg-orange-50 text-orange-600 border-orange-200" },
-  REFUNDED: { label: "已退款", className: "bg-red-50 text-red-500 border-red-200" },
-};
-
-function OrderStatusBadge({ status }: { status: string }) {
-  const config = ORDER_STATUS_MAP[status] || {
-    label: status,
-    className: "bg-gray-100 text-gray-500 border-gray-200",
-  };
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-xs ${config.className}`}>
-      {config.label}
-    </span>
-  );
-}
 
 // SSO 快捷操作
 const ssoQuickActions = [
@@ -134,20 +107,6 @@ export default async function AdminDashboard() {
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="今日销售额"
-          value={`¥${stats.todayRevenue.toFixed(2)}`}
-          icon={<TrendingUp className="h-6 w-6" />}
-          description="今日已支付订单金额"
-        />
-        <Link href="/admin/orders?status=PENDING" className="block">
-          <StatsCard
-            title="待处理订单"
-            value={stats.pendingOrders}
-            icon={<ShoppingCart className="h-6 w-6" />}
-            description="待支付订单，点击查看"
-          />
-        </Link>
-        <StatsCard
           title="用户总数"
           value={stats.totalUsers}
           icon={<Users className="h-6 w-6" />}
@@ -202,45 +161,6 @@ export default async function AdminDashboard() {
 
       {/* 下方内容区域 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 最近订单 */}
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-brand-charcoal">最近订单</h2>
-            <Link href="/admin/orders" className="text-sm text-brand-primary hover:underline">
-              查看全部
-            </Link>
-          </div>
-
-          {stats.recentOrders && stats.recentOrders.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recentOrders.map((order) => (
-                <Link
-                  key={order.id}
-                  href={`/admin/orders/${order.id}`}
-                  className="block rounded-lg p-3 transition-colors hover:bg-brand-charcoal/[0.03]"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs text-brand-charcoal/70">
-                      {order.orderNo}
-                    </span>
-                    <span className="text-xs text-brand-charcoal/50">
-                      {formatRelativeTime(order.createdAt)}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-brand-charcoal">
-                      ¥{Number(order.payAmount).toFixed(2)}
-                    </span>
-                    <OrderStatusBadge status={order.status} />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <Empty title="暂无订单" />
-          )}
-        </div>
-
         {/* 最近留言 */}
         <div className="rounded-xl bg-white p-6 shadow-sm lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">

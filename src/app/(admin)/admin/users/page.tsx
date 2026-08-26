@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * 用户管理页面
@@ -12,8 +12,6 @@ import {
   Eye,
   User,
   Loader2,
-  MapPin,
-  Ticket,
   Smartphone,
   Link2,
   Shield,
@@ -48,7 +46,6 @@ interface UserItem {
   status: UserStatus;
   membershipLevel: string | null;
   totalPoints: number | null;
-  orderCount: number;
   createdAt: string;
 }
 
@@ -101,32 +98,6 @@ interface UserDetail {
   }[];
   createdAt: string;
   updatedAt: string;
-  orders: {
-    id: string;
-    orderNo: string;
-    status: string;
-    payAmount: number;
-    createdAt: string;
-  }[];
-  addresses: {
-    id: string;
-    name: string;
-    phone: string;
-    province: string;
-    city: string;
-    district: string;
-    detail: string;
-    isDefault: boolean;
-  }[];
-  userCoupons: {
-    id: string;
-    coupon: {
-      name: string;
-      type: string;
-      value: number;
-    };
-  }[];
-  _count: { orders: number };
 }
 
 // 外部身份平台标签（与后端 ExternalIdentity.provider 枚举一一对应；未知 provider 原样显示）
@@ -145,25 +116,6 @@ function getIdentityNickname(metadata: unknown): string | null {
   }
   return null;
 }
-
-const orderStatusMap: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
-  }
-> = {
-  PENDING: { label: "待支付", variant: "warning" },
-  PAYING: { label: "支付中", variant: "primary" },
-  PAID: { label: "已支付", variant: "success" },
-  PROCESSING: { label: "处理中", variant: "primary" },
-  SHIPPED: { label: "已发货", variant: "success" },
-  DELIVERED: { label: "已签收", variant: "success" },
-  COMPLETED: { label: "已完成", variant: "default" },
-  CANCELLED: { label: "已取消", variant: "danger" },
-  REFUNDING: { label: "退款中", variant: "warning" },
-  REFUNDED: { label: "已退款", variant: "danger" },
-};
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -320,15 +272,6 @@ export default function AdminUsersPage() {
     return new Date(date).toLocaleString("zh-CN");
   };
 
-  const formatDateShort = (date: string) => {
-    return new Date(date).toLocaleDateString("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -456,9 +399,6 @@ export default function AdminUsersPage() {
                 状态
               </th>
               <th scope="col" className="px-4 py-3">
-                订单数
-              </th>
-              <th scope="col" className="px-4 py-3">
                 注册时间
               </th>
               <th scope="col" className="px-4 py-3">
@@ -468,10 +408,10 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={9} />)
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={8}>
                   <div className="flex justify-center py-12">
                     <Empty title="暂无用户" />
                   </div>
@@ -531,7 +471,6 @@ export default function AdminUsersPage() {
                       {userStatusMap[user.status].label}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3">{user.orderCount}</td>
                   <td className="px-4 py-3 text-brand-charcoal/50">
                     {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                   </td>
@@ -712,181 +651,50 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="rounded-xl bg-brand-charcoal/[0.03] p-5">
-                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">数据统计</h3>
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">会员信息</h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">订单数量</dt>
-                    <dd className="font-medium">{detailUser._count?.orders ?? 0}</dd>
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                      <Award className="h-3.5 w-3.5" />
+                      会员等级
+                    </dt>
+                    <dd>
+                      {detailUser.membershipLevel &&
+                      membershipLevelMap[detailUser.membershipLevel] ? (
+                        <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
+                          {membershipLevelMap[detailUser.membershipLevel].emoji}{" "}
+                          {membershipLevelMap[detailUser.membershipLevel].label}
+                        </Badge>
+                      ) : (
+                        <span className="text-brand-charcoal/40">未设置</span>
+                      )}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">收货地址</dt>
-                    <dd className="font-medium">{detailUser.addresses?.length ?? 0}</dd>
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                      <Coins className="h-3.5 w-3.5" />
+                      累计积分
+                    </dt>
+                    <dd className="font-mono font-medium">
+                      {detailUser.totalPoints != null
+                        ? detailUser.totalPoints.toLocaleString()
+                        : "0"}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">可用优惠券</dt>
-                    <dd className="font-medium">{detailUser.userCoupons?.length ?? 0}</dd>
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                      <Wallet className="h-3.5 w-3.5" />
+                      累计消费
+                    </dt>
+                    <dd className="font-mono font-medium">
+                      {detailUser.totalSpent != null
+                        ? `¥${detailUser.totalSpent.toLocaleString()}`
+                        : "¥0"}
+                    </dd>
                   </div>
                 </dl>
-
-                <div className="mt-5 border-t border-brand-charcoal/15 pt-4">
-                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">会员信息</h3>
-                  <dl className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
-                        <Award className="h-3.5 w-3.5" />
-                        会员等级
-                      </dt>
-                      <dd>
-                        {detailUser.membershipLevel &&
-                        membershipLevelMap[detailUser.membershipLevel] ? (
-                          <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
-                            {membershipLevelMap[detailUser.membershipLevel].emoji}{" "}
-                            {membershipLevelMap[detailUser.membershipLevel].label}
-                          </Badge>
-                        ) : (
-                          <span className="text-brand-charcoal/40">未设置</span>
-                        )}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
-                        <Coins className="h-3.5 w-3.5" />
-                        累计积分
-                      </dt>
-                      <dd className="font-mono font-medium">
-                        {detailUser.totalPoints != null
-                          ? detailUser.totalPoints.toLocaleString()
-                          : "0"}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
-                        <Wallet className="h-3.5 w-3.5" />
-                        累计消费
-                      </dt>
-                      <dd className="font-mono font-medium">
-                        {detailUser.totalSpent != null
-                          ? `¥${detailUser.totalSpent.toLocaleString()}`
-                          : "¥0"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
               </div>
             </div>
-
-            {/* 收货地址 */}
-            {detailUser.addresses && detailUser.addresses.length > 0 && (
-              <div>
-                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-brand-charcoal">
-                  <MapPin className="h-4 w-4" />
-                  收货地址
-                </h3>
-                <div className="space-y-2">
-                  {detailUser.addresses.map((addr) => (
-                    <div
-                      key={addr.id}
-                      className="border-brand-charcoal/8 rounded-xl border bg-white p-4 text-sm"
-                    >
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="font-medium">
-                          {addr.name} {addr.phone}
-                        </span>
-                        {addr.isDefault && (
-                          <Badge variant="success" className="px-1.5 py-0 text-xs">
-                            默认
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-brand-charcoal/50">
-                        {addr.province} {addr.city} {addr.district} {addr.detail}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 优惠券 */}
-            {detailUser.userCoupons && detailUser.userCoupons.length > 0 && (
-              <div>
-                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-medium text-brand-charcoal">
-                  <Ticket className="h-4 w-4" />
-                  可用优惠券
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {detailUser.userCoupons.map((uc) => (
-                    <div
-                      key={uc.id}
-                      className="rounded-lg border border-dashed border-brand-primary/40 bg-brand-primary/5 px-3 py-1.5 text-xs"
-                    >
-                      <span className="font-medium text-brand-charcoal">{uc.coupon.name}</span>
-                      <span className="ml-1 text-brand-primary">
-                        {uc.coupon.type === "DISCOUNT_PERCENT"
-                          ? `${(uc.coupon.value * 10).toFixed(1)}折`
-                          : `¥${uc.coupon.value}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 最近订单 */}
-            {detailUser.orders && detailUser.orders.length > 0 && (
-              <div>
-                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">最近订单</h3>
-                <div className="border-brand-charcoal/8 overflow-hidden rounded-xl border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-brand-charcoal/60">
-                        <th scope="col" className="px-4 py-2 font-medium">
-                          订单号
-                        </th>
-                        <th scope="col" className="px-4 py-2 font-medium">
-                          状态
-                        </th>
-                        <th scope="col" className="px-4 py-2 font-medium">
-                          金额
-                        </th>
-                        <th scope="col" className="px-4 py-2 font-medium">
-                          时间
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {detailUser.orders.map((order) => {
-                        const status = orderStatusMap[order.status] || {
-                          label: order.status,
-                          variant: "default",
-                        };
-                        return (
-                          <tr key={order.id} className="hover:bg-brand-charcoal/[0.03]">
-                            <td className="px-4 py-2">
-                              <button
-                                className="text-brand-primary hover:underline"
-                                onClick={() => router.push(`/admin/orders/${order.id}`)}
-                              >
-                                {order.orderNo}
-                              </button>
-                            </td>
-                            <td className="px-4 py-2">
-                              <Badge variant={status.variant} className="px-1.5 py-0 text-xs">
-                                {status.label}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-2">¥{order.payAmount}</td>
-                            <td className="px-4 py-2 text-brand-charcoal/50">
-                              {formatDateShort(order.createdAt)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </Modal>

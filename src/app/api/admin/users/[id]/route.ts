@@ -68,44 +68,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
         },
         createdAt: true,
         updatedAt: true,
-        orders: {
-          take: 10,
-          orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            orderNo: true,
-            status: true,
-            payAmount: true,
-            createdAt: true,
-          },
-        },
-        addresses: {
-          orderBy: { isDefault: "desc", createdAt: "desc" },
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            province: true,
-            city: true,
-            district: true,
-            detail: true,
-            isDefault: true,
-          },
-        },
-        userCoupons: {
-          where: { status: "UNUSED" },
-          select: {
-            id: true,
-            coupon: {
-              select: {
-                name: true,
-                type: true,
-                value: true,
-              },
-            },
-          },
-        },
-        _count: { select: { orders: true } },
       },
     });
 
@@ -122,10 +84,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
         user: {
           ...user,
           phone: maskPhone(user.phone),
-          addresses: user.addresses.map((addr) => ({
-            ...addr,
-            phone: maskPhone(addr.phone),
-          })),
         },
       },
     });
@@ -208,13 +166,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       // 加入 access token 黑名单，消除剩余 15 分钟窗口期
       const reason = status === "SUSPENDED" ? "账号已被临时冻结" : "账号已被永久封禁";
       await blacklistUserTokens(user.id, reason);
-
-      // 级联清理：清空购物车、过期未使用优惠券
-      await prisma.cartItem.deleteMany({ where: { userId: id } });
-      await prisma.userCoupon.updateMany({
-        where: { userId: id, status: "UNUSED" },
-        data: { status: "EXPIRED" },
-      });
     } else {
       // 解封时从黑名单移除
       await removeFromBlacklist(user.id);
@@ -403,13 +354,6 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     } catch (err) {
       apiConsole.warn("[AdminUserDelete] Webhook 通知失败:", err);
     }
-
-    // 级联清理
-    await prisma.cartItem.deleteMany({ where: { userId: id } });
-    await prisma.userCoupon.updateMany({
-      where: { userId: id, status: "UNUSED" },
-      data: { status: "EXPIRED" },
-    });
 
     await createAuditLog({
       action: "user_deleted",

@@ -5,13 +5,13 @@
  * 等级体系（2026-08 重构）：普通 / 高级 / VIP / SVIP，按历史购买金额划定
  */
 import { useEffect, useState, useCallback } from "react";
-import { Crown, Users, Coins, Save, RefreshCw, Gift, Plus, Trash2 } from "lucide-react";
+import { Crown, Users, Coins, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface LevelStat {
@@ -43,24 +43,6 @@ interface MembershipBenefit {
   colorClass: string | null;
 }
 
-interface PointCampaign {
-  id: string;
-  name: string;
-  startAt: string;
-  endAt: string;
-  multiplier: number;
-  active: boolean;
-}
-
-interface CampaignForm {
-  id?: string;
-  name: string;
-  startAt: string;
-  endAt: string;
-  multiplier: number;
-  active: boolean;
-}
-
 const LEVEL_LABELS: Record<string, string> = {
   REGULAR: "普通会员",
   ADVANCED: "高级会员",
@@ -82,17 +64,9 @@ const LEVEL_ICON_COLORS: Record<string, string> = {
   SVIP: "text-violet-500",
 };
 
-/** 格式化时间为 datetime-local 输入框值 */
-function toLocalInput(dateStr: string): string {
-  const d = new Date(dateStr);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export default function AdminVIPPage() {
   const [stats, setStats] = useState<VIPStats | null>(null);
   const [benefits, setBenefits] = useState<MembershipBenefit[]>([]);
-  const [campaigns, setCampaigns] = useState<PointCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [editBenefit, setEditBenefit] = useState<MembershipBenefit | null>(null);
   const [saving, setSaving] = useState(false);
@@ -100,20 +74,16 @@ export default function AdminVIPPage() {
   const [adjustForm, setAdjustForm] = useState({ userId: "", points: 0, note: "" });
   const [adjusting, setAdjusting] = useState(false);
   const [jsonError, setJsonError] = useState("");
-  const [campaignForm, setCampaignForm] = useState<CampaignForm | null>(null);
-  const [campaignSaving, setCampaignSaving] = useState(false);
   const { success, error: showError } = useToast();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [vipData, campaignData] = await Promise.all([
-        apiGet<{ stats: VIPStats; benefits: MembershipBenefit[] }>("/api/admin/vip"),
-        apiGet<{ campaigns: PointCampaign[] }>("/api/admin/vip/campaigns"),
-      ]);
+      const vipData = await apiGet<{ stats: VIPStats; benefits: MembershipBenefit[] }>(
+        "/api/admin/vip"
+      );
       setStats(vipData.stats);
       setBenefits(vipData.benefits);
-      setCampaigns(campaignData.campaigns);
     } catch {
       showError("加载失败");
     } finally {
@@ -165,67 +135,6 @@ export default function AdminVIPPage() {
       showError("调整失败");
     } finally {
       setAdjusting(false);
-    }
-  };
-
-  const openNewCampaign = () => {
-    setCampaignForm({
-      name: "",
-      startAt: "",
-      endAt: "",
-      multiplier: 2,
-      active: true,
-    });
-  };
-
-  const openEditCampaign = (c: PointCampaign) => {
-    setCampaignForm({
-      id: c.id,
-      name: c.name,
-      startAt: toLocalInput(c.startAt),
-      endAt: toLocalInput(c.endAt),
-      multiplier: c.multiplier,
-      active: c.active,
-    });
-  };
-
-  const handleSaveCampaign = async () => {
-    if (!campaignForm) return;
-    if (!campaignForm.name || !campaignForm.startAt || !campaignForm.endAt) {
-      showError("请填写完整信息");
-      return;
-    }
-    setCampaignSaving(true);
-    try {
-      const payload = {
-        name: campaignForm.name,
-        startAt: new Date(campaignForm.startAt).toISOString(),
-        endAt: new Date(campaignForm.endAt).toISOString(),
-        multiplier: campaignForm.multiplier,
-        active: campaignForm.active,
-      };
-      if (campaignForm.id) {
-        await apiPut("/api/admin/vip/campaigns", { id: campaignForm.id, ...payload });
-      } else {
-        await apiPost("/api/admin/vip/campaigns", payload);
-      }
-      success("保存成功");
-      setCampaignForm(null);
-      fetchData();
-    } catch {
-      showError("保存失败");
-    } finally {
-      setCampaignSaving(false);
-    }
-  };
-
-  const handleDeleteCampaign = async (id: string) => {
-    try {
-      await apiDelete(`/api/admin/vip/campaigns?id=${id}`);
-      success("已删除");
-      fetchData();
-    } catch {
-      showError("删除失败");
     }
   };
 
@@ -356,86 +265,6 @@ export default function AdminVIPPage() {
         </div>
       </div>
 
-      {/* 积分活动配置 */}
-      <div className="rounded-xl border bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-lg font-medium text-gray-800">积分活动</h2>
-            <p className="mt-1 text-xs text-gray-500">
-              活动期间下单积分按倍数发放（与生日 3 倍取最大值，不叠加）
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={openNewCampaign}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            新建活动
-          </Button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
-                <th className="px-6 py-3 font-medium">活动名称</th>
-                <th className="px-6 py-3 font-medium">时间区间</th>
-                <th className="px-6 py-3 font-medium">积分倍数</th>
-                <th className="px-6 py-3 font-medium">状态</th>
-                <th className="px-6 py-3 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {campaigns.length > 0 ? (
-                campaigns.map((c) => {
-                  const now = new Date();
-                  const started = new Date(c.startAt) <= now;
-                  const ended = new Date(c.endAt) < now;
-                  return (
-                    <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-700">{c.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {toLocalInput(c.startAt).replace("T", " ")} ~{" "}
-                        {toLocalInput(c.endAt).replace("T", " ")}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">x{c.multiplier}</td>
-                      <td className="px-6 py-4">
-                        {!c.active ? (
-                          <Badge className="bg-gray-100 text-gray-500">已停用</Badge>
-                        ) : ended ? (
-                          <Badge className="bg-gray-100 text-gray-500">已结束</Badge>
-                        ) : started ? (
-                          <Badge className="bg-green-100 text-green-700">进行中</Badge>
-                        ) : (
-                          <Badge className="bg-blue-100 text-blue-700">未开始</Badge>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditCampaign(c)}>
-                            编辑
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteCampaign(c.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-400">
-                    <Gift className="mx-auto mb-2 h-5 w-5" />
-                    暂无积分活动
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* 编辑权益弹窗 */}
       {editBenefit && (
         <Modal open={!!editBenefit} onClose={() => setEditBenefit(null)}>
@@ -505,79 +334,6 @@ export default function AdminVIPPage() {
               <Button onClick={handleSaveBenefit} disabled={saving}>
                 <Save className="mr-1.5 h-4 w-4" />
                 {saving ? "保存中..." : "保存"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* 新建/编辑积分活动弹窗 */}
-      {campaignForm && (
-        <Modal open={!!campaignForm} onClose={() => setCampaignForm(null)}>
-          <div className="w-full max-w-md rounded-xl bg-white p-6">
-            <h2 className="mb-4 text-lg font-medium">
-              {campaignForm.id ? "编辑积分活动" : "新建积分活动"}
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs text-gray-500">活动名称</label>
-                <Input
-                  placeholder="如：618 大促 2 倍积分"
-                  value={campaignForm.name}
-                  onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs text-gray-500">开始时间</label>
-                  <Input
-                    type="datetime-local"
-                    value={campaignForm.startAt}
-                    onChange={(e) =>
-                      setCampaignForm({ ...campaignForm, startAt: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-gray-500">结束时间</label>
-                  <Input
-                    type="datetime-local"
-                    value={campaignForm.endAt}
-                    onChange={(e) => setCampaignForm({ ...campaignForm, endAt: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-gray-500">积分倍数 (2-10)</label>
-                <Input
-                  type="number"
-                  min={2}
-                  max={10}
-                  value={campaignForm.multiplier}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    setCampaignForm({ ...campaignForm, multiplier: Number.isNaN(val) ? 2 : val });
-                  }}
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={campaignForm.active}
-                  onChange={(e) =>
-                    setCampaignForm({ ...campaignForm, active: e.target.checked })
-                  }
-                />
-                启用该活动
-              </label>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setCampaignForm(null)}>
-                取消
-              </Button>
-              <Button onClick={handleSaveCampaign} disabled={campaignSaving}>
-                <Save className="mr-1.5 h-4 w-4" />
-                {campaignSaving ? "保存中..." : "保存"}
               </Button>
             </div>
           </div>

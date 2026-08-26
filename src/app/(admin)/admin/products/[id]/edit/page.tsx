@@ -35,7 +35,6 @@ interface ProductData {
   price: number;
   capacity: string | null;
   origin: string | null;
-  purchaseUrl: string | null;
   purchaseLinks: PurchaseLinkItem[];
   description: string;
   ingredients: string | null;
@@ -45,8 +44,6 @@ interface ProductData {
   order: number;
   featured: boolean;
   published: boolean;
-  allowDirectBuy: boolean;
-  stock: number;
   geoFaqs: { question: string; answer: string }[] | null;
 }
 
@@ -78,7 +75,6 @@ export default function EditProductPage() {
           price: data.price,
           capacity: data.capacity || "",
           origin: data.origin || "",
-          purchaseUrl: data.purchaseUrl || "",
           purchaseLinks: (data.purchaseLinks || []).map(
             (link: PurchaseLinkItem, index: number) => ({
               id: link.id,
@@ -100,8 +96,6 @@ export default function EditProductPage() {
           order: data.order,
           featured: data.featured,
           published: data.published,
-          allowDirectBuy: data.allowDirectBuy ?? false,
-          stock: data.stock ?? 0,
           geoFaqs: data.geoFaqs ?? null,
         });
       })

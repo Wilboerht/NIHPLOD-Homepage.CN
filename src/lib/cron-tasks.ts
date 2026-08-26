@@ -4,10 +4,6 @@
  * 通过 ENABLE_LOCAL_CRON=true 环境变量启用
  */
 import cron from "node-cron";
-import { autoCancelExpiredOrders, autoCompleteShippedOrders } from "./order";
-import { queryAndFulfillExpiredPendingOrders } from "./payment-query";
-import { downloadWechatPlatformCerts } from "./wechat-pay";
-import { autoExpireUserCoupons } from "./coupon";
 import {
   cleanupExpiredRefreshTokens,
   cleanupOldLoginAttempts,
@@ -21,46 +17,12 @@ import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
-import { cleanupOldTransactionRawData } from "./transaction";
 import { apiConsole } from "@/lib/logger";
 
 interface ScheduledTask {
   name: string;
   cronExpression: string;
   handler: () => Promise<void>;
-}
-
-// 微信支付平台证书刷新失败后的重试间隔：5/15/30 分钟，最多重试 3 次
-const WECHAT_CERT_RETRY_DELAYS_MS = [5 * 60 * 1000, 15 * 60 * 1000, 30 * 60 * 1000];
-
-/**
- * 刷新微信支付平台证书，失败后按退避间隔有限重试。
- * 证书过期会导致回调验签失败，不能干等 24 小时后的下一调度周期。
- */
-async function refreshWechatCertsWithRetry(attempt = 0): Promise<void> {
-  try {
-    apiConsole.info("[Cron] 开始刷新微信支付平台证书...");
-    const result = await downloadWechatPlatformCerts();
-    if (result.success) {
-      apiConsole.info(`[Cron] 微信支付平台证书刷新完成: ${result.count} 个证书`);
-      return;
-    }
-    throw new Error(result.error || "下载证书返回失败");
-  } catch (error) {
-    if (attempt < WECHAT_CERT_RETRY_DELAYS_MS.length) {
-      const delayMs = WECHAT_CERT_RETRY_DELAYS_MS[attempt];
-      apiConsole.warn(
-        `[Cron] 微信支付平台证书刷新失败，${delayMs / 60000} 分钟后重试（第 ${attempt + 1}/${WECHAT_CERT_RETRY_DELAYS_MS.length} 次）:`,
-        error
-      );
-      setTimeout(() => {
-        void refreshWechatCertsWithRetry(attempt + 1);
-      }, delayMs);
-    } else {
-      // 项目暂无独立告警通道：重试耗尽后 console.error，交由日志采集/监控平台告警
-      apiConsole.error("[Cron] 微信支付平台证书刷新重试耗尽，等待下一调度周期:", error);
-    }
-  }
 }
 
 // 清理类任务连续失败计数：单次失败已在 catch 中 console.error（下周期自愈），
@@ -81,63 +43,6 @@ function markCleanupFailed(taskName: string): void {
 
 // 定义所有定时任务
 const tasks: ScheduledTask[] = [
-  {
-    name: "Refresh WechatPay Platform Certificates",
-    cronExpression: "0 1 * * *", // 每天凌晨 1 点刷新
-    handler: () => refreshWechatCertsWithRetry(),
-  },
-  {
-    name: "Query Expired Pending Orders",
-    cronExpression: "*/30 * * * *", // 每30分钟执行一次，在自动取消前兜底查询
-    handler: async () => {
-      try {
-        apiConsole.info("[Cron] 开始执行待支付订单主动查询任务...");
-        const result = await queryAndFulfillExpiredPendingOrders(25);
-        apiConsole.info(`[Cron] 主动查询完成: ${result.fulfilledCount} 个订单已支付`);
-      } catch (error) {
-        apiConsole.error("[Cron] 待支付订单主动查询任务失败:", error);
-      }
-    },
-  },
-  {
-    name: "Auto Cancel Expired Orders",
-    cronExpression: "*/30 * * * *", // 每30分钟执行一次
-    handler: async () => {
-      try {
-        apiConsole.info("[Cron] 开始执行订单取消任务...");
-        const result = await autoCancelExpiredOrders(30);
-        apiConsole.info(`[Cron] 订单取消完成: ${result.canceledCount} 个订单被取消`);
-      } catch (error) {
-        apiConsole.error("[Cron] 订单取消任务失败:", error);
-      }
-    },
-  },
-  {
-    name: "Auto Complete Shipped Orders",
-    cronExpression: "0 0 * * *", // 每天午夜执行一次
-    handler: async () => {
-      try {
-        apiConsole.info("[Cron] 开始执行订单完成任务...");
-        const result = await autoCompleteShippedOrders(15);
-        apiConsole.info(`[Cron] 订单完成处理: ${result.completedCount} 个订单自动完成`);
-      } catch (error) {
-        apiConsole.error("[Cron] 订单完成任务失败:", error);
-      }
-    },
-  },
-  {
-    name: "Auto Expire User Coupons",
-    cronExpression: "0 2 * * *", // 每天凌晨 2 点执行
-    handler: async () => {
-      try {
-        apiConsole.info("[Cron] 开始执行优惠券过期清理任务...");
-        const result = await autoExpireUserCoupons();
-        apiConsole.info(`[Cron] 优惠券过期清理完成: ${result.expiredCount} 张优惠券被标记为过期`);
-      } catch (error) {
-        apiConsole.error("[Cron] 优惠券过期清理任务失败:", error);
-      }
-    },
-  },
   {
     name: "Cleanup Expired Refresh Tokens",
     cronExpression: "0 3 * * *", // 每天凌晨 3 点执行
@@ -203,7 +108,7 @@ const tasks: ScheduledTask[] = [
         apiConsole.info(`[Cron] 过期验证码记录清理完成: ${count} 条`);
         markCleanupOk("过期验证码记录");
       } catch (error) {
-        apiConsole.error("[Cron] 验证码记录清理失败:", error);
+        apiConsole.error("[Cron] 过期验证码记录清理失败:", error);
         markCleanupFailed("过期验证码记录");
       }
     },
@@ -250,7 +155,7 @@ const tasks: ScheduledTask[] = [
         );
         markCleanupOk("已撤销会话和 Token");
       } catch (error) {
-        apiConsole.error("[Cron] 已撤销记录清理失败:", error);
+        apiConsole.error("[Cron] 已撤销会话和 Token 清理失败:", error);
         markCleanupFailed("已撤销会话和 Token");
       }
     },
@@ -300,21 +205,6 @@ const tasks: ScheduledTask[] = [
       }
     },
   },
-  {
-    name: "Cleanup Old Transaction RawData",
-    cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
-    handler: async () => {
-      try {
-        apiConsole.info("[Cron] 开始清理过期交易原始数据...");
-        const count = await cleanupOldTransactionRawData();
-        apiConsole.info(`[Cron] 过期交易原始数据清理完成: ${count} 条`);
-        markCleanupOk("过期交易原始数据");
-      } catch (error) {
-        apiConsole.error("[Cron] 交易原始数据清理失败:", error);
-        markCleanupFailed("过期交易原始数据");
-      }
-    },
-  },
 ];
 
 let scheduledTasks: ReturnType<typeof cron.schedule>[] = [];
@@ -340,9 +230,6 @@ export function initializeCronTasks(): void {
   }
 
   apiConsole.info("[Cron] 初始化定时任务...");
-
-  // 启动时立即刷新一次微信证书（带退避重试），避免重启后证书缓存为空导致回调验签失败
-  void refreshWechatCertsWithRetry();
 
   for (const task of tasks) {
     try {

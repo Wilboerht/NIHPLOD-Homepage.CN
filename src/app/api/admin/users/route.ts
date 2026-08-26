@@ -81,7 +81,6 @@ export async function GET(request: NextRequest) {
           membershipLevel: true,
           totalPoints: true,
           createdAt: true,
-          _count: { select: { orders: true } },
         },
       }),
       prisma.user.count({ where }),
@@ -97,7 +96,7 @@ export async function GET(request: NextRequest) {
         return sanitized;
       };
 
-      const csvHeaders = "手机号,昵称,状态,会员等级,积分,订单数,注册时间\n";
+      const csvHeaders = "手机号,昵称,状态,会员等级,积分,注册时间\n";
       const csvRows = users
         .map((user) =>
           [
@@ -106,7 +105,6 @@ export async function GET(request: NextRequest) {
             escapeCSV(user.status),
             escapeCSV(user.membershipLevel),
             user.totalPoints,
-            user._count.orders,
             user.createdAt.toISOString(),
           ].join(",")
         )
@@ -126,7 +124,6 @@ export async function GET(request: NextRequest) {
         users: users.map((user) => ({
           ...user,
           phone: maskPhone(user.phone),
-          orderCount: user._count.orders,
           createdAt: user.createdAt.toISOString(),
         })),
         pagination: {

@@ -142,7 +142,6 @@ interface ProductJsonLdProps {
     images: { url: string; alt?: string | null }[];
     category: { name: string };
     benefits: string[];
-    purchaseUrl?: string | null;
   };
 }
 
@@ -166,25 +165,6 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
     category: product.category.name,
     // 产品功效作为关键词
     keywords: product.benefits.join(", "),
-    offers: {
-      "@type": "Offer",
-      url: product.purchaseUrl || productUrl,
-      priceCurrency: "CNY",
-      price: product.price,
-      priceValidUntil: isoDateDaysFromNow(365),
-      availability: "https://schema.org/InStock",
-      seller: {
-        "@id": `${baseUrl}/#organization`,
-      },
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "CN",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 7,
-        returnMethod: "https://schema.org/ReturnByMail",
-        returnFees: "https://schema.org/FreeReturn",
-      },
-    },
     // 产品规格
     ...(product.capacity && {
       additionalProperty: {

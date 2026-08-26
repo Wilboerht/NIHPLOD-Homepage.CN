@@ -51,7 +51,6 @@ interface FormData {
   price: number;
   capacity: string | null;
   origin: string | null;
-  purchaseUrl: string | null;
   purchaseLinks: PurchaseLinkItem[];
   description: string;
   ingredients: string | null;
@@ -61,9 +60,6 @@ interface FormData {
   order: number;
   featured: boolean;
   published: boolean;
-  // 站内购买
-  allowDirectBuy: boolean;
-  stock: number;
   geoFaqs: { question: string; answer: string }[] | null;
 }
 
@@ -92,7 +88,6 @@ const defaultFormData: FormData = {
   price: 0,
   capacity: "",
   origin: "",
-  purchaseUrl: "",
   purchaseLinks: [],
   description: "",
   ingredients: "",
@@ -102,8 +97,6 @@ const defaultFormData: FormData = {
   order: 0,
   featured: false,
   published: false,
-  allowDirectBuy: false,
-  stock: 0,
   geoFaqs: null,
 };
 
@@ -194,7 +187,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     try {
       ProductSchema.parse({
         ...formData,
-        purchaseUrl: formData.purchaseUrl || null,
         capacity: formData.capacity || null,
         origin: formData.origin || null,
         ingredients: formData.ingredients || null,
@@ -272,7 +264,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         ...formData,
         images: uploadedImages,
         purchaseLinks: validPurchaseLinks,
-        purchaseUrl: formData.purchaseUrl || null,
         capacity: formData.capacity || null,
         origin: formData.origin || null,
         ingredients: formData.ingredients || null,
@@ -449,42 +440,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         {/* 购买设置 */}
         <section className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">购买设置</h2>
-
-          {/* 站内购买 */}
-          <div className="mb-6">
-            <div className="mb-3 flex items-center gap-2">
-              <Badge variant="success">站内购买</Badge>
-              <span className="text-xs text-brand-charcoal/50">用户可直接在网站内下单购买</span>
-            </div>
-            <div className="flex items-center gap-6">
-              <Switch
-                label="允许站内购买"
-                checked={formData.allowDirectBuy}
-                onChange={(checked) => updateField("allowDirectBuy", checked)}
-              />
-              {formData.allowDirectBuy && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-brand-charcoal/50">库存数量</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.stock}
-                    onChange={(e) =>
-                      updateField("stock", Math.max(0, parseInt(e.target.value) || 0))
-                    }
-                    className="w-24"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 分隔线 */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-brand-charcoal/10" />
-            <span className="text-xs text-brand-charcoal/50">第三方购买渠道</span>
-            <div className="h-px flex-1 bg-brand-charcoal/10" />
-          </div>
 
           {/* 第三方平台链接 */}
           <div>

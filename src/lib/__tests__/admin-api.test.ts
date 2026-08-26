@@ -50,14 +50,11 @@ const {
 vi.mock("@/lib/prisma", () => {
   const prisma = {
     admin: mockPrismaModel(),
-    order: mockPrismaModel(),
     user: mockPrismaModel(),
     product: mockPrismaModel(),
     loginAttempt: mockPrismaModel(),
     auditLog: mockPrismaModel(),
     refreshToken: mockPrismaModel(),
-    cartItem: mockPrismaModel(),
-    userCoupon: mockPrismaModel(),
     oAuthSession: mockPrismaModel(),
     oAuthClient: mockPrismaModel(),
     ssoAuditEvent: mockPrismaModel(),
@@ -66,7 +63,6 @@ vi.mock("@/lib/prisma", () => {
     job: mockPrismaModel(),
     image: mockPrismaModel(),
     purchaseLink: mockPrismaModel(),
-    coupon: mockPrismaModel(),
     // 外部平台身份（多平台聚合）：删除用户时 removeIdentities 调 deleteMany 需返回 count
     externalIdentity: { ...mockPrismaModel(), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   };
@@ -162,16 +158,6 @@ vi.mock("@/lib/validation", () => ({
   },
 }));
 
-// Mock logistics
-vi.mock("@/lib/logistics", () => ({
-  shipOrder: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-// Mock refund
-vi.mock("@/lib/refund", () => ({
-  processRefund: vi.fn().mockResolvedValue({ success: true }),
-}));
-
 // Mock token-blacklist
 vi.mock("@/lib/token-blacklist", () => ({
   blacklistUserTokens: vi.fn(),
@@ -188,12 +174,7 @@ vi.mock("@/lib/admin-stats", () => ({
     unreadMessages: 2,
     jobs: 5,
     totalUsers: 100,
-    pendingOrders: 5,
-    paidOrders: 10,
-    refundingOrders: 1,
-    todayRevenue: 5000,
     recentMessages: [],
-    recentOrders: [],
   }),
 }));
 
@@ -604,10 +585,6 @@ describe("管理端 API 集成测试", () => {
         ],
         createdAt: "2026-08-01T00:00:00.000Z",
         updatedAt: "2026-08-21T00:00:00.000Z",
-        orders: [],
-        addresses: [],
-        userCoupons: [],
-        _count: { orders: 0 },
       });
 
       const { GET } = await import("@/app/api/admin/users/[id]/route");
@@ -640,7 +617,7 @@ describe("管理端 API 集成测试", () => {
       expect(res.status).toBe(403);
     });
 
-    it("封禁用户应级联撤销 Token 和清理购物车", async () => {
+    it("封禁用户应级联撤销 Token 并写入 SSO 审计事件", async () => {
       const req = createRequest("/api/admin/users/user-1", {
         method: "PATCH",
         body: { status: "BANNED" },
@@ -665,10 +642,6 @@ describe("管理端 API 集成测试", () => {
       expect(data.success).toBe(true);
       // 验证级联操作：撤销 refresh token
       expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalled();
-      // 验证清理购物车
-      expect(mockPrisma.cartItem.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: "user-1" } })
-      );
       // 验证写入 SSO 审计事件
       expect(mockRecordSsoEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -792,56 +765,6 @@ describe("管理端 API 集成测试", () => {
   });
 
   // ============================================
-  // 订单管理 — CSRF 防护
-  // ============================================
-
-  describe("PATCH /api/admin/orders/:id (CSRF)", () => {
-    it("CSRF Token 无效应返回 403", async () => {
-      mockValidateCSRFToken.mockReturnValue(false);
-
-      const { PATCH } = await import("@/app/api/admin/orders/[id]/route");
-      const req = createRequest("/api/admin/orders/order-1", {
-        method: "PATCH",
-        body: { adminNote: "test note" },
-      });
-      const res = await PATCH(req, { params: Promise.resolve({ id: "order-1" }) });
-      expect(res.status).toBe(403);
-    });
-  });
-
-  describe("POST /api/admin/orders/:id/ship (CSRF)", () => {
-    it("CSRF Token 无效应返回 403", async () => {
-      mockValidateCSRFToken.mockReturnValue(false);
-
-      const { POST } = await import("@/app/api/admin/orders/[id]/ship/route");
-      const req = createRequest("/api/admin/orders/order-1", {
-        method: "POST",
-        body: { logisticsCompany: "顺丰", trackingNo: "SF1234567890" },
-      });
-      // 路由先校验认证（401）再校验 CSRF（403），需先通过认证才能到达 CSRF 分支
-      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
-      const res = await POST(req, { params: Promise.resolve({ id: "order-1" }) });
-      expect(res.status).toBe(403);
-    });
-  });
-
-  describe("POST /api/admin/orders/:id/refund (CSRF)", () => {
-    it("CSRF Token 无效应返回 403", async () => {
-      mockValidateCSRFToken.mockReturnValue(false);
-
-      const { POST } = await import("@/app/api/admin/orders/[id]/refund/route");
-      const req = createRequest("/api/admin/orders/order-1", {
-        method: "POST",
-        body: { approved: true },
-      });
-      // 路由先校验认证（401）再校验 CSRF（403），需先通过认证才能到达 CSRF 分支
-      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
-      const res = await POST(req, { params: Promise.resolve({ id: "order-1" }) });
-      expect(res.status).toBe(403);
-    });
-  });
-
-  // ============================================
   // 产品管理 — CSRF 防护
   // ============================================
 
@@ -864,8 +787,6 @@ describe("管理端 API 集成测试", () => {
           order: 0,
           featured: false,
           published: false,
-          allowDirectBuy: false,
-          stock: 0,
         },
       });
       const res = await POST(req);
@@ -906,19 +827,6 @@ describe("管理端 API 集成测试", () => {
   // ============================================
 
   describe("限流保护", () => {
-    it("订单列表 GET 超限应返回 429", async () => {
-      const req = createRequest("/api/admin/orders");
-      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" }, req);
-      mockRateLimit.mockResolvedValue({ success: false, remaining: 0, reset: 99999, limit: 60 });
-
-      const { GET } = await import("@/app/api/admin/orders/route");
-      const res = await GET(req);
-      const data = await res.json();
-
-      expect(res.status).toBe(429);
-      expect(data.error.code).toBe("RATE_LIMITED");
-    });
-
     it("用户列表 GET 超限应返回 429", async () => {
       const req = createRequest("/api/admin/users");
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" }, req);

@@ -167,7 +167,6 @@ async function getProduct(slug: string) {
     return {
       ...product,
       origin: null as string | null,
-      salesCount: 0,
       geoFaqs: undefined,
       images: product.images.map((img, i) => ({ ...img, id: `mock-img-${i}` })),
     };
@@ -195,7 +194,6 @@ async function getProduct(slug: string) {
     ...product,
     price: Number(product.price),
     origin: product.origin,
-    salesCount: product.salesCount,
   };
 }
 

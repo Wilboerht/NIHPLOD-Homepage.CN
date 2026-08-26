@@ -105,9 +105,6 @@ export async function GET(request: NextRequest) {
       image: product.images[0] || null,
       featured: product.featured,
       published: product.published,
-      salesCount: product.salesCount,
-      stock: product.stock,
-      allowDirectBuy: product.allowDirectBuy,
       order: product.order,
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString(),
@@ -171,9 +168,6 @@ export async function POST(request: NextRequest) {
       description: sanitizeHtml(validated.description),
       ingredients: sanitizeHtml(validated.ingredients),
       usage: sanitizeHtml(validated.usage),
-      purchaseUrl: validated.purchaseUrl
-        ? sanitizeHtml(validated.purchaseUrl)
-        : validated.purchaseUrl,
       purchaseLinks: validated.purchaseLinks?.map((link) => ({
         ...link,
         platform: sanitizeHtml(link.platform),
@@ -212,7 +206,6 @@ export async function POST(request: NextRequest) {
         price: sanitized.price,
         capacity: sanitized.capacity,
         origin: sanitized.origin,
-        purchaseUrl: sanitized.purchaseUrl,
         ingredients: sanitized.ingredients,
         usage: sanitized.usage,
         benefits: sanitized.benefits || [],
@@ -220,8 +213,6 @@ export async function POST(request: NextRequest) {
         featured: validated.featured,
         published: validated.published,
         categoryId: validated.categoryId,
-        allowDirectBuy: validated.allowDirectBuy,
-        stock: validated.stock,
         geoFaqs: toInputJson(validated.geoFaqs),
         images: {
           create: sanitized.images.map((img, index) => ({
