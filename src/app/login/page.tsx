@@ -633,42 +633,6 @@ function LoginPageContent() {
     setMobileForgotStep("phone");
   };
 
-  /**
-   * 第三方登录（微信/抖音）：302 到对应 OAuth 授权端点（浏览器直跳模式）。
-   * redirect 透传登录成功后的落地地址：SSO 场景下 return_to=/api/oauth/authorize?...，
-   * 第三方登录完成后会继续原授权流程。
-   * 两个端点参数同构（redirect 相对路径 + 302 直跳），回调统一复用 wechat_auth 消费口径。
-   */
-  const buildThirdPartyLoginUrl = (base: "/api/auth/wechat" | "/api/auth/douyin") => {
-    let target = "/";
-    if (returnTo) {
-      if (returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-        target = returnTo;
-      } else {
-        try {
-          // 同域绝对 URL 归一化为相对路径（抖音回调只接受相对路径）
-          const parsed = new URL(returnTo, window.location.origin);
-          if (parsed.origin === window.location.origin) {
-            target = parsed.pathname + parsed.search + parsed.hash;
-          }
-        } catch {
-          /* 非法 URL 回退首页 */
-        }
-      }
-    }
-    return `${base}?redirect=${encodeURIComponent(target)}`;
-  };
-
-  const handleWechatLogin = () => {
-    // 必须完整页面导航：授权端点 302 到微信授权页并写入 nonce Cookie
-    window.location.assign(buildThirdPartyLoginUrl("/api/auth/wechat"));
-  };
-
-  const handleDouyinLogin = () => {
-    // 必须完整页面导航：授权端点 302 到抖音授权页并写入 nonce Cookie
-    window.location.assign(buildThirdPartyLoginUrl("/api/auth/douyin"));
-  };
-
   const handleConsent = async (action: "approve" | "deny") => {
     setConsentLoading(true);
     setConsentError("");
@@ -784,8 +748,7 @@ function LoginPageContent() {
             onSendLoginCode={handleSendLoginCode}
             onSwitchToRegister={handleSwitchToRegister}
             onForgotPassword={handleForgotPassword}
-            onWechatLogin={handleWechatLogin}
-            onDouyinLogin={handleDouyinLogin}
+            // 第三方登录（微信/抖音）按钮暂不对用户开放，后端 OAuth 通道保留，留待后续拓展（传 onWechatLogin/onDouyinLogin 即可恢复）
           />
         );
       case "register":

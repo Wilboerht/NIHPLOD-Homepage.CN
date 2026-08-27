@@ -157,10 +157,10 @@ describe("LoginPage", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("微信/抖音登录按钮已接线并跳转到对应授权端点", async () => {
+  it("第三方登录（微信/抖音）按钮不对用户展示（留待后续拓展）", async () => {
     render(<LoginPage />);
 
-    expect(screen.getByRole("button", { name: /微信登录/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /抖音登录/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /微信登录/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /抖音登录/ })).not.toBeInTheDocument();
   });
 });
