@@ -5,13 +5,15 @@
  * 任一项 FAIL 时以退出码 1 结束（可用于 CI / 发布前检查）。
  *
  * 运行方式：npm run check:sso-config
- * 默认加载 .env.local（与 scripts/check-db-connection.ts 一致）；
- * 生产环境也可直接以系统环境变量运行（已设置的变量不会被 .env.local 覆盖）。
+ * 加载 .env / .env.local / .env.production（覆盖服务器只使用 .env 的部署方式）；
+ * 生产环境也可直接以系统环境变量运行（dotenv 不覆盖已设置的变量，先加载的优先生效）。
  */
 import dotenv from "dotenv";
 
-// 加载环境变量
+// 加载环境变量：.env 为通用文件（多数服务器部署方式），.env.local / .env.production 为本地/生产覆盖
+dotenv.config({ path: ".env" });
 dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env.production" });
 
 // 与 src/lib/jwt.ts 的 MIN_SECRET_LENGTH 保持一致
 const MIN_SECRET_LENGTH = 32;
