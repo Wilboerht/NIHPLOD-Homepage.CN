@@ -5,7 +5,7 @@
  *       未注册手机号假发送（防枚举）；已注册真实发码；60 秒频控仍生效；
  *       其余 type 回归（无 CSRF 仍 403）
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
@@ -226,5 +226,107 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(res.status).toBe(403);
     expect(data.error.code).toBe("CSRF_INVALID");
     expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/auth/send-code 生产环境短信通道守卫", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRateLimit.mockResolvedValue({ success: true });
+    mockValidateCSRF.mockReturnValue(true);
+    mockPrisma.smsCode.findFirst.mockResolvedValue(null); // 60 秒内无发送记录
+    mockPrisma.smsCode.count.mockResolvedValue(0); // 小时内未达上限
+    mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.smsCode.create.mockResolvedValue({ id: "sms-1" });
+    mockSendLoginCode.mockResolvedValue({ success: true, messageId: "mock_1" });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("生产 + SMS_PROVIDER=mock：返回 503 SMS_UNAVAILABLE，不发码不入库", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMS_PROVIDER", "mock");
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(createRequest({ phone: "13800138000", type: "login" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(data.error.code).toBe("SMS_UNAVAILABLE");
+    expect(data.error.message).toBe("短信服务暂不可用");
+    expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
+
+  it("生产 + SMS_PROVIDER 未设置：同样返回 503 SMS_UNAVAILABLE", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMS_PROVIDER", "");
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(createRequest({ phone: "13800138000", type: "login" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(data.error.code).toBe("SMS_UNAVAILABLE");
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
+
+  it("生产 + SMS_PROVIDER 为未知值：同样返回 503 SMS_UNAVAILABLE", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMS_PROVIDER", "some-unknown-provider");
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(createRequest({ phone: "13800138000", type: "login" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(data.error.code).toBe("SMS_UNAVAILABLE");
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
+
+  it("生产 + mock：已注册与未注册号码得到完全相同的 503 响应（防枚举口径不受影响）", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMS_PROVIDER", "mock");
+
+    // 守卫在手机号存在性判断之前短路：两个号码都不会触发查库
+    const registeredRes = await POST(createRequest({ phone: "13800138000", type: "login" }));
+    const registeredData = await registeredRes.json();
+
+    const unregisteredRes = await POST(createRequest({ phone: "13900139000", type: "login" }));
+    const unregisteredData = await unregisteredRes.json();
+
+    expect(registeredRes.status).toBe(503);
+    expect(unregisteredRes.status).toBe(503);
+    expect(unregisteredData).toEqual(registeredData);
+    // 存在性查库从未发生，两种存在性天然不可区分
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("生产 + 真实 provider（aliyun）：正常发码流程不受影响", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SMS_PROVIDER", "aliyun");
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(createRequest({ phone: "13800138000", type: "login" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockSendLoginCode).toHaveBeenCalledWith("13800138000", "123456");
+  });
+
+  it("开发环境 + mock：行为不变，正常发码", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("SMS_PROVIDER", "mock");
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(createRequest({ phone: "13800138000", type: "login" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockSendLoginCode).toHaveBeenCalledWith("13800138000", "123456");
   });
 });

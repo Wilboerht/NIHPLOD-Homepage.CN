@@ -99,4 +99,21 @@ describe("GET /api/user/oauth/sessions", () => {
     const body = await res.json();
     expect(body.data[0].clientName).toBe("client-x");
   });
+
+  it("列表查询应过滤已过期会话（与撤销端点口径一致）", async () => {
+    (prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const res = await GET(createRequest());
+    expect(res.status).toBe(200);
+    // 与 /api/user/oauth/revoke 的撤销口径对齐：未撤销且未过期
+    expect(prisma.oAuthSession.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: USER.id,
+          revokedAt: null,
+          expiresAt: { gt: expect.any(Date) },
+        },
+      })
+    );
+  });
 });

@@ -105,9 +105,9 @@ export function RegisterForm({
           注册会员
         </h1>
         <form onSubmit={onSubmit} className="space-y-10">
+          {/* 姓名后端为 optional，前端不强制必填（与后端对齐） */}
           <input
             type="text"
-            required
             value={regName}
             onChange={(e) => onRegNameChange(e.target.value)}
             className={pcInputClass}
@@ -132,6 +132,7 @@ export function RegisterForm({
               value={regCode}
               onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
               className={`${pcInputClass} flex-1`}
+              autoComplete="one-time-code"
               placeholder="验证码"
             />
             <button
@@ -158,6 +159,7 @@ export function RegisterForm({
             <button
               type="button"
               onClick={onShowPasswordToggle}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
               className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -178,6 +180,7 @@ export function RegisterForm({
             <button
               type="button"
               onClick={onShowPasswordToggle}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
               className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -215,9 +218,9 @@ export function RegisterForm({
       </div>
       <form onSubmit={onSubmit} className="w-full space-y-6">
         <div>
+          {/* 姓名后端为 optional，前端不强制必填（与后端对齐） */}
           <input
             type="text"
-            required
             value={regName}
             onChange={(e) => onRegNameChange(e.target.value)}
             placeholder="姓名"
@@ -246,6 +249,7 @@ export function RegisterForm({
             value={regCode}
             onChange={(e) => onRegCodeChange(e.target.value)}
             placeholder="验证码"
+            autoComplete="one-time-code"
             className={mobileInputFlexClass}
           />
           <button
@@ -271,6 +275,7 @@ export function RegisterForm({
           <button
             type="button"
             onClick={onShowPasswordToggle}
+            aria-label={showPassword ? "隐藏密码" : "显示密码"}
             className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -290,6 +295,7 @@ export function RegisterForm({
           <button
             type="button"
             onClick={onShowPasswordToggle}
+            aria-label={showPassword ? "隐藏密码" : "显示密码"}
             className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
           >
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

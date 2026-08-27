@@ -14,6 +14,12 @@ vi.mock("@/lib/jwt", () => ({
   getRefreshTokenExpiresAt: vi.fn(),
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    user: { findUnique: vi.fn() },
+  },
+}));
+
 vi.mock("@/lib/auth-security", () => ({
   atomicallyRotateRefreshToken: vi.fn(),
   revokeRefreshToken: vi.fn(),
@@ -46,7 +52,9 @@ import {
 } from "@/lib/jwt";
 import { atomicallyRotateRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { logAuthEvent } from "@/lib/auth-logger";
 import { POST } from "@/app/api/auth/wechat/miniprogram-refresh/route";
 
 const mockVerify = verifyRefreshToken as ReturnType<typeof vi.fn>;
@@ -54,6 +62,8 @@ const mockRotate = atomicallyRotateRefreshToken as ReturnType<typeof vi.fn>;
 const mockRevoke = revokeRefreshToken as ReturnType<typeof vi.fn>;
 const mockCheckStatus = checkUserStatus as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
+const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
+const mockLogAuthEvent = logAuthEvent as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown): NextRequest {
   return new NextRequest(
@@ -66,7 +76,8 @@ function createRequest(body: unknown): NextRequest {
   );
 }
 
-const basePayload = { id: "user-1", phone: "13800138000", iat: 1700000000 };
+// 新版 refresh token payload 不再携带明文手机号 claim
+const basePayload = { id: "user-1", iat: 1700000000 };
 
 describe("POST /api/auth/wechat/miniprogram-refresh", () => {
   beforeEach(() => {
@@ -75,6 +86,8 @@ describe("POST /api/auth/wechat/miniprogram-refresh", () => {
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
     mockCheckStatus.mockResolvedValue({ valid: true });
     mockRotate.mockResolvedValue({ valid: true });
+    // 审计 identifier 按 id 查库取手机号（logout 路由同款做法）
+    mockUserFindUnique.mockResolvedValue({ phone: "13800138000" });
     (signUserToken as ReturnType<typeof vi.fn>).mockResolvedValue("new-at");
     (signRefreshToken as ReturnType<typeof vi.fn>).mockResolvedValue("new-rt");
     (getTokenExpiresAt as ReturnType<typeof vi.fn>).mockReturnValue("at-exp");
@@ -148,6 +161,22 @@ describe("POST /api/auth/wechat/miniprogram-refresh", () => {
     // auth_time 缺省透传 iat
     expect(signUserToken).toHaveBeenCalledWith(
       expect.objectContaining({ id: "user-1", authTime: 1700000000 })
+    );
+    // 新 refresh token 不再写入明文手机号 claim
+    expect(signRefreshToken).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "user-1", authTime: 1700000000 })
+    );
+    expect(signRefreshToken).toHaveBeenCalledWith(
+      expect.not.objectContaining({ phone: expect.anything() })
+    );
+    // 审计日志 identifier 来自按 id 查库的手机号，而非 payload
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { phone: true },
+    });
+    expect(mockLogAuthEvent).toHaveBeenCalledWith(
+      "user_refresh_token",
+      expect.objectContaining({ success: true, identifier: "13800138000" })
     );
     expect(mockRotate).toHaveBeenCalledWith(
       "user-1",

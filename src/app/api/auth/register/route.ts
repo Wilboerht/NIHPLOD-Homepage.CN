@@ -105,25 +105,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 手机号查重前置：已注册号码在验证码核销之前短路返回，避免白烧验证码
-    // （事务内 findUnique + P2002 兜底仍保留，防并发双注册）
-    const existingUser = await prisma.user.findUnique({
-      where: { phone },
-      select: { id: true },
-    });
-    if (existingUser) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "PHONE_EXISTS",
-            message: "该手机号已注册，请直接登录",
-          },
-        },
-        { status: 409 }
-      );
-    }
-
     // 查找验证码
     // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）
     const smsCode = await prisma.smsCode.findFirst({
@@ -204,6 +185,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 手机号查重（防御性）：必须在验证码校验通过之后。
+    // 若放在验证码之前，攻击者无需有效验证码即可通过 409 PHONE_EXISTS vs 400 CODE_INVALID
+    // 判定手机号注册状态，架空 send-code 的假发送防枚举。
+    // 已注册号码在 send-code 层走假发送、用户收不到真实验证码，正常流程下此分支不可达；
+    // 事务内 findUnique + P2002 兜底仍保留，防并发双注册。
+    const existingUser = await prisma.user.findUnique({
+      where: { phone },
+      select: { id: true },
+    });
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PHONE_EXISTS",
+            message: "该手机号已注册，请直接登录",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // 加密密码（使用项目统一的 salt rounds）
     const hashedPassword = await hashPassword(password);
 
@@ -280,10 +283,9 @@ export async function POST(request: NextRequest) {
       id: user.id,
     });
 
-    // 4. 签发 Refresh Token（长期，30天）
+    // 4. 签发 Refresh Token（长期，30天；不再携带明文手机号 claim）
     const refreshToken = await signRefreshToken({
       id: user.id,
-      phone: user.phone,
     });
 
     // 5. 保存 Refresh Token 到数据库

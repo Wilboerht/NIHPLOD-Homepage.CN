@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
+import { verifyRefreshToken } from "@/lib/jwt";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { revokeAccessToken } from "@/lib/token-blacklist";
 import {
@@ -101,6 +102,44 @@ export async function POST(request: NextRequest) {
             where: { userId: user.id, revokedAt: null },
             data: { revokedAt: new Date() },
           });
+        }
+      }
+    } else {
+      // access token 已失效（过期/撤销）但 refresh cookie 仍存在：
+      // 仍应撤销该 refresh token，否则"登出"后旧 refresh token 还能换新 access token。
+      // 此处不记录成功审计（用户身份未经有效 access token 确认），
+      // 任何失败都不阻断后续清 Cookie，保持登出幂等。
+      const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
+      if (refreshToken) {
+        try {
+          const refreshPayload = await verifyRefreshToken(refreshToken);
+          if (refreshPayload) {
+            // DB 哈希比对定位该 refresh token（与上方已认证路径的单设备撤销同口径）
+            const { createHash } = await import("crypto");
+            const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+            const refreshRecord = await prisma.refreshToken.findFirst({
+              where: { userId: refreshPayload.id, token: tokenHash, revokedAt: null },
+              select: { clientId: true },
+            });
+            if (refreshRecord) {
+              await revokeRefreshToken(refreshPayload.id, refreshToken);
+              // 关联 OAuthSession 一并撤销（与已认证路径的单设备登出口径一致）
+              if (refreshRecord.clientId) {
+                await sendBackchannelLogout(refreshPayload.id, [refreshRecord.clientId]);
+                await prisma.oAuthSession.updateMany({
+                  where: {
+                    userId: refreshPayload.id,
+                    clientId: refreshRecord.clientId,
+                    revokedAt: null,
+                  },
+                  data: { revokedAt: new Date() },
+                });
+              }
+            }
+          }
+        } catch (revokeError) {
+          // 撤销失败不阻断登出：Cookie 仍会清除，保持幂等
+          apiConsole.warn("[Logout] access token 失效时的 refresh token 撤销失败:", revokeError);
         }
       }
     }

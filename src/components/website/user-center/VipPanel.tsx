@@ -218,9 +218,11 @@ export function VipPanel() {
             </div>
           </div>
 
-          {/* 生日（影响生日月 3 倍积分与生日礼，在个人信息中修改） */}
+          {/* 生日：VIP/SVIP 生日当天定额赠分（500/1000）的资格依据，在个人信息中修改 */}
           <p className="mt-2 text-xs text-stone-400">
-            {birthday ? `生日：${birthday.slice(0, 10)}（生日月消费享 3 倍积分）` : "未填写生日，可在个人信息中填写，享生日月 3 倍积分"}
+            {birthday
+              ? `生日：${birthday.slice(0, 10)}`
+              : "未填写生日，可在个人信息中填写（VIP/SVIP 会员生日当天可获赠积分）"}
           </p>
 
           {/* 升级进度条（按累计消费） */}

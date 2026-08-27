@@ -13,6 +13,7 @@ import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
 import { LEVEL_DEFAULT_BENEFITS, type LevelBenefitItem } from "@/lib/membership";
+import { invalidateProfileCache } from "@/lib/points";
 
 // 更新等级权益 schema
 const updateBenefitSchema = z.object({
@@ -159,6 +160,8 @@ export async function PUT(request: NextRequest) {
     // 默认等级配置（与用户端共享）
     const defaults = LEVEL_DEFAULT_BENEFITS[level];
 
+    // 注意：此处保存的 minSpent/maxSpent 仅影响前台展示的权益文案；
+    // 实际判级以 src/lib/points.ts 中 calculateLevel 的硬编码阈值为准（DB 配置不参与判级）。
     const benefit = await prisma.membershipBenefit.upsert({
       where: { level },
       create: {
@@ -255,13 +258,19 @@ export async function POST(request: NextRequest) {
     }
 
     const newTotal = Math.max(0, user.totalPoints + points);
+    // 与 applyExternalPointsSync 对齐的账目不变量：余额下限钳制为 0 后，
+    // 流水必须记录**实际生效**的增量（effectiveDelta = 新余额 - 旧余额），
+    // 而非请求值 points，保证「流水合计 == 余额」。
+    // effectiveDelta 为 0（如余额已为 0 时再扣分）时行为与外部同步一致：
+    // 仍记录一条 0 增量流水，保留「管理员执行过该调整」的审计痕迹。
+    const effectiveDelta = newTotal - user.totalPoints;
 
     // 注意：手动调分仅调整积分，不影响等级（等级只随累计消费金额变动）
     await prisma.$transaction(async (tx) => {
       await tx.pointTransaction.create({
         data: {
           userId,
-          points,
+          points: effectiveDelta,
           type: "ADMIN_ADJUST",
           note: `${note} (管理员: ${admin.name})`,
         },
@@ -275,11 +284,14 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    // 失效用户资料缓存，确保用户端立即看到最新积分
+    invalidateProfileCache();
+
     await createAuditLog({
       action: "user_points_adjust",
       targetType: "user",
       targetId: userId,
-      detail: { points, newTotal, note },
+      detail: { points, effectiveDelta, newTotal, note },
       adminId: admin.id,
       request,
     });

@@ -841,7 +841,6 @@ describe("POST /api/oauth/token", () => {
       // 签发属于 other-client 的 refresh token
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "other-client",
         scope: "openid",
       });
@@ -881,7 +880,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid phone",
       });
@@ -925,7 +923,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid phone",
       });
@@ -954,7 +951,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
       });
@@ -995,7 +991,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid phone",
       });
@@ -1018,7 +1013,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
       });
@@ -1053,7 +1047,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
         sid: "sess-1",
@@ -1101,7 +1094,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
         sid: "sess-bound-1",
@@ -1137,7 +1129,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
         sid: "sess-revoked-1",
@@ -1169,7 +1160,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
         dpopJkt: "jkt-bound",
@@ -1200,7 +1190,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
         dpopJkt: "jkt-bound",
@@ -1246,7 +1235,6 @@ describe("POST /api/oauth/token", () => {
 
       const refreshToken = await signRefreshToken({
         id: "user-1",
-        phone: "13800138000",
         clientId: "test-client",
         scope: "openid",
         dpopJkt: "jkt-bound",

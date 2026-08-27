@@ -28,6 +28,7 @@ import {
   extractDeviceInfo,
 } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
@@ -93,11 +94,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // refresh token 已不再携带明文手机号 claim，审计日志的 identifier 按 id 查库获取
+    // （与浏览器端 /api/auth/refresh 及 logout 路由的既有做法一致）
+    const tokenUser = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { phone: true },
+    });
+    const userPhone = tokenUser?.phone;
+
     // 3.1 拒绝携带 client_id 的 OAuth Refresh Token 在内部刷新端点使用
     if (payload.client_id) {
       logAuthEvent("user_refresh_token", {
         userId: payload.id,
-        identifier: payload.phone,
+        identifier: userPhone,
         success: false,
         reason: "oauth_token_on_internal_endpoint",
         ip: clientIP,
@@ -118,7 +127,7 @@ export async function POST(request: NextRequest) {
         success: false,
         reason: `account_${statusCheck.status.toLowerCase()}`,
         userId: payload.id,
-        identifier: payload.phone,
+        identifier: userPhone,
         ip: clientIP,
       });
       return NextResponse.json(
@@ -138,7 +147,6 @@ export async function POST(request: NextRequest) {
     });
     const newRefreshToken = await signRefreshToken({
       id: payload.id,
-      phone: payload.phone,
       authTime,
     });
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -157,7 +165,7 @@ export async function POST(request: NextRequest) {
       if (rotation.reason === "revoked" || rotation.reason === "missing") {
         logAuthEvent("refresh_token_reuse_detected", {
           userId: payload.id,
-          identifier: payload.phone,
+          identifier: userPhone,
           reason: rotation.reason,
           ip: clientIP,
         });
@@ -168,7 +176,7 @@ export async function POST(request: NextRequest) {
         success: false,
         reason: rotation.reason,
         userId: payload.id,
-        identifier: payload.phone,
+        identifier: userPhone,
         ip: clientIP,
       });
       return NextResponse.json(
@@ -183,7 +191,7 @@ export async function POST(request: NextRequest) {
     logAuthEvent("user_refresh_token", {
       success: true,
       userId: payload.id,
-      identifier: payload.phone,
+      identifier: userPhone,
       ip: clientIP,
     });
 

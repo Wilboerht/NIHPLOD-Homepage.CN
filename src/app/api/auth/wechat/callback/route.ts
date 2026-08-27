@@ -299,6 +299,9 @@ export async function GET(request: NextRequest) {
         subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
 
         const response = NextResponse.redirect(subsiteRedirect, 302);
+        // exchange token 位于 URL query：禁止浏览器在跳转向子站第三方资源时
+        // 通过 Referer 泄露完整 URL（含 token）。改为 fragment 传递涉及子站协议变更，暂不动
+        response.headers.set("Referrer-Policy", "no-referrer");
         // 清除 CSRF nonce Cookie
         response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
           ...WECHAT_NONCE_COOKIE_OPTIONS,
@@ -314,7 +317,6 @@ export async function GET(request: NextRequest) {
       });
       const refreshToken = await signRefreshToken({
         id: user.id,
-        phone: user.phone,
       });
 
       logAuthEvent("user_login", {
@@ -372,6 +374,9 @@ export async function GET(request: NextRequest) {
       subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
 
       const response = NextResponse.redirect(subsiteRedirect, 302);
+      // exchange token 位于 URL query：禁止浏览器在跳转向子站第三方资源时
+      // 通过 Referer 泄露完整 URL（含 token）。改为 fragment 传递涉及子站协议变更，暂不动
+      response.headers.set("Referrer-Policy", "no-referrer");
       // 清除 CSRF nonce Cookie
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
         ...WECHAT_NONCE_COOKIE_OPTIONS,

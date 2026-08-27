@@ -154,14 +154,15 @@ describe("JWT 工具", () => {
   });
 
   describe("Refresh Token", () => {
-    it("应能签发并验证 Refresh Token", async () => {
-      const token = await signRefreshToken({ id: "user-1", phone: "13800138000" });
+    it("应能签发并验证 Refresh Token（不再携带明文手机号 claim）", async () => {
+      const token = await signRefreshToken({ id: "user-1" });
       const payload = await verifyRefreshToken(token);
       expect(payload).toMatchObject({
         id: "user-1",
-        phone: "13800138000",
         type: "refresh",
       });
+      // 安全约定：refresh token 不写入明文手机号（与 access token 移除 phone 同方向）
+      expect(payload?.phone).toBeUndefined();
     });
 
     it("应拒绝 Access Token 作为 Refresh Token", async () => {
@@ -172,7 +173,7 @@ describe("JWT 工具", () => {
 
     it("传入 authTime 时应写入 auth_time claim（refresh 换发跨轮穿透传）", async () => {
       const authTime = Math.floor(Date.now() / 1000) - 3600;
-      const token = await signRefreshToken({ id: "user-1", phone: "13800138000", authTime });
+      const token = await signRefreshToken({ id: "user-1", authTime });
       const payload = await verifyRefreshToken(token);
       expect(payload?.auth_time).toBe(authTime);
     });

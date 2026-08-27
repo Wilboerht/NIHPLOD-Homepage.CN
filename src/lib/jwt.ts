@@ -451,6 +451,9 @@ export async function verifyUserToken(
 /**
  * 签发用户 Refresh Token（长期，30天）
  *
+ * 安全约定：不再写入明文手机号 claim（与内部 access token 移除 phone 的方向一致），
+ * 消费方需要手机号时按 id 查库。
+ *
  * @param payload.clientId - OAuth client_id，可选。传入时写入 payload，用于 refresh 时校验所有权。
  * @param payload.scope - 授权 scope，可选。传入时写入 payload，便于后续审计与最小权限校验。
  * @param payload.sid - 关联的 OAuthSession.sessionId，可选。revoke 时据此定位单个会话撤销。
@@ -459,7 +462,6 @@ export async function verifyUserToken(
  */
 export async function signRefreshToken(payload: {
   id: string;
-  phone: string;
   clientId?: string;
   scope?: string;
   sid?: string;
@@ -468,7 +470,6 @@ export async function signRefreshToken(payload: {
 }): Promise<string> {
   const jwtPayload: Record<string, unknown> = {
     id: payload.id,
-    phone: payload.phone,
     type: "refresh" as const,
   };
   // 仅在传入时写入，保持内部非 OAuth token 的向后兼容

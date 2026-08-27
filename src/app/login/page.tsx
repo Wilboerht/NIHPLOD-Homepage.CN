@@ -43,6 +43,17 @@ const CONSENT_ERROR_MESSAGES: Record<string, string> = {
   csrf_forbidden: "安全校验失败，请刷新页面后重试",
 };
 
+/**
+ * 短信服务不可用（生产环境 mock 短信时 send-code 返回 503 + SMS_UNAVAILABLE）的统一提示。
+ * 命中该错误码时不得提示"验证码已发送"，也不进入重发倒计时。
+ */
+const SMS_UNAVAILABLE_MESSAGE =
+  "短信服务暂不可用，请使用密码登录或联系客服（service@nihplod.cn）";
+
+function isSmsUnavailable(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "SMS_UNAVAILABLE";
+}
+
 function friendlyConsentError(data: { error?: string; error_description?: string }): string {
   if (data.error && CONSENT_ERROR_MESSAGES[data.error]) {
     return CONSENT_ERROR_MESSAGES[data.error];
@@ -71,7 +82,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const toast = useToast();
-  const { refreshUser } = useAuth();
+  const { user, isLoading: authLoading, refreshUser } = useAuth();
 
   const returnTo = searchParams.get("return_to");
   const rawMode = searchParams.get("mode");
@@ -213,6 +224,30 @@ function LoginPageContent() {
     [router, isSafeReturnTo]
   );
 
+  // 已登录用户直接访问 /login：重定向到 return_to（经安全校验）或首页。
+  // 豁免 SSO 授权场景（return_to 指向 /api/oauth/authorize，或 URL 携带 oauth_id /
+  // oauth_params / client_id / reauth）：这些场景往往是授权方要求重新认证或切换账号，
+  // 重定向会打断 SSO reauth 流程。consent / wechat-bind 模式同样依赖登录态，一并豁免。
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (mode === "consent" || mode === "wechat-bind") return;
+    const isSsoContext =
+      isSsoLogin || !!oauthId || !!oauthParamsFromUrl || reauth || !!searchParams.get("client_id");
+    if (isSsoContext) return;
+    navigateToReturnTo(returnTo);
+  }, [
+    authLoading,
+    user,
+    mode,
+    isSsoLogin,
+    oauthId,
+    oauthParamsFromUrl,
+    reauth,
+    searchParams,
+    returnTo,
+    navigateToReturnTo,
+  ]);
+
   const handleClose = useCallback(() => {
     // 返回时目标页抽屉保持收起
     try {
@@ -352,6 +387,7 @@ function LoginPageContent() {
     e.preventDefault();
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
+      toast.error("请先阅读并同意《用户协议》和《隐私政策》");
       return;
     }
     setLoading(true);
@@ -364,9 +400,12 @@ function LoginPageContent() {
       toast.success("欢迎回来！");
       await handleAuthSuccess();
     } catch (error) {
-      // 密码过期（密码登录/短信登录均可能）：引导进入"忘记密码"短信重置闭环
+      // 密码过期（密码登录/短信登录均可能）：引导进入"忘记密码"短信重置闭环。
+      // 同时提示短信不可用时的兜底渠道（生产 mock 短信场景下短信重置走不通）。
       if (error instanceof ApiError && error.code === "PASSWORD_EXPIRED") {
-        toast.error("密码已过期，请通过短信验证码重置密码");
+        toast.error(
+          "密码已过期，请通过短信验证码重置密码；如无法接收短信验证码，请联系客服 service@nihplod.cn 人工处理"
+        );
         handleForgotPassword();
       } else {
         toast.error(getErrorMessage(error, "登录失败，请检查账号密码"));
@@ -389,6 +428,7 @@ function LoginPageContent() {
     }
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
+      toast.error("请先阅读并同意《用户协议》和《隐私政策》");
       return;
     }
     setLoading(true);
@@ -447,7 +487,12 @@ function LoginPageContent() {
       toast.success("验证码已发送");
       setRegCountdown(60);
     } catch (error) {
-      toast.error(getErrorMessage(error, "发送失败，请稍后重试"));
+      // SMS_UNAVAILABLE：生产环境 mock 短信，未真实发送，不能提示"已发送"也不进倒计时
+      toast.error(
+        isSmsUnavailable(error)
+          ? SMS_UNAVAILABLE_MESSAGE
+          : getErrorMessage(error, "发送失败，请稍后重试")
+      );
     } finally {
       setRegCodeSending(false);
     }
@@ -462,7 +507,11 @@ function LoginPageContent() {
       setResetCountdown(60);
       toast.success("重置验证码已发送");
     } catch (error) {
-      toast.error(getErrorMessage(error, "发送失败，请稍后重试"));
+      toast.error(
+        isSmsUnavailable(error)
+          ? SMS_UNAVAILABLE_MESSAGE
+          : getErrorMessage(error, "发送失败，请稍后重试")
+      );
     } finally {
       setLoading(false);
     }
@@ -480,7 +529,11 @@ function LoginPageContent() {
       setMobileForgotStep("code");
       toast.success("重置验证码已发送");
     } catch (error) {
-      toast.error(getErrorMessage(error, "发送失败，请稍后重试"));
+      toast.error(
+        isSmsUnavailable(error)
+          ? SMS_UNAVAILABLE_MESSAGE
+          : getErrorMessage(error, "发送失败，请稍后重试")
+      );
     } finally {
       setLoading(false);
     }
@@ -561,7 +614,11 @@ function LoginPageContent() {
       setLoginCodeCountdown(60);
       toast.success("验证码已发送");
     } catch (error) {
-      toast.error(getErrorMessage(error, "发送失败，请稍后重试"));
+      toast.error(
+        isSmsUnavailable(error)
+          ? SMS_UNAVAILABLE_MESSAGE
+          : getErrorMessage(error, "发送失败，请稍后重试")
+      );
     } finally {
       setLoginCodeSending(false);
     }
@@ -574,6 +631,42 @@ function LoginPageContent() {
     setResetNewPassword("");
     setResetConfirmPassword("");
     setMobileForgotStep("phone");
+  };
+
+  /**
+   * 第三方登录（微信/抖音）：302 到对应 OAuth 授权端点（浏览器直跳模式）。
+   * redirect 透传登录成功后的落地地址：SSO 场景下 return_to=/api/oauth/authorize?...，
+   * 第三方登录完成后会继续原授权流程。
+   * 两个端点参数同构（redirect 相对路径 + 302 直跳），回调统一复用 wechat_auth 消费口径。
+   */
+  const buildThirdPartyLoginUrl = (base: "/api/auth/wechat" | "/api/auth/douyin") => {
+    let target = "/";
+    if (returnTo) {
+      if (returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+        target = returnTo;
+      } else {
+        try {
+          // 同域绝对 URL 归一化为相对路径（抖音回调只接受相对路径）
+          const parsed = new URL(returnTo, window.location.origin);
+          if (parsed.origin === window.location.origin) {
+            target = parsed.pathname + parsed.search + parsed.hash;
+          }
+        } catch {
+          /* 非法 URL 回退首页 */
+        }
+      }
+    }
+    return `${base}?redirect=${encodeURIComponent(target)}`;
+  };
+
+  const handleWechatLogin = () => {
+    // 必须完整页面导航：授权端点 302 到微信授权页并写入 nonce Cookie
+    window.location.assign(buildThirdPartyLoginUrl("/api/auth/wechat"));
+  };
+
+  const handleDouyinLogin = () => {
+    // 必须完整页面导航：授权端点 302 到抖音授权页并写入 nonce Cookie
+    window.location.assign(buildThirdPartyLoginUrl("/api/auth/douyin"));
   };
 
   const handleConsent = async (action: "approve" | "deny") => {
@@ -691,6 +784,8 @@ function LoginPageContent() {
             onSendLoginCode={handleSendLoginCode}
             onSwitchToRegister={handleSwitchToRegister}
             onForgotPassword={handleForgotPassword}
+            onWechatLogin={handleWechatLogin}
+            onDouyinLogin={handleDouyinLogin}
           />
         );
       case "register":

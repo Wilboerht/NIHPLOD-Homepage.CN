@@ -69,6 +69,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // 撤销 refresh token；OAuth client 会话同步撤销（事务内保证一致）
+    // 已知窗口：此处只撤销 refresh token 与 OAuth session，目标设备已持有的
+    // access token 在其剩余 TTL（≤15 分钟）内仍然有效。原因：RefreshToken 记录
+    // 不关联已签发 access token 的 jti，要消除该窗口需额外维护 access jti ↔
+    // 会话的关联存储；权衡实现成本后接受 15 分钟上限（access token 到期即无法续期）。
     await prisma.$transaction(async (tx) => {
       await tx.refreshToken.update({
         where: { id: target.id },

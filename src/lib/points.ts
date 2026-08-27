@@ -13,6 +13,8 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 
 // 等级阈值（按历史消费金额，元）
+// 判级以此处硬编码阈值为准（唯一权威）；管理端可编辑的 MembershipBenefit.minSpent
+// 仅影响前台展示的权益文案（如"满 ¥5000 升级 VIP"），不参与实际等级计算。
 const LEVEL_THRESHOLDS: { level: MembershipLevel; minSpent: number }[] = [
   { level: "REGULAR", minSpent: 0 },
   { level: "ADVANCED", minSpent: 1 },
@@ -22,6 +24,8 @@ const LEVEL_THRESHOLDS: { level: MembershipLevel; minSpent: number }[] = [
 
 /**
  * 根据历史消费金额计算会员等级
+ * 判级阈值以本模块 LEVEL_THRESHOLDS 硬编码为准；DB 中 MembershipBenefit.minSpent
+ * 可在管理端编辑，但仅用于展示文案，不影响此处的判级结果。
  */
 export function calculateLevel(totalSpent: number): MembershipLevel {
   let level: MembershipLevel = "REGULAR";
@@ -197,9 +201,10 @@ export async function grantBirthdayGiftIfDue(
 }
 
 /**
- * 失效 profile 缓存，确保 AuthContext 拉取最新积分与等级
+ * 失效 profile 缓存，确保 AuthContext 拉取最新积分与等级。
+ * 积分余额变动的所有入口（外部同步、生日礼、管理端手动调分）都应调用。
  */
-function invalidateProfileCache(): void {
+export function invalidateProfileCache(): void {
   try {
     revalidateTag("user-profile", "max");
   } catch {

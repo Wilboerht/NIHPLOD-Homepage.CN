@@ -108,6 +108,31 @@ export async function POST(request: NextRequest) {
 
     const { phone, type } = result.data;
 
+    // 生产环境短信通道必须为真实 provider：SMS_PROVIDER 为 mock/未设置/未知值时短信
+    // 实际发不出去，若返回成功会让前端谎称"验证码已发送"，用户永远等不到验证码。
+    // 统一在手机号存在性判断之前短路返回 503：已注册与未注册号码得到完全相同的响应，
+    // 因此假发送防枚举口径不受影响（两种存在性仍不可区分）；开发环境 mock 行为不变。
+    const smsProvider = process.env.SMS_PROVIDER;
+    if (
+      process.env.NODE_ENV === "production" &&
+      smsProvider !== "aliyun" &&
+      smsProvider !== "tencent"
+    ) {
+      apiConsole.error(
+        `[SendCode] 生产环境 SMS_PROVIDER 无效（${smsProvider ?? "未设置"}），短信服务不可用`
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SMS_UNAVAILABLE",
+            message: "短信服务暂不可用",
+          },
+        },
+        { status: 503 }
+      );
+    }
+
     // 检查发送频率
     const oneMinuteAgo = new Date(Date.now() - SEND_INTERVAL_SECONDS * 1000);
     const recentCode = await prisma.smsCode.findFirst({

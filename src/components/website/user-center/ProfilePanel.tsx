@@ -30,9 +30,9 @@ export function ProfilePanel() {
 
   // 保存昵称与生日
   const handleSave = async () => {
-    if (!nickname.trim()) return;
     setSaving(true);
     try {
+      // 昵称允许清空：服务端约定空字符串即清除（PUT /api/user/profile 中 "" → null）
       await apiPut("/api/user/profile", { nickname: nickname.trim(), birthday });
       await refreshUser();
       setEditing(false);
@@ -241,7 +241,7 @@ export function ProfilePanel() {
 
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
-          {/* 生日（影响生日月 3 倍积分与生日礼） */}
+          {/* 生日：VIP/SVIP 生日当天定额赠分（500/1000）的资格依据 */}
           <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-6 transition-all hover:bg-white/40">
             <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
               <div className="shrink-0 md:w-20">
@@ -263,7 +263,7 @@ export function ProfilePanel() {
                     {user.birthday ? user.birthday.slice(0, 10) : "未设置"}
                     {!user.birthday && (
                       <span className="ml-2 text-xs font-light text-stone-400">
-                        填写后可享生日月 3 倍积分
+                        填写后，VIP/SVIP 会员生日当天可获赠积分
                       </span>
                     )}
                   </p>

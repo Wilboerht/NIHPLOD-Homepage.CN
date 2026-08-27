@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { m } from "framer-motion";
-import { Eye, EyeOff, ArrowLeftRight, MessageCircle } from "lucide-react";
+import { Eye, EyeOff, ArrowLeftRight, MessageCircle, Music2 } from "lucide-react";
 import { pcInputClass, pcBtnClass, mobileInputClass, mobileInputFlexClass } from "./auth-styles";
 import { Checkbox } from "@/components/ui/Checkbox";
 
@@ -33,6 +33,7 @@ export interface LoginFormProps {
   onSwitchToRegister: () => void;
   onForgotPassword: () => void;
   onWechatLogin?: () => void;
+  onDouyinLogin?: () => void;
 }
 
 /** 协议勾选组件（PC + 移动端共用） */
@@ -109,6 +110,7 @@ export function LoginForm({
   onSwitchToRegister,
   onForgotPassword,
   onWechatLogin,
+  onDouyinLogin,
 }: LoginFormProps) {
   const agreed = mobileAgreed;
 
@@ -170,6 +172,7 @@ export function LoginForm({
               <button
                 type="button"
                 onClick={onShowPasswordToggle}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -235,6 +238,16 @@ export function LoginForm({
             >
               <MessageCircle className="h-3.5 w-3.5" />
               微信登录
+            </button>
+          )}
+          {onDouyinLogin && (
+            <button
+              type="button"
+              onClick={onDouyinLogin}
+              className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            >
+              <Music2 className="h-3.5 w-3.5" />
+              抖音登录
             </button>
           )}
         </div>
@@ -311,6 +324,7 @@ export function LoginForm({
             <button
               type="button"
               onClick={onShowPasswordToggle}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
               className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -384,6 +398,16 @@ export function LoginForm({
           >
             <MessageCircle className="h-3.5 w-3.5" />
             微信登录
+          </button>
+        )}
+        {onDouyinLogin && (
+          <button
+            type="button"
+            onClick={onDouyinLogin}
+            className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+          >
+            <Music2 className="h-3.5 w-3.5" />
+            抖音登录
           </button>
         )}
       </div>

@@ -1,7 +1,8 @@
 /**
  * 用户系统第三轮修复 · 认证路由测试
  * 覆盖：
- * - register：手机号查重前置（不烧验证码）、验证码失败统一错误码且不计锁定池
+ * - register：手机号查重后置到验证码校验之后（防注册枚举 oracle）、
+ *   验证码失败统一错误码且不计锁定池
  * - logout：单设备登出无 clientId 不广播 OAuth、allDevices 才全量广播
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -117,7 +118,23 @@ describe("POST /api/auth/register（第三轮修复）", () => {
     vi.clearAllMocks();
   });
 
-  it("手机号已注册应在验证码核销之前短路返回，不消耗验证码", async () => {
+  it("手机号已注册但无有效验证码时返回 CODE_INVALID 而非 PHONE_EXISTS（防枚举 oracle）", async () => {
+    // 攻击者无有效验证码：已注册号码也不得通过 409/400 差异暴露存在性
+    mockSmsFindFirst.mockResolvedValueOnce(null);
+
+    const res = await registerPost(createJsonRequest("/api/auth/register", registerBody));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("CODE_INVALID");
+    // 查重不得先于验证码校验执行
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("手机号已注册且验证码有效时，查重兜底返回 PHONE_EXISTS", async () => {
+    // 验证码通过 + 核销成功后才执行查重（防御性分支，正常流程被 send-code 假发送拦截）
+    mockSmsFindFirst.mockResolvedValueOnce({ id: "sms-1", codeHash: "hash" });
+    mockSmsUpdateMany.mockResolvedValueOnce({ count: 1 });
     mockUserFindUnique.mockResolvedValueOnce({ id: "user-existing" });
 
     const res = await registerPost(createJsonRequest("/api/auth/register", registerBody));
@@ -125,9 +142,12 @@ describe("POST /api/auth/register（第三轮修复）", () => {
 
     expect(res.status).toBe(409);
     expect(data.error.code).toBe("PHONE_EXISTS");
-    // 查重前置：未查询/核销任何验证码（不白烧码）
-    expect(mockSmsFindFirst).not.toHaveBeenCalled();
-    expect(mockSmsUpdateMany).not.toHaveBeenCalled();
+    // 验证码已核销后才查重
+    expect(mockSmsUpdateMany).toHaveBeenCalled();
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { phone: registerBody.phone },
+      select: { id: true },
+    });
   });
 
   it("验证码不存在应统一返回 CODE_INVALID 且不计入账户锁定池", async () => {

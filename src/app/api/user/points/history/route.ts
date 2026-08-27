@@ -16,6 +16,9 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   ADMIN_ADJUST: "管理员调整",
   REDEEM: "积分兑换",
   LEVEL_UP_BONUS: "升级奖励",
+  // 外部商城同步入账（2026-08 起积分由商城签名接口同步），补标签以正常展示与过滤；
+  // 以上旧标签保留，兼容历史数据
+  EXTERNAL_SYNC: "商城同步",
 };
 
 export const dynamic = "force-dynamic";

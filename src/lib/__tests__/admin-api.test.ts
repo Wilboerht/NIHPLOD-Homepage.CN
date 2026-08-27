@@ -707,10 +707,14 @@ describe("管理端 API 集成测试", () => {
 
       expect(res.status).toBe(200);
       expect(data.success).toBe(true);
-      // 软删除：封禁 + 匿名化
+      // 软删除：封禁 + 匿名化（含生日等 PII 字段置 null）
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ status: "BANNED", nickname: "[已删除]" }),
+          data: expect.objectContaining({
+            status: "BANNED",
+            nickname: "[已删除]",
+            birthday: null,
+          }),
         })
       );
       // 验证写入 SSO 审计事件

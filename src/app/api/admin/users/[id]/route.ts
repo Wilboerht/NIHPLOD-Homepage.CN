@@ -12,11 +12,12 @@ import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
 import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
+import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { removeIdentities } from "@/lib/external-identity";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets } from "@/lib/webhook";
+import { cascadeUserStatusChange } from "@/lib/user-status";
 import { maskPhone } from "@/lib/mask-phone";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -156,20 +157,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       select: { id: true, phone: true, status: true },
     });
 
-    // 冻结/封禁用户时：撤销所有 Refresh Token + 加入 access token 黑名单 + 级联清理
-    if (status !== "ACTIVE") {
-      await prisma.refreshToken.updateMany({
-        where: { userId: id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-
-      // 加入 access token 黑名单，消除剩余 15 分钟窗口期
-      const reason = status === "SUSPENDED" ? "账号已被临时冻结" : "账号已被永久封禁";
-      await blacklistUserTokens(user.id, reason);
-    } else {
-      // 解封时从黑名单移除
-      await removeFromBlacklist(user.id);
-    }
+    // 冻结/封禁/解封的级联操作（撤销凭证 + OAuth 会话 + backchannel + webhook）
+    // 与批量端点共用 cascadeUserStatusChange，保证两处口径一致
+    await cascadeUserStatusChange({
+      userId: user.id,
+      previousStatus: user.status,
+      newStatus: status,
+    });
 
     await createAuditLog({
       action: "user_status_change",
@@ -198,51 +192,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         adminId: admin.id,
       },
     });
-
-    // === 通知子项目账户状态变更 + 撤销 OAuth 会话 ===
-    if (status !== "ACTIVE") {
-      try {
-        // 撤销前先查出活跃会话的 sid，供 backchannel logout_token 携带
-        const activeSessions = await prisma.oAuthSession.findMany({
-          where: { userId: id, revokedAt: null, expiresAt: { gt: new Date() } },
-          select: { clientId: true, sessionId: true },
-          orderBy: { createdAt: "desc" },
-        });
-
-        if (activeSessions.length > 0) {
-          const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-          const sids: Record<string, string> = {};
-          for (const s of activeSessions) {
-            if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-          }
-          // 撤销所有 OAuth 会话（服务端一次性清除）
-          await prisma.oAuthSession.updateMany({
-            where: { userId: id, revokedAt: null },
-            data: { revokedAt: new Date() },
-          });
-          // 通过安全的 backchannel logout 通知子项目（含 URL 校验/SSRF 防护/重试）
-          await sendBackchannelLogout(user.id, clientIds, { includeInactive: true, sids });
-        }
-      } catch (err) {
-        apiConsole.warn("[AdminUserUpdate] 子项目通知失败:", err);
-      }
-    }
-
-    // Webhook 推送账户状态变更（best-effort，不阻断主流程）
-    // 状态发送 User.status 原始大写枚举（ACTIVE/SUSPENDED/BANNED），与商城侧 zod 校验对齐
-    try {
-      await dispatchStatusChangeWebhook(
-        {
-          userId: user.id,
-          oldStatus: user.status,
-          newStatus: status,
-          source: "admin",
-        },
-        getStatusChangeWebhookTargets()
-      );
-    } catch (err) {
-      apiConsole.warn("[AdminUserUpdate] Webhook 通知失败:", err);
-    }
 
     return NextResponse.json({ success: true, data: { user: updatedUser } });
   } catch (error) {
@@ -289,7 +238,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 软删除：封禁 + 匿名化 PII
+    // 软删除：封禁 + 匿名化 PII（含生日等个人资料字段一并清空）
     const anonymizedPhone = `deleted_${user.id.slice(0, 8)}`;
     await prisma.user.update({
       where: { id },
@@ -298,6 +247,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         phone: anonymizedPhone,
         nickname: "[已删除]",
         avatar: null,
+        birthday: null,
         wechatOpenId: null,
         wechatUnionId: null,
       },

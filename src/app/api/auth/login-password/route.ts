@@ -175,10 +175,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 记录成功登录
-    await recordLoginAttempt(phone, true, request, undefined, "password", user.id);
-
-    // 6.1 检查密码是否过期（已过期则要求修改密码）
+    // 6. 密码过期检查先于成功记录（与 login 路由的顺序一致）：
+    // 避免"密码过期未实际登录"的请求在审计中留下 success 记录
     if (user.passwordExpiresAt && new Date() > new Date(user.passwordExpiresAt)) {
       return NextResponse.json(
         {
@@ -192,21 +190,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. 清除当前类型的失败登录记录（成功登录后重置）
+    // 7. 记录成功登录
+    await recordLoginAttempt(phone, true, request, undefined, "password", user.id);
+
+    // 8. 清除当前类型的失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone, "password");
 
-    // 8. 签发 Access Token（短期，15分钟）
+    // 9. 签发 Access Token（短期，15分钟）
     const accessToken = await signUserToken({
       id: user.id,
     });
 
-    // 9. 签发 Refresh Token（长期，30天）
+    // 10. 签发 Refresh Token（长期，30天；不再携带明文手机号 claim）
     const refreshToken = await signRefreshToken({
       id: user.id,
-      phone: user.phone,
     });
 
-    // 10. 保存 Refresh Token 到数据库
+    // 11. 保存 Refresh Token 到数据库
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await saveRefreshToken(
       user.id,
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
       extractDeviceInfo(request)
     );
 
-    // 11. 构建响应
+    // 12. 构建响应
     const response = NextResponse.json({
       success: true,
       data: {
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 12. 设置 Cookies
+    // 13. 设置 Cookies
     response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
     response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);
 

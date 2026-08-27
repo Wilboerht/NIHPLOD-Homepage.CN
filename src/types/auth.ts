@@ -138,7 +138,13 @@ export interface UserJWTPayload extends JWTPayload {
  */
 export interface RefreshTokenPayload extends JWTPayload {
   id: string;
-  phone: string;
+  /**
+   * @deprecated 已废弃：新签发的 refresh token 不再携带明文手机号（与 access token
+   * 移除 phone 的方向一致，防日志/子项目泄漏），仅为兼容本改动上线前签发的旧 token
+   * 而保留（旧 token 30 天内自然过期）。需要手机号时请按 id 查库
+   * （prisma.user.findUnique select phone），不要依赖此字段。
+   */
+  phone?: string;
   type: "refresh";
   client_id?: string;
   scope?: string;

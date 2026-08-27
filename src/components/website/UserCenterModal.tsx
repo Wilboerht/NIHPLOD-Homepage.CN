@@ -9,7 +9,8 @@ import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { X, User, LogOut, ArrowLeft, Crown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, User, LogOut, ArrowLeft, Crown, ShieldCheck } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelDisplay } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/ProfilePanel";
@@ -24,6 +25,7 @@ const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
 export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
     useAuth();
+  const router = useRouter();
   const mounted = useMounted();
   // 用户系统偏好减少动画时停用背景光斑循环动画
   const reduceMotion = useReducedMotion();
@@ -278,6 +280,23 @@ export function UserCenterModal() {
                         </button>
                       );
                     })}
+
+                    {/* 安全设置为独立页面（改密码/设备管理/登录历史/授权管理），站内跳转并关闭弹窗 */}
+                    <button
+                      onClick={() => {
+                        closeUserCenter();
+                        router.push("/account");
+                      }}
+                      className="group relative -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 font-light text-stone-400 transition-all hover:bg-white/30 hover:text-stone-800"
+                    >
+                      <ShieldCheck
+                        className="h-[18px] w-[18px] shrink-0 text-stone-800 transition-colors group-hover:text-stone-800 md:text-stone-400"
+                        strokeWidth={1.5}
+                      />
+                      <span className="text-[13px] font-light text-stone-800 transition-colors group-hover:text-stone-800 md:text-stone-400">
+                        安全设置
+                      </span>
+                    </button>
                   </nav>
 
                   <div className="mt-auto px-12 py-8">

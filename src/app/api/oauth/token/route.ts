@@ -486,7 +486,6 @@ export async function POST(request: NextRequest) {
       // 同时携带 sid 与 DPoP 绑定 jkt，使刷新/撤销时能定位会话并延续 DPoP 绑定）
       const refreshToken = await signRefreshToken({
         id: user.id,
-        phone: user.phone,
         clientId: client_id,
         scope: scopeStr,
         sid: sessionId,
@@ -749,9 +748,37 @@ export async function POST(request: NextRequest) {
         Object.assign(dpopExtraHeaders, dpopNonceHeader(getDpopNonce(`${client_id}:${refreshPayload.id}`)));
       }
 
+      // 查询用户信息：refresh token 已不再携带明文手机号 claim，
+      // 签发 OAuth access token（脱敏 phone claim）与 ID Token 均按 id 查库取数
+      const user = await prisma.user.findUnique({
+        where: { id: refreshPayload.id },
+        select: {
+          id: true,
+          phone: true,
+          nickname: true,
+          avatar: true,
+          membershipLevel: true,
+          totalPoints: true,
+          status: true,
+        },
+      });
+
+      if (!user || user.status !== "ACTIVE") {
+        scheduleSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "user_inactive" },
+        });
+        return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
+      }
+
       const newAccessToken = await signOAuthAccessToken({
         id: refreshPayload.id,
-        phone: refreshPayload.phone,
+        phone: user.phone,
         clientId: client_id,
         scope: scopeStr,
         expiresIn: `${client.accessTokenTtlSeconds}s`,
@@ -762,7 +789,6 @@ export async function POST(request: NextRequest) {
       // 签发新的 Refresh Token 并原子化轮换（继承所有权、scope、sid 与 DPoP 绑定）
       const newRefreshToken = await signRefreshToken({
         id: refreshPayload.id,
-        phone: refreshPayload.phone,
         clientId: client_id,
         scope: scopeStr,
         sid: session.sessionId,
@@ -796,32 +822,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 查询用户信息用于 ID Token
-      const user = await prisma.user.findUnique({
-        where: { id: refreshPayload.id },
-        select: {
-          id: true,
-          phone: true,
-          nickname: true,
-          avatar: true,
-          membershipLevel: true,
-          totalPoints: true,
-          status: true,
-        },
-      });
-
-      if (!user || user.status !== "ACTIVE") {
-        scheduleSsoEvent({
-          event: "token",
-          userId: refreshPayload.id,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: { grant_type: "refresh_token", reason: "user_inactive" },
-        });
-        return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
-      }
+      // 用户信息已在上方查询并校验状态（签发 access/refresh token 前置），此处直接复用
 
       // 签发新的 ID Token（含 at_hash）
       const idTokenClaims: IdTokenClaims = {

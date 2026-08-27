@@ -78,7 +78,6 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     maxSpent: 4999,
     benefits: [
       { icon: "🎁", title: "积分累积", desc: "消费10元=1积分" },
-      { icon: "🎂", title: "生日礼遇", desc: "生日当月赠送积分好礼" },
       { icon: "💬", title: "会员专线", desc: "会员专属服务通道" },
     ],
     colorClass: "text-teal-500",
@@ -92,7 +91,8 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     maxSpent: 19999,
     benefits: [
       { icon: "🎁", title: "积分累积", desc: "消费10元=1积分" },
-      { icon: "🎂", title: "生日礼遇", desc: "生日当月赠送加倍积分好礼" },
+      // 与后端 grantBirthdayGiftIfDue 对齐：仅生日当天定额赠分（ADVANCED 无生日礼）
+      { icon: "🎂", title: "生日礼遇", desc: "生日当天赠送 500 积分" },
       { icon: "⚡", title: "新品优先", desc: "新品首发优先体验" },
       { icon: "💬", title: "专属客服", desc: "1对1专属护肤顾问" },
     ],
@@ -107,7 +107,7 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     maxSpent: null,
     benefits: [
       { icon: "🎁", title: "积分累积", desc: "消费10元=1积分" },
-      { icon: "🎂", title: "生日礼遇", desc: "生日当月专属定制礼遇" },
+      { icon: "🎂", title: "生日礼遇", desc: "生日当天赠送 1000 积分" },
       { icon: "⚡", title: "新品优先", desc: "新品首发优先体验" },
       { icon: "💬", title: "专属客服", desc: "1对1专属护肤顾问" },
       { icon: "🌟", title: "品牌活动", desc: "尊享品牌沙龙与活动邀约" },

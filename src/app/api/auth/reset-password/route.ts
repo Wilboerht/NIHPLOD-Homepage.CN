@@ -108,7 +108,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!smsCode) {
-      await recordLoginAttempt(phone, false, request, "code_expired", "sms");
+      // 验证码类失败不计入账户锁定池（与 register 口径一致）：否则攻击者无需任何验证码，
+      // 对受害者手机号连发错误验证码即可触发锁号 DoS。防爆破由单码失败计数承担
+      // （recordSmsCodeFailure 递增 attempts，达上限自动作废该验证码）。
       // 反枚举：与"码不匹配"统一错误码（配合 send-code 假发送）
       return NextResponse.json(
         {
@@ -145,7 +147,8 @@ export async function POST(request: NextRequest) {
     if (!verifyCode(phone, code, "reset", smsCode.codeHash)) {
       // 单码失败计数：达到上限自动作废该验证码（防爆破，与账户锁定叠加）
       await recordSmsCodeFailure(smsCode.id);
-      await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
+      // 验证码类失败不写入 LoginAttempt（不计入账户锁定池，与 register 口径一致）：
+      // 防止攻击者无需验证码即可通过连发错误验证码锁定受害者账号（锁号 DoS）
       return NextResponse.json(
         {
           success: false,

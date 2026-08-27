@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
 
     // 6. 签发双 Token（access 携带 jti，登出即失效自动生效）
     const accessToken = await signUserToken({ id: user.id });
-    const refreshToken = await signRefreshToken({ id: user.id, phone: user.phone });
+    const refreshToken = await signRefreshToken({ id: user.id });
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 

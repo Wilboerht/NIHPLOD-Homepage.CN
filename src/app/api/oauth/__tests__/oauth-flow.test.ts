@@ -450,7 +450,6 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     // 带 sid：仅撤销该 sessionId 对应的会话
     const withSid = await signRefreshToken({
       id: "user-flow-1",
-      phone: "13800138000",
       clientId: "test-client",
       scope: "openid",
       sid: "sess-device-a",
@@ -472,7 +471,6 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     // 无 sid 的旧版 refresh token：回退撤销 user+client 全部 session
     const noSid = await signRefreshToken({
       id: "user-flow-1",
-      phone: "13800138000",
       clientId: "test-client",
       scope: "openid",
     });

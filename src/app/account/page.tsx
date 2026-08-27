@@ -13,6 +13,15 @@ import Link from "next/link";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { levelDisplay } from "@/lib/membership";
 import { validatePasswordStrength } from "@/components/website/auth/auth-utils";
+import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
+
+/** 手机号展示脱敏：微信占位号（wx_ 前缀，未绑定手机号）不匹配数字脱敏正则，需单独处理 */
+function displayPhone(phone: string): string {
+  if (phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
+    return "微信账号（未绑定手机号）";
+  }
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
+}
 
 /** 从 Cookie 读取 CSRF Token */
 function getCsrfToken(): string {
@@ -412,7 +421,7 @@ export default function AccountPage() {
                   <label className="mb-1 block text-sm font-medium text-gray-700">手机号</label>
                   <input
                     type="text"
-                    value={user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")}
+                    value={displayPhone(user.phone)}
                     disabled
                     className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-gray-500"
                   />

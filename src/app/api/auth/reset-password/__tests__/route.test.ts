@@ -101,14 +101,9 @@ describe("POST /api/auth/reset-password 验证码防爆破", () => {
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("CODE_INVALID");
     expect(mockRecordSmsCodeFailure).toHaveBeenCalledWith("sms-1");
-    // 账户级失败记录保留（与既有锁定逻辑叠加）
-    expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
-      resetBody.phone,
-      false,
-      expect.anything(),
-      "code_invalid",
-      "sms"
-    );
+    // 验证码类失败不计入账户锁定池（与 register 口径一致）：
+    // 否则攻击者无需验证码即可连发错误验证码锁定受害者账号（锁号 DoS）
+    expect(mockRecordLoginAttempt).not.toHaveBeenCalled();
     // 不核销验证码
     expect(mockSmsUpdateMany).not.toHaveBeenCalled();
   });
@@ -130,7 +125,7 @@ describe("POST /api/auth/reset-password 验证码防爆破", () => {
     );
   });
 
-  it("无可用验证码（含已达 attempts 上限）应统一返回 CODE_INVALID", async () => {
+  it("无可用验证码（含已达 attempts 上限）应统一返回 CODE_INVALID 且不计入锁定池", async () => {
     mockSmsFindFirst.mockResolvedValue(null);
 
     const res = await POST(createRequest(resetBody));
@@ -139,5 +134,7 @@ describe("POST /api/auth/reset-password 验证码防爆破", () => {
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("CODE_INVALID");
     expect(mockRecordSmsCodeFailure).not.toHaveBeenCalled();
+    // 无码场景同样不写入 LoginAttempt（防锁号 DoS，与 register 口径一致）
+    expect(mockRecordLoginAttempt).not.toHaveBeenCalled();
   });
 });

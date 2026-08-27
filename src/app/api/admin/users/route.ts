@@ -189,26 +189,66 @@ export async function POST(request: NextRequest) {
 
     const { ids, status } = parsed.data;
 
-    // 防止误操作管理员自己
-    const result = await prisma.user.updateMany({
+    // 批量与单个端点共用同一套级联逻辑（cascadeUserStatusChange）：
+    // 冻结/封禁时撤销 Refresh Token + access token 黑名单 + OAuth 会话 + backchannel logout + webhook；
+    // 解封时移出黑名单。逐个用户级联（量小，ids ≤ 200），外部通知失败不阻断整体流程。
+    const targets = await prisma.user.findMany({
       where: { id: { in: ids } },
-      data: { status },
+      select: { id: true, status: true },
     });
+    // 跳过状态未变化的用户，避免无效的级联与审计噪音
+    const toChange = targets.filter((u) => u.status !== status);
 
-    // 记录审计日志
+    if (toChange.length > 0) {
+      await prisma.user.updateMany({
+        where: { id: { in: toChange.map((u) => u.id) } },
+        data: { status },
+      });
+
+      const { cascadeUserStatusChange } = await import("@/lib/user-status");
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+      for (const u of toChange) {
+        await cascadeUserStatusChange({
+          userId: u.id,
+          previousStatus: u.status,
+          newStatus: status,
+        });
+        // SSO 审计：每个实际变更的用户一条（合规敏感，与单个端点一致同步等待写入）
+        await recordSsoEvent({
+          event: "status_change",
+          userId: u.id,
+          ip: getClientIP(request),
+          success: true,
+          detail: {
+            action:
+              status === "ACTIVE"
+                ? "user_unbanned"
+                : status === "SUSPENDED"
+                  ? "user_suspended"
+                  : "user_banned",
+            previousStatus: u.status,
+            newStatus: status,
+            adminId: admin.id,
+            batch: true,
+          },
+        });
+      }
+    }
+
+    // 记录审计日志（批量操作写一条汇总审计，detail 携带全部目标 id）
     const { createAuditLog } = await import("@/lib/audit");
     await createAuditLog({
       action: "user_status_change",
       targetType: "user",
       targetId: ids[0],
-      detail: { ids, status, count: result.count },
+      detail: { ids, status, count: toChange.length },
       adminId: admin.id,
       request,
     });
 
     return NextResponse.json({
       success: true,
-      data: { updated: result.count },
+      data: { updated: toChange.length },
     });
   } catch (error) {
     apiConsole.error("[AdminUsersBatch] 异常:", error);

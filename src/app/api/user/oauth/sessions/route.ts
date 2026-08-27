@@ -23,8 +23,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 过滤口径与撤销端点（/api/user/oauth/revoke）对齐：仅展示「未撤销且未过期」的会话，
+    // 避免过期未撤销的会话出现在列表却无法撤销（撤销 404）的口径不一致
     const sessions = await prisma.oAuthSession.findMany({
-      where: { userId: user.id, revokedAt: null },
+      where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
       select: {
         clientId: true,
         scopes: true,

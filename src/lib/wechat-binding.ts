@@ -299,7 +299,7 @@ export async function resolveWechatBinding(
 
   // 8. 签发双 Token
   const accessToken = await signUserToken({ id: user.id });
-  const refreshToken = await signRefreshToken({ id: user.id, phone: user.phone });
+  const refreshToken = await signRefreshToken({ id: user.id });
   const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
 
