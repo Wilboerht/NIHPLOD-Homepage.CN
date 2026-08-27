@@ -1087,7 +1087,7 @@ function LoginPageContent() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="fixed inset-0 z-[99999] flex flex-col bg-[#F8F7F3] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pl-4 pr-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] lg:hidden"
+              className="fixed inset-0 z-[99999] flex flex-col bg-white pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pl-4 pr-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] lg:hidden"
             >
               {/* Mobile top bar */}
               <div className="relative flex h-[56px] w-full flex-shrink-0 items-center justify-center">
@@ -1174,7 +1174,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#F8F7F3]">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-white">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-charcoal/20 border-t-brand-charcoal" />
         </div>
       }
