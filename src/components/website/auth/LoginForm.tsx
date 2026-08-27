@@ -61,7 +61,7 @@ function AgreementCheckbox({
         onChange={onChange}
         disabled={disabled}
         label={
-          <span className="text-xs tracking-wide text-brand-charcoal/50">
+          <span className="text-xs tracking-wide text-brand-charcoal/60">
             我已阅读并同意
             <a
               href="/terms"
@@ -150,7 +150,7 @@ export function LoginForm({
                 type="button"
                 onClick={onSendLoginCode}
                 disabled={loginCodeSending || loginCodeCountdown > 0 || loginPhone.length !== 11}
-                className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+                className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/70 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
               >
                 {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
               </button>
@@ -184,7 +184,7 @@ export function LoginForm({
             <button
               type="button"
               onClick={onLoginMethodToggle}
-              className="inline-flex items-center gap-1.5 text-xs tracking-wider text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+              className="inline-flex items-center gap-1.5 text-xs tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
             >
               <ArrowLeftRight className="h-3 w-3" strokeWidth={2} />
               {loginMethod === "password" ? "验证码登录" : "密码登录"}
@@ -193,7 +193,7 @@ export function LoginForm({
               <button
                 type="button"
                 onClick={onForgotPassword}
-                className="text-xs tracking-wider text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+                className="text-xs tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
               >
                 忘记密码？
               </button>
@@ -226,7 +226,7 @@ export function LoginForm({
           <button
             type="button"
             onClick={onSwitchToRegister}
-            className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
           >
             还没有账号？立即注册
           </button>
@@ -302,7 +302,7 @@ export function LoginForm({
                 type="button"
                 onClick={onSendLoginCode}
                 disabled={loginCodeCountdown > 0 || loginPhone.length !== 11 || loginCodeSending}
-                className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/60 transition-all disabled:opacity-30"
+                className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/70 transition-all disabled:opacity-30"
               >
                 {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
               </button>
@@ -339,7 +339,7 @@ export function LoginForm({
             className={`inline-flex h-7 min-h-0 items-center gap-1.5 text-xs tracking-wider transition-colors ${
               loginMethod === "code"
                 ? "text-brand-charcoal"
-                : "text-brand-charcoal/50 hover:text-brand-charcoal"
+                : "text-brand-charcoal/60 hover:text-brand-charcoal"
             }`}
           >
             <ArrowLeftRight className="h-3 w-3" strokeWidth={2} />
@@ -349,7 +349,7 @@ export function LoginForm({
             <button
               type="button"
               onClick={onForgotPassword}
-              className="inline-flex h-7 min-h-0 items-center text-xs tracking-wider text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+              className="inline-flex h-7 min-h-0 items-center text-xs tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
             >
               找回密码
             </button>
@@ -386,7 +386,7 @@ export function LoginForm({
         <button
           type="button"
           onClick={onSwitchToRegister}
-          className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+          className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
         >
           还没有账户？立即注册
         </button>

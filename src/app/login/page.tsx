@@ -1030,7 +1030,7 @@ function LoginPageContent() {
                         : "返回首页"
                       : "返回登录"
                   }
-                  className="absolute left-8 top-8 z-20 flex h-10 items-center gap-1.5 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  className="absolute left-8 top-8 z-20 flex h-10 items-center gap-1.5 text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
                 >
                   <ArrowLeft size={20} strokeWidth={1.5} />
                   <span className="text-[14px] font-light tracking-[0.15em]">返回</span>

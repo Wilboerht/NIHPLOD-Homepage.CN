@@ -75,7 +75,7 @@ export function ForgotPasswordForm({
         </h1>
         {forgotSubmitted ? (
           <form onSubmit={onResetPassword} className="space-y-10">
-            <p className="text-center text-sm tracking-wide text-brand-charcoal/60">
+            <p className="text-center text-sm tracking-wide text-brand-charcoal/70">
               验证码已发送至 {forgotPhone.slice(0, 3)}****{forgotPhone.slice(-4)}
             </p>
             <input
@@ -138,7 +138,7 @@ export function ForgotPasswordForm({
                 type="button"
                 onClick={onSendResetLink}
                 disabled={loading || resetCountdown > 0}
-                className="text-xs tracking-wider text-brand-charcoal/50 transition-colors hover:text-brand-charcoal disabled:opacity-40"
+                className="text-xs tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal disabled:opacity-40"
               >
                 {resetCountdown > 0 ? `${resetCountdown}s 后重新发送` : "重新发送验证码"}
               </button>
@@ -146,7 +146,7 @@ export function ForgotPasswordForm({
           </form>
         ) : (
           <form onSubmit={onSendResetLink} className="space-y-10">
-            <p className="text-center text-[14px] font-light tracking-[0.08em] text-brand-charcoal/60">
+            <p className="text-center text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
               请输入您的注册手机号，我们将向您发送重置密码的验证码。
             </p>
             <div className="relative">
@@ -173,7 +173,7 @@ export function ForgotPasswordForm({
         <div className="mt-10 text-center">
           <button
             onClick={onSwitchToLogin}
-            className="text-xs tracking-wider text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            className="text-xs tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
           >
             返回登录
           </button>
@@ -226,7 +226,7 @@ export function ForgotPasswordForm({
 
         {mobileForgotStep === "code" && (
           <div className="space-y-6">
-            <p className="text-center text-sm text-brand-charcoal/60">
+            <p className="text-center text-sm text-brand-charcoal/70">
               验证码已发送至 {forgotPhone.slice(0, 3)}****{forgotPhone.slice(-4)}
             </p>
             <div className="relative flex gap-2">
@@ -263,7 +263,7 @@ export function ForgotPasswordForm({
                 下一步
               </button>
             </div>
-            <p className="text-center text-xs font-light text-brand-charcoal/50">
+            <p className="text-center text-xs font-light text-brand-charcoal/60">
               {resetCountdown > 0 ? (
                 `${resetCountdown}秒后可重新发送`
               ) : (
@@ -336,7 +336,7 @@ export function ForgotPasswordForm({
 
         {mobileForgotStep === "success" && (
           <div className="space-y-6 text-center">
-            <p className="text-brand-charcoal/60">密码重置成功！</p>
+            <p className="text-brand-charcoal/70">密码重置成功！</p>
             <button
               type="button"
               onClick={() => {
