@@ -1,11 +1,12 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutProvider } from "@/contexts/LayoutContext";
 import { BottomNavBar } from "@/components/website/BottomNavBar";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import { isUserCenterTab } from "@/lib/user-center-tab";
 import { cn, isBottomNavHiddenRoute } from "@/lib/utils";
 
 /**
@@ -42,8 +43,11 @@ export function MainContent({ children }: { children: ReactNode }) {
  * 3. 包装页面内容
  */
 export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
-  const { refreshUser, openUserCenter, redirectToWechatBind } = useAuth();
+  const { user, isLoading, refreshUser, openUserCenter, redirectToLogin, redirectToWechatBind } =
+    useAuth();
   const toast = useToast();
+  // /account 重定向带来的待打开 tab（account query 参数只消费一次）
+  const pendingAccountViewRef = useRef<UserCenterView>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -66,6 +70,38 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
       toast.error("微信授权失败，请重试");
     }
   }, [refreshUser, openUserCenter, redirectToWechatBind, toast]);
+
+  // /account 重定向入口（第一步）：捕获 account query 参数并清理 URL。
+  // 与下面的消费 effect 分离，避免等待登录态期间参数被清掉后丢失目标 tab。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const accountTab = params.get("account");
+    if (!accountTab || pendingAccountViewRef.current !== null) return;
+
+    pendingAccountViewRef.current = isUserCenterTab(accountTab) ? accountTab : "security";
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname + window.location.hash
+    );
+  }, []);
+
+  // /account 重定向入口（第二步）：登录态确认后打开弹窗；
+  // 未登录则跳统一登录页，return_to 指回 /?account=<tab>，
+  // 登录成功回到本站后重新走此链路自动打开弹窗。
+  useEffect(() => {
+    const view = pendingAccountViewRef.current;
+    if (!view || isLoading) return;
+
+    pendingAccountViewRef.current = null;
+    if (user) {
+      openUserCenter(view);
+    } else {
+      redirectToLogin(`/?account=${view}`);
+    }
+  }, [user, isLoading, openUserCenter, redirectToLogin]);
 
   return (
     <LayoutProvider>

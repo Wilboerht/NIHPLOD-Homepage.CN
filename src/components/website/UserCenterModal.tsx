@@ -9,23 +9,39 @@ import { useMounted } from "@/hooks/useMounted";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { X, User, LogOut, ArrowLeft, Crown, ShieldCheck } from "lucide-react";
+import {
+  X,
+  User,
+  LogOut,
+  ArrowLeft,
+  Crown,
+  ShieldCheck,
+  MonitorSmartphone,
+  KeyRound,
+  History,
+} from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelDisplay } from "@/lib/membership";
-import { ProfilePanel } from "./user-center/ProfilePanel";
+import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { VipPanel } from "./user-center/VipPanel";
+import { SecurityPanel } from "./user-center/panels/SecurityPanel";
+import { DevicesPanel } from "./user-center/panels/DevicesPanel";
+import { AuthorizationsPanel } from "./user-center/panels/AuthorizationsPanel";
+import { LoginHistoryPanel } from "./user-center/panels/LoginHistoryPanel";
 
-// 菜单项配置
+// 菜单项配置：六项共享面板，与 /account 重定向目标（/?account=<tab>）一一对应
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "vip", label: "会员中心", icon: Crown },
+  { id: "security", label: "安全设置", icon: ShieldCheck },
+  { id: "devices", label: "设备管理", icon: MonitorSmartphone },
+  { id: "authorizations", label: "授权管理", icon: KeyRound },
+  { id: "history", label: "登录历史", icon: History },
 ];
 
 export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
     useAuth();
-  const router = useRouter();
   const mounted = useMounted();
   // 用户系统偏好减少动画时停用背景光斑循环动画
   const reduceMotion = useReducedMotion();
@@ -280,23 +296,6 @@ export function UserCenterModal() {
                         </button>
                       );
                     })}
-
-                    {/* 安全设置为独立页面（改密码/设备管理/登录历史/授权管理），站内跳转并关闭弹窗 */}
-                    <button
-                      onClick={() => {
-                        closeUserCenter();
-                        router.push("/account");
-                      }}
-                      className="group relative -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 font-light text-stone-400 transition-all hover:bg-white/30 hover:text-stone-800"
-                    >
-                      <ShieldCheck
-                        className="h-[18px] w-[18px] shrink-0 text-stone-800 transition-colors group-hover:text-stone-800 md:text-stone-400"
-                        strokeWidth={1.5}
-                      />
-                      <span className="text-[13px] font-light text-stone-800 transition-colors group-hover:text-stone-800 md:text-stone-400">
-                        安全设置
-                      </span>
-                    </button>
                   </nav>
 
                   <div className="mt-auto px-12 py-8">
@@ -365,11 +364,19 @@ export function UserCenterModal() {
   return createPortal(content, document.body);
 }
 
-// 内容面板路由
+// 内容面板路由：六个菜单项对应 panels/ 下的共享面板（与 /account/embed 复用同一实现）
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
     case "vip":
       return <VipPanel />;
+    case "security":
+      return <SecurityPanel />;
+    case "devices":
+      return <DevicesPanel />;
+    case "authorizations":
+      return <AuthorizationsPanel />;
+    case "history":
+      return <LoginHistoryPanel />;
     default:
       return <ProfilePanel />;
   }

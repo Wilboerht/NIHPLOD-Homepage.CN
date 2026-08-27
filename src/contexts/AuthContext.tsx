@@ -12,6 +12,7 @@ import {
 import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { apiPost } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import type { UserCenterTab } from "@/lib/user-center-tab";
 
 interface User {
   id: string;
@@ -23,8 +24,8 @@ interface User {
   totalPoints?: number;
 }
 
-// 用户中心视图类型
-export type UserCenterView = "profile" | "vip" | null;
+// 用户中心视图类型（弹窗菜单/三外壳共用的 tab 标识，见 @/lib/user-center-tab）
+export type UserCenterView = UserCenterTab | null;
 
 interface AuthContextType {
   user: User | null;

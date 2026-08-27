@@ -3,35 +3,29 @@
  * /account/embed
  *
  * 适合 iframe 嵌入到子项目中。
- * 去除导航头/尾，仅保留内容区。
+ * 去除导航头/尾，仅保留内容区（裸面板，无弹窗遮罩/动画/焦点陷阱）。
  * 通过 postMessage 与父窗口通信。
  *
- * 通信协议：
+ * 通信协议（子项目依赖，不可变更）：
  * - NIHPLOD_SSO_READY: iframe 加载完成
  * - NIHPLOD_SSO_LOGOUT: 用户在主站登出
  * - NIHPLOD_SSO_REVOKE: 用户撤销授权
+ *
+ * 授权管理复用共享面板 AuthorizationsPanel（撤销成功后经 onRevoked
+ * 回调向父窗口发 NIHPLOD_SSO_REVOKE）；个人信息保持 embed 原有行为：
+ * 资料显示为主 + 昵称行内编辑 + 退出登录。
  */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { levelDisplay } from "@/lib/membership";
+import { apiGet, apiPost, apiPut } from "@/lib/api-client";
+import { AuthorizationsPanel } from "@/components/website/user-center/panels/AuthorizationsPanel";
 import { getParentTargetOrigin } from "./parent-origin";
 
 /** 可选白名单：逗号分隔的允许父窗口 origin（未配置则不做白名单校验） */
 const EMBED_ALLOWED_ORIGINS = process.env.NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS || "";
-
-/** 从 Cookie 读取 CSRF Token */
-function getCsrfToken(): string {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie.match(/(?:^|;\s*)__Host-csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : "";
-}
-
-/** 生成带 CSRF header 的请求头 */
-function csrfHeaders(extra?: Record<string, string>): Record<string, string> {
-  return { "X-CSRF-Token": getCsrfToken(), ...extra };
-}
 
 /**
  * 向父窗口发送 postMessage。
@@ -63,13 +57,6 @@ interface UserProfile {
   totalPoints: number;
 }
 
-interface OAuthSession {
-  clientId: string;
-  clientName: string;
-  scopes: string[];
-  createdAt: string;
-}
-
 type Tab = "profile" | "authorizations";
 
 export default function EmbedAccountPage() {
@@ -81,110 +68,54 @@ export default function EmbedAccountPage() {
   const [saving, setSaving] = useState(false);
   const [saveHint, setSaveHint] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
-  const [revoking, setRevoking] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<OAuthSession[]>([]);
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await fetch("/api/user/profile");
-      const data = await res.json();
-      if (data.success) {
-        setUser(data.data.user);
-        setNickname(data.data.user.nickname || "");
-      } else {
-        setError("请先登录");
-      }
+      const data = await apiGet<{ user: UserProfile }>("/api/user/profile");
+      setUser(data.user);
+      setNickname(data.user.nickname || "");
     } catch {
-      setError("获取用户信息失败");
+      setError("请先登录");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const fetchSessions = useCallback(async () => {
-    try {
-      const res = await fetch("/api/user/oauth/sessions");
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setSessions(data.data);
-      }
-    } catch {
-      // 授权列表加载失败不阻断主流程
-    }
-  }, []);
-
   useEffect(() => {
-    deferInEffect(() => {
-      fetchProfile();
-      fetchSessions();
-    });
+    deferInEffect(fetchProfile);
     // 预获取 CSRF Token，确保写操作可用
     fetch("/api/auth/csrf").catch(() => {});
 
     // 通知父窗口 iframe 已加载完成
     postToParent({ type: "NIHPLOD_SSO_READY" });
-  }, [fetchProfile, fetchSessions]);
+  }, [fetchProfile]);
 
   const handleSaveNickname = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
-        headers: csrfHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ nickname }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUser((prev) => (prev ? { ...prev, nickname } : prev));
-        setError("");
-        // 保存成功提示（2 秒后自动消失）
-        setSaveHint("已保存");
-        setTimeout(() => setSaveHint(""), 2000);
-      } else {
-        setError(data.error?.message || "保存失败");
-      }
-    } catch {
-      setError("网络错误");
+      await apiPut("/api/user/profile", { nickname });
+      setUser((prev) => (prev ? { ...prev, nickname } : prev));
+      setError("");
+      // 保存成功提示（2 秒后自动消失）
+      setSaveHint("已保存");
+      setTimeout(() => setSaveHint(""), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存失败");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleRevoke = async (clientId: string, clientName: string) => {
-    if (
-      !window.confirm(`确定要撤销对「${clientName}」的授权吗？撤销后该应用将无法再访问您的账户信息。`)
-    ) {
-      return;
-    }
-    setRevoking(clientId);
-    try {
-      const res = await fetch("/api/user/oauth/revoke", {
-        method: "POST",
-        headers: csrfHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ clientId }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSessions((prev) => prev.filter((s) => s.clientId !== clientId));
-        // 通知父窗口用户撤销了授权
-        postToParent({ type: "NIHPLOD_SSO_REVOKE", clientId });
-      }
-    } catch {
-      setError("撤销失败");
-    } finally {
-      setRevoking(null);
     }
   };
 
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      const res = await fetch("/api/auth/logout", { method: "POST", headers: csrfHeaders() });
-      if (!res.ok) return;
+      await apiPost("/api/auth/logout");
       // 刷新本地用户状态：登出后立即切换为未登录视图
       setUser(null);
       // 通知父窗口用户已登出
       postToParent({ type: "NIHPLOD_SSO_LOGOUT" });
+    } catch {
+      // 登出失败保持现状，不通知父窗口
     } finally {
       setLoggingOut(false);
     }
@@ -245,7 +176,7 @@ export default function EmbedAccountPage() {
         </button>
       </div>
 
-      {/* Profile Tab */}
+      {/* Profile Tab（embed 保持原有行为：显示为主 + 昵称行内编辑 + 退出登录） */}
       {activeTab === "profile" && (
         <div className="space-y-3">
           <div>
@@ -293,37 +224,12 @@ export default function EmbedAccountPage() {
         </div>
       )}
 
-      {/* Authorizations Tab */}
+      {/* Authorizations Tab：共享面板，撤销成功通知父窗口 */}
       {activeTab === "authorizations" && (
-        <div>
-          {sessions.length === 0 ? (
-            <p className="py-4 text-center text-sm text-gray-500">暂无授权记录</p>
-          ) : (
-            <div className="space-y-2">
-              {sessions.map((s) => (
-                <div
-                  key={s.clientId}
-                  className="flex items-center justify-between border-b py-2 last:border-0"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{s.clientName}</p>
-                    <p className="text-xs text-gray-500">
-                      授权时间: {new Date(s.createdAt).toLocaleDateString("zh-CN")}
-                    </p>
-                    <p className="text-xs text-gray-400">权限: {s.scopes.join(", ")}</p>
-                  </div>
-                  <button
-                    onClick={() => handleRevoke(s.clientId, s.clientName)}
-                    disabled={revoking === s.clientId}
-                    className="rounded border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {revoking === s.clientId ? "撤销中..." : "撤销"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <AuthorizationsPanel
+          hideTitle
+          onRevoked={(clientId) => postToParent({ type: "NIHPLOD_SSO_REVOKE", clientId })}
+        />
       )}
     </div>
   );
