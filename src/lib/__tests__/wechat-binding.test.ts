@@ -27,6 +27,8 @@ vi.mock("@/lib/prisma", () => {
 
 vi.mock("@/lib/sms", () => ({
   verifyCode: vi.fn().mockReturnValue(true),
+  recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
+  SMS_CODE_MAX_ATTEMPTS: 5,
 }));
 
 vi.mock("@/lib/password", () => ({
@@ -57,10 +59,11 @@ vi.mock("@/lib/client-ip", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { verifyCode } from "@/lib/sms";
+import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
 import { resolveWechatBinding, type WechatBindingInput } from "@/lib/wechat-binding";
 
 const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
+const mockRecordSmsCodeFailure = recordSmsCodeFailure as ReturnType<typeof vi.fn>;
 
 type TxClient = {
   user: {
@@ -278,5 +281,21 @@ describe("resolveWechatBinding 短信验证码类型（register/bind 双通道�
 
     expect(result.success).toBe(true);
     expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "register", "hash");
+  });
+
+  it("验证码错误应递增单码失败计数且返回 INVALID_CODE（不锁定手机号）", async () => {
+    mockPrisma.smsCode.findFirst.mockResolvedValue({ id: "sms-3", codeHash: "hash", type: "bind" });
+    mockVerifyCode.mockReturnValue(false);
+
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram"));
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("INVALID_CODE");
+    }
+    // 单码防爆破：失败计数递增（达到上限由 sms 模块作废该码）
+    expect(mockRecordSmsCodeFailure).toHaveBeenCalledWith("sms-3");
+    // 核销不应发生
+    expect(mockPrisma.smsCode.updateMany).not.toHaveBeenCalled();
   });
 });

@@ -40,6 +40,48 @@ function validateRS256Keys(): void {
   }
 }
 
+/**
+ * 密钥类环境变量校验（存在性 + 最小长度）。
+ * 语义与 src/lib/jwt.ts 的 validateSecret 完全一致；此处不复用其导出，
+ * 因为 import jwt.ts 会触发该模块顶层副作用（JWT 密钥加载、生产环境
+ * NEXT_PUBLIC_APP_URL 校验等），而启动校验需要在最早期独立运行。
+ */
+const MIN_SECRET_LENGTH = 32;
+
+function validateSecret(name: string, value: string | undefined): void {
+  if (!value) {
+    throw new Error(`[Server] ${name} 环境变量未设置，请配置后再启动应用`);
+  }
+  if (value.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `[Server] ${name} 长度必须不少于 ${MIN_SECRET_LENGTH} 个字符，当前 ${value.length} 个字符`
+    );
+  }
+}
+
+/**
+ * 短信服务启动校验：
+ * 1. SMS_CODE_HMAC_KEY 所有环境强制校验（存在性 + 最小长度），与 jwt.ts 的
+ *    validateSecret 模式一致——该密钥缺失时 hashVerifyCode 在调用时也会抛错，
+ *    此处提前到启动阶段失败，避免运行期才暴露配置问题。
+ * 2. 生产环境 SMS_PROVIDER 应为 aliyun 或 tencent：未设置 / mock / 未知值会静默
+ *    回退 mock 通道（短信实际未发出）。当前业务决策为短期不接真实短信通道，
+ *    故降级为启动告警而非强制失败；接入真实短信后应恢复为 throw。
+ */
+function validateSmsConfig(): void {
+  validateSecret("SMS_CODE_HMAC_KEY", process.env.SMS_CODE_HMAC_KEY);
+
+  if (!isProduction()) {
+    return;
+  }
+  const provider = process.env.SMS_PROVIDER;
+  if (provider !== "aliyun" && provider !== "tencent") {
+    apiConsole.warn(
+      `[Server] ⚠️ 生产环境 SMS_PROVIDER 当前为 ${provider ?? "(未设置)"}，验证码短信不会真实发出（mock 通道）。接入真实短信服务后请配置为 aliyun 或 tencent。`
+    );
+  }
+}
+
 export async function initializeApp(): Promise<void> {
   // 构建阶段跳过初始化（防止 worker 进程重复执行）
   if (process.env.NEXT_PHASE === "phase-production-build") {
@@ -56,6 +98,10 @@ export async function initializeApp(): Promise<void> {
   apiConsole.info("========================================\n");
 
   try {
+    // 短信配置校验（所有环境校验 HMAC 密钥；生产环境额外校验 SMS_PROVIDER）
+    validateSmsConfig();
+    apiConsole.info("✅ 短信服务配置已就绪");
+
     // 生产环境 RS256 密钥校验
     if (isProduction()) {
       validateRS256Keys();

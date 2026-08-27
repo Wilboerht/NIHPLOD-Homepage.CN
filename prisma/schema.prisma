@@ -487,6 +487,7 @@ model SmsCode {
   codeHash  String   // 验证码 SHA-256 哈希
   type      String   @default("login")         // login | bind | reset
   used      Boolean  @default(false)
+  attempts  Int      @default(0) // 校验失败次数：达到上限（应用层 SMS_CODE_MAX_ATTEMPTS=5）即作废该码，防爆破
   ipAddress String?  // 发送时的客户端 IP（可选，用于 IP 绑定校验）
   expiresAt DateTime
   createdAt DateTime @default(now())

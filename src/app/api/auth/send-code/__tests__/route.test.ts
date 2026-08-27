@@ -170,6 +170,22 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(mockSendLoginCode).not.toHaveBeenCalled();
   }, 10000);
 
+  it("假发送与真实发送的响应体结构完全一致（防枚举 oracle）", async () => {
+    // 真实发送：已注册手机号，走真实短信通道
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+    const realRes = await POST(createRequest({ phone: "13800138000", type: "bind" }));
+    const realData = await realRes.json();
+
+    // 假发送：未注册手机号
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    const fakeRes = await POST(createRequest({ phone: "13900139000", type: "bind" }));
+    const fakeData = await fakeRes.json();
+
+    expect(fakeRes.status).toBe(realRes.status);
+    // 响应体逐字段相等（data.expiresIn，无 message 字段差异）
+    expect(fakeData).toEqual(realData);
+  }, 10000);
+
   it("type=bind 已注册手机号应真实发送（短信通道被调用）", async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 

@@ -26,6 +26,32 @@ const SEND_INTERVAL_SECONDS = 60;
 // 每小时最多发送次数
 const MAX_SEND_PER_HOUR = 5;
 
+/**
+ * 假发送（防枚举）响应：与真实发送路径返回完全相同的响应体，
+ * 避免攻击者通过响应内容区分手机号是否已注册。
+ */
+function fakeSendResponse() {
+  return NextResponse.json(
+    {
+      success: true,
+      data: {
+        expiresIn: CODE_EXPIRE_MINUTES * 60, // 秒，与真实发送路径一致
+      },
+    },
+    { status: 200 }
+  );
+}
+
+/**
+ * 模拟真实短信通道耗时。
+ * 真实通道是外部 HTTP 调用（阿里云/腾讯云），正常耗时约数百 ms；
+ * 假发送取 300~900ms 随机值，与真实路径同量级且区间重叠，
+ * 防止通过响应时间区分手机号是否已注册（时序枚举）。
+ */
+async function simulateSmsSendLatency() {
+  await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 600));
+}
+
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
@@ -139,49 +165,25 @@ export async function POST(request: NextRequest) {
 
     if (type === "register" && userExists) {
       // 模拟短信发送耗时，防止时序泄露用户存在性
-      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
-      return NextResponse.json(
-        {
-          success: true,
-          data: { message: "验证码已发送" },
-        },
-        { status: 200 }
-      );
+      await simulateSmsSendLatency();
+      return fakeSendResponse();
     }
 
     if (type === "login" && !userExists) {
-      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
-      return NextResponse.json(
-        {
-          success: true,
-          data: { message: "验证码已发送" },
-        },
-        { status: 200 }
-      );
+      await simulateSmsSendLatency();
+      return fakeSendResponse();
     }
 
     if (type === "reset" && !userExists) {
-      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
-      return NextResponse.json(
-        {
-          success: true,
-          data: { message: "验证码已发送" },
-        },
-        { status: 200 }
-      );
+      await simulateSmsSendLatency();
+      return fakeSendResponse();
     }
 
     // 绑定场景（小程序「关联官网账户」）：仅手机号已存在官网账户才真实发码；
     // 未注册手机号假发送（返回成功但不发码），防枚举口径与 register/login/reset 一致
     if (type === "bind" && !userExists) {
-      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 400));
-      return NextResponse.json(
-        {
-          success: true,
-          data: { message: "验证码已发送" },
-        },
-        { status: 200 }
-      );
+      await simulateSmsSendLatency();
+      return fakeSendResponse();
     }
 
     // 生成验证码

@@ -25,7 +25,7 @@ import {
   extractDeviceInfo,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
-import { verifyCode } from "@/lib/sms";
+import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
@@ -96,11 +96,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 查找验证码
+    // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）
     const smsCode = await prisma.smsCode.findFirst({
       where: {
         phone,
         type: "login",
         used: false,
+        attempts: { lt: SMS_CODE_MAX_ATTEMPTS },
         expiresAt: { gte: new Date() },
       },
       orderBy: { createdAt: "desc" },
@@ -145,6 +147,8 @@ export async function POST(request: NextRequest) {
 
     // 4. 验证码校验
     if (!verifyCode(phone, code, "login", smsCode.codeHash)) {
+      // 单码失败计数：达到上限自动作废该验证码（防爆破，与账户锁定叠加）
+      await recordSmsCodeFailure(smsCode.id);
       // 记录失败尝试
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
 

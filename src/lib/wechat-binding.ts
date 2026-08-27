@@ -18,7 +18,7 @@ import {
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
-import { verifyCode } from "@/lib/sms";
+import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import type { NextRequest } from "next/server";
@@ -62,17 +62,25 @@ async function verifyAndConsumeSmsCode(phone: string, code: string) {
   // bind（小程序「关联官网账户」通道，POST /api/auth/send-code type=bind）。
   // 取最新一条未使用记录；验证码哈希含 type（HMAC(phone:code:type)），
   // 校验时必须使用记录自身的 type，不能用固定值。
+  // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）。
+  // 绑定路径刻意不做手机号级锁定（避免零门槛锁号 DoS），单码作废是唯一的验证码防爆破防线。
   const smsCode = await prisma.smsCode.findFirst({
     where: {
       phone,
       type: { in: ["register", "bind"] },
       used: false,
+      attempts: { lt: SMS_CODE_MAX_ATTEMPTS },
       expiresAt: { gte: new Date() },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  if (!smsCode || !verifyCode(phone, code, smsCode.type, smsCode.codeHash)) {
+  if (!smsCode) {
+    return { valid: false as const, error: "验证码错误或已过期" };
+  }
+  if (!verifyCode(phone, code, smsCode.type, smsCode.codeHash)) {
+    // 单码失败计数：达到上限自动作废该验证码（防爆破）
+    await recordSmsCodeFailure(smsCode.id);
     return { valid: false as const, error: "验证码错误或已过期" };
   }
 

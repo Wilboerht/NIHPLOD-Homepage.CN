@@ -27,7 +27,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { hashPassword, passwordSchema, getPasswordExpiryDate } from "@/lib/password";
-import { verifyCode } from "@/lib/sms";
+import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordPasswordHistory } from "@/lib/password-policy";
@@ -125,11 +125,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 查找验证码
+    // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）
     const smsCode = await prisma.smsCode.findFirst({
       where: {
         phone,
         type: "register",
         used: false,
+        attempts: { lt: SMS_CODE_MAX_ATTEMPTS },
         expiresAt: { gte: new Date() },
       },
       orderBy: { createdAt: "desc" },
@@ -156,8 +158,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 反枚举："无可用码"与"码不匹配"统一返回同一错误码（配合 send-code 假发送）
-    // 验证码类失败不计入账户锁定池：否则攻击者无需任何验证码即可锁住任意手机号
-    if (!smsCode || !verifyCode(phone, code, "register", smsCode.codeHash)) {
+    // 验证码类失败不计入账户锁定池：否则攻击者无需任何验证码即可锁住任意手机号。
+    // 防爆破由单码失败计数承担：码不匹配时递增 attempts，达到上限自动作废该验证码。
+    if (!smsCode) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
+          },
+        },
+        { status: 400 }
+      );
+    }
+    if (!verifyCode(phone, code, "register", smsCode.codeHash)) {
+      await recordSmsCodeFailure(smsCode.id);
       return NextResponse.json(
         {
           success: false,

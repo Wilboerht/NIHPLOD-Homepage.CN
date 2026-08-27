@@ -12,6 +12,38 @@
 
 import crypto from "crypto";
 import { randomInt } from "./random";
+import { prisma } from "./prisma";
+
+/**
+ * 单条验证码最大校验失败次数。
+ * 达到上限后该验证码即作废（used=true），需重新发送，
+ * 防止攻击者对同一验证码无限次爆破（6 位码空间仅 10^6）。
+ */
+export const SMS_CODE_MAX_ATTEMPTS = 5;
+
+/**
+ * 记录一次验证码校验失败：原子递增 attempts，达到上限后作废该验证码。
+ *
+ * 并发安全说明：
+ * - 第一步 updateMany 用 Prisma 原子 increment，并发失败不会丢失计数；
+ * - 第二步把已达上限的码标记 used（同样是幂等原子操作）。
+ * 两步之间存在极短窗口，极端并发下可能多放行 1~2 次尝试，可接受——
+ * 爆破成本仅从 5 次变为约 5+并发数次，相对 10^6 码空间无实际影响。
+ * 消费端在核销前的查询均带 attempts < SMS_CODE_MAX_ATTEMPTS 条件兜底。
+ *
+ * 注意：register / 微信绑定等消费路径刻意不做手机号级锁定（避免零门槛锁号 DoS），
+ * 单码作废机制是这些路径唯一的验证码防爆破防线。
+ */
+export async function recordSmsCodeFailure(smsCodeId: string): Promise<void> {
+  await prisma.smsCode.updateMany({
+    where: { id: smsCodeId, used: false },
+    data: { attempts: { increment: 1 } },
+  });
+  await prisma.smsCode.updateMany({
+    where: { id: smsCodeId, used: false, attempts: { gte: SMS_CODE_MAX_ATTEMPTS } },
+    data: { used: true },
+  });
+}
 
 /**
  * 计算验证码哈希
@@ -102,7 +134,16 @@ export async function sendSMS(options: SMSParams): Promise<SMSResult> {
  * 用于未接入真实短信服务商期间的联调测试；正式启用短信服务前必须移除该变量。
  */
 async function sendMockSMS(options: SMSParams): Promise<SMSResult> {
-  if (process.env.SMS_DEBUG_LOG_CODE === "true") {
+  // 生产环境守卫：SMS_DEBUG_LOG_CODE 在生产环境一律忽略（不抛错，避免阻断业务），
+  // 仅打 warning 提醒移除该变量——明文验证码绝不能出现在生产日志中。
+  const debugLogCode =
+    process.env.SMS_DEBUG_LOG_CODE === "true" && process.env.NODE_ENV !== "production";
+  if (process.env.SMS_DEBUG_LOG_CODE === "true" && process.env.NODE_ENV === "production") {
+    apiConsole.warn(
+      "[Mock SMS] 生产环境下 SMS_DEBUG_LOG_CODE 已忽略（明文验证码不会打印），请从环境变量中移除"
+    );
+  }
+  if (debugLogCode) {
     // 注意：apiConsole.warn 会把对象 String() 化成 [object Object]，必须拼成字符串
     apiConsole.warn(
       `[Mock SMS] SMS_DEBUG_LOG_CODE 已开启，明文打印验证码（仅限联调，上线前必须关闭）: phone=${options.phone} template=${options.template} params=${JSON.stringify(options.params)}`
@@ -164,17 +205,21 @@ async function sendAliyunSMS(options: SMSParams): Promise<SMSResult> {
       Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     };
 
-    // 生成签名
+    // 生成签名（HTTP 方法参与签名，与下方 POST 请求保持一致）
     const signature = generateAliyunSignature(params, accessKeySecret);
     params.Signature = signature;
 
-    // 发送请求
-    const queryString = Object.entries(params)
+    // 使用 POST + form-urlencoded body 提交参数：
+    // 避免明文验证码（TemplateParam）出现在 URL query 中，
+    // 防止经网关/CDN/访问日志等链路泄漏。签名逻辑与 GET 完全一致。
+    const body = Object.entries(params)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join("&");
 
-    const response = await fetchWithTimeout(`${endpoint}?${queryString}`, {
-      method: "GET",
+    const response = await fetchWithTimeout(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
     });
 
     const result = await response.json();
@@ -204,8 +249,8 @@ function generateAliyunSignature(params: Record<string, string>, secret: string)
     .map((key) => `${percentEncode(key)}=${percentEncode(params[key])}`)
     .join("&");
 
-  // 3. 构建待签名字符串
-  const stringToSign = `GET&${percentEncode("/")}&${percentEncode(canonicalizedQueryString)}`;
+  // 3. 构建待签名字符串（HTTP 方法固定为 POST，与 sendAliyunSMS 的请求方式一致）
+  const stringToSign = `POST&${percentEncode("/")}&${percentEncode(canonicalizedQueryString)}`;
 
   // 4. 计算签名
   const hmac = crypto.createHmac("sha1", secret + "&");
@@ -230,6 +275,20 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
   };
   return templates[template] || null;
 }
+
+/**
+ * 腾讯云模板参数顺序定义。
+ * TemplateParamSet 是位置数组，顺序必须与控制台模板中的变量顺序严格一致，
+ * 不能依赖 Object.values 的键序（依赖对象键的插入顺序，属于隐式契约）。
+ * 当前模板均为单参数：
+ * - LOGIN_CODE：{1} 为验证码
+ * - PASSWORD_RESET：{1} 为密码变更时间（安全通知文案）
+ * 若未来模板改为多参数，在此按模板变量顺序追加键名即可。
+ */
+const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
+  LOGIN_CODE: ["code"],
+  PASSWORD_RESET: ["time"],
+};
 
 /**
  * 腾讯云短信
@@ -266,9 +325,19 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
       },
     });
 
-    // 转换参数: 只取 value 数组，顺序必须与模板匹配
-    // 例如 login code 模板参数 { code: "1234" } -> ["1234"]
-    const templateParams = Object.values(options.params);
+    // 按模板参数顺序显式映射为位置数组，不依赖 Object.values 的键序。
+    // 缺失的参数键给空串占位并告警（防御性处理，避免参数错位发送到用户手机）。
+    const paramKeys = TENCENT_TEMPLATE_PARAM_KEYS[options.template];
+    const templateParams = paramKeys.map((key) => {
+      const value = options.params[key];
+      if (value === undefined) {
+        apiConsole.warn(
+          `[Tencent SMS] 模板 ${options.template} 缺少参数键 ${key}，以空串占位，请检查模板变量配置`
+        );
+        return "";
+      }
+      return value;
+    });
 
     const countryCode = process.env.SMS_COUNTRY_CODE || "+86";
     const res = await client.SendSms({

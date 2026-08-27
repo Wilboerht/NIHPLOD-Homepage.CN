@@ -602,7 +602,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 - **用途**：仅为「小程序微信身份 ↔ 官网手机号账户」绑定流程发码；验证码核销在 `POST /api/auth/wechat/bind`（短信通道，body 携带 `bindToken + phone + code`）完成。
 - **CSRF 豁免**：小程序无 Cookie，无法完成双提交校验，故 `type=bind` 豁免 CSRF（其余 `type` 仍强制校验）。安全性由短信验证码本身 + 限流保证，与 `/api/auth/wechat/bind` 对 `bindToken` 通道的豁免逻辑同理。
-- **防枚举假发送**：仅当手机号**已存在官网账户**时才真实发码；未注册手机号返回同样的成功响应（`{ success: true, data: { message: "验证码已发送" } }`）但不发码、不入库，避免通过该端点枚举官网注册用户。
+- **防枚举假发送**：仅当手机号**已存在官网账户**时才真实发码；未注册手机号返回与真实发送完全相同的成功响应（`{ success: true, data: { expiresIn: 300 } }`）但不发码、不入库，且响应耗时与真实短信通道同量级，避免通过响应体或时序枚举官网注册用户。
 - **限流不变**：60 秒发送间隔、每小时最多 5 次、IP 级限流对 `type=bind` 照常生效；频控按 `phone + type` 维度独立计数，不影响 login/register/reset 通道。
 - **验证码语义**：`SmsCode.type = "bind"`，有效期 5 分钟；绑定校验同时兼容 `register` 与 `bind` 两种类型（取最新未使用记录），官网扫码绑定页原有 `register` 通道行为不变。
 

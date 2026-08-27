@@ -14,7 +14,12 @@ import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit"
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { verifyCode, sendPasswordChangedNotification } from "@/lib/sms";
+import {
+  verifyCode,
+  recordSmsCodeFailure,
+  sendPasswordChangedNotification,
+  SMS_CODE_MAX_ATTEMPTS,
+} from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
 
 // 请求参数验证
@@ -90,11 +95,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证验证码
+    // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）
     const smsCode = await prisma.smsCode.findFirst({
       where: {
         phone,
         type: "reset",
         used: false,
+        attempts: { lt: SMS_CODE_MAX_ATTEMPTS },
         expiresAt: { gte: new Date() },
       },
       orderBy: { createdAt: "desc" },
@@ -136,6 +143,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (!verifyCode(phone, code, "reset", smsCode.codeHash)) {
+      // 单码失败计数：达到上限自动作废该验证码（防爆破，与账户锁定叠加）
+      await recordSmsCodeFailure(smsCode.id);
       await recordLoginAttempt(phone, false, request, "code_invalid", "sms");
       return NextResponse.json(
         {
