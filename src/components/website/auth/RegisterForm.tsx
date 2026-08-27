@@ -73,7 +73,7 @@ export function RegisterForm({
         checked={mobileAgreed}
         onChange={onMobileAgreedChange}
         label={
-          <span className="text-xs tracking-wide text-brand-charcoal/60">
+          <span className="text-xs tracking-wide text-brand-charcoal/70">
             我已阅读并同意
             <a
               href="/terms"
@@ -139,7 +139,7 @@ export function RegisterForm({
               type="button"
               onClick={onSendRegCode}
               disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
-              className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/70 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+              className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
             >
               {regCountdown > 0 ? `${regCountdown}s` : "获取"}
             </button>
@@ -200,7 +200,7 @@ export function RegisterForm({
         <div className="mt-6 text-center">
           <button
             onClick={onSwitchToLogin}
-            className="text-xs tracking-wider text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
+            className="text-xs tracking-wider text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/90"
           >
             已有账号？返回登录
           </button>
@@ -256,7 +256,7 @@ export function RegisterForm({
             type="button"
             onClick={onSendRegCode}
             disabled={regCodeSending || regCountdown > 0 || !regPhone}
-            className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/70 transition-all disabled:opacity-30"
+            className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
           >
             {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
           </button>
@@ -318,7 +318,7 @@ export function RegisterForm({
         <button
           type="button"
           onClick={onSwitchToLogin}
-          className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
+          className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/90"
         >
           已有账户？返回登录
         </button>

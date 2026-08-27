@@ -1016,7 +1016,6 @@ function LoginPageContent() {
               exit={{ x: "100%" }}
               transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
               className="fixed inset-y-0 right-0 z-[99999] hidden w-full flex-col bg-white lg:flex"
-              style={{ willChange: "transform" }}
             >
               {/* Back button：login 模式返回 return_to（默认首页）；SSO 授权场景走取消授权（access_denied）；reset/register 返回登录 */}
               {mode !== "wechat-bind" && mode !== "consent" && (
@@ -1030,7 +1029,7 @@ function LoginPageContent() {
                         : "返回首页"
                       : "返回登录"
                   }
-                  className="absolute left-8 top-8 z-20 flex h-10 items-center gap-1.5 text-brand-charcoal/60 transition-colors hover:text-brand-charcoal/80"
+                  className="absolute left-8 top-8 z-20 flex h-10 items-center gap-1.5 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/90"
                 >
                   <ArrowLeft size={20} strokeWidth={1.5} />
                   <span className="text-[14px] font-light tracking-[0.15em]">返回</span>
@@ -1089,7 +1088,6 @@ function LoginPageContent() {
               exit={{ y: "100%" }}
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               className="fixed inset-0 z-[99999] flex flex-col bg-[#F8F7F3] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pl-4 pr-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] lg:hidden"
-              style={{ willChange: "transform" }}
             >
               {/* Mobile top bar */}
               <div className="relative flex h-[56px] w-full flex-shrink-0 items-center justify-center">
