@@ -164,7 +164,7 @@ function LogoutContent() {
         throw new Error(data.error?.message || "登出失败");
       }
 
-      // 清除所有客户端存储数据（auth_hint、购物车、偏好等）
+      // 清除所有客户端存储数据（auth_hint、偏好等）
       try {
         localStorage.clear();
       } catch {}
