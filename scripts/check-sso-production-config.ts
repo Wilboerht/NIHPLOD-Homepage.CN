@@ -10,10 +10,11 @@
  */
 import dotenv from "dotenv";
 
-// 加载环境变量：.env 为通用文件（多数服务器部署方式），.env.local / .env.production 为本地/生产覆盖
+// 加载环境变量：dotenv 不覆盖已设置的变量，按 Next.js 优先级的逆序加载
+// （先 .env，再 .env.production，最后 .env.local），使优先级与 Next.js 运行时一致
 dotenv.config({ path: ".env" });
-dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env.production" });
+dotenv.config({ path: ".env.local" });
 
 // 与 src/lib/jwt.ts 的 MIN_SECRET_LENGTH 保持一致
 const MIN_SECRET_LENGTH = 32;
