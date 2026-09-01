@@ -835,7 +835,7 @@ function LoginPageContent() {
     openid: "唯一用户标识（sub）",
     profile: "昵称、头像",
     phone: "手机号（脱敏后）",
-    membership: "会员等级、积分",
+    membership: "会员等级、累计消费",
     birthday: "生日",
   };
 

@@ -720,7 +720,6 @@ export interface IdTokenClaims {
   nickname?: string;
   avatar?: string;
   membership_level?: string;
-  total_points?: number;
   scope?: string;
   /** OIDC Core 3.1.3.6: nonce 参数回显，绑定 ID Token 到客户端原始 session */
   nonce?: string;

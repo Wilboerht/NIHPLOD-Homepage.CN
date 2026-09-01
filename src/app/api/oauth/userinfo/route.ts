@@ -153,7 +153,6 @@ export async function GET(request: NextRequest) {
         birthday: true,
         status: true,
         membershipLevel: true,
-        totalPoints: true,
       },
     });
 
@@ -190,7 +189,6 @@ export async function GET(request: NextRequest) {
 
     if (scopes.includes("membership")) {
       response.membership_level = user.membershipLevel;
-      response.total_points = user.totalPoints;
     }
 
     if (scopes.includes("birthday")) {

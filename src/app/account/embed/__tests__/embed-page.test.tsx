@@ -21,7 +21,6 @@ const USER = {
   nickname: "测试用户",
   avatar: null,
   membershipLevel: "REGULAR",
-  totalPoints: 0,
 };
 
 const SESSIONS = [

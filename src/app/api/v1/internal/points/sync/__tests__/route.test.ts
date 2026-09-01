@@ -1,8 +1,8 @@
 /**
- * POST /api/v1/internal/points/sync 路由测试
- * 覆盖：缺鉴权头 401、签名错误 401、参数校验 400（含 delta/spentDelta 绝对值上限）、
- *       用户不存在 404、成功入账（含等级重算）、负向钳制下限 0（流水记实际生效值）、
- *       CAS 并发重试不出现负余额、重复上报幂等（P2002 → duplicated）
+ * POST /api/v1/internal/points/sync 路由测试（2026-09 起仅同步消费额）
+ * 覆盖：缺鉴权头 401、签名错误 401、参数校验 400（spentDelta 绝对值上限）、
+ *       用户不存在 404、成功入账（含等级重算）、CAS 并发重试、
+ *       重复上报幂等（已存在记录 / P2002 → duplicated）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -10,7 +10,7 @@ import { NextRequest } from "next/server";
 const { txClient } = vi.hoisted(() => ({
   txClient: {
     user: { findUnique: vi.fn(), updateMany: vi.fn() },
-    pointTransaction: { create: vi.fn() },
+    spentSyncRecord: { findUnique: vi.fn(), create: vi.fn() },
   },
 }));
 
@@ -77,20 +77,20 @@ function createSignedRequest(body: unknown, options?: { badSignature?: boolean }
 
 const VALID_BODY = {
   phone: "13800138000",
-  delta: 15,
   spentDelta: 150,
   reference: "mall-order-N001",
-  note: "商城订单消费奖励",
+  note: "商城订单消费",
 };
 
-describe("POST /api/v1/internal/points/sync", () => {
+describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.INTERNAL_API_KEYS = JSON.stringify([{ project: "mall", key: KEY, secret: SECRET }]);
     mockRateLimit.mockResolvedValue({ success: true });
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
-    txClient.pointTransaction.create.mockResolvedValue({});
-    // CAS 条件更新默认命中（快照未被并发修改）
+    // 默认：幂等记录不存在、CAS 条件更新命中
+    txClient.spentSyncRecord.findUnique.mockResolvedValue(null);
+    txClient.spentSyncRecord.create.mockResolvedValue({});
     txClient.user.updateMany.mockResolvedValue({ count: 1 });
   });
 
@@ -112,20 +112,6 @@ describe("POST /api/v1/internal/points/sync", () => {
 
     expect(res.status).toBe(401);
     expect((await res.json()).error.code).toBe("UNAUTHORIZED");
-  });
-
-  it("delta 为 0 应返回 400 INVALID_PARAMS", async () => {
-    const res = await POST(createSignedRequest({ ...VALID_BODY, delta: 0 }));
-
-    expect(res.status).toBe(400);
-    expect((await res.json()).error.code).toBe("INVALID_PARAMS");
-  });
-
-  it("delta 超出绝对值上限（±1,000,000）应返回 400 INVALID_PARAMS", async () => {
-    const res = await POST(createSignedRequest({ ...VALID_BODY, delta: 2_000_000 }));
-
-    expect(res.status).toBe(400);
-    expect((await res.json()).error.code).toBe("INVALID_PARAMS");
   });
 
   it("spentDelta 超出绝对值上限（±1,000,000）应返回 400 INVALID_PARAMS", async () => {
@@ -161,12 +147,10 @@ describe("POST /api/v1/internal/points/sync", () => {
     expect((await res.json()).error.code).toBe("USER_NOT_FOUND");
   });
 
-  it("成功入账：CAS 更新余额、写 EXTERNAL_SYNC 流水并按新消费额重算等级", async () => {
+  it("成功入账：CAS 更新消费额、写幂等记录并按新消费额重算等级", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     txClient.user.findUnique.mockResolvedValue({
-      totalPoints: 100,
       totalSpent: 850,
-      membershipLevel: "REGULAR",
     });
 
     const res = await POST(createSignedRequest(VALID_BODY));
@@ -176,98 +160,76 @@ describe("POST /api/v1/internal/points/sync", () => {
     expect(data.success).toBe(true);
     // 850 + 150 = 1000 ≥ 1000 → 升级高级会员
     expect(data.data).toEqual({
-      totalPoints: 115,
       totalSpent: 1000,
       membershipLevel: "ADVANCED",
     });
     // CAS 乐观并发控制：以读取快照作为更新条件
     expect(txClient.user.updateMany).toHaveBeenCalledWith({
-      where: { id: "user-1", totalPoints: 100, totalSpent: 850 },
-      data: { totalPoints: 115, totalSpent: 1000, membershipLevel: "ADVANCED" },
+      where: { id: "user-1", totalSpent: 850 },
+      data: { totalSpent: 1000, membershipLevel: "ADVANCED" },
     });
-    expect(txClient.pointTransaction.create).toHaveBeenCalledWith({
+    expect(txClient.spentSyncRecord.create).toHaveBeenCalledWith({
       data: {
         userId: "user-1",
-        points: 15,
-        type: "EXTERNAL_SYNC",
         reference: "mall-order-N001",
-        note: "商城订单消费奖励",
+        spentDelta: 150,
+        note: "商城订单消费",
       },
     });
   });
 
-  it("积分扣减超过余额时应钳制到 0，流水记录实际生效的扣减量", async () => {
+  it("退款扣减（负 spentDelta）应钳制到 0，不出现负消费额", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     txClient.user.findUnique.mockResolvedValue({
-      totalPoints: 5,
-      totalSpent: 100,
-      membershipLevel: "ADVANCED",
+      totalSpent: 50,
     });
 
     const res = await POST(
-      createSignedRequest({ ...VALID_BODY, delta: -10, spentDelta: 0, reference: "mall-redeem-1" })
+      createSignedRequest({ ...VALID_BODY, spentDelta: -100, reference: "mall-refund-1" })
     );
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.totalPoints).toBe(0);
-    // 余额 5、请求 -10：实际只扣 5，流水记实际生效值（-5），保证流水合计永远等于余额
-    expect(txClient.pointTransaction.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ points: -5 }),
-      })
-    );
+    expect(data.data.totalSpent).toBe(0);
+    expect(data.data.membershipLevel).toBe("REGULAR");
     expect(txClient.user.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ totalPoints: 0 }),
+        data: expect.objectContaining({ totalSpent: 0, membershipLevel: "REGULAR" }),
       })
     );
   });
 
-  it("并发负 delta（CAS 命中 0 行）应重读快照重试，余额不出现负值且流水合计等于余额变动", async () => {
+  it("并发同步（CAS 命中 0 行）应重读快照重试，不丢失更新", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
-    // 模拟并发：本请求读到快照 100 时，另一笔 -80 已先入账（余额变 20）
+    // 模拟并发：本请求读到快照 800 时，另一笔 +200 已先入账（消费额变 1000）
     txClient.user.findUnique
-      .mockResolvedValueOnce({ totalPoints: 100, totalSpent: 800, membershipLevel: "REGULAR" })
-      // CAS 失败后重读：余额已变为 20
-      .mockResolvedValueOnce({ totalPoints: 20, totalSpent: 800, membershipLevel: "REGULAR" });
+      .mockResolvedValueOnce({ totalSpent: 800 })
+      // CAS 失败后重读：消费额已变为 1000
+      .mockResolvedValueOnce({ totalSpent: 1000 });
     txClient.user.updateMany
-      // 第一次：快照 100 已被并发修改，命中 0 行
+      // 第一次：快照 800 已被并发修改，命中 0 行
       .mockResolvedValueOnce({ count: 0 })
       .mockResolvedValueOnce({ count: 1 });
 
-    const res = await POST(
-      createSignedRequest({ ...VALID_BODY, delta: -80, spentDelta: 0, reference: "mall-redeem-2" })
-    );
+    const res = await POST(createSignedRequest({ ...VALID_BODY, reference: "mall-order-N2" }));
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    // 重试后基于新快照 20 钳制：实际只扣 20，余额 0 而非 -60
-    expect(data.data.totalPoints).toBe(0);
-    expect(txClient.pointTransaction.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ points: -20, reference: "mall-redeem-2" }),
-      })
-    );
-    // 两笔流水合计 -80 + -20 = -100 = 余额变动 100 → 0，账本对得上
+    // 重试后基于新快照 1000 入账：1000 + 150 = 1150
+    expect(data.data.totalSpent).toBe(1150);
     expect(txClient.user.updateMany).toHaveBeenNthCalledWith(2, {
-      where: { id: "user-1", totalPoints: 20, totalSpent: 800 },
-      data: { totalPoints: 0, totalSpent: 800, membershipLevel: "REGULAR" },
+      where: { id: "user-1", totalSpent: 1000 },
+      data: { totalSpent: 1150, membershipLevel: "ADVANCED" },
     });
   });
 
-  it("重复上报（P2002）应幂等返回当前余额并标记 duplicated", async () => {
-    mockUserFindUnique
-      // 第一次：路由按手机号查用户
-      .mockResolvedValueOnce({ id: "user-1" })
-      // 第二次：P2002 后回读权威余额
-      .mockResolvedValueOnce({ totalPoints: 115, totalSpent: 1000, membershipLevel: "ADVANCED" });
+  it("重复上报（幂等记录已存在）应返回当前权威消费额并标记 duplicated", async () => {
+    mockUserFindUnique.mockResolvedValue({ id: "user-1" });
+    txClient.spentSyncRecord.findUnique.mockResolvedValue({ id: "rec-1" });
     txClient.user.findUnique.mockResolvedValue({
-      totalPoints: 100,
-      totalSpent: 850,
-      membershipLevel: "REGULAR",
+      totalSpent: 1000,
+      membershipLevel: "ADVANCED",
     });
-    txClient.pointTransaction.create.mockRejectedValue({ code: "P2002" });
 
     const res = await POST(createSignedRequest(VALID_BODY));
     const data = await res.json();
@@ -275,11 +237,36 @@ describe("POST /api/v1/internal/points/sync", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data).toEqual({
-      totalPoints: 115,
       totalSpent: 1000,
       membershipLevel: "ADVANCED",
       duplicated: true,
     });
-    // 事务因 P2002 中止并整体回滚，余额不会重复入账（幂等返回当前权威余额）
+    // 幂等命中时不重复写记录、不重复更新余额
+    expect(txClient.spentSyncRecord.create).not.toHaveBeenCalled();
+    expect(txClient.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("并发重复上报（写入触发 P2002）应幂等返回当前权威消费额并标记 duplicated", async () => {
+    mockUserFindUnique
+      // 第一次：路由按手机号查用户
+      .mockResolvedValueOnce({ id: "user-1" })
+      // 第二次：P2002 后回读权威消费额
+      .mockResolvedValueOnce({ totalSpent: 1000, membershipLevel: "ADVANCED" });
+    txClient.user.findUnique.mockResolvedValue({
+      totalSpent: 850,
+    });
+    txClient.spentSyncRecord.create.mockRejectedValue({ code: "P2002" });
+
+    const res = await POST(createSignedRequest(VALID_BODY));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data).toEqual({
+      totalSpent: 1000,
+      membershipLevel: "ADVANCED",
+      duplicated: true,
+    });
+    // 事务因 P2002 中止并整体回滚，消费额不会重复入账（幂等返回当前权威值）
   });
 });

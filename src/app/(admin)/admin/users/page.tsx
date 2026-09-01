@@ -19,7 +19,6 @@ import {
   CheckCircle,
   Lock,
   Award,
-  Coins,
   Wallet,
 } from "lucide-react";
 import Image from "next/image";
@@ -45,7 +44,6 @@ interface UserItem {
   avatar: string | null;
   status: UserStatus;
   membershipLevel: string | null;
-  totalPoints: number | null;
   createdAt: string;
 }
 
@@ -82,7 +80,6 @@ interface UserDetail {
   avatar: string | null;
   status: UserStatus;
   membershipLevel: string | null;
-  totalPoints: number | null;
   totalSpent: number | null;
   wechatOpenId: string | null;
   // 多平台外部身份（聚合框架单一数据源）
@@ -391,9 +388,6 @@ export default function AdminUsersPage() {
                 会员等级
               </th>
               <th scope="col" className="px-4 py-3">
-                积分
-              </th>
-              <th scope="col" className="px-4 py-3">
                 状态
               </th>
               <th scope="col" className="px-4 py-3">
@@ -455,13 +449,6 @@ export default function AdminUsersPage() {
                       </Badge>
                     ) : (
                       <span className="text-brand-charcoal/40">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {user.totalPoints != null ? (
-                      <span className="font-mono text-sm">{user.totalPoints.toLocaleString()}</span>
-                    ) : (
-                      <span className="text-brand-charcoal/40">0</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -666,17 +653,6 @@ export default function AdminUsersPage() {
                       ) : (
                         <span className="text-brand-charcoal/40">未设置</span>
                       )}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
-                      <Coins className="h-3.5 w-3.5" />
-                      累计积分
-                    </dt>
-                    <dd className="font-mono font-medium">
-                      {detailUser.totalPoints != null
-                        ? detailUser.totalPoints.toLocaleString()
-                        : "0"}
                     </dd>
                   </div>
                   <div className="flex justify-between">

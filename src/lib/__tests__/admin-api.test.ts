@@ -561,7 +561,6 @@ describe("管理端 API 集成测试", () => {
         avatar: null,
         status: "ACTIVE",
         membershipLevel: "REGULAR",
-        totalPoints: 0,
         totalSpent: 0,
         wechatOpenId: null,
         wechatUnionId: null,

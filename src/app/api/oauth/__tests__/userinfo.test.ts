@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OAuth UserInfo 端点单元测试
  * GET /api/oauth/userinfo
  */
@@ -139,7 +139,6 @@ describe("GET /api/oauth/userinfo", () => {
       birthday: null,
       status: "ACTIVE",
       membershipLevel: "REGULAR",
-      totalPoints: 0,
     });
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer valid-token" },
@@ -167,7 +166,6 @@ describe("GET /api/oauth/userinfo", () => {
       birthday: new Date("1990-05-20T00:00:00.000Z"),
       status: "ACTIVE",
       membershipLevel: "REGULAR",
-      totalPoints: 0,
     });
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer valid-token" },
@@ -194,7 +192,6 @@ describe("GET /api/oauth/userinfo", () => {
       birthday: null,
       status: "ACTIVE",
       membershipLevel: "REGULAR",
-      totalPoints: 0,
     });
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer valid-token" },

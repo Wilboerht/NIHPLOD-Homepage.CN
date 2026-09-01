@@ -341,7 +341,6 @@ export async function POST(request: NextRequest) {
           nickname: true,
           avatar: true,
           membershipLevel: true,
-          totalPoints: true,
           status: true,
         },
       });
@@ -511,7 +510,6 @@ export async function POST(request: NextRequest) {
       }
       if (scopeStr.includes("membership") && user) {
         if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
-        if (user.totalPoints != null) idTokenClaims.total_points = user.totalPoints;
       }
 
       const idToken = await signIdToken(idTokenClaims);
@@ -758,7 +756,6 @@ export async function POST(request: NextRequest) {
           nickname: true,
           avatar: true,
           membershipLevel: true,
-          totalPoints: true,
           status: true,
         },
       });
@@ -840,7 +837,6 @@ export async function POST(request: NextRequest) {
       }
       if (scopeStr.includes("membership") && user) {
         if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
-        if (user.totalPoints != null) idTokenClaims.total_points = user.totalPoints;
       }
 
       const idToken = await signIdToken(idTokenClaims);

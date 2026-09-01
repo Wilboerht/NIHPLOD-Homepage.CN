@@ -576,10 +576,6 @@ export async function GET(request: NextRequest) {
               type: "string",
               description: "会员等级（需 scope=membership）",
             },
-            total_points: {
-              type: "integer",
-              description: "积分总数（需 scope=membership）",
-            },
             birthday: {
               type: "string",
               description: "生日（ISO 8601 格式，未设置为 null，需 scope=birthday）",

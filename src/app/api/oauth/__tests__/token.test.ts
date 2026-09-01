@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OAuth Token 端点单元测试
  * POST /api/oauth/token
  */
@@ -631,7 +631,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
@@ -681,7 +680,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
@@ -729,7 +727,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
@@ -782,7 +779,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
@@ -874,7 +870,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
 
@@ -917,7 +912,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
 
@@ -985,7 +979,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
 
@@ -1088,7 +1081,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
 
@@ -1229,7 +1221,6 @@ describe("POST /api/oauth/token", () => {
         nickname: null,
         avatar: null,
         membershipLevel: null,
-        totalPoints: null,
         status: "ACTIVE",
       });
 

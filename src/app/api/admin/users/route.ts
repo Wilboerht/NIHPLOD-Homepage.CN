@@ -79,7 +79,6 @@ export async function GET(request: NextRequest) {
           avatar: true,
           status: true,
           membershipLevel: true,
-          totalPoints: true,
           createdAt: true,
         },
       }),
@@ -96,7 +95,7 @@ export async function GET(request: NextRequest) {
         return sanitized;
       };
 
-      const csvHeaders = "手机号,昵称,状态,会员等级,积分,注册时间\n";
+      const csvHeaders = "手机号,昵称,状态,会员等级,注册时间\n";
       const csvRows = users
         .map((user) =>
           [
@@ -104,7 +103,6 @@ export async function GET(request: NextRequest) {
             escapeCSV(user.nickname || ""),
             escapeCSV(user.status),
             escapeCSV(user.membershipLevel),
-            user.totalPoints,
             user.createdAt.toISOString(),
           ].join(",")
         )

@@ -21,7 +21,6 @@ interface User {
   avatar?: string;
   birthday?: string | null;
   membershipLevel?: string;
-  totalPoints?: number;
 }
 
 // 用户中心视图类型（弹窗菜单/三外壳共用的 tab 标识，见 @/lib/user-center-tab）

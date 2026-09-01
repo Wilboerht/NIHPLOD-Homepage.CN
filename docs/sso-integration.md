@@ -342,7 +342,7 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - `openid` — 仅返回用户 ID
 - `profile` — 昵称、头像
 - `phone` — 手机号（脱敏）
-- `membership` — 会员等级、积分
+- `membership` — 会员等级、累计消费
 - `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
 
 示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`
@@ -530,53 +530,34 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ---
 
-## 积分/等级同步（商城对接）
+## 消费额/等级同步（商城对接）
 
-官网是积分/等级权威账本。商城侧的积分变动通过签名内部 API 上报入账，并可随时拉取官网权威余额对齐。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
+官网是消费额/等级权威账本（积分体系已于 2026-09 下线）。商城侧的消费额变动通过签名内部 API 上报入账。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
 
-### 上报积分变动
+### 上报消费额变动
 
-`POST /api/v1/internal/points/sync`
+`POST /api/v1/internal/points/sync`（路径保留，仅同步消费额）
 
 ```json
 {
   "phone": "13800138000",
-  "delta": 15,
   "spentDelta": 150,
   "reference": "mall-order-N20260823001",
-  "note": "商城订单消费奖励"
+  "note": "商城订单消费"
 }
 ```
 
 - `phone`：中国手机号（`^1[3-9]\d{9}$`，与官网注册手机号一致），联邦账号按手机号关联。
-- `delta`：积分变动，非零整数，正加负减（如积分抵扣传负值）。
-- `spentDelta`：可选，消费额变动（元，整数，默认 0），用于官网侧会员等级重算。
+- `spentDelta`：可选，消费额变动（元，整数，默认 0，正加负减，如退款传负值），用于官网侧会员等级重算。
 - `reference`：商城侧唯一单据号，幂等键。重复上报不重复入账，返回 `duplicated: true`。
-- `note`：可选，流水备注。
+- `note`：可选，备注。
 
-成功响应（`totalPoints`/`totalSpent`/`membershipLevel` 为入账后的官网权威值，商城应以此对齐本地展示）：
-
-```json
-{
-  "success": true,
-  "data": { "totalPoints": 320, "totalSpent": 5200, "membershipLevel": "VIP" }
-}
-```
-
-### 拉取权威余额
-
-`POST /api/v1/internal/user/balance`
-
-```json
-{ "phone": "13800138000" }
-```
-
-响应：
+成功响应（`totalSpent`/`membershipLevel` 为入账后的官网权威值，商城应以此对齐本地展示）：
 
 ```json
 {
   "success": true,
-  "data": { "totalPoints": 320, "totalSpent": 5200, "membershipLevel": "VIP" }
+  "data": { "totalSpent": 5200, "membershipLevel": "ADVANCED" }
 }
 ```
 

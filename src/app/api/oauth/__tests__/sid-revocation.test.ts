@@ -1,4 +1,4 @@
-/**
+﻿/**
  * sid 会话校验集成测试
  *
  * OAuth access token 携带 sid claim（= OAuthSession.sessionId），
@@ -117,7 +117,6 @@ describe("sid 会话校验：session 撤销后 userinfo / introspect 立即失�
         avatar: null,
         status: "ACTIVE",
         membershipLevel: null,
-        totalPoints: null,
       });
 
       const token = await signSidToken();

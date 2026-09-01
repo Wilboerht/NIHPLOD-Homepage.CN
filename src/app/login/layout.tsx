@@ -6,7 +6,7 @@ import type { Metadata } from "next";
  */
 export const metadata: Metadata = {
   title: "登录 / 注册",
-  description: "登录或注册 NIHPLOD 旎柏账户，管理会员权益、积分与专属护肤方案。",
+  description: "登录或注册 NIHPLOD 旎柏账户，管理会员权益与专属护肤方案。",
   robots: {
     index: false,
     follow: false,

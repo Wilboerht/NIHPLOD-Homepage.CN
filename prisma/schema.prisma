@@ -209,16 +209,15 @@ model User {
   wechatOpenId  String?   @unique               // 微信 OpenID
   wechatUnionId String?                         // 微信 UnionID
 
-  // VIP 会员
+  // 会员等级
   membershipLevel MembershipLevel @default(REGULAR)
-  totalPoints     Int              @default(0)
   totalSpent      Int              @default(0) // 历史购买金额（元，退款扣减），等级判定依据
   birthday        DateTime?
 
   // 关联
   refreshTokens    RefreshToken[]
   auditLogs        AuditLog[]
-  pointTransactions PointTransaction[]
+  spentSyncRecords SpentSyncRecord[]
   passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
@@ -542,23 +541,22 @@ model RateLimitRecord {
 }
 
 // ============================================
-// VIP 会员体系
+// 会员体系
 // ============================================
 
-model PointTransaction {
-  id        String   @id @default(cuid())
-  userId    String
-  points    Int      // 正数为获得，负数为消耗
-  type      String   // BIRTHDAY_GIFT | ADMIN_ADJUST | EXTERNAL_SYNC（商城积分同步）
-  reference String?  // 关联的外部单据号（如商城侧单据号、生日礼年份标记等）
-  note      String?  @db.Text
-  createdAt DateTime @default(now())
+// 外部商城消费额同步幂等记录（商城侧单据号唯一，防止重复上报重复入账）
+model SpentSyncRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  reference  String   // 商城侧唯一单据号（幂等键）
+  spentDelta Int      // 该单据对应的消费额变动（元，正加负减）
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, type, reference]) // 幂等防重：如生日礼 reference=BIRTHDAY-{年份}（Postgres 中 NULL 不参与唯一冲突）
+  @@unique([userId, reference]) // 幂等防重：同一用户同一单据只入账一次
   @@index([userId, createdAt(sort: Desc)])
-  @@index([type, createdAt(sort: Desc)])
 }
 
 model MembershipBenefit {

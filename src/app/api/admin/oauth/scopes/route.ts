@@ -16,7 +16,7 @@ const SCOPE_LABELS: Record<string, { label: string; desc: string }> = {
   openid: { label: "OpenID", desc: "基础身份标识（必选）" },
   profile: { label: "个人信息", desc: "昵称、头像" },
   phone: { label: "手机号", desc: "脱敏手机号（138****1234）" },
-  membership: { label: "会员信息", desc: "会员等级、积分" },
+  membership: { label: "会员信息", desc: "会员等级、累计消费" },
   birthday: { label: "生日", desc: "生日日期（ISO 8601 格式）" },
 };
 

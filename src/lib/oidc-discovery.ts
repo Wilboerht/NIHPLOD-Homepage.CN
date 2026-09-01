@@ -71,7 +71,6 @@ export function buildOpenIdConfiguration() {
       "phone_number",
       "birthday",
       "membership_level",
-      "total_points",
     ],
     claims_parameter_supported: false,
     request_parameter_supported: false,

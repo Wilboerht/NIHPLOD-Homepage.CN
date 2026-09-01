@@ -51,7 +51,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
         avatar: true,
         status: true,
         membershipLevel: true,
-        totalPoints: true,
         totalSpent: true,
         wechatOpenId: true,
         wechatUnionId: true,

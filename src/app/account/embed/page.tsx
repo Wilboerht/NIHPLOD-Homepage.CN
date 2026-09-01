@@ -54,7 +54,6 @@ interface UserProfile {
   nickname: string | null;
   avatar: string | null;
   membershipLevel: string;
-  totalPoints: number;
 }
 
 type Tab = "profile" | "authorizations";
@@ -209,10 +208,6 @@ export default function EmbedAccountPage() {
             <p className="text-sm text-gray-900">
               {levelDisplay(user.membershipLevel)}
             </p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-gray-500">积分</label>
-            <p className="text-sm text-gray-900">{user.totalPoints} 分</p>
           </div>
           <button
             onClick={handleLogout}

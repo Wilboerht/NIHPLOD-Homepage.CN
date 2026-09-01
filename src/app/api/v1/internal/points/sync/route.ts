@@ -1,22 +1,21 @@
 /**
- * 内部 API v1：商城积分/消费变动同步上报
- * POST /api/v1/internal/points/sync
+ * 内部 API v1：商城消费额变动同步上报
+ * POST /api/v1/internal/points/sync（路径保留，仅同步消费额，不再处理积分）
  *
- * 官网是积分/等级权威账本。商城（子站）发生积分变动（下单奖励、积分抵扣、
- * 退款扣回等）后，通过此接口上报变动量，官网入账并返回权威余额，商城侧对齐。
+ * 官网是消费额/等级权威账本。商城（子站）发生消费变动（下单、退款等）后，
+ * 通过此接口上报变动量，官网入账并返回权威消费额与等级，商城侧对齐。
  *
  * 认证方式：HMAC-SHA256 签名（与 /api/v1/internal/user/status 一致）。
  *
  * Body：
- *   phone: string       （必填，中国手机号，与官网注册手机号一致）
- *   delta: number       （必填，积分变动，非零整数；正加负减）
- *   spentDelta?: number （可选，消费额变动（元），整数，默认 0；用于等级重算）
- *   reference: string   （必填，商城侧唯一单据号，幂等键；重复上报返回 duplicated: true）
- *   note?: string       （可选，流水备注）
+ *   phone: string         （必填，中国手机号，与官网注册手机号一致）
+ *   spentDelta?: number   （可选，消费额变动（元），整数，默认 0；用于等级重算）
+ *   reference: string     （必填，商城侧唯一单据号，幂等键；重复上报返回 duplicated: true）
+ *   note?: string         （可选，备注）
  *
  * 响应：
  *   success: true
- *   data: { totalPoints, totalSpent, membershipLevel, duplicated? }
+ *   data: { totalSpent, membershipLevel, duplicated? }
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -27,20 +26,13 @@ import {
   checkAndRecordNonce,
   hashRequestBody,
 } from "@/lib/internal-api";
-import { applyExternalPointsSync } from "@/lib/points";
+import { applyExternalSpentSync } from "@/lib/points";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
 const syncSchema = z.object({
   // 与官网注册手机号格式一致（site 本地格式，非 +86 前缀的 E.164）
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  // 绝对值上限 ±1,000,000：防商城侧 bug 或密钥泄露时写入天文数字
-  delta: z
-    .number()
-    .int("积分变动必须为整数")
-    .min(-1_000_000, "积分变动超出允许范围")
-    .max(1_000_000, "积分变动超出允许范围")
-    .refine((v) => v !== 0, "积分变动不能为 0"),
   spentDelta: z
     .number()
     .int("消费额变动必须为整数")
@@ -138,7 +130,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phone, delta, spentDelta, reference, note } = parsed.data;
+    const { phone, spentDelta, reference, note } = parsed.data;
 
     // 5. 按手机号定位用户（联邦账号以手机号关联）
     const user = await prisma.user.findUnique({
@@ -153,10 +145,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 入账（事务内写流水 + 更新余额/消费额 + 重算等级，reference 幂等）
-    const result = await applyExternalPointsSync({
+    // 6. 入账（事务内写幂等记录 + 更新消费额 + 重算等级，reference 幂等）
+    const result = await applyExternalSpentSync({
       userId: user.id,
-      delta,
       spentDelta,
       reference,
       note,
@@ -172,7 +163,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        totalPoints: result.totalPoints,
         totalSpent: result.totalSpent,
         membershipLevel: result.membershipLevel,
         ...(result.duplicated ? { duplicated: true } : {}),
