@@ -673,9 +673,10 @@ function createCallbackRouteHandler(config) {
         );
       }
     }
+    const callbackOrigin = new URL(redirectUri).origin;
     const rawReturnUrl = request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
-    const returnUrl = isTrustedReturnUrl(rawReturnUrl, request.nextUrl.origin) ? rawReturnUrl : "/";
-    const response = import_server2.NextResponse.redirect(new URL(returnUrl, request.url));
+    const returnUrl = isTrustedReturnUrl(rawReturnUrl, callbackOrigin) ? rawReturnUrl : "/";
+    const response = import_server2.NextResponse.redirect(new URL(returnUrl, callbackOrigin));
     response.cookies.set(accessTokenCookieName, tokenData.access_token, {
       ...getHostCookieOptions(tokenData.expires_in, secureCookies)
     });
@@ -765,6 +766,7 @@ function createLogoutRouteHandler(config) {
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  const callbackOrigin = new URL(redirectUri).origin;
   return async function handler(request) {
     const returnedState = request.nextUrl.searchParams.get("state");
     if (returnedState) {
@@ -775,7 +777,7 @@ function createLogoutRouteHandler(config) {
           { status: 400 }
         );
       }
-      const res = import_server3.NextResponse.redirect(request.nextUrl.origin + "/");
+      const res = import_server3.NextResponse.redirect(callbackOrigin + "/");
       res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
     }
@@ -830,7 +832,7 @@ function createLogoutRouteHandler(config) {
       return res;
     }
     return clearCookies(
-      import_server3.NextResponse.redirect(request.nextUrl.origin + "/")
+      import_server3.NextResponse.redirect(callbackOrigin + "/")
     );
   };
 }

@@ -116,7 +116,12 @@ interface SsoUser {
     sub: string;
     nickname?: string;
     avatar?: string;
+    /** 手机号（脱敏，兼容保留的非标准 claim，新代码请使用 phone_number） */
     phone?: string;
+    /** 手机号（脱敏，OIDC 标准 claim，与 phone 内容一致） */
+    phone_number?: string;
+    /** 生日（ISO 8601，需 birthday scope，未设置时为 null） */
+    birthday?: string | null;
     membership_level?: string;
     total_points?: number;
 }

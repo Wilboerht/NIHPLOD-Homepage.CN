@@ -289,15 +289,19 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       }
     }
 
-    // 读取 return URL，并做开放重定向防护
+    // 读取 return URL，并做开放重定向防护。
+    // 可信 origin 与跳转基准一律取 redirectUri 的 origin（部署时配置的公网地址），
+    // 而非 request.url / request.nextUrl.origin：Next standalone 部署下后者是进程
+    // 监听地址（如 http://0.0.0.0:3002），反代场景会把用户重定向到不可达地址。
+    const callbackOrigin = new URL(redirectUri).origin;
     const rawReturnUrl =
       request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
-    const returnUrl = isTrustedReturnUrl(rawReturnUrl, request.nextUrl.origin)
+    const returnUrl = isTrustedReturnUrl(rawReturnUrl, callbackOrigin)
       ? rawReturnUrl
       : "/";
 
     // 重定向并设置 cookie
-    const response = NextResponse.redirect(new URL(returnUrl, request.url));
+    const response = NextResponse.redirect(new URL(returnUrl, callbackOrigin));
 
     // 设置 access_token cookie (httpOnly, Secure, SameSite=Lax, Path=/)
     response.cookies.set(accessTokenCookieName, tokenData.access_token, {

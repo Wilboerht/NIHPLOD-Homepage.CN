@@ -178,6 +178,48 @@ describe("createCallbackRouteHandler", () => {
     expect(res.headers.get("location")).toBe("https://myapp.com/");
   });
 
+  it("standalone 部署（request.url 为监听地址 0.0.0.0:3002）：跳转基准取 redirectUri 的 origin", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-1",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-1",
+      })
+    );
+    const handler = createCallbackRouteHandler(config);
+    const qs = new URLSearchParams({ code: "auth-code", state: "saved-state" }).toString();
+    const req = new NextRequest(`http://0.0.0.0:3002/api/auth/callback?${qs}`, {
+      headers: {
+        cookie: [STATE_COOKIE + "=saved-state", VERIFIER_COOKIE + "=v", RETURN_COOKIE + "=/dashboard"].join("; "),
+      },
+    });
+    const res = await handler(req);
+    expect(res.status).toBe(307);
+    // 不得跳到 http://0.0.0.0:3002/...
+    expect(res.headers.get("location")).toBe("https://myapp.com/dashboard");
+  });
+
+  it("standalone 部署下 returnUrl 为同源绝对地址（redirectUri 的 origin）仍被信任", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-1",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-1",
+      })
+    );
+    const handler = createCallbackRouteHandler(config);
+    const qs = new URLSearchParams({ code: "auth-code", state: "saved-state" }).toString();
+    const req = new NextRequest(`http://0.0.0.0:3002/api/auth/callback?${qs}`, {
+      headers: {
+        cookie: [STATE_COOKIE + "=saved-state", VERIFIER_COOKIE + "=v", RETURN_COOKIE + "=https%3A%2F%2Fmyapp.com%2Fdashboard"].join("; "),
+      },
+    });
+    const res = await handler(req);
+    expect(res.headers.get("location")).toBe("https://myapp.com/dashboard");
+  });
+
   it("insecureLocalDev=true（非生产）：启动时告警并使用无前缀 cookie", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(globalThis, "fetch").mockImplementation(async () =>

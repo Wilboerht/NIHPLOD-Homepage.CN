@@ -76,6 +76,18 @@ describe("createLogoutRouteHandler", () => {
     expect(res.cookies.get(LOGOUT_STATE_COOKIE)?.value).toBe("");
   });
 
+  it("standalone 部署（request.url 为监听地址 0.0.0.0:3002）：回跳重定向取 redirectUri 的 origin", async () => {
+    const handler = createLogoutRouteHandler(config);
+    const req = new NextRequest(
+      "http://0.0.0.0:3002/api/auth/logout?state=real-state",
+      { headers: { cookie: `${LOGOUT_STATE_COOKIE}=real-state` } }
+    );
+    const res = await handler(req);
+    expect(res.status).toBe(307);
+    // 不得跳到 http://0.0.0.0:3002/...
+    expect(res.headers.get("location")).toBe("https://myapp.com/");
+  });
+
   it("正常登出：撤销 refresh_token、清除本地 cookie、重定向 SSO 并写 logout state cookie", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")

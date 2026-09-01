@@ -176,6 +176,10 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
 
+  // 本地跳转的 origin：取 redirectUri 的 origin 而非 request.nextUrl.origin——
+  // standalone 部署下后者是进程监听地址（如 http://0.0.0.0:3002），反代场景不可靠。
+  const callbackOrigin = new URL(redirectUri).origin;
+
   /**
    * 登出 handler：同时适配 GET 与 POST（函数本身不区分 method，
    * 在 route.ts 中 `export const GET = handler; export const POST = handler;` 即可）。
@@ -198,7 +202,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
           { status: 400 }
         );
       }
-      const res = NextResponse.redirect(request.nextUrl.origin + "/");
+      const res = NextResponse.redirect(callbackOrigin + "/");
       res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
     }
@@ -265,7 +269,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     }
 
     return clearCookies(
-      NextResponse.redirect(request.nextUrl.origin + "/")
+      NextResponse.redirect(callbackOrigin + "/")
     );
   };
 }
