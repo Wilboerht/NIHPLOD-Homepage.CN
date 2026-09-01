@@ -165,7 +165,7 @@ export function UserCenterModal() {
             aria-modal="true"
             aria-label="用户中心"
             tabIndex={-1}
-            className="relative z-10 flex w-full max-w-[95%] items-center justify-center transition-all duration-300 md:h-[min(680px,calc(100dvh-3rem))] md:max-w-[1100px]"
+            className="relative z-10 flex w-full max-w-[95%] items-center justify-center outline-none transition-all duration-300 md:h-[min(680px,calc(100dvh-3rem))] md:max-w-[1100px]"
           >
             <div className="relative flex h-[85vh] w-full items-stretch overflow-hidden rounded-[2.5rem] p-0 shadow-none md:h-full md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
               {/* 底层基础色 */}
