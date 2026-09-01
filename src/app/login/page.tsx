@@ -380,6 +380,15 @@ function LoginPageContent() {
     } catch {
       // refreshUser 失败时仍然继续导航——认证 Cookie 已由服务端设置
     }
+    // 登录成功返回站内原页：目标页抽屉保持收起（与 handleClose 行为一致）。
+    // SSO 场景（return_to 指向 authorize）随即离站，不设此标记以免残留影响后续访问。
+    if (!returnTo?.startsWith("/api/oauth/authorize")) {
+      try {
+        sessionStorage.setItem("nihplod_drawer_return_collapsed", "1");
+      } catch {
+        /* sessionStorage 不可用时忽略 */
+      }
+    }
     navigateToReturnTo(returnTo);
   };
 
