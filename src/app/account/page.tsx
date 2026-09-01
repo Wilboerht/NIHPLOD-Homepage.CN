@@ -10,8 +10,8 @@ import { isUserCenterTab } from "@/lib/user-center-tab";
  * 检测 account query 自动打开弹窗并切换到对应 tab。
  *
  * - 支持 ?tab=<tab> 显式指定目标 tab（白名单见 user-center-tab.ts）；
- * - 无 tab 参数时默认 security：站内旧 /account 链接的语义均指向安全相关功能
- *   （改密码/设备/授权/登录历史曾只存在于该页），个人信息本就是弹窗默认视图。
+ * - 无 tab 参数时默认 profile：个人信息本就是弹窗默认视图
+ *   （安全设置/密码管理已合并进个人信息面板）。
  *
  * 未登录链路：未登录用户被重定向到 /?account=<tab> 后，由首页在未登录时
  * 再跳 /login?return_to=/?account=<tab>，登录成功回到首页并自动打开弹窗。
@@ -22,6 +22,6 @@ export default async function AccountPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
-  const target = isUserCenterTab(tab) ? tab : "security";
+  const target = isUserCenterTab(tab) ? tab : "profile";
   redirect(`/?account=${target}`);
 }

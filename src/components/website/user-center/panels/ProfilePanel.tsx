@@ -6,10 +6,11 @@
  */
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost } from "@/lib/api-client";
+import { SecurityPanel } from "./SecurityPanel";
 
 export function ProfilePanel() {
   const { user, refreshUser } = useAuth();
@@ -20,6 +21,7 @@ export function ProfilePanel() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 生日输入上限：今天（本地时区）
@@ -283,6 +285,41 @@ export function ProfilePanel() {
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
+
+          {/* 密码（原安全设置入口，合并至个人信息） */}
+          <div className="-mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
+            <button
+              type="button"
+              onClick={() => setShowPasswordForm((v) => !v)}
+              aria-expanded={showPasswordForm}
+              className="flex w-full items-center justify-between py-6"
+            >
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
+                <div className="md:w-20">
+                  <p className="text-left text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
+                    密码
+                  </p>
+                </div>
+                <div>
+                  <p className="text-base font-medium text-stone-800 md:text-sm">
+                    {user.hasPassword ? "已设置" : "未设置"}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
+                  showPasswordForm ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {showPasswordForm && (
+              <div className="border-t border-stone-200/60 pb-6 pt-5">
+                <SecurityPanel initialMode={user.hasPassword ? "change" : "set"} />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -20,7 +20,10 @@ vi.mock("@/lib/fetch-with-auth", async () => {
 });
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: "u1", phone: "13800138000" } }),
+  useAuth: () => ({
+    user: { id: "u1", phone: "13800138000" },
+    refreshUser: vi.fn(),
+  }),
 }));
 
 vi.mock("@/components/ui/Toast", () => ({

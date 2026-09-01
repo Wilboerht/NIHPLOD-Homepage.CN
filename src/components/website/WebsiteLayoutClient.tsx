@@ -80,7 +80,7 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
     const accountTab = params.get("account");
     if (!accountTab || pendingAccountViewRef.current !== null) return;
 
-    pendingAccountViewRef.current = isUserCenterTab(accountTab) ? accountTab : "security";
+    pendingAccountViewRef.current = isUserCenterTab(accountTab) ? accountTab : "profile";
     window.history.replaceState(
       {},
       document.title,

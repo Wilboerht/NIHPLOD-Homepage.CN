@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 
 /**
  * WebsiteLayoutClient 的 account query 参数处理测试
@@ -75,19 +75,19 @@ describe("WebsiteLayoutClient account 参数处理", () => {
   });
 
   it("未登录：跳统一登录页，return_to 指回 /?account=<tab>", async () => {
-    window.history.replaceState({}, "", "/?account=security");
+    window.history.replaceState({}, "", "/?account=history");
     setupAuth({ user: null });
 
     render(<WebsiteLayoutClient>{null}</WebsiteLayoutClient>);
 
     await waitFor(() => {
-      expect(mockRedirectToLogin).toHaveBeenCalledWith("/?account=security");
+      expect(mockRedirectToLogin).toHaveBeenCalledWith("/?account=history");
     });
     expect(mockOpenUserCenter).not.toHaveBeenCalled();
   });
 
   it("登录态加载中：不打开弹窗也不跳登录", () => {
-    window.history.replaceState({}, "", "/?account=security");
+    window.history.replaceState({}, "", "/?account=history");
     setupAuth({ user: null, isLoading: true });
 
     render(<WebsiteLayoutClient>{null}</WebsiteLayoutClient>);
@@ -96,14 +96,14 @@ describe("WebsiteLayoutClient account 参数处理", () => {
     expect(mockRedirectToLogin).not.toHaveBeenCalled();
   });
 
-  it("非法 tab 值回退到 security", async () => {
+  it("非法 tab 值回退到 profile", async () => {
     window.history.replaceState({}, "", "/?account=hack");
     setupAuth();
 
     render(<WebsiteLayoutClient>{null}</WebsiteLayoutClient>);
 
     await waitFor(() => {
-      expect(mockOpenUserCenter).toHaveBeenCalledWith("security");
+      expect(mockOpenUserCenter).toHaveBeenCalledWith("profile");
     });
   });
 

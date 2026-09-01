@@ -15,7 +15,6 @@ import {
   LogOut,
   ArrowLeft,
   Crown,
-  ShieldCheck,
   MonitorSmartphone,
   KeyRound,
   History,
@@ -24,16 +23,15 @@ import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { VipPanel } from "./user-center/VipPanel";
-import { SecurityPanel } from "./user-center/panels/SecurityPanel";
 import { DevicesPanel } from "./user-center/panels/DevicesPanel";
 import { AuthorizationsPanel } from "./user-center/panels/AuthorizationsPanel";
 import { LoginHistoryPanel } from "./user-center/panels/LoginHistoryPanel";
 
-// 菜单项配置：六项共享面板，与 /account 重定向目标（/?account=<tab>）一一对应
+// 菜单项配置：五项共享面板，与 /account 重定向目标（/?account=<tab>）一一对应
+// 安全设置（密码管理）已合并进个人信息面板
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "vip", label: "会员中心", icon: Crown },
-  { id: "security", label: "安全设置", icon: ShieldCheck },
   { id: "devices", label: "设备管理", icon: MonitorSmartphone },
   { id: "authorizations", label: "授权管理", icon: KeyRound },
   { id: "history", label: "登录历史", icon: History },
@@ -361,13 +359,11 @@ export function UserCenterModal() {
   return createPortal(content, document.body);
 }
 
-// 内容面板路由：六个菜单项对应 panels/ 下的共享面板（与 /account/embed 复用同一实现）
+// 内容面板路由：五个菜单项对应 panels/ 下的共享面板（与 /account/embed 复用同一实现）
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
     case "vip":
       return <VipPanel />;
-    case "security":
-      return <SecurityPanel />;
     case "devices":
       return <DevicesPanel />;
     case "authorizations":

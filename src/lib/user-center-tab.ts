@@ -9,7 +9,6 @@
 export const USER_CENTER_TABS = [
   "profile",
   "vip",
-  "security",
   "devices",
   "authorizations",
   "history",

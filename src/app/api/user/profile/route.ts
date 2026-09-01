@@ -59,6 +59,7 @@ const getCachedUserProfile = unstable_cache(
         avatar: true,
         birthday: true,
         membershipLevel: true,
+        password: true,
         createdAt: true,
       },
     });
@@ -72,6 +73,7 @@ const getCachedUserProfile = unstable_cache(
       avatar: user.avatar,
       birthday: user.birthday?.toISOString() ?? null,
       membershipLevel: user.membershipLevel,
+      hasPassword: Boolean(user.password),
       createdAt: user.createdAt,
     };
   },

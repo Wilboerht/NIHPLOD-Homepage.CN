@@ -1,6 +1,6 @@
 /**
  * /account 兼容入口重定向测试
- * 覆盖：无 tab 参数默认 security、合法 tab 透传、非法 tab 回退 security
+ * 覆盖：无 tab 参数默认 profile、合法 tab 透传、非法 tab 回退 profile
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -20,9 +20,9 @@ async function expectRedirect(searchParams: Promise<{ tab?: string }>) {
 }
 
 describe("/account 重定向", () => {
-  it("无 tab 参数时默认重定向到 security（旧 /account 链接语义为安全功能）", async () => {
+  it("无 tab 参数时默认重定向到 profile（个人信息为弹窗默认视图）", async () => {
     const url = await expectRedirect(Promise.resolve({}));
-    expect(url).toBe("/?account=security");
+    expect(url).toBe("/?account=profile");
   });
 
   it("合法 tab 参数透传", async () => {
@@ -30,8 +30,8 @@ describe("/account 重定向", () => {
     expect(url).toBe("/?account=devices");
   });
 
-  it("非法 tab 参数回退到 security", async () => {
+  it("非法 tab 参数回退到 profile", async () => {
     const url = await expectRedirect(Promise.resolve({ tab: "hack" }));
-    expect(url).toBe("/?account=security");
+    expect(url).toBe("/?account=profile");
   });
 });
