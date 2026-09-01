@@ -5,10 +5,10 @@
  * 显示会员等级与测肤权益（等级体系 2026-09 简化：普通会员 / 高级会员）
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
- * 不渲染任何 emoji 图标。
+ * 不渲染任何 emoji 图标。会员权益为手风琴式：默认收起，点击展开。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
@@ -43,8 +43,21 @@ interface VIPData {
 export function VipPanel() {
   const [vipData, setVipData] = useState<VIPData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { error: showError } = useToast();
   const { redirectToLogin } = useAuth();
+
+  const toggleLevel = (level: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) {
+        next.delete(level);
+      } else {
+        next.add(level);
+      }
+      return next;
+    });
+  };
 
   const loadVIPData = useCallback(async () => {
     try {
@@ -129,35 +142,61 @@ export function VipPanel() {
           )}
         </div>
 
-        {/* 会员权益 */}
+        {/* 会员权益 - 手风琴：默认收起，点击展开 */}
         <div className="mt-6">
           <h4 className="mb-3 text-sm font-medium text-stone-700">会员权益</h4>
           <div className="space-y-3">
-            {allLevels.map((level) => (
-              <div
-                key={level.level}
-                className={`rounded-xl border p-5 ${
-                  level.level === currentLevel.level
-                    ? "border-stone-300 bg-white/60"
-                    : "border-stone-200/60 bg-white/40"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <p className="text-sm font-medium text-stone-800">{level.name}</p>
-                  <span className="text-xs text-stone-400">
-                    {level.minSpent > 0 ? `消费满 ¥${level.minSpent.toLocaleString()}` : "注册即享"}
-                  </span>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {level.benefits.map((b, i) => (
-                    <div key={i}>
-                      <p className="text-sm text-stone-700">{b.title}</p>
-                      <p className="mt-0.5 text-xs text-stone-400">{b.desc}</p>
+            {allLevels.map((level) => {
+              const isExpanded = expanded.has(level.level);
+              return (
+                <div
+                  key={level.level}
+                  className={`rounded-xl border ${
+                    level.level === currentLevel.level
+                      ? "border-stone-300 bg-white/60"
+                      : "border-stone-200/60 bg-white/40"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleLevel(level.level)}
+                    aria-expanded={isExpanded}
+                    className="flex w-full items-center justify-between gap-4 p-5 text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-stone-800">{level.name}</p>
+                      {level.level === currentLevel.level && (
+                        <span className="rounded-full bg-stone-200/70 px-2 py-0.5 text-[11px] text-stone-500">
+                          当前
+                        </span>
+                      )}
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-stone-400">
+                        {level.minSpent > 0
+                          ? `消费满 ¥${level.minSpent.toLocaleString()}`
+                          : "注册即享"}
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="space-y-2 border-t border-stone-200/60 px-5 py-4">
+                      {level.benefits.map((b, i) => (
+                        <div key={i}>
+                          <p className="text-sm text-stone-700">{b.title}</p>
+                          <p className="mt-0.5 text-xs text-stone-400">{b.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
