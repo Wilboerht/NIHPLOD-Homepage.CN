@@ -108,7 +108,7 @@ describe("POST /api/v1/internal/user/balance", () => {
     mockUserFindUnique.mockResolvedValue({
       totalPoints: 320,
       totalSpent: 5200,
-      membershipLevel: "VIP",
+      membershipLevel: "ADVANCED",
     });
 
     const res = await POST(createSignedRequest({ phone: "13800138000" }));
@@ -117,7 +117,7 @@ describe("POST /api/v1/internal/user/balance", () => {
     expect(res.status).toBe(200);
     expect(data).toEqual({
       success: true,
-      data: { totalPoints: 320, totalSpent: 5200, membershipLevel: "VIP" },
+      data: { totalPoints: 320, totalSpent: 5200, membershipLevel: "ADVANCED" },
     });
     expect(mockUserFindUnique).toHaveBeenCalledWith({
       where: { phone: "13800138000" },

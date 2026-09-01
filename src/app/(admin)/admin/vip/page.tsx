@@ -2,16 +2,16 @@
 
 /**
  * 会员管理后台页面
- * 等级体系（2026-08 重构）：普通 / 高级 / VIP / SVIP，按历史购买金额划定
+ * 等级体系（2026-09 简化）：普通会员(注册) / 高级会员(消费满 ¥1,000)
  */
 import { useEffect, useState, useCallback } from "react";
-import { Crown, Users, Coins, Save, RefreshCw } from "lucide-react";
+import { Crown, Users, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost, apiPut } from "@/lib/api-client";
+import { apiGet, apiPut } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface LevelStat {
@@ -21,7 +21,6 @@ interface LevelStat {
 
 interface VIPStats {
   totalUsers: number;
-  totalPoints: number;
   levels: LevelStat[];
 }
 
@@ -46,22 +45,16 @@ interface MembershipBenefit {
 const LEVEL_LABELS: Record<string, string> = {
   REGULAR: "普通会员",
   ADVANCED: "高级会员",
-  VIP: "VIP 会员",
-  SVIP: "SVIP 会员",
 };
 
 const LEVEL_COLORS: Record<string, string> = {
   REGULAR: "bg-slate-100 text-slate-600",
   ADVANCED: "bg-teal-100 text-teal-700",
-  VIP: "bg-amber-100 text-amber-700",
-  SVIP: "bg-violet-100 text-violet-700",
 };
 
 const LEVEL_ICON_COLORS: Record<string, string> = {
   REGULAR: "text-slate-400",
   ADVANCED: "text-teal-500",
-  VIP: "text-amber-500",
-  SVIP: "text-violet-500",
 };
 
 export default function AdminVIPPage() {
@@ -70,9 +63,6 @@ export default function AdminVIPPage() {
   const [loading, setLoading] = useState(true);
   const [editBenefit, setEditBenefit] = useState<MembershipBenefit | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [adjustForm, setAdjustForm] = useState({ userId: "", points: 0, note: "" });
-  const [adjusting, setAdjusting] = useState(false);
   const [jsonError, setJsonError] = useState("");
   const { success, error: showError } = useToast();
 
@@ -119,25 +109,6 @@ export default function AdminVIPPage() {
     }
   };
 
-  const handleAdjustPoints = async () => {
-    if (!adjustForm.userId || !adjustForm.points || !adjustForm.note) {
-      showError("请填写完整信息");
-      return;
-    }
-    setAdjusting(true);
-    try {
-      await apiPost("/api/admin/vip", adjustForm);
-      success("积分调整成功");
-      setShowAdjustModal(false);
-      setAdjustForm({ userId: "", points: 0, note: "" });
-      fetchData();
-    } catch {
-      showError("调整失败");
-    } finally {
-      setAdjusting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -151,10 +122,6 @@ export default function AdminVIPPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-light tracking-wide text-gray-800">会员管理</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowAdjustModal(true)}>
-            <Coins className="mr-1.5 h-4 w-4" />
-            调整积分
-          </Button>
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="mr-1.5 h-4 w-4" />
             刷新
@@ -164,7 +131,7 @@ export default function AdminVIPPage() {
 
       {/* 统计卡片 */}
       {stats && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-blue-50 p-2">
@@ -173,19 +140,6 @@ export default function AdminVIPPage() {
               <div>
                 <p className="text-xs text-gray-500">会员总数</p>
                 <p className="text-xl font-semibold text-gray-800">{stats.totalUsers}</p>
-              </div>
-            </div>
-          </div>
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-amber-50 p-2">
-                <Coins className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">总积分</p>
-                <p className="text-xl font-semibold text-gray-800">
-                  {stats.totalPoints.toLocaleString()}
-                </p>
               </div>
             </div>
           </div>
@@ -210,7 +164,7 @@ export default function AdminVIPPage() {
         <div className="border-b px-6 py-4">
           <h2 className="text-lg font-medium text-gray-800">等级权益配置</h2>
           <p className="mt-1 text-xs text-gray-500">
-            等级按历史购买金额划定：普通(注册) / 高级(消费≥1) / VIP(≥¥5,000) / SVIP(≥¥20,000)
+            等级按历史购买金额划定：普通会员(注册) / 高级会员(消费满 ¥1,000)
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -334,58 +288,6 @@ export default function AdminVIPPage() {
               <Button onClick={handleSaveBenefit} disabled={saving}>
                 <Save className="mr-1.5 h-4 w-4" />
                 {saving ? "保存中..." : "保存"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* 调整积分弹窗 */}
-      {showAdjustModal && (
-        <Modal open={showAdjustModal} onClose={() => setShowAdjustModal(false)}>
-          <div className="w-full max-w-md rounded-xl bg-white p-6">
-            <h2 className="mb-4 text-lg font-medium">手动调整积分</h2>
-            <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              手动调分仅调整积分，不会影响会员等级（等级只随累计消费金额变动）
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs text-gray-500">用户 ID</label>
-                <Input
-                  placeholder="输入用户 CUID"
-                  value={adjustForm.userId}
-                  onChange={(e) => setAdjustForm({ ...adjustForm, userId: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-gray-500">
-                  积分变动 (正数增加，负数扣减)
-                </label>
-                <Input
-                  type="number"
-                  placeholder="如: 100 或 -50"
-                  value={adjustForm.points}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    setAdjustForm({ ...adjustForm, points: Number.isNaN(val) ? 0 : val });
-                  }}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-gray-500">调整原因</label>
-                <Input
-                  placeholder="如：活动奖励 / 售后补偿"
-                  value={adjustForm.note}
-                  onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowAdjustModal(false)}>
-                取消
-              </Button>
-              <Button onClick={handleAdjustPoints} disabled={adjusting}>
-                {adjusting ? "处理中..." : "确认调整"}
               </Button>
             </div>
           </div>

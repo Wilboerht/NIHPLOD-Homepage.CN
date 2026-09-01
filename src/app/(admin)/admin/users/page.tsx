@@ -70,10 +70,8 @@ const membershipLevelMap: Record<
     variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
   }
 > = {
-  REGULAR: { label: "普通", emoji: "🪙", variant: "secondary" },
-  ADVANCED: { label: "高级", emoji: "🥈", variant: "success" },
-  VIP: { label: "VIP", emoji: "🥇", variant: "warning" },
-  SVIP: { label: "SVIP", emoji: "💎", variant: "primary" },
+  REGULAR: { label: "普通会员", emoji: "🌿", variant: "secondary" },
+  ADVANCED: { label: "高级会员", emoji: "💎", variant: "success" },
 };
 
 interface UserDetail {

@@ -1,10 +1,10 @@
 /**
- * VIP 积分工具模块
- * 处理等级计算、外部商城积分同步、生日礼发放等
+ * 会员等级与积分账本工具模块
+ * 处理等级计算、外部商城积分同步等
  *
- * 规则（2026-08 重构）：
- * - 等级由历史购买金额（totalSpent）划定：普通(注册) / 高级(消费≥1) / VIP(≥5000) / SVIP(≥20000)
- * - 官网不再直接售卖：积分/消费变动由外部商城通过签名接口同步入账（EXTERNAL_SYNC）
+ * 规则（2026-09 简化）：
+ * - 等级由历史购买金额（totalSpent）划定：普通会员(注册) / 高级会员(≥¥1,000)
+ * - 官网不再直接售卖：消费/等级变动由外部商城通过签名接口同步入账（EXTERNAL_SYNC）
  * - 等级按 totalSpent 实时重算（可升可降）
  */
 import type { MembershipLevel } from "@/generated/prisma/client";
@@ -14,12 +14,10 @@ import { apiConsole } from "@/lib/logger";
 
 // 等级阈值（按历史消费金额，元）
 // 判级以此处硬编码阈值为准（唯一权威）；管理端可编辑的 MembershipBenefit.minSpent
-// 仅影响前台展示的权益文案（如"满 ¥5000 升级 VIP"），不参与实际等级计算。
+// 仅影响前台展示的权益文案（如"满 ¥1,000 升级高级会员"），不参与实际等级计算。
 const LEVEL_THRESHOLDS: { level: MembershipLevel; minSpent: number }[] = [
   { level: "REGULAR", minSpent: 0 },
-  { level: "ADVANCED", minSpent: 1 },
-  { level: "VIP", minSpent: 5000 },
-  { level: "SVIP", minSpent: 20000 },
+  { level: "ADVANCED", minSpent: 1000 },
 ];
 
 /**
@@ -130,79 +128,8 @@ export async function applyExternalPointsSync(params: {
 }
 
 /**
- * 生日礼发放（共享入口，供 /api/user/vip 与 /api/user/profile 调用）
- *
- * 资格：生日当天 + VIP/SVIP（VIP +500 / SVIP +1000）
- * 幂等：reference = BIRTHDAY-{年份}，依赖 PointTransaction 的
- * @@unique([userId, type, reference]) 唯一约束，先写后查，
- * 并发请求下仅一个能写入成功，其余捕获 P2002 视为已发放。
- */
-export async function grantBirthdayGiftIfDue(
-  userId: string
-): Promise<{ granted: boolean; points: number }> {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { membershipLevel: true, birthday: true },
-    });
-
-    if (!user?.birthday) return { granted: false, points: 0 };
-    if (user.membershipLevel !== "VIP" && user.membershipLevel !== "SVIP")
-      return { granted: false, points: 0 };
-
-    const now = new Date();
-    const birthdayThisYear = new Date(
-      now.getFullYear(),
-      user.birthday.getMonth(),
-      user.birthday.getDate()
-    );
-    const isToday =
-      birthdayThisYear.getDate() === now.getDate() &&
-      birthdayThisYear.getMonth() === now.getMonth();
-    if (!isToday) return { granted: false, points: 0 };
-
-    const giftPoints = user.membershipLevel === "SVIP" ? 1000 : 500;
-    const giftLabel = user.membershipLevel === "SVIP" ? "SVIP生日礼盒" : "VIP生日礼遇";
-    const reference = `BIRTHDAY-${now.getFullYear()}`;
-
-    try {
-      await prisma.pointTransaction.create({
-        data: {
-          userId,
-          points: giftPoints,
-          type: "BIRTHDAY_GIFT",
-          reference,
-          note: `${giftLabel} — ${now.getFullYear()}年生日赠礼`,
-        },
-      });
-    } catch (e) {
-      // P2002 唯一约束冲突 = 今年已发放过
-      if ((e as { code?: string }).code === "P2002") {
-        return { granted: false, points: 0 };
-      }
-      throw e;
-    }
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { totalPoints: { increment: giftPoints } },
-    });
-    invalidateProfileCache();
-
-    apiConsole.info(
-      `[BirthdayGift] 用户 ${userId} (${user.membershipLevel}) 生日赠送 ${giftPoints} 积分`
-    );
-    return { granted: true, points: giftPoints };
-  } catch (error) {
-    apiConsole.error("[BirthdayGift] 发放失败:", error);
-    // 生日礼发放失败不应阻塞主请求
-    return { granted: false, points: 0 };
-  }
-}
-
-/**
  * 失效 profile 缓存，确保 AuthContext 拉取最新积分与等级。
- * 积分余额变动的所有入口（外部同步、生日礼、管理端手动调分）都应调用。
+ * 积分余额变动的所有入口（外部同步等）都应调用。
  */
 export function invalidateProfileCache(): void {
   try {

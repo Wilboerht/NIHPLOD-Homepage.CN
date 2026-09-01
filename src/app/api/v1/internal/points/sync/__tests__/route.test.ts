@@ -165,8 +165,8 @@ describe("POST /api/v1/internal/points/sync", () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     txClient.user.findUnique.mockResolvedValue({
       totalPoints: 100,
-      totalSpent: 4900,
-      membershipLevel: "ADVANCED",
+      totalSpent: 850,
+      membershipLevel: "REGULAR",
     });
 
     const res = await POST(createSignedRequest(VALID_BODY));
@@ -174,16 +174,16 @@ describe("POST /api/v1/internal/points/sync", () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    // 4900 + 150 = 5050 ≥ 5000 → 升级 VIP
+    // 850 + 150 = 1000 ≥ 1000 → 升级高级会员
     expect(data.data).toEqual({
       totalPoints: 115,
-      totalSpent: 5050,
-      membershipLevel: "VIP",
+      totalSpent: 1000,
+      membershipLevel: "ADVANCED",
     });
     // CAS 乐观并发控制：以读取快照作为更新条件
     expect(txClient.user.updateMany).toHaveBeenCalledWith({
-      where: { id: "user-1", totalPoints: 100, totalSpent: 4900 },
-      data: { totalPoints: 115, totalSpent: 5050, membershipLevel: "VIP" },
+      where: { id: "user-1", totalPoints: 100, totalSpent: 850 },
+      data: { totalPoints: 115, totalSpent: 1000, membershipLevel: "ADVANCED" },
     });
     expect(txClient.pointTransaction.create).toHaveBeenCalledWith({
       data: {
@@ -228,9 +228,9 @@ describe("POST /api/v1/internal/points/sync", () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     // 模拟并发：本请求读到快照 100 时，另一笔 -80 已先入账（余额变 20）
     txClient.user.findUnique
-      .mockResolvedValueOnce({ totalPoints: 100, totalSpent: 800, membershipLevel: "ADVANCED" })
+      .mockResolvedValueOnce({ totalPoints: 100, totalSpent: 800, membershipLevel: "REGULAR" })
       // CAS 失败后重读：余额已变为 20
-      .mockResolvedValueOnce({ totalPoints: 20, totalSpent: 800, membershipLevel: "ADVANCED" });
+      .mockResolvedValueOnce({ totalPoints: 20, totalSpent: 800, membershipLevel: "REGULAR" });
     txClient.user.updateMany
       // 第一次：快照 100 已被并发修改，命中 0 行
       .mockResolvedValueOnce({ count: 0 })
@@ -252,7 +252,7 @@ describe("POST /api/v1/internal/points/sync", () => {
     // 两笔流水合计 -80 + -20 = -100 = 余额变动 100 → 0，账本对得上
     expect(txClient.user.updateMany).toHaveBeenNthCalledWith(2, {
       where: { id: "user-1", totalPoints: 20, totalSpent: 800 },
-      data: { totalPoints: 0, totalSpent: 800, membershipLevel: "ADVANCED" },
+      data: { totalPoints: 0, totalSpent: 800, membershipLevel: "REGULAR" },
     });
   });
 
@@ -261,11 +261,11 @@ describe("POST /api/v1/internal/points/sync", () => {
       // 第一次：路由按手机号查用户
       .mockResolvedValueOnce({ id: "user-1" })
       // 第二次：P2002 后回读权威余额
-      .mockResolvedValueOnce({ totalPoints: 115, totalSpent: 5050, membershipLevel: "VIP" });
+      .mockResolvedValueOnce({ totalPoints: 115, totalSpent: 1000, membershipLevel: "ADVANCED" });
     txClient.user.findUnique.mockResolvedValue({
       totalPoints: 100,
-      totalSpent: 4900,
-      membershipLevel: "ADVANCED",
+      totalSpent: 850,
+      membershipLevel: "REGULAR",
     });
     txClient.pointTransaction.create.mockRejectedValue({ code: "P2002" });
 
@@ -276,8 +276,8 @@ describe("POST /api/v1/internal/points/sync", () => {
     expect(data.success).toBe(true);
     expect(data.data).toEqual({
       totalPoints: 115,
-      totalSpent: 5050,
-      membershipLevel: "VIP",
+      totalSpent: 1000,
+      membershipLevel: "ADVANCED",
       duplicated: true,
     });
     // 事务因 P2002 中止并整体回滚，余额不会重复入账（幂等返回当前权威余额）

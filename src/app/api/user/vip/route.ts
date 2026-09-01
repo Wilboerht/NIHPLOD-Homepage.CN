@@ -1,13 +1,12 @@
 /**
- * VIP 会员信息 API
- * GET /api/user/vip - 获取用户会员等级、积分、累计消费、权益信息
+ * 会员信息 API
+ * GET /api/user/vip - 获取用户会员等级、累计消费、权益信息
  *
- * 等级体系（2026-08 重构）：普通 / 高级 / VIP / SVIP，按历史购买金额划定
+ * 等级体系（2026-09 简化）：普通会员(注册) / 高级会员(消费满 ¥1,000)
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withUserAuth } from "@/lib/auth";
-import { grantBirthdayGiftIfDue } from "@/lib/points";
 import { LEVEL_DEFAULT_BENEFITS, type LevelBenefitItem } from "@/lib/membership";
 import { apiConsole } from "@/lib/logger";
 
@@ -18,11 +17,8 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
-        id: true,
         membershipLevel: true,
-        totalPoints: true,
         totalSpent: true,
-        birthday: true,
       },
     });
 
@@ -32,10 +28,6 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
         { status: 404 }
       );
     }
-
-    // 生日当天自动发放积分礼（VIP/SVIP，共享入口，唯一约束防并发双发）
-    const birthdayGift = await grantBirthdayGiftIfDue(user.id);
-    const updatedTotalPoints = user.totalPoints + (birthdayGift.granted ? birthdayGift.points : 0);
 
     // 获取权益配置（从数据库读取，没有则用默认）
     const dbBenefits = await prisma.membershipBenefit.findMany({
@@ -66,8 +58,7 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
     const currentLevel = levels.find((l) => l.level === user.membershipLevel) ?? levels[0];
 
     // 下一等级（按消费门槛）
-    const nextLevel =
-      levels.find((l) => l.minSpent > (currentLevel.maxSpent ?? Infinity)) ?? null;
+    const nextLevel = levels.find((l) => l.minSpent > user.totalSpent) ?? null;
 
     // 距离下一等级还需要消费多少
     const spentToNextLevel = nextLevel ? Math.max(0, nextLevel.minSpent - user.totalSpent) : 0;
@@ -76,11 +67,7 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
       success: true,
       data: {
         membershipLevel: user.membershipLevel,
-        totalPoints: updatedTotalPoints,
         totalSpent: user.totalSpent,
-        birthday: user.birthday?.toISOString() ?? null,
-        birthdayGiftGranted: birthdayGift.granted,
-        birthdayGiftPoints: birthdayGift.points,
         currentLevel,
         nextLevel: nextLevel
           ? {

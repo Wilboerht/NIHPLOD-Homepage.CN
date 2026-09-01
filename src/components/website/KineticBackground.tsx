@@ -244,6 +244,7 @@ export function KineticBackground() {
                       src={user.avatar}
                       alt={user.nickname || "用户头像"}
                       fill
+                      unoptimized
                       className="rounded-full object-cover"
                     />
                   ) : (

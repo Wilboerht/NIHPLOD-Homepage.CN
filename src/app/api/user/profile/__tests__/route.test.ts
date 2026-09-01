@@ -33,10 +33,6 @@ vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
 }));
 
-vi.mock("@/lib/points", () => ({
-  grantBirthdayGiftIfDue: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock("@/lib/upload", () => ({
   processAndSaveImage: vi.fn(),
   validateUploadServer: vi.fn(),

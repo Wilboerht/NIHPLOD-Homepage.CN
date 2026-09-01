@@ -186,10 +186,8 @@ enum UserStatus {
 }
 
 enum MembershipLevel {
-  REGULAR  // 普通（注册）
-  ADVANCED // 高级（任意消费一次）
-  VIP      // 历史购买金额满 ¥5,000
-  SVIP     // 历史购买金额满 ¥20,000
+  REGULAR  // 普通会员（完成注册）
+  ADVANCED // 高级会员（官方店铺历史购买金额满 ¥1,000）
 }
 
 model User {

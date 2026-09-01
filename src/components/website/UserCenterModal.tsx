@@ -21,7 +21,7 @@ import {
   History,
 } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
-import { levelDisplay } from "@/lib/membership";
+import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { VipPanel } from "./user-center/VipPanel";
 import { SecurityPanel } from "./user-center/panels/SecurityPanel";
@@ -246,10 +246,7 @@ export function UserCenterModal() {
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
                         <p className="mt-1 text-xs font-light text-stone-400">
-                          {levelDisplay(user.membershipLevel)}
-                          {user.totalPoints !== undefined && (
-                            <span className="ml-1">· {user.totalPoints} 积分</span>
-                          )}
+                          {levelMeta(user.membershipLevel).label}
                         </p>
                       </div>
                     </div>

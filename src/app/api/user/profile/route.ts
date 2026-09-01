@@ -8,7 +8,6 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { grantBirthdayGiftIfDue } from "@/lib/points";
 import { z } from "zod";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
@@ -87,9 +86,6 @@ export const dynamic = "force-dynamic";
 
 export const GET = withUserAuth(async (request: NextRequest, payload) => {
   try {
-    // 生日礼自动检查：共享入口，唯一约束防并发双发
-    await grantBirthdayGiftIfDue(payload.id);
-
     const user = await getCachedUserProfile(payload.id);
 
     if (!user) {

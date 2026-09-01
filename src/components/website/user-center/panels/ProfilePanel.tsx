@@ -241,7 +241,7 @@ export function ProfilePanel() {
 
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
-          {/* 生日：VIP/SVIP 生日当天定额赠分（500/1000）的资格依据 */}
+          {/* 生日 */}
           <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-6 transition-all hover:bg-white/40">
             <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
               <div className="shrink-0 md:w-20">
@@ -261,11 +261,6 @@ export function ProfilePanel() {
                 ) : (
                   <p className="truncate text-base font-medium text-stone-800 md:text-sm">
                     {user.birthday ? user.birthday.slice(0, 10) : "未设置"}
-                    {!user.birthday && (
-                      <span className="ml-2 text-xs font-light text-stone-400">
-                        填写后，VIP/SVIP 会员生日当天可获赠积分
-                      </span>
-                    )}
                   </p>
                 )}
               </div>
