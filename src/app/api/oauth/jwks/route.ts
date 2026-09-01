@@ -11,6 +11,7 @@
  */
 import { NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { apiConsole } from "@/lib/logger";
 import {
   getAccessPublicKey,
   getPrevAccessPublicKey,
@@ -100,7 +101,10 @@ export async function GET(request: Request) {
         "Access-Control-Allow-Origin": "*",
       },
     });
-  } catch {
+  } catch (error) {
+    // 不静默吞错：公钥 PEM 损坏（如环境变量换行符转义问题）等配置错误
+    // 只会在请求时触发，日志是定位此类问题的唯一线索（响应体不含内部细节）
+    apiConsole.error("[OAuth JWKS] 异常:", error);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },
       { status: 500 }
