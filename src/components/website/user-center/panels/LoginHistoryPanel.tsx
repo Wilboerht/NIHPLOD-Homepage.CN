@@ -17,7 +17,6 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface LoginRecord {
   id: string;
-  identifier: string;
   type: string;
   success: boolean;
   reason: string | null;

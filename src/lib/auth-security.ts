@@ -25,14 +25,14 @@ const loginAttemptHmacKey = validateSecret(
 /**
  * 对登录标识符进行带密钥哈希（HMAC-SHA256，64 字符 hex）
  * LoginAttempt 表中仅存储哈希值，防止明文手机号泄露。
- * 查询/计数时对输入同样哈希后比对。
+ * 查询/计数时对输入同样哈希后比对（如 /api/user/login-history）。
  *
  * 使用 HMAC 而非无盐 SHA-256：手机号空间仅约 10^11，无盐哈希在拖库后
  * 可被彩虹表/枚举还原；HMAC 引入服务端密钥，攻击者没有密钥无法复算。
  * 注意：改用 HMAC 后，历史无盐 SHA-256 哈希的旧记录将无法匹配新计算的哈希
  * （登录尝试记录时效短，7 天内自动清理，可接受自然过期）。
  */
-function hashIdentifier(identifier: string): string {
+export function hashIdentifier(identifier: string): string {
   return createHmac("sha256", loginAttemptHmacKey).update(identifier, "utf8").digest("hex");
 }
 

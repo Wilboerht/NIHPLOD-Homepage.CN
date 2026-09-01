@@ -8,7 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import { maskPhone, maskIp } from "@/lib/mask-phone";
+import { maskIp } from "@/lib/mask-phone";
+import { hashIdentifier } from "@/lib/auth-security";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 登录历史按手机号聚合（identifier 字段），access token 已不再携带明文手机号，
-    // 此处按 id 查库获取当前手机号
+    // 登录历史按手机号聚合（identifier 字段存 HMAC 哈希，需同样哈希后比对），
+    // access token 已不再携带明文手机号，此处按 id 查库获取当前手机号
     const userRecord = await prisma.user.findUnique({
       where: { id: user.id },
       select: { phone: true },
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     const attempts = await prisma.loginAttempt.findMany({
-      where: { identifier: userRecord.phone },
+      where: { identifier: hashIdentifier(userRecord.phone) },
       select: {
         id: true,
         identifier: true,
@@ -52,7 +53,6 @@ export async function GET(request: NextRequest) {
 
     const data = attempts.map((a) => ({
       id: a.id,
-      identifier: maskPhone(a.identifier),
       type: a.type,
       success: a.success,
       reason: a.reason,
