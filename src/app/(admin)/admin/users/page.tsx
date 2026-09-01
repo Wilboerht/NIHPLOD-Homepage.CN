@@ -64,12 +64,11 @@ const membershipLevelMap: Record<
   string,
   {
     label: string;
-    emoji: string;
     variant: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline";
   }
 > = {
-  REGULAR: { label: "普通会员", emoji: "🌿", variant: "secondary" },
-  ADVANCED: { label: "高级会员", emoji: "💎", variant: "success" },
+  REGULAR: { label: "普通会员", variant: "secondary" },
+  ADVANCED: { label: "高级会员", variant: "success" },
 };
 
 interface UserDetail {
@@ -444,7 +443,6 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3">
                     {user.membershipLevel && membershipLevelMap[user.membershipLevel] ? (
                       <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
-                        {membershipLevelMap[user.membershipLevel].emoji}{" "}
                         {membershipLevelMap[user.membershipLevel].label}
                       </Badge>
                     ) : (
@@ -647,7 +645,6 @@ export default function AdminUsersPage() {
                       {detailUser.membershipLevel &&
                       membershipLevelMap[detailUser.membershipLevel] ? (
                         <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
-                          {membershipLevelMap[detailUser.membershipLevel].emoji}{" "}
                           {membershipLevelMap[detailUser.membershipLevel].label}
                         </Badge>
                       ) : (

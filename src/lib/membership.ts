@@ -11,26 +11,24 @@ import type { MembershipLevel } from "@/generated/prisma/client";
 
 export interface LevelMeta {
   label: string;
-  emoji: string;
 }
 
 export const LEVEL_META: Record<MembershipLevel, LevelMeta> = {
-  REGULAR: { label: "普通会员", emoji: "🌿" },
-  ADVANCED: { label: "高级会员", emoji: "💎" },
+  REGULAR: { label: "普通会员" },
+  ADVANCED: { label: "高级会员" },
 };
 
 /** 非会员（未注册）仅展示用 */
-export const GUEST_META: LevelMeta = { label: "非会员", emoji: "👤" };
+export const GUEST_META: LevelMeta = { label: "非会员" };
 
 export function levelMeta(level: string | null | undefined): LevelMeta {
   if (!level) return GUEST_META;
   return LEVEL_META[level as MembershipLevel] ?? GUEST_META;
 }
 
-/** 等级展示文案，如 "💎 高级会员" */
+/** 等级展示文案，如 "高级会员" */
 export function levelDisplay(level: string | null | undefined): string {
-  const meta = levelMeta(level);
-  return `${meta.emoji} ${meta.label}`;
+  return levelMeta(level).label;
 }
 
 // ============================================
@@ -59,12 +57,12 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     level: "REGULAR",
     name: "普通会员",
     nameEn: "Regular",
-    icon: "🌿",
+    icon: "",
     minSpent: 0,
     maxSpent: 999,
     benefits: [
-      { icon: "🧪", title: "测肤体验", desc: "注册即享 12 次 AI 测肤体验机会" },
-      { icon: "🗓️", title: "数据留存", desc: "测肤数据留存 365 天" },
+      { icon: "", title: "测肤体验", desc: "注册即享 12 次 AI 测肤体验机会" },
+      { icon: "", title: "数据留存", desc: "测肤数据留存 365 天" },
     ],
     colorClass: "text-slate-400",
   },
@@ -72,13 +70,13 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     level: "ADVANCED",
     name: "高级会员",
     nameEn: "Advanced",
-    icon: "💎",
+    icon: "",
     minSpent: 1000,
     maxSpent: null,
     benefits: [
-      { icon: "♾️", title: "无限测肤", desc: "测肤总次数不限，每日上限 3 次" },
-      { icon: "📁", title: "档案永久保留", desc: "肌肤档案永久保留" },
-      { icon: "🤖", title: "专属 AI 护肤顾问", desc: "提供专属 AI 护肤顾问服务" },
+      { icon: "", title: "无限测肤", desc: "测肤总次数不限，每日上限 3 次" },
+      { icon: "", title: "档案永久保留", desc: "肌肤档案永久保留" },
+      { icon: "", title: "专属 AI 护肤顾问", desc: "提供专属 AI 护肤顾问服务" },
     ],
     colorClass: "text-teal-500",
   },

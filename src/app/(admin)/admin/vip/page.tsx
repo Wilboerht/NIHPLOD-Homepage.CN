@@ -262,7 +262,7 @@ export default function AdminVIPPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-gray-500">
-                  {`权益列表 (JSON格式: [{"icon":"🎁","title":"...","desc":"..."}])`}
+                  {`权益列表 (JSON格式: [{"icon":"","title":"...","desc":"..."}])`}
                 </label>
                 <textarea
                   className="w-full rounded-lg border px-3 py-2 text-sm"
