@@ -250,10 +250,10 @@ export function UserCenterModal() {
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
                         <p
-                          className={`mt-1.5 inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[11px] font-light ${
+                          className={`mt-1.5 text-[11px] font-light ${
                             user.membershipLevel === "ADVANCED"
-                              ? "border-amber-200 bg-amber-50 text-amber-700"
-                              : "border-stone-200 bg-stone-100 text-stone-500"
+                              ? "text-amber-700"
+                              : "text-stone-500"
                           }`}
                         >
                           {levelMeta(user.membershipLevel).label}
