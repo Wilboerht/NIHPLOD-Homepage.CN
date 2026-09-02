@@ -150,6 +150,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deferInEffect(refreshUser);
   }, [refreshUser]);
 
+  // 跨标签页登录态同步：监听其它标签页对 auth_hint 的写入/清除。
+  // 登录/登出发生在某个标签页后，其余已打开的标签页立即同步状态，
+  // 无需手动刷新页面（storage 事件仅在"其它"标签页触发，本页变化由各操作自行处理）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== "auth_hint") return;
+      if (e.newValue === "1") {
+        // 其它标签页登录成功：强制拉取登录态（绕过 auth_hint 本地检查）
+        void refreshUser(true);
+      } else {
+        // 其它标签页登出/登录态失效：同步清除本地 UI 状态
+        setUser(null);
+        setUserCenterOpen(false);
+        localStorage.removeItem("__nihplod_refresh_fail_count");
+        setIsLoading(false);
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [refreshUser]);
+
   // 预取 CSRF Token（如果用户可能已登录）
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem("auth_hint")) {

@@ -18,8 +18,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
-// 会员卡背景图（待设计稿提供后登记，如：ADVANCED: "/images/membership-card-advanced.webp"）
-const CARD_BG_IMAGES: Partial<Record<string, string>> = {};
+// 会员卡背景图（仅作卡面底色/纹理：bg-cover 铺满，容器高度由内容决定，
+// 不按图片比例撑高卡片）
+const CARD_BG_IMAGES: Partial<Record<string, string>> = {
+  REGULAR: "/images/membership-card-regular.png",
+  ADVANCED: "/images/membership-card-advanced.png",
+};
 
 interface BenefitItem {
   title: string;
@@ -144,11 +148,9 @@ export function VipPanel() {
               ? "border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-stone-50/40"
               : "border-stone-200/60 bg-white/40"
           } ${cardBgImage ? "bg-cover bg-center" : ""}`}
-          style={
-            cardBgImage
-              ? { backgroundImage: `url(${cardBgImage})` }
-              : undefined
-          }
+          style={{
+            ...(cardBgImage ? { backgroundImage: `url(${cardBgImage})` } : {}),
+          }}
         >
           <div className="flex items-start justify-between gap-4">
             <div>
