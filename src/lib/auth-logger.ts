@@ -17,6 +17,7 @@ export type AuthEventType =
   | "refresh_token_reuse_detected"
   | "user_reset_password"
   | "user_set_password"
+  | "user_phone_changed"
   | "send_sms_code"
   | "admin_login"
   | "admin_logout"
@@ -66,6 +67,7 @@ function mapEventToAuditAction(event: AuthEventType): string | null {
     user_register: "user_register",
     user_reset_password: "user_reset_password",
     user_set_password: "user_set_password",
+    user_phone_changed: "user_phone_changed",
     wechat_bind: "user_wechat_bind",
     user_oauth_revoke: "user_oauth_revoke",
     admin_login: "admin_login",
@@ -111,6 +113,7 @@ export function logAuthEvent(event: AuthEventType, context: AuthLogContext): voi
     "user_register",
     "user_reset_password",
     "user_set_password",
+    "user_phone_changed",
     "wechat_bind",
     "user_oauth_revoke",
     "admin_login",
@@ -131,6 +134,7 @@ export function logAuthEvent(event: AuthEventType, context: AuthLogContext): voi
         | "user_logout"
         | "user_register"
         | "user_reset_password"
+        | "user_phone_changed"
         | "user_wechat_bind"
         | "user_oauth_revoke",
       targetType,

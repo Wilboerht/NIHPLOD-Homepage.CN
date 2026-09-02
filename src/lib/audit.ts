@@ -53,6 +53,7 @@ export type AuditAction =
   | "user_reset_password"
   | "user_wechat_bind"
   | "user_oauth_revoke"
+  | "user_phone_changed"
   | "user_status_change"
   | "user_deleted"
   | "user_points_adjust"

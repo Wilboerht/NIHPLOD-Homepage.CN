@@ -64,6 +64,7 @@ const ACTION_LABELS: Record<string, string> = {
   user_oauth_revoke: "用户 OAuth 撤销",
   refresh_token_reuse_detected: "检测到 Refresh Token 复用",
   user_set_password: "用户设置密码",
+  user_phone_changed: "用户换绑手机号",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {

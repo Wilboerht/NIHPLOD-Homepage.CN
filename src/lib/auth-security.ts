@@ -101,6 +101,7 @@ export async function recordLoginAttempt(
     await prisma.loginAttempt.create({
       data: {
         identifier: hashIdentifier(identifier),
+        userId: userId ?? null,
         type,
         success,
         reason: success ? null : reason,

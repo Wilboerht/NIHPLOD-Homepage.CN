@@ -218,6 +218,7 @@ model User {
   refreshTokens    RefreshToken[]
   auditLogs        AuditLog[]
   spentSyncRecords SpentSyncRecord[]
+  loginAttempts    LoginAttempt[]
   passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
@@ -300,19 +301,23 @@ model RefreshToken {
  */
 model LoginAttempt {
   id        String   @id @default(cuid())
-  identifier String                            // 登录标识：手机号（C 端）或邮箱（管理员）
+  identifier String                            // 登录标识：手机号（C 端）或邮箱（管理员），HMAC 哈希存储
+  userId    String?                            // 账号维度关联（2026-09 起写入；历史行无此值，identifier 兜底）
   type      String   @default("password")      // password | sms | admin — 应用层 Zod 约束，未用 Prisma enum 因保持灵活
   success   Boolean                            // 是否成功
   reason    String?                            // 失败原因（如：code_invalid、user_not_found 等）
   ipAddress String?                            // IP 地址
   userAgent String?  @db.Text                  // User Agent
   clientId  String?                            // OAuth Client ID（来源子项目）
-  
+
   createdAt DateTime @default(now())
-  
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([identifier, createdAt(sort: Desc)])
   @@index([identifier, success, createdAt(sort: Desc)])
   @@index([clientId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 /**

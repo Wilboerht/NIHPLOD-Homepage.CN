@@ -110,6 +110,8 @@ export const RATE_LIMIT_PRESETS = {
   refresh: { maxRequests: 10, windowMs: 5 * 60 * 1000 },
   /** 密码重置限制 - 每 15 分钟 5 次 */
   "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** 换绑手机号限制 - 每 15 分钟 5 次（用户级，防枚举/防滥用） */
+  "phone-rebind": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 管理员登录限制 - 每 15 分钟 5 次（独立桶，不与 C 端 login 共享） */
   "admin-login": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 管理员 TOTP 二次验证限制 - 每 5 分钟 3 次 */
