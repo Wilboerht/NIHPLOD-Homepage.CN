@@ -77,6 +77,8 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
       { icon: "", title: "无限测肤", desc: "测肤总次数不限，每日上限 3 次" },
       { icon: "", title: "档案永久保留", desc: "肌肤档案永久保留" },
       { icon: "", title: "专属 AI 护肤顾问", desc: "提供专属 AI 护肤顾问服务" },
+      { icon: "", title: "优先发货", desc: "订单优先发货处理" },
+      { icon: "", title: "专属客服坐席", desc: "1对1专属客服坐席服务" },
     ],
     colorClass: "text-teal-500",
   },

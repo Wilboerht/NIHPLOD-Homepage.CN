@@ -77,6 +77,13 @@ export function ProfilePanel() {
     setBirthday(user?.birthday?.slice(0, 10) || "");
   };
 
+  /** 进入编辑态前从最新用户资料同步草稿，避免上次未保存的残留值串场 */
+  const startEdit = (field: "nickname" | "birthday") => {
+    setNickname(user?.nickname || "");
+    setBirthday(user?.birthday?.slice(0, 10) || "");
+    setEditingField(field);
+  };
+
   /** 发送换绑验证码：target=current 发到当前手机（验证身份），target=new 发到新手机 */
   const sendPhoneCode = async (target: "current" | "new") => {
     if (phoneCountdown > 0) return;
@@ -328,7 +335,7 @@ export function ProfilePanel() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setEditingField("nickname")}
+                  onClick={() => startEdit("nickname")}
                   className="group flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
                 >
                   <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>
@@ -355,6 +362,12 @@ export function ProfilePanel() {
                     value={birthday}
                     max={maxBirthday}
                     onChange={(e) => setBirthday(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
+                        cancelEdit();
+                      }
+                    }}
                     className="w-full border-b border-stone-400 bg-transparent py-1 text-sm font-medium text-stone-800 outline-none transition-colors md:w-56 md:text-base"
                   />
                 ) : (
@@ -383,7 +396,7 @@ export function ProfilePanel() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setEditingField("birthday")}
+                  onClick={() => startEdit("birthday")}
                   className="group flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
                 >
                   <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>

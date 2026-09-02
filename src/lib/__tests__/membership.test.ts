@@ -50,6 +50,16 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
     expect(titles).toContain("专属 AI 护肤顾问");
   });
 
+  it("高级会员包含优先发货权益", () => {
+    const titles = LEVEL_DEFAULT_BENEFITS.ADVANCED.benefits.map((b) => b.title);
+    expect(titles).toContain("优先发货");
+  });
+
+  it("高级会员包含专属客服坐席权益", () => {
+    const titles = LEVEL_DEFAULT_BENEFITS.ADVANCED.benefits.map((b) => b.title);
+    expect(titles).toContain("专属客服坐席");
+  });
+
   it("所有等级权益均无积分/生日礼/倍率类文案（积分与生日礼已移除）", () => {
     for (const level of Object.values(LEVEL_DEFAULT_BENEFITS)) {
       for (const benefit of level.benefits) {

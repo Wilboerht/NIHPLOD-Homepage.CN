@@ -25,19 +25,24 @@ const updateSchema = z.object({
       z.literal(""),
     ])
     .optional(),
-  // 生日：空字符串表示清除；不得晚于今天、不早于 100 年前
+  // 生日：空字符串/null 表示清除；不得晚于今天、不早于 100 年前。
+  // null 前置归一为 ""：z.coerce.date() 会把 null 转成 1970-01-01（new Date(null)），
+  // 若不归一，客户端误传 null 会把生日静默写成 1970。
   birthday: z
-    .union([
-      z
-        .coerce.date()
-        .refine((d) => !Number.isNaN(d.getTime()), "无效的生日日期")
-        .refine((d) => d.getTime() <= Date.now(), "生日不能晚于今天")
-        .refine(
-          (d) => d.getFullYear() >= new Date().getFullYear() - 100,
-          "生日日期超出合理范围"
-        ),
-      z.literal(""),
-    ])
+    .preprocess(
+      (v) => (v === null || v === undefined ? "" : v),
+      z.union([
+        z
+          .coerce.date()
+          .refine((d) => !Number.isNaN(d.getTime()), "无效的生日日期")
+          .refine((d) => d.getTime() <= Date.now(), "生日不能晚于今天")
+          .refine(
+            (d) => d.getFullYear() >= new Date().getFullYear() - 100,
+            "生日日期超出合理范围"
+          ),
+        z.literal(""),
+      ])
+    )
     .optional(),
 });
 

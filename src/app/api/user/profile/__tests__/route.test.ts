@@ -122,4 +122,44 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
     expect(mockUserUpdate).not.toHaveBeenCalled();
     expect(mockSendProfileUpdateWebhook).not.toHaveBeenCalled();
   });
+
+  it("生日传 null 应视为清除（写入 null，而非 1970 年占位）", async () => {
+    mockUserFindUnique.mockResolvedValue({
+      ...OLD_USER,
+      birthday: new Date("2000-01-01T00:00:00.000Z"),
+    });
+    mockUserUpdate.mockResolvedValue({ ...NEW_USER, birthday: null });
+
+    const res = await PUT(putRequest({ birthday: null }));
+
+    expect(res.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ birthday: null }) })
+    );
+  });
+
+  it("生日传空字符串应视为清除", async () => {
+    mockUserFindUnique.mockResolvedValue({
+      ...OLD_USER,
+      birthday: new Date("2000-01-01T00:00:00.000Z"),
+    });
+    mockUserUpdate.mockResolvedValue({ ...NEW_USER, birthday: null });
+
+    const res = await PUT(putRequest({ birthday: "" }));
+
+    expect(res.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ birthday: null }) })
+    );
+  });
+
+  it("未来日期应被拒绝（400），不触发更新", async () => {
+    mockUserFindUnique.mockResolvedValue(OLD_USER);
+    const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const res = await PUT(putRequest({ birthday: future }));
+
+    expect(res.status).toBe(400);
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
 });
