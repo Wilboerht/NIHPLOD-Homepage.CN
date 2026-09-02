@@ -20,6 +20,7 @@ import {
   Lock,
   Award,
   Wallet,
+  Trash2,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
@@ -31,7 +32,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
-import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
@@ -138,6 +139,8 @@ export default function AdminUsersPage() {
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<{ id: string; status: UserStatus } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -168,6 +171,36 @@ export default function AdminUsersPage() {
 
   const updateUserStatus = (userId: string, status: UserStatus) => {
     setStatusTarget({ id: userId, status });
+  };
+
+  const requestDeleteUser = (id: string, label: string) => {
+    setDeleteTarget({ id, label });
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
+    setDeleteLoading(true);
+    try {
+      await apiDelete(`/api/admin/users/${id}`);
+      toast.success("用户已删除");
+      setDeleteTarget(null);
+      setSelectedIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      if (detailUser?.id === id) {
+        setDetailOpen(false);
+        setDetailUser(null);
+      }
+      await fetchUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "删除用户失败");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const confirmStatusChange = async () => {
@@ -458,9 +491,21 @@ export default function AdminUsersPage() {
                     {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                   </td>
                   <td className="px-4 py-3">
-                    <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() =>
+                          requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -630,6 +675,20 @@ export default function AdminUsersPage() {
                       封禁账号
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                    leftIcon={<Trash2 className="h-4 w-4" />}
+                    onClick={() =>
+                      requestDeleteUser(
+                        detailUser.id,
+                        detailUser.nickname || detailUser.phone || detailUser.id
+                      )
+                    }
+                  >
+                    删除用户
+                  </Button>
                 </div>
               </div>
 
@@ -698,6 +757,22 @@ export default function AdminUsersPage() {
         }
         confirmText={`确认${batchTarget ? userStatusMap[batchTarget.status].label : ""}`}
         loading={batchLoading}
+      />
+
+      {/* 删除用户确认 */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteUser}
+        title="删除用户"
+        description={
+          deleteTarget
+            ? `确定要删除用户「${deleteTarget.label}」吗？该操作将封禁账号并匿名化全部个人数据（GDPR 合规），不可恢复。`
+            : ""
+        }
+        type="danger"
+        confirmText="确认删除"
+        loading={deleteLoading}
       />
     </div>
   );

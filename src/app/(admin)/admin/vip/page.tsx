@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 会员管理后台页面
+ * 会员等级定义后台页面
  * 等级体系（2026-09 简化）：普通会员(注册) / 高级会员(消费满 ¥1,000)
  */
 import { useEffect, useState, useCallback } from "react";
@@ -120,7 +120,7 @@ export default function AdminVIPPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-light tracking-wide text-gray-800">会员管理</h1>
+        <h1 className="text-2xl font-light tracking-wide text-gray-800">会员等级定义</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="mr-1.5 h-4 w-4" />

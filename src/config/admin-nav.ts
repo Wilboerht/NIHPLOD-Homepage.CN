@@ -56,7 +56,7 @@ export const adminNavItems: NavItem[] = [
     group: "商城管理",
   },
   {
-    title: "会员管理",
+    title: "会员等级定义",
     href: "/admin/vip",
     icon: Crown,
     roles: ["owner", "admin"],

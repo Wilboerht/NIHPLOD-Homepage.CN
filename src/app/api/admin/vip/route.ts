@@ -1,5 +1,5 @@
 /**
- * 会员管理 API (管理后台)
+ * 会员等级定义 API (管理后台)
  * GET  /api/admin/vip - 获取会员统计和等级配置
  * PUT  /api/admin/vip - 更新等级权益配置
  *
