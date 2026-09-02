@@ -32,6 +32,31 @@ export function levelDisplay(level: string | null | undefined): string {
 }
 
 // ============================================
+// 高级会员里程碑（等级内成长体系）
+// 不新增等级名：高级会员内部按累计消费解锁礼遇，
+// 由 totalSpent 推导，纯展示层逻辑。
+// ============================================
+
+export interface LevelMilestone {
+  threshold: number; // 累计消费门槛（元）
+  name: string;
+  benefits: LevelBenefitItem[];
+}
+
+export const ADVANCED_MILESTONES: LevelMilestone[] = [
+  {
+    threshold: 3000,
+    name: "年度礼遇",
+    benefits: [{ icon: "", title: "年度生日礼盒", desc: "每年生日获赠专属礼盒" }],
+  },
+  {
+    threshold: 10000,
+    name: "尊享礼遇",
+    benefits: [{ icon: "", title: "品牌沙龙邀请", desc: "受邀参加线下品牌沙龙" }],
+  },
+];
+
+// ============================================
 // 等级权益默认配置（数据库未配置时的 fallback，用户端与管理端共用）
 // ============================================
 

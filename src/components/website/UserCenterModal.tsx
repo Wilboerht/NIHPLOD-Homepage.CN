@@ -238,12 +238,24 @@ export function UserCenterModal() {
                         ) : (
                           <User className="h-6 w-6 text-stone-500" strokeWidth={1.5} />
                         )}
+                        {/* 高级会员头像角标 */}
+                        {user.membershipLevel === "ADVANCED" && (
+                          <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-amber-400">
+                            <Crown className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-col justify-center">
                         <p className="truncate text-[15px] font-medium text-stone-800">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p className="mt-1 text-xs font-light text-stone-400">
+                        <p
+                          className={`mt-1.5 inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[11px] font-light ${
+                            user.membershipLevel === "ADVANCED"
+                              ? "border-amber-200 bg-amber-50 text-amber-700"
+                              : "border-stone-200 bg-stone-100 text-stone-500"
+                          }`}
+                        >
                           {levelMeta(user.membershipLevel).label}
                         </p>
                       </div>

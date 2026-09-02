@@ -6,7 +6,7 @@
  * - 高级会员：无限总次数（每日上限 3 次）、肌肤档案永久保留、专属 AI 护肤顾问
  */
 import { describe, it, expect } from "vitest";
-import { LEVEL_DEFAULT_BENEFITS } from "@/lib/membership";
+import { LEVEL_DEFAULT_BENEFITS, ADVANCED_MILESTONES } from "@/lib/membership";
 
 describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
   it("仅包含普通会员与高级会员两档", () => {
@@ -69,5 +69,23 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
         expect(text).not.toMatch(/\d+\s*倍/);
       }
     }
+  });
+});
+
+describe("ADVANCED_MILESTONES 高级会员里程碑", () => {
+  it("门槛为 ¥3,000 与 ¥10,000 两档（递增）", () => {
+    expect(ADVANCED_MILESTONES.map((m) => m.threshold)).toEqual([3000, 10000]);
+  });
+
+  it("¥3,000 里程碑含年度生日礼盒", () => {
+    const m = ADVANCED_MILESTONES.find((x) => x.threshold === 3000)!;
+    expect(m.name).toBe("年度礼遇");
+    expect(m.benefits.map((b) => b.title)).toContain("年度生日礼盒");
+  });
+
+  it("¥10,000 里程碑含品牌沙龙邀请", () => {
+    const m = ADVANCED_MILESTONES.find((x) => x.threshold === 10000)!;
+    expect(m.name).toBe("尊享礼遇");
+    expect(m.benefits.map((b) => b.title)).toContain("品牌沙龙邀请");
   });
 });
