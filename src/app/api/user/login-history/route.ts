@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 50,
     });
 
     const data = attempts.map((a) => ({

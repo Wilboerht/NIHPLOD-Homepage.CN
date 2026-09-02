@@ -66,7 +66,7 @@ describe("GET /api/user/login-history", () => {
       expect.objectContaining({
         where: { OR: [{ userId: "user-1" }, { identifier: "hashed:13800138000" }] },
         orderBy: { createdAt: "desc" },
-        take: 20,
+        take: 50,
       })
     );
   });

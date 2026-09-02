@@ -2,7 +2,7 @@
 
 /**
  * 登录历史面板（共享）
- * 最近 20 条登录记录
+ * 最近 50 条登录记录
  *
  * 抽取自原 /account 页面的登录历史 Tab，弹窗等外壳共用。
  * 取数统一走 fetchWithAuth（401 自动刷新重试）；
@@ -56,7 +56,7 @@ export function LoginHistoryPanel() {
       </div>
 
       <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
-        <p className="mb-4 text-sm text-stone-400">最近 20 条登录记录。</p>
+        <p className="mb-4 text-sm text-stone-400">最近 50 条登录记录。</p>
         {loading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
