@@ -202,7 +202,7 @@ export function SpentAdjustmentPanel() {
     <div className="mt-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h4 className="text-sm font-medium text-stone-700">消费补录</h4>
+          <h4 className="text-sm font-medium text-stone-700">录入消费记录</h4>
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
@@ -228,7 +228,7 @@ export function SpentAdjustmentPanel() {
             </>
           ) : (
             <>
-              提交补录申请 <ChevronRight className="h-3.5 w-3.5" />
+              录入消费 <ChevronRight className="h-3.5 w-3.5" />
             </>
           )}
         </button>
@@ -236,7 +236,7 @@ export function SpentAdjustmentPanel() {
 
       <p className="mt-1 text-xs font-light leading-relaxed text-stone-400">
         在天猫 / 京东 / 小程序 /
-        线下专柜等全渠道购买的商品，提交订单号（线下填小票号）即可补录消费金额。
+         线下专柜等全渠道购买的商品，提交订单号（线下填小票号）即可录入消费记录。
         审核通过后计入历史消费，会员等级自动更新；驳回后可重新提交。
       </p>
 
@@ -416,7 +416,7 @@ export function SpentAdjustmentPanel() {
               <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
             </div>
           ) : applications.length === 0 ? (
-            <p className="py-4 text-center text-xs text-stone-400">暂无补录申请</p>
+            <p className="py-4 text-center text-xs text-stone-400">暂无消费记录</p>
           ) : (
             applications.map((a) => {
               const StatusIcon = STATUS_ICONS[a.status];
