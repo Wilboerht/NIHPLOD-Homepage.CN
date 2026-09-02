@@ -249,15 +249,22 @@ export function UserCenterModal() {
                         <p className="truncate text-[15px] font-medium text-stone-800">
                           {user.nickname || `用户${user.phone?.slice(-4)}`}
                         </p>
-                        <p
-                          className={`mt-1.5 text-[11px] font-light ${
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserCenterView("vip");
+                            if (window.innerWidth < 768) {
+                              setShowMobileDetail(true);
+                            }
+                          }}
+                          className={`mt-1.5 inline-flex w-fit cursor-pointer items-center rounded-full border px-2 py-0.5 text-[11px] font-light transition-colors hover:opacity-80 ${
                             user.membershipLevel === "ADVANCED"
-                              ? "text-amber-700"
-                              : "text-stone-500"
+                              ? "border-amber-200 bg-amber-50 text-amber-700"
+                              : "border-stone-200 bg-stone-100 text-stone-500"
                           }`}
                         >
                           {levelMeta(user.membershipLevel).label}
-                        </p>
+                        </button>
                       </div>
                     </div>
                   </div>
