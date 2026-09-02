@@ -66,10 +66,13 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/ratelimit";
 import { verifyCode, recordSmsCodeFailure, sendLoginCode } from "@/lib/sms";
 import { invalidateProfileCache } from "@/lib/points";
 import { PUT } from "@/app/api/user/phone/route";
 import { POST } from "@/app/api/user/phone/send-code/route";
+
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
 const mockUserUpdate = prisma.user.update as ReturnType<typeof vi.fn>;
@@ -234,6 +237,52 @@ describe("换绑手机号", () => {
         data: { phone: "13900139000" },
       });
     });
+
+    it("用户级限流触发应返回 429 TOO_MANY_REQUESTS", async () => {
+      mockRateLimit.mockResolvedValueOnce({ success: false });
+      const res = await PUT(
+        createRequest(
+          "/api/user/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
+      );
+      expect(res.status).toBe(429);
+      expect((await res.json()).error.code).toBe("TOO_MANY_REQUESTS");
+      expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it("并发核销冲突（验证码已被消费）应返回 CODE_INVALID 且不更新手机号", async () => {
+      mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
+      // 当前码核销成功、新码已被并发消费（count 0）→ 事务回滚
+      mockSmsUpdateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+
+      const res = await PUT(
+        createRequest(
+          "/api/user/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
+      );
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("CODE_INVALID");
+      expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it("并发下新手机号刚被注册（P2002）应返回 PHONE_IN_USE", async () => {
+      mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
+      mockUserUpdate.mockRejectedValue({ code: "P2002" });
+
+      const res = await PUT(
+        createRequest(
+          "/api/user/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
+      );
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("PHONE_IN_USE");
+    });
   });
 
   describe("POST /api/user/phone/send-code", () => {
@@ -306,6 +355,14 @@ describe("换绑手机号", () => {
       const res = await POST(createRequest("/api/user/phone/send-code", { target: "current" }));
       expect(res.status).toBe(429);
       expect((await res.json()).error.code).toBe("TOO_FREQUENT");
+      expect(mockSmsCreate).not.toHaveBeenCalled();
+    });
+
+    it("用户级限流触发应返回 429 TOO_MANY_REQUESTS", async () => {
+      mockRateLimit.mockResolvedValueOnce({ success: false });
+      const res = await POST(createRequest("/api/user/phone/send-code", { target: "current" }));
+      expect(res.status).toBe(429);
+      expect((await res.json()).error.code).toBe("TOO_MANY_REQUESTS");
       expect(mockSmsCreate).not.toHaveBeenCalled();
     });
   });

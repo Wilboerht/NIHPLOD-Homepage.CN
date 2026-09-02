@@ -167,6 +167,39 @@ describe("auth-security", () => {
         })
       );
     });
+
+    it("传入 userId 时应写入账号维度关联（登录历史按账号聚合）", async () => {
+      const mock = await getMockLoginAttempt();
+      mock.create.mockResolvedValueOnce({});
+
+      await recordLoginAttempt(
+        "13800138000",
+        true,
+        createMockRequest(),
+        undefined,
+        "sms",
+        "user-1"
+      );
+
+      expect(mock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userId: "user-1" }),
+        })
+      );
+    });
+
+    it("未传入 userId 时写入 null（失败尝试/未知用户）", async () => {
+      const mock = await getMockLoginAttempt();
+      mock.create.mockResolvedValueOnce({});
+
+      await recordLoginAttempt("13800138000", false, createMockRequest(), "code_invalid", "sms");
+
+      expect(mock.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userId: null }),
+        })
+      );
+    });
   });
 
   describe("checkAccountLockout", () => {
