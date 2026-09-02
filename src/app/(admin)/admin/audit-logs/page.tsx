@@ -56,6 +56,12 @@ const ACTION_LABELS: Record<string, string> = {
   run_cron_task: "执行定时任务",
   user_points_adjust: "调整用户积分",
   update_vip_benefit: "更新会员权益",
+  submit_spent_adjustment: "提交消费补录",
+  approve_spent_adjustment: "通过消费补录",
+  reject_spent_adjustment: "驳回消费补录",
+  undo_spent_adjustment: "撤销消费补录",
+  import_spent_records: "导入消费记录",
+  undo_spent_import: "撤销消费导入",
   oauth_client_create: "创建 SSO 客户端",
   oauth_client_update: "更新 SSO 客户端",
   oauth_client_delete: "删除 SSO 客户端",
@@ -97,6 +103,8 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   oauth_consent: "SSO 授权",
   vip: "会员",
   oauth_session: "SSO 会话",
+  spent_adjustment: "消费补录",
+  spent_import: "消费导入",
 };
 
 const ACTION_COLORS: Record<string, string> = {

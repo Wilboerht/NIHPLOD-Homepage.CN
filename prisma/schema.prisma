@@ -221,6 +221,7 @@ model User {
   loginAttempts    LoginAttempt[]
   passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
   spentAdjustmentApplications SpentAdjustmentApplication[]
+  spentImportRows SpentImportRow[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -605,6 +606,56 @@ model SpentSyncRecord {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+// 管理端 Excel 批量导入消费记录的逐行结果状态
+enum SpentImportRowStatus {
+  SUCCESS
+  DUPLICATE
+  ERROR
+}
+
+// 管理端 Excel 批量导入批次（消费记录一键导入）
+model SpentImportBatch {
+  id            String   @id @default(cuid())
+  adminId       String
+  fileName      String   // 上传文件名（清洗后）
+  fileHash      String?  // 文件内容 MD5（仅审计参考，幂等以逐行 reference 为准）
+  totalRows     Int      // Excel 数据行总数
+  successRows   Int      // 成功入账行数
+  duplicateRows Int      @default(0) // 幂等命中（重复入账被跳过）行数
+  errorRows     Int      // 失败行数
+  totalAmount   Int      // 实际净入账金额（元，成功行金额之和）
+  undoneAt      DateTime? // 整批撤销时间（撤销后禁止再次撤销）
+  createdAt     DateTime @default(now())
+
+  admin Admin            @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  rows  SpentImportRow[]
+
+  @@index([createdAt(sort: Desc)])
+}
+
+// 导入批次内的逐行明细（保存 reference 与金额，支撑整批撤销）
+model SpentImportRow {
+  id          String                 @id @default(cuid())
+  batchId     String
+  phone       String                 // 行内手机号（原样保存，便于回溯）
+  amount      Int                    // 消费额变动（元，正加负减）
+  channel     SpentAdjustmentChannel? // 渠道（选填）
+  orderNo     String?                // 订单号/小票号（选填）
+  purchasedAt DateTime?              // 消费日期（选填）
+  note        String?                @db.Text
+  reference   String                 // 幂等键（import:{fileHash}:{rowIndex} 或含订单号）
+  status      SpentImportRowStatus
+  error       String?                @db.Text // 失败原因（预览/执行阶段）
+  userId      String?                // 成功定位到的用户（失败行可能为空）
+  createdAt   DateTime               @default(now())
+
+  batch SpentImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user  User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
 model MembershipBenefit {
   id          String          @id @default(cuid())
   level       MembershipLevel @unique
@@ -651,6 +702,7 @@ model Admin {
 
   auditLogs AuditLog[] // 审计日志关联
   spentAdjustmentReviews SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
+  spentImportBatches SpentImportBatch[]
 
   @@index([status])
   @@index([deletedAt])

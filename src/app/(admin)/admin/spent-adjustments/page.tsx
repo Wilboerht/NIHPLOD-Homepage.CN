@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   ClipboardCheck,
   ExternalLink,
+  FileSpreadsheet,
+  History,
   Image as ImageIcon,
   RefreshCw,
   Undo2,
@@ -23,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
+import { SpentImportModal, ImportHistoryModal } from "./SpentImport";
 
 type AdjustmentStatus = "PENDING" | "APPROVED" | "REJECTED";
 type StatusFilter = "ALL" | AdjustmentStatus;
@@ -102,6 +105,8 @@ export default function AdminSpentAdjustmentsPage() {
   const [saving, setSaving] = useState(false);
   const [undoTarget, setUndoTarget] = useState<ApplicationItem | null>(null);
   const [undoing, setUndoing] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { success, error: showError } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -189,10 +194,20 @@ export default function AdminSpentAdjustmentsPage() {
             审核用户提交的全渠道消费凭证，通过后按核实金额累加历史消费并自动重算会员等级
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>
-          <RefreshCw className="mr-1.5 h-4 w-4" />
-          刷新
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+            <History className="mr-1.5 h-4 w-4" />
+            导入历史
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+            Excel 导入
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="mr-1.5 h-4 w-4" />
+            刷新
+          </Button>
+        </div>
       </div>
 
       {/* 状态筛选 */}
@@ -549,6 +564,14 @@ export default function AdminSpentAdjustmentsPage() {
         onConfirm={handleUndo}
         title="撤销审核"
         description="撤销后将按原核实金额扣减该用户的历史消费（会员等级同步重算），申请回到待审核队列，可重新审核。确认撤销？"
+      />
+
+      {/* Excel 批量导入 */}
+      <SpentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportHistoryModal
+        key={historyOpen ? "open" : "closed"}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
       />
     </div>
   );

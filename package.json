@@ -57,6 +57,7 @@
     "tailwind-merge": "^3.4.0",
     "tencentcloud-sdk-nodejs": "^4.1.180",
     "wechatpay-axios-plugin": "^0.9.6",
+    "xlsx": "^0.18.5",
     "zod": "^4.1.13",
     "zustand": "^5.0.10"
   },
