@@ -77,6 +77,7 @@ export function SpentAdjustmentPanel() {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [channel, setChannel] = useState<string>("TMALL");
@@ -392,59 +393,89 @@ export function SpentAdjustmentPanel() {
         </div>
       )}
 
-      {/* 申请记录 */}
-      <div className="mt-4 space-y-3">
-        {loading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-          </div>
-        ) : applications.length === 0 ? (
-          <p className="py-4 text-center text-xs text-stone-400">暂无补录申请</p>
-        ) : (
-          applications.map((a) => {
-            const StatusIcon = STATUS_ICONS[a.status];
-            return (
-              <div key={a.id} className="rounded-xl border border-stone-200/60 bg-white/40 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
-                    >
-                      <StatusIcon className="h-3 w-3" />
-                      {SPENT_STATUS_LABELS[a.status]}
-                    </span>
-                    <span className="text-[11px] text-stone-400">
-                      {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
-                        a.channel}
-                    </span>
-                  </div>
-                  <span className="shrink-0 text-[11px] text-stone-300">
-                    {formatDate(a.createdAt)}
-                  </span>
-                </div>
-                <p className="mt-2 truncate text-sm font-medium text-stone-800">{a.orderNo}</p>
-                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
-                  {a.amountClaimed != null && <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>}
-                  {a.purchasedAt && <span>消费日期 {formatDate(a.purchasedAt)}</span>}
-                  {a.images.length > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Camera className="h-3 w-3" /> {a.images.length} 张凭证
-                    </span>
-                  )}
-                </div>
-                {a.status === "APPROVED" && a.reviewAmount != null && (
-                  <p className="mt-2 rounded-lg bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700">
-                    已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
-                  </p>
-                )}
-                {a.status === "REJECTED" && a.reviewNote && (
-                  <p className="mt-2 rounded-lg bg-red-50/60 px-3 py-2 text-xs text-red-600">
-                    驳回原因：{a.reviewNote}
-                  </p>
-                )}
+      {/* 申请记录 - 默认收起 */}
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowHistory((v) => !v)}
+          aria-expanded={showHistory}
+          className="flex w-full items-center justify-between"
+        >
+          <span className="text-sm font-medium text-stone-700">
+            申请记录
+            {!loading && applications.length > 0 && (
+              <span className="ml-2 text-xs font-light text-stone-400">
+                {applications.length} 条
+              </span>
+            )}
+          </span>
+          <ChevronRight
+            className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
+              showHistory ? "rotate-90" : ""
+            }`}
+          />
+        </button>
+
+        {showHistory && (
+          <div className="mt-4 space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
               </div>
-            );
-          })
+            ) : applications.length === 0 ? (
+              <p className="py-4 text-center text-xs text-stone-400">暂无补录申请</p>
+            ) : (
+              applications.map((a) => {
+                const StatusIcon = STATUS_ICONS[a.status];
+                return (
+                  <div
+                    key={a.id}
+                    className="rounded-xl border border-stone-200/60 bg-white/40 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
+                        >
+                          <StatusIcon className="h-3 w-3" />
+                          {SPENT_STATUS_LABELS[a.status]}
+                        </span>
+                        <span className="text-[11px] text-stone-400">
+                          {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
+                            a.channel}
+                        </span>
+                      </div>
+                      <span className="shrink-0 text-[11px] text-stone-300">
+                        {formatDate(a.createdAt)}
+                      </span>
+                    </div>
+                    <p className="mt-2 truncate text-sm font-medium text-stone-800">{a.orderNo}</p>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
+                      {a.amountClaimed != null && (
+                        <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
+                      )}
+                      {a.purchasedAt && <span>消费日期 {formatDate(a.purchasedAt)}</span>}
+                      {a.images.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Camera className="h-3 w-3" /> {a.images.length} 张凭证
+                        </span>
+                      )}
+                    </div>
+                    {a.status === "APPROVED" && a.reviewAmount != null && (
+                      <p className="mt-2 rounded-lg bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700">
+                        已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
+                      </p>
+                    )}
+                    {a.status === "REJECTED" && a.reviewNote && (
+                      <p className="mt-2 rounded-lg bg-red-50/60 px-3 py-2 text-xs text-red-600">
+                        驳回原因：{a.reviewNote}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         )}
       </div>
     </div>

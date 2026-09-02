@@ -74,7 +74,7 @@ export function VipPanel() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { error: showError } = useToast();
-  const { redirectToLogin } = useAuth();
+  const { redirectToLogin, user, refreshUser } = useAuth();
 
   const toggleLevel = (level: string) => {
     setExpanded((prev) => {
@@ -96,6 +96,9 @@ export function VipPanel() {
       const data = await res.json();
       if (data.success) {
         setVipData(data.data);
+        if (user && data.data.membershipLevel !== user.membershipLevel) {
+          void refreshUser(true);
+        }
       }
     } catch (e) {
       if (e instanceof UnauthorizedError) {
@@ -107,7 +110,7 @@ export function VipPanel() {
     } finally {
       setLoading(false);
     }
-  }, [showError, redirectToLogin]);
+  }, [showError, redirectToLogin, user, refreshUser]);
 
   useEffect(() => {
     deferInEffect(loadVIPData);
