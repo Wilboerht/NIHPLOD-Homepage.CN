@@ -220,6 +220,7 @@ model User {
   spentSyncRecords SpentSyncRecord[]
   loginAttempts    LoginAttempt[]
   passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
+  spentAdjustmentApplications SpentAdjustmentApplication[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -549,6 +550,46 @@ model RateLimitRecord {
 // 会员体系
 // ============================================
 
+// 消费补录渠道（全渠道凭证：电商订单号或线下小票号）
+enum SpentAdjustmentChannel {
+  TMALL // 天猫
+  JD // 京东
+  MINIPROGRAM // 微信小程序
+  OFFLINE // 线下专柜
+  OTHER // 其他
+}
+
+enum SpentAdjustmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// 消费补录申请：用户提交全渠道消费凭证，管理员审核通过后手动累加历史消费金额（提升会员等级）
+model SpentAdjustmentApplication {
+  id            String                   @id @default(cuid())
+  userId        String
+  channel       SpentAdjustmentChannel
+  orderNo       String // 电商订单号或线下小票号
+  amountClaimed Int? // 用户申报金额（元）
+  purchasedAt   DateTime? // 消费日期（不限制时间范围）
+  images        String[] // 凭证截图 URL（选填，最多 3 张）
+  note          String? @db.Text // 备注
+  status        SpentAdjustmentStatus    @default(PENDING)
+  reviewAmount  Int? // 审核核实金额（元，以人工核实为准）
+  reviewNote    String? @db.Text // 驳回原因/审核备注
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+}
+
 // 外部商城消费额同步幂等记录（商城侧单据号唯一，防止重复上报重复入账）
 model SpentSyncRecord {
   id         String   @id @default(cuid())
@@ -609,6 +650,7 @@ model Admin {
   updatedAt       DateTime    @default(now()) @updatedAt
 
   auditLogs AuditLog[] // 审计日志关联
+  spentAdjustmentReviews SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
 
   @@index([status])
   @@index([deletedAt])

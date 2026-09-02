@@ -341,6 +341,36 @@ export async function processAndSaveImage(
 }
 
 /**
+ * 仅处理图片（缩放 + 转 WebP），不落盘。
+ * 供需要自定义存储目标的调用方使用（如私有 bucket 直传）。
+ */
+export async function processImageToWebp(buffer: Buffer): Promise<Buffer> {
+  const image = sharp(buffer);
+  const metadata = await image.metadata();
+
+  let width = metadata.width || 0;
+  let height = metadata.height || 0;
+
+  if (width > uploadConfig.maxWidth) {
+    height = Math.round((uploadConfig.maxWidth / width) * height);
+    width = uploadConfig.maxWidth;
+  }
+
+  if (height > uploadConfig.maxHeight) {
+    width = Math.round((uploadConfig.maxHeight / height) * width);
+    height = uploadConfig.maxHeight;
+  }
+
+  return image
+    .resize(width, height, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: uploadConfig.quality })
+    .toBuffer();
+}
+
+/**
  * 上传文件（不做处理，适用于 PDF 等非图片文件）
  * 注意：扩展名由 mimeType 从白名单映射决定，不会使用用户传入的 originalName
  */

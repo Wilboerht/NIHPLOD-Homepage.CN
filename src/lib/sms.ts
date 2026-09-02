@@ -88,7 +88,7 @@ import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 import { apiConsole } from "@/lib/logger";
 
-export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET";
+export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET" | "SPENT_REVIEW";
 
 export interface SMSParams {
   phone: string;
@@ -272,6 +272,7 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
   const templates: Record<SMSTemplate, string | undefined> = {
     LOGIN_CODE: process.env.SMS_TEMPLATE_CODE_LOGIN,
     PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_PASSWORD_RESET,
+    SPENT_REVIEW: process.env.SMS_TEMPLATE_CODE_SPENT_REVIEW,
   };
   return templates[template] || null;
 }
@@ -288,6 +289,7 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
 const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
   LOGIN_CODE: ["code"],
   PASSWORD_RESET: ["time"],
+  SPENT_REVIEW: ["result"],
 };
 
 /**
@@ -371,6 +373,7 @@ function getTencentTemplateId(template: SMSTemplate): string | null {
   const templates: Record<SMSTemplate, string | undefined> = {
     LOGIN_CODE: process.env.TENCENT_SMS_TEMPLATE_ID_LOGIN,
     PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_PASSWORD_RESET,
+    SPENT_REVIEW: process.env.TENCENT_SMS_TEMPLATE_ID_SPENT_REVIEW,
   };
   return templates[template] || null;
 }
@@ -402,6 +405,25 @@ export async function sendPasswordChangedNotification(phone: string): Promise<vo
     }
   } catch (error) {
     apiConsole.error("[PasswordNotification] 发送异常:", error);
+  }
+}
+
+/**
+ * 发送消费补录审核结果通知（审核通过/驳回后调用）
+ * 模板单参数：{1} 为审核结果（如"已通过"/"未通过"）
+ */
+export async function sendSpentReviewNotification(phone: string, result: string): Promise<void> {
+  try {
+    const smsResult = await sendSMS({
+      phone,
+      template: "SPENT_REVIEW",
+      params: { result },
+    });
+    if (!smsResult.success) {
+      apiConsole.error("[SpentReviewNotification] 短信发送失败:", smsResult.error);
+    }
+  } catch (error) {
+    apiConsole.error("[SpentReviewNotification] 发送异常:", error);
   }
 }
 

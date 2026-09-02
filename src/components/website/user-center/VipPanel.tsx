@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { SpentAdjustmentPanel } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（仅作卡面底色/纹理：bg-cover 铺满，容器高度由内容决定，
 // 不按图片比例撑高卡片）
@@ -305,6 +306,8 @@ export function VipPanel() {
             })}
           </div>
         </div>
+        {/* 消费补录（全渠道凭证 → 人工审核 → 补录历史消费金额） */}
+        <SpentAdjustmentPanel />
       </div>
     </div>
   );

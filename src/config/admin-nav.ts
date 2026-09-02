@@ -18,6 +18,7 @@ import {
   MonitorStop,
   FileSearch,
   Activity,
+  ClipboardCheck,
   LucideIcon,
 } from "lucide-react";
 
@@ -58,6 +59,13 @@ export const adminNavItems: NavItem[] = [
     title: "会员管理",
     href: "/admin/vip",
     icon: Crown,
+    roles: ["owner", "admin"],
+    group: "商城管理",
+  },
+  {
+    title: "消费补录审核",
+    href: "/admin/spent-adjustments",
+    icon: ClipboardCheck,
     roles: ["owner", "admin"],
     group: "商城管理",
   },

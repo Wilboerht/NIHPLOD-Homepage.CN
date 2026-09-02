@@ -167,3 +167,55 @@ export async function deleteOSSFiles(urls: string[]) {
     apiConsole.error("Failed to delete OSS files:", e);
   }
 }
+
+// ============================================
+// 私有 Bucket（敏感文件，如消费凭证截图）
+// 凭证含收货地址等个人信息，不应走公开读 bucket。
+// 通过 ALI_OSS_PRIVATE_BUCKET 配置专用 bucket（与公开 bucket 同区域同密钥），
+// 未配置时回退公开管线（保持向后兼容）。
+// ============================================
+
+export function isPrivateBucketConfigured(): boolean {
+  return !!process.env.ALI_OSS_PRIVATE_BUCKET && isOSSConfigured();
+}
+
+let privateOssClient: OSS | null = null;
+
+function getPrivateOssClient(): OSS | null {
+  if (!isPrivateBucketConfigured()) return null;
+  if (!privateOssClient) {
+    privateOssClient = new OSS({
+      region: ossConfig.region!,
+      accessKeyId: ossConfig.accessKeyId!,
+      accessKeySecret: ossConfig.accessKeySecret!,
+      bucket: process.env.ALI_OSS_PRIVATE_BUCKET!,
+      secure: ossConfig.secure,
+    });
+  }
+  return privateOssClient;
+}
+
+/**
+ * 上传到私有 bucket，返回 objectName（不返回公开 URL）
+ */
+export async function uploadToPrivateOSS(
+  buffer: Buffer,
+  objectName: string,
+  type: string
+): Promise<{ objectName: string }> {
+  const client = getPrivateOssClient();
+  if (!client) {
+    throw new Error("私有 OSS bucket 未配置");
+  }
+  await client.put(objectName, buffer, { mime: type });
+  return { objectName };
+}
+
+/**
+ * 生成私有对象的签名访问 URL（GET，默认 24 小时有效）
+ */
+export function signPrivateObjectUrl(objectName: string, expiresSec = 24 * 3600): string | null {
+  const client = getPrivateOssClient();
+  if (!client) return null;
+  return client.signatureUrl(objectName, { method: "GET", expires: expiresSec });
+}
