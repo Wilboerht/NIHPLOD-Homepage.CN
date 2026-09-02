@@ -409,7 +409,7 @@ export function ProfilePanel() {
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
           {/* 绑定手机号 - 换绑需双向短信验证 */}
-          <div className="-mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
+          <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
             <div className="flex items-center justify-between py-6">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
                 <div className="md:w-20">
@@ -428,7 +428,7 @@ export function ProfilePanel() {
               <button
                 onClick={() => setShowPhoneForm((v) => !v)}
                 aria-expanded={showPhoneForm}
-                className="group flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
+                className="flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
               >
                 <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>
                 <ChevronRight

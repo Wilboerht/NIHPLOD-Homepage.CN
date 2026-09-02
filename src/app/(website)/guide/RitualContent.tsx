@@ -1784,7 +1784,7 @@ function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
       className={cn(
         "relative overflow-hidden border-t",
         isMobile
-          ? "-mx-6 border-brand-charcoal/10 px-6 pb-4 pt-6"
+          ? "-mx-5 border-brand-charcoal/10 px-5 pb-4 pt-6"
           : "mb-6 border-brand-charcoal/10 pt-8"
       )}
     >
@@ -1805,12 +1805,12 @@ function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
       {/* 滚动容器（prefers-reduced-motion 时动画由全局 CSS 禁用） */}
       <div
         className={cn(
-          "flex w-max animate-marquee items-center will-change-transform",
-          !isMobile && "hover:[animation-play-state:paused]"
+          "flex animate-marquee items-center",
+          isMobile ? "w-max" : "hover:[animation-play-state:paused]"
         )}
       >
         {[0, 1].map((group) => (
-          <div key={group} className="flex flex-shrink-0 items-center" aria-hidden={group === 1}>
+          <div key={group} className="flex items-center" aria-hidden={group === 1}>
             {hotelLogoNumbers.map((num) => (
               <div
                 key={num}
@@ -1825,8 +1825,8 @@ function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
                   width={isMobile ? 90 : 120}
                   height={isMobile ? 20 : 24}
                   className={cn(
-                    "w-auto object-contain opacity-70 mix-blend-multiply",
-                    isMobile ? "h-[28px]" : "h-[36px]"
+                    "w-auto object-contain",
+                    isMobile ? "h-[28px] opacity-70 mix-blend-multiply" : "h-[36px]"
                   )}
                   style={{ maxHeight: isMobile ? "28px" : "36px" }}
                 />
