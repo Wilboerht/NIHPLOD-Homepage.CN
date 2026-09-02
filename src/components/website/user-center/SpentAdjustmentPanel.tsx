@@ -416,7 +416,7 @@ export function SpentAdjustmentPanel() {
               <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
             </div>
           ) : applications.length === 0 ? (
-            <p className="py-4 text-center text-xs text-stone-400">暂无消费记录</p>
+            <p className="py-4 text-center text-xs text-stone-400">暂无录入提交</p>
           ) : (
             applications.map((a) => {
               const StatusIcon = STATUS_ICONS[a.status];
