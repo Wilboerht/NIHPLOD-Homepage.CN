@@ -1810,7 +1810,7 @@ function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
         )}
       >
         {[0, 1].map((group) => (
-          <div key={group} className="flex items-center" aria-hidden={group === 1}>
+          <div key={group} className="flex flex-shrink-0 items-center" aria-hidden={group === 1}>
             {hotelLogoNumbers.map((num) => (
               <div
                 key={num}
