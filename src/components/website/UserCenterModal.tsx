@@ -238,12 +238,6 @@ export function UserCenterModal() {
                         ) : (
                           <User className="h-6 w-6 text-stone-500" strokeWidth={1.5} />
                         )}
-                        {/* 高级会员头像角标 */}
-                        {user.membershipLevel === "ADVANCED" && (
-                          <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-amber-400">
-                            <Crown className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
-                          </span>
-                        )}
                       </div>
                       <div className="flex flex-col justify-center">
                         <p className="truncate text-[15px] font-medium text-stone-800">
