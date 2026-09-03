@@ -233,6 +233,7 @@ model User {
   spentImportRows SpentImportRow[]
   pointLedger PointLedger[]
   pointBalance PointBalance?
+  pointRedemptions PointRedemption[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
