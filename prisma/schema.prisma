@@ -627,7 +627,7 @@ model SpentImportBatch {
   undoneAt      DateTime? // 整批撤销时间（撤销后禁止再次撤销）
   createdAt     DateTime @default(now())
 
-  admin Admin            @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  admin Admin            @relation(fields: [adminId], references: [id])
   rows  SpentImportRow[]
 
   @@index([createdAt(sort: Desc)])

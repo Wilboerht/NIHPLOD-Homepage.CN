@@ -6,15 +6,7 @@
  * 另含导入历史弹窗（批次列表 + 整批撤销）。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Download,
-  FileSpreadsheet,
-  History,
-  Loader2,
-  Undo2,
-  Upload,
-  X,
-} from "lucide-react";
+import { Download, Loader2, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -145,19 +137,9 @@ export function SpentImportModal({
   };
 
   return (
-    <Modal open={open} onClose={handleClose} size="lg">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-medium">
-          <FileSpreadsheet className="h-5 w-5 text-gray-500" />
-          Excel 批量导入消费记录
-        </h2>
-        <button onClick={handleClose} className="text-gray-400 hover:text-gray-600" aria-label="关闭">
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
+    <Modal open={open} onClose={handleClose} size="xl" title="Excel 批量导入消费记录">
       {step === "upload" && (
-        <div className="mt-6">
+        <div>
           <p className="text-sm text-gray-500">
             请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 1000 行；
             金额为整数（元），负数表示退款冲正；未注册手机号的行会标记错误并跳过。
@@ -197,7 +179,7 @@ export function SpentImportModal({
       )}
 
       {step === "preview" && preview && (
-        <div className="mt-6">
+        <div>
           <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3 text-sm">
             <span className="truncate text-gray-600">{preview.fileName}</span>
             <span className="text-gray-400">
@@ -208,7 +190,7 @@ export function SpentImportModal({
             </span>
           </div>
 
-          <div className="mt-4 max-h-[45vh] overflow-y-auto rounded-lg border">
+          <div className="mt-4 max-h-[45vh] overflow-auto rounded-lg border">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
                 <tr>
@@ -270,7 +252,7 @@ export function SpentImportModal({
       )}
 
       {step === "result" && result && (
-        <div className="mt-6">
+        <div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg bg-gray-50 p-4 text-center">
               <p className="text-2xl font-medium text-gray-800">{result.successRows}</p>
@@ -315,7 +297,7 @@ export function ImportHistoryModal({
 }) {
   const { success, error: showError } = useToast();
   const [batches, setBatches] = useState<ImportBatchItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [undoTarget, setUndoTarget] = useState<ImportBatchItem | null>(null);
@@ -360,18 +342,8 @@ export function ImportHistoryModal({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size="lg">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-medium">
-            <History className="h-5 w-5 text-gray-500" />
-            导入历史
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="关闭">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="mt-4 max-h-[55vh] overflow-y-auto rounded-lg border">
+      <Modal open={open} onClose={onClose} size="xl" title="导入历史">
+        <div className="max-h-[55vh] overflow-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-gray-300" />

@@ -10,6 +10,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findMany: vi.fn() },
     spentImportBatch: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    spentSyncRecord: { deleteMany: vi.fn() },
   },
 }));
 
@@ -34,6 +35,7 @@ const mockUserFindMany = prisma.user.findMany as ReturnType<typeof vi.fn>;
 const mockBatchCreate = prisma.spentImportBatch.create as ReturnType<typeof vi.fn>;
 const mockBatchFindUnique = prisma.spentImportBatch.findUnique as ReturnType<typeof vi.fn>;
 const mockBatchUpdate = prisma.spentImportBatch.update as ReturnType<typeof vi.fn>;
+const mockSyncRecordDeleteMany = prisma.spentSyncRecord.deleteMany as ReturnType<typeof vi.fn>;
 const mockApplySync = applyExternalSpentSync as ReturnType<typeof vi.fn>;
 
 function buildWorkbook(aoa: unknown[][]): Buffer {
@@ -125,6 +127,32 @@ describe("parseImportWorkbook", () => {
     if (!result.ok) return;
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({ phone: "13800138000", amount: 100, purchasedAt: "2026-01-15" });
+  });
+
+  it("虚高 !ref（整列格式化）无越界真实单元格：正常解析", () => {
+    const ws = XLSX.utils.aoa_to_sheet([HEADERS, ["13800138000", 100]]);
+    ws["!ref"] = "A1:F1500";
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "S");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+    const result = parseImportWorkbook(buffer, "import.xlsx");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].phone).toBe("13800138000");
+  });
+
+  it("读取上限之外存在真实单元格（超大文件）：返回 TOO_MANY_ROWS", () => {
+    const ws = XLSX.utils.aoa_to_sheet([HEADERS, ["13800138000", 100]]);
+    ws["!ref"] = "A1:F1500";
+    ws["A1500"] = { t: "s", v: "越界数据" };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "S");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+    const result = parseImportWorkbook(buffer, "import.xlsx");
+    expect(result).toMatchObject({ ok: false, code: "TOO_MANY_ROWS" });
   });
 });
 
@@ -308,17 +336,18 @@ describe("undoImportBatch", () => {
     vi.clearAllMocks();
   });
 
-  it("撤销成功：逐行反向冲正并标记 undoneAt", async () => {
+  it("撤销成功：逐行反向冲正、清理原始幂等记录并标记 undoneAt", async () => {
     mockBatchFindUnique.mockResolvedValue({
       id: "batch-1",
       undoneAt: null,
       totalAmount: 1500,
       rows: [
-        { id: "row-1", userId: "user-1", amount: 1000 },
-        { id: "row-2", userId: "user-2", amount: 500 },
+        { id: "row-1", userId: "user-1", amount: 1000, reference: "import:ref-1" },
+        { id: "row-2", userId: "user-2", amount: 500, reference: "import:ref-2" },
       ],
     });
     mockApplySync.mockResolvedValue({ totalSpent: 0, membershipLevel: "REGULAR", duplicated: false });
+    mockSyncRecordDeleteMany.mockResolvedValue({ count: 1 });
     mockBatchUpdate.mockResolvedValue({});
 
     const result = await undoImportBatch("batch-1");
@@ -330,6 +359,13 @@ describe("undoImportBatch", () => {
       spentDelta: -1000,
       reference: "import-undo:batch-1:row-1",
       note: expect.stringContaining("batch-1"),
+    });
+    // 删除原始正向幂等记录，保证撤销后重新导入相同行可再次入账
+    expect(mockSyncRecordDeleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", reference: "import:ref-1" },
+    });
+    expect(mockSyncRecordDeleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-2", reference: "import:ref-2" },
     });
     expect(mockBatchUpdate).toHaveBeenCalledWith({
       where: { id: "batch-1" },
@@ -371,13 +407,30 @@ describe("undoImportBatch", () => {
       undoneAt: null,
       totalAmount: 1000,
       rows: [
-        { id: "row-1", userId: "user-1", amount: 1000 },
-        { id: "row-2", userId: "user-2", amount: 500 },
+        { id: "row-1", userId: "user-1", amount: 1000, reference: "import:ref-1" },
+        { id: "row-2", userId: "user-2", amount: 500, reference: "import:ref-2" },
       ],
     });
     mockApplySync
       .mockResolvedValueOnce({ totalSpent: 0, membershipLevel: "REGULAR", duplicated: false })
       .mockRejectedValueOnce(new Error("boom"));
+    mockSyncRecordDeleteMany.mockResolvedValue({ count: 1 });
+
+    const result = await undoImportBatch("batch-1");
+
+    expect(result).toMatchObject({ ok: false, code: "INTERNAL_ERROR" });
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+  });
+
+  it("清理原始幂等记录失败：同样视为失败不标记 undoneAt", async () => {
+    mockBatchFindUnique.mockResolvedValue({
+      id: "batch-1",
+      undoneAt: null,
+      totalAmount: 1000,
+      rows: [{ id: "row-1", userId: "user-1", amount: 1000, reference: "import:ref-1" }],
+    });
+    mockApplySync.mockResolvedValue({ totalSpent: 0, membershipLevel: "REGULAR", duplicated: false });
+    mockSyncRecordDeleteMany.mockRejectedValue(new Error("db down"));
 
     const result = await undoImportBatch("batch-1");
 

@@ -274,7 +274,43 @@ export function parseImportWorkbook(
     return { ok: false, code: "INVALID_FILE", message: "文件解析失败，请确认文件未损坏" };
   }
 
-  const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
+  // 防 DoS：!ref 声明范围可能被恶意文件虚标到数百万行/列（zip 高度可压缩），
+  // sheet_to_json 会按声明范围逐行填充，直接转换可导致内存爆炸。
+  // 因此：1) 检测读取上限之外是否真实存在单元格（格式刷整列只会虚高 !ref，不产生真实单元格）；
+  // 2) 仅在上限范围内转换。真实单元格只按实际存在的数量迭代，开销可控。
+  const declaredRange = sheet["!ref"]
+    ? XLSX.utils.decode_range(sheet["!ref"])
+    : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+  const MAX_READ_ROWS = IMPORT_MAX_ROWS + 200; // 表头 + 1000 行 + 容错空行
+  const MAX_READ_COLS = 20; // 模板仅 6 列，留余量
+
+  const rowLimit = declaredRange.s.r + MAX_READ_ROWS - 1;
+  if (declaredRange.e.r > rowLimit) {
+    for (const key of Object.keys(sheet)) {
+      if (key.startsWith("!")) continue;
+      const cell = XLSX.utils.decode_cell(key);
+      if (cell.r > rowLimit) {
+        return {
+          ok: false,
+          code: "TOO_MANY_ROWS",
+          message: `单次最多导入 ${IMPORT_MAX_ROWS} 行，请拆分文件后重试`,
+        };
+      }
+    }
+  }
+
+  const readRange = XLSX.utils.encode_range({
+    s: declaredRange.s,
+    e: {
+      r: Math.min(declaredRange.e.r, rowLimit),
+      c: Math.min(declaredRange.e.c, MAX_READ_COLS - 1),
+    },
+  });
+  const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
+    defval: "",
+    range: readRange,
+  });
 
   const headerRowIndex = aoa.findIndex((row) => cellText(row?.[0]).includes("手机号"));
   if (headerRowIndex === -1) {
@@ -588,8 +624,10 @@ export type UndoResult =
   | { ok: false; code: "NOT_FOUND" | "ALREADY_UNDONE" | "NOTHING_TO_UNDO" | "INTERNAL_ERROR"; message: string };
 
 /**
- * 撤销整批导入：对每行 SUCCESS 反向冲正（reference 幂等，重试安全）。
- * 仅当全部行冲正成功才落 undoneAt；部分失败保持未撤销状态，可重试。
+ * 撤销整批导入：对每行 SUCCESS 反向冲正（reference 幂等，重试安全），
+ * 并删除行对应的原始正向 SpentSyncRecord，保证撤销后重新导入相同行
+ * 不会被幂等误判为重复（不再次入账）。
+ * 仅当全部行冲正 + 清理成功才落 undoneAt；部分失败保持未撤销状态，可重试。
  */
 export async function undoImportBatch(batchId: string): Promise<UndoResult> {
   const batch = await prisma.spentImportBatch.findUnique({
@@ -600,7 +638,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
       totalAmount: true,
       rows: {
         where: { status: "SUCCESS" },
-        select: { id: true, userId: true, amount: true },
+        select: { id: true, userId: true, amount: true, reference: true },
       },
     },
   });
@@ -616,7 +654,6 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     return { ok: false, code: "NOTHING_TO_UNDO", message: "该批次没有可撤销的入账记录" };
   }
 
-  let failed = 0;
   const revertResults = await mapWithConcurrency(
     successRows,
     IMPORT_EXECUTE_CONCURRENCY,
@@ -628,6 +665,9 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
           reference: `import-undo:${batch.id}:${row.id}`,
           note: `撤销Excel导入批次 ${batch.id}`,
         });
+        await prisma.spentSyncRecord.deleteMany({
+          where: { userId: row.userId as string, reference: row.reference },
+        });
         return true;
       } catch (error) {
         apiConsole.error(`[SpentImport] 撤销批次 ${batch.id} 行 ${row.id} 冲正失败:`, error);
@@ -635,7 +675,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
       }
     }
   );
-  failed = revertResults.filter((ok) => !ok).length;
+  const failed = revertResults.filter((ok) => !ok).length;
 
   if (failed > 0) {
     return {

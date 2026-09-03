@@ -63,7 +63,7 @@ export const adminNavItems: NavItem[] = [
     group: "商城管理",
   },
   {
-    title: "消费补录审核",
+    title: "消费记录审核",
     href: "/admin/spent-adjustments",
     icon: ClipboardCheck,
     roles: ["owner", "admin"],

@@ -189,7 +189,7 @@ export default function AdminSpentAdjustmentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-light tracking-wide text-gray-800">消费补录审核</h1>
+          <h1 className="text-2xl font-light tracking-wide text-gray-800">消费记录审核</h1>
           <p className="mt-1 text-xs text-gray-500">
             审核用户提交的全渠道消费凭证，通过后按核实金额累加历史消费并自动重算会员等级
           </p>

@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
 
   const rows = [
     [...IMPORT_HEADERS],
-    ["13800138000", 1280, "2026-01-15", "天猫", "TM20260115001", "示例行，填写前请删除"],
+    // 示例行手机号故意为非法格式：即使管理员忘记删除该行，预览也会标记错误并被跳过，不会误入账
+    ["12345678901", 1280, "2026-01-15", "天猫", "TM20260115001", "示例行，填写前请删除"],
   ];
 
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
