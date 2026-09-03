@@ -64,6 +64,9 @@ export type AuditAction =
   | "undo_spent_adjustment"
   | "import_spent_records"
   | "undo_spent_import"
+  | "point_gift_create"
+  | "point_gift_update"
+  | "point_redemption_fulfill"
   | "create_point_campaign"
   | "update_point_campaign"
   | "delete_point_campaign"
@@ -96,6 +99,8 @@ export type AuditTargetType =
   | "vip"
   | "spent_adjustment"
   | "spent_import"
+  | "point_gift"
+  | "point_redemption"
   | "oauth_session"
   | "point_campaign";
 
@@ -150,6 +155,9 @@ export const AUDIT_ACTIONS = [
   "undo_spent_adjustment",
   "import_spent_records",
   "undo_spent_import",
+  "point_gift_create",
+  "point_gift_update",
+  "point_redemption_fulfill",
   "create_point_campaign",
   "update_point_campaign",
   "delete_point_campaign",
@@ -184,6 +192,8 @@ export const AUDIT_TARGET_TYPES = [
   "vip",
   "spent_adjustment",
   "spent_import",
+  "point_gift",
+  "point_redemption",
   "point_campaign",
 ] as const;
 

@@ -19,6 +19,7 @@ import {
   FileSearch,
   Activity,
   ClipboardCheck,
+  Gift,
   LucideIcon,
 } from "lucide-react";
 
@@ -66,6 +67,13 @@ export const adminNavItems: NavItem[] = [
     title: "消费记录审核",
     href: "/admin/spent-adjustments",
     icon: ClipboardCheck,
+    roles: ["owner", "admin"],
+    group: "商城管理",
+  },
+  {
+    title: "积分礼品",
+    href: "/admin/point-gifts",
+    icon: Gift,
     roles: ["owner", "admin"],
     group: "商城管理",
   },

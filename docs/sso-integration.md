@@ -621,6 +621,10 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 `GET /api/user/points`（用户登录态）：返回 `{ available, frozen, nextReleaseAt, recent[] }`，available 可为负（退款超兑债务，新积分入账先行抵债）。
 
+### 官网用户面板兑换（2026-09 起）
+
+官网用户中心「会员中心」内置积分兑换板块：礼品目录由官网管理端维护（`/admin/point-gifts`，礼品价值 + 上下架），用户实际扣分 = ⌊市场价值 ÷ 当前兑礼率⌋，兑换成功生成兑换记录（`PointRedemption`，PENDING → 管理端「标记履约」）。商城侧如已有自己的兑礼入口，继续走 `POST /api/v1/internal/points/redeem` 扣分即可，两处共享同一积分账本与幂等约束。
+
 ### 生日积分
 
 官网每日 cron 扫描当天生日的有效用户，按**生日当天当前等级**发放生日积分（银 50 / 金 100 / 钻 200，普通不发放），每年一次（`lastBirthdayRewardYear` 幂等），6 个月过期。生日首次设置后锁定，修改需人工客服，商城侧无需处理。

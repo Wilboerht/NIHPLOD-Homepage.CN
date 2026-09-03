@@ -755,7 +755,7 @@ enum PointRedemptionStatus {
 model PointRedemption {
   id          String                  @id @default(cuid())
   userId      String
-  giftId      String
+  giftId      String?                 // 礼品软删除时置空，历史记录保留快照
   giftName    String                  // 兑换时的礼品名称快照
   valueYuan   Int                     // 兑换时的市场价值快照
   points      Int                     // 实际扣减积分

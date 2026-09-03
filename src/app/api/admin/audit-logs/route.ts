@@ -47,6 +47,9 @@ const ACTION_LABELS: Record<string, string> = {
   undo_spent_adjustment: "撤销消费记录",
   import_spent_records: "导入消费记录",
   undo_spent_import: "撤销消费导入",
+  point_gift_create: "新增积分礼品",
+  point_gift_update: "更新积分礼品",
+  point_redemption_fulfill: "兑换履约",
   oauth_client_create: "创建 SSO 客户端",
   oauth_client_update: "更新 SSO 客户端",
   oauth_client_delete: "删除 SSO 客户端",
@@ -91,6 +94,8 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   oauth_session: "SSO 会话",
   spent_adjustment: "消费记录",
   spent_import: "消费导入",
+  point_gift: "积分礼品",
+  point_redemption: "积分兑换",
 };
 
 const querySchema = z.object({
