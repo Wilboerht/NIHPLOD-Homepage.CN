@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight, ChevronDown } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost } from "@/lib/api-client";
@@ -394,12 +394,17 @@ export function ProfilePanel() {
                     保存
                   </button>
                 </div>
+              ) : user.birthday ? (
+                <span className="flex items-center gap-1.5 text-xs font-light text-stone-400">
+                  <Lock className="h-3.5 w-3.5" />
+                  已锁定
+                </span>
               ) : (
                 <button
                   onClick={() => startEdit("birthday")}
                   className="group flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
                 >
-                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>
+                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">设置</span>
                   <ChevronRight className="h-3.5 w-3.5 text-stone-300 md:hidden" />
                 </button>
               )}

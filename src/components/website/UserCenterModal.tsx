@@ -15,27 +15,29 @@ import {
   LogOut,
   ArrowLeft,
   Crown,
-  MonitorSmartphone,
-  KeyRound,
-  History,
+  Shield,
 } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { VipPanel } from "./user-center/VipPanel";
-import { DevicesPanel } from "./user-center/panels/DevicesPanel";
-import { AuthorizationsPanel } from "./user-center/panels/AuthorizationsPanel";
-import { LoginHistoryPanel } from "./user-center/panels/LoginHistoryPanel";
+import { SecurityCenterPanel } from "./user-center/panels/SecurityCenterPanel";
 
-// 菜单项配置：五项共享面板，与 /account 重定向目标（/?account=<tab>）一一对应
-// 安全设置（密码管理）已合并进个人信息面板
+// 菜单项配置：三个一级入口。设备管理/授权管理/登录历史已合并进安全中心
+// （对应 /account 旧链接经 openUserCenter 归一化为 security + 分段）。
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "vip", label: "会员中心", icon: Crown },
-  { id: "devices", label: "设备管理", icon: MonitorSmartphone },
-  { id: "authorizations", label: "授权管理", icon: KeyRound },
-  { id: "history", label: "登录历史", icon: History },
+  { id: "security", label: "安全中心", icon: Shield },
 ];
+
+// 侧边栏等级徽标样式（四档）
+const LEVEL_PILL_STYLES: Record<string, string> = {
+  REGULAR: "border-stone-200 bg-stone-100 text-stone-500",
+  SILVER: "border-zinc-200 bg-zinc-50 text-zinc-600",
+  GOLD: "border-amber-200 bg-amber-50 text-amber-700",
+  DIAMOND: "border-indigo-200 bg-indigo-50 text-indigo-700",
+};
 
 export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
@@ -252,9 +254,7 @@ export function UserCenterModal() {
                             }
                           }}
                           className={`mt-1.5 inline-flex w-fit cursor-pointer items-center rounded-full border px-2 py-0.5 text-[11px] font-light transition-colors hover:opacity-80 ${
-                            user.membershipLevel === "ADVANCED"
-                              ? "border-amber-200 bg-amber-50 text-amber-700"
-                              : "border-stone-200 bg-stone-100 text-stone-500"
+                            LEVEL_PILL_STYLES[user.membershipLevel ?? "REGULAR"]
                           }`}
                         >
                           {levelMeta(user.membershipLevel).label}
@@ -372,17 +372,17 @@ export function UserCenterModal() {
   return createPortal(content, document.body);
 }
 
-// 内容面板路由：五个菜单项对应 panels/ 下的共享面板（与 /account/embed 复用同一实现）
+// 内容面板路由：三个一级菜单（安全中心内部再分设备/授权/登录历史三段）
+// 旧的安全类 tab 已由 openUserCenter 归一化，此处兜底同指安全中心。
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
     case "vip":
       return <VipPanel />;
+    case "security":
     case "devices":
-      return <DevicesPanel />;
     case "authorizations":
-      return <AuthorizationsPanel />;
     case "history":
-      return <LoginHistoryPanel />;
+      return <SecurityCenterPanel />;
     default:
       return <ProfilePanel />;
   }

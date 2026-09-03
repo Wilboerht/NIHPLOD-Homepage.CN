@@ -231,7 +231,7 @@ describe("executeImportBatch", () => {
   };
 
   it("成功行入账：reference 内容哈希且幂等稳定", async () => {
-    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "ADVANCED", duplicated: false });
+    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "SILVER", duplicated: false });
 
     const result = await executeImportBatch({
       rows: [okInput],
@@ -303,7 +303,7 @@ describe("executeImportBatch", () => {
   });
 
   it("幂等命中：行标记 DUPLICATE，不重复入账", async () => {
-    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "ADVANCED", duplicated: true });
+    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "SILVER", duplicated: true });
 
     const result = await executeImportBatch({
       rows: [okInput],

@@ -24,7 +24,12 @@ interface LoginRecord {
   createdAt: string;
 }
 
-export function LoginHistoryPanel() {
+interface LoginHistoryPanelProps {
+  /** 内嵌于安全中心时使用：隐藏内置标题、去掉顶部留白（滚动/内边距由外层接管） */
+  embedded?: boolean;
+}
+
+export function LoginHistoryPanel({ embedded }: LoginHistoryPanelProps) {
   const [loginHistory, setLoginHistory] = useState<LoginRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const { error: showError } = useToast();
@@ -49,11 +54,16 @@ export function LoginHistoryPanel() {
   }, [fetchLoginHistory]);
 
   return (
-    <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-login-history">
-      {/* 标题 - 移动端由弹窗全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-        <h2 className="text-xl font-medium tracking-wide text-stone-800">登录历史</h2>
-      </div>
+    <div
+      className={`flex h-full flex-col ${embedded ? "" : "pt-4 md:pt-10"}`}
+      data-testid="panel-login-history"
+    >
+      {/* 标题 - 移动端由弹窗全局 Header 管理；内嵌时由安全中心分段标签承担 */}
+      {!embedded && (
+        <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
+          <h2 className="text-xl font-medium tracking-wide text-stone-800">登录历史</h2>
+        </div>
+      )}
 
       <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
         <p className="mb-4 text-sm text-stone-400">最近 50 条登录记录。</p>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OAuth 2.0 / OIDC 端到端集成测试
  *
  * 完整流程：authorize(approve) -> 提取 code -> token(authorization_code + PKCE) ->
@@ -78,7 +78,7 @@ vi.mock("@/lib/prisma", () => {
         phone: "13800138000",
         nickname: "Flow User",
         avatar: "https://example.com/avatar.png",
-        membershipLevel: "ADVANCED",
+        membershipLevel: "SILVER",
         status: "ACTIVE",
       }),
     },

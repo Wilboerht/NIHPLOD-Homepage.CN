@@ -57,7 +57,7 @@ function putRequest(body: unknown) {
   });
 }
 
-const OLD_USER = { nickname: "旧昵称", avatar: null, birthday: null };
+const OLD_USER = { nickname: "旧昵称", avatar: null, birthday: null, birthdayLocked: false };
 const NEW_USER = {
   id: "user-1",
   phone: "13800000000",
@@ -123,33 +123,45 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
     expect(mockSendProfileUpdateWebhook).not.toHaveBeenCalled();
   });
 
-  it("生日传 null 应视为清除（写入 null，而非 1970 年占位）", async () => {
+  it("已设置生日后清除（null）应被拒绝：生日已锁定（403）", async () => {
     mockUserFindUnique.mockResolvedValue({
       ...OLD_USER,
       birthday: new Date("2000-01-01T00:00:00.000Z"),
+      birthdayLocked: true,
     });
-    mockUserUpdate.mockResolvedValue({ ...NEW_USER, birthday: null });
 
     const res = await PUT(putRequest({ birthday: null }));
 
-    expect(res.status).toBe(200);
-    expect(mockUserUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ birthday: null }) })
-    );
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("BIRTHDAY_LOCKED");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 
-  it("生日传空字符串应视为清除", async () => {
+  it("已设置生日后改值应被拒绝：生日已锁定（403）", async () => {
     mockUserFindUnique.mockResolvedValue({
       ...OLD_USER,
       birthday: new Date("2000-01-01T00:00:00.000Z"),
+      birthdayLocked: true,
     });
-    mockUserUpdate.mockResolvedValue({ ...NEW_USER, birthday: null });
 
-    const res = await PUT(putRequest({ birthday: "" }));
+    const res = await PUT(putRequest({ birthday: "1995-05-20" }));
+
+    expect(res.status).toBe(403);
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("未设置生日时可首次设置，并写入锁定标记", async () => {
+    mockUserFindUnique.mockResolvedValue(OLD_USER);
+    const birthday = new Date("1995-05-20T00:00:00.000Z");
+    mockUserUpdate.mockResolvedValue({ ...NEW_USER, birthday });
+
+    const res = await PUT(putRequest({ birthday: "1995-05-20" }));
 
     expect(res.status).toBe(200);
     expect(mockUserUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ birthday: null }) })
+      expect.objectContaining({
+        data: expect.objectContaining({ birthday, birthdayLocked: true }),
+      })
     );
   });
 

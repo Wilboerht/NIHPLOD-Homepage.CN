@@ -137,15 +137,41 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
     const previous = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { nickname: true, avatar: true, birthday: true },
+      select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true },
     });
+
+    if (!previous) {
+      return NextResponse.json(
+        { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+
+    // 生日锁定：生日是生日积分发放依据，首次设置后锁定，修改需人工客服
+    if (birthday !== undefined && (previous.birthday || previous.birthdayLocked)) {
+      const targetValue = birthday === "" ? null : birthday;
+      const unchanged = (previous.birthday?.getTime() ?? null) === (targetValue?.getTime() ?? null);
+      if (!unchanged) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "BIRTHDAY_LOCKED", message: "生日已锁定，如需修改请联系客服" },
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     const user = await prisma.user.update({
       where: { id: payload.id },
       data: {
         ...(nickname !== undefined && { nickname: nickname || null }),
         ...(avatar !== undefined && { avatar: avatar || null }),
-        ...(birthday !== undefined && { birthday: birthday === "" ? null : birthday }),
+        // 首次设置生日时写入锁定标记（此后不可自助修改）
+        ...(birthday !== undefined && {
+          birthday: birthday === "" ? null : birthday,
+          birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
+        }),
       },
       select: { id: true, phone: true, nickname: true, avatar: true, birthday: true },
     });

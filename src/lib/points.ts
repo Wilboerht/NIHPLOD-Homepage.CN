@@ -1,24 +1,29 @@
 /**
  * 会员等级工具模块
- * 处理等级计算、外部商城消费额同步
+ * 处理等级计算、外部商城消费额同步、积分联动
  *
- * 规则（2026-09）：
- * - 等级由历史购买金额（totalSpent）划定：普通会员(注册) / 高级会员(≥¥1,000)
+ * 规则（2026-09 四档）：
+ * - 等级由历史购买金额（totalSpent）划定，永久有效、实时重算（可升可降）：
+ *   普通(注册) / 银卡(≥¥1,000) / 金卡(≥¥5,000) / 钻石(≥¥10,000)
  * - 官网不再直接售卖：消费额变动由外部商城通过签名接口同步入账
- * - 等级按 totalSpent 实时重算（可升可降）
- * - 积分体系已于 2026-09 整体下线（无积分余额/流水）
+ * - 各档首次达档记录 activatedAt（仅成长展示，不产生有效期）
+ * - 积分（银卡及以上）：消费 1 元 = 1 分，稳定期 7 天冻结，6 个月过期；
+ *   退款冲正可负；账本逻辑见 points-ledger.ts
  */
 import type { MembershipLevel } from "@/generated/prisma/client";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { creditSpendPoints, refundSpendPoints } from "@/lib/points-ledger";
 
 // 等级阈值（按历史消费金额，元）
 // 判级以此处硬编码阈值为准（唯一权威）；管理端可编辑的 MembershipBenefit.minSpent
-// 仅影响前台展示的权益文案（如"满 ¥1,000 升级高级会员"），不参与实际等级计算。
+// 仅影响前台展示的权益文案（如"满 ¥1,000 升级银卡会员"），不参与实际等级计算。
 const LEVEL_THRESHOLDS: { level: MembershipLevel; minSpent: number }[] = [
   { level: "REGULAR", minSpent: 0 },
-  { level: "ADVANCED", minSpent: 1000 },
+  { level: "SILVER", minSpent: 1000 },
+  { level: "GOLD", minSpent: 5000 },
+  { level: "DIAMOND", minSpent: 10000 },
 ];
 
 /**
@@ -34,6 +39,13 @@ export function calculateLevel(totalSpent: number): MembershipLevel {
   return level;
 }
 
+/** 首次达档激活日字段名（写入 User 表，仅成长展示） */
+const ACTIVATED_AT_FIELD: Partial<Record<MembershipLevel, "silverActivatedAt" | "goldActivatedAt" | "diamondActivatedAt">> = {
+  SILVER: "silverActivatedAt",
+  GOLD: "goldActivatedAt",
+  DIAMOND: "diamondActivatedAt",
+};
+
 // 外部同步入账的 CAS 重试上限（快照被并发修改时重读重试）
 const MAX_SYNC_CAS_RETRIES = 3;
 
@@ -41,10 +53,12 @@ const MAX_SYNC_CAS_RETRIES = 3;
  * 外部系统（商城）消费额变动同步入账
  * 调用时机：POST /api/v1/internal/points/sync（商城签名上报）
  *
- * 官网是消费额/等级权威账本：商城侧的消费额变动通过此函数入账。
- * 幂等：以 reference 作为商城侧唯一单据号，依赖 SpentSyncRecord 的
- * @@unique([userId, reference]) 约束，重复上报（P2002）直接返回
- * 当前权威消费额并标记 duplicated=true，不重复入账。
+ * 官网是消费额/等级/积分权威账本：商城侧的消费额变动通过此函数入账。
+ * - 幂等：以 reference 作为商城侧唯一单据号，依赖 SpentSyncRecord 的
+ *   @@unique([userId, reference]) 约束，重复上报（P2002）直接返回
+ *   当前权威消费额并标记 duplicated=true，不重复入账。
+ * - 积分联动：正向变动发放积分（稳定期冻结），负向变动冲正积分（先冻结后可用，可负）。
+ * - 升级：首次达档写入对应 activatedAt。
  *
  * @returns 入账后的权威消费额与等级；用户不存在返回 null
  */
@@ -80,7 +94,13 @@ export async function applyExternalSpentSync(params: {
       for (let attempt = 0; attempt < MAX_SYNC_CAS_RETRIES; attempt++) {
         const user = await tx.user.findUnique({
           where: { id: userId },
-          select: { totalSpent: true },
+          select: {
+            totalSpent: true,
+            membershipLevel: true,
+            silverActivatedAt: true,
+            goldActivatedAt: true,
+            diamondActivatedAt: true,
+          },
         });
         if (!user) return null;
 
@@ -88,15 +108,44 @@ export async function applyExternalSpentSync(params: {
         const newTotalSpent = Math.max(0, user.totalSpent + spentDelta);
         const newLevel = calculateLevel(newTotalSpent); // 按新消费额重算等级（可升可降）
 
+        // 首次达档激活日（仅写入、不覆盖）
+        const activatedField = ACTIVATED_AT_FIELD[newLevel];
+        const activatedAt =
+          activatedField && !user[activatedField] ? new Date() : undefined;
+
         const cas = await tx.user.updateMany({
           where: { id: userId, totalSpent: user.totalSpent },
-          data: { totalSpent: newTotalSpent, membershipLevel: newLevel },
+          data: {
+            totalSpent: newTotalSpent,
+            membershipLevel: newLevel,
+            ...(activatedAt && activatedField ? { [activatedField]: activatedAt } : {}),
+          },
         });
         if (cas.count === 0) continue; // 快照过期（并发修改），重读重试
 
         await tx.spentSyncRecord.create({
           data: { userId, reference, spentDelta, note },
         });
+
+        // 积分联动（与消费额同事务，保证账实一致）
+        // 普通档不参与积分：仅升级后为银卡及以上才发放；退款冲正由账本层判断余额是否存在
+        if (spentDelta > 0) {
+          if (newLevel !== "REGULAR") {
+            await creditSpendPoints(tx, {
+              userId,
+              amount: spentDelta,
+              reference: `points:${reference}`,
+              note: note ?? "消费发放积分",
+            });
+          }
+        } else if (spentDelta < 0) {
+          await refundSpendPoints(tx, {
+            userId,
+            amount: -spentDelta,
+            reference: `points:${reference}`,
+            note: note ?? "退款冲正积分",
+          });
+        }
 
         return {
           totalSpent: newTotalSpent,

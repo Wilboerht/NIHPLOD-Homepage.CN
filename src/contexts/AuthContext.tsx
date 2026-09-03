@@ -12,7 +12,8 @@ import {
 import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { apiPost } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
-import type { UserCenterTab } from "@/lib/user-center-tab";
+import type { UserCenterTab, SecuritySection } from "@/lib/user-center-tab";
+import { toSecuritySection } from "@/lib/user-center-tab";
 
 interface User {
   id: string;
@@ -36,6 +37,9 @@ interface AuthContextType {
   openUserCenter: (view?: UserCenterView) => void;
   closeUserCenter: () => void;
   setUserCenterView: (view: UserCenterView) => void;
+  // 安全中心内部分段（设备管理/授权管理/登录历史）
+  securitySection: SecuritySection;
+  setSecuritySection: (section: SecuritySection) => void;
   // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
   redirectToLogin: (returnTo?: string | null) => void;
   redirectToRegister: (returnTo?: string | null) => void;
@@ -63,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 用户中心弹窗状态
   const [userCenterOpen, setUserCenterOpen] = useState(false);
   const [userCenterView, setUserCenterViewState] = useState<UserCenterView>("profile");
+  // 安全中心内部分段（默认设备管理）
+  const [securitySection, setSecuritySection] = useState<SecuritySection>("devices");
 
   // 统一登录页跳转（使用 window.location 确保在事件回调中也能立即触发）
   const redirectToLogin = useCallback((returnTo?: string | null) => {
@@ -94,8 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 用户中心弹窗操作
+  // 旧的安全类 tab（devices/authorizations/history）统一归一化为「安全中心 + 对应分段」，
+  // 兼容历史链接（/?account=devices 等）与旧调用方。
   const openUserCenter = useCallback((view: UserCenterView = "profile") => {
-    setUserCenterViewState(view);
+    const section = view ? toSecuritySection(view) : null;
+    if (section) {
+      setSecuritySection(section);
+      setUserCenterViewState("security");
+    } else {
+      setUserCenterViewState(view);
+    }
     setUserCenterOpen(true);
   }, []);
 
@@ -261,6 +275,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openUserCenter,
       closeUserCenter,
       setUserCenterView,
+      securitySection,
+      setSecuritySection,
       // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
       redirectToLogin,
       redirectToRegister,
@@ -277,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openUserCenter,
       closeUserCenter,
       setUserCenterView,
+      securitySection,
       redirectToLogin,
       redirectToRegister,
       redirectToForgotPassword,

@@ -16,6 +16,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
+import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { validateDPoPProof, computeDPoPAth, dpopNonceHeader, getDPoPHtu } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
 
@@ -189,6 +190,9 @@ export async function GET(request: NextRequest) {
 
     if (scopes.includes("membership")) {
       response.membership_level = user.membershipLevel;
+      // 积分兑礼率（1 积分可兑价值；普通档为 null=不参与积分）：
+      // 商城兑换礼品时按 商品价值 ÷ 兑礼率 向下取整折算需扣积分
+      response.points_redeem_rate = POINT_REDEEM_RATES[user.membershipLevel];
     }
 
     if (scopes.includes("birthday")) {

@@ -16,7 +16,7 @@ import { LEVEL_DEFAULT_BENEFITS, type LevelBenefitItem } from "@/lib/membership"
 
 // 更新等级权益 schema
 const updateBenefitSchema = z.object({
-  level: z.enum(["REGULAR", "ADVANCED"]),
+  level: z.enum(["REGULAR", "SILVER", "GOLD", "DIAMOND"]),
   name: z.string().min(1).max(50).optional(),
   nameEn: z.string().max(50).optional(),
   icon: z.string().max(50).optional(),
@@ -82,7 +82,9 @@ export async function GET(request: NextRequest) {
       totalUsers,
       levels: [
         { level: "REGULAR", count: 0 },
-        { level: "ADVANCED", count: 0 },
+        { level: "SILVER", count: 0 },
+        { level: "GOLD", count: 0 },
+        { level: "DIAMOND", count: 0 },
       ].map((l) => {
         const found = levelCounts.find((lc) => lc.membershipLevel === l.level);
         return { ...l, count: found?._count ?? 0 };

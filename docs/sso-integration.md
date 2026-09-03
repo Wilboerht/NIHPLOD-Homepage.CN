@@ -530,13 +530,24 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ---
 
-## 消费额/等级同步（商城对接）
+## 消费额/等级/积分同步（商城对接）
 
-官网是消费额/等级权威账本（积分体系已于 2026-09 下线）。商城侧的消费额变动通过签名内部 API 上报入账。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
+官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
+
+### 会员等级（四档，2026-09 起）
+
+| 枚举值 | 等级 | 门槛 |
+| --- | --- | --- |
+| `REGULAR` | 普通会员 | 完成注册 |
+| `SILVER` | 银卡会员 | 累计消费 ≥ ¥1,000 |
+| `GOLD` | 金卡会员 | 累计消费 ≥ ¥5,000 |
+| `DIAMOND` | 钻石卡会员 | 累计消费 ≥ ¥10,000 |
+
+等级永久有效、按累计消费实时重算（退款可降级）；权益跟随当前等级，肌肤档案数据终身保留。OAuth `membership` scope 下发的 `membership_level` claim 为以上枚举值。
 
 ### 上报消费额变动
 
-`POST /api/v1/internal/points/sync`（路径保留，仅同步消费额）
+`POST /api/v1/internal/points/sync`（路径保留，仅同步消费额 + 积分联动）
 
 ```json
 {
@@ -551,15 +562,68 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - `spentDelta`：可选，消费额变动（元，整数，默认 0，正加负减，如退款传负值），用于官网侧会员等级重算。
 - `reference`：商城侧唯一单据号，幂等键。重复上报不重复入账，返回 `duplicated: true`。
 - `note`：可选，备注。
+- **积分联动**：正向变动按 1:1 发放积分（稳定期 7 天冻结、6 个月过期）；负向变动冲正积分（先冲冻结后冲可用，可用可负）。积分为银卡及以上权益，普通档不发放。
 
 成功响应（`totalSpent`/`membershipLevel` 为入账后的官网权威值，商城应以此对齐本地展示）：
 
 ```json
 {
   "success": true,
-  "data": { "totalSpent": 5200, "membershipLevel": "ADVANCED" }
+  "data": { "totalSpent": 5200, "membershipLevel": "GOLD" }
 }
 ```
+
+### 积分兑礼扣减（商城兑换调用）
+
+`POST /api/v1/internal/points/redeem`
+
+```json
+{
+  "phone": "13800138000",
+  "points": 300,
+  "reference": "mall-redeem-R20260903001",
+  "note": "兑换面霜小样"
+}
+```
+
+- `phone`：与官网注册手机号一致，按手机号定位用户。
+- `points`：本次扣减积分数量（正整数）。**兑礼率折算在商城侧完成**：礼品所需积分 = 商品价值 ÷ 用户当前兑礼率（普通不参与 / 银 1:1 / 金 1:1.3 / 钻 1:1.5，兑礼率可通过 balance 查询或 userinfo 的 `points_redeem_rate` 获取），向下取整后调用本接口。
+- `reference`：商城侧兑换单号，幂等键。重复调用不重复扣减，返回 `duplicated: true`。
+- 响应：`{ success: true, data: { available, spent, redeemRate, membershipLevel } }`；积分不足返回 400 `INSUFFICIENT`（附当前可用余额）。
+
+### 积分查询（商城侧，签名内部 API）
+
+`GET /api/v1/internal/points/balance?phone=13800138000`（HMAC 签名，GET 无请求体时 bodyHash 为空串的 SHA-256）
+
+响应：
+
+```json
+{
+  "success": true,
+  "data": {
+    "available": 800,
+    "frozen": 200,
+    "nextReleaseAt": "2026-09-10T10:00:00.000Z",
+    "redeemRate": 1.3,
+    "membershipLevel": "GOLD"
+  }
+}
+```
+
+- `available`：可用积分（可为负：退款超兑债务，新积分入账先行抵债）。
+- `frozen`：稳定期冻结积分（消费后 7 天内）。
+- `redeemRate`：当前等级兑礼率（普通档为 `null`）。
+- 商城兑换折算公式：需扣积分 = ⌊商品价值 ÷ redeemRate⌋。
+
+此外 OAuth `membership` scope 的 userinfo 响应同时下发 `points_redeem_rate`（与 `membership_level` 同源），商城无需硬编码等级→兑礼率映射。
+
+### 积分查询（用户端）
+
+`GET /api/user/points`（用户登录态）：返回 `{ available, frozen, nextReleaseAt, recent[] }`，available 可为负（退款超兑债务，新积分入账先行抵债）。
+
+### 生日积分
+
+官网每日 cron 扫描当天生日的有效用户，按**生日当天当前等级**发放生日积分（银 50 / 金 100 / 钻 200，普通不发放），每年一次（`lastBirthdayRewardYear` 幂等），6 个月过期。生日首次设置后锁定，修改需人工客服，商城侧无需处理。
 
 ### 错误码
 

@@ -29,9 +29,11 @@ interface AuthorizationsPanelProps {
   onRevoked?: (clientId: string) => void;
   /** 隐藏内置标题（embed 自带 tab 标题时使用） */
   hideTitle?: boolean;
+  /** 内嵌于安全中心时使用：隐藏标题、去掉顶部留白（滚动/内边距由外层接管） */
+  embedded?: boolean;
 }
 
-export function AuthorizationsPanel({ onRevoked, hideTitle }: AuthorizationsPanelProps) {
+export function AuthorizationsPanel({ onRevoked, hideTitle, embedded }: AuthorizationsPanelProps) {
   const [sessions, setSessions] = useState<OAuthSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -86,9 +88,12 @@ export function AuthorizationsPanel({ onRevoked, hideTitle }: AuthorizationsPane
   };
 
   return (
-    <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-authorizations">
-      {/* 标题 - 移动端由弹窗全局 Header 管理；embed 自带 tab 标题时隐藏 */}
-      {!hideTitle && (
+    <div
+      className={`flex h-full flex-col ${embedded ? "" : "pt-4 md:pt-10"}`}
+      data-testid="panel-authorizations"
+    >
+      {/* 标题 - 移动端由弹窗全局 Header 管理；embed 自带 tab 标题或内嵌安全中心时隐藏 */}
+      {!hideTitle && !embedded && (
         <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
           <h2 className="text-xl font-medium tracking-wide text-stone-800">授权管理</h2>
         </div>

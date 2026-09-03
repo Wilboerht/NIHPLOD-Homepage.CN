@@ -17,6 +17,8 @@ import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
+import { grantBirthdayRewards } from "./points-ledger";
+import { expirePointsCron } from "./points-ledger";
 import { apiConsole } from "@/lib/logger";
 
 interface ScheduledTask {
@@ -202,6 +204,35 @@ const tasks: ScheduledTask[] = [
         );
       } catch (error) {
         apiConsole.error("[Cron] 资料变更 Webhook 重投任务失败:", error);
+      }
+    },
+  },
+  {
+    name: "Grant Birthday Points",
+    cronExpression: "0 8 * * *", // 每天 8 点发放当天生日用户的生日积分（每年一次幂等）
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始发放生日积分...");
+        const result = await grantBirthdayRewards();
+        apiConsole.info(
+          `[Cron] 生日积分发放完成: 发放 ${result.rewarded} 人, 跳过 ${result.skipped} 人`
+        );
+      } catch (error) {
+        apiConsole.error("[Cron] 生日积分发放任务失败:", error);
+      }
+    },
+  },
+  {
+    name: "Expire Points",
+    cronExpression: "30 4 * * *", // 每天凌晨 4:30 处理 6 个月有效期到期积分
+    handler: async () => {
+      try {
+        const count = await expirePointsCron();
+        if (count > 0) {
+          apiConsole.info(`[Cron] 积分过期处理完成: 共过期 ${count} 积分`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 积分过期任务失败:", error);
       }
     },
   },

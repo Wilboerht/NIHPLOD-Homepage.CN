@@ -201,4 +201,54 @@ describe("GET /api/oauth/userinfo", () => {
     const body = await res.json();
     expect(body.birthday).toBeNull();
   });
+
+  it("scope 含 membership 时返回等级与积分兑礼率", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid membership",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      phone: "13812341234",
+      nickname: null,
+      avatar: null,
+      birthday: null,
+      status: "ACTIVE",
+      membershipLevel: "GOLD",
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.membership_level).toBe("GOLD");
+    expect(body.points_redeem_rate).toBe(1.3);
+  });
+
+  it("普通档 scope 含 membership 时兑礼率为 null（不参与积分）", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid membership",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      phone: "13812341234",
+      nickname: null,
+      avatar: null,
+      birthday: null,
+      status: "ACTIVE",
+      membershipLevel: "REGULAR",
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.membership_level).toBe("REGULAR");
+    expect(body.points_redeem_rate).toBeNull();
+  });
 });

@@ -2,8 +2,8 @@
 
 /**
  * 用户中心弹窗测试
- * 覆盖：五项菜单（个人信息/会员中心/设备管理/授权管理/登录历史），
- * 点击菜单项直接切换弹窗 tab（/account 已收敛为首页弹窗，不再站内跳转）
+ * 覆盖：三个一级菜单（个人信息/会员中心/安全中心），
+ * 设备管理/授权管理/登录历史已合并进安全中心（内部分段标签切换）。
  * 安全设置（密码管理）已合并进个人信息面板。
  */
 import React from "react";
@@ -12,6 +12,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 const mockSetUserCenterView = vi.fn();
 const mockCloseUserCenter = vi.fn();
+const mockSetSecuritySection = vi.fn();
 
 vi.mock("@/hooks/useMounted", () => ({ useMounted: () => true }));
 
@@ -43,13 +44,15 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const mockUseAuth = useAuth as unknown as ReturnType<typeof vi.fn>;
 
-function setupAuth(view = "profile") {
+function setupAuth(view = "profile", securitySection = "devices") {
   mockUseAuth.mockReturnValue({
     user: { id: "u1", phone: "13800138000", nickname: "测试用户" },
     userCenterOpen: true,
     userCenterView: view,
     closeUserCenter: mockCloseUserCenter,
     setUserCenterView: mockSetUserCenterView,
+    securitySection,
+    setSecuritySection: mockSetSecuritySection,
     logout: vi.fn(),
     refreshUser: vi.fn(),
   });
@@ -61,33 +64,47 @@ describe("UserCenterModal", () => {
     setupAuth();
   });
 
-  it("菜单包含五个入口", () => {
+  it("菜单包含三个一级入口，安全类子项不再作为一级菜单", () => {
     render(<UserCenterModal />);
-    for (const label of [
-      "个人信息",
-      "会员中心",
-      "设备管理",
-      "授权管理",
-      "登录历史",
-    ]) {
+    for (const label of ["个人信息", "会员中心", "安全中心"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
-    // 安全设置不再作为一级菜单
-    expect(screen.queryByRole("button", { name: "安全设置" })).not.toBeInTheDocument();
+    for (const label of ["设备管理", "授权管理", "登录历史"]) {
+      expect(screen.queryByRole("button", { name: label })).not.toBeInTheDocument();
+    }
   });
 
-  it("点击「设备管理」直接切换弹窗 tab，不再跳转 /account", () => {
+  it("点击「安全中心」直接切换弹窗 tab", () => {
     render(<UserCenterModal />);
-    fireEvent.click(screen.getByRole("button", { name: "设备管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "安全中心" }));
 
-    expect(mockSetUserCenterView).toHaveBeenCalledWith("devices");
+    expect(mockSetUserCenterView).toHaveBeenCalledWith("security");
     expect(mockCloseUserCenter).not.toHaveBeenCalled();
   });
 
-  it("授权管理视图渲染共享 AuthorizationsPanel", async () => {
-    setupAuth("authorizations");
+  it("安全中心默认展示设备管理分段", async () => {
+    setupAuth("security", "devices");
     render(<UserCenterModal />);
 
-    expect(await screen.findByTestId("panel-authorizations")).toBeInTheDocument();
+    expect(await screen.findByTestId("panel-security")).toBeInTheDocument();
+    expect(screen.getByTestId("panel-devices")).toBeInTheDocument();
+    expect(screen.queryByTestId("panel-authorizations")).not.toBeInTheDocument();
+  });
+
+  it("安全中心分段切换：点击「授权管理」调用 setSecuritySection", async () => {
+    setupAuth("security", "devices");
+    render(<UserCenterModal />);
+    await screen.findByTestId("panel-security");
+
+    fireEvent.click(screen.getByRole("tab", { name: "授权管理" }));
+    expect(mockSetSecuritySection).toHaveBeenCalledWith("authorizations");
+  });
+
+  it("旧视图标识（如 authorizations）渲染安全中心及对应分段", async () => {
+    setupAuth("authorizations", "authorizations");
+    render(<UserCenterModal />);
+
+    expect(await screen.findByTestId("panel-security")).toBeInTheDocument();
+    expect(screen.getByTestId("panel-authorizations")).toBeInTheDocument();
   });
 });

@@ -44,17 +44,23 @@ interface MembershipBenefit {
 
 const LEVEL_LABELS: Record<string, string> = {
   REGULAR: "普通会员",
-  ADVANCED: "高级会员",
+  SILVER: "银卡会员",
+  GOLD: "金卡会员",
+  DIAMOND: "钻石卡会员",
 };
 
 const LEVEL_COLORS: Record<string, string> = {
   REGULAR: "bg-slate-100 text-slate-600",
-  ADVANCED: "bg-teal-100 text-teal-700",
+  SILVER: "bg-zinc-100 text-zinc-600",
+  GOLD: "bg-amber-100 text-amber-700",
+  DIAMOND: "bg-indigo-100 text-indigo-700",
 };
 
 const LEVEL_ICON_COLORS: Record<string, string> = {
   REGULAR: "text-slate-400",
-  ADVANCED: "text-teal-500",
+  SILVER: "text-zinc-400",
+  GOLD: "text-amber-500",
+  DIAMOND: "text-indigo-500",
 };
 
 export default function AdminVIPPage() {
@@ -164,7 +170,7 @@ export default function AdminVIPPage() {
         <div className="border-b px-6 py-4">
           <h2 className="text-lg font-medium text-gray-800">等级权益配置</h2>
           <p className="mt-1 text-xs text-gray-500">
-            等级按历史购买金额划定：普通会员(注册) / 高级会员(消费满 ¥1,000)
+            等级按历史购买金额划定：普通(注册) / 银卡(¥1,000) / 金卡(¥5,000) / 钻石(¥10,000)
           </p>
         </div>
         <div className="overflow-x-auto">

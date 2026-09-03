@@ -62,7 +62,7 @@ describe("reviewApplication", () => {
     mockUpdateMany.mockResolvedValue({ count: 1 });
     mockApplySync.mockResolvedValue({
       totalSpent: 2280,
-      membershipLevel: "ADVANCED",
+      membershipLevel: "SILVER",
       duplicated: false,
     });
 

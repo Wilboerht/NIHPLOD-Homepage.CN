@@ -1,6 +1,6 @@
 /**
- * GET /api/user/vip 路由测试
- * 覆盖：等级/里程碑推导（解锁状态、下一里程碑进度）、会员编号、下一等级进度
+ * GET /api/user/vip 路由测试（四档：普通/银卡/金卡/钻石）
+ * 覆盖：会员编号、当前等级、下一等级与升级进度、四档权益列表
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -39,7 +39,7 @@ describe("GET /api/user/vip", () => {
     vi.clearAllMocks();
   });
 
-  it("普通会员：无里程碑解锁，下一等级为高级（¥1,000 门槛）", async () => {
+  it("普通会员（¥500）：下一等级为银卡，还差 ¥500，进度 50%", async () => {
     mockUserFindUnique.mockResolvedValue({
       id: "cm1234567890abc",
       membershipLevel: "REGULAR",
@@ -51,61 +51,65 @@ describe("GET /api/user/vip", () => {
 
     expect(res.status).toBe(200);
     expect(data.data.memberId).toBe("CM123456");
-    expect(data.data.nextLevel.spentNeeded).toBe(500);
-    expect(data.data.milestones.every((m: { unlocked: boolean }) => !m.unlocked)).toBe(true);
-    expect(data.data.nextMilestone).not.toBeNull();
+    expect(data.data.membershipLevel).toBe("REGULAR");
+    expect(data.data.nextLevel).toEqual(
+      expect.objectContaining({ level: "SILVER", name: "银卡会员", spentNeeded: 500 })
+    );
+    // 四档权益齐全
+    expect(data.data.allLevels.map((l: { level: string }) => l.level)).toEqual([
+      "REGULAR",
+      "SILVER",
+      "GOLD",
+      "DIAMOND",
+    ]);
+    // 里程碑体系已移除
+    expect(data.data.milestones).toBeUndefined();
+    expect(data.data.nextMilestone).toBeUndefined();
   });
 
-  it("高级会员（¥2,000）：¥3,000 里程碑未解锁，进度 66%", async () => {
+  it("银卡会员（¥2,000）：下一等级为金卡，还差 ¥3,000", async () => {
     mockUserFindUnique.mockResolvedValue({
       id: "cm1234567890abc",
-      membershipLevel: "ADVANCED",
+      membershipLevel: "SILVER",
       totalSpent: 2000,
     });
 
     const res = await GET(createRequest());
     const data = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(data.data.nextLevel).toBeNull();
-    expect(data.data.milestones).toEqual([
-      expect.objectContaining({ threshold: 3000, unlocked: false }),
-      expect.objectContaining({ threshold: 10000, unlocked: false }),
-    ]);
-    expect(data.data.nextMilestone).toEqual(
-      expect.objectContaining({ threshold: 3000, spentNeeded: 1000, progress: 67 })
+    expect(data.data.currentLevel.name).toBe("银卡会员");
+    expect(data.data.nextLevel).toEqual(
+      expect.objectContaining({ level: "GOLD", name: "金卡会员", spentNeeded: 3000 })
     );
   });
 
-  it("高级会员（¥3,200）：¥3,000 已解锁，下一里程碑为 ¥10,000", async () => {
+  it("金卡会员（¥8,000）：下一等级为钻石，还差 ¥2,000", async () => {
     mockUserFindUnique.mockResolvedValue({
       id: "cm1234567890abc",
-      membershipLevel: "ADVANCED",
-      totalSpent: 3200,
+      membershipLevel: "GOLD",
+      totalSpent: 8000,
     });
 
     const res = await GET(createRequest());
     const data = await res.json();
 
-    expect(data.data.milestones).toEqual([
-      expect.objectContaining({ threshold: 3000, unlocked: true }),
-      expect.objectContaining({ threshold: 10000, unlocked: false }),
-    ]);
-    expect(data.data.nextMilestone.threshold).toBe(10000);
-    expect(data.data.nextMilestone.spentNeeded).toBe(6800);
+    expect(data.data.currentLevel.name).toBe("金卡会员");
+    expect(data.data.nextLevel).toEqual(
+      expect.objectContaining({ level: "DIAMOND", spentNeeded: 2000, progress: 80 })
+    );
   });
 
-  it("高级会员（¥12,000）：全部里程碑解锁，无下一里程碑", async () => {
+  it("钻石卡会员（¥12,000）：最高档，无下一等级", async () => {
     mockUserFindUnique.mockResolvedValue({
       id: "cm1234567890abc",
-      membershipLevel: "ADVANCED",
+      membershipLevel: "DIAMOND",
       totalSpent: 12000,
     });
 
     const res = await GET(createRequest());
     const data = await res.json();
 
-    expect(data.data.milestones.every((m: { unlocked: boolean }) => m.unlocked)).toBe(true);
-    expect(data.data.nextMilestone).toBeNull();
+    expect(data.data.currentLevel.name).toBe("钻石卡会员");
+    expect(data.data.nextLevel).toBeNull();
   });
 });

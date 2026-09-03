@@ -186,8 +186,10 @@ enum UserStatus {
 }
 
 enum MembershipLevel {
-  REGULAR  // 普通会员（完成注册）
-  ADVANCED // 高级会员（官方店铺历史购买金额满 ¥1,000）
+  REGULAR // 普通会员（完成注册）
+  SILVER  // 银卡会员（官方店铺累计消费满 ¥1,000）
+  GOLD    // 金卡会员（累计消费满 ¥5,000）
+  DIAMOND // 钻石卡会员（累计消费满 ¥10,000）
 }
 
 model User {
@@ -209,10 +211,17 @@ model User {
   wechatOpenId  String?   @unique               // 微信 OpenID
   wechatUnionId String?                         // 微信 UnionID
 
-  // 会员等级
+  // 会员等级（四档，按累计消费实时判定，永久有效）
   membershipLevel MembershipLevel @default(REGULAR)
   totalSpent      Int              @default(0) // 历史购买金额（元，退款扣减），等级判定依据
-  birthday        DateTime?
+  // 各档首次达档时间（仅成长展示，不产生有效期）
+  silverActivatedAt  DateTime?
+  goldActivatedAt    DateTime?
+  diamondActivatedAt DateTime?
+  // 生日（生日积分发放依据）：首次设置后锁定，修改需人工客服
+  birthday             DateTime?
+  birthdayLocked       Boolean   @default(false)
+  lastBirthdayRewardYear Int?    // 最近一次生日积分发放的自然年（幂等，每年一次）
 
   // 关联
   refreshTokens    RefreshToken[]
@@ -222,6 +231,8 @@ model User {
   passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
   spentAdjustmentApplications SpentAdjustmentApplication[]
   spentImportRows SpentImportRow[]
+  pointLedger PointLedger[]
+  pointBalance PointBalance?
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -668,6 +679,96 @@ model MembershipBenefit {
   colorClass  String?         // Tailwind 颜色类名
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @default(now()) @updatedAt
+}
+
+// ============================================
+// 积分体系（2026-09 重新上线：消费 1 元 = 1 分，银卡及以上发放）
+// 账本在官网 SSO（权威），兑礼入口在商城侧。
+// ============================================
+
+enum PointLedgerType {
+  CONSUME // 消费发放（1 元 = 1 分，稳定期 7 天冻结，6 个月过期）
+  REFUND // 退款冲正（负值；先冲冻结再冲可用，可用可负）
+  BIRTHDAY // 生日积分（每年一次，按生日当天当前等级 50/100/200）
+  REDEEM // 兑礼扣减（FIFO 消耗最旧可用流水）
+  EXPIRE // 过期扣减
+}
+
+// 积分流水（FIFO 消耗：发放类流水记录 remaining，兑礼/过期按时间序消耗）
+model PointLedger {
+  id          String          @id @default(cuid())
+  userId      String
+  type        PointLedgerType
+  amount      Int             // 正加负减
+  remaining   Int?            // 剩余未消耗（仅发放类正向流水，null=非消耗对象）
+  reference   String          // 幂等键（消费单据 reference / birthday:{userId}:{year} / redeem:{单号}）
+  note        String?         @db.Text
+  frozenUntil DateTime?       // 稳定期解冻时间（消费发放 = createdAt + 7 天）
+  releasedAt   DateTime?      // 冻结释放时间（null=未释放；释放后进入可兑礼队列）
+  expiresAt    DateTime?      // 过期时间（发放后 6 个月）
+  createdAt   DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reference]) // 幂等防重
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, type, expiresAt])
+}
+
+// 积分余额（可用可负；冻结部分稳定期后释放）
+model PointBalance {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  available Int      @default(0) // 可用积分（退款超兑时可负）
+  frozen    Int      @default(0) // 冻结积分（稳定期内）
+  updatedAt DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 积分礼品（官网维护目录，用户面板兑换；实际扣分 = ⌊市场价值 ÷ 当前兑礼率⌋）
+model PointGift {
+  id          String   @id @default(cuid())
+  name        String   // 礼品名称
+  description String?  @db.Text
+  image       String?  // 图片 URL（可空，前端占位）
+  valueYuan   Int      // 市场价值（元，整数）
+  sort        Int      @default(0) // 展示排序（越小越靠前）
+  active      Boolean  @default(true) // 下架 = 软删除，不物理删除
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  redemptions PointRedemption[]
+
+  @@index([active, sort])
+}
+
+// 兑换履约状态
+enum PointRedemptionStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+}
+
+// 用户积分兑换记录（礼品名称/价值/扣分快照，管理端履约）
+model PointRedemption {
+  id          String                  @id @default(cuid())
+  userId      String
+  giftId      String
+  giftName    String                  // 兑换时的礼品名称快照
+  valueYuan   Int                     // 兑换时的市场价值快照
+  points      Int                     // 实际扣减积分
+  status      PointRedemptionStatus   @default(PENDING)
+  reference   String                  // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
+  fulfilledAt DateTime?
+  createdAt   DateTime                @default(now())
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gift PointGift? @relation(fields: [giftId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ============================================

@@ -7,11 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withUserAuth } from "@/lib/auth";
-import {
-  LEVEL_DEFAULT_BENEFITS,
-  ADVANCED_MILESTONES,
-  type LevelBenefitItem,
-} from "@/lib/membership";
+import { LEVEL_DEFAULT_BENEFITS, type LevelBenefitItem } from "@/lib/membership";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -68,30 +64,6 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
     // 距离下一等级还需要消费多少
     const spentToNextLevel = nextLevel ? Math.max(0, nextLevel.minSpent - user.totalSpent) : 0;
 
-    // 高级会员里程碑：按累计消费解锁礼遇（无下一里程碑时为 null）
-    const milestones = ADVANCED_MILESTONES.map((m) => ({
-      threshold: m.threshold,
-      name: m.name,
-      benefits: m.benefits,
-      unlocked: user.totalSpent >= m.threshold,
-    }));
-    const nextMilestoneRaw =
-      ADVANCED_MILESTONES.find((m) => m.threshold > user.totalSpent) ?? null;
-    const nextMilestone = nextMilestoneRaw
-      ? {
-          threshold: nextMilestoneRaw.threshold,
-          name: nextMilestoneRaw.name,
-          spentNeeded: Math.max(0, nextMilestoneRaw.threshold - user.totalSpent),
-          progress:
-            nextMilestoneRaw.threshold > 0
-              ? Math.min(
-                  100,
-                  Math.round((user.totalSpent / nextMilestoneRaw.threshold) * 100)
-                )
-              : 100,
-        }
-      : null;
-
     return NextResponse.json({
       success: true,
       data: {
@@ -112,8 +84,6 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
             }
           : null,
         allLevels: levels,
-        milestones,
-        nextMilestone,
       },
     });
   } catch (error) {

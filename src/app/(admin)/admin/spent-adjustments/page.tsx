@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
+import { levelDisplay } from "@/lib/membership";
 import { SpentImportModal, ImportHistoryModal } from "./SpentImport";
 
 type AdjustmentStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -362,9 +363,7 @@ export default function AdminSpentAdjustmentsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">当前等级</p>
-                  <p className="mt-0.5 text-gray-700">
-                    {detail.user.membershipLevel === "ADVANCED" ? "高级会员" : "普通会员"}
-                  </p>
+                  <p className="mt-0.5 text-gray-700">{levelDisplay(detail.user.membershipLevel)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">渠道</p>

@@ -69,7 +69,9 @@ const membershipLevelMap: Record<
   }
 > = {
   REGULAR: { label: "普通会员", variant: "secondary" },
-  ADVANCED: { label: "高级会员", variant: "success" },
+  SILVER: { label: "银卡会员", variant: "default" },
+  GOLD: { label: "金卡会员", variant: "warning" },
+  DIAMOND: { label: "钻石卡会员", variant: "primary" },
 };
 
 interface UserDetail {
