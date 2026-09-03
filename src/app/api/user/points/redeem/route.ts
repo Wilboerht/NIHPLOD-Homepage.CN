@@ -1,8 +1,8 @@
 /**
  * 用户积分兑换 API
- * POST /api/user/points/redeem - 兑换礼品（按当前等级兑礼率折算扣分）
+ * POST /api/user/points/redeem - 兑换产品（产品库中标记可兑的产品，按当前等级兑礼率折算扣分）
  *
- * Body: { giftId, requestId }
+ * Body: { productId, requestId }
  * - requestId：客户端为每次确认弹窗生成的唯一 ID（UUID），幂等键；
  *   同一 requestId 重复提交不重复扣分（duplicated: true）。
  */
@@ -16,7 +16,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { redeemGiftForUser } from "@/lib/point-gifts";
 
 const redeemSchema = z.object({
-  giftId: z.string().min(1).max(64),
+  productId: z.string().min(1).max(64),
   requestId: z.string().min(1, "缺少请求标识").max(64),
 });
 
@@ -40,8 +40,8 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const { giftId, requestId } = parsed.data;
-    if (!validateCUID(giftId)) {
+    const { productId, requestId } = parsed.data;
+    if (!validateCUID(productId)) {
       return invalidIdResponse();
     }
 
@@ -58,15 +58,15 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
 
     const result = await redeemGiftForUser({
       userId: payload.id,
-      giftId,
+      productId,
       requestId,
       level: user.membershipLevel,
     });
 
     if (!result.ok) {
       const statusMap: Record<string, number> = {
-        GIFT_NOT_FOUND: 404,
-        GIFT_INACTIVE: 400,
+        PRODUCT_NOT_FOUND: 404,
+        PRODUCT_NOT_REDEEMABLE: 400,
         NOT_ELIGIBLE: 403,
         INSUFFICIENT: 400,
         INVALID_REQUEST: 400,

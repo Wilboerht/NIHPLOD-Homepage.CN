@@ -98,15 +98,15 @@ interface GiftItem {
   name: string;
   description: string | null;
   image: string | null;
-  valueYuan: number;
+  priceYuan: number;
   cost: number | null; // 当前等级所需积分（普通档 null）
   affordable: boolean;
 }
 
 interface RedemptionRecord {
   id: string;
-  giftName: string;
-  valueYuan: number;
+  productName: string;
+  priceYuan: number;
   points: number;
   status: "PENDING" | "FULFILLED" | "CANCELLED";
   createdAt: string;
@@ -225,7 +225,11 @@ export function VipPanel() {
 
   const handleRedeem = async () => {
     if (!confirmGift) return;
-    const requestId = crypto.randomUUID();
+    // crypto.randomUUID 仅在安全上下文（https）可用，非安全上下文降级随机串
+    const requestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setRedeeming(true);
     try {
       await apiPost("/api/user/points/redeem", {
@@ -415,14 +419,24 @@ export function VipPanel() {
                   className="flex flex-col justify-between rounded-xl border border-stone-200/60 bg-white/60 p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-stone-800">{g.name}</p>
-                      {g.description && (
-                        <p className="mt-1 line-clamp-2 text-xs text-stone-400">{g.description}</p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      {g.image && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={g.image}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg border border-stone-200/60 object-cover"
+                        />
                       )}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-stone-800">{g.name}</p>
+                        {g.description && (
+                          <p className="mt-1 line-clamp-2 text-xs text-stone-400">{g.description}</p>
+                        )}
+                      </div>
                     </div>
                     <span className="shrink-0 text-xs text-stone-400">
-                      价值 ¥{g.valueYuan.toLocaleString()}
+                      价格 ¥{g.priceYuan.toLocaleString()}
                     </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
@@ -451,7 +465,7 @@ export function VipPanel() {
                 {giftsData.redemptions.slice(0, 5).map((r) => (
                   <div key={r.id} className="flex items-center justify-between text-xs">
                     <span className="text-stone-600">
-                      {r.giftName}
+                      {r.productName}
                       <span className="ml-2 text-stone-400">
                         {r.points.toLocaleString()} 积分
                       </span>

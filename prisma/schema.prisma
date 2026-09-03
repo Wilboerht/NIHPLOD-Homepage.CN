@@ -33,13 +33,17 @@ model Product {
   order         Int            @default(0) // 排序（数字越小越靠前）
   featured      Boolean        @default(false) // 是否推荐
   published     Boolean        @default(false) // 是否发布
+  pointRedeemable Boolean      @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
   geoFaqs       Json?          // AI 生成的 GEO FAQ 数据
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @default(now()) @updatedAt
 
+  pointRedemptions PointRedemption[]
+
   @@index([categoryId])
   @@index([published, order])
   @@index([featured, order])
+  @@index([pointRedeemable, published])
 }
 
 // 购买链接（支持多平台）
@@ -727,21 +731,25 @@ model PointBalance {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// 积分礼品（官网维护目录，用户面板兑换；实际扣分 = ⌊市场价值 ÷ 当前兑礼率⌋）
-model PointGift {
-  id          String   @id @default(cuid())
-  name        String   // 礼品名称
-  description String?  @db.Text
-  image       String?  // 图片 URL（可空，前端占位）
-  valueYuan   Int      // 市场价值（元，整数）
-  sort        Int      @default(0) // 展示排序（越小越靠前）
-  active      Boolean  @default(true) // 下架 = 软删除，不物理删除
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+// 用户积分兑换记录（兑换产品来自产品库；名称/价格/扣分快照，管理端履约）
+model PointRedemption {
+  id          String                  @id @default(cuid())
+  userId      String
+  productId   String?                 // 产品从产品库删除时置空，历史记录保留快照
+  productName String                  // 兑换时的产品名称快照
+  priceYuan   Decimal                 @db.Decimal(10, 2) // 兑换时的参考价格快照
+  points      Int                     // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
+  status      PointRedemptionStatus   @default(PENDING)
+  reference   String                  // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
+  fulfilledAt DateTime?
+  createdAt   DateTime                @default(now())
 
-  redemptions PointRedemption[]
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  @@index([active, sort])
+  @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // 兑换履约状态
@@ -749,27 +757,6 @@ enum PointRedemptionStatus {
   PENDING
   FULFILLED
   CANCELLED
-}
-
-// 用户积分兑换记录（礼品名称/价值/扣分快照，管理端履约）
-model PointRedemption {
-  id          String                  @id @default(cuid())
-  userId      String
-  giftId      String?                 // 礼品软删除时置空，历史记录保留快照
-  giftName    String                  // 兑换时的礼品名称快照
-  valueYuan   Int                     // 兑换时的市场价值快照
-  points      Int                     // 实际扣减积分
-  status      PointRedemptionStatus   @default(PENDING)
-  reference   String                  // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
-  fulfilledAt DateTime?
-  createdAt   DateTime                @default(now())
-
-  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gift PointGift? @relation(fields: [giftId], references: [id], onDelete: SetNull)
-
-  @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录
-  @@index([status, createdAt(sort: Desc)])
-  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ============================================

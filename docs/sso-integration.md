@@ -623,7 +623,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ### 官网用户面板兑换（2026-09 起）
 
-官网用户中心「会员中心」内置积分兑换板块：礼品目录由官网管理端维护（`/admin/point-gifts`，礼品价值 + 上下架），用户实际扣分 = ⌊市场价值 ÷ 当前兑礼率⌋，兑换成功生成兑换记录（`PointRedemption`，PENDING → 管理端「标记履约」）。商城侧如已有自己的兑礼入口，继续走 `POST /api/v1/internal/points/redeem` 扣分即可，两处共享同一积分账本与幂等约束。
+官网用户中心「会员中心」内置积分兑换板块：**兑换产品复用产品库数据**——管理端在「积分兑换」页面（`/admin/point-gifts`）将产品库中的已发布产品标记为「积分可兑」（`Product.pointRedeemable`），该产品即出现在用户面板兑换板块；用户实际扣分 = ⌊产品参考价格 ÷ 当前兑礼率⌋，兑换成功生成兑换记录（`PointRedemption`，PENDING → 管理端「标记履约」）。商城侧如已有自己的兑礼入口，继续走 `POST /api/v1/internal/points/redeem` 扣分即可，两处共享同一积分账本与幂等约束。
 
 ### 生日积分
 

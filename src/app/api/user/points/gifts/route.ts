@@ -1,12 +1,12 @@
 /**
- * 用户积分礼品 API
- * GET /api/user/points/gifts - 上架礼品列表（含按当前等级折算的所需积分）+ 我的兑换记录
+ * 用户积分兑换 API
+ * GET /api/user/points/gifts - 可兑换产品列表（产品库中标记可兑的产品，含按当前等级折算的所需积分）+ 我的兑换记录
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withUserAuth } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
-import { listActiveGifts, giftCostForUser } from "@/lib/point-gifts";
+import { listRedeemableProducts, giftCostForUser } from "@/lib/point-gifts";
 import { getPointBalanceView } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 
@@ -21,8 +21,8 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
       });
       const level = user?.membershipLevel ?? "REGULAR";
 
-      const [gifts, balance, redemptions] = await Promise.all([
-        listActiveGifts(),
+      const [products, balance, redemptions] = await Promise.all([
+        listRedeemableProducts(),
         getPointBalanceView(tx, payload.id),
         tx.pointRedemption.findMany({
           where: { userId: payload.id },
@@ -30,8 +30,8 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
           take: 10,
           select: {
             id: true,
-            giftName: true,
-            valueYuan: true,
+            productName: true,
+            priceYuan: true,
             points: true,
             status: true,
             createdAt: true,
@@ -44,22 +44,22 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
         redeemRate: POINT_REDEEM_RATES[level],
         available: balance.available,
         frozen: balance.frozen,
-        gifts: gifts.map((g) => {
-          const cost = giftCostForUser(g.valueYuan, level);
+        gifts: products.map((p) => {
+          const cost = giftCostForUser(p.price, level);
           return {
-            id: g.id,
-            name: g.name,
-            description: g.description,
-            image: g.image,
-            valueYuan: g.valueYuan,
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            image: p.images[0]?.url ?? null,
+            priceYuan: Number(p.price),
             cost, // 实际所需积分（普通档为 null）
             affordable: cost !== null && cost <= balance.available,
           };
         }),
         redemptions: redemptions.map((r) => ({
           id: r.id,
-          giftName: r.giftName,
-          valueYuan: r.valueYuan,
+          productName: r.productName,
+          priceYuan: Number(r.priceYuan),
           points: r.points,
           status: r.status,
           createdAt: r.createdAt.toISOString(),

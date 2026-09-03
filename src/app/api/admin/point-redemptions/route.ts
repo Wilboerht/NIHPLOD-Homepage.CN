@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
-          giftName: true,
-          valueYuan: true,
+          productName: true,
+          priceYuan: true,
           points: true,
           status: true,
           createdAt: true,
@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
       data: {
         redemptions: redemptions.map((r) => ({
           id: r.id,
-          giftName: r.giftName,
-          valueYuan: r.valueYuan,
+          productName: r.productName,
+          priceYuan: Number(r.priceYuan),
           points: r.points,
           status: r.status,
           createdAt: r.createdAt.toISOString(),

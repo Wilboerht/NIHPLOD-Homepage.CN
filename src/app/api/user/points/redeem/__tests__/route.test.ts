@@ -1,6 +1,6 @@
 /**
- * POST /api/user/points/redeem 路由测试（用户端兑换礼品）
- * 覆盖：参数校验 400、非法礼品 ID 400、成功 200、积分不足 400、普通档 403
+ * POST /api/user/points/redeem 路由测试（用户端兑换产品）
+ * 覆盖：参数校验 400、非法产品 ID 400、成功 200、积分不足 400、普通档 403
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -45,7 +45,7 @@ function postRequest(body: unknown): NextRequest {
   } as never);
 }
 
-const VALID_BODY = { giftId: "cm1234567890abcdefghijklm", requestId: "req-uuid-1" };
+const VALID_BODY = { productId: "cm1234567890abcdefghijklm", requestId: "req-uuid-1" };
 
 describe("POST /api/user/points/redeem", () => {
   beforeEach(() => {
@@ -61,14 +61,14 @@ describe("POST /api/user/points/redeem", () => {
   });
 
   it("缺少 requestId 应返回 400 INVALID_PARAMS", async () => {
-    const res = await POST(postRequest({ giftId: VALID_BODY.giftId }));
+    const res = await POST(postRequest({ productId: VALID_BODY.productId }));
 
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("INVALID_PARAMS");
   });
 
-  it("非法礼品 ID 应返回 400", async () => {
-    const res = await POST(postRequest({ giftId: "not-a-cuid", requestId: "req-1" }));
+  it("非法产品 ID 应返回 400", async () => {
+    const res = await POST(postRequest({ productId: "not-a-cuid", requestId: "req-1" }));
 
     expect(res.status).toBe(400);
   });
@@ -87,7 +87,7 @@ describe("POST /api/user/points/redeem", () => {
     });
     expect(mockRedeem).toHaveBeenCalledWith({
       userId: "user-1",
-      giftId: VALID_BODY.giftId,
+      productId: VALID_BODY.productId,
       requestId: "req-uuid-1",
       level: "GOLD",
     });

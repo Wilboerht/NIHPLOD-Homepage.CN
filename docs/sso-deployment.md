@@ -57,7 +57,7 @@ WHERE pg_type.typname = 'TokenBlacklistType';
 | `20260826000000_add_oauth_client_webhook_uri` | `OAuthClient` 表新增 `webhookUri`（TEXT，可空，用户资料变更 webhook 推送地址）；新增 `WebhookDeliveryFailure` 表（webhook 投递失败补偿队列） | 纯增量加列加表，旧代码可继续读写 |
 | `20260903000000_spent_import` | 新增 `SpentImportBatch`（导入批次）与 `SpentImportRow`（逐行明细）表、`SpentImportRowStatus` 枚举，支撑管理端 Excel 批量导入消费记录及整批撤销审计 | 纯增量加表，旧代码可继续读写 |
 | `20260903010000_membership_four_tiers` | 会员等级四档化（普通/银卡 ¥1,000/金卡 ¥5,000/钻石 ¥10,000），存量 ADVANCED 按累计消费拆档；积分体系重新上线（`PointLedger`/`PointBalance` 表、`PointLedgerType` 枚举，稳定期 7 天、6 个月过期）；User 新增各档激活日、生日锁定、生日积分年度幂等字段 | 枚举切换 + 加表加列；存量 ADVANCED <¥1,000 的用户归普通档，其余按消费额升档，无数据丢失 |
-| `20260903020000_point_gifts` | 新增 `PointGift`（积分礼品目录）与 `PointRedemption`（兑换记录/履约状态）表、`PointRedemptionStatus` 枚举，支撑用户面板积分兑换与管理端履约 | 纯增量加表，旧代码可继续读写 |
+| `20260903020000_point_redemption` | 积分兑换上线：`Product` 新增 `pointRedeemable`（积分可兑标记）与索引；新增 `PointRedemption`（兑换记录/履约状态）表与 `PointRedemptionStatus` 枚举，兑换产品复用产品库数据 | 纯增量加列加表，旧代码可继续读写 |
 
 六份迁移均为向后兼容的增量变更，**无需停机**，在应用滚动发布前执行即可。
 
