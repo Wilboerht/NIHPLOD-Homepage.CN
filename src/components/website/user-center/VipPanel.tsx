@@ -42,7 +42,7 @@ import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPane
 const CARD_BG_IMAGES: Partial<Record<string, string>> = {
   REGULAR: "/images/membership-card-regular.png",
   SILVER: "/images/membership-card-silver.png",
-  GOLD: "/images/membership-card-gold.png",
+  GOLD: "/images/membership-card-gold.jpg",
   DIAMOND: "/images/membership-card-diamond.png",
 };
 
