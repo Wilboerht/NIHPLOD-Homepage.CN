@@ -60,6 +60,7 @@ type MockTx = {
     findUnique: ReturnType<typeof vi.fn>;
     upsert: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
   };
   user: { update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
 };
@@ -77,6 +78,7 @@ function createTx(): MockTx {
       findUnique: vi.fn(),
       upsert: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     user: {
       update: vi.fn(),
@@ -90,6 +92,7 @@ function createTx(): MockTx {
   tx.pointBalance.findUnique.mockResolvedValue({ id: "bal-1" });
   tx.pointBalance.upsert.mockResolvedValue({});
   tx.pointBalance.update.mockResolvedValue({});
+  tx.pointBalance.updateMany.mockResolvedValue({ count: 1 });
   tx.user.update.mockResolvedValue({});
   return tx;
 }
@@ -223,7 +226,7 @@ describe("redeemPoints 兑礼扣减", () => {
     expect(tx.pointLedger.create).not.toHaveBeenCalled();
   });
 
-  it("成功：FIFO 消耗最旧可用流水并扣减余额", async () => {
+  it("成功：条件扣减余额（CAS）并 FIFO 消耗最旧可用流水", async () => {
     tx.pointBalance.findUnique.mockResolvedValue({ available: 1000 });
     // 区分查询：物化（过期/释放）返回空，FIFO 消耗查询（releasedAt 非空过滤）返回流水
     tx.pointLedger.findMany.mockImplementation(
@@ -246,6 +249,11 @@ describe("redeemPoints 兑礼扣减", () => {
     });
 
     expect(result).toEqual({ ok: true, available: 400, spent: 600 });
+    // 条件扣减：余额 ≥ 扣减量时才扣减（防并发超额）
+    expect(tx.pointBalance.updateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", available: { gte: 600 } },
+      data: { available: { decrement: 600 } },
+    });
     expect(tx.pointLedger.update).toHaveBeenNthCalledWith(1, {
       where: { id: "r1" },
       data: { remaining: { decrement: 400 } },
@@ -262,10 +270,24 @@ describe("redeemPoints 兑礼扣减", () => {
         reference: "redeem:R1",
       }),
     });
-    expect(tx.pointBalance.update).toHaveBeenCalledWith({
-      where: { userId: "user-1" },
-      data: { available: { decrement: 600 } },
+  });
+
+  it("并发扣减：条件更新命中 0 行（余额已被扣走）应拒绝，不产生流水", async () => {
+    tx.pointBalance.findUnique.mockResolvedValue({ available: 1000 });
+    tx.pointBalance.updateMany.mockResolvedValue({ count: 0 });
+
+    const result = await redeemPoints(asTx(tx), {
+      userId: "user-1",
+      amount: 600,
+      reference: "redeem:R1",
     });
+
+    if (result.ok) {
+      throw new Error("并发冲突应拒绝扣减");
+    }
+    expect(result.code).toBe("INSUFFICIENT");
+    expect(tx.pointLedger.create).not.toHaveBeenCalled();
+    expect(tx.pointLedger.update).not.toHaveBeenCalled();
   });
 
   it("重复 reference：幂等返回成功且不重复扣减", async () => {

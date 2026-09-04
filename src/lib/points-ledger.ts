@@ -7,7 +7,7 @@
  *   （兑礼拦截见 POINT_REDEEM_RATES/point-gifts）。
  * - 6 个月过期（expiresAt）。
  * - 退款冲正（REFUND）：直接冲可用余额，可用可负（超兑债务）。
- * - 兑礼扣减（REDEEM）：FIFO 消耗未过期的发放流水；余额不足拒绝。
+ * - 兑礼扣减（REDEEM）：FIFO 消耗未过期的发放流水；条件扣减（余额 ≥ 扣减量）防并发超额，余额不足拒绝。
  * - 过期（EXPIRE）：发放流水按剩余量清零，可用余额仅扣正数部分（负余额为债务，不由过期减免）。
  * - 生日积分（BIRTHDAY）：直接可用，6 个月过期，每年一次幂等。
  *
@@ -188,7 +188,8 @@ export type RedeemResult =
   | { ok: false; code: "INSUFFICIENT" | "DUPLICATE"; available: number };
 
 /**
- * 兑礼扣减（商城兑换调用）：FIFO 消耗未过期发放流水。
+ * 兑礼扣减（商城/官网兑换调用）：条件扣减余额（CAS）→ FIFO 消耗未过期发放流水。
+ * 余额行条件更新加行锁，串行化同一用户的并发扣减，绝不允许超额使用。
  * 幂等：同 userId+reference 重复调用直接返回成功（不重复扣减）。
  */
 export async function redeemPoints(
@@ -220,6 +221,21 @@ export async function redeemPoints(
     return { ok: false, code: "INSUFFICIENT", available: balance?.available ?? 0 };
   }
 
+  // 条件扣减（CAS 语义）：以「余额仍 ≥ 扣减量」作为更新条件，命中 0 行即拒绝。
+  // 余额行更新会获取行锁，同一用户的并发兑换/多端同时扣分被串行化，
+  // 后到的事务在条件不满足时失败，绝不允许超额使用。
+  const deducted = await tx.pointBalance.updateMany({
+    where: { userId, available: { gte: amount } },
+    data: { available: { decrement: amount } },
+  });
+  if (deducted.count === 0) {
+    const current = await tx.pointBalance.findUnique({
+      where: { userId },
+      select: { available: true },
+    });
+    return { ok: false, code: "INSUFFICIENT", available: current?.available ?? 0 };
+  }
+
   // FIFO 消耗（时间序，最旧优先）
   const rows = await tx.pointLedger.findMany({
     where: { userId, releasedAt: { not: null }, remaining: { gt: 0 }, expiresAt: { gt: now } },
@@ -237,16 +253,12 @@ export async function redeemPoints(
     });
   }
   if (rest > 0) {
-    // 余额与流水不一致（理论不可达）：拒绝兑礼，事务回滚
+    // 余额与流水不一致（理论不可达）：拒绝兑礼，事务回滚（含条件扣减）
     throw new Error("POINT_REDEEM_LEDGER_INCONSISTENT");
   }
 
   await tx.pointLedger.create({
     data: { userId, type: "REDEEM", amount: -amount, reference, note: note ?? null },
-  });
-  await tx.pointBalance.update({
-    where: { userId },
-    data: { available: { decrement: amount } },
   });
   return { ok: true, available: balance.available - amount, spent: amount };
 }

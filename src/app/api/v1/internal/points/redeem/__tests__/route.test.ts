@@ -14,7 +14,7 @@ const { txClient } = vi.hoisted(() => ({
       create: vi.fn(),
       update: vi.fn(),
     },
-    pointBalance: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
+    pointBalance: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() },
   },
 }));
 
@@ -92,6 +92,7 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
     txClient.pointLedger.create.mockResolvedValue({});
     txClient.pointBalance.upsert.mockResolvedValue({});
     txClient.pointBalance.update.mockResolvedValue({});
+    txClient.pointBalance.updateMany.mockResolvedValue({ count: 1 });
   });
 
   it("缺少鉴权头应返回 401 MISSING_AUTH", async () => {
