@@ -343,17 +343,34 @@ export function VipPanel() {
         </div>
           </div>
 
-          {/* 升级引导卡片：录入消费 / 查看录入历史 */}
+          {/* 升级引导卡片：三步流程 + 录入消费 / 查看录入历史 */}
           <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
             <h4 className="flex items-center gap-1.5 text-sm font-medium text-stone-800">
               <TrendingUp className="h-4 w-4 text-[#00263e]" />
               提升会员等级
             </h4>
-            <p className="mt-2 text-xs leading-relaxed text-stone-400">
-              {nextLevel
-                ? "在官方各渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。"
-                : "您已是最高等级会员，全渠道消费记录可随时补录留存。"}
-            </p>
+
+            {nextLevel ? (
+              <div className="mt-3 space-y-2">
+                {[
+                  "官方各渠道消费",
+                  "录入订单凭证",
+                  "审核通过后自动计入历史消费并升级",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00263e]/10 text-[11px] font-medium text-[#00263e]">
+                      {i + 1}
+                    </span>
+                    <p className="text-xs leading-relaxed text-stone-500">{step}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                您已是最高等级会员，全渠道消费记录可随时补录留存。
+              </p>
+            )}
+
             <div className="mt-4 flex items-center gap-4">
               <button
                 type="button"
