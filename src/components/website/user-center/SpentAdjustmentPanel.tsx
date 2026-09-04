@@ -6,13 +6,16 @@
  * 管理员人工审核后累加历史消费金额，自动重算会员等级。
  * 申请列表展示审核状态与审核备注。
  *
- * 表单展开状态由父组件（VipPanel）控制：会员权益区的「补录消费记录」
- * 引导会直接展开表单并滚动到本区块。
+ * 视图由父组件（VipPanel）控制：默认视图 / 录入表单 / 录入历史
+ * 三视图互斥单独显示，切换时淡出淡入；会员权益区的「补录消费记录」
+ * 引导会直接切到表单视图并滚动到本区块。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, m } from "framer-motion";
 import {
   Camera,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clock,
   ImagePlus,
@@ -33,6 +36,8 @@ import {
   MAX_IMAGES,
   receiptImageSrc,
 } from "@/lib/spent-adjustment-meta";
+
+export type SpentPanelView = "default" | "form" | "history";
 
 interface ApplicationItem {
   id: string;
@@ -77,17 +82,16 @@ function formatDate(iso: string | null): string {
 }
 
 export function SpentAdjustmentPanel({
-  showForm,
-  onShowFormChange,
+  view,
+  onViewChange,
   onApplicationsLoaded,
 }: {
-  showForm: boolean;
-  onShowFormChange: (show: boolean) => void;
+  view: SpentPanelView;
+  onViewChange: (view: SpentPanelView) => void;
   onApplicationsLoaded?: () => void;
 }) {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showHistory, setShowHistory] = useState(false);
   // 首次挂载加载跳过回调（父组件同期已在拉取会员卡/积分数据，避免重复请求）
   const loadedOnceRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
@@ -192,7 +196,7 @@ export function SpentAdjustmentPanel({
       const data = await res.json();
       if (data.success) {
         showSuccess("申请已提交，等待审核");
-        onShowFormChange(false);
+        onViewChange("default");
         setOrderNo("");
         setAmountClaimed("");
         setPurchasedAt("");
@@ -217,56 +221,72 @@ export function SpentAdjustmentPanel({
 
   return (
     <div className="mt-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h4 className="text-sm font-medium text-stone-700">录入消费记录</h4>
-          <button
-            type="button"
-            onClick={() => {
-              // 展开历史时重新拉取申请列表（同步触发会员卡/积分刷新）
-              if (!showHistory) {
-                void loadApplications();
-              }
-              setShowHistory((v) => !v);
-            }}
-            aria-expanded={showHistory}
-            className="flex items-center gap-0.5 rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
+      <AnimatePresence mode="wait" initial={false}>
+        {view === "default" && (
+          <m.div
+            key="default"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
           >
-            历史
-            <ChevronRight
-              className={`h-3 w-3 transition-transform duration-200 ${
-                showHistory ? "rotate-90" : ""
-              }`}
-            />
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={() => onShowFormChange(!showForm)}
-          className="flex items-center gap-1 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
-        >
-          {showForm ? (
-            <>
-              收起 <ChevronRight className="h-3.5 w-3.5 rotate-90 transition-transform" />
-            </>
-          ) : (
-            <>
-              录入消费 <ChevronRight className="h-3.5 w-3.5" />
-            </>
-          )}
-        </button>
-      </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-medium text-stone-700">录入消费记录</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 进入历史视图时重新拉取申请列表（同步触发会员卡/积分刷新）
+                    void loadApplications();
+                    onViewChange("history");
+                  }}
+                  className="flex items-center gap-0.5 rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
+                >
+                  历史
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => onViewChange("form")}
+                className="flex items-center gap-1 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
+              >
+                录入消费 <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
 
-      <p className="mt-1 text-xs font-light leading-relaxed text-stone-400">
-        在天猫 / 京东 / 小程序 /
-         线下专柜等全渠道购买的商品，提交订单号（线下填小票号）即可录入消费记录。
-        审核通过后计入历史消费，会员等级自动更新；驳回后可重新提交。
-      </p>
+            <p className="mt-1 text-xs font-light leading-relaxed text-stone-400">
+              在天猫 / 京东 / 小程序 /
+              线下专柜等全渠道购买的商品，提交订单号（线下填小票号）即可录入消费记录。
+              审核通过后计入历史消费，会员等级自动更新；驳回后可重新提交。
+            </p>
+          </m.div>
+        )}
 
-      {/* 申请表单 */}
-      {showForm && (
-        <div className="mt-4 space-y-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          {reachedPendingLimit && (
+        {view === "form" && (
+          <m.div
+            key="form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <button
+              type="button"
+              onClick={() => onViewChange("default")}
+              className="mb-3 flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              返回
+            </button>
+            <h4 className="text-sm font-medium text-stone-700">录入消费</h4>
+            <p className="mt-1 text-xs font-light leading-relaxed text-stone-400">
+              提交订单号与小票凭证，审核通过后计入历史消费并自动更新会员等级。
+            </p>
+
+            {/* 申请表单 */}
+            <div className="mt-4 space-y-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+              {reachedPendingLimit && (
             <p className="text-xs text-amber-600">
               您已有 {pendingCount} 条待审核申请，请等待审核完成后再提交新申请。
             </p>
@@ -428,68 +448,94 @@ export function SpentAdjustmentPanel({
               {submitting ? "提交中..." : "提交申请"}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* 历史记录 - 默认收起，由标题旁「历史」按钮控制 */}
-      {showHistory && (
-        <div className="mt-4 space-y-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
             </div>
-          ) : applications.length === 0 ? (
-            <p className="py-4 text-center text-xs text-stone-400">暂无录入提交</p>
-          ) : (
-            applications.map((a) => {
-              const StatusIcon = STATUS_ICONS[a.status];
-              return (
-                <div key={a.id} className="rounded-xl border border-stone-200/60 bg-white/40 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
-                      >
-                        <StatusIcon className="h-3 w-3" />
-                        {SPENT_STATUS_LABELS[a.status]}
-                      </span>
-                      <span className="text-[11px] text-stone-400">
-                        {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
-                          a.channel}
-                      </span>
-                    </div>
-                    <span className="shrink-0 text-[11px] text-stone-300">
-                      {formatDate(a.createdAt)}
-                    </span>
-                  </div>
-                  <p className="mt-2 truncate text-sm font-medium text-stone-800">{a.orderNo}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
-                    {a.amountClaimed != null && (
-                      <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
-                    )}
-                    {a.purchasedAt && <span>消费日期 {formatDate(a.purchasedAt)}</span>}
-                    {a.images.length > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Camera className="h-3 w-3" /> {a.images.length} 张凭证
-                      </span>
-                    )}
-                  </div>
-                  {a.status === "APPROVED" && a.reviewAmount != null && (
-                    <p className="mt-2 rounded-lg bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700">
-                      已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
-                    </p>
-                  )}
-                  {a.status === "REJECTED" && a.reviewNote && (
-                    <p className="mt-2 rounded-lg bg-red-50/60 px-3 py-2 text-xs text-red-600">
-                      驳回原因：{a.reviewNote}
-                    </p>
-                  )}
+          </m.div>
+        )}
+
+        {view === "history" && (
+          <m.div
+            key="history"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <button
+              type="button"
+              onClick={() => onViewChange("default")}
+              className="mb-3 flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              返回
+            </button>
+            <h4 className="text-sm font-medium text-stone-700">录入历史</h4>
+
+            {/* 历史记录 */}
+            <div className="mt-4 space-y-3">
+              {loading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
                 </div>
-              );
-            })
-          )}
-        </div>
-      )}
+              ) : applications.length === 0 ? (
+                <p className="py-4 text-center text-xs text-stone-400">暂无录入提交</p>
+              ) : (
+                applications.map((a) => {
+                  const StatusIcon = STATUS_ICONS[a.status];
+                  return (
+                    <div
+                      key={a.id}
+                      className="rounded-xl border border-stone-200/60 bg-white/40 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
+                          >
+                            <StatusIcon className="h-3 w-3" />
+                            {SPENT_STATUS_LABELS[a.status]}
+                          </span>
+                          <span className="text-[11px] text-stone-400">
+                            {SPENT_CHANNEL_LABELS[
+                              a.channel as keyof typeof SPENT_CHANNEL_LABELS
+                            ] ?? a.channel}
+                          </span>
+                        </div>
+                        <span className="shrink-0 text-[11px] text-stone-300">
+                          {formatDate(a.createdAt)}
+                        </span>
+                      </div>
+                      <p className="mt-2 truncate text-sm font-medium text-stone-800">
+                        {a.orderNo}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
+                        {a.amountClaimed != null && (
+                          <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
+                        )}
+                        {a.purchasedAt && <span>消费日期 {formatDate(a.purchasedAt)}</span>}
+                        {a.images.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Camera className="h-3 w-3" /> {a.images.length} 张凭证
+                          </span>
+                        )}
+                      </div>
+                      {a.status === "APPROVED" && a.reviewAmount != null && (
+                        <p className="mt-2 rounded-lg bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700">
+                          已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
+                        </p>
+                      )}
+                      {a.status === "REJECTED" && a.reviewNote && (
+                        <p className="mt-2 rounded-lg bg-red-50/60 px-3 py-2 text-xs text-red-600">
+                          驳回原因：{a.reviewNote}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { BIRTHDAY_POINTS } from "@/lib/membership";
-import { SpentAdjustmentPanel } from "./SpentAdjustmentPanel";
+import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（四档）：
 // - 会员卡（当前等级）：bg-cover 铺满作卡面底色，容器高度由内容决定
@@ -91,7 +91,7 @@ export function VipPanel() {
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
-  const [showSpentForm, setShowSpentForm] = useState(false);
+  const [spentView, setSpentView] = useState<SpentPanelView>("default");
   const spentPanelRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
@@ -172,7 +172,7 @@ export function VipPanel() {
 
   // 展开补录表单并滚动到录入区块（与权益区的解锁引导联动）
   const focusSpentForm = () => {
-    setShowSpentForm(true);
+    setSpentView("form");
     spentPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -282,7 +282,7 @@ export function VipPanel() {
                           <div className="flex items-center justify-between gap-1.5">
                             <p className="text-sm font-medium text-stone-800">{level.name}</p>
                             {isCurrent ? (
-                              <span className="shrink-0 rounded-full bg-stone-200/70 px-2 py-0.5 text-[11px] text-stone-500">
+                              <span className="shrink-0 rounded-full bg-stone-200/70 px-2 py-0.5 text-[11px] text-[#00263e]">
                                 当前
                               </span>
                             ) : isUnlocked ? (
@@ -412,8 +412,8 @@ export function VipPanel() {
         {/* 消费补录（全渠道凭证 → 人工审核 → 补录历史消费金额） */}
         <div ref={spentPanelRef} className="scroll-mt-4">
           <SpentAdjustmentPanel
-            showForm={showSpentForm}
-            onShowFormChange={setShowSpentForm}
+            view={spentView}
+            onViewChange={setSpentView}
             onApplicationsLoaded={handleApplicationsLoaded}
           />
         </div>
