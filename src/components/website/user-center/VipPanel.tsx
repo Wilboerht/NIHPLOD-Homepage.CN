@@ -284,14 +284,23 @@ export function VipPanel() {
           {/* 分割线以下：背景虚化处理，承载升级进度与生日礼遇 */}
           {(nextLevel ||
             (user && !user.birthday && currentLevel.level !== "REGULAR")) && (
-            // 加 rounded-b-xl + overflow-hidden：backdrop-blur 层会忽略祖先圆角裁剪（Chromium 特性），
-            // 需在本区块自身裁圆，否则底部两角显示为直角
+            // 不用 backdrop-filter：Chromium 会忽略祖先圆角裁剪导致底部两角变直角。
+            // 改为与卡面同图同铺法的模糊副本，按卡片比例（aspect 1.586）定位、底部对齐，
+            // 由本区块 overflow-hidden + rounded-b-xl 裁剪出圆角。
             <div className="relative mt-auto overflow-hidden rounded-b-xl border-t border-stone-200/60">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 backdrop-blur-md bg-white/25"
-              />
-              <div className="relative p-5 pt-4">
+              {cardBgImage && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute bottom-0 left-0 w-full blur-md"
+                  style={{
+                    aspectRatio: "1.586 / 1",
+                    backgroundImage: `url(${cardBgImage})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                />
+              )}
+              <div className="relative bg-white/25 p-5 pt-4">
                 {/* 升级进度条（钻石卡为最高档） */}
                 {nextLevel && (
                   <div>
@@ -339,7 +348,7 @@ export function VipPanel() {
             </h4>
             <p className="mt-2 text-xs leading-relaxed text-stone-400">
               {nextLevel
-                ? "在天猫 / 京东 / 小程序 / 线下专柜等渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。"
+                ? "在官方各渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。"
                 : "您已是最高等级会员，全渠道消费记录可随时补录留存。"}
             </p>
             <div className="mt-4 flex items-center gap-4">
