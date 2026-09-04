@@ -218,7 +218,9 @@ export function SpentAdjustmentPanel({
   };
 
   return (
-    <div className="mt-8">
+    // 默认视图嵌在会员中心主内容中（需与上方权益区拉开间距 mt-8）；
+    // 表单/历史视图由父组件整版单独渲染，去掉多余顶部间距
+    <div className={view === "default" ? "mt-8" : ""}>
       {view === "default" && (
         <div>
           <div className="flex items-center justify-between">
