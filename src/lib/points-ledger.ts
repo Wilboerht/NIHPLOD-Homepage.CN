@@ -2,8 +2,9 @@
  * 积分账本服务模块（2026-09 重新上线）
  *
  * 规则：
- * - 仅银卡及以上参与积分（REGULAR 不发放、不兑礼，见 BIRTHDAY_POINTS/调用方判断）。
- * - 消费发放：1 元 = 1 分（CONSUME），稳定期 7 天冻结（frozenUntil），6 个月过期（expiresAt）。
+ * - 消费发放 1 元 = 1 分（CONSUME）：所有等级均发放（含普通档）；
+ *   普通档仅累积积分、不可兑礼（兑礼拦截见 POINT_REDEEM_RATES/point-gifts）。
+ * - 消费发放：稳定期 7 天冻结（frozenUntil），6 个月过期（expiresAt）。
  * - 退款冲正（REFUND）：先冲未释放的冻结流水（最旧优先），剩余冲可用余额，可用可负（超兑债务）。
  * - 兑礼扣减（REDEEM）：FIFO 消耗已释放且未过期的流水；余额不足拒绝。
  * - 过期（EXPIRE）：冻结/已释放流水按剩余量清零，可用余额仅扣正数部分（负余额为债务，不由过期减免）。
@@ -84,7 +85,7 @@ export async function refundSpendPoints(
   });
   if (existing) return { duplicated: true };
 
-  // 从未参与积分（无余额行，普通档消费）：仅记录退款流水，不冲余额
+  // 从未有积分余额（无余额行）：仅记录退款流水，不冲余额
   const balance = await tx.pointBalance.findUnique({
     where: { userId },
     select: { id: true },

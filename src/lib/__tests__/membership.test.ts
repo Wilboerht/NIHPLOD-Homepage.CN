@@ -1,8 +1,8 @@
 /**
  * 会员等级默认权益文案测试
  * 等级体系（2026-09 四档）：普通(注册) / 银卡(¥1,000) / 金卡(¥5,000) / 钻石(¥10,000)
- * 权益聚焦测肤平台 + 积分（银卡及以上参与）：
- * - 普通会员：10 次测肤体验机会、无档案/顾问/积分
+ * 权益聚焦测肤平台 + 积分（所有等级累积，兑礼仅银卡及以上）：
+ * - 普通会员：10 次测肤体验机会、消费 1 元 = 1 积分（仅累积不可兑礼）
  * - 银卡：每满 ¥1,000 加 20 次、档案终身保留、AI 顾问、兑礼 1:1、生日 50 积分
  * - 金卡：不限次测肤、兑礼 1:1.3、生日 100 积分
  * - 钻石卡：不限次测肤、兑礼 1:1.5、生日 200 积分
@@ -35,12 +35,13 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
     expect(LEVEL_DEFAULT_BENEFITS.DIAMOND.maxSpent).toBeNull();
   });
 
-  it("普通会员：10 次测肤体验，无档案/顾问/积分权益", () => {
+  it("普通会员：10 次测肤体验 + 消费积分，无档案/顾问/兑礼权益", () => {
     const texts = LEVEL_DEFAULT_BENEFITS.REGULAR.benefits.map(
       (b) => `${b.title}${b.desc}`
     );
     expect(texts.join()).toContain("10 次");
     const titles = LEVEL_DEFAULT_BENEFITS.REGULAR.benefits.map((b) => b.title);
+    expect(titles).toContain("消费积分");
     expect(titles).not.toContain("档案永久保留");
     expect(titles).not.toContain("专属 AI 护肤顾问");
     expect(titles).not.toContain("积分兑礼");
@@ -68,7 +69,7 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
     }
   });
 
-  it("普通会员不参与积分，银/金/钻均含积分兑礼权益", () => {
+  it("普通会员不参与兑礼，银/金/钻均含积分兑礼权益", () => {
     const regularTitles = LEVEL_DEFAULT_BENEFITS.REGULAR.benefits.map((b) => b.title);
     expect(regularTitles).not.toContain("积分兑礼");
     for (const level of ["SILVER", "GOLD", "DIAMOND"] as const) {
@@ -80,7 +81,7 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
 });
 
 describe("POINT_REDEEM_RATES 积分兑礼率", () => {
-  it("普通档不参与（null），银 1 / 金 1.3 / 钻 1.5", () => {
+  it("普通档不可兑礼（null），银 1 / 金 1.3 / 钻 1.5", () => {
     expect(POINT_REDEEM_RATES.REGULAR).toBeNull();
     expect(POINT_REDEEM_RATES.SILVER).toBe(1);
     expect(POINT_REDEEM_RATES.GOLD).toBe(1.3);

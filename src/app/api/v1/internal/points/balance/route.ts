@@ -11,7 +11,7 @@
  *     available: number        // 可用积分（可为负：退款超兑债务）
  *     frozen: number           // 冻结积分（稳定期 7 天内）
  *     nextReleaseAt: string|null // 最近解冻时间（ISO）
- *     redeemRate: number|null  // 当前等级兑礼率（null=普通档不参与）
+ *     redeemRate: number|null  // 当前等级兑礼率（null=普通档不可兑礼）
  *     membershipLevel: string  // 当前等级
  *   }
  */

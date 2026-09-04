@@ -476,7 +476,7 @@ export function VipPanel() {
                         <div className="flex items-center gap-1.5 pt-2">
                           <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
                           <p className="text-xs text-stone-400">
-                            累计消费满 ¥1,000 解锁肌肤档案、AI 顾问与积分权益
+                            累计消费满 ¥1,000 解锁肌肤档案、AI 顾问与积分兑礼
                           </p>
                         </div>
                       )}

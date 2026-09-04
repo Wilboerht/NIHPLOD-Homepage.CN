@@ -130,6 +130,16 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
     expect((await res.json()).error.code).toBe("USER_NOT_FOUND");
   });
 
+  it("普通档不可兑礼应返回 403 NOT_ELIGIBLE", async () => {
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "REGULAR" });
+
+    const res = await POST(createSignedRequest(VALID_BODY));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("NOT_ELIGIBLE");
+    expect(txClient.pointLedger.create).not.toHaveBeenCalled();
+  });
+
   it("可用积分不足应返回 400 INSUFFICIENT", async () => {
     txClient.pointBalance.findUnique.mockResolvedValue({ available: 100 });
 

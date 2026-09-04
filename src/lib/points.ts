@@ -7,8 +7,9 @@
  *   普通(注册) / 银卡(≥¥1,000) / 金卡(≥¥5,000) / 钻石(≥¥10,000)
  * - 官网不再直接售卖：消费额变动由外部商城通过签名接口同步入账
  * - 各档首次达档记录 activatedAt（仅成长展示，不产生有效期）
- * - 积分（银卡及以上）：消费 1 元 = 1 分，稳定期 7 天冻结，6 个月过期；
+ * - 积分：所有等级消费 1 元 = 1 分（含普通档），稳定期 7 天冻结，6 个月过期；
  *   退款冲正可负；账本逻辑见 points-ledger.ts
+ * - 兑礼：银卡及以上可兑（普通档仅累积积分、不开积分商城，见 POINT_REDEEM_RATES）
  */
 import type { MembershipLevel } from "@/generated/prisma/client";
 import { revalidateTag } from "next/cache";
@@ -128,16 +129,14 @@ export async function applyExternalSpentSync(params: {
         });
 
         // 积分联动（与消费额同事务，保证账实一致）
-        // 普通档不参与积分：仅升级后为银卡及以上才发放；退款冲正由账本层判断余额是否存在
+        // 所有等级均按 1:1 发放积分（普通档仅累积、不可兑礼，兑礼侧按兑礼率拦截）
         if (spentDelta > 0) {
-          if (newLevel !== "REGULAR") {
-            await creditSpendPoints(tx, {
-              userId,
-              amount: spentDelta,
-              reference: `points:${reference}`,
-              note: note ?? "消费发放积分",
-            });
-          }
+          await creditSpendPoints(tx, {
+            userId,
+            amount: spentDelta,
+            reference: `points:${reference}`,
+            note: note ?? "消费发放积分",
+          });
         } else if (spentDelta < 0) {
           await refundSpendPoints(tx, {
             userId,

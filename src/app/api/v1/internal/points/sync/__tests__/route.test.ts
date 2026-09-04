@@ -208,7 +208,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     });
   });
 
-  it("普通档消费（未达银卡门槛）：不发放积分", async () => {
+  it("普通档消费（未达银卡门槛）：同样发放积分（仅累积，不可兑礼）", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     // 500 + 400 = 900 < 1000，仍为普通档
     txClient.user.findUnique.mockResolvedValue({ totalSpent: 500 });
@@ -220,8 +220,23 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
     expect(res.status).toBe(200);
     expect(data.data.membershipLevel).toBe("REGULAR");
-    expect(txClient.pointLedger.create).not.toHaveBeenCalled();
-    expect(txClient.pointBalance.upsert).not.toHaveBeenCalled();
+    // 普通档同样 1:1 发放积分（冻结 7 天、6 个月过期）
+    expect(txClient.pointLedger.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "user-1",
+        type: "CONSUME",
+        amount: 400,
+        remaining: 400,
+        reference: "points:mall-order-N3",
+        frozenUntil: expect.any(Date),
+        expiresAt: expect.any(Date),
+      }),
+    });
+    expect(txClient.pointBalance.upsert).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      create: { userId: "user-1", frozen: 400 },
+      update: { frozen: { increment: 400 } },
+    });
   });
 
   it("退款扣减（负 spentDelta）应钳制到 0，不出现负消费额", async () => {

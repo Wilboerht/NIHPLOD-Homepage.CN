@@ -48,7 +48,7 @@ const REDEEMABLE_PRODUCT = {
 describe("giftCostForUser 兑礼率折算", () => {
   const price = new Prisma.Decimal("300.00");
 
-  it("普通档不参与（null），银/金/钻按 1 / 1.3 / 1.5 向下取整", () => {
+  it("普通档不可兑礼（null），银/金/钻按 1 / 1.3 / 1.5 向下取整", () => {
     expect(giftCostForUser(price, "REGULAR")).toBeNull();
     expect(giftCostForUser(price, "SILVER")).toBe(300);
     expect(giftCostForUser(price, "GOLD")).toBe(230); // ⌊300/1.3⌋

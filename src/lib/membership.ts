@@ -39,10 +39,10 @@ export function levelDisplay(level: string | null | undefined): string {
 }
 
 // ============================================
-// 积分规则（银卡及以上参与；账本在官网，兑礼在商城）
+// 积分规则（所有等级累积积分；兑礼仅银卡及以上，账本在官网，兑礼在商城）
 // ============================================
 
-/** 积分兑礼率（1 积分可兑价值）：普通档不参与积分 */
+/** 积分兑礼率（1 积分可兑价值）：普通档不开放兑礼（null），仅累积积分 */
 export const POINT_REDEEM_RATES: Record<MembershipLevel, number | null> = {
   REGULAR: null,
   SILVER: 1,
@@ -89,6 +89,7 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     maxSpent: 999,
     benefits: [
       { icon: "", title: "测肤体验", desc: "注册即享 10 次 AI 测肤体验机会" },
+      { icon: "", title: "消费积分", desc: "消费 1 元 = 1 积分，升级银卡会员解锁积分兑礼" },
       { icon: "", title: "会员升级", desc: "官方店铺累计消费满 ¥1,000 升级银卡会员" },
     ],
     colorClass: "text-slate-400",

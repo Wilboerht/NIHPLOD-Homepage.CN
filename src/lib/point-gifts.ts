@@ -2,7 +2,7 @@
  * 积分兑换服务模块（兑换产品复用产品库）
  *
  * 产品库中 pointRedeemable=true 且 published=true 的产品出现在用户面板「兑换好礼」板块。
- * 实际扣分 = ⌊产品参考价格 ÷ 当前兑礼率⌋（普通档不参与积分，不可兑换）。
+ * 实际扣分 = ⌊产品参考价格 ÷ 当前兑礼率⌋（普通档不开放兑礼，不可兑换）。
  * 幂等：requestId 由客户端生成（每次确认弹窗一个），reference = redeem:{userId}:{requestId}，
  * PointLedger 与 PointRedemption 双重唯一约束防重复扣分/重复记录。
  */
@@ -31,7 +31,7 @@ export async function listRedeemableProducts() {
   });
 }
 
-/** 按兑礼率折算用户实际扣分（普通档返回 null = 不参与） */
+/** 按兑礼率折算用户实际扣分（普通档返回 null = 不可兑礼） */
 export function giftCostForUser(priceYuan: Prisma.Decimal, level: MembershipLevel): number | null {
   const rate = POINT_REDEEM_RATES[level];
   if (!rate) return null;

@@ -6,6 +6,7 @@
  * 按幂等 reference 扣减用户可用积分（FIFO 消耗最旧可用流水）。
  * 兑礼率（1:1 / 1:1.3 / 1:1.5）由商城按用户 membership_level 自行折算
  * 为本次需扣减的积分数量后调用本接口。
+ * 普通档（redeemRate=null）不可兑礼：接口侧兜底拦截（403）。
  *
  * 认证方式：HMAC-SHA256 签名（与 /api/v1/internal/points/sync 一致）。
  *
@@ -142,7 +143,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 事务内扣减（幂等 + 物化 + FIFO）
+    // 6. 等级拦截：普通档不可兑礼（积分商城仅银卡及以上开放），商城侧由 redeemRate=null 控制展示
+    if (POINT_REDEEM_RATES[user.membershipLevel] === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑礼" },
+        },
+        { status: 403 }
+      );
+    }
+
+    // 7. 事务内扣减（幂等 + 物化 + FIFO）
     const result = await prisma.$transaction((tx) =>
       redeemPoints(tx, {
         userId: user.id,

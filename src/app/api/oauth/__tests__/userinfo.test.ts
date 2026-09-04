@@ -227,7 +227,7 @@ describe("GET /api/oauth/userinfo", () => {
     expect(body.points_redeem_rate).toBe(1.3);
   });
 
-  it("普通档 scope 含 membership 时兑礼率为 null（不参与积分）", async () => {
+  it("普通档 scope 含 membership 时兑礼率为 null（不可兑礼，仅累积积分）", async () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "test-client",
