@@ -210,14 +210,23 @@ export function VipPanel() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
+        {/* 会员卡 + 升级引导（桌面并排，移动端上下堆叠） */}
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <div className="w-full lg:w-[360px] lg:shrink-0">
         {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，左对齐，背景图按卡面铺满） */}
         <div
-          className={`relative flex aspect-[1.586/1] w-full max-w-[360px] flex-col overflow-hidden rounded-xl border p-5 ${tierStyle.card} ${cardBgImage ? "bg-cover bg-center" : ""}`}
-          style={{
-            ...(cardBgImage ? { backgroundImage: `url(${cardBgImage})` } : {}),
-          }}
+          className={`relative flex aspect-[1.586/1] w-full max-w-[360px] flex-col overflow-hidden rounded-xl border ${tierStyle.card}`}
         >
-          <div className="flex items-start justify-between gap-4">
+          {/* 卡面背景图 */}
+          {cardBgImage && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${cardBgImage})` }}
+            />
+          )}
+
+          <div className="relative flex items-start justify-between gap-4 p-5">
             <div>
               <p className="text-xs tracking-wider text-stone-400">当前等级</p>
               <h3 className={`mt-1 text-xl font-medium ${tierStyle.title}`}>
@@ -239,42 +248,72 @@ export function VipPanel() {
             </button>
           </div>
 
-          {/* 底部信息：升级进度 / 生日礼遇，固定在卡面底部 */}
-          <div className="mt-auto">
-            {/* 升级进度条（钻石卡为最高档） */}
-            {nextLevel && (
-              <div className="mt-4 border-t border-stone-200/60 pt-4">
-                <div className="flex items-center justify-between text-xs text-stone-500">
-                  <span>
-                    再消费 ¥{nextLevel.spentNeeded.toLocaleString()} 升级{nextLevel.name}
-                  </span>
-                  <span>{nextLevel.progress}%</span>
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${tierStyle.bar}`}
-                    style={{ width: `${nextLevel.progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
+          {/* 分割线以下：背景虚化处理，承载升级进度与生日礼遇 */}
+          {(nextLevel ||
+            (user && !user.birthday && currentLevel.level !== "REGULAR")) && (
+            <div className="relative mt-auto border-t border-stone-200/60">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 backdrop-blur-md bg-white/25"
+              />
+              <div className="relative p-5 pt-4">
+                {/* 升级进度条（钻石卡为最高档） */}
+                {nextLevel && (
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-stone-500">
+                      <span>
+                        再消费 ¥{nextLevel.spentNeeded.toLocaleString()} 升级{nextLevel.name}
+                      </span>
+                      <span>{nextLevel.progress}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${tierStyle.bar}`}
+                        style={{ width: `${nextLevel.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-            {/* 生日礼遇引导：银卡及以上且未设置生日（生日设置入口在个人信息面板） */}
-            {user && !user.birthday && currentLevel.level !== "REGULAR" && (
+                {/* 生日礼遇引导：银卡及以上且未设置生日（生日设置入口在个人信息面板） */}
+                {user && !user.birthday && currentLevel.level !== "REGULAR" && (
+                  <button
+                    type="button"
+                    onClick={() => setUserCenterView("profile")}
+                    className={`${nextLevel ? "mt-3" : ""} flex w-full items-center justify-between rounded-lg bg-stone-100/70 px-3 py-2 transition-colors hover:bg-stone-100`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs text-stone-600">
+                      <Gift className="h-3.5 w-3.5 shrink-0 text-stone-500" />
+                      设置生日，生日当月赠{" "}
+                      {BIRTHDAY_POINTS[currentLevel.level as keyof typeof BIRTHDAY_POINTS]} 积分
+                    </span>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+          </div>
+
+          {/* 升级引导卡片：点击直接进入录入消费表单 */}
+          {nextLevel && (
+            <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
+              <h4 className="text-sm font-medium text-stone-800">提升会员等级</h4>
+              <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                在天猫 / 京东 / 小程序 /
+                线下专柜等渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。
+              </p>
               <button
                 type="button"
-                onClick={() => setUserCenterView("profile")}
-                className="mt-3 flex w-full items-center justify-between rounded-lg bg-stone-100/70 px-3 py-2 transition-colors hover:bg-stone-100"
+                onClick={focusSpentForm}
+                className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
               >
-                <span className="flex items-center gap-1.5 text-xs text-stone-600">
-                  <Gift className="h-3.5 w-3.5 shrink-0 text-stone-500" />
-                  设置生日，生日当月赠{" "}
-                  {BIRTHDAY_POINTS[currentLevel.level as keyof typeof BIRTHDAY_POINTS]} 积分
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                录入消费
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* 会员权益 - 2×2 等级卡片；点击后右侧整版内容淡出、对应等级介绍淡入 */}
@@ -301,8 +340,8 @@ export function VipPanel() {
                         : "border-stone-200/60 bg-white/40 hover:bg-white/60"
                   }`}
                 >
-                  {/* 各等级背景图：虚化 + 低透明度（淡淡的效果） */}
-                  {tierBgImage && (
+                  {/* 各等级背景图：虚化 + 低透明度（淡淡的效果）；当前档为实线框突出，不使用背景虚化 */}
+                  {tierBgImage && !isCurrent && (
                     <div
                       aria-hidden
                       className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25 blur-md"
