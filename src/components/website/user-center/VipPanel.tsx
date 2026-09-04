@@ -6,17 +6,15 @@
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。会员权益为手风琴式：默认收起，点击展开。
- * 积分展示在会员卡内：可用/冻结（账本在官网，兑礼入口在商城）。
+ * 积分展示在会员卡内：可用/冻结（账本在官网，兑礼在「积分商城」tab）。
  *
  * 会员卡背景图：设计稿就绪后放入 public/images 并登记到 CARD_BG_IMAGES，
  * 未登记时使用渐变 fallback。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Check, ChevronDown, Gift, Loader2, Lock } from "lucide-react";
+import { Check, ChevronDown, Loader2, Lock } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiPost } from "@/lib/api-client";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { SpentAdjustmentPanel } from "./SpentAdjustmentPanel";
@@ -92,40 +90,6 @@ interface PointsData {
   }[];
 }
 
-interface GiftItem {
-  id: string;
-  name: string;
-  description: string | null;
-  image: string | null;
-  priceYuan: number;
-  cost: number | null; // 当前等级所需积分（普通档 null）
-  affordable: boolean;
-}
-
-interface RedemptionRecord {
-  id: string;
-  productName: string;
-  priceYuan: number;
-  points: number;
-  status: "PENDING" | "FULFILLED" | "CANCELLED";
-  createdAt: string;
-}
-
-interface GiftsData {
-  membershipLevel: string;
-  redeemRate: number | null;
-  available: number;
-  frozen: number;
-  gifts: GiftItem[];
-  redemptions: RedemptionRecord[];
-}
-
-const REDEMPTION_STATUS_LABELS: Record<RedemptionRecord["status"], string> = {
-  PENDING: "待履约",
-  FULFILLED: "已履约",
-  CANCELLED: "已取消",
-};
-
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -138,13 +102,9 @@ function formatDate(iso: string | null): string {
 export function VipPanel() {
   const [vipData, setVipData] = useState<VIPData | null>(null);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
-  const [giftsData, setGiftsData] = useState<GiftsData | null>(null);
-  const [giftsLoading, setGiftsLoading] = useState(true);
-  const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
-  const [redeeming, setRedeeming] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const { error: showError, success: showSuccessToast } = useToast();
+  const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser } = useAuth();
 
   const toggleLevel = (level: string) => {
@@ -196,50 +156,10 @@ export function VipPanel() {
     }
   }, []);
 
-  const loadGiftsData = useCallback(async () => {
-    try {
-      const res = await fetchWithAuth("/api/user/points/gifts");
-      const data = await res.json();
-      if (data.success) {
-        setGiftsData(data.data);
-      }
-    } catch (e) {
-      if (e instanceof UnauthorizedError) return;
-      // 礼品加载失败静默
-    } finally {
-      setGiftsLoading(false);
-    }
-  }, []);
-
-  const handleRedeem = async () => {
-    if (!confirmGift) return;
-    // crypto.randomUUID 仅在安全上下文（https）可用，非安全上下文降级随机串
-    const requestId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setRedeeming(true);
-    try {
-      await apiPost("/api/user/points/redeem", {
-        giftId: confirmGift.id,
-        requestId,
-      });
-      showSuccessToast("兑换成功，礼品将尽快为您寄出");
-      setConfirmGift(null);
-      await loadPointsData();
-      await loadGiftsData();
-    } catch (e) {
-      showError(e instanceof Error ? e.message : "兑换失败，请稍后重试");
-    } finally {
-      setRedeeming(false);
-    }
-  };
-
   useEffect(() => {
     deferInEffect(loadVIPData);
     deferInEffect(loadPointsData);
-    deferInEffect(loadGiftsData);
-  }, [loadVIPData, loadPointsData, loadGiftsData]);
+  }, [loadVIPData, loadPointsData]);
 
   if (!vipData && loading) {
     return (
@@ -312,111 +232,6 @@ export function VipPanel() {
                   className={`h-full rounded-full transition-all duration-500 ${tierStyle.bar}`}
                   style={{ width: `${nextLevel.progress}%` }}
                 />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 积分兑换 */}
-        <div className="mt-6 rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <div className="flex items-center justify-between">
-            <h4 className="flex items-center gap-1.5 text-sm font-medium text-stone-700">
-              <Gift className="h-4 w-4" />
-              兑换好礼
-            </h4>
-            {giftsData && giftsData.redeemRate !== null && (
-              <p className="text-xs text-stone-400">1 积分可兑 ¥{giftsData.redeemRate}</p>
-            )}
-          </div>
-
-          {giftsLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-            </div>
-          ) : !giftsData ? (
-            <p className="py-6 text-center text-xs text-stone-400">礼品加载失败，请稍后重试</p>
-          ) : giftsData.redeemRate === null ? (
-            <div className="flex items-center justify-center gap-1.5 py-6 text-xs text-stone-400">
-              <Lock className="h-3.5 w-3.5" />
-              升级银卡会员解锁积分兑换
-            </div>
-          ) : giftsData.gifts.length === 0 ? (
-            <p className="py-6 text-center text-xs text-stone-400">暂无上架礼品</p>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {giftsData.gifts.map((g) => (
-                <div
-                  key={g.id}
-                  className="flex flex-col justify-between rounded-xl border border-stone-200/60 bg-white/60 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      {g.image && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={g.image}
-                          alt=""
-                          className="h-12 w-12 shrink-0 rounded-lg border border-stone-200/60 object-cover"
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-stone-800">{g.name}</p>
-                        {g.description && (
-                          <p className="mt-1 line-clamp-2 text-xs text-stone-400">{g.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-xs text-stone-400">
-                      价格 ¥{g.priceYuan.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-sm font-medium text-stone-700">
-                      {g.cost?.toLocaleString()} 积分
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!g.affordable}
-                      onClick={() => setConfirmGift(g)}
-                      className="rounded-full bg-stone-800 px-4 py-1.5 text-xs text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
-                    >
-                      {g.affordable ? "兑换" : "积分不足"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* 我的兑换记录 */}
-          {giftsData && giftsData.redemptions.length > 0 && (
-            <div className="mt-4 border-t border-stone-200/60 pt-3">
-              <p className="mb-2 text-xs font-medium text-stone-500">我的兑换记录</p>
-              <div className="space-y-2">
-                {giftsData.redemptions.slice(0, 5).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between text-xs">
-                    <span className="text-stone-600">
-                      {r.productName}
-                      <span className="ml-2 text-stone-400">
-                        {r.points.toLocaleString()} 积分
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 ${
-                          r.status === "FULFILLED"
-                            ? "bg-emerald-50 text-emerald-600"
-                            : r.status === "PENDING"
-                              ? "bg-amber-50 text-amber-600"
-                              : "bg-stone-100 text-stone-400"
-                        }`}
-                      >
-                        {REDEMPTION_STATUS_LABELS[r.status]}
-                      </span>
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           )}
@@ -497,21 +312,6 @@ export function VipPanel() {
         </div>
         {/* 消费补录（全渠道凭证 → 人工审核 → 补录历史消费金额） */}
         <SpentAdjustmentPanel />
-
-        {/* 兑换确认 */}
-        <ConfirmDialog
-          open={!!confirmGift}
-          onClose={() => setConfirmGift(null)}
-          onConfirm={handleRedeem}
-          title="确认兑换"
-          description={
-            confirmGift
-              ? `确定使用 ${confirmGift.cost?.toLocaleString()} 积分兑换「${confirmGift.name}」吗？兑换成功后积分不可退还。`
-              : ""
-          }
-          confirmText="确认兑换"
-          loading={redeeming}
-        />
       </div>
     </div>
   );

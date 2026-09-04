@@ -2,7 +2,7 @@
 
 /**
  * 用户中心弹窗测试
- * 覆盖：三个一级菜单（个人信息/会员中心/安全中心），
+ * 覆盖：四个一级菜单（个人信息/会员中心/积分商城/安全中心），
  * 设备管理/授权管理/登录历史已合并进安全中心（内部分段标签切换）。
  * 安全设置（密码管理）已合并进个人信息面板。
  */
@@ -64,14 +64,29 @@ describe("UserCenterModal", () => {
     setupAuth();
   });
 
-  it("菜单包含三个一级入口，安全类子项不再作为一级菜单", () => {
+  it("菜单包含四个一级入口，安全类子项不再作为一级菜单", () => {
     render(<UserCenterModal />);
-    for (const label of ["个人信息", "会员中心", "安全中心"]) {
+    for (const label of ["个人信息", "会员中心", "积分商城", "安全中心"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     for (const label of ["设备管理", "授权管理", "登录历史"]) {
       expect(screen.queryByRole("button", { name: label })).not.toBeInTheDocument();
     }
+  });
+
+  it("点击「积分商城」直接切换弹窗 tab", () => {
+    render(<UserCenterModal />);
+    fireEvent.click(screen.getByRole("button", { name: "积分商城" }));
+
+    expect(mockSetUserCenterView).toHaveBeenCalledWith("mall");
+    expect(mockCloseUserCenter).not.toHaveBeenCalled();
+  });
+
+  it("积分商城视图渲染积分商城面板", async () => {
+    setupAuth("mall");
+    render(<UserCenterModal />);
+
+    expect(await screen.findByTestId("panel-mall")).toBeInTheDocument();
   });
 
   it("点击「安全中心」直接切换弹窗 tab", () => {

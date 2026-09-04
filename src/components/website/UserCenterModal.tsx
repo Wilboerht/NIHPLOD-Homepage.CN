@@ -15,19 +15,22 @@ import {
   LogOut,
   ArrowLeft,
   Crown,
+  Gift,
   Shield,
 } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { VipPanel } from "./user-center/VipPanel";
+import { PointsMallPanel } from "./user-center/panels/PointsMallPanel";
 import { SecurityCenterPanel } from "./user-center/panels/SecurityCenterPanel";
 
-// 菜单项配置：三个一级入口。设备管理/授权管理/登录历史已合并进安全中心
+// 菜单项配置：四个一级入口。设备管理/授权管理/登录历史已合并进安全中心
 // （对应 /account 旧链接经 openUserCenter 归一化为 security + 分段）。
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
   { id: "vip", label: "会员中心", icon: Crown },
+  { id: "mall", label: "积分商城", icon: Gift },
   { id: "security", label: "安全中心", icon: Shield },
 ];
 
@@ -372,12 +375,14 @@ export function UserCenterModal() {
   return createPortal(content, document.body);
 }
 
-// 内容面板路由：三个一级菜单（安全中心内部再分设备/授权/登录历史三段）
+// 内容面板路由：四个一级菜单（安全中心内部再分设备/授权/登录历史三段）
 // 旧的安全类 tab 已由 openUserCenter 归一化，此处兜底同指安全中心。
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
     case "vip":
       return <VipPanel />;
+    case "mall":
+      return <PointsMallPanel />;
     case "security":
     case "devices":
     case "authorizations":
