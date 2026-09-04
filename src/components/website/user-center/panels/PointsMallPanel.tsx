@@ -173,13 +173,10 @@ export function PointsMallPanel() {
               />
             </button>
           </div>
-          <div className="mt-4 flex items-end gap-8">
-            <div>
-              <p className="text-xs text-stone-400">可用积分</p>
-              <p className="mt-1 text-2xl font-light text-stone-800">
-                {giftsData ? giftsData.available.toLocaleString() : "—"}
-              </p>
-            </div>
+          <div className="mt-4">
+            <p className="text-3xl font-light text-stone-800">
+              {giftsData ? giftsData.available.toLocaleString() : "—"}
+            </p>
           </div>
 
           {/* 积分明细（可折叠） */}
