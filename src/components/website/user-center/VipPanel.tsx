@@ -524,10 +524,10 @@ export function VipPanel() {
 
                 {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
                 {selected.level === "REGULAR" && selected.level === currentLevel.level && (
-                  <div className="mt-4 rounded-lg bg-stone-100/60 px-3 py-3">
-                    <div className="flex items-start gap-1.5">
-                      <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-400" />
-                      <p className="text-xs leading-relaxed text-stone-500">
+                  <div className="mt-4 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                      <p className="text-xs leading-relaxed text-stone-600">
                         累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
                         顾问、积分兑礼与生日礼遇等权益
                       </p>
@@ -535,7 +535,7 @@ export function VipPanel() {
                     <button
                       type="button"
                       onClick={focusSpentForm}
-                      className="mt-2 inline-flex items-center gap-1 rounded-full border border-stone-300 px-3 py-1 text-[11px] text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-800"
+                      className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
                     >
                       补录消费记录
                     </button>
@@ -544,22 +544,26 @@ export function VipPanel() {
 
                 {/* 未达档等级：解锁提示 + 补录引导 */}
                 {selected.level !== "REGULAR" && selected.minSpent > totalSpent && (
-                  <div className="mt-4 rounded-lg bg-stone-100/60 px-3 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
-                      <p className="text-xs text-stone-500">
-                        还差 ¥{(selected.minSpent - totalSpent).toLocaleString()} 解锁该等级
+                  <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Lock className="h-4 w-4 shrink-0 text-stone-400" />
+                      <p className="text-xs text-stone-600">
+                        还差{" "}
+                        <span className="text-sm font-medium text-[#00263e]">
+                          ¥{(selected.minSpent - totalSpent).toLocaleString()}
+                        </span>{" "}
+                        解锁该等级
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={focusSpentForm}
-                      className="mt-2 inline-flex items-center gap-1 rounded-full border border-stone-300 px-3 py-1 text-[11px] text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-800"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
                     >
                       补录消费记录
                     </button>
-                      </div>
-                    )}
+                  </div>
+                )}
             </m.div>
           )}
 

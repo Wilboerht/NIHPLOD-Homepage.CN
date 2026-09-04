@@ -61,13 +61,13 @@ const STATUS_ICONS = {
 
 const STATUS_COLORS = {
   PENDING: "text-stone-500",
-  APPROVED: "text-emerald-600",
+  APPROVED: "text-[#00263e]",
   REJECTED: "text-red-500",
 } as const;
 
 const STATUS_BG = {
   PENDING: "bg-stone-100",
-  APPROVED: "bg-emerald-50",
+  APPROVED: "bg-[#00263e]/10",
   REJECTED: "bg-red-50",
 } as const;
 
@@ -491,7 +491,7 @@ export function SpentAdjustmentPanel({
                       </div>
 
                       {a.status === "APPROVED" && a.reviewAmount != null && (
-                        <p className="mt-1.5 text-xs text-emerald-600">
+                        <p className="mt-1.5 text-xs text-[#00263e]">
                           已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
                         </p>
                       )}
