@@ -212,7 +212,7 @@ export function VipPanel() {
             >
         {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，左对齐，背景图按卡面铺满） */}
         <div
-          className={`relative flex aspect-[1.586/1] w-full max-w-[430px] flex-col overflow-hidden rounded-xl border p-5 ${tierStyle.card} ${cardBgImage ? "bg-cover bg-center" : ""}`}
+          className={`relative flex aspect-[1.586/1] w-full max-w-[360px] flex-col overflow-hidden rounded-xl border p-5 ${tierStyle.card} ${cardBgImage ? "bg-cover bg-center" : ""}`}
           style={{
             ...(cardBgImage ? { backgroundImage: `url(${cardBgImage})` } : {}),
           }}
@@ -294,9 +294,11 @@ export function VipPanel() {
                     setView("tier");
                   }}
                   className={`relative overflow-hidden rounded-xl border p-4 text-left transition-opacity ${
-                    isUnlocked
-                      ? "border-stone-200/40 bg-white/20 opacity-60 hover:opacity-90"
-                      : "border-stone-200/60 bg-white/40 hover:bg-white/60"
+                    isCurrent
+                      ? "border-[#00263e] bg-white/60"
+                      : isUnlocked
+                        ? "border-stone-200/40 bg-white/20 opacity-60 hover:opacity-90"
+                        : "border-stone-200/60 bg-white/40 hover:bg-white/60"
                   }`}
                 >
                   {/* 各等级背景图：虚化 + 低透明度（淡淡的效果） */}
