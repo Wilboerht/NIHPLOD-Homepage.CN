@@ -349,7 +349,7 @@ export function VipPanel() {
               <button
                 type="button"
                 onClick={() => setView("main")}
-                className="mb-4 flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
+                className="mb-4 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
                 查看全部等级
