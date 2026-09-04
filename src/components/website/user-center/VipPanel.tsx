@@ -193,7 +193,17 @@ export function VipPanel() {
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-vip">
       {/* 标题 - 移动端由弹窗全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
+      <div className="hidden flex-shrink-0 items-center gap-3 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
+        {view !== "main" && (
+          <button
+            type="button"
+            onClick={() => setView("main")}
+            className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            返回
+          </button>
+        )}
         <h2 className="text-xl font-medium tracking-wide text-stone-800">会员中心</h2>
       </div>
 
@@ -349,7 +359,7 @@ export function VipPanel() {
               <button
                 type="button"
                 onClick={() => setView("main")}
-                className="mb-4 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                className="mb-4 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900 md:hidden"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
                 查看全部等级
