@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlertCircle,
   Camera,
   CheckCircle2,
   ChevronLeft,
@@ -272,169 +273,193 @@ export function SpentAdjustmentPanel({
           </p>
 
           {/* 申请表单 */}
-          <div className="mt-4 space-y-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+          <div className="mt-4 space-y-5 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+            {/* 待审核上限提示 */}
             {reachedPendingLimit && (
-            <p className="text-xs text-amber-600">
-              您已有 {pendingCount} 条待审核申请，请等待审核完成后再提交新申请。
-            </p>
-          )}
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                您已有 {pendingCount} 条待审核申请，请等待审核完成后再提交新申请。
+              </div>
+            )}
 
-          {/* 渠道选择 */}
-          <div>
-            <p className="mb-2 text-xs text-stone-500">购买渠道</p>
-            <div className="flex flex-wrap gap-2">
-              {SPENT_CHANNELS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setChannel(c)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                    channel === c
-                      ? "border-stone-800 bg-stone-800 text-white"
-                      : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
-                  }`}
-                >
-                  {SPENT_CHANNEL_LABELS[c]}
-                </button>
-              ))}
+            {/* 订单信息 */}
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-xs text-stone-500">
+                  购买渠道 <span className="text-stone-400">（必选）</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SPENT_CHANNELS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setChannel(c)}
+                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        channel === c
+                          ? "border-[#00263e] bg-[#00263e] text-white"
+                          : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
+                      }`}
+                    >
+                      {SPENT_CHANNEL_LABELS[c]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label htmlFor="spent-order-no" className="text-xs text-stone-500">
+                    订单号 / 小票号 <span className="text-stone-400">（必填）</span>
+                  </label>
+                  <span className="text-[11px] text-stone-300">{orderNo.length}/64</span>
+                </div>
+                <input
+                  id="spent-order-no"
+                  type="text"
+                  maxLength={64}
+                  value={orderNo}
+                  onChange={(e) => setOrderNo(e.target.value)}
+                  placeholder="如：天猫订单号 / 线下小票号"
+                  className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* 订单号 */}
-          <div>
-            <label htmlFor="spent-order-no" className="mb-1 block text-xs text-stone-500">
-              订单号 / 小票号 <span className="text-stone-400">（必填）</span>
-            </label>
-            <input
-              id="spent-order-no"
-              type="text"
-              maxLength={64}
-              value={orderNo}
-              onChange={(e) => setOrderNo(e.target.value)}
-              placeholder="如：天猫订单号 / 线下小票号"
-              className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {/* 消费金额（选填） */}
-            <div>
-              <label htmlFor="spent-amount" className="mb-1 block text-xs text-stone-500">
-                消费金额（元）<span className="text-stone-400">（选填，以人工核实为准）</span>
-              </label>
-              <input
-                id="spent-amount"
-                type="number"
-                min={1}
-                max={1000000}
-                value={amountClaimed}
-                onChange={(e) => setAmountClaimed(e.target.value)}
-                placeholder="如：1280"
-                className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
-              />
-            </div>
-            {/* 消费日期（选填） */}
-            <div>
-              <label htmlFor="spent-date" className="mb-1 block text-xs text-stone-500">
-                消费日期 <span className="text-stone-400">（选填）</span>
-              </label>
-              <input
-                id="spent-date"
-                type="date"
-                value={purchasedAt}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setPurchasedAt(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-stone-400"
-              />
-            </div>
-          </div>
-
-          {/* 凭证截图（选填） */}
-          <div>
-            <p className="mb-2 text-xs text-stone-500">
-              凭证截图 <span className="text-stone-400">（选填，最多 {MAX_IMAGES} 张）</span>
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {images.map((url, i) => (
-                <div
-                  key={url}
-                  className="group relative h-20 w-20 overflow-hidden rounded-lg border border-stone-200"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={receiptImageSrc(url, "user")}
-                    alt={`凭证 ${i + 1}`}
-                    className="h-full w-full object-cover"
+            {/* 金额与日期 */}
+            <div className="grid grid-cols-1 gap-4 border-t border-stone-200/60 pt-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="spent-amount" className="mb-1 block text-xs text-stone-500">
+                  消费金额 <span className="text-stone-400">（选填，以人工核实为准）</span>
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">
+                    ¥
+                  </span>
+                  <input
+                    id="spent-amount"
+                    type="number"
+                    min={1}
+                    max={1000000}
+                    value={amountClaimed}
+                    onChange={(e) => setAmountClaimed(e.target.value)}
+                    placeholder="1280"
+                    className="w-full rounded-xl border border-stone-200 bg-white/60 py-2.5 pl-8 pr-4 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="spent-date" className="mb-1 block text-xs text-stone-500">
+                  消费日期 <span className="text-stone-400">（选填）</span>
+                </label>
+                <input
+                  id="spent-date"
+                  type="date"
+                  value={purchasedAt}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setPurchasedAt(e.target.value)}
+                  className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-stone-400"
+                />
+              </div>
+            </div>
+
+            {/* 凭证截图（选填） */}
+            <div className="border-t border-stone-200/60 pt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs text-stone-500">
+                  凭证截图 <span className="text-stone-400">（选填）</span>
+                </p>
+                <span className="text-[11px] text-stone-300">
+                  {images.length}/{MAX_IMAGES}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {images.map((url, i) => (
+                  <div
+                    key={url}
+                    className="group relative h-20 w-20 overflow-hidden rounded-lg border border-stone-200"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={receiptImageSrc(url, "user")}
+                      alt={`凭证 ${i + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      aria-label={`删除凭证 ${i + 1}`}
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
                   <button
                     type="button"
-                    onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                    aria-label={`删除凭证 ${i + 1}`}
-                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone-300 text-stone-400 transition-colors hover:border-stone-400 hover:text-stone-600 disabled:opacity-50"
                   >
-                    <X className="h-3 w-3" />
+                    {uploading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <ImagePlus className="h-5 w-5" />
+                        <span className="text-[10px]">上传</span>
+                      </>
+                    )}
                   </button>
-                </div>
-              ))}
-              {images.length < MAX_IMAGES && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone-300 text-stone-400 transition-colors hover:border-stone-400 hover:text-stone-600 disabled:opacity-50"
-                >
-                  {uploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <ImagePlus className="h-5 w-5" />
-                      <span className="text-[10px]">上传</span>
-                    </>
-                  )}
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={(e) => handleUpload(e.target.files)}
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(e) => handleUpload(e.target.files)}
+                />
+              </div>
+            </div>
+
+            {/* 备注（选填） */}
+            <div className="border-t border-stone-200/60 pt-4">
+              <div className="mb-1 flex items-center justify-between">
+                <label htmlFor="spent-note" className="text-xs text-stone-500">
+                  备注 <span className="text-stone-400">（选填）</span>
+                </label>
+                <span className="text-[11px] text-stone-300">{note.length}/500</span>
+              </div>
+              <textarea
+                id="spent-note"
+                maxLength={500}
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="补充说明（如订单含多个商品、退款情况等）"
+                className="w-full resize-none rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
               />
             </div>
-          </div>
 
-          {/* 备注（选填） */}
-          <div>
-            <label htmlFor="spent-note" className="mb-1 block text-xs text-stone-500">
-              备注 <span className="text-stone-400">（选填）</span>
-            </label>
-            <textarea
-              id="spent-note"
-              maxLength={500}
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="补充说明（如订单含多个商品、退款情况等）"
-              className="w-full resize-none rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting || uploading || reachedPendingLimit}
-              className="flex items-center gap-2 rounded-full bg-stone-800 px-6 py-2.5 text-xs text-white transition-colors hover:bg-stone-700 disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-              {submitting ? "提交中..." : "提交申请"}
-            </button>
-          </div>
+            {/* 提交 */}
+            <div className="border-t border-stone-200/60 pt-4">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || uploading || reachedPendingLimit}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {submitting ? "提交中..." : "提交申请"}
+              </button>
+              <p className="mt-2 text-center text-[11px] text-stone-300">
+                人工审核，结果将以短信通知；审核通过后自动更新会员等级
+              </p>
+            </div>
           </div>
         </div>
       )}

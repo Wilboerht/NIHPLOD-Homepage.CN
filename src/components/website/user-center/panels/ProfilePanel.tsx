@@ -522,7 +522,7 @@ export function ProfilePanel() {
                   <button
                     onClick={handlePhoneChange}
                     disabled={phoneSaving}
-                    className="rounded-full bg-stone-800 px-6 py-2.5 text-sm text-white transition-colors hover:bg-stone-700 disabled:opacity-50"
+                    className="rounded-full bg-[#00263e] px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:opacity-50"
                   >
                     {phoneSaving ? "换绑中..." : "确认换绑"}
                   </button>

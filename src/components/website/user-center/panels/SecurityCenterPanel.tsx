@@ -46,7 +46,7 @@ export function SecurityCenterPanel() {
               onClick={() => setSecuritySection(section)}
               className={`rounded-full px-4 py-1.5 text-xs transition-colors ${
                 securitySection === section
-                  ? "bg-stone-800 text-white"
+                  ? "bg-[#00263e] text-white"
                   : "text-stone-500 hover:text-stone-800"
               }`}
             >

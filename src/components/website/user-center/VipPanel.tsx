@@ -193,7 +193,8 @@ export function VipPanel() {
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-vip">
       {/* 标题 - 移动端由弹窗全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 items-center gap-3 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
+      <div className="hidden flex-shrink-0 items-center justify-between gap-3 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
+        <h2 className="text-xl font-medium tracking-wide text-stone-800">会员中心</h2>
         {view !== "main" && (
           <button
             type="button"
@@ -204,7 +205,6 @@ export function VipPanel() {
             返回
           </button>
         )}
-        <h2 className="text-xl font-medium tracking-wide text-stone-800">会员中心</h2>
       </div>
 
       <div

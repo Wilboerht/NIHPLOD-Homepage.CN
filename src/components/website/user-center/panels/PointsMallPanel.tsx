@@ -272,7 +272,7 @@ export function PointsMallPanel() {
                       type="button"
                       disabled={!g.affordable}
                       onClick={() => setConfirmGift(g)}
-                      className="rounded-full bg-stone-800 px-4 py-1.5 text-xs text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
+                      className="rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
                     >
                       {g.affordable ? "兑换" : "积分不足"}
                     </button>
