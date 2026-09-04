@@ -319,7 +319,7 @@ export function VipPanel() {
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/60">
                       <div
-                        className="h-full rounded-full bg-[#00263e] transition-all duration-500"
+                        className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
                         style={{ width: `${nextLevel.progress}%` }}
                       />
                     </div>
