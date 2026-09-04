@@ -457,30 +457,28 @@ export function SpentAdjustmentPanel({
                   return (
                     <div
                       key={a.id}
-                      className="rounded-xl border border-stone-200/60 bg-white/40 p-4"
+                      className="rounded-xl border border-stone-200/60 bg-white/40 px-4 py-3"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
+                            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
                           >
                             <StatusIcon className="h-3 w-3" />
                             {SPENT_STATUS_LABELS[a.status]}
                           </span>
-                          <span className="text-[11px] text-stone-400">
-                            {SPENT_CHANNEL_LABELS[
-                              a.channel as keyof typeof SPENT_CHANNEL_LABELS
-                            ] ?? a.channel}
-                          </span>
+                          <span className="truncate text-sm text-stone-700">{a.orderNo}</span>
                         </div>
-                        <span className="shrink-0 text-[11px] text-stone-300">
+                        <span className="shrink-0 text-[11px] text-stone-400">
                           {formatDate(a.createdAt)}
                         </span>
                       </div>
-                      <p className="mt-2 truncate text-sm font-medium text-stone-800">
-                        {a.orderNo}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
+
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-400">
+                        <span>
+                          {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
+                            a.channel}
+                        </span>
                         {a.amountClaimed != null && (
                           <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
                         )}
@@ -491,15 +489,14 @@ export function SpentAdjustmentPanel({
                           </span>
                         )}
                       </div>
+
                       {a.status === "APPROVED" && a.reviewAmount != null && (
-                        <p className="mt-2 rounded-lg bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700">
+                        <p className="mt-1.5 text-xs text-emerald-600">
                           已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
                         </p>
                       )}
                       {a.status === "REJECTED" && a.reviewNote && (
-                        <p className="mt-2 rounded-lg bg-red-50/60 px-3 py-2 text-xs text-red-600">
-                          驳回原因：{a.reviewNote}
-                        </p>
+                        <p className="mt-1.5 text-xs text-red-500">驳回原因：{a.reviewNote}</p>
                       )}
                     </div>
                   );
