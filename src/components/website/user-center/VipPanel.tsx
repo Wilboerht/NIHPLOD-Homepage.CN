@@ -2,11 +2,11 @@
 
 /**
  * 会员中心面板（共享）
- * 显示会员等级、累计消费与积分（等级体系 2026-09 四档：普通/银卡/金卡/钻石卡）
+ * 显示会员等级与积分（等级体系 2026-09 四档：普通/银卡/金卡/钻石卡）
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。会员权益为手风琴式：默认收起，点击展开。
- * 积分卡片：可用/冻结/解冻时间（账本在官网，兑礼入口在商城）。
+ * 积分展示在会员卡内：可用/冻结（账本在官网，兑礼入口在商城）。
  *
  * 会员卡背景图：设计稿就绪后放入 public/images 并登记到 CARD_BG_IMAGES，
  * 未登记时使用渐变 fallback。
@@ -19,7 +19,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiPost } from "@/lib/api-client";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
-import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { SpentAdjustmentPanel } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（仅作卡面底色/纹理：bg-cover 铺满，容器高度由内容决定，
@@ -127,14 +126,6 @@ const REDEMPTION_STATUS_LABELS: Record<RedemptionRecord["status"], string> = {
   CANCELLED: "已取消",
 };
 
-const POINT_TYPE_LABELS: Record<string, string> = {
-  CONSUME: "消费获得",
-  REFUND: "退款冲正",
-  BIRTHDAY: "生日礼遇",
-  REDEEM: "积分兑礼",
-  EXPIRE: "积分过期",
-};
-
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -147,7 +138,6 @@ function formatDate(iso: string | null): string {
 export function VipPanel() {
   const [vipData, setVipData] = useState<VIPData | null>(null);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
-  const [pointsLoading, setPointsLoading] = useState(true);
   const [giftsData, setGiftsData] = useState<GiftsData | null>(null);
   const [giftsLoading, setGiftsLoading] = useState(true);
   const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
@@ -203,8 +193,6 @@ export function VipPanel() {
     } catch (e) {
       if (e instanceof UnauthorizedError) return;
       // 积分加载失败静默（不影响会员卡片主信息展示）
-    } finally {
-      setPointsLoading(false);
     }
   }, []);
 
@@ -272,8 +260,6 @@ export function VipPanel() {
   const { currentLevel, nextLevel, totalSpent, allLevels, memberId } = vipData;
   const tierStyle = TIER_CARD_STYLES[currentLevel.level] ?? TIER_CARD_STYLES.REGULAR;
   const cardBgImage = CARD_BG_IMAGES[currentLevel.level];
-  const redeemRate =
-    POINT_REDEEM_RATES[vipData.membershipLevel as keyof typeof POINT_REDEEM_RATES] ?? null;
 
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-vip">
@@ -301,10 +287,16 @@ export function VipPanel() {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-stone-400">累计消费</p>
+              <p className="text-xs text-stone-400">我的积分</p>
               <p className="mt-1 text-xl font-light text-stone-700">
-                ¥{totalSpent.toLocaleString()}
+                {pointsData ? pointsData.available.toLocaleString() : "—"}
               </p>
+              {pointsData && pointsData.frozen > 0 && (
+                <p className="mt-1 text-[11px] text-stone-400">
+                  {pointsData.frozen} 冻结中
+                  {pointsData.nextReleaseAt ? ` · ${formatDate(pointsData.nextReleaseAt)} 解冻` : ""}
+                </p>
+              )}
             </div>
           </div>
 
@@ -322,67 +314,6 @@ export function VipPanel() {
                 />
               </div>
             </div>
-          )}
-        </div>
-
-        {/* 积分卡片（账本在官网，兑礼入口在商城） */}
-        <div className="mt-6 rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-stone-700">我的积分</h4>
-            {redeemRate !== null && (
-              <p className="text-xs text-stone-400">兑礼率 1:{redeemRate}</p>
-            )}
-            {pointsData?.nextReleaseAt && pointsData.frozen > 0 && (
-              <p className="text-xs text-stone-400">
-                {pointsData.frozen} 积分冻结中 · {formatDate(pointsData.nextReleaseAt)} 解冻
-              </p>
-            )}
-          </div>
-          <div className="mt-4 flex items-end gap-8">
-            <div>
-              <p className="text-xs text-stone-400">可用积分</p>
-              <p className="mt-1 text-2xl font-light text-stone-800">
-                {pointsData ? pointsData.available.toLocaleString() : "—"}
-              </p>
-            </div>
-            {pointsData && pointsData.frozen > 0 && (
-              <div>
-                <p className="text-xs text-stone-400">冻结中</p>
-                <p className="mt-1 text-2xl font-light text-stone-400">
-                  {pointsData.frozen.toLocaleString()}
-                </p>
-              </div>
-            )}
-          </div>
-          {pointsData && pointsData.recent.length > 0 && (
-            <div className="mt-4 border-t border-stone-200/60 pt-3">
-              {pointsData.recent.slice(0, 5).map((r) => (
-                <div key={r.id} className="flex items-center justify-between py-1 text-xs">
-                  <span className="text-stone-500">
-                    {POINT_TYPE_LABELS[r.type] ?? r.type}
-                    {r.note && r.type === "CONSUME" ? `（${r.note.slice(0, 20)}）` : ""}
-                  </span>
-                  <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                  <span
-                    className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
-                  >
-                    {r.amount >= 0 ? "+" : ""}
-                    {r.amount.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {pointsLoading ? (
-            <p className="mt-4 flex items-center gap-1.5 text-xs text-stone-400">
-              <Loader2 className="h-3 w-3 animate-spin" /> 积分加载中...
-            </p>
-          ) : (
-            pointsData && (
-              <p className="mt-3 text-xs text-stone-400">
-                积分自发放起 6 个月有效，商城礼品兑换请前往官方店铺
-              </p>
-            )
           )}
         </div>
 
