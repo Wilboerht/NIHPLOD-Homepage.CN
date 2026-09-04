@@ -79,6 +79,11 @@ function formatDate(iso: string | null): string {
   ).padStart(2, "0")}`;
 }
 
+/** 产品描述由富文本编辑器存为 HTML（如 <p>...</p>），卡片展示时剥离标签取纯文本 */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
 export function PointsMallPanel() {
   const [giftsData, setGiftsData] = useState<GiftsData | null>(null);
   const [giftsLoading, setGiftsLoading] = useState(true);
@@ -256,7 +261,9 @@ export function PointsMallPanel() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-stone-800">{g.name}</p>
                         {g.description && (
-                          <p className="mt-1 line-clamp-2 text-xs text-stone-400">{g.description}</p>
+                          <p className="mt-1 line-clamp-2 text-xs text-stone-400">
+                            {stripHtml(g.description)}
+                          </p>
                         )}
                       </div>
                     </div>

@@ -345,8 +345,8 @@ export function VipPanel() {
 
           {/* 升级引导卡片：三步流程 + 录入消费 / 查看录入历史 */}
           <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
-            <h4 className="flex items-center gap-1.5 text-sm font-medium text-stone-800">
-              <TrendingUp className="h-4 w-4 text-[#00263e]" />
+            <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+              <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
               提升会员等级
             </h4>
 
