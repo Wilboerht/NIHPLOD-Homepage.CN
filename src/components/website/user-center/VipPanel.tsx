@@ -345,27 +345,18 @@ export function VipPanel() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative overflow-hidden rounded-xl border border-stone-200/60 bg-white/60 p-5"
             >
-              {CARD_BG_IMAGES[selected.level] && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25 blur-md"
-                  style={{ backgroundImage: `url(${CARD_BG_IMAGES[selected.level]})` }}
-                />
-              )}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setView("main")}
-                  className="mb-4 flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  查看全部等级
-                </button>
+              <button
+                type="button"
+                onClick={() => setView("main")}
+                className="mb-4 flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                查看全部等级
+              </button>
 
-                {/* 头部：等级名 + 门槛 + 状态 */}
-                <div className="flex items-start justify-between gap-3">
+              {/* 头部：等级名 + 门槛 + 状态 */}
+              <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-lg font-medium text-stone-800">{selected.name}</p>
                     <p className="mt-1 text-xs text-stone-400">
@@ -444,9 +435,8 @@ export function VipPanel() {
                     >
                       补录消费记录
                     </button>
-                  </div>
-                )}
-              </div>
+                      </div>
+                    )}
             </m.div>
           )}
 
