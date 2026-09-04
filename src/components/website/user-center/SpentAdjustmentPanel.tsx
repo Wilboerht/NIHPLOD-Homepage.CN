@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Camera,
+  Check,
   CheckCircle2,
   ChevronLeft,
   Clock,
@@ -251,7 +252,7 @@ export function SpentAdjustmentPanel({
             <div className="space-y-4">
               <div>
                 <p className="mb-2 text-xs text-stone-500">
-                  购买渠道 <span className="text-stone-400">（必选）</span>
+                  购买渠道 <span className="text-[#00263e]">*</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {SPENT_CHANNELS.map((c) => (
@@ -259,12 +260,13 @@ export function SpentAdjustmentPanel({
                       key={c}
                       type="button"
                       onClick={() => setChannel(c)}
-                      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors ${
                         channel === c
                           ? "border-[#00263e] bg-[#00263e] text-white"
                           : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
                       }`}
                     >
+                      {channel === c && <Check className="h-3 w-3" />}
                       {SPENT_CHANNEL_LABELS[c]}
                     </button>
                   ))}
@@ -274,7 +276,7 @@ export function SpentAdjustmentPanel({
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label htmlFor="spent-order-no" className="text-xs text-stone-500">
-                    订单号 / 小票号 <span className="text-stone-400">（必填）</span>
+                    订单号 / 小票号 <span className="text-[#00263e]">*</span>
                   </label>
                   <span className="text-[11px] text-stone-300">{orderNo.length}/64</span>
                 </div>
@@ -364,14 +366,14 @@ export function SpentAdjustmentPanel({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-stone-300 text-stone-400 transition-colors hover:border-stone-400 hover:text-stone-600 disabled:opacity-50"
+                    className="flex h-20 w-40 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 text-stone-400 transition-colors hover:border-stone-400 hover:text-stone-600 disabled:opacity-50"
                   >
                     {uploading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
                       <>
                         <ImagePlus className="h-5 w-5" />
-                        <span className="text-[10px]">上传</span>
+                        <span className="text-[11px]">上传凭证截图</span>
                       </>
                     )}
                   </button>
@@ -405,26 +407,26 @@ export function SpentAdjustmentPanel({
                 className="w-full resize-none rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
               />
             </div>
+          </div>
 
-            {/* 提交 */}
-            <div className="border-t border-stone-200/60 pt-4">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={submitting || uploading || reachedPendingLimit}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                {submitting ? "提交中..." : "提交申请"}
-              </button>
-              <p className="mt-2 text-center text-[11px] text-stone-300">
-                人工审核，结果将以短信通知；审核通过后自动更新会员等级
-              </p>
-            </div>
+          {/* 提交栏（吸底：表单较长时无需滚动即可提交） */}
+          <div className="sticky bottom-0 -mx-6 mt-4 border-t border-stone-200/60 bg-[#FBF8F0]/85 px-6 py-4 backdrop-blur-md md:-mx-16 md:px-16">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || uploading || reachedPendingLimit}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              {submitting ? "提交中..." : "提交申请"}
+            </button>
+            <p className="mt-2 text-center text-[11px] text-stone-400">
+              人工审核，结果将以短信通知；审核通过后自动更新会员等级
+            </p>
           </div>
         </div>
       )}
