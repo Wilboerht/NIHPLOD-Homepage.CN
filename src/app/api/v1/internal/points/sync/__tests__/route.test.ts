@@ -189,7 +189,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
         note: "商城订单消费",
       },
     });
-    // 积分联动：消费发放 1:1（冻结 7 天、6 个月过期）
+    // 积分联动：消费发放 1:1（立即到账、6 个月过期）
     expect(txClient.pointLedger.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "user-1",
@@ -197,14 +197,14 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
         amount: 150,
         remaining: 150,
         reference: "points:mall-order-N001",
-        frozenUntil: expect.any(Date),
+        releasedAt: expect.any(Date),
         expiresAt: expect.any(Date),
       }),
     });
     expect(txClient.pointBalance.upsert).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      create: { userId: "user-1", frozen: 150 },
-      update: { frozen: { increment: 150 } },
+      create: { userId: "user-1", available: 150 },
+      update: { available: { increment: 150 } },
     });
   });
 
@@ -220,7 +220,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
     expect(res.status).toBe(200);
     expect(data.data.membershipLevel).toBe("REGULAR");
-    // 普通档同样 1:1 发放积分（冻结 7 天、6 个月过期）
+    // 普通档同样 1:1 发放积分（立即到账、6 个月过期）
     expect(txClient.pointLedger.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "user-1",
@@ -228,14 +228,14 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
         amount: 400,
         remaining: 400,
         reference: "points:mall-order-N3",
-        frozenUntil: expect.any(Date),
+        releasedAt: expect.any(Date),
         expiresAt: expect.any(Date),
       }),
     });
     expect(txClient.pointBalance.upsert).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      create: { userId: "user-1", frozen: 400 },
-      update: { frozen: { increment: 400 } },
+      create: { userId: "user-1", available: 400 },
+      update: { available: { increment: 400 } },
     });
   });
 

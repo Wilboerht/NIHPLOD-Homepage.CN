@@ -1,6 +1,6 @@
 /**
  * 积分账本核心逻辑测试
- * 覆盖：消费发放（冻结/过期）、稳定期释放、退款冲正（先冻结后可用、可负）、
+ * 覆盖：消费发放（立即到账/6 个月过期）、退款冲正（直接冲可用、可负）、
  *      兑礼 FIFO 消耗与幂等、过期扣减、生日积分（幂等/普通档不发）
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -21,13 +21,11 @@ vi.mock("@/lib/prisma", () => ({
 import {
   creditSpendPoints,
   refundSpendPoints,
-  releaseFrozenPoints,
   expirePoints,
   redeemPoints,
   grantBirthdayPoints,
   grantBirthdayRewards,
   getPointBalanceView,
-  POINT_FREEZE_DAYS,
   POINT_EXPIRY_MONTHS,
   type PointTx,
 } from "@/lib/points-ledger";
@@ -43,12 +41,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
 
 function addMonths(date: Date, months: number): Date {
   const d = new Date(date);
@@ -110,7 +102,7 @@ describe("creditSpendPoints 消费发放", () => {
     tx = createTx();
   });
 
-  it("发放：冻结 7 天、6 个月过期、余额 frozen 增加", async () => {
+  it("发放：立即到账（无冻结）、6 个月过期、余额 available 增加", async () => {
     const result = await creditSpendPoints(asTx(tx), {
       userId: "user-1",
       amount: 1000,
@@ -125,14 +117,14 @@ describe("creditSpendPoints 消费发放", () => {
         amount: 1000,
         remaining: 1000,
         reference: "points:order-1",
-        frozenUntil: addDays(NOW, POINT_FREEZE_DAYS),
+        releasedAt: NOW,
         expiresAt: addMonths(NOW, POINT_EXPIRY_MONTHS),
       }),
     });
     expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      create: { userId: "user-1", frozen: 1000 },
-      update: { frozen: { increment: 1000 } },
+      create: { userId: "user-1", available: 1000 },
+      update: { available: { increment: 1000 } },
     });
   });
 
@@ -151,60 +143,19 @@ describe("creditSpendPoints 消费发放", () => {
   });
 });
 
-describe("releaseFrozenPoints 稳定期释放", () => {
-  let tx: MockTx;
-  beforeEach(() => {
-    tx = createTx();
-  });
-
-  it("到期流水释放到可用余额", async () => {
-    tx.pointLedger.findMany.mockResolvedValue([
-      { id: "r1", remaining: 300 },
-      { id: "r2", remaining: 700 },
-    ]);
-
-    const total = await releaseFrozenPoints(asTx(tx), "user-1", NOW);
-
-    expect(total).toBe(1000);
-    expect(tx.pointLedger.update).toHaveBeenCalledWith({
-      where: { id: "r1" },
-      data: { releasedAt: NOW },
-    });
-    expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
-      where: { userId: "user-1" },
-      create: { userId: "user-1", available: 1000 },
-      update: { frozen: { decrement: 1000 }, available: { increment: 1000 } },
-    });
-  });
-});
-
 describe("refundSpendPoints 退款冲正", () => {
   let tx: MockTx;
   beforeEach(() => {
     tx = createTx();
   });
 
-  it("先冲未释放冻结流水（最旧优先），剩余冲可用", async () => {
-    tx.pointLedger.findMany.mockResolvedValue([
-      { id: "r1", remaining: 200 },
-      { id: "r2", remaining: 1000 },
-    ]);
-
+  it("直接冲可用余额（可负）", async () => {
     await refundSpendPoints(asTx(tx), {
       userId: "user-1",
       amount: 500,
       reference: "points:refund-1",
     });
 
-    // r1 全额冲（200），r2 冲 300
-    expect(tx.pointLedger.update).toHaveBeenNthCalledWith(1, {
-      where: { id: "r1" },
-      data: { remaining: { decrement: 200 } },
-    });
-    expect(tx.pointLedger.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "r2" },
-      data: { remaining: { decrement: 300 } },
-    });
     expect(tx.pointLedger.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: "user-1",
@@ -213,30 +164,13 @@ describe("refundSpendPoints 退款冲正", () => {
         reference: "points:refund-1",
       }),
     });
-    expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
+    expect(tx.pointBalance.update).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      create: { userId: "user-1", frozen: 0, available: -500 },
-      update: { frozen: { decrement: 500 } },
+      data: { available: { decrement: 500 } },
     });
   });
 
-  it("无冻结流水时全额冲可用（可负）", async () => {
-    tx.pointLedger.findMany.mockResolvedValue([]);
-
-    await refundSpendPoints(asTx(tx), {
-      userId: "user-1",
-      amount: 300,
-      reference: "points:refund-2",
-    });
-
-    expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
-      where: { userId: "user-1" },
-      create: { userId: "user-1", frozen: 0, available: -300 },
-      update: { available: { decrement: 300 } },
-    });
-  });
-
-  it("无余额行（普通档从未参与积分）：仅记录退款流水，不冲余额", async () => {
+  it("无余额行（从未有积分余额）：仅记录退款流水，不冲余额", async () => {
     tx.pointBalance.findUnique.mockResolvedValue(null);
 
     await refundSpendPoints(asTx(tx), {
@@ -253,7 +187,7 @@ describe("refundSpendPoints 退款冲正", () => {
         reference: "points:refund-3",
       }),
     });
-    expect(tx.pointBalance.upsert).not.toHaveBeenCalled();
+    expect(tx.pointBalance.update).not.toHaveBeenCalled();
   });
 
   it("重复 reference：跳过", async () => {
@@ -495,13 +429,12 @@ describe("grantBirthdayRewards 批量发放（cron）", () => {
 });
 
 describe("getPointBalanceView 余额视图", () => {
-  it("返回可用/冻结与最近解冻时间（含物化）", async () => {
+  it("返回可用/冻结与解冻时间（无冻结期：frozen 恒 0、nextReleaseAt 恒 null，含物化）", async () => {
     const tx = createTx();
-    tx.pointBalance.findUnique.mockResolvedValue({ available: 800, frozen: 200 });
-    tx.pointLedger.findFirst.mockResolvedValue({ frozenUntil: NOW });
+    tx.pointBalance.findUnique.mockResolvedValue({ available: 800, frozen: 0 });
 
     const view = await getPointBalanceView(asTx(tx), "user-1", NOW);
 
-    expect(view).toEqual({ available: 800, frozen: 200, nextReleaseAt: NOW });
+    expect(view).toEqual({ available: 800, frozen: 0, nextReleaseAt: null });
   });
 });

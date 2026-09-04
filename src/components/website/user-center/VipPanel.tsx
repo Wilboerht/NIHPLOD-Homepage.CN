@@ -5,8 +5,8 @@
  * 显示会员等级与积分（等级体系 2026-09 四档：普通/银卡/金卡/钻石卡）
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
- * 不渲染任何 emoji 图标。会员权益为手风琴式：默认收起，点击展开。
- * 积分展示在会员卡内：可用/冻结（账本在官网，兑礼在「积分商城」tab）。
+ * 不渲染任何 emoji 图标。会员权益为 2×2 等级卡片 + 点击切换介绍。
+ * 积分展示在会员卡内：无冻结期、立即到账（账本在官网，兑礼在「积分商城」tab）。
  *
  * 会员卡与权益区等级卡背景图：四档均已登记到 CARD_BG_IMAGES；
  * 会员卡铺满使用，权益区等级卡做虚化淡化处理。
@@ -84,25 +84,6 @@ interface VIPData {
 
 interface PointsData {
   available: number;
-  frozen: number;
-  nextReleaseAt: string | null;
-  recent: {
-    id: string;
-    type: string;
-    amount: number;
-    note: string | null;
-    expiresAt: string | null;
-    createdAt: string;
-  }[];
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
 }
 
 export function VipPanel() {
@@ -229,12 +210,6 @@ export function VipPanel() {
               <p className="mt-1 text-xl font-light text-stone-700">
                 {pointsData ? pointsData.available.toLocaleString() : "—"}
               </p>
-              {pointsData && pointsData.frozen > 0 && (
-                <p className="mt-1 text-[11px] text-stone-400">
-                  {pointsData.frozen} 冻结中
-                  {pointsData.nextReleaseAt ? ` · ${formatDate(pointsData.nextReleaseAt)} 解冻` : ""}
-                </p>
-              )}
             </button>
           </div>
 

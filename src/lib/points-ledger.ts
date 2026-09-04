@@ -2,13 +2,14 @@
  * 积分账本服务模块（2026-09 重新上线）
  *
  * 规则：
- * - 消费发放 1 元 = 1 分（CONSUME）：所有等级均发放（含普通档）；
- *   普通档仅累积积分、不可兑礼（兑礼拦截见 POINT_REDEEM_RATES/point-gifts）。
- * - 消费发放：稳定期 7 天冻结（frozenUntil），6 个月过期（expiresAt）。
- * - 退款冲正（REFUND）：先冲未释放的冻结流水（最旧优先），剩余冲可用余额，可用可负（超兑债务）。
- * - 兑礼扣减（REDEEM）：FIFO 消耗已释放且未过期的流水；余额不足拒绝。
- * - 过期（EXPIRE）：冻结/已释放流水按剩余量清零，可用余额仅扣正数部分（负余额为债务，不由过期减免）。
- * - 生日积分（BIRTHDAY）：直接可用（无冻结），6 个月过期，每年一次幂等。
+ * - 消费发放 1 元 = 1 分（CONSUME）：所有等级均发放（含普通档），
+ *   立即到账（无冻结期），兑换即刻可扣；普通档仅累积积分、不可兑礼
+ *   （兑礼拦截见 POINT_REDEEM_RATES/point-gifts）。
+ * - 6 个月过期（expiresAt）。
+ * - 退款冲正（REFUND）：直接冲可用余额，可用可负（超兑债务）。
+ * - 兑礼扣减（REDEEM）：FIFO 消耗未过期的发放流水；余额不足拒绝。
+ * - 过期（EXPIRE）：发放流水按剩余量清零，可用余额仅扣正数部分（负余额为债务，不由过期减免）。
+ * - 生日积分（BIRTHDAY）：直接可用，6 个月过期，每年一次幂等。
  *
  * 一致性：PointBalance 与 PointLedger 同事务更新；余额 = 流水剩余量之和（可用为负时代表超兑债务，
  * 后续新积分入账先行抵债）。所有函数接受事务客户端 tx，由调用方包在 prisma.$transaction 内。
@@ -21,14 +22,7 @@ import { apiConsole } from "@/lib/logger";
 
 export type PointTx = Prisma.TransactionClient;
 
-export const POINT_FREEZE_DAYS = 7; // 消费积分稳定期（天）
 export const POINT_EXPIRY_MONTHS = 6; // 积分有效期（月）
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-}
 
 function addMonths(date: Date, months: number): Date {
   const d = new Date(date);
@@ -37,7 +31,7 @@ function addMonths(date: Date, months: number): Date {
 }
 
 /**
- * 消费发放积分（冻结稳定期 + 6 个月过期）
+ * 消费发放积分（立即到账，无冻结期；6 个月过期）
  * 幂等：同 userId+reference 已存在则跳过（重复上报不重复发放）。
  */
 export async function creditSpendPoints(
@@ -59,20 +53,20 @@ export async function creditSpendPoints(
       remaining: amount,
       reference,
       note: note ?? null,
-      frozenUntil: addDays(now, POINT_FREEZE_DAYS),
+      releasedAt: now,
       expiresAt: addMonths(now, POINT_EXPIRY_MONTHS),
     },
   });
   await tx.pointBalance.upsert({
     where: { userId },
-    create: { userId, frozen: amount },
-    update: { frozen: { increment: amount } },
+    create: { userId, available: amount },
+    update: { available: { increment: amount } },
   });
   return { duplicated: false };
 }
 
 /**
- * 退款冲正积分：先冲未释放的冻结流水（最旧优先），剩余冲可用余额（可负）。
+ * 退款冲正积分：直接冲可用余额（可负）。
  * 幂等：同 userId+reference 已存在则跳过。
  */
 export async function refundSpendPoints(
@@ -97,86 +91,21 @@ export async function refundSpendPoints(
     return { duplicated: false };
   }
 
-  // 先冲未释放的冻结流水
-  const unreleased = await tx.pointLedger.findMany({
-    where: { userId, releasedAt: null, remaining: { gt: 0 } },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, remaining: true },
-  });
-  let rest = amount;
-  let frozenDeduct = 0;
-  for (const row of unreleased) {
-    if (rest <= 0) break;
-    const take = Math.min(row.remaining ?? 0, rest);
-    rest -= take;
-    frozenDeduct += take;
-    await tx.pointLedger.update({
-      where: { id: row.id },
-      data: { remaining: { decrement: take } },
-    });
-  }
-
   await tx.pointLedger.create({
     data: { userId, type: "REFUND", amount: -amount, reference, note: note ?? null },
   });
 
-  if (frozenDeduct > 0 || rest > 0) {
-    await tx.pointBalance.upsert({
-      where: { userId },
-      // 防御分支：正常流水下余额行必已存在（流水由本模块写入且同步 upsert 余额）
-      create: { userId, frozen: 0, available: -(frozenDeduct + rest) },
-      update: {
-        ...(frozenDeduct > 0 ? { frozen: { decrement: frozenDeduct } } : {}),
-        ...(rest > 0 ? { available: { decrement: rest } } : {}),
-      },
-    });
-  }
-  return { duplicated: false };
-}
-
-/**
- * 释放到期冻结积分：frozenUntil 已到且未释放的发放流水 → 可用余额。
- * 返回释放的积分总量。
- */
-export async function releaseFrozenPoints(
-  tx: PointTx,
-  userId: string,
-  now: Date = new Date()
-): Promise<number> {
-  const due = await tx.pointLedger.findMany({
-    where: {
-      userId,
-      type: "CONSUME",
-      releasedAt: null,
-      remaining: { gt: 0 },
-      frozenUntil: { lte: now },
-    },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, remaining: true },
+  await tx.pointBalance.update({
+    where: { userId },
+    data: { available: { decrement: amount } },
   });
-
-  let total = 0;
-  for (const row of due) {
-    total += row.remaining ?? 0;
-    await tx.pointLedger.update({
-      where: { id: row.id },
-      data: { releasedAt: now },
-    });
-  }
-  if (total > 0) {
-    await tx.pointBalance.upsert({
-      where: { userId },
-      create: { userId, available: total },
-      update: { frozen: { decrement: total }, available: { increment: total } },
-    });
-  }
-  return total;
+  return { duplicated: false };
 }
 
 /**
  * 过期扣减：剩余 >0 且已过期的发放流水清零，余额同步扣减。
  * - 已释放部分从可用余额扣（仅扣正数：负余额是超兑债务，不因过期减免）
- * - 未释放部分从冻结余额扣
+ * - 未释放部分从冻结余额扣（无冻结期后为 0，仅保留防御分支）
  * 每日幂等：EXPIRE 流水 reference = expire:{userId}:{YYYY-MM-DD}（当天无剩余可扣则不写）。
  */
 export async function expirePoints(
@@ -243,7 +172,8 @@ export async function expirePoints(
 }
 
 /**
- * 账本物化：过期 + 释放（查询/兑礼前调用，保证余额与流水一致）。
+ * 账本物化：过期处理（查询/兑礼前调用，保证余额与流水一致）。
+ * 无冻结期，积分发放即到账，无需释放步骤。
  */
 export async function materializePoints(
   tx: PointTx,
@@ -251,7 +181,6 @@ export async function materializePoints(
   now: Date = new Date()
 ): Promise<void> {
   await expirePoints(tx, userId, now);
-  await releaseFrozenPoints(tx, userId, now);
 }
 
 export type RedeemResult =
@@ -259,7 +188,7 @@ export type RedeemResult =
   | { ok: false; code: "INSUFFICIENT" | "DUPLICATE"; available: number };
 
 /**
- * 兑礼扣减（商城兑换调用）：FIFO 消耗已释放且未过期流水。
+ * 兑礼扣减（商城兑换调用）：FIFO 消耗未过期发放流水。
  * 幂等：同 userId+reference 重复调用直接返回成功（不重复扣减）。
  */
 export async function redeemPoints(
@@ -328,7 +257,7 @@ export interface PointBalanceView {
   nextReleaseAt: Date | null;
 }
 
-/** 查询用户积分余额（含物化：过期 + 释放） */
+/** 查询用户积分余额（含物化：过期） */
 export async function getPointBalanceView(
   tx: PointTx,
   userId: string,
@@ -339,15 +268,11 @@ export async function getPointBalanceView(
     where: { userId },
     select: { available: true, frozen: true },
   });
-  const nextRelease = await tx.pointLedger.findFirst({
-    where: { userId, type: "CONSUME", releasedAt: null, remaining: { gt: 0 } },
-    orderBy: { frozenUntil: "asc" },
-    select: { frozenUntil: true },
-  });
   return {
     available: balance?.available ?? 0,
     frozen: balance?.frozen ?? 0,
-    nextReleaseAt: nextRelease?.frozenUntil ?? null,
+    // 无冻结期：积分发放即到账，无待解冻积分
+    nextReleaseAt: null,
   };
 }
 

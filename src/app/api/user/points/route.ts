@@ -3,7 +3,7 @@
  * GET /api/user/points - 查询积分余额（含物化：过期/释放）与最近流水
  *
  * 积分体系（2026-09 重新上线）：消费 1 元 = 1 分（所有等级，普通档仅累积不可兑礼），
- * 稳定期 7 天冻结，6 个月过期，退款冲正可负；兑礼入口在商城侧。
+ * 立即到账（无冻结期），6 个月过期，退款冲正可负；兑礼入口在商城侧。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";

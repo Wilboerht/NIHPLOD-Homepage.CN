@@ -118,9 +118,6 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
   });
 
   it("成功返回余额、冻结、解冻时间与当前兑礼率", async () => {
-    const frozenUntil = new Date("2026-09-10T10:00:00.000Z");
-    txClient.pointLedger.findFirst.mockResolvedValue({ frozenUntil });
-
     const res = await GET(createSignedRequest("13800138000"));
     const data = await res.json();
 
@@ -129,7 +126,8 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
     expect(data.data).toEqual({
       available: 800,
       frozen: 200,
-      nextReleaseAt: frozenUntil.toISOString(),
+      // 无冻结期：积分发放即到账，无待解冻积分
+      nextReleaseAt: null,
       redeemRate: 1.3,
       membershipLevel: "GOLD",
     });

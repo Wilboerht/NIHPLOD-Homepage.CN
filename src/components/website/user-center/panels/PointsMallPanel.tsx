@@ -40,15 +40,12 @@ interface GiftsData {
   membershipLevel: string;
   redeemRate: number | null;
   available: number;
-  frozen: number;
   gifts: GiftItem[];
   redemptions: RedemptionRecord[];
 }
 
 interface PointsData {
   available: number;
-  frozen: number;
-  nextReleaseAt: string | null;
   recent: {
     id: string;
     type: string;
@@ -178,14 +175,6 @@ export function PointsMallPanel() {
                 {giftsData ? giftsData.available.toLocaleString() : "—"}
               </p>
             </div>
-            {giftsData && giftsData.frozen > 0 && (
-              <div>
-                <p className="text-xs text-stone-400">冻结中</p>
-                <p className="mt-1 text-2xl font-light text-stone-400">
-                  {giftsData.frozen.toLocaleString()}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* 积分明细（可折叠） */}
