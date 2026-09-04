@@ -259,16 +259,18 @@ export function SpentAdjustmentPanel({
 
       {view === "form" && (
         <div>
-          <button
-            type="button"
-            onClick={() => onViewChange("default")}
-            className="mb-3 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900 md:hidden"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            返回
-          </button>
-          <h4 className="text-sm font-medium text-stone-700">录入消费</h4>
-          <p className="mt-1 text-xs font-light leading-relaxed text-stone-400">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onViewChange("default")}
+              className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              返回
+            </button>
+            <h4 className="text-sm font-medium text-stone-700">录入消费</h4>
+          </div>
+          <p className="mt-2 text-xs font-light leading-relaxed text-stone-400">
             提交订单号与小票凭证，审核通过后计入历史消费并自动更新会员等级。
           </p>
 
@@ -466,15 +468,17 @@ export function SpentAdjustmentPanel({
 
       {view === "history" && (
         <div>
-          <button
-            type="button"
-            onClick={() => onViewChange("default")}
-            className="mb-3 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900 md:hidden"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            返回
-          </button>
-          <h4 className="text-sm font-medium text-stone-700">录入历史</h4>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onViewChange("default")}
+              className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              返回
+            </button>
+            <h4 className="text-sm font-medium text-stone-700">录入历史</h4>
+          </div>
 
             {/* 历史记录 */}
             <div className="mt-4 space-y-3">

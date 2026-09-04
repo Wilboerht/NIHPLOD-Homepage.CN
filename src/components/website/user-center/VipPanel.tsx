@@ -193,18 +193,8 @@ export function VipPanel() {
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-vip">
       {/* 标题 - 移动端由弹窗全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 items-center justify-between gap-3 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
+      <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
         <h2 className="text-xl font-medium tracking-wide text-stone-800">会员中心</h2>
-        {view !== "main" && (
-          <button
-            type="button"
-            onClick={() => setView("main")}
-            className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            返回
-          </button>
-        )}
       </div>
 
       <div
@@ -356,42 +346,43 @@ export function VipPanel() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <button
-                type="button"
-                onClick={() => setView("main")}
-                className="mb-4 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900 md:hidden"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                查看全部等级
-              </button>
-
-              {/* 头部：等级名 + 门槛 + 状态 */}
+              {/* 头部：返回 + 等级名 + 门槛 + 状态 */}
               <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setView("main")}
+                      className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      查看全部等级
+                    </button>
                     <p className="text-lg font-medium text-stone-800">{selected.name}</p>
-                    <p className="mt-1 text-xs text-stone-400">
-                      {selected.minSpent > 0
-                        ? `消费满 ¥${selected.minSpent.toLocaleString()}`
-                        : "注册即享"}
-                    </p>
                   </div>
-                  {selected.level === currentLevel.level ? (
-                    <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
-                      <Crown className="h-3.5 w-3.5" />
-                      当前
-                    </span>
-                  ) : selected.minSpent <= totalSpent ? (
-                    <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
-                      <Check className="h-3.5 w-3.5" />
-                      已解锁
-                    </span>
-                  ) : (
-                    <span className="flex shrink-0 items-center gap-1 text-[11px] text-stone-400">
-                      <Lock className="h-3 w-3" />
-                      未解锁
-                    </span>
-                  )}
+                  <p className="mt-2 text-xs text-stone-400">
+                    {selected.minSpent > 0
+                      ? `消费满 ¥${selected.minSpent.toLocaleString()}`
+                      : "注册即享"}
+                  </p>
                 </div>
+                {selected.level === currentLevel.level ? (
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
+                    <Crown className="h-3.5 w-3.5" />
+                    当前
+                  </span>
+                ) : selected.minSpent <= totalSpent ? (
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
+                    <Check className="h-3.5 w-3.5" />
+                    已解锁
+                  </span>
+                ) : (
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-stone-400">
+                    <Lock className="h-3 w-3" />
+                    未解锁
+                  </span>
+                )}
+              </div>
 
                 {/* 权益列表：图标 + 标题 + 描述 */}
                 <div className="mt-4 border-t border-stone-200/60 pt-4">
