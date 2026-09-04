@@ -8,8 +8,8 @@
  * 不渲染任何 emoji 图标。会员权益为手风琴式：默认收起，点击展开。
  * 积分展示在会员卡内：可用/冻结（账本在官网，兑礼在「积分商城」tab）。
  *
- * 会员卡背景图：设计稿就绪后放入 public/images 并登记到 CARD_BG_IMAGES，
- * 未登记时使用渐变 fallback。
+ * 会员卡与权益区等级卡背景图：四档均已登记到 CARD_BG_IMAGES；
+ * 会员卡铺满使用，权益区等级卡做虚化淡化处理。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Gift, Loader2, Lock } from "lucide-react";
@@ -20,10 +20,14 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { BIRTHDAY_POINTS } from "@/lib/membership";
 import { SpentAdjustmentPanel } from "./SpentAdjustmentPanel";
 
-// 会员卡背景图（仅作卡面底色/纹理：bg-cover 铺满，容器高度由内容决定，
-// 不按图片比例撑高卡片）
+// 会员卡背景图（四档）：
+// - 会员卡（当前等级）：bg-cover 铺满作卡面底色，容器高度由内容决定
+// - 权益区各等级卡片：同图做虚化（blur-md）+ 低透明度（opacity-25）的淡淡背景
 const CARD_BG_IMAGES: Partial<Record<string, string>> = {
   REGULAR: "/images/membership-card-regular.png",
+  SILVER: "/images/membership-card-silver.png",
+  GOLD: "/images/membership-card-gold.png",
+  DIAMOND: "/images/membership-card-diamond.png",
 };
 
 // 四档卡片配色（border/gradient/文字）
@@ -288,18 +292,27 @@ export function VipPanel() {
               const isExpanded = expanded.has(level.level);
               const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
               const isLocked = level.minSpent > totalSpent;
+              const tierBgImage = CARD_BG_IMAGES[level.level];
               return (
                 <div
                   key={level.level}
-                  className={`rounded-xl border ${
+                  className={`relative overflow-hidden rounded-xl border ${
                     isCurrent ? "border-stone-300 bg-white/60" : "border-stone-200/60 bg-white/40"
                   }`}
                 >
+                  {/* 各等级背景图：虚化 + 低透明度（淡淡的效果） */}
+                  {tierBgImage && (
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25 blur-md"
+                      style={{ backgroundImage: `url(${tierBgImage})` }}
+                    />
+                  )}
                   <button
                     type="button"
                     onClick={() => toggleLevel(level.level)}
                     aria-expanded={isExpanded}
-                    className="flex w-full items-center justify-between gap-4 p-5 text-left"
+                    className="relative flex w-full items-center justify-between gap-4 p-5 text-left"
                   >
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-stone-800">{level.name}</p>
@@ -333,7 +346,7 @@ export function VipPanel() {
                     </div>
                   </button>
                   {isExpanded && (
-                    <div className="border-t border-stone-200/60 px-5 py-4">
+                    <div className="relative border-t border-stone-200/60 px-5 py-4">
                       <div className="space-y-2">
                         {level.benefits.map((b, i) => (
                           <div key={i}>
