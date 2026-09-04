@@ -5,6 +5,9 @@
  * 用户提交全渠道消费凭证（渠道 + 订单号必填，金额/日期/截图/备注选填），
  * 管理员人工审核后累加历史消费金额，自动重算会员等级。
  * 申请列表展示审核状态与审核备注。
+ *
+ * 表单展开状态由父组件（VipPanel）控制：会员权益区的「补录消费记录」
+ * 引导会直接展开表单并滚动到本区块。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -73,10 +76,15 @@ function formatDate(iso: string | null): string {
   ).padStart(2, "0")}`;
 }
 
-export function SpentAdjustmentPanel() {
+export function SpentAdjustmentPanel({
+  showForm,
+  onShowFormChange,
+}: {
+  showForm: boolean;
+  onShowFormChange: (show: boolean) => void;
+}) {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -175,7 +183,7 @@ export function SpentAdjustmentPanel() {
       const data = await res.json();
       if (data.success) {
         showSuccess("申请已提交，等待审核");
-        setShowForm(false);
+        onShowFormChange(false);
         setOrderNo("");
         setAmountClaimed("");
         setPurchasedAt("");
@@ -219,7 +227,7 @@ export function SpentAdjustmentPanel() {
         </div>
         <button
           type="button"
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => onShowFormChange(!showForm)}
           className="flex items-center gap-1 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
         >
           {showForm ? (

@@ -11,7 +11,7 @@
  * 会员卡背景图：设计稿就绪后放入 public/images 并登记到 CARD_BG_IMAGES，
  * 未登记时使用渐变 fallback。
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2, Lock } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -104,6 +104,8 @@ export function VipPanel() {
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [showSpentForm, setShowSpentForm] = useState(false);
+  const spentPanelRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser } = useAuth();
 
@@ -127,6 +129,8 @@ export function VipPanel() {
       const data = await res.json();
       if (data.success) {
         setVipData(data.data);
+        // 默认展开当前等级权益，其余等级收起
+        setExpanded(new Set([data.data.currentLevel.level]));
         if (user && data.data.membershipLevel !== user.membershipLevel) {
           void refreshUser(true);
         }
@@ -180,6 +184,18 @@ export function VipPanel() {
   const { currentLevel, nextLevel, totalSpent, allLevels, memberId } = vipData;
   const tierStyle = TIER_CARD_STYLES[currentLevel.level] ?? TIER_CARD_STYLES.REGULAR;
   const cardBgImage = CARD_BG_IMAGES[currentLevel.level];
+
+  // 权益区排序：当前等级置顶，其余保持原顺序（低→高）
+  const current = allLevels.find((l) => l.level === currentLevel.level);
+  const orderedLevels = current
+    ? [current, ...allLevels.filter((l) => l.level !== currentLevel.level)]
+    : allLevels;
+
+  // 展开补录表单并滚动到录入区块（与权益区的解锁引导联动）
+  const focusSpentForm = () => {
+    setShowSpentForm(true);
+    spentPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-vip">
@@ -237,19 +253,20 @@ export function VipPanel() {
           )}
         </div>
 
-        {/* 会员权益 - 手风琴：默认收起，点击展开 */}
+        {/* 会员权益 - 手风琴：当前等级置顶并默认展开，已解锁/待解锁状态区分 */}
         <div className="mt-6">
           <h4 className="mb-3 text-sm font-medium text-stone-700">会员权益</h4>
           <div className="space-y-3">
-            {allLevels.map((level) => {
+            {orderedLevels.map((level) => {
+              const isCurrent = level.level === currentLevel.level;
               const isExpanded = expanded.has(level.level);
+              const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
+              const isLocked = level.minSpent > totalSpent;
               return (
                 <div
                   key={level.level}
                   className={`rounded-xl border ${
-                    level.level === currentLevel.level
-                      ? "border-stone-300 bg-white/60"
-                      : "border-stone-200/60 bg-white/40"
+                    isCurrent ? "border-stone-300 bg-white/60" : "border-stone-200/60 bg-white/40"
                   }`}
                 >
                   <button
@@ -260,18 +277,25 @@ export function VipPanel() {
                   >
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-stone-800">{level.name}</p>
-                      {level.level === currentLevel.level && (
+                      {isCurrent && (
                         <span className="rounded-full bg-stone-200/70 px-2 py-0.5 text-[11px] text-stone-500">
                           当前
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-stone-400">
-                        {level.minSpent > 0
-                          ? `消费满 ¥${level.minSpent.toLocaleString()}`
-                          : "注册即享"}
-                      </span>
+                      {isUnlocked ? (
+                        <span className="flex items-center gap-1 text-xs text-[#00263e]">
+                          <Check className="h-3.5 w-3.5" />
+                          已解锁
+                        </span>
+                      ) : (
+                        <span className="text-xs text-stone-400">
+                          {level.minSpent > 0
+                            ? `消费满 ¥${level.minSpent.toLocaleString()}`
+                            : "注册即享"}
+                        </span>
+                      )}
                       <ChevronDown
                         className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
                           isExpanded ? "rotate-180" : ""
@@ -287,20 +311,40 @@ export function VipPanel() {
                           <p className="mt-0.5 text-xs text-stone-400">{b.desc}</p>
                         </div>
                       ))}
-                      {level.level === "REGULAR" && (
-                        <div className="flex items-center gap-1.5 pt-2">
-                          <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
-                          <p className="text-xs text-stone-400">
-                            累计消费满 ¥1,000 解锁肌肤档案、AI 顾问与积分兑礼
-                          </p>
+                      {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
+                      {isCurrent && level.level === "REGULAR" && (
+                        <div className="pt-2">
+                          <div className="flex items-start gap-1.5">
+                            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-400" />
+                            <p className="text-xs text-stone-400">
+                              累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI 顾问、积分兑礼与生日礼遇等权益
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={focusSpentForm}
+                            className="mt-2 inline-flex items-center gap-1 rounded-full border border-stone-300 px-3 py-1 text-[11px] text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-800"
+                          >
+                            补录消费记录
+                          </button>
                         </div>
                       )}
-                      {level.level !== "REGULAR" && level.minSpent > totalSpent && (
-                        <div className="flex items-center gap-1.5 pt-2">
-                          <Check className="h-3.5 w-3.5 shrink-0 text-stone-400" />
-                          <p className="text-xs text-stone-400">
-                            还差 ¥{(level.minSpent - totalSpent).toLocaleString()} 解锁该等级
-                          </p>
+                      {/* 未达档等级：解锁提示 + 补录引导 */}
+                      {isLocked && level.level !== "REGULAR" && (
+                        <div className="pt-2">
+                          <div className="flex items-center gap-1.5">
+                            <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                            <p className="text-xs text-stone-400">
+                              还差 ¥{(level.minSpent - totalSpent).toLocaleString()} 解锁该等级
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={focusSpentForm}
+                            className="mt-2 inline-flex items-center gap-1 rounded-full border border-stone-300 px-3 py-1 text-[11px] text-stone-600 transition-colors hover:border-stone-400 hover:text-stone-800"
+                          >
+                            补录消费记录
+                          </button>
                         </div>
                       )}
                     </div>
@@ -311,7 +355,9 @@ export function VipPanel() {
           </div>
         </div>
         {/* 消费补录（全渠道凭证 → 人工审核 → 补录历史消费金额） */}
-        <SpentAdjustmentPanel />
+        <div ref={spentPanelRef} className="scroll-mt-4">
+          <SpentAdjustmentPanel showForm={showSpentForm} onShowFormChange={setShowSpentForm} />
+        </div>
       </div>
     </div>
   );
