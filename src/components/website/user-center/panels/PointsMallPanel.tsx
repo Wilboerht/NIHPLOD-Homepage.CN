@@ -118,12 +118,7 @@ export function PointsMallPanel() {
       <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
         {/* 积分余额概览 */}
         <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
-            {giftsData && giftsData.redeemRate !== null && (
-              <p className="text-xs text-stone-400">1 积分可兑 ¥{giftsData.redeemRate}</p>
-            )}
-          </div>
+          <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
           <div className="mt-4 flex items-end gap-8">
             <div>
               <p className="text-xs text-stone-400">可用积分</p>
