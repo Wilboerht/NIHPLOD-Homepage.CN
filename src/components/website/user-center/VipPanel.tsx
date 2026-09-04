@@ -398,11 +398,11 @@ export function VipPanel() {
                         : "border-stone-200/60 bg-white/40 opacity-85 hover:bg-white/60 hover:opacity-100"
                   }`}
                 >
-                  {/* 各等级背景图：统一虚化淡化（朦胧）；当前档以 #00263e 实线外框区分 */}
+                  {/* 各等级背景图：轻微虚化（弱朦胧）；当前档以 #00263e 实线外框区分 */}
                   {tierBgImage && (
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25 blur-md"
+                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-40 blur-sm"
                       style={{ backgroundImage: `url(${tierBgImage})` }}
                     />
                   )}
