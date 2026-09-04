@@ -79,13 +79,17 @@ function formatDate(iso: string | null): string {
 export function SpentAdjustmentPanel({
   showForm,
   onShowFormChange,
+  onApplicationsLoaded,
 }: {
   showForm: boolean;
   onShowFormChange: (show: boolean) => void;
+  onApplicationsLoaded?: () => void;
 }) {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  // 首次挂载加载跳过回调（父组件同期已在拉取会员卡/积分数据，避免重复请求）
+  const loadedOnceRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [channel, setChannel] = useState<string>("TMALL");
@@ -107,6 +111,11 @@ export function SpentAdjustmentPanel({
       const data = await res.json();
       if (data.success) {
         setApplications(data.data.applications);
+        // 非首次加载（提交后/展开历史）时通知父组件重拉会员卡与积分
+        if (loadedOnceRef.current) {
+          onApplicationsLoaded?.();
+        }
+        loadedOnceRef.current = true;
       }
     } catch (e) {
       if (e instanceof UnauthorizedError) {
@@ -118,7 +127,7 @@ export function SpentAdjustmentPanel({
     } finally {
       setLoading(false);
     }
-  }, [showError, redirectToLogin]);
+  }, [showError, redirectToLogin, onApplicationsLoaded]);
 
   useEffect(() => {
     deferInEffect(loadApplications);
@@ -213,7 +222,13 @@ export function SpentAdjustmentPanel({
           <h4 className="text-sm font-medium text-stone-700">录入消费记录</h4>
           <button
             type="button"
-            onClick={() => setShowHistory((v) => !v)}
+            onClick={() => {
+              // 展开历史时重新拉取申请列表（同步触发会员卡/积分刷新）
+              if (!showHistory) {
+                void loadApplications();
+              }
+              setShowHistory((v) => !v);
+            }}
             aria-expanded={showHistory}
             className="flex items-center gap-0.5 rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
           >

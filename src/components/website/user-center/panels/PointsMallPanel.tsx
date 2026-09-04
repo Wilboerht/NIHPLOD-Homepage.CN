@@ -10,7 +10,7 @@
  * 兑换幂等：requestId 由客户端生成；履约由管理端发货。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Gift, Loader2, Lock } from "lucide-react";
+import { ChevronRight, Gift, Loader2, Lock } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { apiPost } from "@/lib/api-client";
@@ -45,10 +45,32 @@ interface GiftsData {
   redemptions: RedemptionRecord[];
 }
 
+interface PointsData {
+  available: number;
+  frozen: number;
+  nextReleaseAt: string | null;
+  recent: {
+    id: string;
+    type: string;
+    amount: number;
+    note: string | null;
+    expiresAt: string | null;
+    createdAt: string;
+  }[];
+}
+
 const REDEMPTION_STATUS_LABELS: Record<RedemptionRecord["status"], string> = {
   PENDING: "待履约",
   FULFILLED: "已履约",
   CANCELLED: "已取消",
+};
+
+const POINT_TYPE_LABELS: Record<string, string> = {
+  CONSUME: "消费获得",
+  REFUND: "退款冲正",
+  BIRTHDAY: "生日礼遇",
+  REDEEM: "积分兑礼",
+  EXPIRE: "积分过期",
 };
 
 function formatDate(iso: string | null): string {
@@ -63,6 +85,9 @@ function formatDate(iso: string | null): string {
 export function PointsMallPanel() {
   const [giftsData, setGiftsData] = useState<GiftsData | null>(null);
   const [giftsLoading, setGiftsLoading] = useState(true);
+  const [pointsData, setPointsData] = useState<PointsData | null>(null);
+  const [showLedger, setShowLedger] = useState(false);
+  const [showAllRedemptions, setShowAllRedemptions] = useState(false);
   const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const { error: showError, success: showSuccessToast } = useToast();
@@ -81,6 +106,18 @@ export function PointsMallPanel() {
     }
   }, []);
 
+  const loadPointsData = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth("/api/user/points");
+      const data = await res.json();
+      if (data.success) {
+        setPointsData(data.data);
+      }
+    } catch {
+      // 明细加载失败静默
+    }
+  }, []);
+
   const handleRedeem = async () => {
     if (!confirmGift) return;
     // crypto.randomUUID 仅在安全上下文（https）可用，非安全上下文降级随机串
@@ -96,6 +133,7 @@ export function PointsMallPanel() {
       });
       showSuccessToast("兑换成功，礼品将尽快为您寄出");
       setConfirmGift(null);
+      await loadPointsData();
       await loadGiftsData();
     } catch (e) {
       showError(e instanceof Error ? e.message : "兑换失败，请稍后重试");
@@ -106,7 +144,8 @@ export function PointsMallPanel() {
 
   useEffect(() => {
     deferInEffect(loadGiftsData);
-  }, [loadGiftsData]);
+    deferInEffect(loadPointsData);
+  }, [loadGiftsData, loadPointsData]);
 
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-mall">
@@ -118,7 +157,20 @@ export function PointsMallPanel() {
       <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
         {/* 积分余额概览 */}
         <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
+            <button
+              type="button"
+              onClick={() => setShowLedger((v) => !v)}
+              aria-expanded={showLedger}
+              className="flex items-center gap-0.5 rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
+            >
+              明细
+              <ChevronRight
+                className={`h-3 w-3 transition-transform duration-200 ${showLedger ? "rotate-90" : ""}`}
+              />
+            </button>
+          </div>
           <div className="mt-4 flex items-end gap-8">
             <div>
               <p className="text-xs text-stone-400">可用积分</p>
@@ -135,6 +187,39 @@ export function PointsMallPanel() {
               </div>
             )}
           </div>
+
+          {/* 积分明细（可折叠） */}
+          {showLedger && (
+            <div className="mt-4 border-t border-stone-200/60 pt-3">
+              {!pointsData ? (
+                <div className="flex items-center justify-center gap-1.5 py-4 text-xs text-stone-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> 明细加载中...
+                </div>
+              ) : pointsData.recent.length === 0 ? (
+                <p className="py-4 text-center text-xs text-stone-400">暂无积分明细</p>
+              ) : (
+                <div className="space-y-2">
+                  {pointsData.recent.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate text-stone-500">
+                        {POINT_TYPE_LABELS[r.type] ?? r.type}
+                        {r.note && r.type === "CONSUME" ? `（${r.note.slice(0, 20)}）` : ""}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-3">
+                        <span className="text-stone-400">{formatDate(r.createdAt)}</span>
+                        <span
+                          className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
+                        >
+                          {r.amount >= 0 ? "+" : ""}
+                          {r.amount.toLocaleString()}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 兑换好礼 */}
@@ -211,9 +296,23 @@ export function PointsMallPanel() {
           {/* 我的兑换记录 */}
           {giftsData && giftsData.redemptions.length > 0 && (
             <div className="mt-4 border-t border-stone-200/60 pt-3">
-              <p className="mb-2 text-xs font-medium text-stone-500">我的兑换记录</p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-medium text-stone-500">我的兑换记录</p>
+                {giftsData.redemptions.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllRedemptions((v) => !v)}
+                    className="text-[11px] text-stone-400 transition-colors hover:text-stone-700"
+                  >
+                    {showAllRedemptions ? "收起" : "查看全部"}
+                  </button>
+                )}
+              </div>
               <div className="space-y-2">
-                {giftsData.redemptions.slice(0, 5).map((r) => (
+                {(showAllRedemptions
+                  ? giftsData.redemptions
+                  : giftsData.redemptions.slice(0, 5)
+                ).map((r) => (
                   <div key={r.id} className="flex items-center justify-between text-xs">
                     <span className="text-stone-600">
                       {r.productName}
