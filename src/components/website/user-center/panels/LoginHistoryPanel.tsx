@@ -98,7 +98,7 @@ export function LoginHistoryPanel({ embedded }: LoginHistoryPanelProps) {
                       <span
                         className={`rounded px-2 py-0.5 text-xs ${
                           r.success
-                            ? "bg-emerald-50 text-emerald-600"
+                            ? "bg-[#00263e]/10 text-[#00263e]"
                             : "bg-red-50 text-red-500"
                         }`}
                       >
