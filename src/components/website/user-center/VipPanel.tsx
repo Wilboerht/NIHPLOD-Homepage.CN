@@ -309,13 +309,17 @@ export function VipPanel() {
                   <div>
                     <div className="flex items-center justify-between text-xs text-stone-600">
                       <span>
-                        再消费 ¥{nextLevel.spentNeeded.toLocaleString()} 升级{nextLevel.name}
+                        再消费{" "}
+                        <span className="font-medium text-[#00263e]">
+                          ¥{nextLevel.spentNeeded.toLocaleString()}
+                        </span>{" "}
+                        升级{nextLevel.name}
                       </span>
-                      <span>{nextLevel.progress}%</span>
+                      <span className="text-[#00263e]">{nextLevel.progress}%</span>
                     </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/50">
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/60">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${tierStyle.bar}`}
+                        className="h-full rounded-full bg-[#00263e] transition-all duration-500"
                         style={{ width: `${nextLevel.progress}%` }}
                       />
                     </div>
