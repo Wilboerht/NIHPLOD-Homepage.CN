@@ -41,8 +41,8 @@ import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPane
 // - 权益区各等级卡片：同图做虚化（blur-md）+ 低透明度（opacity-25）的淡淡背景
 const CARD_BG_IMAGES: Partial<Record<string, string>> = {
   REGULAR: "/images/membership-card-regular.png",
-  SILVER: "/images/membership-card-silver.png",
-  GOLD: "/images/membership-card-gold.jpg",
+  SILVER: "/images/membership-card-silver.jpg",
+  GOLD: "/images/membership-card-gold.png",
   DIAMOND: "/images/membership-card-diamond.png",
 };
 
@@ -259,26 +259,29 @@ export function VipPanel() {
             />
           )}
 
-          <div className="relative flex items-start justify-between gap-4 p-5">
-            <div>
-              <p className="text-xs tracking-wider text-stone-400">当前等级</p>
-              <h3 className={`mt-1 text-xl font-medium ${tierStyle.title}`}>
-                {currentLevel.name}
-              </h3>
-              <p className="mt-1 text-[11px] font-light tracking-wider text-stone-400">
-                NO.{memberId}
-              </p>
+          {/* 上半区文字底色：薄白纱保证可读性（图色仍然透出） */}
+          <div className="relative bg-white/25 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs tracking-wider text-stone-500">当前等级</p>
+                <h3 className="mt-1 text-xl font-medium text-stone-800">
+                  {currentLevel.name}
+                </h3>
+                <p className="mt-1 text-[11px] font-light tracking-wider text-stone-500">
+                  NO.{memberId}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUserCenterView("mall")}
+                className="text-right transition-opacity hover:opacity-70"
+              >
+                <p className="text-xs text-stone-500">我的积分</p>
+                <p className="mt-1 text-xl font-light text-stone-800">
+                  {pointsData ? pointsData.available.toLocaleString() : "—"}
+                </p>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setUserCenterView("mall")}
-              className="text-right transition-opacity hover:opacity-70"
-            >
-              <p className="text-xs text-stone-400">我的积分</p>
-              <p className="mt-1 text-xl font-light text-stone-700">
-                {pointsData ? pointsData.available.toLocaleString() : "—"}
-              </p>
-            </button>
           </div>
 
           {/* 分割线以下：背景虚化处理，承载升级进度与生日礼遇 */}
@@ -304,13 +307,13 @@ export function VipPanel() {
                 {/* 升级进度条（钻石卡为最高档） */}
                 {nextLevel && (
                   <div>
-                    <div className="flex items-center justify-between text-xs text-stone-500">
+                    <div className="flex items-center justify-between text-xs text-stone-600">
                       <span>
                         再消费 ¥{nextLevel.spentNeeded.toLocaleString()} 升级{nextLevel.name}
                       </span>
                       <span>{nextLevel.progress}%</span>
                     </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/50">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${tierStyle.bar}`}
                         style={{ width: `${nextLevel.progress}%` }}
@@ -324,14 +327,14 @@ export function VipPanel() {
                   <button
                     type="button"
                     onClick={() => setUserCenterView("profile")}
-                    className={`${nextLevel ? "mt-3" : ""} flex w-full items-center justify-between rounded-lg bg-stone-100/70 px-3 py-2 transition-colors hover:bg-stone-100`}
+                    className={`${nextLevel ? "mt-3" : ""} flex w-full items-center justify-between rounded-lg bg-white/60 px-3 py-2 transition-colors hover:bg-white/80`}
                   >
-                    <span className="flex items-center gap-1.5 text-xs text-stone-600">
-                      <Gift className="h-3.5 w-3.5 shrink-0 text-stone-500" />
+                    <span className="flex items-center gap-1.5 text-xs text-stone-700">
+                      <Gift className="h-3.5 w-3.5 shrink-0 text-stone-600" />
                       设置生日，生日当月赠{" "}
                       {BIRTHDAY_POINTS[currentLevel.level as keyof typeof BIRTHDAY_POINTS]} 积分
                     </span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-stone-500" />
                   </button>
                 )}
               </div>
