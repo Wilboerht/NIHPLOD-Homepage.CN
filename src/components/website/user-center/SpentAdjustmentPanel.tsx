@@ -259,7 +259,8 @@ export function SpentAdjustmentPanel({
 
       {view === "form" && (
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium text-stone-700">录入消费</h4>
             <button
               type="button"
               onClick={() => onViewChange("default")}
@@ -268,7 +269,6 @@ export function SpentAdjustmentPanel({
               <ChevronLeft className="h-3.5 w-3.5" />
               返回
             </button>
-            <h4 className="text-sm font-medium text-stone-700">录入消费</h4>
           </div>
           <p className="mt-2 text-xs font-light leading-relaxed text-stone-400">
             提交订单号与小票凭证，审核通过后计入历史消费并自动更新会员等级。
@@ -468,7 +468,8 @@ export function SpentAdjustmentPanel({
 
       {view === "history" && (
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium text-stone-700">录入历史</h4>
             <button
               type="button"
               onClick={() => onViewChange("default")}
@@ -477,7 +478,6 @@ export function SpentAdjustmentPanel({
               <ChevronLeft className="h-3.5 w-3.5" />
               返回
             </button>
-            <h4 className="text-sm font-medium text-stone-700">录入历史</h4>
           </div>
 
             {/* 历史记录 */}
