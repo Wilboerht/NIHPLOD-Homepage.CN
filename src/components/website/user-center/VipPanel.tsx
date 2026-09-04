@@ -212,10 +212,10 @@ export function VipPanel() {
             >
         {/* 会员卡 + 升级引导（桌面并排，移动端上下堆叠） */}
         <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="w-full lg:w-[360px] lg:shrink-0">
+          <div className="w-full lg:w-[390px] lg:shrink-0">
         {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，左对齐，背景图按卡面铺满） */}
         <div
-          className={`relative flex aspect-[1.586/1] w-full max-w-[360px] flex-col overflow-hidden rounded-xl border ${tierStyle.card}`}
+          className={`relative flex aspect-[1.586/1] w-full max-w-[390px] flex-col overflow-hidden rounded-xl border ${tierStyle.card}`}
         >
           {/* 卡面背景图 */}
           {cardBgImage && (
@@ -296,24 +296,32 @@ export function VipPanel() {
         </div>
           </div>
 
-          {/* 升级引导卡片：点击直接进入录入消费表单 */}
-          {nextLevel && (
-            <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
-              <h4 className="text-sm font-medium text-stone-800">提升会员等级</h4>
-              <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                在天猫 / 京东 / 小程序 /
-                线下专柜等渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。
-              </p>
+          {/* 升级引导卡片：录入消费 / 查看录入历史 */}
+          <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
+            <h4 className="text-sm font-medium text-stone-800">提升会员等级</h4>
+            <p className="mt-2 text-xs leading-relaxed text-stone-400">
+              {nextLevel
+                ? "在天猫 / 京东 / 小程序 / 线下专柜等渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。"
+                : "您已是最高等级会员，全渠道消费记录可随时补录留存。"}
+            </p>
+            <div className="mt-4 flex items-center gap-4">
               <button
                 type="button"
                 onClick={focusSpentForm}
-                className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
               >
                 录入消费
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
+              <button
+                type="button"
+                onClick={() => setView("spent-history")}
+                className="text-xs text-stone-500 transition-colors hover:text-stone-800"
+              >
+                查看录入历史
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* 会员权益 - 2×2 等级卡片；点击后右侧整版内容淡出、对应等级介绍淡入 */}
@@ -337,16 +345,21 @@ export function VipPanel() {
                       ? "border-[#00263e] bg-white/60"
                       : isUnlocked
                         ? "border-stone-200/40 bg-white/20 opacity-60 hover:opacity-90"
-                        : "border-stone-200/60 bg-white/40 hover:bg-white/60"
+                        : "border-stone-200/60 bg-white/40 opacity-85 hover:bg-white/60 hover:opacity-100"
                   }`}
                 >
-                  {/* 各等级背景图：虚化 + 低透明度（淡淡的效果）；当前档为实线框突出，不使用背景虚化 */}
-                  {tierBgImage && !isCurrent && (
+                  {/* 各等级背景图：非当前档虚化淡化；当前档实线框突出，背景图清晰显现 */}
+                  {tierBgImage && (
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25 blur-md"
+                      className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
+                        isCurrent ? "" : "opacity-25 blur-md"
+                      }`}
                       style={{ backgroundImage: `url(${tierBgImage})` }}
                     />
+                  )}
+                  {tierBgImage && isCurrent && (
+                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/25" />
                   )}
                   <div className="relative">
                     <div className="flex items-start justify-between gap-1.5">
@@ -379,12 +392,6 @@ export function VipPanel() {
             })}
           </div>
         </div>
-        {/* 消费补录（全渠道凭证 → 人工审核 → 补录历史消费金额） */}
-        <SpentAdjustmentPanel
-          view="default"
-          onViewChange={handleSpentViewChange}
-          onApplicationsLoaded={handleApplicationsLoaded}
-        />
             </m.div>
           )}
 

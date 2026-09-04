@@ -6,8 +6,9 @@
  * 管理员人工审核后累加历史消费金额，自动重算会员等级。
  * 申请列表展示审核状态与审核备注。
  *
- * 视图由父组件（VipPanel）控制：默认视图 / 录入表单 / 录入历史，
- * 三视图互斥、由父组件整版淡入淡出单独显示；本组件仅按 view 渲染对应区块。
+ * 视图由父组件（VipPanel）控制：录入表单 / 录入历史（default 仅作返回目标），
+ * 互斥、由父组件整版淡入淡出单独显示；本组件仅按 view 渲染对应区块。
+ * 入口在会员中心「提升会员等级」引导卡（录入消费 / 查看录入历史）。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,7 +16,6 @@ import {
   Camera,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight,
   Clock,
   ImagePlus,
   Loader2,
@@ -219,44 +219,7 @@ export function SpentAdjustmentPanel({
   };
 
   return (
-    // 默认视图嵌在会员中心主内容中（需与上方权益区拉开间距 mt-8）；
-    // 表单/历史视图由父组件整版单独渲染，去掉多余顶部间距
     <div className={view === "default" ? "mt-8" : ""}>
-      {view === "default" && (
-        <div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-medium text-stone-700">录入消费记录</h4>
-              <button
-                type="button"
-                onClick={() => {
-                  // 进入历史视图时重新拉取申请列表（同步触发会员卡/积分刷新）
-                  void loadApplications();
-                  onViewChange("history");
-                }}
-                className="flex items-center gap-0.5 rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
-              >
-                历史
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => onViewChange("form")}
-              className="flex items-center gap-1 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
-            >
-              录入消费 <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          <p className="mt-1 text-xs font-light leading-relaxed text-stone-400">
-            在天猫 / 京东 / 小程序 /
-            线下专柜等全渠道购买的商品，提交订单号（线下填小票号）即可录入消费记录。
-            审核通过后计入历史消费，会员等级自动更新；驳回后可重新提交。
-          </p>
-        </div>
-      )}
-
       {view === "form" && (
         <div>
           <div className="flex items-center justify-between gap-2">
