@@ -12,7 +12,7 @@
  * 会员卡铺满使用，权益区等级卡做虚化淡化处理。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Crown, Gift, Loader2, Lock } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Crown, Gift, Loader2, Lock, TrendingUp } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -251,7 +251,9 @@ export function VipPanel() {
           {/* 分割线以下：背景虚化处理，承载升级进度与生日礼遇 */}
           {(nextLevel ||
             (user && !user.birthday && currentLevel.level !== "REGULAR")) && (
-            <div className="relative mt-auto border-t border-stone-200/60">
+            // 加 rounded-b-xl + overflow-hidden：backdrop-blur 层会忽略祖先圆角裁剪（Chromium 特性），
+            // 需在本区块自身裁圆，否则底部两角显示为直角
+            <div className="relative mt-auto overflow-hidden rounded-b-xl border-t border-stone-200/60">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 backdrop-blur-md bg-white/25"
@@ -298,7 +300,10 @@ export function VipPanel() {
 
           {/* 升级引导卡片：录入消费 / 查看录入历史 */}
           <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
-            <h4 className="text-sm font-medium text-stone-800">提升会员等级</h4>
+            <h4 className="flex items-center gap-1.5 text-sm font-medium text-stone-800">
+              <TrendingUp className="h-4 w-4 text-[#00263e]" />
+              提升会员等级
+            </h4>
             <p className="mt-2 text-xs leading-relaxed text-stone-400">
               {nextLevel
                 ? "在天猫 / 京东 / 小程序 / 线下专柜等渠道消费后，录入订单凭证，审核通过后自动计入历史消费并升级会员等级。"
@@ -348,18 +353,13 @@ export function VipPanel() {
                         : "border-stone-200/60 bg-white/40 opacity-85 hover:bg-white/60 hover:opacity-100"
                   }`}
                 >
-                  {/* 各等级背景图：非当前档虚化淡化；当前档实线框突出，背景图清晰显现 */}
+                  {/* 各等级背景图：统一虚化淡化（朦胧）；当前档以 #00263e 实线外框区分 */}
                   {tierBgImage && (
                     <div
                       aria-hidden
-                      className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
-                        isCurrent ? "" : "opacity-25 blur-md"
-                      }`}
+                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25 blur-md"
                       style={{ backgroundImage: `url(${tierBgImage})` }}
                     />
-                  )}
-                  {tierBgImage && isCurrent && (
-                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/25" />
                   )}
                   <div className="relative">
                     <div className="flex items-start justify-between gap-1.5">
