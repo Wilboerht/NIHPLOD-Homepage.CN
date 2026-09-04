@@ -288,7 +288,11 @@ export function VipPanel() {
                     setSelectedLevel(level.level);
                     setView("tier");
                   }}
-                  className="relative overflow-hidden rounded-xl border border-stone-200/60 bg-white/40 p-4 text-left transition-colors hover:bg-white/60"
+                  className={`relative overflow-hidden rounded-xl border p-4 text-left transition-opacity ${
+                    isUnlocked
+                      ? "border-stone-200/40 bg-white/20 opacity-60 hover:opacity-90"
+                      : "border-stone-200/60 bg-white/40 hover:bg-white/60"
+                  }`}
                 >
                   {/* 各等级背景图：虚化 + 低透明度（淡淡的效果） */}
                   {tierBgImage && (
@@ -367,18 +371,18 @@ export function VipPanel() {
                   </p>
                 </div>
                 {selected.level === currentLevel.level ? (
-                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
-                    <Crown className="h-3.5 w-3.5" />
+                  <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
+                    <Crown className="h-4 w-4" />
                     当前
                   </span>
                 ) : selected.minSpent <= totalSpent ? (
-                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
-                    <Check className="h-3.5 w-3.5" />
+                  <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
+                    <Check className="h-4 w-4" />
                     已解锁
                   </span>
                 ) : (
-                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-stone-400">
-                    <Lock className="h-3 w-3" />
+                  <span className="flex shrink-0 items-center gap-1 text-sm text-stone-400">
+                    <Lock className="h-3.5 w-3.5" />
                     未解锁
                   </span>
                 )}
