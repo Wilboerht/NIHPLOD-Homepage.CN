@@ -12,7 +12,22 @@
  * 会员卡铺满使用，权益区等级卡做虚化淡化处理。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Crown, Gift, Loader2, Lock, TrendingUp } from "lucide-react";
+import {
+  Archive,
+  Bot,
+  Cake,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Coins,
+  Crown,
+  Gift,
+  Infinity as InfinityIcon,
+  Loader2,
+  Lock,
+  ScanFace,
+  TrendingUp,
+} from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,6 +73,24 @@ const TIER_CARD_STYLES: Record<string, { card: string; title: string; bar: strin
 interface BenefitItem {
   title: string;
   desc: string;
+}
+
+// 权益条目图标（按标题适配；未匹配的条目回退 Check）
+const BENEFIT_ICONS: Record<string, typeof Check> = {
+  测肤体验: ScanFace,
+  测肤加赠: ScanFace,
+  不限次测肤: InfinityIcon,
+  档案永久保留: Archive,
+  专属AI护肤顾问: Bot,
+  "专属 AI 护肤顾问": Bot,
+  积分兑礼: Gift,
+  消费积分: Coins,
+  会员升级: TrendingUp,
+  生日礼遇: Cake,
+};
+
+function benefitIcon(title: string): typeof Check {
+  return BENEFIT_ICONS[title] ?? Check;
 }
 
 interface LevelInfo {
@@ -441,19 +474,22 @@ export function VipPanel() {
                 )}
               </div>
 
-                {/* 权益列表：图标 + 标题 + 描述 */}
+                {/* 权益列表：适配图标 + 标题 + 描述 */}
                 <div className="mt-4 border-t border-stone-200/60 pt-4">
                   <p className="mb-3 text-xs font-medium tracking-wide text-stone-500">等级权益</p>
                   <div className="space-y-3">
-                    {selected.benefits.map((b, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#00263e]" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                          <p className="mt-0.5 text-xs leading-relaxed text-stone-400">{b.desc}</p>
+                    {selected.benefits.map((b, i) => {
+                      const BenefitIcon = benefitIcon(b.title);
+                      return (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-stone-800">{b.title}</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-stone-400">{b.desc}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
