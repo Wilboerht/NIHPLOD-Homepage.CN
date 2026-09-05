@@ -11,7 +11,6 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -778,14 +777,6 @@ export function PointsMallPanel() {
                   </div>
                 </div>
 
-                {/* 不可取消提醒 */}
-                <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2.5">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                  <p className="text-xs leading-relaxed text-amber-700">
-                    兑换提交后不可取消，积分将立即扣除且不予退还，请确认礼品与收货地址无误后再提交。
-                  </p>
-                </div>
-
                 {/* 收货地址 */}
                 <div className="mt-4">
                   <p className="flex items-center gap-1.5 text-xs font-medium text-stone-600">
@@ -905,7 +896,7 @@ export function PointsMallPanel() {
                 </div>
 
                 {/* 提交 */}
-                <div className="mt-6">
+                <div className="mt-6 flex justify-end">
                   <button
                     type="button"
                     onClick={handleRedeem}
@@ -914,7 +905,7 @@ export function PointsMallPanel() {
                       creatingAddress ||
                       (!showNewAddress && !selectedAddressId)
                     }
-                    className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00263e] px-8 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {redeeming || creatingAddress ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -923,9 +914,6 @@ export function PointsMallPanel() {
                     )}
                     {redeeming || creatingAddress ? "提交中..." : "确认兑换"}
                   </button>
-                  <p className="mt-2 text-center text-[11px] text-stone-400">
-                    确认后积分立即扣除，不可退还
-                  </p>
                 </div>
               </m.div>
             )
