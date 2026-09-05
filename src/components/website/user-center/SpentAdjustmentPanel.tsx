@@ -238,8 +238,8 @@ export function SpentAdjustmentPanel({
             提交订单号与小票凭证，审核通过后计入历史消费并自动更新会员等级。
           </p>
 
-          {/* 申请表单（分区标题 + 字段，无卡片容器） */}
-          <div className="mt-5 space-y-6">
+          {/* 申请表单（外层卡片容器 + 内部分区标题） */}
+          <div className="mt-4 space-y-6 rounded-xl border border-stone-200/60 bg-white/40 p-5">
             {/* 待审核上限提示 */}
             {reachedPendingLimit && (
               <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
