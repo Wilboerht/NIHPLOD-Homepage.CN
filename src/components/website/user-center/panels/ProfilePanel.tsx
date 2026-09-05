@@ -709,11 +709,11 @@ export function ProfilePanel() {
                 </div>
                 <div className="w-full min-w-0 flex-1 space-y-3">
                   {addressesLoading ? (
-                    <div className="flex items-center gap-1.5 py-2 text-xs text-stone-400">
+                    <div className="flex items-center gap-1.5 text-xs text-stone-400">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" /> 地址加载中...
                     </div>
                   ) : addresses.length === 0 ? (
-                    <p className="py-2 text-sm text-stone-400">
+                    <p className="text-sm text-stone-400">
                       暂无收货地址，积分兑礼寄送前请先添加
                     </p>
                   ) : (
