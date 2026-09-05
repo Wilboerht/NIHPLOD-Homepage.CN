@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
@@ -778,29 +778,11 @@ export function ProfilePanel() {
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (showAddressForm && !editingAddressId) {
-                    setShowAddressForm(false);
-                    resetAddressForm();
-                  } else {
-                    resetAddressForm();
-                    setShowAddressForm(true);
-                  }
-                }}
-                className="ml-4 flex shrink-0 items-center gap-1 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
-              >
-                {showAddressForm && !editingAddressId ? (
-                  "收起"
-                ) : (
-                  <>
-                    <Plus className="h-3.5 w-3.5" />
-                    新增
-                  </>
-                )}
-              </button>
+              <ChevronDown
+                className={`ml-4 h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
+                  showAddressForm ? "rotate-180" : ""
+                }`}
+              />
             </div>
 
             {/* 新增/编辑地址表单 */}
