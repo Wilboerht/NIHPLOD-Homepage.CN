@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -49,6 +50,7 @@ interface RedemptionRecord {
   recipient: string | null;
   phone: string | null;
   address: string | null;
+  fulfilledAt: string | null;
   createdAt: string;
 }
 
@@ -112,6 +114,15 @@ function formatDate(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate()
+  ).padStart(2, "0")}`;
+}
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes()
   ).padStart(2, "0")}`;
 }
 
@@ -580,6 +591,21 @@ export function PointsMallPanel() {
                       <span className="text-stone-400">兑换时间</span>
                       <span className="text-stone-700">{formatDate(selectedRedemption.createdAt)}</span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-400">发货状态</span>
+                      {selectedRedemption.status === "FULFILLED" ? (
+                        <span className="text-[#00263e]">
+                          已发货
+                          {selectedRedemption.fulfilledAt
+                            ? ` · ${formatDateTime(selectedRedemption.fulfilledAt)}`
+                            : ""}
+                        </span>
+                      ) : selectedRedemption.status === "PENDING" ? (
+                        <span className="text-amber-600">待发货</span>
+                      ) : (
+                        <span className="text-stone-400">已取消</span>
+                      )}
+                    </div>
                     {selectedRedemption.address && (
                       <div className="flex items-start justify-between gap-4">
                         <span className="shrink-0 text-stone-400">收货信息</span>
@@ -593,6 +619,11 @@ export function PointsMallPanel() {
                           </span>
                         </span>
                       </div>
+                    )}
+                    {selectedRedemption.status === "PENDING" && (
+                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+                        管理员履约后将尽快为您寄出，可稍后回来查看发货状态
+                      </p>
                     )}
                   </div>
                 </div>
@@ -612,9 +643,17 @@ export function PointsMallPanel() {
             <h3 className="text-lg font-semibold text-stone-800">确认兑换</h3>
             <p className="mt-1 text-sm text-stone-500">
               {confirmGift
-                ? `确定使用 ${confirmGift.cost?.toLocaleString()} 积分兑换「${confirmGift.name}」吗？兑换成功后积分不可退还。`
+                ? `确定使用 ${confirmGift.cost?.toLocaleString()} 积分兑换「${confirmGift.name}」吗？`
                 : ""}
             </p>
+
+            {/* 不可取消提醒 */}
+            <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="text-xs leading-relaxed text-amber-700">
+                兑换提交后不可取消，积分将立即扣除且不予退还，请确认礼品与收货地址无误后再提交。
+              </p>
+            </div>
 
             {/* 收货地址 */}
             <div className="mt-4">
