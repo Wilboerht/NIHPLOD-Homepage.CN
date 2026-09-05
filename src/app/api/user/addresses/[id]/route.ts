@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const existing = await prisma.userAddress.findUnique({
       where: { id },
-      select: { userId: true },
+      select: { userId: true, isDefault: true },
     });
     if (!existing || existing.userId !== user.id) {
       // 越权查询统一 404，不泄露地址存在性
@@ -84,7 +84,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           data: { isDefault: false },
         });
       }
-      return tx.userAddress.update({
+      const updated = await tx.userAddress.update({
         where: { id },
         data: {
           recipient,
@@ -92,10 +92,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           region,
           detail,
           // 未显式传 isDefault 时保留原值；显式 false 表示取消默认
-          // （默认地址取消后不自动补默认，由前端引导用户另行设置）
           isDefault: isDefault === undefined ? undefined : isDefault,
         },
       });
+      // 原默认地址被显式取消默认：自动将剩余最早一条设为默认，保证地址簿始终有默认地址
+      if (existing.isDefault && isDefault === false) {
+        const earliest = await tx.userAddress.findFirst({
+          where: { userId: user.id, id: { not: id } },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        });
+        if (earliest) {
+          await tx.userAddress.update({
+            where: { id: earliest.id },
+            data: { isDefault: true },
+          });
+        }
+      }
+      return updated;
     });
 
     return NextResponse.json({ success: true, data: { address: toView(address) } });
