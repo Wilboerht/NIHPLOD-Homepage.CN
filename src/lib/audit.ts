@@ -67,6 +67,7 @@ export type AuditAction =
   | "point_gift_create"
   | "point_gift_update"
   | "point_redemption_fulfill"
+  | "point_redemption_waybill_update"
   | "create_point_campaign"
   | "update_point_campaign"
   | "delete_point_campaign"
@@ -158,6 +159,7 @@ export const AUDIT_ACTIONS = [
   "point_gift_create",
   "point_gift_update",
   "point_redemption_fulfill",
+  "point_redemption_waybill_update",
   "create_point_campaign",
   "update_point_campaign",
   "delete_point_campaign",

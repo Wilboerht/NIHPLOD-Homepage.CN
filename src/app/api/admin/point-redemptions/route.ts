@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
           recipient: true,
           phone: true,
           address: true,
+          carrier: true,
+          waybillNo: true,
           createdAt: true,
           fulfilledAt: true,
           user: { select: { id: true, phone: true, nickname: true } },
@@ -87,6 +89,8 @@ export async function GET(request: NextRequest) {
           recipient: r.recipient,
           phone: r.phone,
           address: r.address,
+          carrier: r.carrier,
+          waybillNo: r.waybillNo,
           createdAt: r.createdAt.toISOString(),
           fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
           user: {

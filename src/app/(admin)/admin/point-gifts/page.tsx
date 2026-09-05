@@ -10,6 +10,7 @@ import { Gift, PackageCheck, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -32,6 +33,8 @@ interface RedemptionItem {
   recipient: string | null;
   phone: string | null;
   address: string | null;
+  carrier: string | null;
+  waybillNo: string | null;
   createdAt: string;
   fulfilledAt: string | null;
   user: { id: string; phone: string; nickname: string | null };
@@ -79,7 +82,12 @@ export default function AdminPointGiftsPage() {
   const [tab, setTab] = useState<StatusTab>("PENDING");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [fulfillingId, setFulfillingId] = useState<string | null>(null);
+  const [fulfillTarget, setFulfillTarget] = useState<{
+    redemption: RedemptionItem;
+    mode: "fulfill" | "waybill";
+  } | null>(null);
+  const [waybillInput, setWaybillInput] = useState("");
+  const [submittingFulfill, setSubmittingFulfill] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setProductsLoading(true);
@@ -145,16 +153,38 @@ export default function AdminPointGiftsPage() {
     }
   };
 
-  const handleFulfill = async (r: RedemptionItem) => {
-    setFulfillingId(r.id);
+  /** 打开履约/运单号弹窗（履约可录入运单号；已履约可补录/修改） */
+  const openFulfillModal = (r: RedemptionItem) => {
+    setWaybillInput(r.waybillNo ?? "");
+    setFulfillTarget({
+      redemption: r,
+      mode: r.status === "PENDING" ? "fulfill" : "waybill",
+    });
+  };
+
+  const handleFulfillSubmit = async () => {
+    if (!fulfillTarget) return;
+    const { redemption, mode } = fulfillTarget;
+    const waybillNo = waybillInput.trim();
+    setSubmittingFulfill(true);
     try {
-      await apiPost(`/api/admin/point-redemptions/${r.id}/fulfill`);
-      success("已标记履约");
+      if (mode === "fulfill") {
+        await apiPost(`/api/admin/point-redemptions/${redemption.id}/fulfill`, {
+          waybillNo: waybillNo || undefined,
+        });
+        success("已标记履约");
+      } else {
+        await apiPatch(`/api/admin/point-redemptions/${redemption.id}/waybill`, {
+          waybillNo,
+        });
+        success("运单号已更新");
+      }
+      setFulfillTarget(null);
       fetchRedemptions();
     } catch (e) {
-      showError(e instanceof ApiError ? e.message : "履约失败");
+      showError(e instanceof ApiError ? e.message : "操作失败");
     } finally {
-      setFulfillingId(null);
+      setSubmittingFulfill(false);
     }
   };
 
@@ -403,6 +433,12 @@ export default function AdminPointGiftsPage() {
                       ) : (
                         <span className="text-xs text-gray-400">未填写</span>
                       )}
+                      {r.waybillNo && (
+                        <p className="mt-0.5 text-xs text-blue-700">
+                          运单号：{r.waybillNo}
+                          {r.carrier === "SF" ? "（顺丰）" : ""}
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}>
@@ -411,16 +447,15 @@ export default function AdminPointGiftsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{formatDateTime(r.createdAt)}</td>
                     <td className="px-6 py-4">
-                      {r.status === "PENDING" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={fulfillingId === r.id}
-                          onClick={() => handleFulfill(r)}
-                        >
-                          {fulfillingId === r.id ? "处理中..." : "标记履约"}
+                      {r.status === "PENDING" ? (
+                        <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                          标记履约
                         </Button>
-                      )}
+                      ) : r.status === "FULFILLED" ? (
+                        <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                          {r.waybillNo ? "修改运单号" : "补录运单号"}
+                        </Button>
+                      ) : null}
                     </td>
                   </tr>
                 ))
@@ -449,6 +484,52 @@ export default function AdminPointGiftsPage() {
           </div>
         )}
       </div>
+
+      {/* 履约 / 运单号维护弹窗 */}
+      <Modal
+        open={!!fulfillTarget}
+        onClose={() => setFulfillTarget(null)}
+        size="sm"
+        showCloseButton={false}
+      >
+        <h3 className="text-lg font-semibold text-gray-800">
+          {fulfillTarget?.mode === "fulfill" ? "标记履约" : "维护运单号"}
+        </h3>
+        <p className="mt-1 text-sm text-gray-500">
+          {fulfillTarget?.mode === "fulfill"
+            ? "确认已发出该礼品？可选填顺丰运单号，填写后用户可查看物流轨迹。"
+            : "填写或更新顺丰运单号（留空并保存可清除）。"}
+        </p>
+        {fulfillTarget && (
+          <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+            <p className="truncate">{fulfillTarget.redemption.productName}</p>
+            <p className="mt-0.5">
+              {fulfillTarget.redemption.recipient ?? "未填写收货人"}
+              {fulfillTarget.redemption.address
+                ? ` · ${fulfillTarget.redemption.address}`
+                : ""}
+            </p>
+          </div>
+        )}
+        <Input
+          value={waybillInput}
+          onChange={(e) => setWaybillInput(e.target.value)}
+          placeholder="顺丰运单号（如 SF1234567890123，选填）"
+          className="mt-4"
+        />
+        <div className="mt-6 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setFulfillTarget(null)}
+            disabled={submittingFulfill}
+          >
+            取消
+          </Button>
+          <Button onClick={handleFulfillSubmit} loading={submittingFulfill}>
+            {fulfillTarget?.mode === "fulfill" ? "确认履约" : "保存"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -50,8 +50,18 @@ interface RedemptionRecord {
   recipient: string | null;
   phone: string | null;
   address: string | null;
+  carrier: string | null;
+  waybillNo: string | null;
   fulfilledAt: string | null;
   createdAt: string;
+}
+
+interface TrackingData {
+  waybillNo: string;
+  carrier: string | null;
+  supported: boolean;
+  routes: { time: string; description: string; location?: string }[] | null;
+  error: string | null;
 }
 
 interface GiftsData {
@@ -155,6 +165,8 @@ export function PointsMallPanel() {
   // 面板视图：主视图 / 兑换详情（整版淡入淡出）
   const [view, setView] = useState<"main" | "detail">("main");
   const [selectedRedemption, setSelectedRedemption] = useState<RedemptionRecord | null>(null);
+  const [tracking, setTracking] = useState<TrackingData | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError, success: showSuccessToast } = useToast();
 
@@ -242,6 +254,34 @@ export function PointsMallPanel() {
       // 加载失败静默，用户可内联新增
     } finally {
       setAddressesLoading(false);
+    }
+  }, []);
+
+  /** 打开兑换详情：有运单号时拉取物流轨迹 */
+  const openRedemptionDetail = (r: RedemptionRecord) => {
+    setSelectedRedemption(r);
+    setView("detail");
+    setTracking(null);
+    if (r.waybillNo) {
+      void loadTracking(r.id);
+    }
+  };
+
+  /** 拉取物流轨迹（顺丰丰桥） */
+  const loadTracking = useCallback(async (redemptionId: string) => {
+    setTrackingLoading(true);
+    try {
+      const res = await fetchWithAuth(`/api/user/points/redemptions/${redemptionId}/tracking`);
+      const data = await res.json();
+      if (data.success) {
+        setTracking(data.data);
+      } else {
+        setTracking(null);
+      }
+    } catch {
+      setTracking(null);
+    } finally {
+      setTrackingLoading(false);
     }
   }, []);
 
@@ -510,10 +550,7 @@ export function PointsMallPanel() {
                         <span className="text-stone-400">{formatDate(r.createdAt)}</span>
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedRedemption(r);
-                            setView("detail");
-                          }}
+                          onClick={() => openRedemptionDetail(r)}
                           className="text-[#00263e] transition-opacity hover:opacity-70"
                         >
                           查看
@@ -624,6 +661,66 @@ export function PointsMallPanel() {
                       <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
                         管理员履约后将尽快为您寄出，可稍后回来查看发货状态
                       </p>
+                    )}
+
+                    {/* 物流轨迹（有运单号时查询丰桥轨迹） */}
+                    {selectedRedemption.waybillNo && (
+                      <div className="border-t border-stone-200/60 pt-4">
+                        <p className="mb-3 text-xs font-medium tracking-wide text-stone-500">
+                          物流轨迹
+                          <span className="ml-2 font-normal text-stone-400">
+                            {selectedRedemption.carrier === "SF" ? "顺丰速运" : "快递"} ·{" "}
+                            {selectedRedemption.waybillNo}
+                          </span>
+                        </p>
+
+                        {trackingLoading ? (
+                          <div className="flex items-center gap-1.5 py-3 text-xs text-stone-400">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> 轨迹查询中...
+                          </div>
+                        ) : tracking && tracking.supported && tracking.routes && tracking.routes.length > 0 ? (
+                          <div>
+                            {[...tracking.routes].reverse().map((r, i) => (
+                              <div key={i} className="relative flex gap-3 pb-4 last:pb-0">
+                                {i < tracking.routes!.length - 1 && (
+                                  <span className="absolute left-[5px] top-4 h-full w-px bg-stone-200" />
+                                )}
+                                <span
+                                  className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                                    i === 0 ? "bg-[#00263e]" : "bg-stone-300"
+                                  }`}
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-xs leading-relaxed text-stone-700">
+                                    {r.description}
+                                  </p>
+                                  <p className="mt-0.5 text-[11px] text-stone-400">
+                                    {r.location ? `${r.location} · ` : ""}
+                                    {formatDateTime(r.time)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : tracking && !tracking.supported ? (
+                          <p className="py-2 text-xs text-stone-400">
+                            物流轨迹查询暂未开通，可前往顺丰速运官网查询
+                          </p>
+                        ) : tracking && tracking.error ? (
+                          <div className="flex items-center gap-3 py-2">
+                            <p className="text-xs text-stone-400">{tracking.error}</p>
+                            <button
+                              type="button"
+                              onClick={() => void loadTracking(selectedRedemption.id)}
+                              className="text-xs text-[#00263e] transition-opacity hover:opacity-70"
+                            >
+                              重试
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="py-2 text-xs text-stone-400">暂无轨迹信息</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

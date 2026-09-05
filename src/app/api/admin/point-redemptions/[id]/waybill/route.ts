@@ -1,8 +1,8 @@
 /**
- * 积分兑换履约 API（管理端）
- * POST /api/admin/point-redemptions/[id]/fulfill - 标记已履约（可选录入运单号）
+ * 兑换运单号维护 API（管理端）
+ * PATCH /api/admin/point-redemptions/[id]/waybill - 补录/更新/清除运单号
  *
- * Body: { waybillNo?: string } - 运单号（顺丰 SF 开头，选填；填写后用户端可查物流轨迹）
+ * Body: { waybillNo?: string } - 空字符串表示清除
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -11,11 +11,11 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { fulfillRedemption } from "@/lib/point-gifts";
+import { updateRedemptionWaybill } from "@/lib/point-gifts";
 
 export const dynamic = "force-dynamic";
 
-const fulfillSchema = z.object({
+const waybillSchema = z.object({
   waybillNo: z
     .string()
     .trim()
@@ -25,7 +25,7 @@ const fulfillSchema = z.object({
     .or(z.literal("")),
 });
 
-export async function POST(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -50,7 +50,7 @@ export async function POST(
       return invalidIdResponse();
     }
 
-    const parsed = fulfillSchema.safeParse(await request.json().catch(() => ({})));
+    const parsed = waybillSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) {
       return NextResponse.json(
         {
@@ -61,39 +61,29 @@ export async function POST(
       );
     }
 
-    const waybillNo = parsed.data.waybillNo?.trim() || undefined;
+    const waybillNo = parsed.data.waybillNo?.trim() || null;
 
-    const result = await fulfillRedemption({ redemptionId: id, adminId: admin.id, waybillNo });
+    const result = await updateRedemptionWaybill({ redemptionId: id, waybillNo });
 
     if (!result.ok) {
-      const statusMap: Record<string, number> = {
-        NOT_FOUND: 404,
-        ALREADY_PROCESSED: 409,
-      };
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.code,
-            message: result.code === "ALREADY_PROCESSED" ? "该兑换已处理" : "兑换记录不存在",
-          },
-        },
-        { status: statusMap[result.code ?? ""] ?? 500 }
+        { success: false, error: { code: "NOT_FOUND", message: "兑换记录不存在" } },
+        { status: 404 }
       );
     }
 
     await createAuditLog({
-      action: "point_redemption_fulfill",
+      action: "point_redemption_waybill_update",
       targetType: "point_redemption",
       targetId: id,
-      detail: { waybillNo: waybillNo ?? null },
+      detail: { waybillNo },
       adminId: admin.id,
       request,
     });
 
-    return NextResponse.json({ success: true, data: { message: "已标记履约" } });
+    return NextResponse.json({ success: true, data: { message: "运单号已更新" } });
   } catch (error) {
-    apiConsole.error("[AdminPointRedemptions] 履约失败:", error);
+    apiConsole.error("[AdminPointRedemptions] 运单号更新失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

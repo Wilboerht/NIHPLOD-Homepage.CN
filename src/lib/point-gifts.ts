@@ -168,12 +168,13 @@ export async function redeemGiftForUser(params: {
   });
 }
 
-/** 管理端：履约（PENDING → FULFILLED，CAS 抢占防并发重复履约） */
+/** 管理端：履约（PENDING → FULFILLED，CAS 抢占防并发重复履约；可选录入运单号） */
 export async function fulfillRedemption(params: {
   redemptionId: string;
   adminId: string;
+  waybillNo?: string;
 }): Promise<{ ok: boolean; code?: "NOT_FOUND" | "ALREADY_PROCESSED" }> {
-  const { redemptionId } = params;
+  const { redemptionId, waybillNo } = params;
   const redemption = await prisma.pointRedemption.findUnique({
     where: { id: redemptionId },
     select: { id: true, status: true },
@@ -183,7 +184,30 @@ export async function fulfillRedemption(params: {
 
   const claimed = await prisma.pointRedemption.updateMany({
     where: { id: redemptionId, status: "PENDING" },
-    data: { status: "FULFILLED", fulfilledAt: new Date() },
+    data: {
+      status: "FULFILLED",
+      fulfilledAt: new Date(),
+      ...(waybillNo ? { waybillNo, carrier: "SF" } : {}),
+    },
   });
   return { ok: claimed.count > 0 };
+}
+
+/** 管理端：补录/更新运单号（已履约订单；传空字符串清除） */
+export async function updateRedemptionWaybill(params: {
+  redemptionId: string;
+  waybillNo: string | null;
+}): Promise<{ ok: boolean; code?: "NOT_FOUND" }> {
+  const { redemptionId, waybillNo } = params;
+  const redemption = await prisma.pointRedemption.findUnique({
+    where: { id: redemptionId },
+    select: { id: true },
+  });
+  if (!redemption) return { ok: false, code: "NOT_FOUND" };
+
+  await prisma.pointRedemption.update({
+    where: { id: redemptionId },
+    data: waybillNo ? { waybillNo, carrier: "SF" } : { waybillNo: null, carrier: null },
+  });
+  return { ok: true };
 }

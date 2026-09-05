@@ -762,6 +762,8 @@ model PointRedemption {
   recipient   String?                 // 收货人姓名快照（履约寄送用）
   phone       String?                 // 收货手机号快照
   address     String?                 // 完整收货地址快照（省市区 + 详细地址）
+  carrier     String?                 // 承运商（如 SF=顺丰），履约时写入
+  waybillNo   String?                 // 运单号（履约时录入，用户端据此查询物流轨迹）
   fulfilledAt DateTime?
   createdAt   DateTime                @default(now())
 

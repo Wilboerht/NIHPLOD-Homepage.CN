@@ -50,6 +50,8 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
         recipient: true,
         phone: true,
         address: true,
+        carrier: true,
+        waybillNo: true,
         fulfilledAt: true,
         createdAt: true,
       },
@@ -65,6 +67,8 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
       recipient: r.recipient,
       phone: r.phone,
       address: r.address,
+      carrier: r.carrier,
+      waybillNo: r.waybillNo,
       fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     }));
