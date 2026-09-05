@@ -144,6 +144,14 @@ interface SpentAdjustmentItem {
   createdAt: string;
 }
 
+interface LevelChangeItem {
+  id: string;
+  fromLevel: string;
+  toLevel: string;
+  note: string | null;
+  createdAt: string;
+}
+
 const REDEMPTION_STATUS_LABELS: Record<string, string> = {
   PENDING: "待履约",
   FULFILLED: "已履约",
@@ -209,6 +217,7 @@ export default function AdminUsersPage() {
   const [detailAddresses, setDetailAddresses] = useState<AddressItem[]>([]);
   const [detailAdjustments, setDetailAdjustments] = useState<SpentAdjustmentItem[]>([]);
   const [detailAdjustmentTotal, setDetailAdjustmentTotal] = useState(0);
+  const [detailLevelChanges, setDetailLevelChanges] = useState<LevelChangeItem[]>([]);
   const [activeDetailTab, setActiveDetailTab] = useState<
     "basic" | "points" | "address" | "spent" | "growth"
   >("basic");
@@ -367,6 +376,7 @@ export default function AdminUsersPage() {
     setDetailAddresses([]);
     setDetailAdjustments([]);
     setDetailAdjustmentTotal(0);
+    setDetailLevelChanges([]);
     setActiveDetailTab("basic");
     setRevealedPhone("");
     try {
@@ -375,12 +385,14 @@ export default function AdminUsersPage() {
         points: UserDetailPoints;
         addresses: AddressItem[];
         spentAdjustments: { items: SpentAdjustmentItem[]; total: number };
+        levelChanges: LevelChangeItem[];
       }>(`/api/admin/users/${id}`);
       setDetailUser(data.user);
       setDetailPoints(data.points);
       setDetailAddresses(data.addresses);
       setDetailAdjustments(data.spentAdjustments.items);
       setDetailAdjustmentTotal(data.spentAdjustments.total);
+      setDetailLevelChanges(data.levelChanges ?? []);
     } catch (err) {
       // 区分真实原因：404 才是「用户不存在」，其他错误（400/500/网络）原样展示便于排查
       setDetailError(err instanceof ApiError ? err.message : "加载失败，请稍后重试");
@@ -1052,6 +1064,42 @@ export default function AdminUsersPage() {
                 <p className="mt-4 border-t border-brand-charcoal/15 pt-3 text-xs text-brand-charcoal/40">
                   激活时间为首次达到该等级的时间（等级按累计消费实时判定，可升可降）
                 </p>
+
+                {/* 等级变更轨迹（升/降档记录） */}
+                <div className="mt-4 border-t border-brand-charcoal/15 pt-4">
+                  <h4 className="mb-2 text-sm font-medium text-brand-charcoal">等级变更轨迹</h4>
+                  {detailLevelChanges.length === 0 ? (
+                    <p className="py-2 text-sm text-brand-charcoal/40">
+                      暂无等级变更记录（注册即为当前等级）
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailLevelChanges.map((c) => (
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-brand-charcoal/10 bg-white px-3 py-2.5"
+                        >
+                          <div className="flex items-center gap-2 text-sm">
+                            <Badge
+                              variant={membershipLevelMap[c.fromLevel]?.variant ?? "secondary"}
+                            >
+                              {membershipLevelMap[c.fromLevel]?.label ?? c.fromLevel}
+                            </Badge>
+                            <span className="text-brand-charcoal/40">→</span>
+                            <Badge
+                              variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}
+                            >
+                              {membershipLevelMap[c.toLevel]?.label ?? c.toLevel}
+                            </Badge>
+                          </div>
+                          <span className="shrink-0 text-xs text-brand-charcoal/40">
+                            {formatDate(c.createdAt)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

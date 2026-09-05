@@ -128,6 +128,19 @@ export async function applyExternalSpentSync(params: {
           data: { userId, reference, spentDelta, note },
         });
 
+        // 等级变更轨迹（升/降档实时记录，幂等键与同步记录一致）
+        if (newLevel !== user.membershipLevel) {
+          await tx.membershipLevelChange.create({
+            data: {
+              userId,
+              fromLevel: user.membershipLevel,
+              toLevel: newLevel,
+              reference,
+              note: note ?? `等级变更：${user.membershipLevel} → ${newLevel}`,
+            },
+          });
+        }
+
         // 积分联动（与消费额同事务，保证账实一致）
         // 所有等级均按 1:1 发放积分（普通档仅累积、不可兑礼，兑礼侧按兑礼率拦截）
         if (spentDelta > 0) {

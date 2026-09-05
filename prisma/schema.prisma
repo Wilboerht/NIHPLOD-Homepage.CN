@@ -239,6 +239,7 @@ model User {
   pointBalance PointBalance?
   pointRedemptions PointRedemption[]
   addresses UserAddress[]
+  membershipLevelChanges MembershipLevelChange[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -747,6 +748,22 @@ model UserAddress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// 会员等级变更轨迹（升档/降档实时记录；判级见 points.ts LEVEL_THRESHOLDS）
+model MembershipLevelChange {
+  id        String          @id @default(cuid())
+  userId    String
+  fromLevel MembershipLevel
+  toLevel   MembershipLevel
+  reference String          // 幂等键（与 SpentSyncRecord.reference 一致）
+  note      String?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reference]) // 幂等防重：同一单据只记一次等级变更
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // 用户积分兑换记录（兑换产品来自产品库；名称/价格/扣分/收货地址快照，管理端履约）

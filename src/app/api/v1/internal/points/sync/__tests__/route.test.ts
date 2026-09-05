@@ -11,6 +11,7 @@ const { txClient } = vi.hoisted(() => ({
   txClient: {
     user: { findUnique: vi.fn(), updateMany: vi.fn() },
     spentSyncRecord: { findUnique: vi.fn(), create: vi.fn() },
+    membershipLevelChange: { create: vi.fn() },
     pointLedger: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -99,6 +100,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     // 默认：幂等记录不存在、CAS 条件更新命中
     txClient.spentSyncRecord.findUnique.mockResolvedValue(null);
     txClient.spentSyncRecord.create.mockResolvedValue({});
+    txClient.membershipLevelChange.create.mockResolvedValue({});
     txClient.user.updateMany.mockResolvedValue({ count: 1 });
     // 积分联动默认 mock
     txClient.pointLedger.findUnique.mockResolvedValue(null);
@@ -164,6 +166,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     txClient.user.findUnique.mockResolvedValue({
       totalSpent: 850,
+      membershipLevel: "REGULAR",
     });
 
     const res = await POST(createSignedRequest(VALID_BODY));
@@ -189,6 +192,16 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
         note: "商城订单消费",
       },
     });
+    // 等级变更轨迹：REGULAR → SILVER（跨档入账记录）
+    expect(txClient.membershipLevelChange.create).toHaveBeenCalledWith({
+      data: {
+        userId: "user-1",
+        fromLevel: "REGULAR",
+        toLevel: "SILVER",
+        reference: "mall-order-N001",
+        note: "商城订单消费",
+      },
+    });
     // 积分联动：消费发放 1:1（立即到账、6 个月过期）
     expect(txClient.pointLedger.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -211,7 +224,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   it("普通档消费（未达银卡门槛）：同样发放积分（仅累积，不可兑礼）", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     // 500 + 400 = 900 < 1000，仍为普通档
-    txClient.user.findUnique.mockResolvedValue({ totalSpent: 500 });
+    txClient.user.findUnique.mockResolvedValue({ totalSpent: 500, membershipLevel: "REGULAR" });
 
     const res = await POST(
       createSignedRequest({ ...VALID_BODY, spentDelta: 400, reference: "mall-order-N3" })
@@ -237,12 +250,15 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
       create: { userId: "user-1", available: 400 },
       update: { available: { increment: 400 } },
     });
+    // 等级未变化：不写等级变更轨迹
+    expect(txClient.membershipLevelChange.create).not.toHaveBeenCalled();
   });
 
   it("退款扣减（负 spentDelta）应钳制到 0，不出现负消费额", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     txClient.user.findUnique.mockResolvedValue({
       totalSpent: 50,
+      membershipLevel: "GOLD",
     });
 
     const res = await POST(
@@ -273,9 +289,9 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1" });
     // 模拟并发：本请求读到快照 800 时，另一笔 +200 已先入账（消费额变 1000）
     txClient.user.findUnique
-      .mockResolvedValueOnce({ totalSpent: 800 })
-      // CAS 失败后重读：消费额已变为 1000
-      .mockResolvedValueOnce({ totalSpent: 1000 });
+      .mockResolvedValueOnce({ totalSpent: 800, membershipLevel: "REGULAR" })
+      // CAS 失败后重读：消费额已变为 1000（已达银卡）
+      .mockResolvedValueOnce({ totalSpent: 1000, membershipLevel: "SILVER" });
     txClient.user.updateMany
       // 第一次：快照 800 已被并发修改，命中 0 行
       .mockResolvedValueOnce({ count: 0 })
@@ -324,6 +340,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
       .mockResolvedValueOnce({ totalSpent: 1000, membershipLevel: "SILVER" });
     txClient.user.findUnique.mockResolvedValue({
       totalSpent: 850,
+      membershipLevel: "REGULAR",
     });
     txClient.spentSyncRecord.create.mockRejectedValue({ code: "P2002" });
 

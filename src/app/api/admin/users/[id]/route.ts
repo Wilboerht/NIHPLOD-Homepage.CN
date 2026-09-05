@@ -27,6 +27,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 // 详情聚合各分区的记录上限（完整历史走独立查询，此处只做档案快照展示）
 const RECENT_LIMIT = 20;
 
+// 详情查看审计合并窗口：同一管理员查看同一用户 5 分钟内只记一条
+const DETAIL_VIEW_AUDIT_WINDOW_MS = 5 * 60 * 1000;
+
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
@@ -49,40 +52,49 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return invalidIdResponse();
     }
 
-    const [user, balance, redemptions, redemptionTotal, addresses, adjustments, adjustmentTotal] =
-      await Promise.all([
-        prisma.user.findUnique({
-          where: { id },
+    // 先查用户本体：不存在直接 404，省去后续 6 个分区查询
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        phone: true,
+        phoneVerified: true,
+        nickname: true,
+        avatar: true,
+        status: true,
+        membershipLevel: true,
+        totalSpent: true,
+        silverActivatedAt: true,
+        goldActivatedAt: true,
+        diamondActivatedAt: true,
+        wechatOpenId: true,
+        wechatUnionId: true,
+        // 多平台外部身份（聚合框架单一数据源；旧列仅作双写过渡期前端兜底展示）
+        externalIdentities: {
+          orderBy: { createdAt: "asc" },
           select: {
             id: true,
-            phone: true,
-            phoneVerified: true,
-            nickname: true,
-            avatar: true,
-            status: true,
-            membershipLevel: true,
-            totalSpent: true,
-            silverActivatedAt: true,
-            goldActivatedAt: true,
-            diamondActivatedAt: true,
-            wechatOpenId: true,
-            wechatUnionId: true,
-            // 多平台外部身份（聚合框架单一数据源；旧列仅作双写过渡期前端兜底展示）
-            externalIdentities: {
-              orderBy: { createdAt: "asc" },
-              select: {
-                id: true,
-                provider: true,
-                subjectId: true,
-                unionId: true,
-                metadata: true,
-                createdAt: true,
-              },
-            },
+            provider: true,
+            subjectId: true,
+            unionId: true,
+            metadata: true,
             createdAt: true,
-            updatedAt: true,
           },
-        }),
+        },
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+
+    const [balance, redemptions, redemptionTotal, addresses, adjustments, adjustmentTotal, levelChanges] =
+      await Promise.all([
         prisma.pointBalance.findUnique({
           where: { userId: id },
           select: { available: true, frozen: true, updatedAt: true },
@@ -137,24 +149,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
           },
         }),
         prisma.spentAdjustmentApplication.count({ where: { userId: id } }),
+        prisma.membershipLevelChange.findMany({
+          where: { userId: id },
+          orderBy: { createdAt: "desc" },
+          take: RECENT_LIMIT,
+          select: { id: true, fromLevel: true, toLevel: true, note: true, createdAt: true },
+        }),
       ]);
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
-        { status: 404 }
-      );
-    }
-
-    // 查看用户详情（含积分/地址等敏感档案）记审计
-    await createAuditLog({
-      action: "user_detail_view",
-      targetType: "user",
-      targetId: id,
-      detail: { phone: maskPhone(user.phone) },
-      adminId: admin.id,
-      request,
+    // 查看用户详情（含积分/地址等敏感档案）记审计——同一管理员 5 分钟内重复查看合并为一条
+    const recentView = await prisma.auditLog.findFirst({
+      where: {
+        action: "user_detail_view",
+        targetType: "user",
+        targetId: id,
+        adminId: admin.id,
+        createdAt: { gte: new Date(Date.now() - DETAIL_VIEW_AUDIT_WINDOW_MS) },
+      },
+      select: { id: true },
     });
+    if (!recentView) {
+      await createAuditLog({
+        action: "user_detail_view",
+        targetType: "user",
+        targetId: id,
+        detail: { phone: maskPhone(user.phone) },
+        adminId: admin.id,
+        request,
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -221,6 +244,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
           })),
           total: adjustmentTotal,
         },
+        levelChanges: levelChanges.map((c) => ({
+          id: c.id,
+          fromLevel: c.fromLevel,
+          toLevel: c.toLevel,
+          note: c.note,
+          createdAt: c.createdAt.toISOString(),
+        })),
       },
     });
   } catch (error) {

@@ -68,6 +68,7 @@ vi.mock("@/lib/prisma", () => {
     pointRedemption: mockPrismaModel(),
     userAddress: mockPrismaModel(),
     spentAdjustmentApplication: mockPrismaModel(),
+    membershipLevelChange: mockPrismaModel(),
     // 外部平台身份（多平台聚合）：删除用户时 removeIdentities 调 deleteMany 需返回 count
     externalIdentity: { ...mockPrismaModel(), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   };
@@ -599,6 +600,7 @@ describe("管理端 API 集成测试", () => {
       mockPrisma.userAddress.findMany.mockResolvedValue([]);
       mockPrisma.spentAdjustmentApplication.findMany.mockResolvedValue([]);
       mockPrisma.spentAdjustmentApplication.count.mockResolvedValue(0);
+      mockPrisma.membershipLevelChange.findMany.mockResolvedValue([]);
 
       const { GET } = await import("@/app/api/admin/users/[id]/route");
       const res = await GET(req, { params: Promise.resolve({ id: "user-1" }) });
