@@ -324,25 +324,25 @@ export function VipPanel() {
 
             {nextLevel ? (
               <div className="mt-4 space-y-3">
-                {/* 升级进度（视觉锚点：差额数字 + 进度条） */}
+                {/* 升级进度（一行：差额数字 + 进度条 + 百分比） */}
                 <div className="rounded-xl bg-white/60 p-4">
-                  <div className="flex items-end justify-between gap-3">
-                    <p className="text-xs leading-relaxed text-stone-600">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <p className="min-w-0 text-xs leading-relaxed text-stone-600 sm:text-sm">
                       再消费{" "}
-                      <span className="text-base font-semibold leading-none text-[#00263e]">
+                      <span className="text-sm font-semibold leading-none text-[#00263e] sm:text-base">
                         ¥{nextLevel.spentNeeded.toLocaleString()}
                       </span>{" "}
                       升级{nextLevel.name}
                     </p>
-                    <span className="text-sm font-semibold text-[#00263e]">
+                    <div className="h-1.5 min-w-[48px] flex-1 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
+                        style={{ width: `${nextLevel.progress}%` }}
+                      />
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-[#00263e]">
                       {nextLevel.progress}%
                     </span>
-                  </div>
-                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white">
-                    <div
-                      className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
-                      style={{ width: `${nextLevel.progress}%` }}
-                    />
                   </div>
                 </div>
                 <div className="space-y-2">
