@@ -9,8 +9,20 @@
  * 普通档仅累积积分、不开放兑换（redeemRate=null 时展示解锁提示）。
  * 兑换幂等：requestId 由客户端生成；履约由管理端发货。
  */
-import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Gift, Loader2, Lock, MapPin, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Gift,
+  Loader2,
+  Lock,
+  MapPin,
+  Plus,
+  XCircle,
+} from "lucide-react";
+import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -34,6 +46,9 @@ interface RedemptionRecord {
   priceYuan: number;
   points: number;
   status: "PENDING" | "FULFILLED" | "CANCELLED";
+  recipient: string | null;
+  phone: string | null;
+  address: string | null;
   createdAt: string;
 }
 
@@ -70,6 +85,18 @@ const REDEMPTION_STATUS_LABELS: Record<RedemptionRecord["status"], string> = {
   PENDING: "待履约",
   FULFILLED: "已履约",
   CANCELLED: "已取消",
+};
+
+const REDEMPTION_STATUS_ICONS: Record<RedemptionRecord["status"], typeof Clock> = {
+  PENDING: Clock,
+  FULFILLED: CheckCircle2,
+  CANCELLED: XCircle,
+};
+
+const REDEMPTION_STATUS_STYLES: Record<RedemptionRecord["status"], string> = {
+  PENDING: "bg-amber-50 text-amber-600",
+  FULFILLED: "bg-[#00263e]/10 text-[#00263e]",
+  CANCELLED: "bg-stone-100 text-stone-400",
 };
 
 const POINT_TYPE_LABELS: Record<string, string> = {
@@ -111,6 +138,10 @@ export function PointsMallPanel() {
   const [newRegion, setNewRegion] = useState("");
   const [newDetail, setNewDetail] = useState("");
   const [creatingAddress, setCreatingAddress] = useState(false);
+  // 面板视图：主视图 / 兑换详情（整版淡入淡出）
+  const [view, setView] = useState<"main" | "detail">("main");
+  const [selectedRedemption, setSelectedRedemption] = useState<RedemptionRecord | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError, success: showSuccessToast } = useToast();
 
   const loadGiftsData = useCallback(async () => {
@@ -244,6 +275,11 @@ export function PointsMallPanel() {
     deferInEffect(loadPointsData);
   }, [loadGiftsData, loadPointsData]);
 
+  // 视图切换时回到顶部：整版内容淡入淡出后高度变化，避免停留在旧滚动位置
+  useEffect(() => {
+    scrollRef.current?.scrollTo?.({ top: 0 });
+  }, [view]);
+
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-mall">
       {/* 标题 - 移动端由弹窗全局 Header 管理 */}
@@ -251,7 +287,19 @@ export function PointsMallPanel() {
         <h2 className="text-xl font-medium tracking-wide text-stone-800">积分商城</h2>
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
+      <div
+        ref={scrollRef}
+        className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16"
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {view === "main" ? (
+            <m.div
+              key="main"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
         {/* 积分余额概览 */}
         <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
           <div className="flex items-center justify-between">
@@ -401,26 +449,25 @@ export function PointsMallPanel() {
                   ? giftsData.redemptions
                   : giftsData.redemptions.slice(0, 5)
                 ).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between text-xs">
-                    <span className="text-stone-600">
+                  <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="min-w-0 truncate text-stone-600">
                       {r.productName}
                       <span className="ml-2 text-stone-400">
                         {r.points.toLocaleString()} 积分
                       </span>
                     </span>
-                    <span className="flex items-center gap-2">
+                    <span className="flex shrink-0 items-center gap-3">
                       <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 ${
-                          r.status === "FULFILLED"
-                            ? "bg-emerald-50 text-emerald-600"
-                            : r.status === "PENDING"
-                              ? "bg-amber-50 text-amber-600"
-                              : "bg-stone-100 text-stone-400"
-                        }`}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRedemption(r);
+                          setView("detail");
+                        }}
+                        className="text-[#00263e] transition-opacity hover:opacity-70"
                       >
-                        {REDEMPTION_STATUS_LABELS[r.status]}
-                      </span>
+                        查看
+                      </button>
                     </span>
                   </div>
                 ))}
@@ -428,6 +475,83 @@ export function PointsMallPanel() {
             </div>
           )}
         </div>
+            </m.div>
+          ) : (
+            selectedRedemption && (
+              <m.div
+                key="redemption-detail"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex items-center gap-2">
+                  <h4 className="text-lg font-medium text-stone-800">兑换详情</h4>
+                  <button
+                    type="button"
+                    onClick={() => setView("main")}
+                    className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    返回
+                  </button>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-lg font-medium text-stone-800">
+                      {selectedRedemption.productName}
+                    </p>
+                    {(() => {
+                      const StatusIcon = REDEMPTION_STATUS_ICONS[selectedRedemption.status];
+                      return (
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${REDEMPTION_STATUS_STYLES[selectedRedemption.status]}`}
+                        >
+                          <StatusIcon className="h-3 w-3" />
+                          {REDEMPTION_STATUS_LABELS[selectedRedemption.status]}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="mt-4 space-y-2.5 border-t border-stone-200/60 pt-4 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-400">消耗积分</span>
+                      <span className="font-medium text-stone-700">
+                        {selectedRedemption.points.toLocaleString()} 积分
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-400">参考价格</span>
+                      <span className="text-stone-700">
+                        ¥{selectedRedemption.priceYuan.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-400">兑换时间</span>
+                      <span className="text-stone-700">{formatDate(selectedRedemption.createdAt)}</span>
+                    </div>
+                    {selectedRedemption.address && (
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="shrink-0 text-stone-400">收货信息</span>
+                        <span className="text-right text-stone-700">
+                          {selectedRedemption.recipient}
+                          {selectedRedemption.phone && (
+                            <span className="ml-2 text-stone-400">{selectedRedemption.phone}</span>
+                          )}
+                          <span className="mt-0.5 block text-stone-500">
+                            {selectedRedemption.address}
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </m.div>
+            )
+          )}
+        </AnimatePresence>
       </div>
 
       {/* 兑换确认（含收货地址选择 / 内联新增） */}

@@ -183,7 +183,7 @@ export function VipPanel() {
 
   // 视图切换时回到顶部：整版内容淡入淡出后高度变化，避免停留在旧滚动位置
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo?.({ top: 0 });
   }, [view]);
 
   if (!vipData && loading) {
