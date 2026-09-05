@@ -627,6 +627,29 @@ describe("管理端 API 集成测试", () => {
       expect(data.data.user.goldActivatedAt).toBe("2026-08-10T00:00:00.000Z");
       expect(data.data.user.diamondActivatedAt).toBeNull();
     });
+
+    it("显示完整手机号：POST 返回明文并写入敏感操作审计", async () => {
+      const req = createRequest("/api/admin/users/user-1", { method: "POST" });
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
+      mockPrisma.user.findUnique.mockResolvedValue({ phone: "13800138000" });
+
+      const { POST } = await import("@/app/api/admin/users/[id]/route");
+      const { createAuditLog } = await import("@/lib/audit");
+      const res = await POST(req, { params: Promise.resolve({ id: "user-1" }) });
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.phone).toBe("13800138000");
+      expect(createAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "user_detail_sensitive_view",
+          targetType: "user",
+          targetId: "user-1",
+          detail: { field: "phone" },
+        })
+      );
+    });
   });
 
   describe("PATCH /api/admin/users/:id", () => {
