@@ -20,6 +20,7 @@ import {
   Lock,
   MapPin,
   Plus,
+  X,
   XCircle,
 } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
@@ -164,8 +165,10 @@ export function PointsMallPanel() {
   const [selectedRedemption, setSelectedRedemption] = useState<RedemptionRecord | null>(null);
   const [tracking, setTracking] = useState<TrackingData | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  // 兑换成功面板内提示（自动消失）
+  const [redeemSuccess, setRedeemSuccess] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { error: showError, success: showSuccessToast } = useToast();
+  const { error: showError } = useToast();
 
   const loadGiftsData = useCallback(async () => {
     try {
@@ -354,10 +357,11 @@ export function PointsMallPanel() {
         addressId,
         requestId,
       });
-      showSuccessToast("兑换成功，礼品将尽快为您寄出");
       setConfirmGift(null);
       setShowNewAddress(false);
       setView("main");
+      // 面板内成功提示（5 秒后自动消失）
+      setRedeemSuccess(true);
       await loadPointsData();
       await loadGiftsData();
       await loadRedemptions();
@@ -378,6 +382,13 @@ export function PointsMallPanel() {
   useEffect(() => {
     scrollRef.current?.scrollTo?.({ top: 0 });
   }, [view]);
+
+  // 兑换成功提示 5 秒后自动消失
+  useEffect(() => {
+    if (!redeemSuccess) return;
+    const timer = setTimeout(() => setRedeemSuccess(false), 5000);
+    return () => clearTimeout(timer);
+  }, [redeemSuccess]);
 
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-mall">
@@ -400,6 +411,26 @@ export function PointsMallPanel() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
+        {/* 兑换成功提示（面板内，可手动关闭，5 秒自动消失） */}
+        {redeemSuccess && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#00263e]/20 bg-[#00263e]/5 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[#00263e]" />
+              <p className="text-xs text-stone-700">
+                兑换成功，礼品将尽快为您寄出，可在「我的兑换记录」中查看发货进度
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRedeemSuccess(false)}
+              aria-label="关闭提示"
+              className="shrink-0 text-stone-400 transition-colors hover:text-stone-700"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* 积分余额概览 */}
         <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
           <div className="flex items-center justify-between">
@@ -655,11 +686,6 @@ export function PointsMallPanel() {
                           </span>
                         </span>
                       </div>
-                    )}
-                    {selectedRedemption.status === "PENDING" && (
-                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
-                        管理员履约后将尽快为您寄出，可稍后回来查看发货状态
-                      </p>
                     )}
 
                     {/* 物流轨迹（有运单号时查询丰桥轨迹） */}
