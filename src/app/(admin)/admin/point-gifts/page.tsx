@@ -78,6 +78,7 @@ export default function AdminPointGiftsPage() {
 
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [pointsTotal, setPointsTotal] = useState(0);
   const [redemptionLoading, setRedemptionLoading] = useState(false);
   const [tab, setTab] = useState<StatusTab>("PENDING");
   const [page, setPage] = useState(1);
@@ -116,6 +117,7 @@ export default function AdminPointGiftsPage() {
       const data = await apiGet<{
         redemptions: RedemptionItem[];
         counts: Record<string, number>;
+        pointsTotal: number;
         pagination: { page: number; totalPages: number };
       }>("/api/admin/point-redemptions", {
         page,
@@ -124,6 +126,7 @@ export default function AdminPointGiftsPage() {
       });
       setRedemptions(data.redemptions);
       setCounts(data.counts);
+      setPointsTotal(data.pointsTotal);
       setTotalPages(data.pagination.totalPages);
     } catch {
       showError("加载兑换记录失败");
@@ -209,6 +212,27 @@ export default function AdminPointGiftsPage() {
           <RefreshCw className="mr-1.5 h-4 w-4" />
           刷新
         </Button>
+      </div>
+
+      {/* 概览统计 */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <p className="text-xs text-gray-500">全站可用积分总额</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-800">
+            {pointsTotal.toLocaleString()}
+          </p>
+          <p className="mt-1 text-[11px] text-gray-400">所有用户账户可用积分之和（可含退款冲正负值）</p>
+        </div>
+        <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <p className="text-xs text-gray-500">待履约兑换</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-800">{counts.PENDING ?? 0}</p>
+          <p className="mt-1 text-[11px] text-gray-400">待发货处理</p>
+        </div>
+        <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <p className="text-xs text-gray-500">已履约兑换</p>
+          <p className="mt-1 text-2xl font-semibold text-gray-800">{counts.FULFILLED ?? 0}</p>
+          <p className="mt-1 text-[11px] text-gray-400">已发货</p>
+        </div>
       </div>
 
       {/* 可兑换产品 */}

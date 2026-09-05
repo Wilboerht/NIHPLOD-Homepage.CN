@@ -56,6 +56,8 @@ export type AuditAction =
   | "user_phone_changed"
   | "user_status_change"
   | "user_deleted"
+  | "user_detail_view"
+  | "user_detail_sensitive_view"
   | "user_points_adjust"
   | "update_vip_benefit"
   | "submit_spent_adjustment"
@@ -148,6 +150,8 @@ export const AUDIT_ACTIONS = [
   "user_oauth_revoke",
   "user_status_change",
   "user_deleted",
+  "user_detail_view",
+  "user_detail_sensitive_view",
   "user_points_adjust",
   "update_vip_benefit",
   "submit_spent_adjustment",

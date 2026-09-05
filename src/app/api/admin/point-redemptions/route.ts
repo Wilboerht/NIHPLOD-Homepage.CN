@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const { page, pageSize, status } = parsed.data;
     const where = status ? { status } : {};
 
-    const [redemptions, total, statusCounts] = await Promise.all([
+    const [redemptions, total, statusCounts, pointsAgg] = await Promise.all([
       prisma.pointRedemption.findMany({
         where,
         skip: (page - 1) * pageSize,
@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
       }),
       prisma.pointRedemption.count({ where }),
       prisma.pointRedemption.groupBy({ by: ["status"], _count: true }),
+      // 全站可用积分总额（所有用户 PointBalance.available 之和，可为负：含退款超兑债务）
+      prisma.pointBalance.aggregate({ _sum: { available: true } }),
     ]);
 
     const counts: Record<string, number> = { PENDING: 0, FULFILLED: 0, CANCELLED: 0 };
@@ -100,6 +102,7 @@ export async function GET(request: NextRequest) {
           },
         })),
         counts,
+        pointsTotal: pointsAgg._sum.available ?? 0,
         pagination: {
           page,
           pageSize,
