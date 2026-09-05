@@ -238,8 +238,8 @@ export function SpentAdjustmentPanel({
             提交订单号与小票凭证，审核通过后计入历史消费并自动更新会员等级。
           </p>
 
-          {/* 申请表单 */}
-          <div className="mt-4 space-y-5 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+          {/* 申请表单（直接铺在面板上，无卡片容器） */}
+          <div className="mt-4 space-y-5">
             {/* 待审核上限提示 */}
             {reachedPendingLimit && (
               <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
@@ -407,26 +407,26 @@ export function SpentAdjustmentPanel({
                 className="w-full resize-none rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
               />
             </div>
-          </div>
 
-          {/* 提交栏（吸底：表单较长时无需滚动即可提交） */}
-          <div className="sticky bottom-0 -mx-6 mt-4 border-t border-stone-200/60 bg-[#FBF8F0]/85 px-6 py-4 backdrop-blur-md md:-mx-16 md:px-16">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting || uploading || reachedPendingLimit}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              {submitting ? "提交中..." : "提交申请"}
-            </button>
-            <p className="mt-2 text-center text-[11px] text-stone-400">
-              人工审核，结果将以短信通知；审核通过后自动更新会员等级
-            </p>
+            {/* 提交（常规流式布局） */}
+            <div className="border-t border-stone-200/60 pt-4">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting || uploading || reachedPendingLimit}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                {submitting ? "提交中..." : "提交申请"}
+              </button>
+              <p className="mt-2 text-center text-[11px] text-stone-400">
+                人工审核，结果将以短信通知；审核通过后自动更新会员等级
+              </p>
+            </div>
           </div>
         </div>
       )}
