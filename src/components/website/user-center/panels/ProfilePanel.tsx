@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Trash2 } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
@@ -41,6 +41,7 @@ export function ProfilePanel() {
   }
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
+  const [showAddressSection, setShowAddressSection] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addrRecipient, setAddrRecipient] = useState("");
@@ -698,37 +699,58 @@ export function ProfilePanel() {
 
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
-          {/* 收货地址（积分兑礼礼品寄送用；点击整行可展开/收起表单） */}
+          {/* 收货地址（积分兑礼礼品寄送用；收起时仅显示设置状态） */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
             <div
-              className="flex w-full cursor-pointer items-start justify-between py-6"
+              className="flex w-full cursor-pointer items-center justify-between py-6"
               onClick={() => {
-                if (showAddressForm) {
+                if (showAddressSection) {
+                  setShowAddressSection(false);
                   setShowAddressForm(false);
                   resetAddressForm();
                 } else {
-                  resetAddressForm();
-                  setShowAddressForm(true);
+                  setShowAddressSection(true);
+                  setShowAddressForm(false);
                 }
               }}
             >
-              <div className="flex flex-col gap-2 md:flex-row md:items-start md:gap-6">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
                 <div className="shrink-0 md:w-20">
                   <p className="text-left text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
                     收货地址
                   </p>
                 </div>
-                <div className="w-full min-w-0 flex-1 space-y-3">
-                  {addressesLoading ? (
-                    <div className="flex items-center gap-1.5 text-xs text-stone-400">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> 地址加载中...
-                    </div>
-                  ) : addresses.length === 0 ? (
-                    <p className="text-sm text-stone-400">
-                      暂无收货地址，积分兑礼寄送前请先添加
-                    </p>
-                  ) : (
-                    addresses.map((a) => (
+                <div>
+                  <p className="text-base font-medium text-stone-800 md:text-sm">
+                    {addressesLoading
+                      ? "加载中..."
+                      : addresses.length > 0
+                        ? "已设置"
+                        : "未设置"}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
+                  showAddressSection ? "rotate-180" : ""
+                }`}
+              />
+            </div>
+
+            {showAddressSection && (
+              <div className="max-w-md border-t border-stone-200/60 pb-6 pt-5">
+                {/* 地址列表 */}
+                {addressesLoading ? (
+                  <div className="flex items-center gap-1.5 text-xs text-stone-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> 地址加载中...
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <p className="text-sm text-stone-400">
+                    暂无收货地址，积分兑礼寄送前请先添加
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {addresses.map((a) => (
                       <div
                         key={a.id}
                         className="flex items-start justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 px-4 py-3"
@@ -752,10 +774,7 @@ export function ProfilePanel() {
                         <div className="flex shrink-0 items-center gap-3">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditAddress(a);
-                            }}
+                            onClick={() => startEditAddress(a)}
                             className="flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
                           >
                             <Pencil className="h-3 w-3" />
@@ -763,10 +782,7 @@ export function ProfilePanel() {
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingAddressId(a.id);
-                            }}
+                            onClick={() => setDeletingAddressId(a.id)}
                             className="flex items-center gap-1 text-xs text-stone-400 transition-colors hover:text-red-500"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -774,116 +790,125 @@ export function ProfilePanel() {
                           </button>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
-              <ChevronDown
-                className={`ml-4 h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 ${
-                  showAddressForm ? "rotate-180" : ""
-                }`}
-              />
-            </div>
+                    ))}
+                  </div>
+                )}
 
-            {/* 新增/编辑地址表单 */}
-            {showAddressForm && (
-              <div className="max-w-md space-y-4 border-t border-stone-200/60 pb-6 pt-5">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[#00263e]" />
-                  <h3 className="text-sm font-medium text-stone-700">
-                    {editingAddressId ? "编辑收货地址" : "新增收货地址"}
-                  </h3>
-                </div>
-                <p className="text-xs text-stone-400">
-                  地址仅用于积分兑礼礼品寄送，不会用于其他用途；可随时修改或删除。
-                </p>
-                <div>
-                  <label htmlFor="addr-recipient" className="mb-1 block text-xs text-stone-500">
-                    收货人 <span className="text-[#00263e]">*</span>
-                  </label>
-                  <input
-                    id="addr-recipient"
-                    type="text"
-                    maxLength={20}
-                    value={addrRecipient}
-                    onChange={(e) => setAddrRecipient(e.target.value)}
-                    placeholder="收货人姓名"
-                    className={phoneInputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="addr-phone" className="mb-1 block text-xs text-stone-500">
-                    手机号 <span className="text-[#00263e]">*</span>
-                  </label>
-                  <input
-                    id="addr-phone"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={11}
-                    value={addrPhone}
-                    onChange={(e) => setAddrPhone(e.target.value.replace(/\D/g, ""))}
-                    placeholder="收货手机号"
-                    className={phoneInputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="addr-region" className="mb-1 block text-xs text-stone-500">
-                    省市区 <span className="text-[#00263e]">*</span>
-                  </label>
-                  <input
-                    id="addr-region"
-                    type="text"
-                    maxLength={50}
-                    value={addrRegion}
-                    onChange={(e) => setAddrRegion(e.target.value)}
-                    placeholder="如：上海市 浦东新区"
-                    className={phoneInputClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="addr-detail" className="mb-1 block text-xs text-stone-500">
-                    详细地址 <span className="text-[#00263e]">*</span>
-                  </label>
-                  <input
-                    id="addr-detail"
-                    type="text"
-                    maxLength={120}
-                    value={addrDetail}
-                    onChange={(e) => setAddrDetail(e.target.value)}
-                    placeholder="街道、门牌号等"
-                    className={phoneInputClass}
-                  />
-                </div>
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-stone-600">
-                  <input
-                    type="checkbox"
-                    checked={addrDefault}
-                    onChange={(e) => setAddrDefault(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#00263e]"
-                  />
-                  设为默认地址
-                </label>
-                <div className="flex gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={saveAddress}
-                    disabled={addressSaving}
-                    className="rounded-full bg-[#00263e] px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:opacity-50"
-                  >
-                    {addressSaving ? "保存中..." : "保存"}
-                  </button>
+                {/* 新增地址入口 / 表单 */}
+                {!showAddressForm && !editingAddressId && (
                   <button
                     type="button"
                     onClick={() => {
-                      setShowAddressForm(false);
                       resetAddressForm();
+                      setShowAddressForm(true);
                     }}
-                    disabled={addressSaving}
-                    className="rounded-full border border-stone-200 px-6 py-2.5 text-sm text-stone-600 transition-colors hover:bg-white/60 disabled:opacity-50"
+                    className="mt-3 inline-flex items-center gap-1 rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:text-stone-800"
                   >
-                    取消
+                    <Plus className="h-3.5 w-3.5" />
+                    新增地址
                   </button>
-                </div>
+                )}
+
+                {showAddressForm && (
+                  <div className="mt-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-[#00263e]" />
+                      <h3 className="text-sm font-medium text-stone-700">
+                        {editingAddressId ? "编辑收货地址" : "新增收货地址"}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-stone-400">
+                      地址仅用于积分兑礼礼品寄送，不会用于其他用途；可随时修改或删除。
+                    </p>
+                    <div>
+                      <label htmlFor="addr-recipient" className="mb-1 block text-xs text-stone-500">
+                        收货人 <span className="text-[#00263e]">*</span>
+                      </label>
+                      <input
+                        id="addr-recipient"
+                        type="text"
+                        maxLength={20}
+                        value={addrRecipient}
+                        onChange={(e) => setAddrRecipient(e.target.value)}
+                        placeholder="收货人姓名"
+                        className={phoneInputClass}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="addr-phone" className="mb-1 block text-xs text-stone-500">
+                        手机号 <span className="text-[#00263e]">*</span>
+                      </label>
+                      <input
+                        id="addr-phone"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={11}
+                        value={addrPhone}
+                        onChange={(e) => setAddrPhone(e.target.value.replace(/\D/g, ""))}
+                        placeholder="收货手机号"
+                        className={phoneInputClass}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="addr-region" className="mb-1 block text-xs text-stone-500">
+                        省市区 <span className="text-[#00263e]">*</span>
+                      </label>
+                      <input
+                        id="addr-region"
+                        type="text"
+                        maxLength={50}
+                        value={addrRegion}
+                        onChange={(e) => setAddrRegion(e.target.value)}
+                        placeholder="如：上海市 浦东新区"
+                        className={phoneInputClass}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="addr-detail" className="mb-1 block text-xs text-stone-500">
+                        详细地址 <span className="text-[#00263e]">*</span>
+                      </label>
+                      <input
+                        id="addr-detail"
+                        type="text"
+                        maxLength={120}
+                        value={addrDetail}
+                        onChange={(e) => setAddrDetail(e.target.value)}
+                        placeholder="街道、门牌号等"
+                        className={phoneInputClass}
+                      />
+                    </div>
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-stone-600">
+                      <input
+                        type="checkbox"
+                        checked={addrDefault}
+                        onChange={(e) => setAddrDefault(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-[#00263e]"
+                      />
+                      设为默认地址
+                    </label>
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={saveAddress}
+                        disabled={addressSaving}
+                        className="rounded-full bg-[#00263e] px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:opacity-50"
+                      >
+                        {addressSaving ? "保存中..." : "保存"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddressForm(false);
+                          resetAddressForm();
+                        }}
+                        disabled={addressSaving}
+                        className="rounded-full border border-stone-200 px-6 py-2.5 text-sm text-stone-600 transition-colors hover:bg-white/60 disabled:opacity-50"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
