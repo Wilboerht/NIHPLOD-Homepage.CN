@@ -1,5 +1,6 @@
 /**
- * GET /api/user/points/gifts 路由测试（可兑换产品列表 + 个性化折算 + 兑换记录）
+ * GET /api/user/points/gifts 路由测试（可兑换产品列表 + 个性化折算）
+ * 兑换记录已拆分为 GET /api/user/points/redemptions（见其独立测试）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -27,7 +28,6 @@ vi.mock("@/lib/points-ledger", () => ({
 const { txClient } = vi.hoisted(() => ({
   txClient: {
     user: { findUnique: vi.fn() },
-    pointRedemption: { findMany: vi.fn() },
   },
 }));
 
@@ -56,7 +56,6 @@ describe("GET /api/user/points/gifts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     txClient.user.findUnique.mockResolvedValue({ membershipLevel: "GOLD" });
-    txClient.pointRedemption.findMany.mockResolvedValue([]);
     mockBalance.mockResolvedValue({ available: 800, frozen: 0, nextReleaseAt: null });
   });
 
@@ -110,34 +109,6 @@ describe("GET /api/user/points/gifts", () => {
         priceYuan: 599,
         cost: 460,
         affordable: false,
-      },
-    ]);
-  });
-
-  it("返回我的兑换记录（含状态）", async () => {
-    mockListProducts.mockResolvedValue([]);
-    txClient.pointRedemption.findMany.mockResolvedValue([
-      {
-        id: "r1",
-        productName: "洁面乳",
-        priceYuan: new Prisma.Decimal("199.00"),
-        points: 153,
-        status: "PENDING",
-        createdAt: new Date("2026-09-03T10:00:00.000Z"),
-      },
-    ]);
-
-    const res = await GET(createRequest());
-    const data = await res.json();
-
-    expect(data.data.redemptions).toEqual([
-      {
-        id: "r1",
-        productName: "洁面乳",
-        priceYuan: 199,
-        points: 153,
-        status: "PENDING",
-        createdAt: "2026-09-03T10:00:00.000Z",
       },
     ]);
   });

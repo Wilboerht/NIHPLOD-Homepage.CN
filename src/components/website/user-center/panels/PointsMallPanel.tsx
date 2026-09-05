@@ -173,6 +173,50 @@ export function PointsMallPanel() {
     }
   }, []);
 
+  /** 重置加载兑换记录（offset=0） */
+  const loadRedemptions = useCallback(async () => {
+    setRedemptionsLoading(true);
+    try {
+      const data = await apiGet<{ redemptions: RedemptionRecord[]; hasMore: boolean }>(
+        "/api/user/points/redemptions",
+        { offset: "0" }
+      );
+      setRedemptions(data.redemptions);
+      setHasMoreRedemptions(data.hasMore);
+    } catch {
+      // 记录加载失败静默
+    } finally {
+      setRedemptionsLoading(false);
+    }
+  }, []);
+
+  /** 滚动到底加载更多兑换记录（追加） */
+  const loadMoreRedemptions = useCallback(async () => {
+    if (loadingMoreRedemptions || !hasMoreRedemptions) return;
+    setLoadingMoreRedemptions(true);
+    try {
+      const data = await apiGet<{ redemptions: RedemptionRecord[]; hasMore: boolean }>(
+        "/api/user/points/redemptions",
+        { offset: String(redemptions.length) }
+      );
+      setRedemptions((prev) => [...prev, ...data.redemptions]);
+      setHasMoreRedemptions(data.hasMore);
+    } catch {
+      // 静默失败，滚动可重试
+    } finally {
+      setLoadingMoreRedemptions(false);
+    }
+  }, [loadingMoreRedemptions, hasMoreRedemptions, redemptions.length]);
+
+  /** 滚动到底部附近时自动加载更多记录 */
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+      void loadMoreRedemptions();
+    }
+  };
+
   const loadAddresses = useCallback(async () => {
     setAddressesLoading(true);
     try {
@@ -266,6 +310,7 @@ export function PointsMallPanel() {
       setShowNewAddress(false);
       await loadPointsData();
       await loadGiftsData();
+      await loadRedemptions();
     } catch (e) {
       showError(e instanceof Error ? e.message : "兑换失败，请稍后重试");
     } finally {
@@ -276,7 +321,8 @@ export function PointsMallPanel() {
   useEffect(() => {
     deferInEffect(loadGiftsData);
     deferInEffect(loadPointsData);
-  }, [loadGiftsData, loadPointsData]);
+    deferInEffect(loadRedemptions);
+  }, [loadGiftsData, loadPointsData, loadRedemptions]);
 
   // 视图切换时回到顶部：整版内容淡入淡出后高度变化，避免停留在旧滚动位置
   useEffect(() => {
@@ -292,6 +338,7 @@ export function PointsMallPanel() {
 
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16"
       >
         <AnimatePresence mode="wait" initial={false}>
@@ -432,51 +479,49 @@ export function PointsMallPanel() {
             </div>
           )}
 
-          {/* 我的兑换记录 */}
-          {giftsData && giftsData.redemptions.length > 0 && (
+          {/* 我的兑换记录（滚动到底自动加载更多） */}
+          {!redemptionsLoading || redemptions.length > 0 ? (
             <div className="mt-4 border-t border-stone-200/60 pt-3">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-medium text-stone-500">我的兑换记录</p>
-                {giftsData.redemptions.length > 5 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllRedemptions((v) => !v)}
-                    className="text-[11px] text-stone-400 transition-colors hover:text-stone-700"
-                  >
-                    {showAllRedemptions ? "收起" : "查看全部"}
-                  </button>
-                )}
-              </div>
-              <div className="space-y-2">
-                {(showAllRedemptions
-                  ? giftsData.redemptions
-                  : giftsData.redemptions.slice(0, 5)
-                ).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="min-w-0 truncate text-stone-600">
-                      {r.productName}
-                      <span className="ml-2 text-stone-400">
-                        {r.points.toLocaleString()} 积分
+              <p className="mb-2 text-xs font-medium text-stone-500">我的兑换记录</p>
+              {redemptions.length === 0 ? (
+                <p className="py-2 text-xs text-stone-400">暂无兑换记录</p>
+              ) : (
+                <div className="space-y-2">
+                  {redemptions.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate text-stone-600">
+                        {r.productName}
+                        <span className="ml-2 text-stone-400">
+                          {r.points.toLocaleString()} 积分
+                        </span>
                       </span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-3">
-                      <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedRedemption(r);
-                          setView("detail");
-                        }}
-                        className="text-[#00263e] transition-opacity hover:opacity-70"
-                      >
-                        查看
-                      </button>
-                    </span>
-                  </div>
-                ))}
-              </div>
+                      <span className="flex shrink-0 items-center gap-3">
+                        <span className="text-stone-400">{formatDate(r.createdAt)}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedRedemption(r);
+                            setView("detail");
+                          }}
+                          className="text-[#00263e] transition-opacity hover:opacity-70"
+                        >
+                          查看
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                  {loadingMoreRedemptions && (
+                    <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-stone-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中...
+                    </div>
+                  )}
+                  {!hasMoreRedemptions && redemptions.length > 0 && (
+                    <p className="pt-1 text-center text-[11px] text-stone-300">已加载全部记录</p>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
         </div>
             </m.div>
           ) : (
