@@ -772,9 +772,7 @@ export function PointsMallPanel() {
                               重试
                             </button>
                           </div>
-                        ) : (
-                          <p className="py-2 text-xs text-stone-400">暂无轨迹信息</p>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>
