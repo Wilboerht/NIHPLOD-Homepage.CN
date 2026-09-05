@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Plus,
   Pencil,
@@ -10,6 +11,7 @@ import {
   EyeOff,
   ChevronUp,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -63,7 +65,7 @@ export default function AdminCategoriesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showError]);
 
   useEffect(() => {
     deferInEffect(fetchCategories);
@@ -263,9 +265,16 @@ export default function AdminCategoriesPage() {
                   </div>
                 </div>
 
-                {/* 名称 */}
+                {/* 名称（点击跳转产品页并按该分类筛选） */}
                 <div className="col-span-3 flex flex-col justify-center">
-                  <span className="font-medium text-brand-charcoal">{category.name}</span>
+                  <Link
+                    href={`/admin/products?categoryId=${category.id}`}
+                    className="group inline-flex w-fit items-center gap-1.5 font-medium text-brand-charcoal transition-colors hover:text-brand-primary"
+                    title="查看该分类下的产品"
+                  >
+                    {category.name}
+                    <ExternalLink className="h-3.5 w-3.5 text-brand-charcoal/30 transition-colors group-hover:text-brand-primary" />
+                  </Link>
                   <span className="text-sm text-brand-charcoal/50">{category.nameEn}</span>
                 </div>
 

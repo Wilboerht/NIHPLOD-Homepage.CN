@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
 import { TagInput } from "@/components/ui/TagInput";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
@@ -126,11 +127,55 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
+  // 分类列表（本地状态：支持表单内快速新建分类后即建即选）
+  const [categoryList, setCategoryList] = useState<Category[]>(categories);
+  // 快速新建分类弹窗
+  const [newCategoryOpen, setNewCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryNameEn, setNewCategoryNameEn] = useState("");
+  const [newCategorySaving, setNewCategorySaving] = useState(false);
+  const [newCategoryError, setNewCategoryError] = useState("");
+
   // 分类选项
   const categoryOptions: SelectOption[] = [
     { value: "", label: "请选择分类" },
-    ...categories.map((c) => ({ value: c.id, label: c.name })),
+    ...categoryList.map((c) => ({ value: c.id, label: c.name })),
   ];
+
+  /** 快速新建分类（产品表单内联，无需跳转分类页） */
+  const createCategory = async () => {
+    if (!newCategoryName.trim()) {
+      setNewCategoryError("请输入分类名称");
+      return;
+    }
+    if (!newCategoryNameEn.trim()) {
+      setNewCategoryError("请输入英文名称");
+      return;
+    }
+    setNewCategorySaving(true);
+    setNewCategoryError("");
+    try {
+      const data = await apiPost<{ id: string; name: string; nameEn: string; slug: string }>(
+        "/api/admin/categories",
+        {
+          name: newCategoryName.trim(),
+          nameEn: newCategoryNameEn.trim(),
+          slug: generateSlug(newCategoryNameEn.trim()),
+        }
+      );
+      const created: Category = { id: data.id, name: data.name };
+      setCategoryList((prev) => [...prev, created]);
+      updateField("categoryId", data.id);
+      setNewCategoryOpen(false);
+      setNewCategoryName("");
+      setNewCategoryNameEn("");
+      success("分类已创建并选中");
+    } catch (err) {
+      setNewCategoryError(err instanceof Error ? err.message : "创建失败");
+    } finally {
+      setNewCategorySaving(false);
+    }
+  };
 
   // 自动生成 slug
   useEffect(() => {
@@ -347,14 +392,29 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               required
               placeholder="自动生成，可修改"
             />
-            <Select
-              label="产品分类"
-              options={categoryOptions}
-              value={formData.categoryId}
-              onChange={(e) => updateField("categoryId", e.target.value)}
-              error={errors.categoryId}
-              required
-            />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Select
+                  label="产品分类"
+                  options={categoryOptions}
+                  value={formData.categoryId}
+                  onChange={(e) => updateField("categoryId", e.target.value)}
+                  error={errors.categoryId}
+                  required
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNewCategoryError("");
+                  setNewCategoryOpen(true);
+                }}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                新建
+              </Button>
+            </div>
             <Input
               label="价格（元）"
               type="number"
@@ -621,6 +681,44 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
         </section>
       </div>
+
+      {/* 快速新建分类弹窗（内联创建，创建后自动选中） */}
+      <Modal
+        open={newCategoryOpen}
+        onClose={() => setNewCategoryOpen(false)}
+        title="新建分类"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Input
+            label="分类名称（中文）"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="如：精华系列"
+            required
+          />
+          <Input
+            label="英文名称"
+            value={newCategoryNameEn}
+            onChange={(e) => setNewCategoryNameEn(e.target.value)}
+            placeholder="如：Serum（URL 别名将自动生成）"
+            required
+          />
+          {newCategoryError && <p className="text-sm text-red-500">{newCategoryError}</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setNewCategoryOpen(false)}
+              disabled={newCategorySaving}
+            >
+              取消
+            </Button>
+            <Button onClick={createCategory} loading={newCategorySaving}>
+              创建并选中
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

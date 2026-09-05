@@ -224,7 +224,7 @@ export function SpentAdjustmentPanel({
     <div className={view === "default" ? "mt-8" : ""}>
       {view === "form" && (
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             <h4 className="text-lg font-medium text-stone-800">录入消费</h4>
             <button
               type="button"
@@ -444,7 +444,7 @@ export function SpentAdjustmentPanel({
 
       {view === "history" && (
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             <h4 className="text-lg font-medium text-stone-800">录入历史</h4>
             <button
               type="button"

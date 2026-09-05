@@ -633,7 +633,7 @@ export function PointsMallPanel() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <h4 className="text-lg font-medium text-stone-800">兑换详情</h4>
                   <button
                     type="button"
@@ -790,7 +790,7 @@ export function PointsMallPanel() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <h4 className="text-lg font-medium text-stone-800">确认兑换</h4>
                   <button
                     type="button"

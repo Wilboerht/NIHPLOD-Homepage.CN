@@ -469,19 +469,27 @@ export function VipPanel() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {/* 头部：等级名 + 返回入口 + 门槛 + 状态 */}
+              {/* 头部：等级名 + 解锁状态 + 门槛；返回按钮最右 */}
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-lg font-medium text-stone-800">{selected.name}</p>
-                    <button
-                      type="button"
-                      onClick={() => setView("main")}
-                      className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                      查看全部等级
-                    </button>
+                    {selected.level === currentLevel.level ? (
+                      <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
+                        <Crown className="h-4 w-4" />
+                        当前
+                      </span>
+                    ) : selected.minSpent <= totalSpent ? (
+                      <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
+                        <Check className="h-4 w-4" />
+                        已解锁
+                      </span>
+                    ) : (
+                      <span className="flex shrink-0 items-center gap-1 text-sm text-stone-400">
+                        <Lock className="h-3.5 w-3.5" />
+                        未解锁
+                      </span>
+                    )}
                   </div>
                   <p className="mt-2 text-xs text-stone-400">
                     {selected.minSpent > 0
@@ -489,22 +497,14 @@ export function VipPanel() {
                       : "注册即享"}
                   </p>
                 </div>
-                {selected.level === currentLevel.level ? (
-                  <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
-                    <Crown className="h-4 w-4" />
-                    当前
-                  </span>
-                ) : selected.minSpent <= totalSpent ? (
-                  <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
-                    <Check className="h-4 w-4" />
-                    已解锁
-                  </span>
-                ) : (
-                  <span className="flex shrink-0 items-center gap-1 text-sm text-stone-400">
-                    <Lock className="h-3.5 w-3.5" />
-                    未解锁
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setView("main")}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  查看全部等级
+                </button>
               </div>
 
                 {/* 权益列表：适配图标 + 标题 + 描述 */}
