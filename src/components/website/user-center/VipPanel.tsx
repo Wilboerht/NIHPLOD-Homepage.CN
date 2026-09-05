@@ -10,8 +10,10 @@
  *
  * 会员卡与权益区等级卡背景图：四档均已登记到 CARD_BG_IMAGES；
  * 会员卡铺满使用，权益区等级卡做虚化淡化处理。
+ * 卡面只承载身份信息与品牌 logo（右下角）；升级进度展示在右侧「提升会员等级」引导卡。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Archive,
   Bot,
@@ -33,7 +35,6 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
-import { BIRTHDAY_POINTS } from "@/lib/membership";
 import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（四档）：
@@ -284,70 +285,37 @@ export function VipPanel() {
             </div>
           </div>
 
-          {/* 分割线以下：背景虚化处理，承载升级进度与生日礼遇 */}
-          {(nextLevel ||
-            (user && !user.birthday && currentLevel.level !== "REGULAR")) && (
-            // 不用 backdrop-filter：Chromium 会忽略祖先圆角裁剪导致底部两角变直角。
-            // 改为与卡面同图同铺法的模糊副本，按卡片比例（aspect 1.586）定位、底部对齐，
-            // 由本区块 overflow-hidden + rounded-b-xl 裁剪出圆角。
-            <div className="relative mt-auto overflow-hidden rounded-b-xl border-t border-stone-200/60">
-              {cardBgImage && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute bottom-0 left-0 w-full blur-md"
-                  style={{
-                    aspectRatio: "1.586 / 1",
-                    backgroundImage: `url(${cardBgImage})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                />
-              )}
-              <div className="relative bg-white/25 p-5 pt-4">
-                {/* 升级进度条（钻石卡为最高档） */}
-                {nextLevel && (
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-stone-600">
-                      <span>
-                        再消费{" "}
-                        <span className="font-medium text-[#00263e]">
-                          ¥{nextLevel.spentNeeded.toLocaleString()}
-                        </span>{" "}
-                        升级{nextLevel.name}
-                      </span>
-                      <span className="text-[#00263e]">{nextLevel.progress}%</span>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/60">
-                      <div
-                        className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
-                        style={{ width: `${nextLevel.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* 生日礼遇引导：银卡及以上且未设置生日（生日设置入口在个人信息面板） */}
-                {user && !user.birthday && currentLevel.level !== "REGULAR" && (
-                  <button
-                    type="button"
-                    onClick={() => setUserCenterView("profile")}
-                    className={`${nextLevel ? "mt-3" : ""} flex w-full items-center justify-between rounded-lg bg-white/60 px-3 py-2 transition-colors hover:bg-white/80`}
-                  >
-                    <span className="flex items-center gap-1.5 text-xs text-stone-700">
-                      <Gift className="h-3.5 w-3.5 shrink-0 text-stone-600" />
-                      设置生日，生日当月赠{" "}
-                      {BIRTHDAY_POINTS[currentLevel.level as keyof typeof BIRTHDAY_POINTS]} 积分
-                    </span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-stone-500" />
-                  </button>
-                )}
-              </div>
+          {/* 分割线以下：背景虚化处理，品牌 logo 常驻右下角。
+              不用 backdrop-filter：Chromium 会忽略祖先圆角裁剪导致底部两角变直角。
+              改为与卡面同图同铺法的模糊副本，按卡片比例（aspect 1.586）定位、底部对齐，
+              由本区块 overflow-hidden + rounded-b-xl 裁剪出圆角。 */}
+          <div className="relative mt-auto overflow-hidden rounded-b-xl border-t border-stone-200/60">
+            {cardBgImage && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute bottom-0 left-0 w-full blur-md"
+                style={{
+                  aspectRatio: "1.586 / 1",
+                  backgroundImage: `url(${cardBgImage})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              />
+            )}
+            <div className="relative flex justify-end bg-white/25 p-5 pt-4">
+              <Image
+                src="/images/NIHPLOD-logo.svg"
+                alt="NIHPLOD"
+                width={130}
+                height={36}
+                className="w-[72px] object-contain"
+              />
             </div>
-          )}
+          </div>
         </div>
           </div>
 
-          {/* 升级引导卡片：三步流程 + 录入消费 / 查看录入历史 */}
+          {/* 升级引导卡片：升级进度 + 三步流程 + 录入消费 / 查看录入历史 */}
           <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
             <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
               <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
@@ -355,19 +323,42 @@ export function VipPanel() {
             </h4>
 
             {nextLevel ? (
-              <div className="mt-3 space-y-2">
-                {[
-                  "官方各渠道消费",
-                  "录入订单凭证",
-                  "审核通过后自动计入历史消费并升级",
-                ].map((step, i) => (
-                  <div key={i} className="flex items-center gap-2.5">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00263e]/10 text-[11px] font-medium text-[#00263e]">
-                      {i + 1}
+              <div className="mt-4 space-y-3">
+                {/* 升级进度（视觉锚点：差额数字 + 进度条） */}
+                <div className="rounded-xl bg-white/60 p-4">
+                  <div className="flex items-end justify-between gap-3">
+                    <p className="text-xs leading-relaxed text-stone-600">
+                      再消费{" "}
+                      <span className="text-base font-semibold leading-none text-[#00263e]">
+                        ¥{nextLevel.spentNeeded.toLocaleString()}
+                      </span>{" "}
+                      升级{nextLevel.name}
+                    </p>
+                    <span className="text-sm font-semibold text-[#00263e]">
+                      {nextLevel.progress}%
                     </span>
-                    <p className="text-xs leading-relaxed text-stone-500">{step}</p>
                   </div>
-                ))}
+                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
+                      style={{ width: `${nextLevel.progress}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    "官方各渠道消费",
+                    "录入订单凭证",
+                    "审核通过后自动计入历史消费并升级",
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00263e]/10 text-[11px] font-medium text-[#00263e]">
+                        {i + 1}
+                      </span>
+                      <p className="text-xs leading-relaxed text-stone-500">{step}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <p className="mt-2 text-xs leading-relaxed text-stone-400">
