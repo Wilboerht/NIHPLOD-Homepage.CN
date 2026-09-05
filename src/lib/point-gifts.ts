@@ -46,22 +46,25 @@ export type RedeemGiftResult =
         | "PRODUCT_NOT_FOUND"
         | "PRODUCT_NOT_REDEEMABLE"
         | "NOT_ELIGIBLE"
+        | "ADDRESS_NOT_FOUND"
         | "INSUFFICIENT"
         | "INVALID_REQUEST";
       message: string;
     };
 
 /**
- * 兑换产品（单事务：幂等检查 → 产品校验 → 折算 → 扣分 → 生成兑换记录）
+ * 兑换产品（单事务：幂等检查 → 产品校验 → 地址校验 → 折算 → 扣分 → 生成兑换记录）
  * 同一 requestId 重复调用直接返回首次结果（duplicated: true），不重复扣分。
+ * 收货地址取快照入库（履约寄送；事后修改地址簿不影响历史订单）。
  */
 export async function redeemGiftForUser(params: {
   userId: string;
   productId: string;
   requestId: string;
   level: MembershipLevel;
+  addressId: string;
 }): Promise<RedeemGiftResult> {
-  const { userId, productId, requestId, level } = params;
+  const { userId, productId, requestId, level, addressId } = params;
   if (!requestId || requestId.length > 64) {
     return { ok: false, code: "INVALID_REQUEST", message: "请求参数错误" };
   }
@@ -98,6 +101,16 @@ export async function redeemGiftForUser(params: {
       return { ok: false, code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑换" };
     }
 
+    // 收货地址校验（扣分前拦截，地址必须属于当前用户）
+    const address = await tx.userAddress.findUnique({
+      where: { id: addressId },
+      select: { userId: true, recipient: true, phone: true, region: true, detail: true },
+    });
+    if (!address || address.userId !== userId) {
+      return { ok: false, code: "ADDRESS_NOT_FOUND", message: "收货地址不存在，请重新选择" };
+    }
+    const fullAddress = `${address.region} ${address.detail}`;
+
     const result = await redeemPoints(tx, {
       userId,
       amount: points,
@@ -115,6 +128,9 @@ export async function redeemGiftForUser(params: {
             priceYuan: product.price,
             points,
             reference,
+            recipient: address.recipient,
+            phone: address.phone,
+            address: fullAddress,
           },
         });
         return {
@@ -136,6 +152,9 @@ export async function redeemGiftForUser(params: {
         priceYuan: product.price,
         points,
         reference,
+        recipient: address.recipient,
+        phone: address.phone,
+        address: fullAddress,
       },
     });
 

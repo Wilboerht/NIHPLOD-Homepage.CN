@@ -29,6 +29,9 @@ interface RedemptionItem {
   priceYuan: number;
   points: number;
   status: "PENDING" | "FULFILLED" | "CANCELLED";
+  recipient: string | null;
+  phone: string | null;
+  address: string | null;
   createdAt: string;
   fulfilledAt: string | null;
   user: { id: string; phone: string; nickname: string | null };
@@ -358,6 +361,7 @@ export default function AdminPointGiftsPage() {
                 <th className="px-6 py-3 font-medium">用户</th>
                 <th className="px-6 py-3 font-medium">产品</th>
                 <th className="px-6 py-3 font-medium">价格 / 扣分</th>
+                <th className="px-6 py-3 font-medium">收货信息</th>
                 <th className="px-6 py-3 font-medium">状态</th>
                 <th className="px-6 py-3 font-medium">时间</th>
                 <th className="px-6 py-3 font-medium">操作</th>
@@ -366,13 +370,13 @@ export default function AdminPointGiftsPage() {
             <tbody className="divide-y">
               {redemptionLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
                   </td>
                 </tr>
               ) : redemptions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-400">
                     暂无兑换记录
                   </td>
                 </tr>
@@ -386,6 +390,19 @@ export default function AdminPointGiftsPage() {
                     <td className="px-6 py-4 text-sm text-gray-700">{r.productName}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
+                    </td>
+                    <td className="px-6 py-4">
+                      {r.recipient && r.address ? (
+                        <>
+                          <p className="text-sm text-gray-700">
+                            {r.recipient}
+                            {r.phone && <span className="ml-2 text-xs text-gray-400">{r.phone}</span>}
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-500">{r.address}</p>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">未填写</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}>

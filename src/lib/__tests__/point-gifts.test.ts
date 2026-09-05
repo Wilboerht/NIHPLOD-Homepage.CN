@@ -1,6 +1,6 @@
 /**
  * 积分兑换核心逻辑测试（兑换产品来自产品库）
- * 覆盖：兑礼率折算（普通档不参与）、兑换事务（幂等/产品校验/扣分/记录）、履约 CAS
+ * 覆盖：兑礼率折算（普通档不参与）、兑换事务（幂等/产品校验/地址校验/扣分/记录）、履约 CAS
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -8,6 +8,7 @@ const { txClient } = vi.hoisted(() => ({
   txClient: {
     pointRedemption: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
     product: { findUnique: vi.fn() },
+    userAddress: { findUnique: vi.fn() },
   },
 }));
 
@@ -16,6 +17,7 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
     product: { findMany: vi.fn() },
     pointRedemption: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    userAddress: { findUnique: vi.fn() },
   },
 }));
 
@@ -36,6 +38,7 @@ const mockRedeemPoints = redeemPoints as ReturnType<typeof vi.fn>;
 const mockTxFindUnique = txClient.pointRedemption.findUnique as ReturnType<typeof vi.fn>;
 const mockTxCreate = txClient.pointRedemption.create as ReturnType<typeof vi.fn>;
 const mockTxProductFind = txClient.product.findUnique as ReturnType<typeof vi.fn>;
+const mockTxAddressFind = txClient.userAddress.findUnique as ReturnType<typeof vi.fn>;
 
 const REDEEMABLE_PRODUCT = {
   id: "product-1",
@@ -43,6 +46,14 @@ const REDEEMABLE_PRODUCT = {
   price: new Prisma.Decimal("300.00"),
   pointRedeemable: true,
   published: true,
+};
+
+const SHIPPING_ADDRESS = {
+  userId: "user-1",
+  recipient: "张三",
+  phone: "13800138000",
+  region: "上海市 浦东新区",
+  detail: "世纪大道 100 号",
 };
 
 describe("giftCostForUser 兑礼率折算", () => {
@@ -65,16 +76,18 @@ describe("redeemGiftForUser 兑换事务", () => {
     vi.clearAllMocks();
     mockTxFindUnique.mockResolvedValue(null);
     mockTxProductFind.mockResolvedValue(REDEEMABLE_PRODUCT);
+    mockTxAddressFind.mockResolvedValue(SHIPPING_ADDRESS);
     mockTxCreate.mockResolvedValue({ id: "redemption-1" });
     mockRedeemPoints.mockResolvedValue({ ok: true, available: 770, spent: 230 });
   });
 
-  it("成功兑换：按等级折算扣分并生成兑换记录（含产品快照）", async () => {
+  it("成功兑换：按等级折算扣分并生成兑换记录（含产品/收货快照）", async () => {
     const result = await redeemGiftForUser({
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
       level: "GOLD",
+      addressId: "addr-1",
     });
 
     expect(result).toEqual({
@@ -83,6 +96,10 @@ describe("redeemGiftForUser 兑换事务", () => {
       points: 230,
       available: 770,
       redemptionId: "redemption-1",
+    });
+    expect(mockTxAddressFind).toHaveBeenCalledWith({
+      where: { id: "addr-1" },
+      select: { userId: true, recipient: true, phone: true, region: true, detail: true },
     });
     expect(mockRedeemPoints).toHaveBeenCalledWith(
       expect.anything(),
@@ -101,6 +118,9 @@ describe("redeemGiftForUser 兑换事务", () => {
         priceYuan: new Prisma.Decimal("300.00"),
         points: 230,
         reference: "redeem:user-1:req-1",
+        recipient: "张三",
+        phone: "13800138000",
+        address: "上海市 浦东新区 世纪大道 100 号",
       }),
     });
   });
@@ -113,6 +133,7 @@ describe("redeemGiftForUser 兑换事务", () => {
       productId: "product-1",
       requestId: "req-1",
       level: "GOLD",
+      addressId: "addr-1",
     });
 
     expect(result).toEqual({
@@ -132,6 +153,7 @@ describe("redeemGiftForUser 兑换事务", () => {
       productId: "product-x",
       requestId: "req-1",
       level: "GOLD",
+      addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "PRODUCT_NOT_FOUND" });
   });
@@ -143,6 +165,7 @@ describe("redeemGiftForUser 兑换事务", () => {
       productId: "product-1",
       requestId: "req-1",
       level: "GOLD",
+      addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "PRODUCT_NOT_REDEEMABLE" });
   });
@@ -153,9 +176,24 @@ describe("redeemGiftForUser 兑换事务", () => {
       productId: "product-1",
       requestId: "req-1",
       level: "REGULAR",
+      addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "NOT_ELIGIBLE" });
     expect(mockRedeemPoints).not.toHaveBeenCalled();
+  });
+
+  it("收货地址不存在或不属于当前用户：ADDRESS_NOT_FOUND 且不扣分", async () => {
+    mockTxAddressFind.mockResolvedValue({ ...SHIPPING_ADDRESS, userId: "other-user" });
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      level: "GOLD",
+      addressId: "addr-1",
+    });
+    expect(result).toMatchObject({ ok: false, code: "ADDRESS_NOT_FOUND" });
+    expect(mockRedeemPoints).not.toHaveBeenCalled();
+    expect(mockTxCreate).not.toHaveBeenCalled();
   });
 
   it("积分不足：INSUFFICIENT", async () => {
@@ -165,6 +203,7 @@ describe("redeemGiftForUser 兑换事务", () => {
       productId: "product-1",
       requestId: "req-1",
       level: "GOLD",
+      addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "INSUFFICIENT" });
     expect(mockTxCreate).not.toHaveBeenCalled();

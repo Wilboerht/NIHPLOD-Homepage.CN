@@ -238,6 +238,7 @@ model User {
   pointLedger PointLedger[]
   pointBalance PointBalance?
   pointRedemptions PointRedemption[]
+  addresses UserAddress[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -731,7 +732,24 @@ model PointBalance {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// 用户积分兑换记录（兑换产品来自产品库；名称/价格/扣分快照，管理端履约）
+// 收货地址簿（积分兑礼履约寄送用；多地址 + 默认地址；仅用于礼品寄送）
+model UserAddress {
+  id        String   @id @default(cuid())
+  userId    String
+  recipient String   // 收货人姓名
+  phone     String   // 收货手机号
+  region    String   // 省市区
+  detail    String   // 详细地址（街道、门牌号等）
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 用户积分兑换记录（兑换产品来自产品库；名称/价格/扣分/收货地址快照，管理端履约）
 model PointRedemption {
   id          String                  @id @default(cuid())
   userId      String
@@ -741,6 +759,9 @@ model PointRedemption {
   points      Int                     // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
   status      PointRedemptionStatus   @default(PENDING)
   reference   String                  // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
+  recipient   String?                 // 收货人姓名快照（履约寄送用）
+  phone       String?                 // 收货手机号快照
+  address     String?                 // 完整收货地址快照（省市区 + 详细地址）
   fulfilledAt DateTime?
   createdAt   DateTime                @default(now())
 

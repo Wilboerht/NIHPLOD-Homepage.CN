@@ -10,10 +10,11 @@
  * 兑换幂等：requestId 由客户端生成；履约由管理端发货。
  */
 import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Gift, Loader2, Lock } from "lucide-react";
+import { ChevronRight, Gift, Loader2, Lock, MapPin, Plus } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { apiPost } from "@/lib/api-client";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { apiGet, apiPost } from "@/lib/api-client";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
@@ -56,6 +57,15 @@ interface PointsData {
   }[];
 }
 
+interface AddressItem {
+  id: string;
+  recipient: string;
+  phone: string;
+  region: string;
+  detail: string;
+  isDefault: boolean;
+}
+
 const REDEMPTION_STATUS_LABELS: Record<RedemptionRecord["status"], string> = {
   PENDING: "待履约",
   FULFILLED: "已履约",
@@ -92,6 +102,15 @@ export function PointsMallPanel() {
   const [showAllRedemptions, setShowAllRedemptions] = useState(false);
   const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
+  const [addresses, setAddresses] = useState<AddressItem[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showNewAddress, setShowNewAddress] = useState(false);
+  const [newRecipient, setNewRecipient] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newRegion, setNewRegion] = useState("");
+  const [newDetail, setNewDetail] = useState("");
+  const [creatingAddress, setCreatingAddress] = useState(false);
   const { error: showError, success: showSuccessToast } = useToast();
 
   const loadGiftsData = useCallback(async () => {
@@ -120,6 +139,34 @@ export function PointsMallPanel() {
     }
   }, []);
 
+  const loadAddresses = useCallback(async () => {
+    setAddressesLoading(true);
+    try {
+      const data = await apiGet<{ addresses: AddressItem[] }>("/api/user/addresses");
+      setAddresses(data.addresses);
+      // 默认选中默认地址（无默认则选第一条）
+      setSelectedAddressId((prev) => {
+        if (prev && data.addresses.some((a) => a.id === prev)) return prev;
+        return data.addresses.find((a) => a.isDefault)?.id ?? data.addresses[0]?.id ?? null;
+      });
+    } catch {
+      // 加载失败静默，用户可内联新增
+    } finally {
+      setAddressesLoading(false);
+    }
+  }, []);
+
+  /** 打开兑换确认弹窗：加载地址并预选默认地址 */
+  const openRedeem = (g: GiftItem) => {
+    setConfirmGift(g);
+    setShowNewAddress(false);
+    setNewRecipient("");
+    setNewPhone("");
+    setNewRegion("");
+    setNewDetail("");
+    void loadAddresses();
+  };
+
   const handleRedeem = async () => {
     if (!confirmGift) return;
     // crypto.randomUUID 仅在安全上下文（https）可用，非安全上下文降级随机串
@@ -127,14 +174,62 @@ export function PointsMallPanel() {
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
     setRedeeming(true);
     try {
+      let addressId = selectedAddressId;
+
+      // 内联新增地址：先创建地址再兑换
+      if (showNewAddress) {
+        if (!newRecipient.trim()) {
+          showError("请填写收货人姓名");
+          setRedeeming(false);
+          return;
+        }
+        if (!/^1[3-9]\d{9}$/.test(newPhone)) {
+          showError("请输入正确的手机号");
+          setRedeeming(false);
+          return;
+        }
+        if (!newRegion.trim()) {
+          showError("请填写省市区");
+          setRedeeming(false);
+          return;
+        }
+        if (!newDetail.trim()) {
+          showError("请填写详细地址");
+          setRedeeming(false);
+          return;
+        }
+        setCreatingAddress(true);
+        try {
+          const created = await apiPost<{ address: AddressItem }>("/api/user/addresses", {
+            recipient: newRecipient.trim(),
+            phone: newPhone,
+            region: newRegion.trim(),
+            detail: newDetail.trim(),
+            // 地址簿为空时后端自动设为默认
+          });
+          addressId = created.address.id;
+        } finally {
+          setCreatingAddress(false);
+        }
+      }
+
+      if (!addressId) {
+        showError("请选择收货地址");
+        setRedeeming(false);
+        return;
+      }
+
       await apiPost("/api/user/points/redeem", {
         productId: confirmGift.id,
+        addressId,
         requestId,
       });
       showSuccessToast("兑换成功，礼品将尽快为您寄出");
       setConfirmGift(null);
+      setShowNewAddress(false);
       await loadPointsData();
       await loadGiftsData();
     } catch (e) {
@@ -275,7 +370,7 @@ export function PointsMallPanel() {
                     <button
                       type="button"
                       disabled={!g.affordable}
-                      onClick={() => setConfirmGift(g)}
+                      onClick={() => openRedeem(g)}
                       className="rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
                     >
                       {g.affordable ? "兑换" : "积分不足"}
@@ -335,20 +430,145 @@ export function PointsMallPanel() {
         </div>
       </div>
 
-      {/* 兑换确认 */}
-      <ConfirmDialog
-        open={!!confirmGift}
-        onClose={() => setConfirmGift(null)}
-        onConfirm={handleRedeem}
-        title="确认兑换"
-        description={
-          confirmGift
-            ? `确定使用 ${confirmGift.cost?.toLocaleString()} 积分兑换「${confirmGift.name}」吗？兑换成功后积分不可退还。`
-            : ""
-        }
-        confirmText="确认兑换"
-        loading={redeeming}
-      />
+      {/* 兑换确认（含收货地址选择 / 内联新增） */}
+      <Modal open={!!confirmGift} onClose={() => setConfirmGift(null)} size="sm" showCloseButton={false}>
+        <div className="flex gap-4">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#00263e]/10">
+            <Gift className="h-5 w-5 text-[#00263e]" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-stone-800">确认兑换</h3>
+            <p className="mt-1 text-sm text-stone-500">
+              {confirmGift
+                ? `确定使用 ${confirmGift.cost?.toLocaleString()} 积分兑换「${confirmGift.name}」吗？兑换成功后积分不可退还。`
+                : ""}
+            </p>
+
+            {/* 收货地址 */}
+            <div className="mt-4">
+              <p className="flex items-center gap-1.5 text-xs font-medium text-stone-600">
+                <MapPin className="h-3.5 w-3.5 text-[#00263e]" />
+                收货地址
+                <span className="font-normal text-stone-400">（礼品将寄送至所选地址）</span>
+              </p>
+
+              {addressesLoading ? (
+                <div className="flex items-center gap-1.5 py-4 text-xs text-stone-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> 地址加载中...
+                </div>
+              ) : !showNewAddress && addresses.length > 0 ? (
+                <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
+                  {addresses.map((a) => {
+                    const isSelected = selectedAddressId === a.id;
+                    return (
+                      <label
+                        key={a.id}
+                        className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${
+                          isSelected ? "border-[#00263e] bg-[#00263e]/5" : "border-stone-200"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="redeem-address"
+                          checked={isSelected}
+                          onChange={() => setSelectedAddressId(a.id)}
+                          className="mt-0.5 h-3.5 w-3.5 accent-[#00263e]"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-stone-800">
+                            {a.recipient}
+                            <span className="ml-2 font-normal text-stone-400">{a.phone}</span>
+                            {a.isDefault && (
+                              <span className="ml-2 rounded-full bg-[#00263e]/10 px-1.5 py-0.5 text-[10px] text-[#00263e]">
+                                默认
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+                            {a.region} {a.detail}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : showNewAddress ? null : (
+                <p className="mt-2 py-2 text-xs text-stone-400">
+                  暂无收货地址，请先填写寄送地址
+                </p>
+              )}
+
+              {/* 内联新增地址 */}
+              {showNewAddress ? (
+                <div className="mt-2 space-y-3 rounded-lg border border-stone-200 bg-white/50 p-3">
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={newRecipient}
+                    onChange={(e) => setNewRecipient(e.target.value)}
+                    placeholder="收货人姓名"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={11}
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
+                    placeholder="收货手机号"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  />
+                  <input
+                    type="text"
+                    maxLength={50}
+                    value={newRegion}
+                    onChange={(e) => setNewRegion(e.target.value)}
+                    placeholder="省市区（如：上海市 浦东新区）"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  />
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={newDetail}
+                    onChange={(e) => setNewDetail(e.target.value)}
+                    placeholder="详细地址（街道、门牌号等）"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAddress(false)}
+                    className="text-xs text-stone-500 transition-colors hover:text-stone-800"
+                  >
+                    取消新增，使用已有地址
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowNewAddress(true)}
+                  className="mt-2 flex items-center gap-1 text-xs text-[#00263e] transition-colors hover:opacity-70"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  使用新地址
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="outline" onClick={() => setConfirmGift(null)} disabled={redeeming}>
+            取消
+          </Button>
+          <Button
+            onClick={handleRedeem}
+            loading={redeeming || creatingAddress}
+            disabled={!showNewAddress && !selectedAddressId}
+          >
+            确认兑换
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

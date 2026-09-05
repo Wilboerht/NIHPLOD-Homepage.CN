@@ -4,14 +4,16 @@
  * 个人信息面板
  * 支持头像上传和昵称编辑 - 品牌风格版
  */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
-import { apiPut, apiPost } from "@/lib/api-client";
+import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { SecurityPanel } from "./SecurityPanel";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { deferInEffect } from "@/hooks/deferInEffect";
 
 const phoneInputClass =
   "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400";
@@ -27,6 +29,27 @@ export function ProfilePanel() {
   const [avatarError, setAvatarError] = useState("");
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 收货地址簿状态
+  interface AddressItem {
+    id: string;
+    recipient: string;
+    phone: string;
+    region: string;
+    detail: string;
+    isDefault: boolean;
+  }
+  const [addresses, setAddresses] = useState<AddressItem[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(true);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addrRecipient, setAddrRecipient] = useState("");
+  const [addrPhone, setAddrPhone] = useState("");
+  const [addrRegion, setAddrRegion] = useState("");
+  const [addrDetail, setAddrDetail] = useState("");
+  const [addrDefault, setAddrDefault] = useState(false);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
 
   // 换绑手机号表单状态
   const [showPhoneForm, setShowPhoneForm] = useState(false);
@@ -82,6 +105,106 @@ export function ProfilePanel() {
     setNickname(user?.nickname || "");
     setBirthday(user?.birthday?.slice(0, 10) || "");
     setEditingField(field);
+  };
+
+  /** 加载收货地址列表 */
+  const loadAddresses = useCallback(async () => {
+    try {
+      const data = await apiGet<{ addresses: AddressItem[] }>("/api/user/addresses");
+      setAddresses(data.addresses);
+    } catch {
+      // 加载失败静默（区块显示失败态）
+    } finally {
+      setAddressesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    deferInEffect(loadAddresses);
+  }, [loadAddresses]);
+
+  /** 重置地址表单 */
+  const resetAddressForm = () => {
+    setEditingAddressId(null);
+    setAddrRecipient("");
+    setAddrPhone("");
+    setAddrRegion("");
+    setAddrDetail("");
+    setAddrDefault(false);
+  };
+
+  /** 编辑已有地址 */
+  const startEditAddress = (a: AddressItem) => {
+    setEditingAddressId(a.id);
+    setAddrRecipient(a.recipient);
+    setAddrPhone(a.phone);
+    setAddrRegion(a.region);
+    setAddrDetail(a.detail);
+    setAddrDefault(a.isDefault);
+    setShowAddressForm(true);
+  };
+
+  /** 保存地址（新增/编辑） */
+  const saveAddress = async () => {
+    if (!addrRecipient.trim()) {
+      showError("请填写收货人姓名");
+      return;
+    }
+    if (!/^1[3-9]\d{9}$/.test(addrPhone)) {
+      showError("请输入正确的手机号");
+      return;
+    }
+    if (!addrRegion.trim()) {
+      showError("请填写省市区");
+      return;
+    }
+    if (!addrDetail.trim()) {
+      showError("请填写详细地址");
+      return;
+    }
+    setAddressSaving(true);
+    try {
+      const payload = {
+        recipient: addrRecipient.trim(),
+        phone: addrPhone,
+        region: addrRegion.trim(),
+        detail: addrDetail.trim(),
+        isDefault: addrDefault,
+      };
+      if (editingAddressId) {
+        await apiPatch(`/api/user/addresses/${editingAddressId}`, payload);
+      } else {
+        await apiPost("/api/user/addresses", payload);
+      }
+      await loadAddresses();
+      setShowAddressForm(false);
+      resetAddressForm();
+      showSuccess(editingAddressId ? "地址已更新" : "地址已添加");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "保存失败，请稍后重试";
+      showError(message);
+    } finally {
+      setAddressSaving(false);
+    }
+  };
+
+  /** 删除地址 */
+  const handleDeleteAddress = async () => {
+    if (!deletingAddressId) return;
+    const id = deletingAddressId;
+    setDeletingAddressId(null);
+    try {
+      await apiDelete(`/api/user/addresses/${id}`);
+      await loadAddresses();
+      if (editingAddressId === id) {
+        setShowAddressForm(false);
+        resetAddressForm();
+      }
+      showSuccess("地址已删除");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "删除失败，请稍后重试";
+      showError(message);
+    }
   };
 
   /** 发送换绑验证码：target=current 发到当前手机（验证身份），target=new 发到新手机 */
@@ -572,8 +695,209 @@ export function ProfilePanel() {
               </div>
             )}
           </div>
+
+          <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
+
+          {/* 收货地址（积分兑礼礼品寄送用） */}
+          <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
+            <div className="flex items-start justify-between py-6">
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:gap-6">
+                <div className="shrink-0 md:w-20">
+                  <p className="text-left text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
+                    收货地址
+                  </p>
+                </div>
+                <div className="w-full min-w-0 flex-1 space-y-3">
+                  {addressesLoading ? (
+                    <div className="flex items-center gap-1.5 py-2 text-xs text-stone-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> 地址加载中...
+                    </div>
+                  ) : addresses.length === 0 ? (
+                    <p className="py-2 text-sm text-stone-400">
+                      暂无收货地址，积分兑礼寄送前请先添加
+                    </p>
+                  ) : (
+                    addresses.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-stone-800">
+                            {a.recipient}
+                            <span className="ml-2 text-xs font-normal text-stone-400">
+                              {a.phone}
+                            </span>
+                            {a.isDefault && (
+                              <span className="ml-2 rounded-full bg-[#00263e]/10 px-2 py-0.5 text-[11px] text-[#00263e]">
+                                默认
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-stone-500">
+                            {a.region} {a.detail}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => startEditAddress(a)}
+                            className="flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            编辑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingAddressId(a.id)}
+                            className="flex items-center gap-1 text-xs text-stone-400 transition-colors hover:text-red-500"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            删除
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (showAddressForm && !editingAddressId) {
+                    setShowAddressForm(false);
+                    resetAddressForm();
+                  } else {
+                    resetAddressForm();
+                    setShowAddressForm(true);
+                  }
+                }}
+                className="ml-4 flex shrink-0 items-center gap-1 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
+              >
+                {showAddressForm && !editingAddressId ? (
+                  "收起"
+                ) : (
+                  <>
+                    <Plus className="h-3.5 w-3.5" />
+                    新增
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 新增/编辑地址表单 */}
+            {showAddressForm && (
+              <div className="max-w-md space-y-4 border-t border-stone-200/60 pb-6 pt-5">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-[#00263e]" />
+                  <h3 className="text-sm font-medium text-stone-700">
+                    {editingAddressId ? "编辑收货地址" : "新增收货地址"}
+                  </h3>
+                </div>
+                <p className="text-xs text-stone-400">
+                  地址仅用于积分兑礼礼品寄送，不会用于其他用途；可随时修改或删除。
+                </p>
+                <div>
+                  <label htmlFor="addr-recipient" className="mb-1 block text-xs text-stone-500">
+                    收货人 <span className="text-[#00263e]">*</span>
+                  </label>
+                  <input
+                    id="addr-recipient"
+                    type="text"
+                    maxLength={20}
+                    value={addrRecipient}
+                    onChange={(e) => setAddrRecipient(e.target.value)}
+                    placeholder="收货人姓名"
+                    className={phoneInputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="addr-phone" className="mb-1 block text-xs text-stone-500">
+                    手机号 <span className="text-[#00263e]">*</span>
+                  </label>
+                  <input
+                    id="addr-phone"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={11}
+                    value={addrPhone}
+                    onChange={(e) => setAddrPhone(e.target.value.replace(/\D/g, ""))}
+                    placeholder="收货手机号"
+                    className={phoneInputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="addr-region" className="mb-1 block text-xs text-stone-500">
+                    省市区 <span className="text-[#00263e]">*</span>
+                  </label>
+                  <input
+                    id="addr-region"
+                    type="text"
+                    maxLength={50}
+                    value={addrRegion}
+                    onChange={(e) => setAddrRegion(e.target.value)}
+                    placeholder="如：上海市 浦东新区"
+                    className={phoneInputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="addr-detail" className="mb-1 block text-xs text-stone-500">
+                    详细地址 <span className="text-[#00263e]">*</span>
+                  </label>
+                  <input
+                    id="addr-detail"
+                    type="text"
+                    maxLength={120}
+                    value={addrDetail}
+                    onChange={(e) => setAddrDetail(e.target.value)}
+                    placeholder="街道、门牌号等"
+                    className={phoneInputClass}
+                  />
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-stone-600">
+                  <input
+                    type="checkbox"
+                    checked={addrDefault}
+                    onChange={(e) => setAddrDefault(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[#00263e]"
+                  />
+                  设为默认地址
+                </label>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={saveAddress}
+                    disabled={addressSaving}
+                    className="rounded-full bg-[#00263e] px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:opacity-50"
+                  >
+                    {addressSaving ? "保存中..." : "保存"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddressForm(false);
+                      resetAddressForm();
+                    }}
+                    disabled={addressSaving}
+                    className="rounded-full border border-stone-200 px-6 py-2.5 text-sm text-stone-600 transition-colors hover:bg-white/60 disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={!!deletingAddressId}
+        onClose={() => setDeletingAddressId(null)}
+        onConfirm={handleDeleteAddress}
+        title="删除收货地址"
+        description="确定删除该收货地址吗？删除后不可恢复。"
+        confirmText="删除"
+        type="danger"
+      />
     </div>
   );
 }

@@ -2,7 +2,8 @@
  * 用户积分兑换 API
  * POST /api/user/points/redeem - 兑换产品（产品库中标记可兑的产品，按当前等级兑礼率折算扣分）
  *
- * Body: { productId, requestId }
+ * Body: { productId, addressId, requestId }
+ * - addressId：收货地址（兑换时必填，履约寄送；地址快照存入兑换记录）
  * - requestId：客户端为每次确认弹窗生成的唯一 ID（UUID），幂等键；
  *   同一 requestId 重复提交不重复扣分（duplicated: true）。
  */
@@ -17,6 +18,7 @@ import { redeemGiftForUser } from "@/lib/point-gifts";
 
 const redeemSchema = z.object({
   productId: z.string().min(1).max(64),
+  addressId: z.string().min(1, "请选择收货地址").max(64),
   requestId: z.string().min(1, "缺少请求标识").max(64),
 });
 
@@ -40,8 +42,8 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const { productId, requestId } = parsed.data;
-    if (!validateCUID(productId)) {
+    const { productId, addressId, requestId } = parsed.data;
+    if (!validateCUID(productId) || !validateCUID(addressId)) {
       return invalidIdResponse();
     }
 
@@ -59,6 +61,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
     const result = await redeemGiftForUser({
       userId: payload.id,
       productId,
+      addressId,
       requestId,
       level: user.membershipLevel,
     });
@@ -68,6 +71,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
         PRODUCT_NOT_FOUND: 404,
         PRODUCT_NOT_REDEEMABLE: 400,
         NOT_ELIGIBLE: 403,
+        ADDRESS_NOT_FOUND: 400,
         INSUFFICIENT: 400,
         INVALID_REQUEST: 400,
       };
