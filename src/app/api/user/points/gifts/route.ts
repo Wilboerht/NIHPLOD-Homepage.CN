@@ -1,6 +1,7 @@
 /**
  * 用户积分兑换 API
- * GET /api/user/points/gifts - 可兑换产品列表（产品库中标记可兑的产品，含按当前等级折算的所需积分）+ 我的兑换记录
+ * GET /api/user/points/gifts - 可兑换产品列表（产品库中标记可兑的产品，含按当前等级折算的所需积分）
+ * 兑换记录改由 GET /api/user/points/redemptions 提供（无限滚动分页）。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -21,25 +22,9 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
       });
       const level = user?.membershipLevel ?? "REGULAR";
 
-      const [products, balance, redemptions] = await Promise.all([
+      const [products, balance] = await Promise.all([
         listRedeemableProducts(),
         getPointBalanceView(tx, payload.id),
-        tx.pointRedemption.findMany({
-          where: { userId: payload.id },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-          select: {
-            id: true,
-            productName: true,
-            priceYuan: true,
-            points: true,
-            status: true,
-            recipient: true,
-            phone: true,
-            address: true,
-            createdAt: true,
-          },
-        }),
       ]);
 
       return {
@@ -59,17 +44,6 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
             affordable: cost !== null && cost <= balance.available,
           };
         }),
-        redemptions: redemptions.map((r) => ({
-          id: r.id,
-          productName: r.productName,
-          priceYuan: Number(r.priceYuan),
-          points: r.points,
-          status: r.status,
-          recipient: r.recipient,
-          phone: r.phone,
-          address: r.address,
-          createdAt: r.createdAt.toISOString(),
-        })),
       };
     });
 

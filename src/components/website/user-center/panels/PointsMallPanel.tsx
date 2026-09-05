@@ -57,7 +57,6 @@ interface GiftsData {
   redeemRate: number | null;
   available: number;
   gifts: GiftItem[];
-  redemptions: RedemptionRecord[];
 }
 
 interface PointsData {
@@ -126,7 +125,11 @@ export function PointsMallPanel() {
   const [giftsLoading, setGiftsLoading] = useState(true);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [showLedger, setShowLedger] = useState(false);
-  const [showAllRedemptions, setShowAllRedemptions] = useState(false);
+  // 兑换记录：无限滚动加载（初始 10 条，滚动到底自动加载更多）
+  const [redemptions, setRedemptions] = useState<RedemptionRecord[]>([]);
+  const [redemptionsLoading, setRedemptionsLoading] = useState(true);
+  const [loadingMoreRedemptions, setLoadingMoreRedemptions] = useState(false);
+  const [hasMoreRedemptions, setHasMoreRedemptions] = useState(false);
   const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
