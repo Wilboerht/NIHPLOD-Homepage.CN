@@ -437,9 +437,6 @@ export function SpentAdjustmentPanel({
                 )}
                 {submitting ? "提交中..." : "提交申请"}
               </button>
-              <p className="mt-2 text-center text-[11px] text-stone-400">
-                人工审核，结果将以短信通知；审核通过后自动更新会员等级
-              </p>
             </div>
           </div>
         </div>

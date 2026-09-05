@@ -11,10 +11,12 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
   Gift,
   Loader2,
   Lock,
@@ -165,6 +167,7 @@ export function PointsMallPanel() {
   const [selectedRedemption, setSelectedRedemption] = useState<RedemptionRecord | null>(null);
   const [tracking, setTracking] = useState<TrackingData | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [copiedWaybill, setCopiedWaybill] = useState(false);
   // 兑换成功面板内提示（自动消失）
   const [redeemSuccess, setRedeemSuccess] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -262,8 +265,27 @@ export function PointsMallPanel() {
     setSelectedRedemption(r);
     setView("detail");
     setTracking(null);
+    setCopiedWaybill(false);
     if (r.waybillNo) {
       void loadTracking(r.id);
+    }
+  };
+
+  /** 一键复制快递单号 */
+  const copyWaybill = async () => {
+    if (!selectedRedemption?.waybillNo) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(selectedRedemption.waybillNo);
+      } else {
+        // 非安全上下文降级：选中文本让用户手动复制
+        showError("当前环境不支持一键复制，请长按运单号手动复制");
+        return;
+      }
+      setCopiedWaybill(true);
+      setTimeout(() => setCopiedWaybill(false), 1500);
+    } catch {
+      showError("复制失败，请手动复制");
     }
   };
 
@@ -691,12 +713,24 @@ export function PointsMallPanel() {
                     {/* 物流轨迹（有运单号时查询丰桥轨迹） */}
                     {selectedRedemption.waybillNo && (
                       <div className="border-t border-stone-200/60 pt-4">
-                        <p className="mb-3 text-xs font-medium tracking-wide text-stone-500">
+                        <p className="mb-3 flex items-center gap-2 text-xs font-medium tracking-wide text-stone-500">
                           物流轨迹
-                          <span className="ml-2 font-normal text-stone-400">
+                          <span className="font-normal text-stone-400">
                             {selectedRedemption.carrier === "SF" ? "顺丰速运" : "快递"} ·{" "}
                             {selectedRedemption.waybillNo}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => void copyWaybill()}
+                            className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 px-2 py-0.5 text-[10px] text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
+                          >
+                            {copiedWaybill ? (
+                              <Check className="h-3 w-3 text-[#00263e]" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                            {copiedWaybill ? "已复制" : "复制"}
+                          </button>
                         </p>
 
                         {trackingLoading ? (
@@ -727,10 +761,6 @@ export function PointsMallPanel() {
                               </div>
                             ))}
                           </div>
-                        ) : tracking && !tracking.supported ? (
-                          <p className="py-2 text-xs text-stone-400">
-                            物流轨迹查询暂未开通，可前往顺丰速运官网查询
-                          </p>
                         ) : tracking && tracking.error ? (
                           <div className="flex items-center gap-3 py-2">
                             <p className="text-xs text-stone-400">{tracking.error}</p>

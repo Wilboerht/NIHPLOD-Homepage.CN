@@ -32,7 +32,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
-import { apiGet, apiPatch, apiPost, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
@@ -139,6 +139,7 @@ export default function AdminUsersPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
+  const [detailError, setDetailError] = useState("");
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<{ id: string; status: UserStatus } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
@@ -287,11 +288,14 @@ export default function AdminUsersPage() {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailUser(null);
+    setDetailError("");
     try {
       const data = await apiGet<{ user: UserDetail }>(`/api/admin/users/${id}`);
       setDetailUser(data.user);
-    } catch {
-      console.error("获取用户详情失败");
+    } catch (err) {
+      // 区分真实原因：404 才是「用户不存在」，其他错误（400/500/网络）原样展示便于排查
+      setDetailError(err instanceof ApiError ? err.message : "加载失败，请稍后重试");
+      console.error("获取用户详情失败:", err);
     } finally {
       setDetailLoading(false);
     }
@@ -541,7 +545,7 @@ export default function AdminUsersPage() {
         ) : !detailUser ? (
           <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
             <User className="mb-2 h-12 w-12" />
-            <p>用户不存在</p>
+            <p>{detailError || "用户不存在"}</p>
           </div>
         ) : (
           <div className="space-y-6">
