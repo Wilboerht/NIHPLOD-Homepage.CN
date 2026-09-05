@@ -698,9 +698,20 @@ export function ProfilePanel() {
 
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
-          {/* 收货地址（积分兑礼礼品寄送用） */}
+          {/* 收货地址（积分兑礼礼品寄送用；点击整行可展开/收起表单） */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
-            <div className="flex items-start justify-between py-6">
+            <div
+              className="flex w-full cursor-pointer items-start justify-between py-6"
+              onClick={() => {
+                if (showAddressForm) {
+                  setShowAddressForm(false);
+                  resetAddressForm();
+                } else {
+                  resetAddressForm();
+                  setShowAddressForm(true);
+                }
+              }}
+            >
               <div className="flex flex-col gap-2 md:flex-row md:items-start md:gap-6">
                 <div className="shrink-0 md:w-20">
                   <p className="text-left text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
@@ -741,7 +752,10 @@ export function ProfilePanel() {
                         <div className="flex shrink-0 items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => startEditAddress(a)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditAddress(a);
+                            }}
                             className="flex items-center gap-1 text-xs text-stone-500 transition-colors hover:text-stone-800"
                           >
                             <Pencil className="h-3 w-3" />
@@ -749,7 +763,10 @@ export function ProfilePanel() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setDeletingAddressId(a.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingAddressId(a.id);
+                            }}
                             className="flex items-center gap-1 text-xs text-stone-400 transition-colors hover:text-red-500"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -763,7 +780,8 @@ export function ProfilePanel() {
               </div>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (showAddressForm && !editingAddressId) {
                     setShowAddressForm(false);
                     resetAddressForm();
