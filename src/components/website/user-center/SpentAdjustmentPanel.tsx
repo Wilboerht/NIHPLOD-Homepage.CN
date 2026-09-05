@@ -11,6 +11,7 @@
  * 入口在会员中心「提升会员等级」引导卡（录入消费 / 查看录入历史）。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { m } from "framer-motion";
 import {
   AlertCircle,
   Camera,
@@ -255,21 +256,34 @@ export function SpentAdjustmentPanel({
                   购买渠道 <span className="text-[#00263e]">*</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {SPENT_CHANNELS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setChannel(c)}
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                        channel === c
-                          ? "border-[#00263e] bg-[#00263e] text-white"
-                          : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
-                      }`}
-                    >
-                      {channel === c && <Check className="h-3 w-3" />}
-                      {SPENT_CHANNEL_LABELS[c]}
-                    </button>
-                  ))}
+                  {SPENT_CHANNELS.map((c) => {
+                    const selected = channel === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setChannel(c)}
+                        className={`relative inline-flex items-center rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                          selected
+                            ? "border-[#00263e] text-white"
+                            : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
+                        }`}
+                      >
+                        {/* 选中底色：layoutId 弹簧动画在渠道间平滑滑动 */}
+                        {selected && (
+                          <m.span
+                            layoutId="spent-channel-pill"
+                            className="absolute inset-0 rounded-full bg-[#00263e]"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                          />
+                        )}
+                        <span className="relative flex items-center gap-1">
+                          {selected && <Check className="h-3 w-3" />}
+                          {SPENT_CHANNEL_LABELS[c]}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
