@@ -102,7 +102,7 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     minSpent: 1000,
     maxSpent: 4999,
     benefits: [
-      { icon: "", title: "测肤加赠", desc: "每满 ¥1,000 加 20 次测肤（银卡档有效）" },
+      { icon: "", title: "测肤加赠", desc: "每满 ¥1,000 加 20 次测肤，每日最多使用 10 次（银卡档有效）" },
       { icon: "", title: "档案永久保留", desc: "肌肤档案终身保留" },
       { icon: "", title: "专属 AI 护肤顾问", desc: "提供专属 AI 护肤顾问服务" },
       { icon: "", title: "积分兑礼", desc: "消费 1 元 = 1 积分，兑礼 1:1" },

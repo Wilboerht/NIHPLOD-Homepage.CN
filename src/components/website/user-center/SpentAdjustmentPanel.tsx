@@ -238,8 +238,8 @@ export function SpentAdjustmentPanel({
             提交订单号与小票凭证，审核通过后计入历史消费并自动更新会员等级。
           </p>
 
-          {/* 申请表单（直接铺在面板上，无卡片容器） */}
-          <div className="mt-4 space-y-5">
+          {/* 申请表单（分区标题 + 字段，无卡片容器） */}
+          <div className="mt-5 space-y-6">
             {/* 待审核上限提示 */}
             {reachedPendingLimit && (
               <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-700">
@@ -249,93 +249,101 @@ export function SpentAdjustmentPanel({
             )}
 
             {/* 订单信息 */}
-            <div className="space-y-4">
-              <div>
-                <p className="mb-2 text-xs text-stone-500">
-                  购买渠道 <span className="text-[#00263e]">*</span>
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {SPENT_CHANNELS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setChannel(c)}
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                        channel === c
-                          ? "border-[#00263e] bg-[#00263e] text-white"
-                          : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
-                      }`}
-                    >
-                      {channel === c && <Check className="h-3 w-3" />}
-                      {SPENT_CHANNEL_LABELS[c]}
-                    </button>
-                  ))}
+            <section>
+              <p className="mb-3 text-xs font-medium text-stone-600">订单信息</p>
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-2 text-xs text-stone-600">
+                    购买渠道 <span className="text-[#00263e]">*</span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {SPENT_CHANNELS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setChannel(c)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                          channel === c
+                            ? "border-[#00263e] bg-[#00263e] text-white"
+                            : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
+                        }`}
+                      >
+                        {channel === c && <Check className="h-3 w-3" />}
+                        {SPENT_CHANNEL_LABELS[c]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <label htmlFor="spent-order-no" className="text-xs text-stone-500">
-                    订单号 / 小票号 <span className="text-[#00263e]">*</span>
-                  </label>
-                  <span className="text-[11px] text-stone-300">{orderNo.length}/64</span>
-                </div>
-                <input
-                  id="spent-order-no"
-                  type="text"
-                  maxLength={64}
-                  value={orderNo}
-                  onChange={(e) => setOrderNo(e.target.value)}
-                  placeholder="如：天猫订单号 / 线下小票号"
-                  className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
-                />
-              </div>
-            </div>
-
-            {/* 金额与日期 */}
-            <div className="grid grid-cols-1 gap-4 border-t border-stone-200/60 pt-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="spent-amount" className="mb-1 block text-xs text-stone-500">
-                  消费金额 <span className="text-stone-400">（选填，以人工核实为准）</span>
-                </label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">
-                    ¥
-                  </span>
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label htmlFor="spent-order-no" className="text-xs text-stone-600">
+                      订单号 / 小票号 <span className="text-[#00263e]">*</span>
+                    </label>
+                    <span className="text-[11px] text-stone-400">{orderNo.length}/64</span>
+                  </div>
                   <input
-                    id="spent-amount"
-                    type="number"
-                    min={1}
-                    max={1000000}
-                    value={amountClaimed}
-                    onChange={(e) => setAmountClaimed(e.target.value)}
-                    placeholder="1280"
-                    className="w-full rounded-xl border border-stone-200 bg-white/60 py-2.5 pl-8 pr-4 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    id="spent-order-no"
+                    type="text"
+                    maxLength={64}
+                    value={orderNo}
+                    onChange={(e) => setOrderNo(e.target.value)}
+                    placeholder="如：天猫订单号 / 线下小票号"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
                   />
                 </div>
               </div>
-              <div>
-                <label htmlFor="spent-date" className="mb-1 block text-xs text-stone-500">
-                  消费日期 <span className="text-stone-400">（选填）</span>
-                </label>
-                <input
-                  id="spent-date"
-                  type="date"
-                  value={purchasedAt}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setPurchasedAt(e.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-stone-400"
-                />
+            </section>
+
+            {/* 金额与日期 */}
+            <section>
+              <p className="mb-3 text-xs font-medium text-stone-600">
+                金额与日期 <span className="font-normal text-stone-400">（选填）</span>
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="spent-amount" className="mb-1 block text-xs text-stone-600">
+                    消费金额 <span className="font-normal text-stone-400">（以人工核实为准）</span>
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">
+                      ¥
+                    </span>
+                    <input
+                      id="spent-amount"
+                      type="number"
+                      min={1}
+                      max={1000000}
+                      value={amountClaimed}
+                      onChange={(e) => setAmountClaimed(e.target.value)}
+                      placeholder="1280"
+                      className="w-full rounded-xl border border-stone-200 bg-white/70 py-2.5 pl-8 pr-4 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="spent-date" className="mb-1 block text-xs text-stone-600">
+                    消费日期
+                  </label>
+                  <input
+                    id="spent-date"
+                    type="date"
+                    value={purchasedAt}
+                    max={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setPurchasedAt(e.target.value)}
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-[#00263e]"
+                  />
+                </div>
               </div>
-            </div>
+            </section>
 
             {/* 凭证截图（选填） */}
-            <div className="border-t border-stone-200/60 pt-4">
+            <section>
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs text-stone-500">
-                  凭证截图 <span className="text-stone-400">（选填）</span>
+                <p className="text-xs font-medium text-stone-600">
+                  凭证截图 <span className="font-normal text-stone-400">（选填）</span>
                 </p>
-                <span className="text-[11px] text-stone-300">
+                <span className="text-[11px] text-stone-400">
                   {images.length}/{MAX_IMAGES}
                 </span>
               </div>
@@ -387,15 +395,15 @@ export function SpentAdjustmentPanel({
                   onChange={(e) => handleUpload(e.target.files)}
                 />
               </div>
-            </div>
+            </section>
 
             {/* 备注（选填） */}
-            <div className="border-t border-stone-200/60 pt-4">
+            <section>
               <div className="mb-1 flex items-center justify-between">
-                <label htmlFor="spent-note" className="text-xs text-stone-500">
-                  备注 <span className="text-stone-400">（选填）</span>
+                <label htmlFor="spent-note" className="text-xs font-medium text-stone-600">
+                  备注 <span className="font-normal text-stone-400">（选填）</span>
                 </label>
-                <span className="text-[11px] text-stone-300">{note.length}/500</span>
+                <span className="text-[11px] text-stone-400">{note.length}/500</span>
               </div>
               <textarea
                 id="spent-note"
@@ -404,12 +412,12 @@ export function SpentAdjustmentPanel({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="补充说明（如订单含多个商品、退款情况等）"
-                className="w-full resize-none rounded-xl border border-stone-200 bg-white/60 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400"
+                className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
               />
-            </div>
+            </section>
 
             {/* 提交（常规流式布局） */}
-            <div className="border-t border-stone-200/60 pt-4">
+            <div>
               <button
                 type="button"
                 onClick={handleSubmit}
