@@ -63,6 +63,11 @@ vi.mock("@/lib/prisma", () => {
     job: mockPrismaModel(),
     image: mockPrismaModel(),
     purchaseLink: mockPrismaModel(),
+    // 用户详情聚合查询（积分/兑换/地址/消费补录）
+    pointBalance: mockPrismaModel(),
+    pointRedemption: mockPrismaModel(),
+    userAddress: mockPrismaModel(),
+    spentAdjustmentApplication: mockPrismaModel(),
     // 外部平台身份（多平台聚合）：删除用户时 removeIdentities 调 deleteMany 需返回 count
     externalIdentity: { ...mockPrismaModel(), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   };
@@ -560,8 +565,11 @@ describe("管理端 API 集成测试", () => {
         nickname: "测试用户",
         avatar: null,
         status: "ACTIVE",
-        membershipLevel: "REGULAR",
-        totalSpent: 0,
+        membershipLevel: "GOLD",
+        totalSpent: 5000,
+        silverActivatedAt: new Date("2026-08-01T00:00:00.000Z"),
+        goldActivatedAt: new Date("2026-08-10T00:00:00.000Z"),
+        diamondActivatedAt: null,
         wechatOpenId: null,
         wechatUnionId: null,
         externalIdentities: [
@@ -571,7 +579,7 @@ describe("管理端 API 集成测试", () => {
             subjectId: "dy-openid",
             unionId: "dy-union",
             metadata: { nickname: "抖音昵称", avatar: null },
-            createdAt: "2026-08-21T00:00:00.000Z",
+            createdAt: new Date("2026-08-21T00:00:00.000Z"),
           },
           {
             id: "ei-2",
@@ -579,12 +587,18 @@ describe("管理端 API 集成测试", () => {
             subjectId: "mp-openid",
             unionId: null,
             metadata: null,
-            createdAt: "2026-08-21T01:00:00.000Z",
+            createdAt: new Date("2026-08-21T01:00:00.000Z"),
           },
         ],
-        createdAt: "2026-08-01T00:00:00.000Z",
-        updatedAt: "2026-08-21T00:00:00.000Z",
+        createdAt: new Date("2026-08-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-08-21T00:00:00.000Z"),
       });
+      mockPrisma.pointBalance.findUnique.mockResolvedValue({ available: 123, frozen: 0, updatedAt: new Date() });
+      mockPrisma.pointRedemption.findMany.mockResolvedValue([]);
+      mockPrisma.pointRedemption.count.mockResolvedValue(0);
+      mockPrisma.userAddress.findMany.mockResolvedValue([]);
+      mockPrisma.spentAdjustmentApplication.findMany.mockResolvedValue([]);
+      mockPrisma.spentAdjustmentApplication.count.mockResolvedValue(0);
 
       const { GET } = await import("@/app/api/admin/users/[id]/route");
       const res = await GET(req, { params: Promise.resolve({ id: "user-1" }) });
@@ -600,6 +614,18 @@ describe("管理端 API 集成测试", () => {
       });
       // 手机号仍应脱敏（平台身份字段不受影响）
       expect(data.data.user.phone).not.toBe("13800138000");
+      // 聚合分区：积分/地址/消费记录
+      expect(data.data.points).toEqual({
+        available: 123,
+        frozen: 0,
+        redemptions: [],
+        redemptionTotal: 0,
+      });
+      expect(Array.isArray(data.data.addresses)).toBe(true);
+      expect(data.data.spentAdjustments.items).toEqual([]);
+      // 等级成长字段
+      expect(data.data.user.goldActivatedAt).toBe("2026-08-10T00:00:00.000Z");
+      expect(data.data.user.diamondActivatedAt).toBeNull();
     });
   });
 

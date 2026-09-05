@@ -35,6 +35,7 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
 
@@ -83,6 +84,9 @@ interface UserDetail {
   status: UserStatus;
   membershipLevel: string | null;
   totalSpent: number | null;
+  silverActivatedAt: string | null;
+  goldActivatedAt: string | null;
+  diamondActivatedAt: string | null;
   wechatOpenId: string | null;
   // 多平台外部身份（聚合框架单一数据源）
   externalIdentities?: {
@@ -96,6 +100,67 @@ interface UserDetail {
   createdAt: string;
   updatedAt: string;
 }
+
+interface RedemptionDetailItem {
+  id: string;
+  productName: string;
+  priceYuan: number;
+  points: number;
+  status: "PENDING" | "FULFILLED" | "CANCELLED";
+  carrier: string | null;
+  waybillNo: string | null;
+  recipient: string | null;
+  phone: string | null;
+  address: string | null;
+  fulfilledAt: string | null;
+  createdAt: string;
+}
+
+interface UserDetailPoints {
+  available: number;
+  frozen: number;
+  redemptions: RedemptionDetailItem[];
+  redemptionTotal: number;
+}
+
+interface AddressItem {
+  id: string;
+  recipient: string;
+  phone: string;
+  region: string;
+  detail: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+interface SpentAdjustmentItem {
+  id: string;
+  channel: string;
+  orderNo: string;
+  amountClaimed: number | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewAmount: number | null;
+  reviewNote: string | null;
+  createdAt: string;
+}
+
+const REDEMPTION_STATUS_LABELS: Record<string, string> = {
+  PENDING: "待履约",
+  FULFILLED: "已履约",
+  CANCELLED: "已取消",
+};
+
+const REDEMPTION_STATUS_BADGES: Record<string, string> = {
+  PENDING: "bg-amber-100 text-amber-700",
+  FULFILLED: "bg-emerald-100 text-emerald-700",
+  CANCELLED: "bg-gray-100 text-gray-500",
+};
+
+const ADJUSTMENT_STATUS_BADGES: Record<string, string> = {
+  PENDING: "bg-amber-100 text-amber-700",
+  APPROVED: "bg-emerald-100 text-emerald-700",
+  REJECTED: "bg-red-100 text-red-600",
+};
 
 // 外部身份平台标签（与后端 ExternalIdentity.provider 枚举一一对应；未知 provider 原样显示）
 const providerLabelMap: Record<string, string> = {
@@ -140,6 +205,15 @@ export default function AdminUsersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
   const [detailError, setDetailError] = useState("");
+  const [detailPoints, setDetailPoints] = useState<UserDetailPoints | null>(null);
+  const [detailAddresses, setDetailAddresses] = useState<AddressItem[]>([]);
+  const [detailAdjustments, setDetailAdjustments] = useState<SpentAdjustmentItem[]>([]);
+  const [detailAdjustmentTotal, setDetailAdjustmentTotal] = useState(0);
+  const [activeDetailTab, setActiveDetailTab] = useState<
+    "basic" | "points" | "address" | "spent" | "growth"
+  >("basic");
+  const [revealedPhone, setRevealedPhone] = useState("");
+  const [revealingPhone, setRevealingPhone] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<{ id: string; status: UserStatus } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
@@ -289,15 +363,44 @@ export default function AdminUsersPage() {
     setDetailLoading(true);
     setDetailUser(null);
     setDetailError("");
+    setDetailPoints(null);
+    setDetailAddresses([]);
+    setDetailAdjustments([]);
+    setDetailAdjustmentTotal(0);
+    setActiveDetailTab("basic");
+    setRevealedPhone("");
     try {
-      const data = await apiGet<{ user: UserDetail }>(`/api/admin/users/${id}`);
+      const data = await apiGet<{
+        user: UserDetail;
+        points: UserDetailPoints;
+        addresses: AddressItem[];
+        spentAdjustments: { items: SpentAdjustmentItem[]; total: number };
+      }>(`/api/admin/users/${id}`);
       setDetailUser(data.user);
+      setDetailPoints(data.points);
+      setDetailAddresses(data.addresses);
+      setDetailAdjustments(data.spentAdjustments.items);
+      setDetailAdjustmentTotal(data.spentAdjustments.total);
     } catch (err) {
       // 区分真实原因：404 才是「用户不存在」，其他错误（400/500/网络）原样展示便于排查
       setDetailError(err instanceof ApiError ? err.message : "加载失败，请稍后重试");
       console.error("获取用户详情失败:", err);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  /** 显示完整手机号（敏感操作，服务端写审计日志） */
+  const revealPhone = async () => {
+    if (!detailUser || revealedPhone) return;
+    setRevealingPhone(true);
+    try {
+      const data = await apiPost<{ phone: string }>(`/api/admin/users/${detailUser.id}`);
+      setRevealedPhone(data.phone);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "获取手机号失败");
+    } finally {
+      setRevealingPhone(false);
     }
   };
 
@@ -548,7 +651,7 @@ export default function AdminUsersPage() {
             <p>{detailError || "用户不存在"}</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* 顶部：头像 + ID */}
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xl text-brand-charcoal/50">
@@ -575,8 +678,34 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            {/* 基本信息 + 账号状态 */}
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* 分区标签 */}
+            <div className="flex flex-wrap gap-2 border-b border-brand-charcoal/10 pb-3">
+              {(
+                [
+                  { key: "basic", label: "基本信息" },
+                  { key: "points", label: "积分与兑换" },
+                  { key: "address", label: "收货地址" },
+                  { key: "spent", label: "消费记录" },
+                  { key: "growth", label: "等级成长" },
+                ] as const
+              ).map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveDetailTab(t.key)}
+                  className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                    activeDetailTab === t.key
+                      ? "bg-brand-charcoal text-white"
+                      : "text-brand-charcoal/60 hover:bg-brand-charcoal/5"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 基本信息 */}
+            {activeDetailTab === "basic" && (
               <div className="rounded-xl bg-brand-charcoal/[0.03] p-5">
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">基本信息</h3>
                 <dl className="space-y-3 text-sm">
@@ -597,11 +726,18 @@ export default function AdminUsersPage() {
                       手机号
                     </dt>
                     <dd className="flex items-center gap-2">
-                      {detailUser.phone || "未绑定"}
+                      <span className="font-mono">
+                        {revealedPhone || detailUser.phone || "未绑定"}
+                      </span>
                       {detailUser.phoneVerified && (
                         <Badge variant="success" className="px-1.5 py-0 text-xs">
                           已验证
                         </Badge>
+                      )}
+                      {!revealedPhone && detailUser.phone && (
+                        <Button size="sm" variant="ghost" loading={revealingPhone} onClick={revealPhone}>
+                          显示完整号码
+                        </Button>
                       )}
                     </dd>
                   </div>
@@ -697,9 +833,179 @@ export default function AdminUsersPage() {
                   </Button>
                 </div>
               </div>
+            )}
 
+            {/* 积分与兑换 */}
+            {activeDetailTab === "points" && (
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-1 rounded-xl bg-brand-charcoal/[0.03] p-4">
+                    <p className="text-xs text-brand-charcoal/50">可用积分</p>
+                    <p className="mt-1 font-mono text-2xl font-semibold text-brand-charcoal">
+                      {detailPoints ? detailPoints.available.toLocaleString() : "-"}
+                    </p>
+                  </div>
+                  <div className="flex-1 rounded-xl bg-brand-charcoal/[0.03] p-4">
+                    <p className="text-xs text-brand-charcoal/50">冻结积分</p>
+                    <p className="mt-1 font-mono text-2xl font-semibold text-brand-charcoal">
+                      {detailPoints ? detailPoints.frozen.toLocaleString() : "-"}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
+                    积分兑换记录
+                    {detailPoints && detailPoints.redemptionTotal > 0 && (
+                      <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                        共 {detailPoints.redemptionTotal} 条，展示最近 {detailPoints.redemptions.length} 条
+                      </span>
+                    )}
+                  </h3>
+                  {!detailPoints || detailPoints.redemptions.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无兑换记录</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailPoints.redemptions.map((r) => (
+                        <div
+                          key={r.id}
+                          className="rounded-lg border border-brand-charcoal/10 bg-white px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <p className="truncate text-sm font-medium text-brand-charcoal">
+                                {r.productName}
+                              </p>
+                              <span className="shrink-0 text-xs text-brand-charcoal/40">
+                                {r.points.toLocaleString()} 分
+                              </span>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                                REDEMPTION_STATUS_BADGES[r.status]
+                              }`}
+                            >
+                              {REDEMPTION_STATUS_LABELS[r.status]}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/50">
+                            <span>{formatDate(r.createdAt)}</span>
+                            <span>参考价 ¥{r.priceYuan.toLocaleString()}</span>
+                            {r.waybillNo && (
+                              <span>
+                                {r.carrier === "SF" ? "顺丰" : "快递"} · {r.waybillNo}
+                              </span>
+                            )}
+                          </div>
+                          {r.address && (
+                            <p className="mt-1 text-xs text-brand-charcoal/50">
+                              快照收货：{r.recipient} {r.phone} {r.address}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 收货地址 */}
+            {activeDetailTab === "address" && (
+              <div>
+                {detailAddresses.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无收货地址</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailAddresses.map((a) => (
+                      <div
+                        key={a.id}
+                        className="rounded-lg border border-brand-charcoal/10 bg-white px-4 py-3"
+                      >
+                        <p className="text-sm font-medium text-brand-charcoal">
+                          {a.recipient}
+                          <span className="ml-2 text-xs font-normal text-brand-charcoal/50">
+                            {a.phone}
+                          </span>
+                          {a.isDefault && (
+                            <span className="ml-2 rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-xs text-brand-charcoal/70">
+                              默认
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-1 text-xs text-brand-charcoal/60">
+                          {a.region} {a.detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 消费记录 */}
+            {activeDetailTab === "spent" && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
+                  消费补录记录
+                  {detailAdjustmentTotal > 0 && (
+                    <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                      共 {detailAdjustmentTotal} 条，展示最近 {detailAdjustments.length} 条
+                    </span>
+                  )}
+                </h3>
+                {detailAdjustments.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无消费记录</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailAdjustments.map((a) => (
+                      <div
+                        key={a.id}
+                        className="rounded-lg border border-brand-charcoal/10 bg-white px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate font-mono text-sm text-brand-charcoal">
+                              {a.orderNo}
+                            </p>
+                            <span className="shrink-0 text-xs text-brand-charcoal/40">
+                              {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
+                                a.channel}
+                            </span>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                              ADJUSTMENT_STATUS_BADGES[a.status]
+                            }`}
+                          >
+                            {SPENT_STATUS_LABELS[a.status]}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/50">
+                          <span>{formatDate(a.createdAt)}</span>
+                          {a.amountClaimed != null && (
+                            <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
+                          )}
+                          {a.reviewAmount != null && (
+                            <span className="text-emerald-700">
+                              入账 ¥{a.reviewAmount.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {a.status === "REJECTED" && a.reviewNote && (
+                          <p className="mt-1 text-xs text-red-600">驳回原因：{a.reviewNote}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 等级成长 */}
+            {activeDetailTab === "growth" && (
               <div className="rounded-xl bg-brand-charcoal/[0.03] p-5">
-                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">会员信息</h3>
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">等级成长</h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
@@ -728,9 +1034,26 @@ export default function AdminUsersPage() {
                         : "¥0"}
                     </dd>
                   </div>
+                  <div className="flex justify-between">
+                    <dt className="text-brand-charcoal/50">银卡激活时间</dt>
+                    <dd>{detailUser.silverActivatedAt ? formatDate(detailUser.silverActivatedAt) : "—"}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-brand-charcoal/50">金卡激活时间</dt>
+                    <dd>{detailUser.goldActivatedAt ? formatDate(detailUser.goldActivatedAt) : "—"}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-brand-charcoal/50">钻石卡激活时间</dt>
+                    <dd>
+                      {detailUser.diamondActivatedAt ? formatDate(detailUser.diamondActivatedAt) : "—"}
+                    </dd>
+                  </div>
                 </dl>
+                <p className="mt-4 border-t border-brand-charcoal/15 pt-3 text-xs text-brand-charcoal/40">
+                  激活时间为首次达到该等级的时间（等级按累计消费实时判定，可升可降）
+                </p>
               </div>
-            </div>
+            )}
           </div>
         )}
       </Modal>

@@ -65,6 +65,8 @@ const ACTION_LABELS: Record<string, string> = {
   point_gift_create: "新增积分礼品",
   point_gift_update: "更新积分礼品",
   point_redemption_fulfill: "兑换履约",
+  user_detail_view: "查看用户详情",
+  user_detail_sensitive_view: "查看用户敏感信息",
   oauth_client_create: "创建 SSO 客户端",
   oauth_client_update: "更新 SSO 客户端",
   oauth_client_delete: "删除 SSO 客户端",

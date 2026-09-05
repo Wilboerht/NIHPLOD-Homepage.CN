@@ -63,6 +63,8 @@ const ACTION_LABELS: Record<string, string> = {
   user_reset_password: "用户重置密码",
   user_status_change: "用户状态变更",
   user_deleted: "用户删除",
+  user_detail_view: "查看用户详情",
+  user_detail_sensitive_view: "查看用户敏感信息",
   admin_login: "管理员登录",
   admin_logout: "管理员登出",
   create_application_folder: "创建简历文件夹",

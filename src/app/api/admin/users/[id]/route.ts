@@ -1,6 +1,8 @@
 /**
  * 管理端用户详情 API
- * GET /api/admin/users/:id
+ * GET /api/admin/users/:id - 聚合返回用户档案：
+ *   基础信息（手机号脱敏）+ 积分与兑换 + 收货地址 + 消费补录记录 + 等级成长
+ * POST /api/admin/users/:id/reveal-phone - 显示完整手机号（敏感操作，写审计）
  */
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -22,6 +24,9 @@ import { maskPhone } from "@/lib/mask-phone";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+// 详情聚合各分区的记录上限（完整历史走独立查询，此处只做档案快照展示）
+const RECENT_LIMIT = 20;
+
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
@@ -35,41 +40,104 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const rateLimitResponse = await checkAdminRateLimit(request, "user:read");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await context.params;
 
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        phone: true,
-        phoneVerified: true,
-        nickname: true,
-        avatar: true,
-        status: true,
-        membershipLevel: true,
-        totalSpent: true,
-        wechatOpenId: true,
-        wechatUnionId: true,
-        // 多平台外部身份（聚合框架单一数据源；旧列仅作双写过渡期前端兜底展示）
-        externalIdentities: {
-          orderBy: { createdAt: "asc" },
+    const [user, balance, redemptions, redemptionTotal, addresses, adjustments, adjustmentTotal] =
+      await Promise.all([
+        prisma.user.findUnique({
+          where: { id },
           select: {
             id: true,
-            provider: true,
-            subjectId: true,
-            unionId: true,
-            metadata: true,
+            phone: true,
+            phoneVerified: true,
+            nickname: true,
+            avatar: true,
+            status: true,
+            membershipLevel: true,
+            totalSpent: true,
+            silverActivatedAt: true,
+            goldActivatedAt: true,
+            diamondActivatedAt: true,
+            wechatOpenId: true,
+            wechatUnionId: true,
+            // 多平台外部身份（聚合框架单一数据源；旧列仅作双写过渡期前端兜底展示）
+            externalIdentities: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                id: true,
+                provider: true,
+                subjectId: true,
+                unionId: true,
+                metadata: true,
+                createdAt: true,
+              },
+            },
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        prisma.pointBalance.findUnique({
+          where: { userId: id },
+          select: { available: true, frozen: true, updatedAt: true },
+        }),
+        prisma.pointRedemption.findMany({
+          where: { userId: id },
+          orderBy: { createdAt: "desc" },
+          take: RECENT_LIMIT,
+          select: {
+            id: true,
+            productName: true,
+            priceYuan: true,
+            points: true,
+            status: true,
+            carrier: true,
+            waybillNo: true,
+            recipient: true,
+            phone: true,
+            address: true,
+            fulfilledAt: true,
             createdAt: true,
           },
-        },
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+        }),
+        prisma.pointRedemption.count({ where: { userId: id } }),
+        prisma.userAddress.findMany({
+          where: { userId: id },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+          take: RECENT_LIMIT,
+          select: {
+            id: true,
+            recipient: true,
+            phone: true,
+            region: true,
+            detail: true,
+            isDefault: true,
+            createdAt: true,
+          },
+        }),
+        prisma.spentAdjustmentApplication.findMany({
+          where: { userId: id },
+          orderBy: { createdAt: "desc" },
+          take: RECENT_LIMIT,
+          select: {
+            id: true,
+            channel: true,
+            orderNo: true,
+            amountClaimed: true,
+            status: true,
+            reviewAmount: true,
+            reviewNote: true,
+            createdAt: true,
+          },
+        }),
+        prisma.spentAdjustmentApplication.count({ where: { userId: id } }),
+      ]);
 
     if (!user) {
       return NextResponse.json(
@@ -78,17 +146,141 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 查看用户详情（含积分/地址等敏感档案）记审计
+    await createAuditLog({
+      action: "user_detail_view",
+      targetType: "user",
+      targetId: id,
+      detail: { phone: maskPhone(user.phone) },
+      adminId: admin.id,
+      request,
+    });
+
     return NextResponse.json({
       success: true,
       data: {
         user: {
-          ...user,
+          id: user.id,
           phone: maskPhone(user.phone),
+          phoneVerified: user.phoneVerified,
+          nickname: user.nickname,
+          avatar: user.avatar,
+          status: user.status,
+          membershipLevel: user.membershipLevel,
+          totalSpent: user.totalSpent,
+          silverActivatedAt: user.silverActivatedAt?.toISOString() ?? null,
+          goldActivatedAt: user.goldActivatedAt?.toISOString() ?? null,
+          diamondActivatedAt: user.diamondActivatedAt?.toISOString() ?? null,
+          wechatOpenId: user.wechatOpenId,
+          wechatUnionId: user.wechatUnionId,
+          externalIdentities: user.externalIdentities.map((i) => ({
+            ...i,
+            createdAt: i.createdAt.toISOString(),
+          })),
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString(),
+        },
+        points: {
+          available: balance?.available ?? 0,
+          frozen: balance?.frozen ?? 0,
+          redemptions: redemptions.map((r) => ({
+            id: r.id,
+            productName: r.productName,
+            priceYuan: Number(r.priceYuan),
+            points: r.points,
+            status: r.status,
+            carrier: r.carrier,
+            waybillNo: r.waybillNo,
+            recipient: r.recipient,
+            phone: r.phone,
+            address: r.address,
+            fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
+            createdAt: r.createdAt.toISOString(),
+          })),
+          redemptionTotal,
+        },
+        addresses: addresses.map((a) => ({
+          id: a.id,
+          recipient: a.recipient,
+          phone: a.phone,
+          region: a.region,
+          detail: a.detail,
+          isDefault: a.isDefault,
+          createdAt: a.createdAt.toISOString(),
+        })),
+        spentAdjustments: {
+          items: adjustments.map((a) => ({
+            id: a.id,
+            channel: a.channel,
+            orderNo: a.orderNo,
+            amountClaimed: a.amountClaimed,
+            status: a.status,
+            reviewAmount: a.reviewAmount,
+            reviewNote: a.reviewNote,
+            createdAt: a.createdAt.toISOString(),
+          })),
+          total: adjustmentTotal,
         },
       },
     });
   } catch (error) {
     apiConsole.error("[AdminUserDetail] 异常:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/admin/users/:id/reveal-phone - 显示完整手机号（敏感操作）
+ * 最小权限：默认脱敏，显式触发才明文返回，并写审计日志留痕。
+ */
+export async function POST(request: NextRequest, context: RouteContext) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
+  try {
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "user:read");
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { phone: true },
+    });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+
+    await createAuditLog({
+      action: "user_detail_sensitive_view",
+      targetType: "user",
+      targetId: id,
+      detail: { field: "phone" },
+      adminId: admin.id,
+      request,
+    });
+
+    return NextResponse.json({ success: true, data: { phone: user.phone } });
+  } catch (error) {
+    apiConsole.error("[AdminUserRevealPhone] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }
