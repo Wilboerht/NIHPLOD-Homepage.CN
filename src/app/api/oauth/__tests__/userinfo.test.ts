@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OAuth UserInfo 端点单元测试
  * GET /api/oauth/userinfo
  */
@@ -202,7 +202,7 @@ describe("GET /api/oauth/userinfo", () => {
     expect(body.birthday).toBeNull();
   });
 
-  it("scope 含 membership 时返回等级与积分兑礼率", async () => {
+  it("scope 含 membership 时返回等级、累计消费与积分兑礼率", async () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "test-client",
@@ -216,6 +216,7 @@ describe("GET /api/oauth/userinfo", () => {
       birthday: null,
       status: "ACTIVE",
       membershipLevel: "GOLD",
+      totalSpent: 6800,
     });
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer valid-token" },
@@ -224,6 +225,7 @@ describe("GET /api/oauth/userinfo", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.membership_level).toBe("GOLD");
+    expect(body.total_spent).toBe(6800);
     expect(body.points_redeem_rate).toBe(1.3);
   });
 
@@ -241,6 +243,7 @@ describe("GET /api/oauth/userinfo", () => {
       birthday: null,
       status: "ACTIVE",
       membershipLevel: "REGULAR",
+      totalSpent: 0,
     });
     const req = new Request("http://localhost/api/oauth/userinfo", {
       headers: { Authorization: "Bearer valid-token" },
@@ -249,6 +252,33 @@ describe("GET /api/oauth/userinfo", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.membership_level).toBe("REGULAR");
+    expect(body.total_spent).toBe(0);
     expect(body.points_redeem_rate).toBeNull();
+  });
+
+  it("scope 不含 membership 时不返回 total_spent", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      phone: "13812341234",
+      nickname: "测试用户",
+      avatar: null,
+      birthday: null,
+      status: "ACTIVE",
+      membershipLevel: "SILVER",
+      totalSpent: 1200,
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      headers: { Authorization: "Bearer valid-token" },
+    });
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.total_spent).toBeUndefined();
+    expect(body.membership_level).toBeUndefined();
   });
 });

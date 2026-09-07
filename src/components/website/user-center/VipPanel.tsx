@@ -107,10 +107,23 @@ interface NextLevelInfo {
   progress: number;
 }
 
+interface SkinTestUsage {
+  level: string;
+  totalUsed: number;
+  todayUsed: number;
+  quota: {
+    lifetimeLimit: number | null;
+    dailyLimit: number | null;
+    unlimited: boolean;
+  };
+  remaining: number | null;
+}
+
 interface VIPData {
   membershipLevel: string;
   memberId: string;
   totalSpent: number;
+  skinTestUsage: SkinTestUsage | null;
   currentLevel: LevelInfo;
   nextLevel: NextLevelInfo | null;
   allLevels: LevelInfo[];
@@ -203,7 +216,7 @@ export function VipPanel() {
     );
   }
 
-  const { currentLevel, nextLevel, totalSpent, allLevels, memberId } = vipData;
+  const { currentLevel, nextLevel, totalSpent, allLevels, memberId, skinTestUsage } = vipData;
   const tierStyle = TIER_CARD_STYLES[currentLevel.level] ?? TIER_CARD_STYLES.REGULAR;
   const cardBgImage = CARD_BG_IMAGES[currentLevel.level];
 
@@ -384,6 +397,55 @@ export function VipPanel() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* AI 测肤用量（来自测肤子站；不可用时弱提示，不影响其它内容） */}
+        <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+          <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+            <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
+            AI 测肤
+          </h4>
+          {!skinTestUsage ? (
+            <p className="mt-2 text-xs leading-relaxed text-stone-400">测肤用量暂不可用</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {skinTestUsage.quota.unlimited ? (
+                <p className="text-sm text-stone-700">
+                  AI 测肤 <span className="font-medium text-stone-800">不限次</span>
+                </p>
+              ) : (
+                <p className="text-sm text-stone-700">
+                  已用{" "}
+                  <span className="font-medium text-stone-800">{skinTestUsage.totalUsed}</span>
+                  {" / 共 "}
+                  {skinTestUsage.quota.lifetimeLimit ?? 10} 次
+                </p>
+              )}
+              {skinTestUsage.quota.dailyLimit != null && (
+                <p className="text-xs text-stone-500">
+                  今日已用 {skinTestUsage.todayUsed}/{skinTestUsage.quota.dailyLimit}
+                </p>
+              )}
+              {!skinTestUsage.quota.unlimited &&
+                skinTestUsage.remaining != null &&
+                skinTestUsage.remaining <= 0 && (
+                  <div className="mt-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                    <p className="text-xs leading-relaxed text-stone-600">
+                      {vipData.membershipLevel === "SILVER"
+                        ? "测肤次数已用完，升级金卡会员可享不限次 AI 测肤"
+                        : "测肤次数已用完，升级银卡会员可获更多测肤次数"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={focusSpentForm}
+                      className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                    >
+                      了解会员升级
+                    </button>
+                  </div>
+                )}
+            </div>
+          )}
         </div>
 
         {/* 会员权益 - 2×2 等级卡片；点击后右侧整版内容淡出、对应等级介绍淡入 */}

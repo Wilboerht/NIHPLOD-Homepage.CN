@@ -342,7 +342,7 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - `openid` — 仅返回用户 ID
 - `profile` — 昵称、头像
 - `phone` — 手机号（脱敏）
-- `membership` — 会员等级、累计消费
+- `membership` — 会员等级（`membership_level`）、累计消费金额（`total_spent`，number，单位元）、积分兑礼率（`points_redeem_rate`）
 - `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
 
 示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`
@@ -543,7 +543,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | `GOLD` | 金卡会员 | 累计消费 ≥ ¥5,000 |
 | `DIAMOND` | 钻石卡会员 | 累计消费 ≥ ¥10,000 |
 
-等级永久有效、按累计消费实时重算（退款可降级）；权益跟随当前等级，肌肤档案数据终身保留。OAuth `membership` scope 下发的 `membership_level` claim 为以上枚举值。
+等级永久有效、按累计消费实时重算（退款可降级）；权益跟随当前等级，肌肤档案数据终身保留。OAuth `membership` scope 下发的 `membership_level` claim 为以上枚举值；同一 scope 同时下发 `total_spent`（number，累计消费金额，单位元），子站可直接据此计算按消费额阶梯变化的权益配额（如测肤次数），无需另行对接消费额接口。
 
 ### 上报消费额变动
 
@@ -615,7 +615,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - `redeemRate`：当前等级兑礼率（普通档为 `null`）。
 - 商城兑换折算公式：需扣积分 = ⌊商品价值 ÷ redeemRate⌋。
 
-此外 OAuth `membership` scope 的 userinfo 响应同时下发 `points_redeem_rate`（与 `membership_level` 同源），商城无需硬编码等级→兑礼率映射。
+此外 OAuth `membership` scope 的 userinfo 响应同时下发 `points_redeem_rate` 与 `total_spent`（均与 `membership_level` 同源；`total_spent` 为累计消费金额，单位元），商城无需硬编码等级→兑礼率映射。
 
 ### 积分查询（用户端）
 

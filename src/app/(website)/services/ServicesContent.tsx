@@ -129,7 +129,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
     label: "素颜测肤",
     title: "AI 素颜测肤智能平台",
     nameEn: "AI Skin Advisor",
-    description: "通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
+    description: "注册即享 10 次 AI 测肤，通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
     links: [
       { label: "立即体验", url: "https://advisor.nihplod.cn", isAdmin: false, description: "" },
     ],
@@ -506,14 +506,6 @@ export function ServicesContent({ content }: ServicesContentProps) {
   );
 }
 
-function FreeTag() {
-  return (
-    <span className="shrink-0 rounded-full bg-[#B8A47B] px-2 py-0.5 text-[10px] font-normal tracking-[0.12em] text-[#FBF8F0]">
-      free
-    </span>
-  );
-}
-
 function ServiceListItem({ service, index }: { service: ServiceDetail; index: number }) {
   // 直查模块级 iconMap，避免渲染期经函数调用获取组件类型
   const Icon = iconMap[service.id] || DefaultIcon;
@@ -542,7 +534,6 @@ function ServiceListItem({ service, index }: { service: ServiceDetail; index: nu
         <span className="text-[14px] font-light tracking-[0.08em] text-brand-charcoal">
           {service.label}
         </span>
-        {service.id === "advisor" && <FreeTag />}
         {!isDisabled && (
           <ChevronDown className="ml-auto h-4 w-4 -rotate-90 text-brand-charcoal/30" />
         )}
@@ -581,7 +572,6 @@ function ServiceCard({ service, index }: { service: ServiceDetail; index: number
         </div>
         <span className="flex items-center gap-2 text-[13px] font-light tracking-[0.08em] text-brand-charcoal md:text-[15px] md:tracking-[0.15em]">
           {service.label}
-          {service.id === "advisor" && <FreeTag />}
         </span>
       </Link>
     </m.div>

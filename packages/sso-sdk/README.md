@@ -93,6 +93,7 @@ interface SsoUser {
   avatar?: string;
   phone?: string;          // Masked phone number
   membership_level?: string;
+  total_spent?: number;    // 累计消费金额（元），来自 membership scope
   total_points?: number;
 }
 ```
@@ -170,6 +171,7 @@ interface SsoUser {
   avatar?: string;
   phone?: string;
   membership_level?: string;
+  total_spent?: number;
   total_points?: number;
 }
 

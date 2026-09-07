@@ -154,6 +154,7 @@ export async function GET(request: NextRequest) {
         birthday: true,
         status: true,
         membershipLevel: true,
+        totalSpent: true,
       },
     });
 
@@ -190,6 +191,8 @@ export async function GET(request: NextRequest) {
 
     if (scopes.includes("membership")) {
       response.membership_level = user.membershipLevel;
+      // 累计消费金额（单位：元），供子站（如测肤站）按消费额计算权益配额
+      response.total_spent = user.totalSpent;
       // 积分兑礼率（1 积分可兑价值；普通档为 null=不参与积分）：
       // 商城兑换礼品时按 商品价值 ÷ 兑礼率 向下取整折算需扣积分
       response.points_redeem_rate = POINT_REDEEM_RATES[user.membershipLevel];

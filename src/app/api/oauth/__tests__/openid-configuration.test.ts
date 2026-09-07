@@ -40,11 +40,12 @@ describe("OIDC Discovery 文档", () => {
     expect(doc.jwks_uri).toBe("https://nihplod.cn/api/oauth/jwks");
   });
 
-  it("scopes_supported 包含 birthday，claims_supported 包含 phone_number 与 birthday", () => {
+  it("scopes_supported 包含 birthday，claims_supported 包含 phone_number、birthday 与 total_spent", () => {
     const doc = buildOpenIdConfiguration();
     expect(doc.scopes_supported).toContain("birthday");
     expect(doc.claims_supported).toContain("phone_number");
     expect(doc.claims_supported).toContain("birthday");
+    expect(doc.claims_supported).toContain("total_spent");
   });
 
   it("标准路径与历史路径返回完全一致的 Discovery 文档", async () => {

@@ -79,6 +79,8 @@ export interface SsoUser {
   /** 生日（ISO 8601，需 birthday scope，未设置时为 null） */
   birthday?: string | null;
   membership_level?: string;
+  /** 累计消费金额（单位：元，需 membership scope，与 membership_level 同源下发） */
+  total_spent?: number;
   total_points?: number;
 }
 
