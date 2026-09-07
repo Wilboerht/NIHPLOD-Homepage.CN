@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 
 /** 测肤子站（advisor.nihplod.cn）返回的 AI 测肤用量 */
 interface SkinTestUsage {
-  level: string;
+  // level 可能为 null：子站对从未使用过测肤的用户返回 level: null
+  level: string | null;
   totalUsed: number;
   todayUsed: number;
   quota: {
@@ -51,9 +52,6 @@ async function fetchSkinTestUsage(userId: string): Promise<SkinTestUsage | null>
 
 export const GET = withUserAuth(async (_request: NextRequest, payload) => {
   try {
-    // AI 测肤用量查询与 DB 查询并行，失败时降级为 null，不影响主流程
-    const skinTestUsagePromise = fetchSkinTestUsage(payload.id);
-
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
       select: {
@@ -69,6 +67,10 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
         { status: 404 }
       );
     }
+
+    // AI 测肤用量查询与权益配置查询并行，失败时降级为 null，不影响主流程。
+    // 发起时机在 404 判断之后：用户不存在时不白跑子站请求。
+    const skinTestUsagePromise = fetchSkinTestUsage(payload.id);
 
     // 获取权益配置（从数据库读取，没有则用默认）
     const dbBenefits = await prisma.membershipBenefit.findMany({

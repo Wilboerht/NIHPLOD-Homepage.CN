@@ -72,6 +72,7 @@ export function buildOpenIdConfiguration() {
       "birthday",
       "membership_level",
       "total_spent",
+      "points_redeem_rate",
     ],
     claims_parameter_supported: false,
     request_parameter_supported: false,

@@ -5,6 +5,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+const globalFetch = vi.fn();
+
+global.fetch = globalFetch as unknown as typeof fetch;
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: vi.fn() },
@@ -37,6 +41,8 @@ function createRequest(): NextRequest {
 describe("GET /api/user/vip", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.ADVISOR_INTERNAL_SECRET;
+    delete process.env.ADVISOR_API_BASE;
   });
 
   it("普通会员（¥500）：下一等级为银卡，还差 ¥500，进度 50%", async () => {
@@ -111,5 +117,49 @@ describe("GET /api/user/vip", () => {
 
     expect(data.data.currentLevel.name).toBe("钻石卡会员");
     expect(data.data.nextLevel).toBeNull();
+  });
+
+  it("未配置 ADVISOR_INTERNAL_SECRET：不请求子站，skinTestUsage 为 null", async () => {
+    mockUserFindUnique.mockResolvedValue({
+      id: "cm1234567890abc",
+      membershipLevel: "REGULAR",
+      totalSpent: 500,
+    });
+
+    const res = await GET(createRequest());
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.skinTestUsage).toBeNull();
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it("子站请求成功：透传子站返回的测肤用量结构", async () => {
+    process.env.ADVISOR_INTERNAL_SECRET = "test-secret";
+    const usage = {
+      level: null,
+      totalUsed: 3,
+      todayUsed: 1,
+      quota: { lifetimeLimit: 10, dailyLimit: 3, unlimited: false },
+      remaining: 7,
+    };
+    globalFetch.mockResolvedValue({ ok: true, json: async () => usage });
+    mockUserFindUnique.mockResolvedValue({
+      id: "cm1234567890abc",
+      membershipLevel: "REGULAR",
+      totalSpent: 500,
+    });
+
+    const res = await GET(createRequest());
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.skinTestUsage).toEqual(usage);
+    expect(globalFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/internal/skin-test-usage?userId=user-1"),
+      expect.objectContaining({
+        headers: { Authorization: "Bearer test-secret" },
+      })
+    );
   });
 });

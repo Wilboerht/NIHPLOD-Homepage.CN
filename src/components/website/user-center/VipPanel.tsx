@@ -108,7 +108,8 @@ interface NextLevelInfo {
 }
 
 interface SkinTestUsage {
-  level: string;
+  // level 可能为 null：子站对从未使用过测肤的用户返回 level: null
+  level: string | null;
   totalUsed: number;
   todayUsed: number;
   quota: {
@@ -418,7 +419,8 @@ export function VipPanel() {
                   已用{" "}
                   <span className="font-medium text-stone-800">{skinTestUsage.totalUsed}</span>
                   {" / 共 "}
-                  {skinTestUsage.quota.lifetimeLimit ?? 10} 次
+                  {/* 子站契约：unlimited=false 时 lifetimeLimit 必为 number（unlimited 分支已在上方处理） */}
+                  {skinTestUsage.quota.lifetimeLimit} 次
                 </p>
               )}
               {skinTestUsage.quota.dailyLimit != null && (
