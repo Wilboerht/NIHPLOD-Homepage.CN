@@ -1040,6 +1040,12 @@ export interface ProfileEventTokenClaims {
     avatar: string | null;
     birthday: string | null;
   };
+  /**
+   * 会员信息快照（可选）：累计消费/会员等级变化时由主站推送，
+   * 子站（如测肤平台）据此实时更新按会员档位的配额，无需轮询 userinfo。
+   * level 为会员等级枚举（REGULAR/SILVER/GOLD/DIAMOND），totalSpent 为累计消费金额（元）。
+   */
+  membership?: { level: string; totalSpent: number } | null;
 }
 
 /**

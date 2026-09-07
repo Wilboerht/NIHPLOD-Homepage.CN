@@ -506,7 +506,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 - **配置**：管理员在 `/admin/oauth-clients` 创建/编辑 Client 时填写 `webhookUri`（要求 HTTPS 公网地址，与 redirect_uri 同源的 SSRF 校验）。
 - **投递方式**：`POST {webhookUri}`，`Content-Type: application/json`，body 为 `{ "event_token": "<jwt>" }`。
-- **触发条件**：仅当资料发生实际变更时触发；fire-and-forget，不阻塞主站响应。
+- **触发条件**：资料（昵称/头像/生日）发生实际变更，或累计消费/会员等级发生变化（消费入账唯一收口 `applyExternalSpentSync`，商城同步/消费补录/批量导入均会触发）时推送；fire-and-forget，不阻塞主站响应。
 - **重试**：同步失败重试 1 次后落入补偿队列，由 cron 每 15 分钟指数退避重投，超过 10 次丢弃。重投携带落库时的资料快照，**子项目应以 userinfo 拉取的最新数据为准**。
 
 ### event_token 验签
@@ -522,11 +522,14 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
   "iat": 1724000000,
   "exp": 1724000300,
   "events": { "https://nihplod.cn/event/profile_update": {} },
-  "profile": { "nickname": "...", "avatar": "...", "birthday": "..." }
+  "profile": { "nickname": "...", "avatar": "...", "birthday": "..." },
+  "membership": { "level": "SILVER", "totalSpent": 2500 }
 }
 ```
 
 验签要点：校验签名、`type === "profile_event"`、`aud` 等于本 Client 的 clientId、`exp` 未过期；`events` 中须含 `https://nihplod.cn/event/profile_update`；`jti` 建议做短期防重放去重。`profile` 仅含昵称/头像/生日，**不含手机号**。
+
+`membership` 为**可选字段**，仅在消费额/会员等级变化触发的推送中携带（纯资料变更的推送不含此字段）：`level` 为会员等级枚举（`REGULAR`/`SILVER`/`GOLD`/`DIAMOND`），`totalSpent` 为累计消费金额（number，单位元）。注意等级不变但 `totalSpent` 变化时也会推送——按消费额阶梯计算配额的子站（如测肤次数"每满 ¥1,000 加 20 次"）应以 `totalSpent` 为准实时更新，而非仅在等级变化时刷新。
 
 ---
 

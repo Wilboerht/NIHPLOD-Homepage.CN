@@ -32,10 +32,12 @@ export interface ProfileSnapshot {
  *
  * @param userId - 资料变更的用户 ID
  * @param profile - 变更后的公开资料快照
+ * @param membership - 可选会员信息快照（消费额/等级变化时携带，子站据此实时更新配额）
  */
 export async function sendProfileUpdateWebhook(
   userId: string,
-  profile: ProfileSnapshot
+  profile: ProfileSnapshot,
+  membership?: { level: string; totalSpent: number } | null
 ): Promise<void> {
   // 该用户已授权（未撤销）的 client
   const consents = await prisma.userConsent.findMany({
@@ -68,6 +70,7 @@ export async function sendProfileUpdateWebhook(
           events: { [PROFILE_UPDATE_EVENT_URI]: {} },
           jti: crypto.randomUUID(),
           profile,
+          ...(membership !== undefined && { membership }),
         });
 
         let delivered = false;
@@ -116,6 +119,8 @@ export async function sendProfileUpdateWebhook(
                     avatar: profile.avatar,
                     birthday: profile.birthday,
                   },
+                  // 会员信息快照一并落库，cron 重投时按原快照重新签发
+                  ...(membership !== undefined && { membership }),
                 },
                 nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS),
               },
@@ -186,14 +191,19 @@ export async function retryFailedWebhookDeliveries(
         continue;
       }
 
-      const payload = (failure.payload ?? {}) as { profile?: ProfileSnapshot };
-      // 重新签发事件 token（原 token 已过期），jti 重新生成
+      const payload = (failure.payload ?? {}) as {
+        profile?: ProfileSnapshot;
+        membership?: { level: string; totalSpent: number } | null;
+      };
+      // 重新签发事件 token（原 token 已过期），jti 重新生成；
+      // 会员信息快照随落库 payload 一并读回（旧记录无此字段则不携带）
       const eventToken = await signProfileEventToken({
         sub: failure.userId,
         aud: failure.clientId,
         events: { [PROFILE_UPDATE_EVENT_URI]: {} },
         jti: crypto.randomUUID(),
         profile: payload.profile ?? { nickname: null, avatar: null, birthday: null },
+        ...(payload.membership !== undefined && { membership: payload.membership }),
       });
 
       const res = await fetch(uri, {

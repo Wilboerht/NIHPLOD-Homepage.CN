@@ -16,6 +16,7 @@ import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { creditSpendPoints, refundSpendPoints } from "@/lib/points-ledger";
+import { sendProfileUpdateWebhook } from "@/lib/profile-webhook";
 
 // 等级阈值（按历史消费金额，元）
 // 判级以此处硬编码阈值为准（唯一权威）；管理端可编辑的 MembershipBenefit.minSpent
@@ -76,7 +77,8 @@ export async function applyExternalSpentSync(params: {
   const { userId, spentDelta, reference, note } = params;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    // 成功入账时事务额外返回 previous（入账前快照），用于提交后判断消费额/等级是否实际变化
+    const txOutcome = await prisma.$transaction(async (tx) => {
       // 幂等检查：同一用户同一单据已入账过，直接返回当前权威消费额
       const existing = await tx.spentSyncRecord.findUnique({
         where: { userId_reference: { userId, reference } },
@@ -87,7 +89,7 @@ export async function applyExternalSpentSync(params: {
           select: { totalSpent: true, membershipLevel: true },
         });
         if (!current) return null;
-        return { ...current, duplicated: true };
+        return { ...current, duplicated: true, previous: undefined };
       }
 
       // 乐观并发控制（CAS）：以读取快照作为更新条件，快照被并发修改时 updateMany 命中 0 行，
@@ -163,13 +165,19 @@ export async function applyExternalSpentSync(params: {
           totalSpent: newTotalSpent,
           membershipLevel: newLevel,
           duplicated: false,
+          previous: { totalSpent: user.totalSpent, membershipLevel: user.membershipLevel },
         };
       }
       // CAS 重试耗尽（持续高频并发冲突），抛出由路由层 500 兜底
       throw new Error("SPENT_SYNC_CAS_CONFLICT");
     });
 
-    if (result) {
+    if (txOutcome) {
+      const result = {
+        totalSpent: txOutcome.totalSpent,
+        membershipLevel: txOutcome.membershipLevel,
+        duplicated: txOutcome.duplicated,
+      };
       apiConsole.info(
         `[SpentSync] 外部同步入账：用户 ${userId} 消费 ${
           spentDelta >= 0 ? "+" : ""
@@ -178,8 +186,23 @@ export async function applyExternalSpentSync(params: {
         }`
       );
       invalidateProfileCache();
+
+      // 消费额/等级实际变化时，向已授权且配置 webhookUri 的子项目实时推送
+      // （等级没变但 totalSpent 变了也要推：银卡"每满 ¥1,000 加 20 次"依赖 totalSpent 本身）。
+      // fire-and-forget：catch 兜底，不阻塞入账主流程。
+      if (
+        !result.duplicated &&
+        txOutcome.previous &&
+        (txOutcome.previous.totalSpent !== result.totalSpent ||
+          txOutcome.previous.membershipLevel !== result.membershipLevel)
+      ) {
+        pushMembershipUpdateWebhook(userId, result).catch((err) =>
+          apiConsole.warn(`[SpentSync] 会员信息 webhook 推送失败（不影响入账）:`, err)
+        );
+      }
+      return result;
     }
-    return result;
+    return null;
   } catch (error) {
     // P2002 唯一约束冲突 = 该 reference 已入账过，幂等返回当前权威消费额
     if ((error as { code?: string }).code === "P2002") {
@@ -205,4 +228,30 @@ export function invalidateProfileCache(): void {
   } catch {
     // revalidateTag 在非请求上下文中可能失败（如 standalone 模式），忽略
   }
+}
+
+/**
+ * 消费入账后推送会员信息变更 webhook（fire-and-forget，调用方负责 catch）。
+ *
+ * 查询用户当前资料组装 profile 快照（与 /api/user/profile 变更推送的组装方式一致，
+ * birthday 转 ISO 字符串），membership 携带入账后的权威等级与累计消费额。
+ */
+async function pushMembershipUpdateWebhook(
+  userId: string,
+  result: { totalSpent: number; membershipLevel: MembershipLevel }
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { nickname: true, avatar: true, birthday: true },
+  });
+  if (!user) return;
+  await sendProfileUpdateWebhook(
+    userId,
+    {
+      nickname: user.nickname,
+      avatar: user.avatar,
+      birthday: user.birthday?.toISOString() ?? null,
+    },
+    { level: result.membershipLevel, totalSpent: result.totalSpent }
+  );
 }

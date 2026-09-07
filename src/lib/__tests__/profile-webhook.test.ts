@@ -185,6 +185,52 @@ describe("profile-webhook", () => {
     expect(globalFetch).not.toHaveBeenCalled();
     expect(mockSignProfileEventToken).not.toHaveBeenCalled();
   });
+
+  it("携带 membership 时透传进事件 token 与失败落库 payload", async () => {
+    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockClientFindMany.mockResolvedValue([
+      { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
+    ]);
+    mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
+    globalFetch.mockResolvedValue({ ok: false, status: 500 });
+
+    const membership = { level: "SILVER", totalSpent: 2500 };
+    await sendProfileUpdateWebhook("user-1", PROFILE, membership);
+
+    // 事件 token 载荷携带 membership
+    expect(mockSignProfileEventToken).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: "user-1", aud: "client-a", profile: PROFILE, membership })
+    );
+    // 失败落库 payload 补存 membership，供 cron 重投时读回
+    expect(mockFailureCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: { event: "profile_update", profile: PROFILE, membership },
+        }),
+      })
+    );
+  });
+
+  it("不传 membership 时事件 token 与落库 payload 均不含该字段", async () => {
+    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockClientFindMany.mockResolvedValue([
+      { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
+    ]);
+    mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
+    globalFetch.mockResolvedValue({ ok: false, status: 500 });
+
+    await sendProfileUpdateWebhook("user-1", PROFILE);
+
+    const signPayload = mockSignProfileEventToken.mock.calls[0][0];
+    expect("membership" in signPayload).toBe(false);
+    expect(mockFailureCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: { event: "profile_update", profile: PROFILE },
+        }),
+      })
+    );
+  });
 });
 
 describe("retryFailedWebhookDeliveries", () => {
@@ -230,6 +276,44 @@ describe("retryFailedWebhookDeliveries", () => {
         detail: expect.objectContaining({ redelivered: true }),
       })
     );
+  });
+
+  it("重投时从落库 payload 读回 membership 一并重新签发", async () => {
+    const membership = { level: "GOLD", totalSpent: 5200 };
+    mockFailureFindMany.mockResolvedValue([
+      { ...failureRecord, payload: { event: "profile_update", profile: PROFILE, membership } },
+    ]);
+    mockClientFindUnique.mockResolvedValue({
+      clientId: "client-a",
+      webhookUri: "https://a.example.com/webhook",
+    });
+    globalFetch.mockResolvedValue({ ok: true, status: 200 });
+
+    const result = await retryFailedWebhookDeliveries();
+
+    expect(result).toEqual({ delivered: 1, failed: 0, dropped: 0 });
+    expect(mockSignProfileEventToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sub: "user-1",
+        aud: "client-a",
+        profile: PROFILE,
+        membership,
+      })
+    );
+  });
+
+  it("落库 payload 无 membership 字段（旧记录）时重投不携带该字段", async () => {
+    mockFailureFindMany.mockResolvedValue([failureRecord]);
+    mockClientFindUnique.mockResolvedValue({
+      clientId: "client-a",
+      webhookUri: "https://a.example.com/webhook",
+    });
+    globalFetch.mockResolvedValue({ ok: true, status: 200 });
+
+    await retryFailedWebhookDeliveries();
+
+    const signPayload = mockSignProfileEventToken.mock.calls[0][0];
+    expect("membership" in signPayload).toBe(false);
   });
 
   it("重投失败时 attempts+1 并按指数退避更新 nextRetryAt", async () => {
