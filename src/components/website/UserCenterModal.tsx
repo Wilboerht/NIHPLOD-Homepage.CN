@@ -5,10 +5,11 @@
  * 品牌风格 - 左侧菜单 + 右侧内容（桌面）；移动端全屏 + 底部 Tab 导航
  *
  * 移动端（<768px）：
- * - 底部抽屉形态：顶部两角圆角（rounded-t-3xl）+ 黑色遮罩透出浮层层次，
- *   上滑进场动画；高度 100dvh 贴满（底部保留 Tab 栏与 safe-area）；
+ * - 底部抽屉形态：顶部留缝（calc(100dvh - 2.5rem)），两角圆角（rounded-t-3xl），
+ *   上滑进场时可见完整滑过轨迹；顶部遮罩透出浮层层次；
+ * - 顶部 Header 跟随抽屉顶部（不再覆盖状态栏/灵动岛，无需 safe-area-top 补偿）；
  * - 侧边栏改为底部 Tab 栏（4 个一级入口），两级导航收敛为单级；
- * - 顶部 Header 仅标题 + 关闭，safe-area 适配（刘海/灵动岛/手势条）；
+ * - 底部保持贴边（Tab 栏 + safe-area-bottom）；
  * - 键盘弹起时 dvh 自动收缩、内容保持可滚动。
  * 桌面端（≥768px）保持原居中卡片（侧边栏 + 内容 + 独立关闭按钮）。
  */
@@ -183,7 +184,7 @@ export function UserCenterModal() {
             }}
             className="relative z-10 flex w-full items-center justify-center outline-none md:h-[min(680px,calc(100dvh-3rem))] md:max-w-[1100px]"
           >
-            <div className="relative flex h-[100vh] w-full items-stretch overflow-hidden rounded-t-3xl shadow-none supports-[height:100dvh]:h-[100dvh] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+            <div className="relative flex h-[calc(100vh-2.5rem)] w-full items-stretch overflow-hidden rounded-t-3xl shadow-none supports-[height:100dvh]:h-[calc(100dvh-2.5rem)] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
               {/* 底层基础色 */}
               <div className="absolute inset-0 z-0 bg-[#FBF8F0]" />
 
@@ -343,7 +344,6 @@ export function UserCenterModal() {
                         dragControls.start(e);
                       }}
                       className="shrink-0 border-b border-stone-200/40 bg-[#FBF8F0]/80 backdrop-blur-md md:hidden"
-                      style={{ paddingTop: "env(safe-area-inset-top)" }}
                     >
                       {/* 下滑把手提示 */}
                       <div
