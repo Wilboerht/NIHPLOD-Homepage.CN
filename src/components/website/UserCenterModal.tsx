@@ -5,7 +5,8 @@
  * 品牌风格 - 左侧菜单 + 右侧内容（桌面）；移动端全屏 + 底部 Tab 导航
  *
  * 移动端（<768px）：
- * - 全屏无圆角（100dvh），上滑进场动画；
+ * - 底部抽屉形态：顶部两角圆角（rounded-t-3xl）+ 黑色遮罩透出浮层层次，
+ *   上滑进场动画；高度 100dvh 贴满（底部保留 Tab 栏与 safe-area）；
  * - 侧边栏改为底部 Tab 栏（4 个一级入口），两级导航收敛为单级；
  * - 顶部 Header 仅标题 + 关闭，safe-area 适配（刘海/灵动岛/手势条）；
  * - 键盘弹起时 dvh 自动收缩、内容保持可滚动。
@@ -182,7 +183,7 @@ export function UserCenterModal() {
             }}
             className="relative z-10 flex w-full items-center justify-center outline-none md:h-[min(680px,calc(100dvh-3rem))] md:max-w-[1100px]"
           >
-            <div className="relative flex h-[100vh] w-full items-stretch overflow-hidden rounded-none shadow-none supports-[height:100dvh]:h-[100dvh] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+            <div className="relative flex h-[100vh] w-full items-stretch overflow-hidden rounded-t-3xl shadow-none supports-[height:100dvh]:h-[100dvh] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
               {/* 底层基础色 */}
               <div className="absolute inset-0 z-0 bg-[#FBF8F0]" />
 
