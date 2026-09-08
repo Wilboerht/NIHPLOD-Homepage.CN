@@ -99,7 +99,7 @@ export function AuthorizationsPanel({ onRevoked, hideTitle, embedded }: Authoriz
         </div>
       )}
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
+      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
         <p className="mb-4 text-sm text-stone-400">
           管理已授权的第三方应用。撤销授权后，该应用将无法访问您的账户信息。
         </p>

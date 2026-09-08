@@ -247,7 +247,7 @@ export function VipPanel() {
 
       <div
         ref={scrollRef}
-        className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16"
+        className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16"
       >
         <AnimatePresence mode="wait" initial={false}>
           {view === "main" && (

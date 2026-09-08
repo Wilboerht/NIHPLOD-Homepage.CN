@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
@@ -19,7 +19,7 @@ const phoneInputClass =
   "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400";
 
 export function ProfilePanel() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
   const [editingField, setEditingField] = useState<"nickname" | "birthday" | null>(null);
   const [nickname, setNickname] = useState(user?.nickname || "");
@@ -343,7 +343,7 @@ export function ProfilePanel() {
         <h2 className="text-xl font-medium tracking-wide text-stone-800">个人信息</h2>
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-16 py-6">
+      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
         {/* 头像区域 */}
         <div className="mb-6 flex items-center gap-6 md:mb-10">
           {/* 可点击上传头像 */}
@@ -913,6 +913,17 @@ export function ProfilePanel() {
             )}
           </div>
         </div>
+      </div>
+      {/* 移动端退出登录（桌面端在用户中心侧边栏） */}
+      <div className="mt-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/40 py-3 text-sm text-stone-600 transition-colors hover:bg-white/70"
+        >
+          <LogOut className="h-4 w-4" strokeWidth={1.5} />
+          退出登录
+        </button>
       </div>
       <ConfirmDialog
         open={!!deletingAddressId}

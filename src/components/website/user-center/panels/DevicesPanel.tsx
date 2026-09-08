@@ -82,7 +82,7 @@ export function DevicesPanel({ embedded }: DevicesPanelProps) {
         </div>
       )}
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-6 py-6 md:px-16">
+      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
         <p className="mb-4 text-sm text-stone-400">管理登录设备，可强制下线可疑设备。</p>
         {loading ? (
           <div className="flex justify-center py-10">

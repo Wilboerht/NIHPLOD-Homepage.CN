@@ -152,8 +152,9 @@ export default function RootLayout({
     <ViewTransitions>
       <html lang="zh-CN">
         <head>
-          {/* 移动端安全区域支持 - 让内容可以延伸到状态栏/刘海区域 */}
-          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+          {/* 移动端安全区域支持 - 让内容可以延伸到状态栏/刘海区域；
+              键盘交互：resizes-content 让 iOS 键盘弹起时收缩布局视口（全屏用户中心表单不被遮挡） */}
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
           {/* iOS 状态栏样式 - 透明背景 */}
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           {/* 百度移动适配：声明页面适配移动端 */}

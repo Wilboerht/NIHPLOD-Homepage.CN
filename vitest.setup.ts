@@ -17,3 +17,18 @@ console.log = (...args: unknown[]) => {
   if (msg.startsWith("[") || msg.includes("ℹ️")) return;
   originalLog(...args);
 };
+
+// jsdom 未实现 matchMedia（useMediaQuery 等 hook 依赖它）：
+// 默认回退为 desktop（matches: false），需要移动端行为时在用例内覆写 window.matchMedia
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+}

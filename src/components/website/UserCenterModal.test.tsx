@@ -7,8 +7,8 @@
  * 安全设置（密码管理）已合并进个人信息面板。
  */
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 const mockSetUserCenterView = vi.fn();
 const mockCloseUserCenter = vi.fn();
@@ -44,6 +44,20 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const mockUseAuth = useAuth as unknown as ReturnType<typeof vi.fn>;
 
+/** 覆写 matchMedia：模拟移动端（<768px 全屏壳）或桌面端（居中卡片壳） */
+function stubMatchMedia(mobile: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: query === "(max-width: 767px)" ? mobile : false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+}
+
 function setupAuth(view = "profile", securitySection = "devices") {
   mockUseAuth.mockReturnValue({
     user: { id: "u1", phone: "13800138000", nickname: "测试用户" },
@@ -62,6 +76,11 @@ describe("UserCenterModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupAuth();
+  });
+
+  afterEach(() => {
+    // 还原移动端 stub，避免覆写状态串到后续用例
+    stubMatchMedia(false);
   });
 
   it("菜单包含四个一级入口，安全类子项不再作为一级菜单", () => {
@@ -121,5 +140,26 @@ describe("UserCenterModal", () => {
 
     expect(await screen.findByTestId("panel-security")).toBeInTheDocument();
     expect(screen.getByTestId("panel-authorizations")).toBeInTheDocument();
+  });
+
+  it("移动端：渲染底部 Tab 栏与标题，不渲染桌面侧边栏", () => {
+    stubMatchMedia(true);
+    setupAuth();
+    render(<UserCenterModal />);
+
+    const nav = screen.getByRole("navigation", { name: "用户中心导航" });
+    expect(within(nav).getAllByRole("button")).toHaveLength(4);
+    expect(screen.getAllByRole("heading", { name: "个人信息" }).length).toBeGreaterThan(0);
+  });
+
+  it("移动端：点击底部 Tab 直接切换面板视图", () => {
+    stubMatchMedia(true);
+    setupAuth("profile");
+    render(<UserCenterModal />);
+
+    const nav = screen.getByRole("navigation", { name: "用户中心导航" });
+    fireEvent.click(within(nav).getByRole("button", { name: "积分商城" }));
+    expect(mockSetUserCenterView).toHaveBeenCalledWith("mall");
+    expect(mockCloseUserCenter).not.toHaveBeenCalled();
   });
 });
