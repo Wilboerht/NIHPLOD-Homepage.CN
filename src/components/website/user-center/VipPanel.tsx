@@ -5,11 +5,13 @@
  * 显示会员等级与积分（等级体系 2026-09 四档：普通/银卡/金卡/钻石卡）
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
- * 不渲染任何 emoji 图标。会员权益为 2×2 等级卡片 + 点击切换介绍。
+ * 不渲染任何 emoji 图标。主视图为两栏排版：
+ * - 左栏：当前等级会员卡 + 会员权益纵向等级条列表（点击整版切换等级介绍）
+ * - 右栏：「提升会员等级」引导卡（升级进度 / 如何提升三步 / 录入消费入口 / AI 测肤用量）
  * 积分展示在会员卡内：无冻结期、立即到账（账本在官网，兑礼在「积分商城」tab）。
  *
- * 会员卡与权益区等级卡背景图：四档均已登记到 CARD_BG_IMAGES；
- * 会员卡铺满使用，权益区等级卡做虚化淡化处理。
+ * 会员卡与权益区等级条背景图：四档均已登记到 CARD_BG_IMAGES；
+ * 会员卡铺满使用，权益区等级条做虚化淡化处理。
  * 卡面只承载身份信息与品牌 logo（右下角）；升级进度展示在右侧「提升会员等级」引导卡。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -25,6 +27,7 @@ import {
   Crown,
   Gift,
   Infinity as InfinityIcon,
+  Info,
   Loader2,
   Lock,
   ScanFace,
@@ -39,7 +42,7 @@ import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPane
 
 // 会员卡背景图（四档）：
 // - 会员卡（当前等级）：bg-cover 铺满作卡面底色，容器高度由内容决定
-// - 权益区各等级卡片：同图做虚化（blur-md）+ 低透明度（opacity-25）的淡淡背景
+// - 权益区各等级条：同图做虚化（blur-sm）+ 低透明度（opacity-40）的淡淡背景
 const CARD_BG_IMAGES: Partial<Record<string, string>> = {
   REGULAR: "/images/membership-card-regular.png",
   SILVER: "/images/membership-card-silver.jpg",
@@ -221,7 +224,7 @@ export function VipPanel() {
   const tierStyle = TIER_CARD_STYLES[currentLevel.level] ?? TIER_CARD_STYLES.REGULAR;
   const cardBgImage = CARD_BG_IMAGES[currentLevel.level];
 
-  // 权益区当前选中的等级（点击 2×2 等级卡片后整版切换到对应等级介绍）
+  // 权益区当前选中的等级（点击等级条后整版切换到对应等级介绍）
   const selected = selectedLevel
     ? (allLevels.find((l) => l.level === selectedLevel) ?? null)
     : null;
@@ -258,261 +261,248 @@ export function VipPanel() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-        {/* 会员卡 + 升级引导（桌面并排，移动端上下堆叠） */}
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="w-full lg:w-[390px] lg:shrink-0">
-        {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，左对齐，背景图按卡面铺满） */}
-        <div
-          className={`relative flex aspect-[1.586/1] w-full max-w-[390px] flex-col overflow-hidden rounded-xl border ${tierStyle.card}`}
-        >
-          {/* 卡面背景图 */}
-          {cardBgImage && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${cardBgImage})` }}
-            />
-          )}
-
-          {/* 上半区文字底色：薄白纱保证可读性（图色仍然透出） */}
-          <div className="relative bg-white/25 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs tracking-wider text-stone-500">当前等级</p>
-                <h3 className="mt-1 text-xl font-medium text-stone-800">
-                  {currentLevel.name}
-                </h3>
-                <p className="mt-1 text-[11px] font-light tracking-wider text-stone-500">
-                  NO.{memberId}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setUserCenterView("mall")}
-                className="text-right transition-opacity hover:opacity-70"
-              >
-                <p className="text-xs text-stone-500">我的积分</p>
-                <p className="mt-1 text-xl font-light text-stone-800">
-                  {pointsData ? pointsData.available.toLocaleString() : "—"}
-                </p>
-              </button>
-            </div>
-          </div>
-
-          {/* 分割线以下：背景虚化处理，品牌 logo 常驻右下角。
-              不用 backdrop-filter：Chromium 会忽略祖先圆角裁剪导致底部两角变直角。
-              改为与卡面同图同铺法的模糊副本，按卡片比例（aspect 1.586）定位、底部对齐，
-              由本区块 overflow-hidden + rounded-b-xl 裁剪出圆角。 */}
-          <div className="relative mt-auto overflow-hidden rounded-b-xl border-t border-stone-200/60">
-            {cardBgImage && (
-              <div
-                aria-hidden
-                className="pointer-events-none absolute bottom-0 left-0 w-full blur-md"
-                style={{
-                  aspectRatio: "1.586 / 1",
-                  backgroundImage: `url(${cardBgImage})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              />
-            )}
-            <div className="relative flex justify-end bg-white/25 p-5 pt-4">
-              <Image
-                src="/images/NIHPLOD-logo.svg"
-                alt="NIHPLOD"
-                width={130}
-                height={36}
-                className="w-[72px] object-contain"
-              />
-            </div>
-          </div>
-        </div>
-          </div>
-
-          {/* 升级引导卡片：升级进度 + 三步流程 + 录入消费 / 查看录入历史 */}
-          <div className="flex flex-1 flex-col justify-center rounded-xl border border-stone-200/60 bg-white/40 p-5">
-            <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
-              <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
-              提升会员等级
-            </h4>
-
-            {nextLevel ? (
-              <div className="mt-4 space-y-3">
-                {/* 升级进度（一行：差额数字 + 进度条 + 百分比） */}
-                <div className="rounded-xl bg-white/60 p-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <p className="min-w-0 text-xs leading-relaxed text-stone-600 sm:text-sm">
-                      再消费{" "}
-                      <span className="text-sm font-semibold leading-none text-[#00263e] sm:text-base">
-                        ¥{nextLevel.spentNeeded.toLocaleString()}
-                      </span>{" "}
-                      升级{nextLevel.name}
-                    </p>
-                    <div className="h-1.5 min-w-[48px] flex-1 overflow-hidden rounded-full bg-white">
-                      <div
-                        className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
-                        style={{ width: `${nextLevel.progress}%` }}
-                      />
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold text-[#00263e]">
-                      {nextLevel.progress}%
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    "官方各渠道消费",
-                    "录入订单凭证",
-                    "审核通过后自动计入历史消费并升级",
-                  ].map((step, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00263e]/10 text-[11px] font-medium text-[#00263e]">
-                        {i + 1}
-                      </span>
-                      <p className="text-xs leading-relaxed text-stone-500">{step}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                您已是最高等级会员，全渠道消费记录可随时补录留存。
-              </p>
-            )}
-
-            <div className="mt-4 flex items-center gap-4">
-              <button
-                type="button"
-                onClick={focusSpentForm}
-                className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-              >
-                录入消费
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("spent-history")}
-                className="text-xs text-stone-500 transition-colors hover:text-stone-800"
-              >
-                查看录入历史
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* AI 测肤用量（来自测肤子站；不可用时弱提示，不影响其它内容） */}
-        <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
-            <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
-            AI 测肤
-          </h4>
-          {!skinTestUsage ? (
-            <p className="mt-2 text-xs leading-relaxed text-stone-400">测肤用量暂不可用</p>
-          ) : (
-            <div className="mt-3 space-y-2">
-              {skinTestUsage.quota.unlimited ? (
-                <p className="text-sm text-stone-700">
-                  AI 测肤 <span className="font-medium text-stone-800">不限次</span>
-                </p>
-              ) : (
-                <p className="text-sm text-stone-700">
-                  已用{" "}
-                  <span className="font-medium text-stone-800">{skinTestUsage.totalUsed}</span>
-                  {" / 共 "}
-                  {/* 子站契约：unlimited=false 时 lifetimeLimit 必为 number（unlimited 分支已在上方处理） */}
-                  {skinTestUsage.quota.lifetimeLimit} 次
-                </p>
-              )}
-              {skinTestUsage.quota.dailyLimit != null && (
-                <p className="text-xs text-stone-500">
-                  今日已用 {skinTestUsage.todayUsed}/{skinTestUsage.quota.dailyLimit}
-                </p>
-              )}
-              {!skinTestUsage.quota.unlimited &&
-                skinTestUsage.remaining != null &&
-                skinTestUsage.remaining <= 0 && (
-                  <div className="mt-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                    <p className="text-xs leading-relaxed text-stone-600">
-                      {vipData.membershipLevel === "SILVER"
-                        ? "测肤次数已用完，升级金卡会员可享不限次 AI 测肤"
-                        : "测肤次数已用完，升级银卡会员可获更多测肤次数"}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={focusSpentForm}
-                      className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                    >
-                      了解会员升级
-                    </button>
-                  </div>
-                )}
-            </div>
-          )}
-        </div>
-
-        {/* 会员权益 - 2×2 等级卡片；点击后右侧整版内容淡出、对应等级介绍淡入 */}
-        <div className="mt-6">
-          <h4 className="mb-3 text-sm font-medium text-stone-700">会员权益</h4>
-          <div className="grid grid-cols-2 gap-3">
-            {allLevels.map((level) => {
-              const isCurrent = level.level === currentLevel.level;
-              const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
-              const tierBgImage = CARD_BG_IMAGES[level.level];
-              return (
-                <button
-                  key={level.level}
-                  type="button"
-                  onClick={() => {
-                    setSelectedLevel(level.level);
-                    setView("tier");
-                  }}
-                  className={`relative overflow-hidden rounded-xl border p-4 text-left transition-opacity ${
-                    isCurrent
-                      ? "border-[#00263e] bg-white/60"
-                      : isUnlocked
-                        ? "border-stone-200/40 bg-white/20 opacity-60 hover:opacity-90"
-                        : "border-stone-200/60 bg-white/40 opacity-85 hover:bg-white/60 hover:opacity-100"
-                  }`}
+              {/* 两栏排版：左栏会员卡 + 会员权益，右栏提升引导卡（纵跨两行，含 AI 测肤）。
+                  移动端按 会员卡 → 提升引导 → 会员权益 顺序堆叠。 */}
+              <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+                {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，背景图按卡面铺满） */}
+                <div
+                  className={`relative flex aspect-[1.586/1] w-full flex-col overflow-hidden rounded-xl border lg:col-start-1 lg:row-start-1 ${tierStyle.card}`}
                 >
-                  {/* 各等级背景图：轻微虚化（弱朦胧）；当前档以 #00263e 实线外框区分 */}
-                  {tierBgImage && (
+                  {/* 卡面背景图 */}
+                  {cardBgImage && (
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-40 blur-sm"
-                      style={{ backgroundImage: `url(${tierBgImage})` }}
+                      className="pointer-events-none absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${cardBgImage})` }}
                     />
                   )}
-                  <div className="relative">
-                    <div className="flex items-start justify-between gap-1.5">
-                      <p className="text-sm font-medium text-stone-800">{level.name}</p>
-                      {isCurrent ? (
-                        <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
-                          <Crown className="h-3.5 w-3.5" />
-                          当前
-                        </span>
-                      ) : isUnlocked ? (
-                        <span className="flex shrink-0 items-center gap-1 text-[11px] text-[#00263e]">
-                          <Check className="h-3.5 w-3.5" />
-                          已解锁
-                        </span>
-                      ) : (
-                        <span className="flex shrink-0 items-center gap-1 text-[11px] text-stone-400">
-                          <Lock className="h-3 w-3" />
-                          未解锁
-                        </span>
+
+                  {/* 上半区文字底色：薄白纱保证可读性（图色仍然透出） */}
+                  <div className="relative bg-white/25 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs tracking-wider text-stone-500">当前等级</p>
+                        <h3 className="mt-1 text-xl font-medium text-stone-800">
+                          {currentLevel.name}
+                        </h3>
+                        <p className="mt-1 text-[11px] font-light tracking-wider text-stone-500">
+                          NO.{memberId}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUserCenterView("mall")}
+                        className="text-right transition-opacity hover:opacity-70"
+                      >
+                        <p className="text-xs text-stone-500">我的积分</p>
+                        <p className="mt-1 text-xl font-light text-stone-800">
+                          {pointsData ? pointsData.available.toLocaleString() : "—"}
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 品牌 logo 常驻右下角，直接压在卡面背景图上 */}
+                  <div className="relative mt-auto flex justify-end p-5">
+                    <Image
+                      src="/images/NIHPLOD-logo.svg"
+                      alt="NIHPLOD"
+                      width={130}
+                      height={36}
+                      className="w-[72px] object-contain"
+                    />
+                  </div>
+                </div>
+
+                {/* 右栏：提升会员等级（进度 + 如何提升 + 录入入口）+ AI 测肤用量 */}
+                <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                  <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                    <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
+                    提升会员等级
+                  </h4>
+
+                  {nextLevel ? (
+                    /* 升级进度：差额 + 目标等级一行，进度条通栏，百分比居中 */
+                    <div className="mt-4 rounded-xl bg-white/60 p-4">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm text-stone-600">
+                          再消费{" "}
+                          <span className="text-base font-semibold leading-none text-[#00263e]">
+                            ¥{nextLevel.spentNeeded.toLocaleString()}
+                          </span>
+                        </p>
+                        <p className="shrink-0 text-xs text-stone-400">升级{nextLevel.name}</p>
+                      </div>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200/70">
+                        <div
+                          className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
+                          style={{ width: `${nextLevel.progress}%` }}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-center text-xs text-stone-400">
+                        {nextLevel.progress}%
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                      您已是最高等级会员，全渠道消费记录可随时补录留存。
+                    </p>
+                  )}
+
+                  {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
+                  <div className="mt-5 border-t border-stone-200/60 pt-5">
+                    <h5 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                      <Info className="h-[18px] w-[18px] text-[#00263e]" />
+                      如何提升会员等级
+                    </h5>
+                    <div className="mt-3 space-y-2">
+                      {["官方各渠道消费", "录入订单凭证", "审核通过后自动计入历史消费并升级"].map(
+                        (step, i) => (
+                          <div key={i} className="flex items-center gap-2.5">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-200/80 text-[11px] font-medium text-stone-600">
+                              {i + 1}
+                            </span>
+                            <p className="text-xs leading-relaxed text-stone-500">{step}</p>
+                          </div>
+                        )
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-stone-400">
-                      {level.minSpent > 0
-                        ? `消费满 ¥${level.minSpent.toLocaleString()}`
-                        : "注册即享"}
-                    </p>
+                    <div className="mt-4 flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={focusSpentForm}
+                        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                      >
+                        录入消费
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setView("spent-history")}
+                        className="text-xs text-stone-500 transition-colors hover:text-stone-800"
+                      >
+                        查看录入历史
+                      </button>
+                    </div>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+
+                  {/* AI 测肤用量（来自测肤子站；不可用时弱提示，不影响其它内容） */}
+                  <div className="mt-5 border-t border-stone-200/60 pt-5">
+                    <h5 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                      <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
+                      AI 测肤
+                    </h5>
+                    {!skinTestUsage ? (
+                      <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                        测肤用量暂不可用
+                      </p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {skinTestUsage.quota.unlimited ? (
+                          <p className="text-sm text-stone-700">
+                            AI 测肤 <span className="font-medium text-stone-800">不限次</span>
+                          </p>
+                        ) : (
+                          <p className="text-sm text-stone-700">
+                            已用{" "}
+                            <span className="font-medium text-stone-800">
+                              {skinTestUsage.totalUsed}
+                            </span>
+                            {" / 共 "}
+                            {/* 子站契约：unlimited=false 时 lifetimeLimit 必为 number（unlimited 分支已在上方处理） */}
+                            {skinTestUsage.quota.lifetimeLimit} 次
+                          </p>
+                        )}
+                        {skinTestUsage.quota.dailyLimit != null && (
+                          <p className="text-xs text-stone-500">
+                            今日已用 {skinTestUsage.todayUsed}/{skinTestUsage.quota.dailyLimit}
+                          </p>
+                        )}
+                        {!skinTestUsage.quota.unlimited &&
+                          skinTestUsage.remaining != null &&
+                          skinTestUsage.remaining <= 0 && (
+                            <div className="mt-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                              <p className="text-xs leading-relaxed text-stone-600">
+                                {vipData.membershipLevel === "SILVER"
+                                  ? "测肤次数已用完，升级金卡会员可享不限次 AI 测肤"
+                                  : "测肤次数已用完，升级银卡会员可获更多测肤次数"}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={focusSpentForm}
+                                className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                              >
+                                了解会员升级
+                              </button>
+                            </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 会员权益 - 纵向等级条列表；点击后右侧整版内容淡出、对应等级介绍淡入 */}
+                <div className="lg:col-start-1 lg:row-start-2">
+                  <h4 className="mb-3 flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#00263e]">
+                      <Crown className="h-3.5 w-3.5 text-white" />
+                    </span>
+                    会员权益
+                  </h4>
+                  <div className="space-y-3">
+                    {allLevels.map((level) => {
+                      const isCurrent = level.level === currentLevel.level;
+                      const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
+                      const tierBgImage = CARD_BG_IMAGES[level.level];
+                      return (
+                        <button
+                          key={level.level}
+                          type="button"
+                          onClick={() => {
+                            setSelectedLevel(level.level);
+                            setView("tier");
+                          }}
+                          className={`relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-5 py-4 text-left transition-opacity ${
+                            isCurrent
+                              ? "border-[#00263e] bg-white/60"
+                              : isUnlocked
+                                ? "border-stone-200/40 bg-white/20 opacity-70 hover:opacity-100"
+                                : "border-stone-200/60 bg-white/40 opacity-85 hover:bg-white/60 hover:opacity-100"
+                          }`}
+                        >
+                          {/* 各等级背景图：轻微虚化（弱朦胧）；当前档以 #00263e 实线外框区分 */}
+                          {tierBgImage && (
+                            <div
+                              aria-hidden
+                              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-40 blur-sm"
+                              style={{ backgroundImage: `url(${tierBgImage})` }}
+                            />
+                          )}
+                          <div className="relative flex min-w-0 items-baseline gap-2">
+                            <p className="shrink-0 text-sm font-medium text-stone-800">
+                              {level.name}
+                            </p>
+                            <p className="truncate text-xs text-stone-400">
+                              {level.minSpent > 0
+                                ? `消费满 ¥${level.minSpent.toLocaleString()}`
+                                : "注册即享"}
+                            </p>
+                          </div>
+                          {isCurrent ? (
+                            <span className="relative shrink-0 text-xs font-medium text-[#00263e]">
+                              当前
+                            </span>
+                          ) : isUnlocked ? (
+                            <span className="relative shrink-0 text-xs text-stone-500">已解锁</span>
+                          ) : (
+                            <span className="relative shrink-0 text-xs text-stone-400">未解锁</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </m.div>
           )}
 
@@ -562,67 +552,67 @@ export function VipPanel() {
                 </button>
               </div>
 
-                {/* 权益列表：适配图标 + 标题 + 描述 */}
-                <div className="mt-4 border-t border-stone-200/60 pt-4">
-                  <p className="mb-3 text-xs font-medium tracking-wide text-stone-500">等级权益</p>
-                  <div className="space-y-3">
-                    {selected.benefits.map((b, i) => {
-                      const BenefitIcon = benefitIcon(b.title);
-                      return (
-                        <div key={i} className="flex items-start gap-2.5">
-                          <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-stone-400">{b.desc}</p>
-                          </div>
+              {/* 权益列表：适配图标 + 标题 + 描述 */}
+              <div className="mt-4 border-t border-stone-200/60 pt-4">
+                <p className="mb-3 text-xs font-medium tracking-wide text-stone-500">等级权益</p>
+                <div className="space-y-3">
+                  {selected.benefits.map((b, i) => {
+                    const BenefitIcon = benefitIcon(b.title);
+                    return (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-stone-800">{b.title}</p>
+                          <p className="mt-0.5 text-xs leading-relaxed text-stone-400">{b.desc}</p>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
-                {selected.level === "REGULAR" && selected.level === currentLevel.level && (
-                  <div className="mt-4 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                    <div className="flex items-start gap-2">
-                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
-                      <p className="text-xs leading-relaxed text-stone-600">
-                        累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
-                        顾问、积分兑礼与生日礼遇等权益
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={focusSpentForm}
-                      className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                    >
-                      补录消费记录
-                    </button>
+              {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
+              {selected.level === "REGULAR" && selected.level === currentLevel.level && (
+                <div className="mt-4 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                    <p className="text-xs leading-relaxed text-stone-600">
+                      累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
+                      顾问、积分兑礼与生日礼遇等权益
+                    </p>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={focusSpentForm}
+                    className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                  >
+                    补录消费记录
+                  </button>
+                </div>
+              )}
 
-                {/* 未达档等级：解锁提示 + 补录引导 */}
-                {selected.level !== "REGULAR" && selected.minSpent > totalSpent && (
-                  <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 shrink-0 text-stone-400" />
-                      <p className="text-xs text-stone-600">
-                        还差{" "}
-                        <span className="text-sm font-medium text-[#00263e]">
-                          ¥{(selected.minSpent - totalSpent).toLocaleString()}
-                        </span>{" "}
-                        解锁该等级
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={focusSpentForm}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                    >
-                      补录消费记录
-                    </button>
+              {/* 未达档等级：解锁提示 + 补录引导 */}
+              {selected.level !== "REGULAR" && selected.minSpent > totalSpent && (
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 shrink-0 text-stone-400" />
+                    <p className="text-xs text-stone-600">
+                      还差{" "}
+                      <span className="text-sm font-medium text-[#00263e]">
+                        ¥{(selected.minSpent - totalSpent).toLocaleString()}
+                      </span>{" "}
+                      解锁该等级
+                    </p>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={focusSpentForm}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                  >
+                    补录消费记录
+                  </button>
+                </div>
+              )}
             </m.div>
           )}
 
