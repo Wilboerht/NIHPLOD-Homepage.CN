@@ -7,8 +7,8 @@
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。主视图为两栏排版：
  * - 左栏：当前等级会员卡 + 会员权益纵向等级条列表（点击整版切换等级介绍）
- * - 右栏：提升引导区（升级进度 / 如何提升三步 / 录入消费入口 / AI 测肤用量，
- *   扁平分区 + 细分隔线，无嵌套卡片）
+ * - 右栏：提升引导卡（升级进度 / 如何提升三步 / 录入消费入口）
+ *   与 AI 测肤用量卡，两张独立浅底卡片
  * 积分展示在会员卡内：无冻结期、立即到账（账本在官网，兑礼在「积分商城」tab）。
  *
  * 会员卡与权益区等级条背景图：四档均已登记到 CARD_BG_IMAGES；
@@ -327,78 +327,80 @@ export function VipPanel() {
                   </div>
                 </div>
 
-                {/* 右栏：提升进度 / 如何提升 / AI 测肤，浅底卡片容器内扁平分区 + 细分隔线 */}
-                <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-                  <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                    <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
-                    提升会员等级
-                  </h4>
+                {/* 右栏：提升引导卡（进度 + 如何提升 + 录入入口）与 AI 测肤用量卡，各自独立成卡 */}
+                <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                  <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                    <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                      <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
+                      提升会员等级
+                    </h4>
 
-                  {nextLevel ? (
-                    /* 升级进度卡：细实线 + 微白底；差额 + 目标等级一行，进度条通栏，百分比居右 */
-                    <div className="mt-3 rounded-xl border border-stone-200/60 bg-white/50 p-4">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-sm text-stone-600">
-                          再消费{" "}
-                          <span className="text-base font-semibold leading-none text-[#00263e]">
-                            ¥{nextLevel.spentNeeded.toLocaleString()}
-                          </span>
+                    {nextLevel ? (
+                      /* 升级进度卡：细实线 + 微白底；差额 + 目标等级一行，进度条通栏，百分比居右 */
+                      <div className="mt-3 rounded-xl border border-stone-200/60 bg-white/50 p-4">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p className="text-sm text-stone-600">
+                            再消费{" "}
+                            <span className="text-base font-semibold leading-none text-[#00263e]">
+                              ¥{nextLevel.spentNeeded.toLocaleString()}
+                            </span>
+                          </p>
+                          <p className="shrink-0 text-xs text-stone-400">升级{nextLevel.name}</p>
+                        </div>
+                        <div className="mt-3 h-1 overflow-hidden rounded-full bg-stone-200/70">
+                          <div
+                            className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
+                            style={{ width: `${nextLevel.progress}%` }}
+                          />
+                        </div>
+                        <p className="mt-1.5 text-right text-xs text-stone-400">
+                          {nextLevel.progress}%
                         </p>
-                        <p className="shrink-0 text-xs text-stone-400">升级{nextLevel.name}</p>
                       </div>
-                      <div className="mt-3 h-1 overflow-hidden rounded-full bg-stone-200/70">
-                        <div
-                          className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
-                          style={{ width: `${nextLevel.progress}%` }}
-                        />
-                      </div>
-                      <p className="mt-1.5 text-right text-xs text-stone-400">
-                        {nextLevel.progress}%
+                    ) : (
+                      <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                        您已是最高等级会员，全渠道消费记录可随时补录留存。
                       </p>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                      您已是最高等级会员，全渠道消费记录可随时补录留存。
-                    </p>
-                  )}
+                    )}
 
-                  {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
-                  <div className="mt-6 border-t border-stone-200/60 pt-6">
-                    <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                      <Info className="h-[18px] w-[18px] text-[#00263e]" />
-                      如何提升会员等级
-                    </h5>
-                    <div className="mt-3 space-y-2">
-                      {["官方各渠道消费", "录入订单凭证", "审核通过后自动计入历史消费并升级"].map(
-                        (step, i) => (
-                          <div key={i} className="flex items-baseline gap-2">
-                            <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
-                            <p className="text-xs leading-relaxed text-stone-500">{step}</p>
-                          </div>
-                        )
-                      )}
-                    </div>
-                    <div className="mt-4 flex items-center gap-4">
-                      <button
-                        type="button"
-                        onClick={focusSpentForm}
-                        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                      >
-                        录入消费
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setView("spent-history")}
-                        className="text-xs text-stone-500 transition-colors hover:text-stone-800"
-                      >
-                        查看录入历史
-                      </button>
+                    {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
+                    <div className="mt-6 border-t border-stone-200/60 pt-6">
+                      <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                        <Info className="h-[18px] w-[18px] text-[#00263e]" />
+                        如何提升会员等级
+                      </h5>
+                      <div className="mt-3 space-y-2">
+                        {["官方各渠道消费", "录入订单凭证", "审核通过后自动计入历史消费并升级"].map(
+                          (step, i) => (
+                            <div key={i} className="flex items-baseline gap-2">
+                              <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
+                              <p className="text-xs leading-relaxed text-stone-500">{step}</p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                      <div className="mt-4 flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={focusSpentForm}
+                          className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                        >
+                          录入消费
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setView("spent-history")}
+                          className="text-xs text-stone-500 transition-colors hover:text-stone-800"
+                        >
+                          查看录入历史
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* AI 测肤用量（来自测肤子站；不可用时弱提示，不影响其它内容） */}
-                  <div className="mt-6 border-t border-stone-200/60 pt-6">
+                  {/* AI 测肤用量卡（来自测肤子站；不可用时弱提示 + 手动刷新，不影响其它内容） */}
+                  <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
                     <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
                       AI 测肤
