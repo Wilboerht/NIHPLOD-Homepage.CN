@@ -26,6 +26,7 @@ import {
   ChevronRight,
   Coins,
   Crown,
+  Gem,
   Gift,
   Infinity as InfinityIcon,
   Info,
@@ -315,8 +316,8 @@ export function VipPanel() {
                   </div>
                 </div>
 
-                {/* 右栏：提升进度 / 如何提升 / AI 测肤，扁平分区 + 细分隔线，无嵌套卡片 */}
-                <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                {/* 右栏：提升进度 / 如何提升 / AI 测肤，浅底卡片容器内扁平分区 + 细分隔线 */}
+                <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
                   <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                     <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
                     提升会员等级
@@ -443,7 +444,7 @@ export function VipPanel() {
                 {/* 会员权益 - 纵向等级条列表；点击后右侧整版内容淡出、对应等级介绍淡入 */}
                 <div className="lg:col-start-1 lg:row-start-2">
                   <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-stone-700">
-                    <Crown className="h-[18px] w-[18px] text-[#00263e]" />
+                    <Gem className="h-[18px] w-[18px] text-[#00263e]" />
                     会员权益
                   </h4>
                   <div className="space-y-3">
