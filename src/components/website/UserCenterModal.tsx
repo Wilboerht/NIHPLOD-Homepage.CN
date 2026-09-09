@@ -19,14 +19,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useReducedMotion, useDragControls } from "framer-motion";
 import Image from "next/image";
-import {
-  X,
-  User,
-  LogOut,
-  Crown,
-  Gift,
-  Shield,
-} from "lucide-react";
+import { X, User, LogOut, Crown, Gift, Shield } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
@@ -323,10 +316,7 @@ export function UserCenterModal() {
                         onClick={handleLogout}
                         className="group -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"
                       >
-                        <LogOut
-                          className="h-[18px] w-[18px] transition-colors"
-                          strokeWidth={1.5}
-                        />
+                        <LogOut className="h-[18px] w-[18px] transition-colors" strokeWidth={1.5} />
                         <span className="text-[13px] font-medium tracking-wide">退出登录</span>
                       </button>
                     </div>
@@ -340,20 +330,37 @@ export function UserCenterModal() {
                   {isMobile && (
                     <m.div
                       onPointerDown={(e) => {
-                        if (!isMobile || e.button !== undefined && e.button !== 0) return;
+                        if (!isMobile || (e.button !== undefined && e.button !== 0)) return;
                         dragControls.start(e);
                       }}
                       className="shrink-0 border-b border-stone-200/40 bg-[#FBF8F0]/80 backdrop-blur-md md:hidden"
                     >
                       {/* 下滑把手提示 */}
-                      <div
-                        aria-hidden
-                        className="flex justify-center pt-2"
-                      >
+                      <div aria-hidden className="flex justify-center pt-2">
                         <div className="h-1 w-9 rounded-full bg-stone-300/70" />
                       </div>
                       <div className="grid h-14 grid-cols-[3.5rem_1fr_3.5rem] items-center">
-                        <div />
+                        {/* 左侧：头像（移动端补齐桌面侧边栏的身份信息），点击跳个人信息 */}
+                        <div className="flex h-full items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setUserCenterView("profile")}
+                            aria-label="查看个人信息"
+                            className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white/60 transition-opacity hover:opacity-80"
+                          >
+                            {user.avatar ? (
+                              <Image
+                                src={user.avatar}
+                                alt="头像"
+                                fill
+                                unoptimized
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <User className="h-4 w-4 text-stone-500" strokeWidth={1.5} />
+                            )}
+                          </button>
+                        </div>
                         <h2 className="truncate text-center text-[15px] font-medium tracking-wide text-stone-800">
                           {MENU_ITEMS.find((i) => i.id === userCenterView)?.label || "个人动态"}
                         </h2>
@@ -390,15 +397,10 @@ export function UserCenterModal() {
                               onClick={() => setUserCenterView(id)}
                               aria-current={isActive ? "page" : undefined}
                               className={`flex flex-col items-center justify-center gap-1 transition-colors ${
-                                isActive
-                                  ? "text-[#00263e]"
-                                  : "text-stone-400 hover:text-stone-800"
+                                isActive ? "text-[#00263e]" : "text-stone-400 hover:text-stone-800"
                               }`}
                             >
-                              <Icon
-                                className="h-5 w-5"
-                                strokeWidth={isActive ? 2 : 1.5}
-                              />
+                              <Icon className="h-5 w-5" strokeWidth={isActive ? 2 : 1.5} />
                               <span className="text-[10px] leading-none">{label}</span>
                             </button>
                           );
