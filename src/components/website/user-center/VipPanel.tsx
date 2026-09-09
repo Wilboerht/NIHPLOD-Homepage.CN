@@ -373,9 +373,9 @@ export function VipPanel() {
                       </h5>
                       <div className="mt-3 space-y-2">
                         {[
-                          "官方各渠道消费",
-                          "签收成功后复制对应订单编号",
-                          "访问中国官网 > 登录会员中心 > 点击录入消费",
+                          "在官方渠道下单消费",
+                          "签收成功后，复制订单编号",
+                          "登录中国官网，会员中心点击「录入消费」，提交订单编号与凭证",
                         ].map((step, i) => (
                           <div key={i} className="flex items-baseline gap-2">
                             <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
