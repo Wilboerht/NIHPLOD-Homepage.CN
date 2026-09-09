@@ -24,6 +24,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  CircleHelp,
   Coins,
   Crown,
   Gift,
@@ -149,6 +150,7 @@ export function VipPanel() {
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [view, setView] = useState<VipView>("main");
   const [refreshingUsage, setRefreshingUsage] = useState(false);
+  const [showChannelTip, setShowChannelTip] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
@@ -370,14 +372,44 @@ export function VipPanel() {
                         如何提升会员等级
                       </h5>
                       <div className="mt-3 space-y-2">
-                        {["官方各渠道消费", "录入订单凭证", "审核通过后自动计入历史消费并升级"].map(
-                          (step, i) => (
-                            <div key={i} className="flex items-baseline gap-2">
-                              <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
-                              <p className="text-xs leading-relaxed text-stone-500">{step}</p>
-                            </div>
-                          )
-                        )}
+                        {[
+                          "官方各渠道消费",
+                          "签收成功后复制对应订单编号",
+                          "访问中国官网 > 登录会员中心 > 点击录入消费",
+                        ].map((step, i) => (
+                          <div key={i} className="flex items-baseline gap-2">
+                            <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
+                            <p className="text-xs leading-relaxed text-stone-500">
+                              {step}
+                              {i === 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowChannelTip((v) => !v)}
+                                  aria-label="查看官方渠道说明"
+                                  aria-expanded={showChannelTip}
+                                  className="ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors hover:text-[#00263e]"
+                                >
+                                  <CircleHelp className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </p>
+                          </div>
+                        ))}
+                        {/* 官方渠道说明：点击步骤一末尾的问号图标淡入/淡出 */}
+                        <AnimatePresence initial={false}>
+                          {showChannelTip && (
+                            <m.p
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden pl-4 text-xs leading-relaxed text-stone-400"
+                            >
+                              官方渠道指 NIHPLOD
+                              在天猫国际、抖音、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。
+                            </m.p>
+                          )}
+                        </AnimatePresence>
                       </div>
                       <div className="mt-4 flex items-center gap-4">
                         <button
