@@ -35,6 +35,7 @@ import {
   RefreshCw,
   ScanFace,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
@@ -209,6 +210,17 @@ export function VipPanel() {
     }
   }, [loadVIPData]);
 
+  // 问号切换官方渠道说明的防抖：交叉淡入淡出期间忽略重复点击，避免动画被打断闪烁
+  const channelTipLockRef = useRef(false);
+  const toggleChannelTip = useCallback(() => {
+    if (channelTipLockRef.current) return;
+    channelTipLockRef.current = true;
+    setShowChannelTip((v) => !v);
+    setTimeout(() => {
+      channelTipLockRef.current = false;
+    }, 400);
+  }, []);
+
   useEffect(() => {
     deferInEffect(loadVIPData);
     deferInEffect(loadPointsData);
@@ -371,43 +383,63 @@ export function VipPanel() {
                         <Info className="h-[18px] w-[18px] text-[#00263e]" />
                         如何提升会员等级
                       </h5>
-                      <div className="mt-3 space-y-2">
-                        {[
-                          "在官方渠道下单消费",
-                          "签收成功后，复制订单编号",
-                          "登录中国官网，会员中心点击「录入消费」，提交订单编号与凭证",
-                        ].map((step, i) => (
-                          <div key={i} className="flex items-baseline gap-2">
-                            <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
-                            <p className="text-xs leading-relaxed text-stone-500">
-                              {step}
-                              {i === 0 && (
+                      {/* 步骤列表与官方渠道说明互斥交叉淡入淡出（问号图标切换，带点击防抖） */}
+                      <div className="mt-3">
+                        <AnimatePresence mode="wait" initial={false}>
+                          {showChannelTip ? (
+                            <m.div
+                              key="channel-tip"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.18 }}
+                            >
+                              <p className="text-xs leading-relaxed text-stone-400">
+                                官方渠道指 NIHPLOD
+                                在天猫国际、抖音、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。
                                 <button
                                   type="button"
-                                  onClick={() => setShowChannelTip((v) => !v)}
-                                  aria-label="查看官方渠道说明"
-                                  aria-expanded={showChannelTip}
-                                  className="ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors hover:text-[#00263e]"
+                                  onClick={toggleChannelTip}
+                                  aria-label="返回步骤说明"
+                                  className="ml-1 inline-flex translate-y-[2px] text-[#00263e] transition-opacity hover:opacity-70"
                                 >
-                                  <CircleHelp className="h-3.5 w-3.5" />
+                                  <X className="h-3.5 w-3.5" />
                                 </button>
-                              )}
-                            </p>
-                          </div>
-                        ))}
-                        {/* 官方渠道说明：点击步骤一末尾的问号图标淡入/淡出 */}
-                        <AnimatePresence initial={false}>
-                          {showChannelTip && (
-                            <m.p
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden pl-4 text-xs leading-relaxed text-stone-400"
+                              </p>
+                            </m.div>
+                          ) : (
+                            <m.div
+                              key="steps"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.18 }}
+                              className="space-y-2"
                             >
-                              官方渠道指 NIHPLOD
-                              在天猫国际、抖音、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。
-                            </m.p>
+                              {[
+                                "在官方渠道下单消费",
+                                "签收成功后，复制订单编号",
+                                "登录中国官网，会员中心点击「录入消费」，提交订单编号与凭证",
+                              ].map((step, i) => (
+                                <div key={i} className="flex items-baseline gap-2">
+                                  <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
+                                  <p className="text-xs leading-relaxed text-stone-500">
+                                    {step}
+                                    {i === 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={toggleChannelTip}
+                                        aria-label="查看官方渠道说明"
+                                        aria-expanded={showChannelTip}
+                                        className="ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors hover:text-[#00263e]"
+                                      >
+                                        <CircleHelp className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </p>
+                                </div>
+                              ))}
+                            </m.div>
                           )}
                         </AnimatePresence>
                       </div>
