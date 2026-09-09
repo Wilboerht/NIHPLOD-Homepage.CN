@@ -469,7 +469,7 @@ export function VipPanel() {
                     <Crown className="h-[18px] w-[18px] text-[#00263e]" />
                     会员权益
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {allLevels.map((level) => {
                       const isCurrent = level.level === currentLevel.level;
                       const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
@@ -482,7 +482,7 @@ export function VipPanel() {
                             setSelectedLevel(level.level);
                             setView("tier");
                           }}
-                          className={`relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-5 py-4 text-left transition-colors ${
+                          className={`relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-5 py-3 text-left transition-colors ${
                             isCurrent
                               ? "border-[#00263e] bg-white/70 shadow-sm"
                               : isUnlocked
