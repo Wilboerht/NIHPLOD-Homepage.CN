@@ -7,12 +7,13 @@
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。主视图为两栏排版：
  * - 左栏：当前等级会员卡 + 会员权益纵向等级条列表（点击整版切换等级介绍）
- * - 右栏：「提升会员等级」引导卡（升级进度 / 如何提升三步 / 录入消费入口 / AI 测肤用量）
+ * - 右栏：提升引导区（升级进度 / 如何提升三步 / 录入消费入口 / AI 测肤用量，
+ *   扁平分区 + 细分隔线，无嵌套卡片）
  * 积分展示在会员卡内：无冻结期、立即到账（账本在官网，兑礼在「积分商城」tab）。
  *
  * 会员卡与权益区等级条背景图：四档均已登记到 CARD_BG_IMAGES；
  * 会员卡铺满使用，权益区等级条做虚化淡化处理。
- * 卡面只承载身份信息与品牌 logo（右下角）；升级进度展示在右侧「提升会员等级」引导卡。
+ * 卡面只承载身份信息与品牌 logo（右下角）；升级进度展示在右侧提升引导区。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -314,16 +315,16 @@ export function VipPanel() {
                   </div>
                 </div>
 
-                {/* 右栏：提升会员等级（进度 + 如何提升 + 录入入口）+ AI 测肤用量 */}
-                <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-                  <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                {/* 右栏：提升进度 / 如何提升 / AI 测肤，扁平分区 + 细分隔线，无嵌套卡片 */}
+                <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                  <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                     <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
                     提升会员等级
                   </h4>
 
                   {nextLevel ? (
-                    /* 升级进度：差额 + 目标等级一行，进度条通栏，百分比居中 */
-                    <div className="mt-4 rounded-xl bg-white/60 p-4">
+                    /* 升级进度：差额 + 目标等级一行，进度条通栏，百分比居右 */
+                    <div className="mt-3">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="text-sm text-stone-600">
                           再消费{" "}
@@ -333,13 +334,13 @@ export function VipPanel() {
                         </p>
                         <p className="shrink-0 text-xs text-stone-400">升级{nextLevel.name}</p>
                       </div>
-                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200/70">
+                      <div className="mt-3 h-1 overflow-hidden rounded-full bg-stone-200/70">
                         <div
                           className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
                           style={{ width: `${nextLevel.progress}%` }}
                         />
                       </div>
-                      <p className="mt-1.5 text-center text-xs text-stone-400">
+                      <p className="mt-1.5 text-right text-xs text-stone-400">
                         {nextLevel.progress}%
                       </p>
                     </div>
@@ -350,18 +351,16 @@ export function VipPanel() {
                   )}
 
                   {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
-                  <div className="mt-5 border-t border-stone-200/60 pt-5">
-                    <h5 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                  <div className="mt-6 border-t border-stone-200/60 pt-6">
+                    <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <Info className="h-[18px] w-[18px] text-[#00263e]" />
                       如何提升会员等级
                     </h5>
                     <div className="mt-3 space-y-2">
                       {["官方各渠道消费", "录入订单凭证", "审核通过后自动计入历史消费并升级"].map(
                         (step, i) => (
-                          <div key={i} className="flex items-center gap-2.5">
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-200/80 text-[11px] font-medium text-stone-600">
-                              {i + 1}
-                            </span>
+                          <div key={i} className="flex items-baseline gap-2">
+                            <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
                             <p className="text-xs leading-relaxed text-stone-500">{step}</p>
                           </div>
                         )
@@ -387,8 +386,8 @@ export function VipPanel() {
                   </div>
 
                   {/* AI 测肤用量（来自测肤子站；不可用时弱提示，不影响其它内容） */}
-                  <div className="mt-5 border-t border-stone-200/60 pt-5">
-                    <h5 className="flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
+                  <div className="mt-6 border-t border-stone-200/60 pt-6">
+                    <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
                       AI 测肤
                     </h5>
@@ -421,8 +420,8 @@ export function VipPanel() {
                         {!skinTestUsage.quota.unlimited &&
                           skinTestUsage.remaining != null &&
                           skinTestUsage.remaining <= 0 && (
-                            <div className="mt-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                              <p className="text-xs leading-relaxed text-stone-600">
+                            <div className="pt-1">
+                              <p className="text-xs leading-relaxed text-stone-500">
                                 {vipData.membershipLevel === "SILVER"
                                   ? "测肤次数已用完，升级金卡会员可享不限次 AI 测肤"
                                   : "测肤次数已用完，升级银卡会员可获更多测肤次数"}
@@ -443,10 +442,8 @@ export function VipPanel() {
 
                 {/* 会员权益 - 纵向等级条列表；点击后右侧整版内容淡出、对应等级介绍淡入 */}
                 <div className="lg:col-start-1 lg:row-start-2">
-                  <h4 className="mb-3 flex items-center gap-2 text-[15px] font-semibold tracking-wide text-stone-800">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#00263e]">
-                      <Crown className="h-3.5 w-3.5 text-white" />
-                    </span>
+                  <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-stone-700">
+                    <Crown className="h-[18px] w-[18px] text-[#00263e]" />
                     会员权益
                   </h4>
                   <div className="space-y-3">
