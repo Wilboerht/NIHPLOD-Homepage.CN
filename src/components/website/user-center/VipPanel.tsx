@@ -395,16 +395,16 @@ export function VipPanel() {
                               transition={{ duration: 0.18 }}
                             >
                               <p className="text-xs leading-relaxed text-stone-400">
-                                官方渠道指 NIHPLOD
-                                在天猫国际、抖音、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。
                                 <button
                                   type="button"
                                   onClick={toggleChannelTip}
                                   aria-label="返回步骤说明"
-                                  className="ml-1 inline-flex translate-y-[2px] text-[#00263e] transition-opacity hover:opacity-70"
+                                  className="mr-1 inline-flex translate-y-[2px] text-[#00263e] transition-opacity hover:opacity-70"
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </button>
+                                官方渠道指 NIHPLOD
+                                在天猫国际、抖音、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。
                               </p>
                             </m.div>
                           ) : (
