@@ -364,7 +364,7 @@ export function VipPanel() {
                     )}
 
                     {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
-                    <div className="mt-6 border-t border-stone-200/60 pt-6">
+                    <div className="mt-6 border-t border-stone-300/70 pt-6">
                       <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                         <Info className="h-[18px] w-[18px] text-[#00263e]" />
                         如何提升会员等级
