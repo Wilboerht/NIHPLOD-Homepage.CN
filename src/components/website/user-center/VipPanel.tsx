@@ -26,12 +26,12 @@ import {
   ChevronRight,
   Coins,
   Crown,
-  Gem,
   Gift,
   Infinity as InfinityIcon,
   Info,
   Loader2,
   Lock,
+  RefreshCw,
   ScanFace,
   TrendingUp,
 } from "lucide-react";
@@ -148,6 +148,7 @@ export function VipPanel() {
   const [loading, setLoading] = useState(true);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [view, setView] = useState<VipView>("main");
+  const [refreshingUsage, setRefreshingUsage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
@@ -195,6 +196,16 @@ export function VipPanel() {
     void loadVIPData();
     void loadPointsData();
   }, [loadVIPData, loadPointsData]);
+
+  // 测肤用量不可用时的手动刷新：用量随 /api/user/vip 一并返回，重拉即可
+  const refreshSkinTestUsage = useCallback(async () => {
+    setRefreshingUsage(true);
+    try {
+      await loadVIPData();
+    } finally {
+      setRefreshingUsage(false);
+    }
+  }, [loadVIPData]);
 
   useEffect(() => {
     deferInEffect(loadVIPData);
@@ -324,8 +335,8 @@ export function VipPanel() {
                   </h4>
 
                   {nextLevel ? (
-                    /* 升级进度：差额 + 目标等级一行，进度条通栏，百分比居右 */
-                    <div className="mt-3">
+                    /* 升级进度卡：细实线 + 微白底；差额 + 目标等级一行，进度条通栏，百分比居右 */
+                    <div className="mt-3 rounded-xl border border-stone-200/60 bg-white/50 p-4">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="text-sm text-stone-600">
                           再消费{" "}
@@ -393,9 +404,20 @@ export function VipPanel() {
                       AI 测肤
                     </h5>
                     {!skinTestUsage ? (
-                      <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                        测肤用量暂不可用
-                      </p>
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <p className="text-xs leading-relaxed text-stone-400">测肤用量暂不可用</p>
+                        <button
+                          type="button"
+                          onClick={() => void refreshSkinTestUsage()}
+                          disabled={refreshingUsage}
+                          aria-label="刷新测肤用量"
+                          className="text-stone-400 transition-colors hover:text-stone-600 disabled:cursor-not-allowed"
+                        >
+                          <RefreshCw
+                            className={`h-3.5 w-3.5 ${refreshingUsage ? "animate-spin" : ""}`}
+                          />
+                        </button>
+                      </div>
                     ) : (
                       <div className="mt-3 space-y-2">
                         {skinTestUsage.quota.unlimited ? (
@@ -444,7 +466,7 @@ export function VipPanel() {
                 {/* 会员权益 - 纵向等级条列表；点击后右侧整版内容淡出、对应等级介绍淡入 */}
                 <div className="lg:col-start-1 lg:row-start-2">
                   <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-stone-700">
-                    <Gem className="h-[18px] w-[18px] text-[#00263e]" />
+                    <Crown className="h-[18px] w-[18px] text-[#00263e]" />
                     会员权益
                   </h4>
                   <div className="space-y-3">
@@ -506,7 +528,7 @@ export function VipPanel() {
                           </div>
                           {/* 状态徽标：图标 + 文字双通道（不只靠颜色区分） */}
                           {isCurrent ? (
-                            <span className="relative flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-2.5 py-1 text-[11px] font-medium text-white">
+                            <span className="relative flex shrink-0 items-center gap-1 rounded-full bg-[#00263e]/10 px-2.5 py-1 text-[11px] font-medium text-[#00263e]">
                               <Crown className="h-3 w-3" />
                               当前
                             </span>
