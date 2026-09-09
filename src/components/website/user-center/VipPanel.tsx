@@ -460,40 +460,66 @@ export function VipPanel() {
                             setSelectedLevel(level.level);
                             setView("tier");
                           }}
-                          className={`relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-5 py-4 text-left transition-opacity ${
+                          className={`relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-5 py-4 text-left transition-colors ${
                             isCurrent
-                              ? "border-[#00263e] bg-white/60"
+                              ? "border-[#00263e] bg-white/70 shadow-sm"
                               : isUnlocked
-                                ? "border-stone-200/40 bg-white/20 opacity-70 hover:opacity-100"
-                                : "border-stone-200/60 bg-white/40 opacity-85 hover:bg-white/60 hover:opacity-100"
+                                ? "border-stone-200/60 bg-white/50 hover:border-stone-300 hover:bg-white/70"
+                                : "border-stone-200/50 bg-white/30 hover:bg-white/50"
                           }`}
                         >
-                          {/* 各等级背景图：轻微虚化（弱朦胧）；当前档以 #00263e 实线外框区分 */}
+                          {/* 背景图浓度即状态层级：当前最清晰，已解锁次之，未解锁去色淡出 */}
                           {tierBgImage && (
                             <div
                               aria-hidden
-                              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-40 blur-sm"
+                              className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
+                                isCurrent
+                                  ? "opacity-50 blur-[2px]"
+                                  : isUnlocked
+                                    ? "opacity-30 blur-sm"
+                                    : "opacity-15 blur-sm grayscale"
+                              }`}
                               style={{ backgroundImage: `url(${tierBgImage})` }}
                             />
                           )}
                           <div className="relative flex min-w-0 items-baseline gap-2">
-                            <p className="shrink-0 text-sm font-medium text-stone-800">
+                            <p
+                              className={`shrink-0 text-sm font-medium ${
+                                isCurrent
+                                  ? "text-stone-900"
+                                  : isUnlocked
+                                    ? "text-stone-700"
+                                    : "text-stone-400"
+                              }`}
+                            >
                               {level.name}
                             </p>
-                            <p className="truncate text-xs text-stone-400">
+                            <p
+                              className={`truncate text-xs ${
+                                isCurrent || isUnlocked ? "text-stone-400" : "text-stone-300"
+                              }`}
+                            >
                               {level.minSpent > 0
                                 ? `消费满 ¥${level.minSpent.toLocaleString()}`
                                 : "注册即享"}
                             </p>
                           </div>
+                          {/* 状态徽标：图标 + 文字双通道（不只靠颜色区分） */}
                           {isCurrent ? (
-                            <span className="relative shrink-0 text-xs font-medium text-[#00263e]">
+                            <span className="relative flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-2.5 py-1 text-[11px] font-medium text-white">
+                              <Crown className="h-3 w-3" />
                               当前
                             </span>
                           ) : isUnlocked ? (
-                            <span className="relative shrink-0 text-xs text-stone-500">已解锁</span>
+                            <span className="relative flex shrink-0 items-center gap-1 rounded-full border border-stone-200/80 bg-white/60 px-2.5 py-1 text-[11px] text-stone-500">
+                              <Check className="h-3 w-3 text-[#00263e]" />
+                              已解锁
+                            </span>
                           ) : (
-                            <span className="relative shrink-0 text-xs text-stone-400">未解锁</span>
+                            <span className="relative flex shrink-0 items-center gap-1 px-2.5 py-1 text-[11px] text-stone-400">
+                              <Lock className="h-3 w-3" />
+                              未解锁
+                            </span>
                           )}
                         </button>
                       );
