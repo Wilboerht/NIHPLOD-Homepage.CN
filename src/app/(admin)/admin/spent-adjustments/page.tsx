@@ -36,6 +36,7 @@ interface ApplicationItem {
   channel: string;
   channelLabel: string;
   orderNo: string;
+  dealerName: string | null;
   amountClaimed: number | null;
   purchasedAt: string | null;
   images: string[];
@@ -373,6 +374,12 @@ export default function AdminSpentAdjustmentsPage() {
                   <p className="text-xs text-gray-400">订单号 / 小票号</p>
                   <p className="mt-0.5 font-mono text-gray-700">{detail.orderNo}</p>
                 </div>
+                {detail.dealerName && (
+                  <div>
+                    <p className="text-xs text-gray-400">经销商名称</p>
+                    <p className="mt-0.5 text-gray-700">{detail.dealerName}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-gray-400">申报金额</p>
                   <p className="mt-0.5 text-gray-700">
@@ -396,7 +403,9 @@ export default function AdminSpentAdjustmentsPage() {
               </div>
               {detail.note && (
                 <div>
-                  <p className="text-xs text-gray-400">用户备注</p>
+                  <p className="text-xs text-gray-400">
+                    {detail.channel === "OTHER" ? "用户说明" : "用户备注"}
+                  </p>
                   <p className="mt-0.5 whitespace-pre-wrap text-gray-700">{detail.note}</p>
                 </div>
               )}

@@ -4,7 +4,7 @@
  *
  * Token 策略：
  * - Admin Access Token：短期（默认 1 天），用于管理后台 API
- * - User Access Token：短期（15分钟），用于 C 端 API
+ * - User Access Token：短期（2小时），用于 C 端 API
  * - User Refresh Token：长期（30天），用于刷新双 Token
  * - Wechat Bind Token：短期（1小时），仅用于微信绑定流程
  *
@@ -217,7 +217,7 @@ if (!/^\d+[smhd]$/.test(adminExpiresInRaw)) {
 const adminExpiresIn = adminExpiresInRaw;
 
 // C端用户 Token 时间
-const accessTokenExpiresIn = "15m"; // Access Token 15分钟
+const accessTokenExpiresIn = "2h"; // Access Token 2小时
 const refreshTokenExpiresIn = "30d"; // Refresh Token 30天
 const wechatBindExpiresIn = "1h"; // 微信绑定临时 Token 1小时
 const wechatExchangeExpiresIn = "10m"; // 子站微信 exchange Token 10分钟
@@ -274,7 +274,7 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
 // ============================================
 
 /**
- * 签发用户 Access Token（短期，15分钟）
+ * 签发用户 Access Token（短期，2小时）
  *
  * 用于 C 端用户内部 API（如 /api/user/profile、/api/user/points 等）。
  * Token type="user"，audience="user"，仅供 verifyUserToken 验证。
@@ -318,7 +318,7 @@ export async function signUserToken(payload: {
  *
  * 取舍说明：
  * - jti 撤销缓存（revokedJtiCache）：肯定/否定结果均缓存 5s，
- *   登出撤销最长延迟 5s 生效（同实例），可接受——access token 本身 TTL 仅 15 分钟。
+ *   登出撤销最长延迟 5s 生效（同实例），可接受——access token 本身 TTL 为 2 小时。
  * - 改密时间缓存（passwordChangedAtCache）：同时缓存"用户不存在"的结果，
  *   改密后旧 token 最长延迟 5s 失效；DB 查询异常不缓存，保持原有 fail-closed 行为。
  * - 多实例部署时各实例独立缓存，失效延迟同为最长 5s。
@@ -416,7 +416,7 @@ export async function verifyUserToken(
       return null;
     }
 
-    // 黑名单检查（封禁用户时消除 15 分钟 access token 窗口）
+    // 黑名单检查（封禁用户时消除 2 小时 access token 窗口）
     const userId = (payload as UserJWTPayload).id;
     const blacklisted = await isTokenBlacklisted(userId);
     if (blacklisted) {
@@ -1260,7 +1260,7 @@ export async function verifyOAuthAccessToken(
  * 获取 Token 过期时间戳（秒）
  * @param minutes 分钟数
  */
-export function getTokenExpiresAt(minutes: number = 15): number {
+export function getTokenExpiresAt(minutes: number = 120): number {
   return Math.floor(Date.now() / 1000) + minutes * 60;
 }
 

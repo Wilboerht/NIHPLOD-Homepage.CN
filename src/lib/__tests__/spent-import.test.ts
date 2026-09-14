@@ -84,6 +84,33 @@ describe("parseImportWorkbook", () => {
     });
   });
 
+  it("渠道解析：新渠道标签、历史渠道与旧标签均兼容", () => {
+    const buffer = buildWorkbook([
+      HEADERS,
+      ["13800138000", 100, "", "天猫国际", "A1", ""],
+      ["13800138000", 100, "", "抖音商城", "B1", ""],
+      ["13800138000", 100, "", "小红书", "C1", ""],
+      ["13800138000", 100, "", "经销渠道", "D1", ""],
+      ["13800138000", 100, "", "其它", "E1", ""],
+      ["13800138000", 100, "", "天猫", "F1", ""],
+      ["13800138000", 100, "", "微信小程序", "G1", ""],
+    ]);
+    const result = parseImportWorkbook(buffer, "import.xlsx");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rows.map((r) => r.channel)).toEqual([
+      "TMALL",
+      "DOUYIN",
+      "XIAOHONGSHU",
+      "DEALER",
+      "OTHER",
+      "TMALL",
+      "MINIPROGRAM",
+    ]);
+    expect(result.rows.every((r) => r.error === null)).toBe(true);
+  });
+
   it("表头错误：返回 INVALID_HEADER", () => {
     const buffer = buildWorkbook([["姓名", "金额"], ["13800138000", 100]]);
     const result = parseImportWorkbook(buffer, "import.xlsx");

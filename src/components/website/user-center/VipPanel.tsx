@@ -419,7 +419,7 @@ export function VipPanel() {
                               {[
                                 "在官方渠道下单消费",
                                 "签收成功后，复制订单编号",
-                                "登录中国官网，会员中心点击「录入消费」，提交订单编号与凭证",
+                                "登录中国官网 > 会员中心录入消费 > 提交订单编号与凭证",
                               ].map((step, i) => (
                                 <div key={i} className="flex items-baseline gap-2">
                                   <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
@@ -447,7 +447,7 @@ export function VipPanel() {
                         <button
                           type="button"
                           onClick={focusSpentForm}
-                          className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#00263e] px-5 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#00263e]/30 bg-white/40 px-5 py-2 text-xs text-[#00263e] transition-colors hover:border-[#00263e]/60 hover:bg-[#00263e]/5"
                         >
                           录入消费
                           <ChevronRight className="h-3.5 w-3.5" />
@@ -616,6 +616,11 @@ export function VipPanel() {
                   const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
                   const isLocked = !isCurrent && !isUnlocked;
                   const tierBgImage = CARD_BG_IMAGES[level.level];
+                  // 距该等级的累计消费进度（未达档 0–99%，用等级自身色系的进度条区分）
+                  const tierProgress =
+                    level.minSpent > 0
+                      ? Math.min(100, Math.round((totalSpent / level.minSpent) * 100))
+                      : 100;
                   return (
                     <div
                       key={level.level}
@@ -707,32 +712,47 @@ export function VipPanel() {
                           })}
                         </div>
 
-                        {/* 未达档等级：解锁提示 + 补录引导 */}
+                        {/* 未达档等级：解锁进度（等级色进度条）+ 补录引导 */}
                         {isLocked && (
-                          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <Lock className="h-4 w-4 shrink-0 text-stone-400" />
-                              <p className="text-xs text-stone-600">
-                                还差{" "}
-                                <span className="text-sm font-medium text-[#00263e]">
-                                  ¥{(level.minSpent - totalSpent).toLocaleString()}
-                                </span>{" "}
-                                解锁该等级
+                          <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/60 px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="flex min-w-0 items-center gap-1.5 text-xs text-stone-600">
+                                <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                                <span>
+                                  还差{" "}
+                                  <span className="text-sm font-medium text-[#00263e]">
+                                    ¥{(level.minSpent - totalSpent).toLocaleString()}
+                                  </span>{" "}
+                                  解锁该等级
+                                </span>
                               </p>
+                              <button
+                                type="button"
+                                onClick={focusSpentForm}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                              >
+                                补录消费记录
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={focusSpentForm}
-                              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                            >
-                              补录消费记录
-                            </button>
+                            <div className="mt-3 flex items-center gap-2">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-200/70">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    TIER_CARD_STYLES[level.level]?.bar ?? "bg-[#00263e]/80"
+                                  }`}
+                                  style={{ width: `${tierProgress}%` }}
+                                />
+                              </div>
+                              <span className="shrink-0 text-[11px] text-stone-400">
+                                {tierProgress}%
+                              </span>
+                            </div>
                           </div>
                         )}
 
                         {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
                         {isCurrent && level.level === "REGULAR" && (
-                          <div className="mt-4 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                          <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/60 px-4 py-3">
                             <div className="flex items-start gap-2">
                               <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
                               <p className="text-xs leading-relaxed text-stone-600">

@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
       data: {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
-        accessTokenExpiresAt: getTokenExpiresAt(15),
+        accessTokenExpiresAt: getTokenExpiresAt(120),
         refreshTokenExpiresAt: getRefreshTokenExpiresAt(),
       },
     });

@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
           id: true,
           channel: true,
           orderNo: true,
+          dealerName: true,
           amountClaimed: true,
           purchasedAt: true,
           images: true,

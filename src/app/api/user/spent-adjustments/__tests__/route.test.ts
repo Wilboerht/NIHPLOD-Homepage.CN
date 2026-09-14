@@ -139,10 +139,48 @@ describe("POST /api/user/spent-adjustments", () => {
     expect(res.status).toBe(400);
   });
 
+  it("经销渠道缺少经销商名称返回 400", async () => {
+    const res = await POST(createRequest("POST", { channel: "DEALER", orderNo: "DL001" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.message).toBe("请填写经销商名称");
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("经销渠道填写经销商名称后提交成功，dealerName 去空格落库", async () => {
+    const res = await POST(
+      createRequest("POST", {
+        channel: "DEALER",
+        orderNo: "DL001",
+        dealerName: "  XX 美妆集合店  ",
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        channel: "DEALER",
+        dealerName: "XX 美妆集合店",
+      }),
+    });
+  });
+
+  it("非经销渠道即使传入 dealerName 也不落库", async () => {
+    const res = await POST(
+      createRequest("POST", { channel: "DOUYIN", orderNo: "DY001", dealerName: "不应保存" })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ channel: "DOUYIN", dealerName: null }),
+    });
+  });
+
   it("未来消费日期返回 400", async () => {
     const future = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     const res = await POST(
-      createRequest("POST", { channel: "JD", orderNo: "JD456", purchasedAt: future })
+      createRequest("POST", { channel: "DOUYIN", orderNo: "DY456", purchasedAt: future })
     );
     const data = await res.json();
 
@@ -154,7 +192,7 @@ describe("POST /api/user/spent-adjustments", () => {
   it("待审申请达到上限返回 PENDING_LIMIT", async () => {
     mockCount.mockResolvedValue(2);
 
-    const res = await POST(createRequest("POST", { channel: "JD", orderNo: "JD456" }));
+    const res = await POST(createRequest("POST", { channel: "DOUYIN", orderNo: "DY456" }));
     const data = await res.json();
 
     expect(res.status).toBe(400);
@@ -203,8 +241,8 @@ describe("POST /api/user/spent-adjustments", () => {
   it("非法图片地址（非 URL 非站内路径）返回 400", async () => {
     const res = await POST(
       createRequest("POST", {
-        channel: "JD",
-        orderNo: "JD789",
+        channel: "XIAOHONGSHU",
+        orderNo: "XHS789",
         images: ["javascript:alert(1)"],
       })
     );

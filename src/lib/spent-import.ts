@@ -16,7 +16,11 @@ import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { applyExternalSpentSync } from "@/lib/points";
-import { SPENT_CHANNEL_LABELS, SPENT_CHANNELS } from "@/lib/spent-adjustment-meta";
+import {
+  SPENT_CHANNEL_LABELS,
+  SPENT_CHANNELS,
+  ALL_SPENT_CHANNELS,
+} from "@/lib/spent-adjustment-meta";
 import type { SpentAdjustmentChannel } from "@/generated/prisma/client";
 
 export const IMPORT_MAX_FILE_SIZE = 5 * 1024 * 1024; // 上传文件大小上限（5MB）
@@ -100,9 +104,12 @@ export type ImportParseResult =
   | ImportParseError;
 
 const CHANNEL_BY_LABEL: Record<string, SpentAdjustmentChannel> = {};
-for (const channel of SPENT_CHANNELS) {
+for (const channel of ALL_SPENT_CHANNELS) {
   CHANNEL_BY_LABEL[SPENT_CHANNEL_LABELS[channel]] = channel;
 }
+// 渠道更名前的历史标签兼容（旧 Excel 模板）
+CHANNEL_BY_LABEL["天猫"] = "TMALL";
+CHANNEL_BY_LABEL["其他"] = "OTHER";
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
@@ -181,7 +188,7 @@ function parseChannelValue(value: unknown): {
   const raw = String(value).trim();
   if (!raw) return { channel: null, invalid: false };
   const upper = raw.toUpperCase();
-  if ((SPENT_CHANNELS as readonly string[]).includes(upper)) {
+  if ((ALL_SPENT_CHANNELS as readonly string[]).includes(upper)) {
     return { channel: upper as SpentAdjustmentChannel, invalid: false };
   }
   const byLabel = CHANNEL_BY_LABEL[raw];

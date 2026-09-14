@@ -197,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 定时主动刷新 Access Token（每 14 分钟一次，Access Token 15 分钟过期）
+  // 定时主动刷新 Access Token（每 119 分钟一次，Access Token 2 小时过期）
   useEffect(() => {
     const AUTH_HINT_KEY = "auth_hint";
     const REFRESH_FAIL_COUNT_KEY = "__nihplod_refresh_fail_count";
@@ -228,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 localStorage.setItem(REFRESH_FAIL_COUNT_KEY, String(count));
               });
           },
-          14 * 60 * 1000
+          119 * 60 * 1000
         );
         return () => clearInterval(intervalId);
       }

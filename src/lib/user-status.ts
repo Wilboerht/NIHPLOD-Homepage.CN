@@ -25,7 +25,7 @@ export async function cascadeUserStatusChange(params: {
   const { userId, previousStatus, newStatus } = params;
 
   if (newStatus !== "ACTIVE") {
-    // 撤销所有 Refresh Token + 加入 access token 黑名单，消除剩余 15 分钟窗口期
+    // 撤销所有 Refresh Token + 加入 access token 黑名单，消除剩余 2 小时窗口期
     await prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },

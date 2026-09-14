@@ -126,6 +126,10 @@ describe("VipPanel", () => {
     // PC：说明默认不直接展示
     expect(screen.queryByText("肌肤档案终身保留")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /全部等级/ })).toBeInTheDocument();
+    // 提升引导第三步：面包屑式流程文案
+    expect(
+      screen.getByText("登录中国官网 > 会员中心录入消费 > 提交订单编号与凭证")
+    ).toBeInTheDocument();
     expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/vip");
     expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/points");
     // 主视图不再平铺四档等级卡
@@ -157,6 +161,13 @@ describe("VipPanel", () => {
     expect(screen.getByText("当前")).toBeInTheDocument();
     expect(screen.getByText("已解锁")).toBeInTheDocument();
     expect(screen.getAllByText("未解锁")).toHaveLength(2);
+
+    // 未达档展示解锁进度（金卡 2000/5000=40%，钻石 2000/10000=20%）与补录入口
+    expect(screen.getByText("¥3,000")).toBeInTheDocument();
+    expect(screen.getByText("¥8,000")).toBeInTheDocument();
+    expect(screen.getByText("40%")).toBeInTheDocument();
+    expect(screen.getByText("20%")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "补录消费记录" })).toHaveLength(2);
   });
 
   it("对比页「返回」回到主视图当前权益", async () => {

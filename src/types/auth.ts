@@ -178,7 +178,7 @@ export interface OAuthAccessTokenPayload extends JWTPayload {
 export const USER_COOKIE_NAME = "__Host-user_token";
 export const USER_REFRESH_COOKIE_NAME = "__Host-user_refresh_token";
 
-// Access Token Cookie：15 分钟，与 JWT 过期时间一致
+// Access Token Cookie：2 小时，与 JWT 过期时间一致
 // 使用 Lax 而非 Strict：微信/支付宝内嵌浏览器作为第三方上下文会拦截 Strict Cookie，
 // 导致用户从微信内打开子站时无法维持登录状态。
 // 安全考量：
@@ -192,7 +192,7 @@ export const USER_ACCESS_COOKIE_OPTIONS = {
   secure: true,
   sameSite: "lax" as const,
   path: "/",
-  maxAge: 15 * 60, // 15 分钟（秒）
+  maxAge: 2 * 60 * 60, // 2 小时（秒）
 };
 
 // Refresh Token Cookie：30 天

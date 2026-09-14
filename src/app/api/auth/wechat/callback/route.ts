@@ -340,7 +340,7 @@ export async function GET(request: NextRequest) {
       successUrl.searchParams.set("wechat_auth", "success");
       const response = NextResponse.redirect(successUrl, 302);
 
-      // 设置 Access Token Cookie（15 分钟）
+      // 设置 Access Token Cookie（2 小时）
       response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
       // 设置 Refresh Token Cookie（30 天，使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
       response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);

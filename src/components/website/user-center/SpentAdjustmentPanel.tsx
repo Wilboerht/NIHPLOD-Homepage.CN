@@ -35,6 +35,7 @@ import {
   SPENT_STATUS_LABELS,
   MAX_PENDING_PER_USER,
   MAX_IMAGES,
+  MAX_DEALER_NAME_LENGTH,
   receiptImageSrc,
 } from "@/lib/spent-adjustment-meta";
 
@@ -44,6 +45,7 @@ interface ApplicationItem {
   id: string;
   channel: string;
   orderNo: string;
+  dealerName: string | null;
   amountClaimed: number | null;
   purchasedAt: string | null;
   images: string[];
@@ -99,6 +101,7 @@ export function SpentAdjustmentPanel({
   const [uploading, setUploading] = useState(false);
   const [channel, setChannel] = useState<string>("TMALL");
   const [orderNo, setOrderNo] = useState("");
+  const [dealerName, setDealerName] = useState("");
   const [amountClaimed, setAmountClaimed] = useState("");
   const [purchasedAt, setPurchasedAt] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -180,6 +183,10 @@ export function SpentAdjustmentPanel({
       showError("请填写订单号或小票号");
       return;
     }
+    if (channel === "DEALER" && !dealerName.trim()) {
+      showError("请填写经销商名称");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetchWithAuth("/api/user/spent-adjustments", {
@@ -188,6 +195,7 @@ export function SpentAdjustmentPanel({
         body: JSON.stringify({
           channel,
           orderNo: orderNo.trim(),
+          dealerName: channel === "DEALER" ? dealerName.trim() : undefined,
           amountClaimed: amountClaimed ? Number(amountClaimed) : undefined,
           purchasedAt: purchasedAt || undefined,
           images,
@@ -199,6 +207,7 @@ export function SpentAdjustmentPanel({
         showSuccess("申请已提交，等待审核");
         onViewChange("default");
         setOrderNo("");
+        setDealerName("");
         setAmountClaimed("");
         setPurchasedAt("");
         setImages([]);
@@ -286,6 +295,50 @@ export function SpentAdjustmentPanel({
                   })}
                 </div>
               </div>
+
+              {/* 经销渠道：必填经销商名称 */}
+              {channel === "DEALER" && (
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label htmlFor="spent-dealer" className="text-xs text-stone-600">
+                      经销商名称 <span className="text-[#00263e]">*</span>
+                    </label>
+                    <span className="text-[11px] text-stone-400">
+                      {dealerName.length}/{MAX_DEALER_NAME_LENGTH}
+                    </span>
+                  </div>
+                  <input
+                    id="spent-dealer"
+                    type="text"
+                    maxLength={MAX_DEALER_NAME_LENGTH}
+                    value={dealerName}
+                    onChange={(e) => setDealerName(e.target.value)}
+                    placeholder="如：XX 美妆集合店 / XX 贸易有限公司"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  />
+                </div>
+              )}
+
+              {/* 其它渠道：说明置于第一个（替代底部备注） */}
+              {channel === "OTHER" && (
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label htmlFor="spent-other-note" className="text-xs text-stone-600">
+                      说明 <span className="font-normal text-stone-400">（选填）</span>
+                    </label>
+                    <span className="text-[11px] text-stone-400">{note.length}/500</span>
+                  </div>
+                  <textarea
+                    id="spent-other-note"
+                    maxLength={500}
+                    rows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="请说明购买渠道与订单信息（如平台名称、购买方式等）"
+                    className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  />
+                </div>
+              )}
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
@@ -403,24 +456,26 @@ export function SpentAdjustmentPanel({
               </div>
             </section>
 
-            {/* 备注（选填） */}
-            <section>
-              <div className="mb-1 flex items-center justify-between">
-                <label htmlFor="spent-note" className="text-xs font-medium text-stone-600">
-                  备注 <span className="font-normal text-stone-400">（选填）</span>
-                </label>
-                <span className="text-[11px] text-stone-400">{note.length}/500</span>
-              </div>
-              <textarea
-                id="spent-note"
-                maxLength={500}
-                rows={2}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="补充说明（如订单含多个商品、退款情况等）"
-                className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
-              />
-            </section>
+            {/* 备注（选填；其它渠道已把说明前置，此处不再重复） */}
+            {channel !== "OTHER" && (
+              <section>
+                <div className="mb-1 flex items-center justify-between">
+                  <label htmlFor="spent-note" className="text-xs font-medium text-stone-600">
+                    备注 <span className="font-normal text-stone-400">（选填）</span>
+                  </label>
+                  <span className="text-[11px] text-stone-400">{note.length}/500</span>
+                </div>
+                <textarea
+                  id="spent-note"
+                  maxLength={500}
+                  rows={2}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="补充说明（如订单含多个商品、退款情况等）"
+                  className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                />
+              </section>
+            )}
 
             {/* 提交（常规流式布局） */}
             <div>
@@ -492,6 +547,7 @@ export function SpentAdjustmentPanel({
                           {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
                             a.channel}
                         </span>
+                        {a.dealerName && <span>经销商 {a.dealerName}</span>}
                         {a.amountClaimed != null && (
                           <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
                         )}

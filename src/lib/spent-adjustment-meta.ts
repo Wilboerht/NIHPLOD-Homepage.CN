@@ -10,23 +10,42 @@ export const MAX_CLAIMED_AMOUNT = 1_000_000; // 单笔申报金额上限（元�
 export const MAX_REVIEW_AMOUNT = 1_000_000; // 单笔核实金额上限（元，防误操作）
 export const MAX_IMAGES = 3; // 凭证截图上限
 export const MAX_ORDER_NO_LENGTH = 64;
+export const MAX_DEALER_NAME_LENGTH = 50; // 经销商名称长度上限
 
-// 渠道展示文案（用户端与管理端共用）
+// 渠道展示文案（用户端与管理端共用；含历史渠道，存量数据可正常展示）
 export const SPENT_CHANNEL_LABELS: Record<SpentAdjustmentChannel, string> = {
-  TMALL: "天猫",
+  TMALL: "天猫国际",
+  DOUYIN: "抖音商城",
+  XIAOHONGSHU: "小红书",
+  OFFLINE: "线下专柜",
+  DEALER: "经销渠道",
+  OTHER: "其它",
+  // 历史渠道（仅存量数据展示，不再开放提交）
   JD: "京东",
   MINIPROGRAM: "微信小程序",
-  OFFLINE: "线下专柜",
-  OTHER: "其他",
 };
 
+// 提交渠道白名单（用户表单 / 提交接口校验，按业务顺序）
 export const SPENT_CHANNELS = [
   "TMALL",
-  "JD",
-  "MINIPROGRAM",
+  "DOUYIN",
+  "XIAOHONGSHU",
   "OFFLINE",
+  "DEALER",
   "OTHER",
 ] as const satisfies readonly SpentAdjustmentChannel[];
+
+// 历史渠道（存量数据展示 / Excel 导入解析兼容，不在用户表单中展示）
+export const LEGACY_SPENT_CHANNELS = [
+  "JD",
+  "MINIPROGRAM",
+] as const satisfies readonly SpentAdjustmentChannel[];
+
+/** 全部渠道（含历史渠道）：展示文案映射与 Excel 导入解析使用 */
+export const ALL_SPENT_CHANNELS: readonly SpentAdjustmentChannel[] = [
+  ...SPENT_CHANNELS,
+  ...LEGACY_SPENT_CHANNELS,
+];
 
 export const SPENT_STATUS_LABELS: Record<SpentAdjustmentStatus, string> = {
   PENDING: "待审核",

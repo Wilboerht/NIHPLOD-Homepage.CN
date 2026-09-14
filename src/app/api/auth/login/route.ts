@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
     // 8. 清除当前类型的失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone, "sms");
 
-    // 9. 签发 Access Token（短期，15分钟）
+    // 9. 签发 Access Token（短期，2小时）
     const accessToken = await signUserToken({
       id: user.id,
     });
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 13. 设置 Cookies
-    // Access Token: 15 分钟，与 JWT 过期一致
+    // Access Token: 2 小时，与 JWT 过期一致
     response.cookies.set(USER_COOKIE_NAME, accessToken, USER_ACCESS_COOKIE_OPTIONS);
     // Refresh Token: 30 天（使用统一配置 USER_REFRESH_COOKIE_OPTIONS）
     response.cookies.set(USER_REFRESH_COOKIE_NAME, refreshToken, USER_REFRESH_COOKIE_OPTIONS);

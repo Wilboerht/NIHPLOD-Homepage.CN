@@ -570,12 +570,17 @@ model RateLimitRecord {
 // ============================================
 
 // 消费补录渠道（全渠道凭证：电商订单号或线下小票号）
+// 业务顺序：天猫国际 / 抖音商城 / 小红书 / 线下专柜 / 经销渠道 / 其它；
+// JD / MINIPROGRAM 为历史渠道，仅存量数据与 Excel 导入解析兼容，不再开放新提交
 enum SpentAdjustmentChannel {
-  TMALL // 天猫
-  JD // 京东
-  MINIPROGRAM // 微信小程序
+  TMALL // 天猫国际
+  DOUYIN // 抖音商城
+  XIAOHONGSHU // 小红书
   OFFLINE // 线下专柜
-  OTHER // 其他
+  DEALER // 经销渠道
+  OTHER // 其它
+  JD // 京东（历史）
+  MINIPROGRAM // 微信小程序（历史）
 }
 
 enum SpentAdjustmentStatus {
@@ -590,6 +595,7 @@ model SpentAdjustmentApplication {
   userId        String
   channel       SpentAdjustmentChannel
   orderNo       String // 电商订单号或线下小票号
+  dealerName    String? // 经销商名称（经销渠道必填，其余渠道为空）
   amountClaimed Int? // 用户申报金额（元）
   purchasedAt   DateTime? // 消费日期（不限制时间范围）
   images        String[] // 凭证截图 URL（选填，最多 3 张）

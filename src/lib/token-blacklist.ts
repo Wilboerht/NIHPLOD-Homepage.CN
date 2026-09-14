@@ -1,8 +1,8 @@
 /**
  * Access Token 黑名单缓存（多实例安全版本）
  *
- * 当管理员封禁用户时，短期 access token（15 分钟 TTL）仍有效。
- * 通过此黑名单在 verifyUserAuth / verifyOAuthAccessToken 时额外检查，消除 15 分钟窗口期。
+ * 当管理员封禁用户时，短期 access token（2 小时 TTL）仍有效。
+ * 通过此黑名单在 verifyUserAuth / verifyOAuthAccessToken 时额外检查，消除 2 小时窗口期。
  *
  * 后端实现由 token-blacklist-store.ts 统一管理：
  * - 默认 Memory（单实例 LRU），兼容旧行为。

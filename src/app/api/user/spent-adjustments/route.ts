@@ -21,31 +21,43 @@ import {
   MAX_CLAIMED_AMOUNT,
   MAX_IMAGES,
   MAX_ORDER_NO_LENGTH,
+  MAX_DEALER_NAME_LENGTH,
 } from "@/lib/spent-adjustments";
 
 export const dynamic = "force-dynamic";
 
-// 提交申请 schema
-const createSchema = z.object({
-  channel: z.enum(SPENT_CHANNELS),
-  orderNo: z.string().trim().min(1, "请填写订单号或小票号").max(MAX_ORDER_NO_LENGTH, "单号过长"),
-  amountClaimed: z.number().int().min(1).max(MAX_CLAIMED_AMOUNT).optional(),
-  purchasedAt: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "消费日期格式不正确")
-    .refine((v) => new Date(v).getTime() <= Date.now() + 24 * 3600 * 1000, "消费日期不能晚于今天")
-    .optional(),
-  images: z
-    .array(
-      z
-        .string()
-        .max(500, "图片地址过长")
-        .refine((v) => /^https?:\/\//.test(v) || v.startsWith("/"), "图片地址格式不正确")
-    )
-    .max(MAX_IMAGES, `最多上传 ${MAX_IMAGES} 张凭证截图`)
-    .optional(),
-  note: z.string().trim().max(500, "备注过长").optional(),
-});
+// 提交申请 schema：经销渠道必填经销商名称
+const createSchema = z
+  .object({
+    channel: z.enum(SPENT_CHANNELS),
+    orderNo: z.string().trim().min(1, "请填写订单号或小票号").max(MAX_ORDER_NO_LENGTH, "单号过长"),
+    dealerName: z.string().trim().max(MAX_DEALER_NAME_LENGTH, "经销商名称过长").optional(),
+    amountClaimed: z.number().int().min(1).max(MAX_CLAIMED_AMOUNT).optional(),
+    purchasedAt: z
+      .string()
+      .refine((v) => !Number.isNaN(Date.parse(v)), "消费日期格式不正确")
+      .refine((v) => new Date(v).getTime() <= Date.now() + 24 * 3600 * 1000, "消费日期不能晚于今天")
+      .optional(),
+    images: z
+      .array(
+        z
+          .string()
+          .max(500, "图片地址过长")
+          .refine((v) => /^https?:\/\//.test(v) || v.startsWith("/"), "图片地址格式不正确")
+      )
+      .max(MAX_IMAGES, `最多上传 ${MAX_IMAGES} 张凭证截图`)
+      .optional(),
+    note: z.string().trim().max(500, "备注过长").optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.channel === "DEALER" && !data.dealerName) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["dealerName"],
+        message: "请填写经销商名称",
+      });
+    }
+  });
 
 // GET - 查询我的补录申请列表
 export const GET = withUserAuth(async (_request: NextRequest, payload) => {
@@ -58,6 +70,7 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
         id: true,
         channel: true,
         orderNo: true,
+        dealerName: true,
         amountClaimed: true,
         purchasedAt: true,
         images: true,
@@ -110,7 +123,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const { channel, orderNo, amountClaimed, purchasedAt, images, note } = parsed.data;
+    const { channel, orderNo, dealerName, amountClaimed, purchasedAt, images, note } = parsed.data;
 
     // 待审核数量硬限制：事务内对用户行 SELECT FOR UPDATE，
     // 串行化同一用户的并发提交，防止并发绕过上限。
@@ -129,6 +142,8 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
           userId: payload.id,
           channel,
           orderNo,
+          // 经销商名称仅在经销渠道下持久化
+          dealerName: channel === "DEALER" ? dealerName || null : null,
           amountClaimed: amountClaimed ?? null,
           purchasedAt: purchasedAt ? new Date(purchasedAt) : null,
           images: images ?? [],
@@ -156,7 +171,12 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       targetType: "spent_adjustment",
       targetId: application.id,
       userId: payload.id,
-      detail: { channel: SPENT_CHANNEL_LABELS[channel], orderNo, amountClaimed },
+      detail: {
+        channel: SPENT_CHANNEL_LABELS[channel],
+        orderNo,
+        dealerName: channel === "DEALER" ? dealerName : undefined,
+        amountClaimed,
+      },
       request,
     });
 

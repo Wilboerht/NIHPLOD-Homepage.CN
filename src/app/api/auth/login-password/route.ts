@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     // 8. 清除当前类型的失败登录记录（成功登录后重置）
     await clearLoginAttempts(phone, "password");
 
-    // 9. 签发 Access Token（短期，15分钟）
+    // 9. 签发 Access Token（短期，2小时）
     const accessToken = await signUserToken({
       id: user.id,
     });
