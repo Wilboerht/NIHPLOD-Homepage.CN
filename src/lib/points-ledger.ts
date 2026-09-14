@@ -10,6 +10,7 @@
  * - 兑礼扣减（REDEEM）：FIFO 消耗未过期的发放流水；条件扣减（余额 ≥ 扣减量）防并发超额，余额不足拒绝。
  * - 过期（EXPIRE）：发放流水按剩余量清零，可用余额仅扣正数部分（负余额为债务，不由过期减免）。
  * - 生日积分（BIRTHDAY）：直接可用，6 个月过期，每年一次幂等。
+ * - 打卡奖励（CHECKIN）：子站手动打卡发放，直接可用，6 个月过期，按 checkin:{userId}:{date} 幂等。
  *
  * 一致性：PointBalance 与 PointLedger 同事务更新；余额 = 流水剩余量之和（可用为负时代表超兑债务，
  * 后续新积分入账先行抵债）。所有函数接受事务客户端 tx，由调用方包在 prisma.$transaction 内。
@@ -116,7 +117,7 @@ export async function expirePoints(
   const expired = await tx.pointLedger.findMany({
     where: {
       userId,
-      type: { in: ["CONSUME", "BIRTHDAY"] },
+      type: { in: ["CONSUME", "BIRTHDAY", "CHECKIN"] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
     },
@@ -289,6 +290,43 @@ export async function getPointBalanceView(
 }
 
 /**
+ * 打卡奖励发放（测肤子站手动打卡，经 /api/v1/internal/points/grant 调用）：
+ * 直接可用（无冻结），6 个月过期。
+ * 幂等：同 userId+reference（checkin:{userId}:{date}）已存在则跳过——
+ * 打卡删除后重新打卡、并发重复提交、网络重试均不会重复发放。
+ */
+export async function grantCheckinPoints(
+  tx: PointTx,
+  params: { userId: string; amount: number; reference: string; note?: string }
+): Promise<{ duplicated: boolean; amount: number }> {
+  const { userId, amount, reference, note } = params;
+  const existing = await tx.pointLedger.findUnique({
+    where: { userId_reference: { userId, reference } },
+  });
+  if (existing) return { duplicated: true, amount: 0 };
+
+  const now = new Date();
+  await tx.pointLedger.create({
+    data: {
+      userId,
+      type: "CHECKIN",
+      amount,
+      remaining: amount,
+      reference,
+      note: note ?? null,
+      releasedAt: now,
+      expiresAt: addMonths(now, POINT_EXPIRY_MONTHS),
+    },
+  });
+  await tx.pointBalance.upsert({
+    where: { userId },
+    create: { userId, available: amount },
+    update: { available: { increment: amount } },
+  });
+  return { duplicated: false, amount };
+}
+
+/**
  * 生日积分发放：直接可用（无冻结），6 个月过期，每年一次。
  * 幂等：reference = birthday:{userId}:{year} 唯一约束兜底；
  * 同时更新 user.lastBirthdayRewardYear 防止并发双发。
@@ -335,7 +373,7 @@ export async function expirePointsCron(): Promise<number> {
   const now = new Date();
   const due = await prisma.pointLedger.findMany({
     where: {
-      type: { in: ["CONSUME", "BIRTHDAY"] },
+      type: { in: ["CONSUME", "BIRTHDAY", "CHECKIN"] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
     },

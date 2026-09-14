@@ -697,6 +697,7 @@ enum PointLedgerType {
   CONSUME // 消费发放（1 元 = 1 分，立即到账，6 个月过期）
   REFUND // 退款冲正（负值；先冲冻结再冲可用，可用可负）
   BIRTHDAY // 生日积分（每年一次，按生日当天当前等级 50/100/200）
+  CHECKIN // 打卡奖励（测肤子站手动打卡：连续第 1/2/3+ 天 +1/+2/+3 分，6 个月过期）
   REDEEM // 兑礼扣减（FIFO 消耗最旧可用流水）
   EXPIRE // 过期扣减
 }
@@ -708,7 +709,7 @@ model PointLedger {
   type        PointLedgerType
   amount      Int             // 正加负减
   remaining   Int?            // 剩余未消耗（仅发放类正向流水，null=非消耗对象）
-  reference   String          // 幂等键（消费单据 reference / birthday:{userId}:{year} / redeem:{单号}）
+  reference   String          // 幂等键（消费单据 reference / birthday:{userId}:{year} / checkin:{userId}:{date} / redeem:{单号}）
   note        String?         @db.Text
   frozenUntil DateTime?       // 稳定期解冻时间（已废弃：无冻结期，保留列向后兼容）
   releasedAt   DateTime?      // 到账时间（无冻结期：发放即到账，恒非空）

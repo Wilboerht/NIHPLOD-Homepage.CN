@@ -6,13 +6,15 @@
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。主视图为两栏排版：
- * - 左栏：当前等级会员卡 + 会员权益纵向等级条列表（点击整版切换等级介绍）
+ * - 左栏：当前等级会员卡 + 当前等级权益列表（「全部等级」入口进入四档对比）
  * - 右栏：提升引导卡（升级进度 / 如何提升三步 / 录入消费入口）
  *   与 AI 测肤用量卡，两张独立浅底卡片
  * 积分展示在会员卡内：无冻结期、立即到账（账本在官网，兑礼在「积分商城」tab）。
  *
- * 会员卡与权益区等级条背景图：四档均已登记到 CARD_BG_IMAGES；
- * 会员卡铺满使用，权益区等级条做虚化淡化处理。
+ * 等级对比页（levels）：四档权益一页式整版淡入淡出展示，含当前/已解锁/未解锁状态；
+ * 未达档显示还差金额与补录入口，普通档当前会员显示升级引导。
+ * 会员卡与等级对比卡背景图：四档均已登记到 CARD_BG_IMAGES；
+ * 会员卡铺满使用，等级对比卡做虚化淡化处理。
  * 卡面只承载身份信息与品牌 logo（右下角）；升级进度展示在右侧提升引导区。
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -140,14 +142,13 @@ interface PointsData {
   available: number;
 }
 
-// 右侧内容整版视图：主视图 / 等级详情 / 录入表单 / 录入历史，互斥整版切换（淡入淡出）
-type VipView = "main" | "tier" | "spent-form" | "spent-history";
+// 内容整版视图：主视图 / 等级对比 / 录入表单 / 录入历史，互斥整版切换（淡入淡出）
+type VipView = "main" | "levels" | "spent-form" | "spent-history";
 
 export function VipPanel() {
   const [vipData, setVipData] = useState<VIPData | null>(null);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [view, setView] = useState<VipView>("main");
   const [refreshingUsage, setRefreshingUsage] = useState(false);
   const [showChannelTip, setShowChannelTip] = useState(false);
@@ -250,12 +251,7 @@ export function VipPanel() {
   const tierStyle = TIER_CARD_STYLES[currentLevel.level] ?? TIER_CARD_STYLES.REGULAR;
   const cardBgImage = CARD_BG_IMAGES[currentLevel.level];
 
-  // 权益区当前选中的等级（点击等级条后整版切换到对应等级介绍）
-  const selected = selectedLevel
-    ? (allLevels.find((l) => l.level === selectedLevel) ?? null)
-    : null;
-
-  // 切换整版视图到补录表单（与权益区的解锁引导联动）
+  // 切换整版视图到补录表单（与等级对比页的解锁引导联动）
   const focusSpentForm = () => {
     setView("spent-form");
   };
@@ -528,50 +524,104 @@ export function VipPanel() {
                   </div>
                 </div>
 
-                {/* 会员权益 - 纵向等级条列表；点击后右侧整版内容淡出、对应等级介绍淡入 */}
+                {/* 会员权益 - 直接展示当前等级权益；「全部等级」入口进入四档对比 */}
                 <div className="lg:col-start-1 lg:row-start-2">
-                  <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-stone-700">
-                    <Crown className="h-[18px] w-[18px] text-[#00263e]" />
-                    会员权益
-                  </h4>
-                  <div className="space-y-2.5">
-                    {allLevels.map((level) => {
-                      const isCurrent = level.level === currentLevel.level;
-                      const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
-                      const tierBgImage = CARD_BG_IMAGES[level.level];
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                      <Crown className="h-[18px] w-[18px] text-[#00263e]" />
+                      会员权益
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setView("levels")}
+                      className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800"
+                    >
+                      全部等级
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-3 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                    {currentLevel.benefits.map((b, i) => {
+                      const BenefitIcon = benefitIcon(b.title);
                       return (
-                        <button
-                          key={level.level}
-                          type="button"
-                          onClick={() => {
-                            setSelectedLevel(level.level);
-                            setView("tier");
-                          }}
-                          className={`relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-5 py-3 text-left transition-colors ${
+                        <div key={i} className="flex items-start gap-2.5">
+                          <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-stone-800">{b.title}</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                              {b.desc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </m.div>
+          )}
+
+          {view === "levels" && (
+            <m.div
+              key="levels"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* 头部：标题 + 返回 */}
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-lg font-medium text-stone-800">等级权益对比</h4>
+                <button
+                  type="button"
+                  onClick={() => setView("main")}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  返回
+                </button>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                会员等级按官方店铺累计消费实时判定，等级永久有效、可升可降。
+              </p>
+
+              {/* 四档权益一页式对比：当前最清晰，已解锁次之，未解锁去色淡化 */}
+              <div className="mt-4 space-y-4">
+                {allLevels.map((level) => {
+                  const isCurrent = level.level === currentLevel.level;
+                  const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
+                  const isLocked = !isCurrent && !isUnlocked;
+                  const tierBgImage = CARD_BG_IMAGES[level.level];
+                  return (
+                    <div
+                      key={level.level}
+                      className={`relative overflow-hidden rounded-xl border ${
+                        isCurrent
+                          ? "border-[#00263e] bg-white/70"
+                          : isUnlocked
+                            ? "border-stone-200/60 bg-white/50"
+                            : "border-stone-200/50 bg-white/40"
+                      }`}
+                    >
+                      {tierBgImage && (
+                        <div
+                          aria-hidden
+                          className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
                             isCurrent
-                              ? "border-[#00263e] bg-white/70 shadow-sm"
+                              ? "opacity-25 blur-[2px]"
                               : isUnlocked
-                                ? "border-stone-200/60 bg-white/50 hover:border-stone-300 hover:bg-white/70"
-                                : "border-stone-200/50 bg-white/30 hover:bg-white/50"
+                                ? "opacity-15 blur-sm"
+                                : "opacity-[0.08] blur-sm grayscale"
                           }`}
-                        >
-                          {/* 背景图浓度即状态层级：当前最清晰，已解锁次之，未解锁去色淡出 */}
-                          {tierBgImage && (
-                            <div
-                              aria-hidden
-                              className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
-                                isCurrent
-                                  ? "opacity-50 blur-[2px]"
-                                  : isUnlocked
-                                    ? "opacity-30 blur-sm"
-                                    : "opacity-15 blur-sm grayscale"
-                              }`}
-                              style={{ backgroundImage: `url(${tierBgImage})` }}
-                            />
-                          )}
-                          <div className="relative flex min-w-0 items-baseline gap-2">
+                          style={{ backgroundImage: `url(${tierBgImage})` }}
+                        />
+                      )}
+                      <div className="relative p-5">
+                        {/* 等级名 + 状态徽标 + 门槛 */}
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                          <div className="flex items-center gap-2">
                             <p
-                              className={`shrink-0 text-sm font-medium ${
+                              className={`text-base font-medium ${
                                 isCurrent
                                   ? "text-stone-900"
                                   : isUnlocked
@@ -581,149 +631,105 @@ export function VipPanel() {
                             >
                               {level.name}
                             </p>
-                            <p
-                              className={`truncate text-xs ${
-                                isCurrent || isUnlocked ? "text-stone-400" : "text-stone-300"
-                              }`}
-                            >
-                              {level.minSpent > 0
-                                ? `消费满 ¥${level.minSpent.toLocaleString()}`
-                                : "注册即享"}
-                            </p>
+                            {isCurrent ? (
+                              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#00263e]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#00263e]">
+                                <Crown className="h-3 w-3" />
+                                当前
+                              </span>
+                            ) : isUnlocked ? (
+                              <span className="flex shrink-0 items-center gap-1 rounded-full border border-stone-200/80 bg-white/60 px-2.5 py-0.5 text-[11px] text-stone-500">
+                                <Check className="h-3 w-3 text-[#00263e]" />
+                                已解锁
+                              </span>
+                            ) : (
+                              <span className="flex shrink-0 items-center gap-1 rounded-full border border-stone-200/60 bg-white/40 px-2.5 py-0.5 text-[11px] text-stone-400">
+                                <Lock className="h-3 w-3" />
+                                未解锁
+                              </span>
+                            )}
                           </div>
-                          {/* 状态徽标：图标 + 文字双通道（不只靠颜色区分） */}
-                          {isCurrent ? (
-                            <span className="relative flex shrink-0 items-center gap-1 rounded-full bg-[#00263e]/10 px-2.5 py-1 text-[11px] font-medium text-[#00263e]">
-                              <Crown className="h-3 w-3" />
-                              当前
-                            </span>
-                          ) : isUnlocked ? (
-                            <span className="relative flex shrink-0 items-center gap-1 rounded-full border border-stone-200/80 bg-white/60 px-2.5 py-1 text-[11px] text-stone-500">
-                              <Check className="h-3 w-3 text-[#00263e]" />
-                              已解锁
-                            </span>
-                          ) : (
-                            <span className="relative flex shrink-0 items-center gap-1 px-2.5 py-1 text-[11px] text-stone-400">
-                              <Lock className="h-3 w-3" />
-                              未解锁
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </m.div>
-          )}
-
-          {view === "tier" && selected && (
-            <m.div
-              key={`tier-${selected.level}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* 头部：等级名 + 解锁状态 + 门槛；返回按钮最右 */}
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-lg font-medium text-stone-800">{selected.name}</p>
-                    {selected.level === currentLevel.level ? (
-                      <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
-                        <Crown className="h-4 w-4" />
-                        当前
-                      </span>
-                    ) : selected.minSpent <= totalSpent ? (
-                      <span className="flex shrink-0 items-center gap-1 text-sm text-[#00263e]">
-                        <Check className="h-4 w-4" />
-                        已解锁
-                      </span>
-                    ) : (
-                      <span className="flex shrink-0 items-center gap-1 text-sm text-stone-400">
-                        <Lock className="h-3.5 w-3.5" />
-                        未解锁
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-xs text-stone-400">
-                    {selected.minSpent > 0
-                      ? `消费满 ¥${selected.minSpent.toLocaleString()}`
-                      : "注册即享"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setView("main")}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  查看全部等级
-                </button>
-              </div>
-
-              {/* 权益列表：适配图标 + 标题 + 描述 */}
-              <div className="mt-4 border-t border-stone-200/60 pt-4">
-                <p className="mb-3 text-xs font-medium tracking-wide text-stone-500">等级权益</p>
-                <div className="space-y-3">
-                  {selected.benefits.map((b, i) => {
-                    const BenefitIcon = benefitIcon(b.title);
-                    return (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                          <p className="mt-0.5 text-xs leading-relaxed text-stone-400">{b.desc}</p>
+                          <p className="text-xs text-stone-400">
+                            {level.minSpent > 0
+                              ? `消费满 ¥${level.minSpent.toLocaleString()}`
+                              : "注册即享"}
+                          </p>
                         </div>
+
+                        {/* 权益列表：适配图标 + 标题 + 描述 */}
+                        <div className="mt-4 space-y-3 border-t border-stone-200/60 pt-4">
+                          {level.benefits.map((b, i) => {
+                            const BenefitIcon = benefitIcon(b.title);
+                            return (
+                              <div key={i} className="flex items-start gap-2.5">
+                                <BenefitIcon
+                                  className={`mt-0.5 h-4 w-4 shrink-0 ${
+                                    isLocked ? "text-stone-400" : "text-[#00263e]"
+                                  }`}
+                                />
+                                <div className="min-w-0">
+                                  <p
+                                    className={`text-sm font-medium ${
+                                      isLocked ? "text-stone-500" : "text-stone-800"
+                                    }`}
+                                  >
+                                    {b.title}
+                                  </p>
+                                  <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                                    {b.desc}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 未达档等级：解锁提示 + 补录引导 */}
+                        {isLocked && (
+                          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Lock className="h-4 w-4 shrink-0 text-stone-400" />
+                              <p className="text-xs text-stone-600">
+                                还差{" "}
+                                <span className="text-sm font-medium text-[#00263e]">
+                                  ¥{(level.minSpent - totalSpent).toLocaleString()}
+                                </span>{" "}
+                                解锁该等级
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={focusSpentForm}
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                            >
+                              补录消费记录
+                            </button>
+                          </div>
+                        )}
+
+                        {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
+                        {isCurrent && level.level === "REGULAR" && (
+                          <div className="mt-4 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
+                            <div className="flex items-start gap-2">
+                              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                              <p className="text-xs leading-relaxed text-stone-600">
+                                累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
+                                顾问、积分兑礼与生日礼遇等权益
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={focusSpentForm}
+                              className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                            >
+                              补录消费记录
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
-              {selected.level === "REGULAR" && selected.level === currentLevel.level && (
-                <div className="mt-4 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                  <div className="flex items-start gap-2">
-                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
-                    <p className="text-xs leading-relaxed text-stone-600">
-                      累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
-                      顾问、积分兑礼与生日礼遇等权益
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={focusSpentForm}
-                    className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                  >
-                    补录消费记录
-                  </button>
-                </div>
-              )}
-
-              {/* 未达档等级：解锁提示 + 补录引导 */}
-              {selected.level !== "REGULAR" && selected.minSpent > totalSpent && (
-                <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-stone-200/60 bg-white/50 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Lock className="h-4 w-4 shrink-0 text-stone-400" />
-                    <p className="text-xs text-stone-600">
-                      还差{" "}
-                      <span className="text-sm font-medium text-[#00263e]">
-                        ¥{(selected.minSpent - totalSpent).toLocaleString()}
-                      </span>{" "}
-                      解锁该等级
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={focusSpentForm}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
-                  >
-                    补录消费记录
-                  </button>
-                </div>
-              )}
             </m.div>
           )}
 
