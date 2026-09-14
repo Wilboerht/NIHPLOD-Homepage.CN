@@ -6,7 +6,8 @@
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。主视图为两栏排版：
- * - 左栏：当前等级会员卡 + 当前等级权益列表（「全部等级」入口进入四档对比）
+ * - 左栏：当前等级会员卡 + 当前等级权益列表（PC 两列仅标题、说明悬浮提示；
+ *   窄屏单列常显说明；「全部等级」入口进入四档对比）
  * - 右栏：提升引导卡（升级进度 / 如何提升三步 / 录入消费入口）
  *   与 AI 测肤用量卡，两张独立浅底卡片
  * 积分展示在会员卡内：无冻结期、立即到账（账本在官网，兑礼在「积分商城」tab）。
@@ -40,9 +41,11 @@ import {
 } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（四档）：
@@ -155,6 +158,8 @@ export function VipPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
+  // 与 lg 断点对齐：窄屏保持单列并常显权益说明；PC 两列仅标题、说明悬浮提示
+  const isNarrow = useMediaQuery("(max-width: 1023px)");
 
   const loadVIPData = useCallback(async () => {
     try {
@@ -540,19 +545,38 @@ export function VipPanel() {
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="space-y-3 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                  <div
+                    className={`rounded-xl border border-stone-200/60 bg-white/40 p-5 ${
+                      isNarrow ? "space-y-3" : "grid grid-cols-2 gap-x-4 gap-y-3"
+                    }`}
+                  >
                     {currentLevel.benefits.map((b, i) => {
                       const BenefitIcon = benefitIcon(b.title);
-                      return (
-                        <div key={i} className="flex items-start gap-2.5">
+                      const row = (
+                        <div className="flex w-full items-start gap-2.5">
                           <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
-                              {b.desc}
-                            </p>
+                            {isNarrow && (
+                              <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                                {b.desc}
+                              </p>
+                            )}
                           </div>
                         </div>
+                      );
+                      // PC：仅标题，权益说明悬浮出现（Tooltip 走 Portal，不会被滚动容器裁剪）
+                      return isNarrow ? (
+                        <div key={i}>{row}</div>
+                      ) : (
+                        <Tooltip
+                          key={i}
+                          content={b.desc}
+                          side="top"
+                          className="max-w-[240px] whitespace-normal leading-relaxed"
+                        >
+                          {row}
+                        </Tooltip>
                       );
                     })}
                   </div>

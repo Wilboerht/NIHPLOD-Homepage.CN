@@ -226,7 +226,7 @@ export function LoginForm({
           <button
             type="button"
             onClick={onSwitchToRegister}
-            className="inline-flex h-7 min-h-0 items-center justify-center text-xs tracking-wide text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/90"
+            className="inline-flex items-center justify-center border border-brand-charcoal/25 px-6 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.03] hover:text-brand-charcoal"
           >
             还没有账号？立即注册
           </button>
