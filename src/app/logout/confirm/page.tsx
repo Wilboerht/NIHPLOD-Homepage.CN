@@ -66,8 +66,8 @@ function LogoutConfirmContent() {
   }, [rawRedirectUri, clientId]);
 
   useEffect(() => {
-    // 短暂展示"已退出"反馈后即自动跳回发起方，避免用户在主站停留感；
-    // 页面与"立即跳转"按钮保留为自动跳转失败时的兜底
+    // 等打勾动画播完（约 0.7s）再自动跳回发起方，兼顾反馈感与停留感；
+    // 页面与底部文字链接保留为自动跳转失败时的兜底
     const timer = setTimeout(() => {
       setDone(true);
       const finalUrl = getFinalRedirectUrl();
@@ -76,32 +76,72 @@ function LogoutConfirmContent() {
       } else {
         router.push("/");
       }
-    }, 400);
+    }, 900);
     return () => clearTimeout(timer);
   }, [redirectUri, router, getFinalRedirectUrl]);
 
+  const handleManualRedirect = () => {
+    const finalUrl = getFinalRedirectUrl();
+    if (finalUrl) {
+      window.location.href = finalUrl;
+    } else {
+      router.push("/");
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">已退出登录</h1>
-        <p className="mb-6 text-gray-500">您已成功退出登录</p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+      {/* 打勾动画：圆圈描边 → 对勾描边依次绘制，CSS keyframes 一次性播放 */}
+      <style>{`
+        @keyframes logout-draw { to { stroke-dashoffset: 0; } }
+        @keyframes logout-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        .logout-check-circle { stroke-dasharray: 166; stroke-dashoffset: 166; animation: logout-draw 0.5s ease-out forwards; }
+        .logout-check-mark { stroke-dasharray: 48; stroke-dashoffset: 48; animation: logout-draw 0.3s ease-out 0.4s forwards; }
+        .logout-fade-in { opacity: 0; animation: logout-fade 0.3s ease-out 0.7s forwards; }
+        @media (prefers-reduced-motion: reduce) {
+          .logout-check-circle, .logout-check-mark { animation: none; stroke-dashoffset: 0; }
+          .logout-fade-in { animation: none; opacity: 1; }
+        }
+      `}</style>
 
-        <p className="text-sm text-gray-400">{done ? "正在跳转..." : "请稍候..."}</p>
+      <svg
+        className="h-14 w-14"
+        viewBox="0 0 56 56"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle
+          className="logout-check-circle"
+          cx="28"
+          cy="28"
+          r="26"
+          stroke="#10b981"
+          strokeWidth="2.5"
+        />
+        <path
+          className="logout-check-mark"
+          d="M17 29l8 8 15-16"
+          stroke="#10b981"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
 
-        <button
-          onClick={() => {
-            const finalUrl = getFinalRedirectUrl();
-            if (finalUrl) {
-              window.location.href = finalUrl;
-            } else {
-              router.push("/");
-            }
-          }}
-          className="mt-4 rounded-lg bg-blue-600 px-6 py-2 text-sm text-white hover:bg-blue-700"
-        >
-          立即跳转
-        </button>
-      </div>
+      <h1 className="logout-fade-in mt-5 text-lg font-medium text-gray-900">
+        已退出登录
+      </h1>
+      <p className="logout-fade-in mt-1 text-sm text-gray-400">
+        {done ? "正在返回..." : "即将返回..."}
+      </p>
+
+      {/* 兜底：自动跳转失败时用户可手动返回；平时仅作不起眼的文字链接 */}
+      <button
+        onClick={handleManualRedirect}
+        className="logout-fade-in mt-6 text-sm text-gray-400 underline decoration-gray-300 underline-offset-4 transition-colors hover:text-gray-600"
+      >
+        没有自动跳转？点击返回
+      </button>
     </div>
   );
 }
