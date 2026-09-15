@@ -26,6 +26,7 @@ function LogoutConfirmContent() {
   const router = useRouter();
   const rawRedirectUri = searchParams.get("post_logout_redirect_uri");
   const state = searchParams.get("state");
+  const clientId = searchParams.get("client_id");
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
@@ -50,18 +51,23 @@ function LogoutConfirmContent() {
         return;
       }
 
-      fetch(
-        `/api/oauth/check-post-logout-uri?post_logout_redirect_uri=${encodeURIComponent(rawRedirectUri)}`
-      )
+      // 绝对 URL 的可信校验必须携带 client_id：服务端要求回跳地址与该 client
+      // 注册的 postLogoutRedirectUris 精确匹配，缺 client_id 一律判为不可信
+      const checkUrl = new URL("/api/oauth/check-post-logout-uri", window.location.origin);
+      if (clientId) checkUrl.searchParams.set("client_id", clientId);
+      checkUrl.searchParams.set("post_logout_redirect_uri", rawRedirectUri);
+      fetch(checkUrl.toString())
         .then((res) => res.json())
         .then((data) => {
           setRedirectUri(data.trusted ? rawRedirectUri : null);
         })
         .catch(() => setRedirectUri(null));
     });
-  }, [rawRedirectUri]);
+  }, [rawRedirectUri, clientId]);
 
   useEffect(() => {
+    // 短暂展示"已退出"反馈后即自动跳回发起方，避免用户在主站停留感；
+    // 页面与"立即跳转"按钮保留为自动跳转失败时的兜底
     const timer = setTimeout(() => {
       setDone(true);
       const finalUrl = getFinalRedirectUrl();
@@ -70,7 +76,7 @@ function LogoutConfirmContent() {
       } else {
         router.push("/");
       }
-    }, 1500);
+    }, 400);
     return () => clearTimeout(timer);
   }, [redirectUri, router, getFinalRedirectUrl]);
 
