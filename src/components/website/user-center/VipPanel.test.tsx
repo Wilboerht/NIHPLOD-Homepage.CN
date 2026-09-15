@@ -3,11 +3,12 @@
 /**
  * 会员中心面板测试
  * 覆盖：主视图当前等级权益（单列，标题与说明常显、卡片内滚动）、
+ * 官方渠道说明（PC 悬浮气泡 / 触屏点击展开）、
  * 「全部等级」进入四档对比页、对比页状态（当前/已解锁/未解锁）与返回主视图、
  * 会员/积分数据加载。
  */
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 const { mockFetchWithAuth } = vi.hoisted(() => ({ mockFetchWithAuth: vi.fn() }));
@@ -45,6 +46,26 @@ import { VipPanel } from "@/components/website/user-center/VipPanel";
 function jsonResponse(body: unknown) {
   return { status: 200, json: async () => body } as unknown as Response;
 }
+
+const originalMatchMedia = window.matchMedia;
+
+/** 模拟触屏（无 hover 能力）：官方渠道说明走点击展开 */
+function stubHoverNone() {
+  window.matchMedia = ((query: string) => ({
+    matches: query === "(hover: none)",
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+}
+
+afterEach(() => {
+  window.matchMedia = originalMatchMedia;
+});
 
 const VIP_DATA = {
   membershipLevel: "SILVER",
@@ -117,6 +138,27 @@ describe("VipPanel", () => {
     expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/points");
     // 主视图不再平铺四档等级卡
     expect(screen.queryByText("等级权益对比")).not.toBeInTheDocument();
+  });
+
+  it("PC：官方渠道问号改为悬浮气泡说明", async () => {
+    render(<VipPanel />);
+    const trigger = await screen.findByRole("button", { name: "查看官方渠道说明" });
+
+    // 悬浮触发 Tooltip（监听挂在包裹层）
+    fireEvent.mouseEnter(trigger.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "官方渠道指 NIHPLOD 在天猫国际、抖音商城、小红书"
+    );
+  });
+
+  it("触屏：点击问号切换为官方渠道说明", async () => {
+    stubHoverNone();
+    render(<VipPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "查看官方渠道说明" }));
+
+    // 整版切换到说明文案（带返回按钮），问号步骤让位
+    expect(await screen.findByRole("button", { name: "返回步骤说明" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "查看官方渠道说明" })).not.toBeInTheDocument();
   });
 
   it("点击「全部等级」进入四档对比页，展示各档权益与状态徽标", async () => {

@@ -41,9 +41,11 @@ import {
 } from "lucide-react";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（四档）：
@@ -103,6 +105,10 @@ function benefitIcon(title: string): typeof Check {
   return BENEFIT_ICONS[title] ?? Check;
 }
 
+// 官方渠道说明文案（触屏点击展开 / PC 悬浮气泡共用，避免两处文案漂移）
+const CHANNEL_TIP_TEXT =
+  "官方渠道指 NIHPLOD 在天猫国际、抖音商城、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。";
+
 interface LevelInfo {
   level: string;
   name: string;
@@ -156,6 +162,8 @@ export function VipPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
+  // 触屏设备（无 hover 能力）：官方渠道说明走点击展开；PC 端改为悬浮气泡
+  const isTouch = useMediaQuery("(hover: none)");
 
   const loadVIPData = useCallback(async () => {
     try {
@@ -401,8 +409,7 @@ export function VipPanel() {
                                 >
                                   <ChevronLeft className="h-3.5 w-3.5" />
                                 </button>
-                                官方渠道指 NIHPLOD
-                                在天猫国际、抖音、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。
+                                {CHANNEL_TIP_TEXT}
                               </p>
                             </m.div>
                           ) : (
@@ -423,17 +430,34 @@ export function VipPanel() {
                                   <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
                                   <p className="text-xs leading-relaxed text-stone-500">
                                     {step}
-                                    {i === 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={toggleChannelTip}
-                                        aria-label="查看官方渠道说明"
-                                        aria-expanded={showChannelTip}
-                                        className="ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors hover:text-[#00263e]"
-                                      >
-                                        <CircleHelp className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
+                                    {i === 0 &&
+                                      (isTouch ? (
+                                        /* 触屏：点击问号整版切换到渠道说明（带返回） */
+                                        <button
+                                          type="button"
+                                          onClick={toggleChannelTip}
+                                          aria-label="查看官方渠道说明"
+                                          aria-expanded={showChannelTip}
+                                          className="ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors hover:text-[#00263e]"
+                                        >
+                                          <CircleHelp className="h-3.5 w-3.5" />
+                                        </button>
+                                      ) : (
+                                        /* PC：悬浮问号出现气泡说明（Tooltip 走 Portal，不被裁剪） */
+                                        <Tooltip
+                                          content={CHANNEL_TIP_TEXT}
+                                          side="top"
+                                          className="max-w-[280px] whitespace-normal leading-relaxed"
+                                        >
+                                          <button
+                                            type="button"
+                                            aria-label="查看官方渠道说明"
+                                            className="ml-1 inline-flex translate-y-[2px] cursor-help text-stone-400 transition-colors hover:text-[#00263e]"
+                                          >
+                                            <CircleHelp className="h-3.5 w-3.5" />
+                                          </button>
+                                        </Tooltip>
+                                      ))}
                                   </p>
                                 </div>
                               ))}
