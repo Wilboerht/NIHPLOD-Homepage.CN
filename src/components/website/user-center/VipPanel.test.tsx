@@ -2,12 +2,12 @@
 
 /**
  * 会员中心面板测试
- * 覆盖：主视图当前等级权益（PC 两列 / 窄屏单列，标题与说明常显、卡片内滚动）、
+ * 覆盖：主视图当前等级权益（单列，标题与说明常显、卡片内滚动）、
  * 「全部等级」进入四档对比页、对比页状态（当前/已解锁/未解锁）与返回主视图、
  * 会员/积分数据加载。
  */
 import React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 const { mockFetchWithAuth } = vi.hoisted(() => ({ mockFetchWithAuth: vi.fn() }));
@@ -44,20 +44,6 @@ import { VipPanel } from "@/components/website/user-center/VipPanel";
 
 function jsonResponse(body: unknown) {
   return { status: 200, json: async () => body } as unknown as Response;
-}
-
-/** 覆写 matchMedia：配合 useMediaQuery（max-width: 1023px）的 PC / 窄屏分支 */
-function stubMatchMedia(narrow: boolean) {
-  window.matchMedia = ((query: string) => ({
-    matches: query === "(max-width: 1023px)" ? narrow : false,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })) as unknown as typeof window.matchMedia;
 }
 
 const VIP_DATA = {
@@ -102,7 +88,6 @@ const VIP_DATA = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  stubMatchMedia(false);
   mockFetchWithAuth.mockImplementation((url: string) => {
     if (url === "/api/user/vip") {
       return Promise.resolve(jsonResponse({ success: true, data: VIP_DATA }));
@@ -114,12 +99,8 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
-  stubMatchMedia(false);
-});
-
 describe("VipPanel", () => {
-  it("PC 主视图展示当前等级权益（标题 + 说明常显、卡片内滚动）与「全部等级」入口", async () => {
+  it("主视图展示当前等级权益（标题 + 说明常显、卡片内滚动）与「全部等级」入口", async () => {
     render(<VipPanel />);
 
     expect(await screen.findByText("档案永久保留")).toBeInTheDocument();
@@ -136,14 +117,6 @@ describe("VipPanel", () => {
     expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/points");
     // 主视图不再平铺四档等级卡
     expect(screen.queryByText("等级权益对比")).not.toBeInTheDocument();
-  });
-
-  it("窄屏主视图单列展示权益并常显说明", async () => {
-    stubMatchMedia(true);
-    render(<VipPanel />);
-
-    expect(await screen.findByText("档案永久保留")).toBeInTheDocument();
-    expect(screen.getByText("肌肤档案终身保留")).toBeInTheDocument();
   });
 
   it("点击「全部等级」进入四档对比页，展示各档权益与状态徽标", async () => {

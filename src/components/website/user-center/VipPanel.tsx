@@ -6,7 +6,7 @@
  *
  * 与其它用户面板保持一致外壳（标题栏 + 滚动内容区，stone 中性配色），
  * 不渲染任何 emoji 图标。主视图为两栏排版：
- * - 左栏：当前等级会员卡 + 当前等级权益列表（PC 两列、窄屏单列，均常显标题与说明；
+ * - 左栏：当前等级会员卡 + 当前等级权益列表（单列展示，标题与说明常显；
  *   卡片拉伸与右栏底边对齐，内容超出时卡片内滚动；「全部等级」入口进入四档对比）
  * - 右栏：提升引导卡（升级进度 / 如何提升三步 / 录入消费入口）
  *   与 AI 测肤用量卡，两张独立浅底卡片
@@ -44,7 +44,6 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPanel";
 
 // 会员卡背景图（四档）：
@@ -157,8 +156,6 @@ export function VipPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
-  // 与 lg 断点对齐：窄屏保持单列并常显权益说明；PC 两列仅标题、说明悬浮提示
-  const isNarrow = useMediaQuery("(max-width: 1023px)");
 
   const loadVIPData = useCallback(async () => {
     try {
@@ -546,11 +543,7 @@ export function VipPanel() {
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div
-                    className={`scrollbar-hide min-h-0 flex-1 overflow-y-auto rounded-xl border border-stone-200/60 bg-white/40 p-5 ${
-                      isNarrow ? "space-y-3" : "grid grid-cols-2 content-start gap-x-4 gap-y-3"
-                    }`}
-                  >
+                  <div className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-stone-200/60 bg-white/40 p-5">
                     {currentLevel.benefits.map((b, i) => {
                       const BenefitIcon = benefitIcon(b.title);
                       return (
