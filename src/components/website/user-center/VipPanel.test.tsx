@@ -2,7 +2,7 @@
 
 /**
  * 会员中心面板测试
- * 覆盖：主视图当前等级权益（PC 仅标题、悬浮显示说明；窄屏常显说明）、
+ * 覆盖：主视图当前等级权益（PC 两列 / 窄屏单列，标题与说明常显、卡片内滚动）、
  * 「全部等级」进入四档对比页、对比页状态（当前/已解锁/未解锁）与返回主视图、
  * 会员/积分数据加载。
  */
@@ -119,12 +119,14 @@ afterEach(() => {
 });
 
 describe("VipPanel", () => {
-  it("PC 主视图展示当前等级权益（仅标题，悬浮显示说明）与「全部等级」入口", async () => {
+  it("PC 主视图展示当前等级权益（标题 + 说明常显、卡片内滚动）与「全部等级」入口", async () => {
     render(<VipPanel />);
 
     expect(await screen.findByText("档案永久保留")).toBeInTheDocument();
-    // PC：说明默认不直接展示
-    expect(screen.queryByText("肌肤档案终身保留")).not.toBeInTheDocument();
+    expect(screen.getByText("肌肤档案终身保留")).toBeInTheDocument();
+    // 权益卡片自身可纵向滚动（内容超出时卡片内滚动）
+    expect(screen.getByText("档案永久保留").closest(".overflow-y-auto")).not.toBeNull();
+
     expect(screen.getByRole("button", { name: /全部等级/ })).toBeInTheDocument();
     // 提升引导第三步：面包屑式流程文案
     expect(
@@ -134,10 +136,6 @@ describe("VipPanel", () => {
     expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/points");
     // 主视图不再平铺四档等级卡
     expect(screen.queryByText("等级权益对比")).not.toBeInTheDocument();
-
-    // 悬浮权益标题：Tooltip 展示说明
-    fireEvent.mouseEnter(screen.getByText("档案永久保留").closest("span")!);
-    expect(await screen.findByRole("tooltip")).toHaveTextContent("肌肤档案终身保留");
   });
 
   it("窄屏主视图单列展示权益并常显说明", async () => {
@@ -146,7 +144,6 @@ describe("VipPanel", () => {
 
     expect(await screen.findByText("档案永久保留")).toBeInTheDocument();
     expect(screen.getByText("肌肤档案终身保留")).toBeInTheDocument();
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
   it("点击「全部等级」进入四档对比页，展示各档权益与状态徽标", async () => {
