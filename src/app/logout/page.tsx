@@ -162,7 +162,9 @@ function LogoutContent() {
         method: "POST",
         headers,
         credentials: "include",
-        body: JSON.stringify({ allDevices: true }),
+        // 仅结束当前设备会话：RP-Initiated Logout 的最佳实践，避免在子站
+        // 点一次退出就把用户手机/其他电脑的主站会话全部踢掉
+        body: JSON.stringify({ allDevices: false }),
       });
 
       if (!res.ok) {
