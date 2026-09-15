@@ -44,6 +44,8 @@ const updateSchema = z.object({
       ])
     )
     .optional(),
+  // 性别：male / female；null 表示清除（保密）。不锁定，可随时自助修改
+  gender: z.enum(["male", "female"]).nullable().optional(),
 });
 
 // 用户资料缓存标签（静态标签，资料更新时统一失效）
@@ -63,6 +65,7 @@ const getCachedUserProfile = unstable_cache(
         nickname: true,
         avatar: true,
         birthday: true,
+        gender: true,
         membershipLevel: true,
         password: true,
         createdAt: true,
@@ -77,6 +80,7 @@ const getCachedUserProfile = unstable_cache(
       nickname: user.nickname,
       avatar: user.avatar,
       birthday: user.birthday?.toISOString() ?? null,
+      gender: user.gender,
       membershipLevel: user.membershipLevel,
       hasPassword: Boolean(user.password),
       createdAt: user.createdAt,
@@ -132,12 +136,12 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const { nickname, avatar, birthday } = result.data;
+    const { nickname, avatar, birthday, gender } = result.data;
 
     // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
     const previous = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true },
+      select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true, gender: true },
     });
 
     if (!previous) {
@@ -172,8 +176,10 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
           birthday: birthday === "" ? null : birthday,
           birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
         }),
+        // 性别不锁定：null 表示清除（保密）
+        ...(gender !== undefined && { gender }),
       },
-      select: { id: true, phone: true, nickname: true, avatar: true, birthday: true },
+      select: { id: true, phone: true, nickname: true, avatar: true, birthday: true, gender: true },
     });
 
     // 资料变更后失效缓存

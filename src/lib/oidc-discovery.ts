@@ -70,6 +70,8 @@ export function buildOpenIdConfiguration() {
       "phone",
       "phone_number",
       "birthday",
+      // OIDC 标准 profile claim：性别（male/female，未设置输出 null）
+      "gender",
       "membership_level",
       "total_spent",
       "points_redeem_rate",

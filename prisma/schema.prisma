@@ -226,6 +226,10 @@ model User {
   birthday             DateTime?
   birthdayLocked       Boolean   @default(false)
   lastBirthdayRewardYear Int?    // 最近一次生日积分发放的自然年（幂等，每年一次）
+  // 性别：male / female / null（未设置=保密）。会员身份属性（CRM/运营用），
+  // 可随时自助修改，不锁定（与生日不同：无利益挂钩，无套利空间）；
+  // 经 userinfo 的 profile scope 下发给子项目（如测肤站问卷的性别默认值）
+  gender               String?
 
   // 关联
   refreshTokens    RefreshToken[]

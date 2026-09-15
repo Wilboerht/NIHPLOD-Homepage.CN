@@ -152,6 +152,7 @@ export async function GET(request: NextRequest) {
         nickname: true,
         avatar: true,
         birthday: true,
+        gender: true,
         status: true,
         membershipLevel: true,
         totalSpent: true,
@@ -179,6 +180,8 @@ export async function GET(request: NextRequest) {
     if (scopes.includes("profile")) {
       response.nickname = user.nickname;
       response.avatar = user.avatar;
+      // OIDC 标准 profile claim；null = 未设置/保密（子站测肤问卷据此预填性别）
+      response.gender = user.gender ?? null;
     }
 
     if (scopes.includes("phone")) {

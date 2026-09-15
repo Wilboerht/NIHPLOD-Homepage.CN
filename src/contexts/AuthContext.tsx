@@ -21,6 +21,8 @@ interface User {
   nickname?: string;
   avatar?: string;
   birthday?: string | null;
+  /** 性别（male/female），null/未设置=保密；会员身份属性，可随时自助修改 */
+  gender?: "male" | "female" | null;
   membershipLevel?: string;
   hasPassword?: boolean;
 }

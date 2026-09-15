@@ -21,9 +21,10 @@ const phoneInputClass =
 export function ProfilePanel() {
   const { user, refreshUser, logout } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
-  const [editingField, setEditingField] = useState<"nickname" | "birthday" | null>(null);
+  const [editingField, setEditingField] = useState<"nickname" | "birthday" | "gender" | null>(null);
   const [nickname, setNickname] = useState(user?.nickname || "");
   const [birthday, setBirthday] = useState(user?.birthday?.slice(0, 10) || "");
+  const [gender, setGender] = useState<"male" | "female" | null>(user?.gender ?? null);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
@@ -95,16 +96,34 @@ export function ProfilePanel() {
     }
   };
 
+  /** 性别：点击即保存（null=保密/清除），无草稿态 */
+  const saveGender = async (value: "male" | "female" | null) => {
+    setSaving(true);
+    try {
+      await apiPut("/api/user/profile", { gender: value });
+      await refreshUser();
+      setEditingField(null);
+      showSuccess("性别已更新");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "保存失败，请稍后重试";
+      showError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const cancelEdit = () => {
     setEditingField(null);
     setNickname(user?.nickname || "");
     setBirthday(user?.birthday?.slice(0, 10) || "");
+    setGender(user?.gender ?? null);
   };
 
   /** 进入编辑态前从最新用户资料同步草稿，避免上次未保存的残留值串场 */
-  const startEdit = (field: "nickname" | "birthday") => {
+  const startEdit = (field: "nickname" | "birthday" | "gender") => {
     setNickname(user?.nickname || "");
     setBirthday(user?.birthday?.slice(0, 10) || "");
+    setGender(user?.gender ?? null);
     setEditingField(field);
   };
 
@@ -467,6 +486,84 @@ export function ProfilePanel() {
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
+
+          {/* 性别：可选，会员身份属性（运营/个性化用），测肤问卷据此预填减少一步 */}
+          <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
+            <div className="flex items-center justify-between py-6">
+              <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
+                <div className="shrink-0 md:w-20">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
+                    性别
+                  </p>
+                </div>
+                <div className="flex w-full min-w-0 flex-1 items-center gap-2">
+                  <p className="truncate text-base font-medium text-stone-800 md:text-sm">
+                    {user.gender === "male" ? "男" : user.gender === "female" ? "女" : "未设置"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  onClick={() => startEdit("gender")}
+                  aria-expanded={editingField === "gender"}
+                  className="group flex items-center gap-1.5 text-xs font-light text-stone-500 transition-colors hover:text-stone-800"
+                >
+                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                    {user.gender ? "修改" : "设置"}
+                  </span>
+                  <ChevronRight
+                    className={`h-3.5 w-3.5 text-stone-300 transition-transform duration-200 md:hidden ${
+                      editingField === "gender" ? "rotate-90" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {editingField === "gender" && (
+              <div className="max-w-md border-t border-stone-200/60 pb-6 pt-5">
+                <p className="mb-3 text-xs text-stone-400">
+                  用于会员服务与个性化推荐；设置后测肤问卷无需再重复选择。可随时修改或设为保密。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: "male", label: "男" },
+                      { value: "female", label: "女" },
+                      { value: null, label: "保密" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      disabled={saving}
+                      onClick={() => {
+                        setGender(opt.value);
+                        void saveGender(opt.value);
+                      }}
+                      className={`rounded-full border px-5 py-2 text-sm transition-colors disabled:opacity-50 ${
+                        gender === opt.value
+                          ? "border-[#00263e] bg-[#00263e] text-white"
+                          : "border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-800"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    disabled={saving}
+                    className="rounded-full px-3 py-2 text-xs font-light text-stone-500 transition-colors hover:text-stone-800 disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
