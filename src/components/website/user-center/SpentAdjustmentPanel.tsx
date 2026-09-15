@@ -274,15 +274,15 @@ export function SpentAdjustmentPanel({
                         onClick={() => setChannel(c)}
                         className={`relative inline-flex items-center rounded-full border px-3 py-1.5 text-xs transition-colors ${
                           selected
-                            ? "border-[#00263e] text-white"
+                            ? "border-[#00263e]/40 font-medium text-[#00263e]"
                             : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
                         }`}
                       >
-                        {/* 选中底色：layoutId 弹簧动画在渠道间平滑滑动 */}
+                        {/* 选中底色：淡品牌色 + layoutId 弹簧滑动，避免实心色块过重 */}
                         {selected && (
                           <m.span
                             layoutId="spent-channel-pill"
-                            className="absolute inset-0 rounded-full bg-[#00263e]"
+                            className="absolute inset-0 rounded-full bg-[#00263e]/10"
                             transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                           />
                         )}
