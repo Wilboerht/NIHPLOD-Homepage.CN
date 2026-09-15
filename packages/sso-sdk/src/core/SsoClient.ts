@@ -65,6 +65,14 @@ export interface SsoClientConfig {
 
   /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
   postLogoutRedirectUri?: string;
+
+  /**
+   * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+   * 仅用于 discovery / token / userinfo / revocation 等服务器间请求；
+   * 浏览器跳转（authorize、end-session）始终使用 ssoBaseUrl 公网地址。
+   * 仅在 BFF/服务端场景配置；浏览器端（Public Client）不要配置。
+   */
+  serverBaseUrl?: string;
 }
 
 /** 用户信息 */
@@ -115,6 +123,8 @@ export interface OidcDiscovery {
 
 export class SsoClient {
   public readonly config: SsoClientConfig;
+  /** 服务器间调用的基准地址（未配置 serverBaseUrl 时等于 ssoBaseUrl） */
+  private readonly _serverBase: string;
   private _discovery: OidcDiscovery | null = null;
   private _discoveryFetchedAt: number = 0;
   private _refreshLock: Promise<TokenData> | null = null;
@@ -133,6 +143,7 @@ export class SsoClient {
     // 规范化 ssoBaseUrl：移除末尾斜杠
     const base = config.ssoBaseUrl.replace(/\/+$/, "");
     this.config = { ...config, ssoBaseUrl: base };
+    this._serverBase = (config.serverBaseUrl ?? base).replace(/\/+$/, "");
   }
 
   // ============================================
@@ -156,7 +167,9 @@ export class SsoClient {
       return this._discovery;
     }
 
-    const url = `${this.config.ssoBaseUrl}/api/oauth/.well-known/openid-configuration`;
+    // discovery 是服务器间调用：配置了 serverBaseUrl 时经内网拉取
+    // （文档内容由 SSO 中心按公网 origin 生成，与拉取通道无关）
+    const url = `${this._serverBase}/api/oauth/.well-known/openid-configuration`;
 
     try {
       const controller = new AbortController();
@@ -194,15 +207,17 @@ export class SsoClient {
     return `${this.config.ssoBaseUrl}/api/oauth/authorize`;
   }
 
-  /** 获取 token 端点 URL（优先 Discovery，回退默认） */
+  /** 获取 token 端点 URL（服务器间调用：serverBaseUrl 直连优先，其次 Discovery，回退默认） */
   private async _getTokenEndpoint(): Promise<string> {
+    if (this.config.serverBaseUrl) return `${this._serverBase}/api/oauth/token`;
     const d = await this._getDiscovery();
     if (d) return d.token_endpoint;
     return `${this.config.ssoBaseUrl}/api/oauth/token`;
   }
 
-  /** 获取 userinfo 端点 URL（优先 Discovery，回退默认） */
+  /** 获取 userinfo 端点 URL（服务器间调用：serverBaseUrl 直连优先，其次 Discovery，回退默认） */
   private async _getUserinfoEndpoint(): Promise<string> {
+    if (this.config.serverBaseUrl) return `${this._serverBase}/api/oauth/userinfo`;
     const d = await this._getDiscovery();
     if (d) return d.userinfo_endpoint;
     return `${this.config.ssoBaseUrl}/api/oauth/userinfo`;
@@ -778,10 +793,13 @@ export class SsoClient {
     // 仅 Confidential Client 携带 client_secret；Public Client 不传 secret。
     if (refreshToken && this.config.clientId) {
       try {
-        const discovery = await this._getDiscovery();
-        const revokeUrl =
-          discovery?.revocation_endpoint ||
-          `${this.config.ssoBaseUrl}/api/oauth/revoke`;
+        // serverBaseUrl 配置时直连内网默认端点（discovery 文档内是公网 URL，
+        // 会绕行公网）；否则用 Discovery，兜底公网默认路径
+        const discovery = this.config.serverBaseUrl ? null : await this._getDiscovery();
+        const revokeUrl = this.config.serverBaseUrl
+          ? `${this._serverBase}/api/oauth/revoke`
+          : discovery?.revocation_endpoint ||
+            `${this.config.ssoBaseUrl}/api/oauth/revoke`;
         const revokeBody = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",

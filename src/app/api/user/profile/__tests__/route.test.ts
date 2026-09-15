@@ -47,7 +47,10 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
+import { revalidateTag } from "next/cache";
 import { PUT } from "@/app/api/user/profile/route";
+
+const mockRevalidateTag = revalidateTag as ReturnType<typeof vi.fn>;
 
 function putRequest(body: unknown) {
   return new NextRequest(new URL("/api/user/profile", "http://localhost:3000"), {
@@ -170,6 +173,49 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
     const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     const res = await PUT(putRequest({ birthday: future }));
+
+    expect(res.status).toBe(400);
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("PUT /api/user/profile - 性别保存与缓存失效", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+  });
+
+  it("设置性别：落库并立即失效 profile 缓存（expire: 0，保证写后读）", async () => {
+    mockUserFindUnique.mockResolvedValue({ ...OLD_USER, gender: null });
+    mockUserUpdate.mockResolvedValue({ ...NEW_USER, gender: "male" });
+
+    const res = await PUT(putRequest({ gender: "male" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.user.gender).toBe("male");
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ gender: "male" }) })
+    );
+    // "max" 会让紧随其后的 GET 仍返回旧资料（stale-while-revalidate），必须用 expire: 0
+    expect(mockRevalidateTag).toHaveBeenCalledWith("user-profile", { expire: 0 });
+  });
+
+  it("清除性别（保密）：写入 null 并失效缓存", async () => {
+    mockUserFindUnique.mockResolvedValue({ ...OLD_USER, gender: "female" });
+    mockUserUpdate.mockResolvedValue({ ...NEW_USER, gender: null });
+
+    const res = await PUT(putRequest({ gender: null }));
+
+    expect(res.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ gender: null }) })
+    );
+    expect(mockRevalidateTag).toHaveBeenCalledWith("user-profile", { expire: 0 });
+  });
+
+  it("非法性别值返回 400", async () => {
+    const res = await PUT(putRequest({ gender: "other" }));
 
     expect(res.status).toBe(400);
     expect(mockUserUpdate).not.toHaveBeenCalled();

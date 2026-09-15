@@ -202,6 +202,7 @@ function createSsoMiddleware(config) {
   const returnUrlCookieName = insecureLocalDev ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME) : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
   const verifierCookieName = insecureLocalDev ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME) : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
   if (process.env.NODE_ENV !== "production") {
     if (!validateSsoCookie) {
       console.warn(
@@ -231,7 +232,7 @@ function createSsoMiddleware(config) {
       if (validateSsoCookie) {
         const tokenActive = await introspectAccessToken(
           ssoSession.value,
-          normalizedBase,
+          normalizedServerBase,
           clientId,
           clientSecret
         );
@@ -246,7 +247,7 @@ function createSsoMiddleware(config) {
     if (accessTokenCookie?.value) {
       const tokenActive = await introspectAccessToken(
         accessTokenCookie.value,
-        normalizedBase,
+        normalizedServerBase,
         clientId,
         clientSecret
       );
@@ -540,6 +541,7 @@ function createCallbackRouteHandler(config) {
   const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
   return async function GET(request) {
     const { searchParams } = request.nextUrl;
     const error = searchParams.get("error");
@@ -590,7 +592,7 @@ function createCallbackRouteHandler(config) {
         { status: 400 }
       );
     }
-    const tokenEndpoint = `${normalizedBase}/api/oauth/token`;
+    const tokenEndpoint = `${normalizedServerBase}/api/oauth/token`;
     const body = new URLSearchParams();
     body.set("grant_type", "authorization_code");
     body.set("code", code);
@@ -714,22 +716,42 @@ function createCallbackRouteHandler(config) {
 
 // src/next/logout.ts
 var import_server3 = require("next/server");
-async function fetchDiscovery(ssoBaseUrl) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5e3);
-  try {
-    const res = await fetch(
-      `${ssoBaseUrl}/api/oauth/.well-known/openid-configuration`,
-      { signal: controller.signal }
-    );
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
+
+// src/core/discovery.ts
+var DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1e3;
+var FETCH_TIMEOUT_MS = 5e3;
+var cache = /* @__PURE__ */ new Map();
+var inflight = /* @__PURE__ */ new Map();
+function fetchDiscoveryCached(baseUrl) {
+  const hit = cache.get(baseUrl);
+  if (hit && hit.expiresAt > Date.now()) {
+    return Promise.resolve(hit.doc);
   }
+  const existing = inflight.get(baseUrl);
+  if (existing) return existing;
+  const promise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`, {
+        signal: controller.signal
+      });
+      if (!res.ok) return null;
+      const doc = await res.json();
+      cache.set(baseUrl, { doc, expiresAt: Date.now() + DISCOVERY_CACHE_TTL_MS });
+      return doc;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+      inflight.delete(baseUrl);
+    }
+  })();
+  inflight.set(baseUrl, promise);
+  return promise;
 }
+
+// src/next/logout.ts
 function generateRandomString2(length) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const maxValid = Math.floor(256 / chars.length) * chars.length;
@@ -766,6 +788,7 @@ function createLogoutRouteHandler(config) {
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
   const callbackOrigin = new URL(redirectUri).origin;
   return async function handler(request) {
     const returnedState = request.nextUrl.searchParams.get("state");
@@ -785,8 +808,8 @@ function createLogoutRouteHandler(config) {
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
     if (refreshToken) {
       try {
-        const discovery = await fetchDiscovery(normalizedBase);
-        const revokeUrl = discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
+        const discovery = config.serverBaseUrl ? null : await fetchDiscoveryCached(normalizedServerBase);
+        const revokeUrl = config.serverBaseUrl ? `${normalizedServerBase}/api/oauth/revoke` : discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
         const body = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -798,7 +821,8 @@ function createLogoutRouteHandler(config) {
         await fetch(revokeUrl, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString()
+          body: body.toString(),
+          signal: AbortSignal.timeout(3e3)
         });
       } catch {
       }
@@ -814,7 +838,7 @@ function createLogoutRouteHandler(config) {
       return res;
     };
     if (redirectToSso) {
-      const discovery = await fetchDiscovery(normalizedBase);
+      const discovery = await fetchDiscoveryCached(normalizedServerBase);
       const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", clientId);

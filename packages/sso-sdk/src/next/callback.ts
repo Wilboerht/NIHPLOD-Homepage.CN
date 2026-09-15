@@ -88,6 +88,12 @@ export interface CallbackRouteConfig {
    * 强制忽略并告警。
    */
   insecureLocalDev?: boolean;
+
+  /**
+   * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+   * 仅用于 token 交换等服务器间请求；浏览器跳转仍使用 ssoBaseUrl 公网地址。
+   */
+  serverBaseUrl?: string;
 }
 
 // ============================================
@@ -127,6 +133,8 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  // 服务器间调用（token 交换）的基准地址：配置了内网地址时走内网
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
 
   return async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
@@ -187,8 +195,8 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       );
     }
 
-    // 交换 token
-    const tokenEndpoint = `${normalizedBase}/api/oauth/token`;
+    // 交换 token（服务器间调用：配置了 serverBaseUrl 时走内网直连）
+    const tokenEndpoint = `${normalizedServerBase}/api/oauth/token`;
     const body = new URLSearchParams();
     body.set("grant_type", "authorization_code");
     body.set("code", code);

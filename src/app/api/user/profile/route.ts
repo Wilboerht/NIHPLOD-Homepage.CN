@@ -185,8 +185,9 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       select: { id: true, phone: true, nickname: true, avatar: true, birthday: true, gender: true },
     });
 
-    // 资料变更后失效缓存
-    revalidateTag(USER_PROFILE_TAG, "max");
+    // 资料变更后立即失效缓存：{ expire: 0 } 表示下一次请求阻塞重取（不返回陈旧数据），
+    // 保证前端保存后紧跟的 refreshUser 能读到新值（"max" 会先把旧资料再服务一次）
+    revalidateTag(USER_PROFILE_TAG, { expire: 0 });
 
     // 昵称/头像/生日有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
     // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）
@@ -298,8 +299,8 @@ export async function POST(request: NextRequest) {
       data: { avatar: result.url },
     });
 
-    // 头像变更后失效缓存
-    revalidateTag(USER_PROFILE_TAG, "max");
+    // 头像变更后立即失效缓存（{ expire: 0 }：下一次请求阻塞重取，不返回陈旧数据）
+    revalidateTag(USER_PROFILE_TAG, { expire: 0 });
 
     return NextResponse.json({
       success: true,

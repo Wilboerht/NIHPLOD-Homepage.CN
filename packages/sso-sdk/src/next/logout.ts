@@ -25,6 +25,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { fetchDiscoveryCached } from "../core/discovery";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
@@ -90,6 +91,14 @@ export interface LogoutRouteConfig {
   logoutStateCookieName?: string;
 
   /**
+   * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+   * 仅用于 discovery / revocation 等服务器间请求；浏览器跳转
+   * （end-session 等）始终使用 ssoBaseUrl 公网地址。
+   * 适用于子站与 SSO 中心同机/同内网部署：避免经公网代理回源的延迟。
+   */
+  serverBaseUrl?: string;
+
+  /**
    * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
    * __Host-/__Secure- 前缀；必须与 middleware / callback 的配置保持一致，
    * 否则无法清除它们写入的 Cookie。生产严禁启用——生产环境
@@ -98,33 +107,9 @@ export interface LogoutRouteConfig {
   insecureLocalDev?: boolean;
 }
 
-interface OidcDiscovery {
-  issuer: string;
-  end_session_endpoint?: string;
-  revocation_endpoint?: string;
-  [key: string]: unknown;
-}
-
 // ============================================
 // 工具函数
 // ============================================
-
-async function fetchDiscovery(ssoBaseUrl: string): Promise<OidcDiscovery | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch(
-      `${ssoBaseUrl}/api/oauth/.well-known/openid-configuration`,
-      { signal: controller.signal }
-    );
-    if (!res.ok) return null;
-    return (await res.json()) as OidcDiscovery;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
 
 /** 生成安全随机字符串（用于 logout state，Node/Edge Runtime 均支持 Web Crypto） */
 function generateRandomString(length: number): string {
@@ -175,6 +160,9 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
   const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  // 服务器间调用（discovery/revoke）的基准地址：配置了内网地址时走内网，
+  // 避免经公网代理回源的延迟；浏览器跳转仍用 normalizedBase（公网）
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
 
   // 本地跳转的 origin：取 redirectUri 的 origin 而非 request.nextUrl.origin——
   // standalone 部署下后者是进程监听地址（如 http://0.0.0.0:3002），反代场景不可靠。
@@ -213,9 +201,14 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     // 1. best-effort 撤销服务端 refresh_token
     if (refreshToken) {
       try {
-        const discovery = await fetchDiscovery(normalizedBase);
-        const revokeUrl =
-          discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
+        // 配置了内网地址时直连默认端点（跳过 discovery 的公网端点，
+        // 否则文档里的公网 URL 会让调用仍绕行公网）；否则用缓存的 discovery
+        const discovery = config.serverBaseUrl
+          ? null
+          : await fetchDiscoveryCached(normalizedServerBase);
+        const revokeUrl = config.serverBaseUrl
+          ? `${normalizedServerBase}/api/oauth/revoke`
+          : discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
         const body = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -224,10 +217,12 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
         if (clientSecret) {
           body.set("client_secret", clientSecret);
         }
+        // 3s 超时兜底：撤销是 best-effort，主站缓慢时不得拖住登出流程
         await fetch(revokeUrl, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: body.toString(),
+          signal: AbortSignal.timeout(3000),
         });
       } catch {
         // 撤销失败不影响本地登出
@@ -248,7 +243,9 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
 
     // 3. 若需要 RP-Initiated Logout，重定向到 SSO 中心，同时必须清除本地 Cookie
     if (redirectToSso) {
-      const discovery = await fetchDiscovery(normalizedBase);
+      // discovery 经内网地址拉取（若配置），但文档内端点是 SSO 中心按公网 origin
+      // 生成的，可直接用于浏览器跳转；兜底也用公网 base，不得使用内网地址
+      const discovery = await fetchDiscoveryCached(normalizedServerBase);
       const endSessionEndpoint =
         discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);

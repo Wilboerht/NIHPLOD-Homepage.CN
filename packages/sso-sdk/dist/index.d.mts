@@ -110,6 +110,13 @@ interface SsoClientConfig {
     scopes?: string;
     /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
     postLogoutRedirectUri?: string;
+    /**
+     * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+     * 仅用于 discovery / token / userinfo / revocation 等服务器间请求；
+     * 浏览器跳转（authorize、end-session）始终使用 ssoBaseUrl 公网地址。
+     * 仅在 BFF/服务端场景配置；浏览器端（Public Client）不要配置。
+     */
+    serverBaseUrl?: string;
 }
 /** 用户信息 */
 interface SsoUser {
@@ -152,6 +159,8 @@ interface OidcDiscovery {
 }
 declare class SsoClient {
     readonly config: SsoClientConfig;
+    /** 服务器间调用的基准地址（未配置 serverBaseUrl 时等于 ssoBaseUrl） */
+    private readonly _serverBase;
     private _discovery;
     private _discoveryFetchedAt;
     private _refreshLock;
@@ -169,9 +178,9 @@ declare class SsoClient {
     private _getDiscovery;
     /** 获取 authorize 端点 URL（优先 Discovery，回退默认） */
     private _getAuthorizeEndpoint;
-    /** 获取 token 端点 URL（优先 Discovery，回退默认） */
+    /** 获取 token 端点 URL（服务器间调用：serverBaseUrl 直连优先，其次 Discovery，回退默认） */
     private _getTokenEndpoint;
-    /** 获取 userinfo 端点 URL（优先 Discovery，回退默认） */
+    /** 获取 userinfo 端点 URL（服务器间调用：serverBaseUrl 直连优先，其次 Discovery，回退默认） */
     private _getUserinfoEndpoint;
     /**
      * 开放重定向防护：仅保存相对路径或与当前页面同源的 returnUrl，

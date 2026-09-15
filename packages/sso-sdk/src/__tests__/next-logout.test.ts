@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { createLogoutRouteHandler } from "../next/logout";
+import { clearDiscoveryCache } from "../core/discovery";
 
 const config = {
   clientId: "test-client",
@@ -43,6 +44,8 @@ function buildRequest(
 describe("createLogoutRouteHandler", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // discovery 有模块级缓存：用例间必须隔离，否则前一个用例的缓存会影响后一个
+    clearDiscoveryCache();
   });
 
   afterEach(() => {
@@ -192,5 +195,64 @@ describe("createLogoutRouteHandler", () => {
     const res = await handler(buildRequest());
     expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
     expect(res.cookies.get("nihplod_sso_at")).toBeUndefined();
+  });
+
+  it("serverBaseUrl 配置时：discovery/revoke 走内网，end-session 跳转仍走公网", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/.well-known/openid-configuration")) {
+          return jsonResponse({
+            end_session_endpoint: "https://nihplod.cn/api/oauth/end-session",
+            revocation_endpoint: "https://nihplod.cn/api/oauth/revoke",
+          });
+        }
+        if (url.includes("/api/oauth/revoke")) return jsonResponse({});
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+
+    const handler = createLogoutRouteHandler({
+      ...config,
+      serverBaseUrl: "http://127.0.0.1:3000",
+    });
+    const res = await handler(
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" })
+    );
+
+    // 配置内网地址时 revoke 直连内网默认端点（不使用 discovery 里的公网 URL）
+    const revokeCall = fetchSpy.mock.calls.find(([input]) =>
+      String(input).includes("/api/oauth/revoke")
+    );
+    expect(revokeCall).toBeTruthy();
+    expect(String(revokeCall![0])).toBe("http://127.0.0.1:3000/api/oauth/revoke");
+
+    // end-session 是浏览器跳转目标：必须使用公网地址
+    const location = new URL(res.headers.get("location")!);
+    expect(location.origin).toBe("https://nihplod.cn");
+  });
+
+  it("discovery 缓存：连续两次登出只拉取一次 discovery", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/.well-known/openid-configuration")) {
+          return jsonResponse({
+            end_session_endpoint: "https://nihplod.cn/api/oauth/end-session",
+          });
+        }
+        if (url.includes("/api/oauth/revoke")) return jsonResponse({});
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+
+    const handler = createLogoutRouteHandler(config);
+    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }));
+    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-2" }));
+
+    const discoveryCalls = fetchSpy.mock.calls.filter(([input]) =>
+      String(input).includes("/.well-known/openid-configuration")
+    );
+    expect(discoveryCalls.length).toBe(1);
   });
 });

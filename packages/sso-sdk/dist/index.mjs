@@ -487,6 +487,7 @@ var _SsoClient = class _SsoClient {
     if (!config.ssoBaseUrl) throw new SsoError("invalid_config", "ssoBaseUrl \u4E0D\u80FD\u4E3A\u7A7A");
     const base = config.ssoBaseUrl.replace(/\/+$/, "");
     this.config = { ...config, ssoBaseUrl: base };
+    this._serverBase = (config.serverBaseUrl ?? base).replace(/\/+$/, "");
   }
   // ============================================
   // 内部方法
@@ -502,7 +503,7 @@ var _SsoClient = class _SsoClient {
     if (this._discovery && now - this._discoveryFetchedAt < _SsoClient.DISCOVERY_TTL_MS) {
       return this._discovery;
     }
-    const url = `${this.config.ssoBaseUrl}/api/oauth/.well-known/openid-configuration`;
+    const url = `${this._serverBase}/api/oauth/.well-known/openid-configuration`;
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(
@@ -533,14 +534,16 @@ var _SsoClient = class _SsoClient {
     if (d) return d.authorization_endpoint;
     return `${this.config.ssoBaseUrl}/api/oauth/authorize`;
   }
-  /** 获取 token 端点 URL（优先 Discovery，回退默认） */
+  /** 获取 token 端点 URL（服务器间调用：serverBaseUrl 直连优先，其次 Discovery，回退默认） */
   async _getTokenEndpoint() {
+    if (this.config.serverBaseUrl) return `${this._serverBase}/api/oauth/token`;
     const d = await this._getDiscovery();
     if (d) return d.token_endpoint;
     return `${this.config.ssoBaseUrl}/api/oauth/token`;
   }
-  /** 获取 userinfo 端点 URL（优先 Discovery，回退默认） */
+  /** 获取 userinfo 端点 URL（服务器间调用：serverBaseUrl 直连优先，其次 Discovery，回退默认） */
   async _getUserinfoEndpoint() {
+    if (this.config.serverBaseUrl) return `${this._serverBase}/api/oauth/userinfo`;
     const d = await this._getDiscovery();
     if (d) return d.userinfo_endpoint;
     return `${this.config.ssoBaseUrl}/api/oauth/userinfo`;
@@ -1017,8 +1020,8 @@ var _SsoClient = class _SsoClient {
     clearAllSsoData(this.config.clientId);
     if (refreshToken && this.config.clientId) {
       try {
-        const discovery = await this._getDiscovery();
-        const revokeUrl = discovery?.revocation_endpoint || `${this.config.ssoBaseUrl}/api/oauth/revoke`;
+        const discovery = this.config.serverBaseUrl ? null : await this._getDiscovery();
+        const revokeUrl = this.config.serverBaseUrl ? `${this._serverBase}/api/oauth/revoke` : discovery?.revocation_endpoint || `${this.config.ssoBaseUrl}/api/oauth/revoke`;
         const revokeBody = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",

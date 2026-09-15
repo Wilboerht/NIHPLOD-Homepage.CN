@@ -73,6 +73,12 @@ interface SsoMiddlewareConfig {
      * middleware / callback / logout 三处配置需保持一致。
      */
     insecureLocalDev?: boolean;
+    /**
+     * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+     * 仅用于 introspect 等服务器间请求；浏览器跳转（authorize）仍使用
+     * ssoBaseUrl 公网地址。适用于子站与 SSO 中心同机/同内网部署。
+     */
+    serverBaseUrl?: string;
 }
 declare function createSsoMiddleware(config: SsoMiddlewareConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
@@ -135,6 +141,11 @@ interface CallbackRouteConfig {
      * 强制忽略并告警。
      */
     insecureLocalDev?: boolean;
+    /**
+     * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+     * 仅用于 token 交换等服务器间请求；浏览器跳转仍使用 ssoBaseUrl 公网地址。
+     */
+    serverBaseUrl?: string;
 }
 declare function createCallbackRouteHandler(config: CallbackRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
@@ -196,6 +207,13 @@ interface LogoutRouteConfig {
     callbackPath?: string;
     /** Logout State Cookie 名称（RP-Initiated Logout CSRF 防护），默认 __Host-nihplod_sso_logout_state */
     logoutStateCookieName?: string;
+    /**
+     * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+     * 仅用于 discovery / revocation 等服务器间请求；浏览器跳转
+     * （end-session 等）始终使用 ssoBaseUrl 公网地址。
+     * 适用于子站与 SSO 中心同机/同内网部署：避免经公网代理回源的延迟。
+     */
+    serverBaseUrl?: string;
     /**
      * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
      * __Host-/__Secure- 前缀；必须与 middleware / callback 的配置保持一致，

@@ -100,6 +100,13 @@ export interface SsoMiddlewareConfig {
    * middleware / callback / logout 三处配置需保持一致。
    */
   insecureLocalDev?: boolean;
+
+  /**
+   * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+   * 仅用于 introspect 等服务器间请求；浏览器跳转（authorize）仍使用
+   * ssoBaseUrl 公网地址。适用于子站与 SSO 中心同机/同内网部署。
+   */
+  serverBaseUrl?: string;
 }
 
 // ============================================
@@ -292,6 +299,9 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
 
   // 规范化 ssoBaseUrl
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  // 服务器间调用（introspect）的基准地址：配置了内网地址时走内网；
+  // authorize 等浏览器跳转仍用 normalizedBase（公网）
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
 
   if (process.env.NODE_ENV !== "production") {
     if (!validateSsoCookie) {
@@ -338,7 +348,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
       if (validateSsoCookie) {
         const tokenActive = await introspectAccessToken(
           ssoSession.value,
-          normalizedBase,
+          normalizedServerBase,
           clientId,
           clientSecret
         );
@@ -358,7 +368,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
       // Confidential Client 携带 clientSecret；Public Client 仅传 clientId。
       const tokenActive = await introspectAccessToken(
         accessTokenCookie.value,
-        normalizedBase,
+        normalizedServerBase,
         clientId,
         clientSecret
       );

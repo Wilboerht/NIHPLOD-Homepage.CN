@@ -221,10 +221,12 @@ export async function applyExternalSpentSync(params: {
 /**
  * 失效 profile 缓存，确保 AuthContext 拉取最新等级。
  * 消费额/等级变动的所有入口（外部同步等）都应调用。
+ * 用 { expire: 0 } 而非 "max"：缓存失效后的第一次请求必须阻塞重取，
+ * 否则紧随其后的 refreshUser 会拿到旧资料（stale-while-revalidate）。
  */
 export function invalidateProfileCache(): void {
   try {
-    revalidateTag("user-profile", "max");
+    revalidateTag("user-profile", { expire: 0 });
   } catch {
     // revalidateTag 在非请求上下文中可能失败（如 standalone 模式），忽略
   }
