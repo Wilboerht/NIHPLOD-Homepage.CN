@@ -289,8 +289,9 @@ export function VipPanel() {
               transition={{ duration: 0.2 }}
             >
               {/* 两栏排版：左栏会员卡 + 会员权益，右栏提升引导卡（纵跨两行，含 AI 测肤）。
+                  行高 auto/1fr：右栏富余高度全部落在第二行，权益紧贴会员卡下方（不被均匀撑开居中）。
                   移动端按 会员卡 → 提升引导 → 会员权益 顺序堆叠。 */}
-              <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+              <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:grid-rows-[auto_1fr] lg:items-start">
                 {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，背景图按卡面铺满） */}
                 <div
                   className={`relative flex aspect-[1.586/1] w-full flex-col overflow-hidden rounded-xl border lg:col-start-1 lg:row-start-1 ${tierStyle.card}`}
