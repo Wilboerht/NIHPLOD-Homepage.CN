@@ -26,12 +26,15 @@ const updateSchema = z.object({
     ])
     .optional(),
   // 生日：空字符串/null 表示清除；不得晚于今天、不早于 100 年前。
-  // null 前置归一为 ""：z.coerce.date() 会把 null 转成 1970-01-01（new Date(null)），
+  // null 归一为 ""：z.coerce.date() 会把 null 转成 1970-01-01（new Date(null)），
   // 若不归一，客户端误传 null 会把生日静默写成 1970。
-  birthday: z
-    .preprocess(
-      (v) => (v === null || v === undefined ? "" : v),
-      z.union([
+  // undefined 必须原样放行（可选字段未提交时不参与更新）：preprocess 会在
+  // optional 判定之前执行，若把 undefined 也归一为 ""，gender-only 等
+  // 部分更新请求会被误判为"清除生日"，触发下方的生日锁定 403。
+  birthday: z.preprocess(
+    (v) => (v === null ? "" : v),
+    z
+      .union([
         z
           .coerce.date()
           .refine((d) => !Number.isNaN(d.getTime()), "无效的生日日期")
@@ -42,8 +45,8 @@ const updateSchema = z.object({
           ),
         z.literal(""),
       ])
-    )
-    .optional(),
+      .optional()
+  ),
   // 性别：male / female；null 表示清除（保密）。不锁定，可随时自助修改
   gender: z.enum(["male", "female"]).nullable().optional(),
 });

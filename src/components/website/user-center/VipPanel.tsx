@@ -285,8 +285,9 @@ export function VipPanel() {
               transition={{ duration: 0.2 }}
             >
               {/* 两栏排版：左栏会员卡 + 会员权益，右栏提升引导卡（纵跨两行，含 AI 测肤）。
-                  行高 auto/1fr：右栏富余高度全部落在第二行；权益卡再纵向拉伸占满第二行，
-                  底边与右栏（AI 测肤卡）底部对齐。移动端按 会员卡 → 提升引导 → 会员权益 顺序堆叠。 */}
+                  PC：行高 auto/1fr 由右栏决定总高；权益区 contain:size 使内容不参与行高计算，
+                  只占满会员卡以下剩余高度并在超出时卡片内滚动，底边与右栏（AI 测肤卡）对齐。
+                  移动端按 会员卡 → 提升引导 → 会员权益 顺序堆叠。 */}
               <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:grid-rows-[auto_1fr] lg:items-start">
                 {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，背景图按卡面铺满） */}
                 <div
@@ -527,8 +528,9 @@ export function VipPanel() {
                 </div>
 
                 {/* 会员权益 - 直接展示当前等级权益（标题 + 说明常显）；「全部等级」入口进入四档对比。
-                    PC 纵向拉伸占满第二行剩余高度（底边对齐右栏），内容超出时卡片内滚动 */}
-                <div className="flex flex-col lg:col-start-1 lg:row-start-2 lg:self-stretch">
+                    PC：contain:size 使内容不参与网格行高计算，卡片高度只由右栏决定（底边与 AI 测肤卡对齐），
+                    内容超出时卡片内滚动 */}
+                <div className="flex flex-col lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:self-stretch lg:overflow-hidden lg:[contain:size]">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <Crown className="h-[18px] w-[18px] text-[#00263e]" />
