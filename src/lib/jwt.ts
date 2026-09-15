@@ -774,15 +774,21 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
  */
 export async function verifyIdToken(
   token: string,
-  expectedAudience?: string
+  expectedAudience?: string,
+  options?: { clockToleranceSeconds?: number }
 ): Promise<IdTokenClaims | null> {
   try {
     // 基础校验项；algorithms 在各分支显式指定（公钥分支 RS256，对称密钥分支 HS256）
-    const verifyOptions: { issuer: string; audience?: string } = {
+    const verifyOptions: { issuer: string; audience?: string; clockTolerance?: number } = {
       issuer: ISSUER,
     };
     if (expectedAudience) {
       verifyOptions.audience = expectedAudience;
+    }
+    // OIDC RP-Initiated Logout：id_token_hint 仅为身份提示，规范允许其已过期，
+    // 由调用方按需放宽 exp 校验（如 logout 场景）；默认不放宽，行为不变
+    if (options?.clockToleranceSeconds) {
+      verifyOptions.clockTolerance = options.clockToleranceSeconds;
     }
 
     // 优先尝试 RS256 公钥验证（若已配置），密钥轮换期依次尝试当前与上一代公钥

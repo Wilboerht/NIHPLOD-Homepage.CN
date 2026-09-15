@@ -13,7 +13,7 @@
  */
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 function getCsrfTokenFromCookie(): string | null {
@@ -72,6 +72,10 @@ function LogoutContent() {
   const [trustCheckDone, setTrustCheckDone] = useState(false);
   // id_token_hint 验签通过但其 sub 与当前 SSO 会话用户不一致时给出提示
   const [hintMismatch, setHintMismatch] = useState(false);
+  // id_token_hint 验签通过且与当前会话身份一致：按 OIDC 最佳实践跳过确认页，
+  // 自动执行登出（用户已在子站点过"退出"，再次确认属于冗余交互）
+  const [hintVerified, setHintVerified] = useState(false);
+  const autoConfirmRef = useRef(false);
   // 会话探测：无会话时无需确认，直接回跳
   const [sessionState, setSessionState] = useState<"unknown" | "active" | "none">("unknown");
 
@@ -130,7 +134,9 @@ function LogoutContent() {
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.valid && data?.matchesSession === false) {
+        if (data?.valid && data?.matchesSession === true) {
+          setHintVerified(true);
+        } else if (data?.valid && data?.matchesSession === false) {
           setHintMismatch(true);
         }
       })
@@ -188,11 +194,40 @@ function LogoutContent() {
     }
   };
 
+  // 免确认自动登出：hint 已验证且与当前会话身份一致时，等会话探测与
+  // 回跳地址校验就绪后自动执行。仅触发一次；失败时回落到确认界面由用户手动重试。
+  // 安全性：无 hint / hint 无效 / hint 身份与会话不一致时均不进入此分支，
+  // 攻击者无法伪造与受害者会话匹配的 id_token_hint（签名有效且 sub 一致）。
+  useEffect(() => {
+    if (
+      hintVerified &&
+      sessionState === "active" &&
+      trustCheckDone &&
+      !autoConfirmRef.current
+    ) {
+      autoConfirmRef.current = true;
+      handleLogout();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hintVerified, sessionState, trustCheckDone]);
+
   // 会话探测中 / 无会话正在回跳：显示加载态而非确认框
   if (sessionState !== "active") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  // 免确认自动登出进行中：显示过渡态（出错时回落到下方确认界面）
+  if (hintVerified && !error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="flex items-center gap-3 text-gray-500">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+          <span>正在退出登录...</span>
+        </div>
       </div>
     );
   }
