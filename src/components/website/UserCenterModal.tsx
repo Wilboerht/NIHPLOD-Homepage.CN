@@ -5,9 +5,9 @@
  * 品牌风格 - 左侧菜单 + 右侧内容（桌面）；移动端全屏 + 底部 Tab 导航
  *
  * 移动端（<768px）：
- * - 底部抽屉形态：顶部留缝（calc(100dvh - 2.5rem)），两角圆角（rounded-t-[28px]），
- *   弹簧动画淡入上浮进场；遮罩毛玻璃模糊透出浮层层次；
- * - 顶部 Header 跟随抽屉顶部（不再覆盖状态栏/灵动岛，无需 safe-area-top 补偿）；
+ * - 底部抽屉形态：顶部留缝 = max(4rem, safe-area-top + 0.75rem)（≥64px，避开状态栏/灵动岛，
+ *   同时透出遮罩提示可点击关闭），两角圆角（rounded-t-[28px]），弹簧动画淡入上浮进场；
+ * - 顶部 Header 跟随抽屉顶部；
  * - 侧边栏改为底部 Tab 栏（4 个一级入口），两级导航收敛为单级；
  * - 底部保持贴边（Tab 栏 + safe-area-bottom）；
  * - 键盘弹起时 dvh 自动收缩、内容保持可滚动。
@@ -178,7 +178,16 @@ export function UserCenterModal() {
             }}
             className="relative z-10 flex w-full items-center justify-center outline-none md:h-[min(680px,calc(100dvh-3rem))] md:max-w-[1100px]"
           >
-            <div className="relative flex h-[calc(100vh-2.5rem)] w-full items-stretch overflow-hidden rounded-t-[28px] shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] supports-[height:100dvh]:h-[calc(100dvh-2.5rem)] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+            {/* 移动端顶部留缝：至少 4rem 且避开刘海/灵动岛（safe-area-top + 12px）；
+                不支持 dvh 的浏览器回退到 100vh（内联样式非法时自动退回类高度） */}
+            <div
+              className="relative flex h-[calc(100vh-4rem)] w-full items-stretch overflow-hidden rounded-t-[28px] shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]"
+              style={
+                isMobile
+                  ? { height: "calc(100dvh - max(4rem, env(safe-area-inset-top) + 0.75rem))" }
+                  : undefined
+              }
+            >
               {/* 底层基础色 */}
               <div className="absolute inset-0 z-0 bg-[#FBF8F0]" />
 
