@@ -364,7 +364,7 @@ export function SpentAdjustmentPanel({
 
             {/* 金额与日期（选填） */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
+              <div className="min-w-0">
                 <label htmlFor="spent-amount" className="mb-1 block text-xs text-stone-600">
                   消费金额 <span className="font-normal text-stone-400">（选填，以人工核实为准）</span>
                 </label>
@@ -384,17 +384,19 @@ export function SpentAdjustmentPanel({
                   />
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label htmlFor="spent-date" className="mb-1 block text-xs text-stone-600">
                   消费日期 <span className="font-normal text-stone-400">（选填）</span>
                 </label>
+                {/* date 输入框在 iOS/WKWebView 有原生最小宽度，会撑破网格列：
+                    网格项 min-w-0 + 输入框 appearance-none/min-w-0 让其遵守 w-full */}
                 <input
                   id="spent-date"
                   type="date"
                   value={purchasedAt}
                   max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setPurchasedAt(e.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors focus:border-[#00263e] md:text-sm"
+                  className="w-full min-w-0 appearance-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors focus:border-[#00263e] md:text-sm"
                 />
               </div>
             </div>
