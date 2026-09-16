@@ -335,9 +335,9 @@ export function UserCenterModal() {
 
                 {/* 右侧内容区（移动端：标题 Header + 面板 + 底部 Tab，safe-area 适配） */}
                 <div className="relative flex h-full min-w-0 flex-1 flex-col">
-                  {/* 移动端统一 Header（标题 + 关闭；导航移入底部 Tab 栏）。
+                  {/* 移动端统一 Header（把手 + 标题 + 关闭；导航在底部 Tab 栏，不重复放头像）。
                        header 是下滑关闭的手势触发区（拖拽移动整个弹窗，不阻塞内容滚动；
-                       头像/关闭按钮已 stopPropagation 排除在外，避免误拖） */}
+                       关闭按钮已 stopPropagation 排除在外，避免误拖） */}
                   {isMobile && (
                     <m.div
                       onPointerDown={(e) => {
@@ -351,28 +351,8 @@ export function UserCenterModal() {
                         <div className="h-1 w-9 rounded-full bg-stone-300/70" />
                       </div>
                       <div className="grid h-14 grid-cols-[3.5rem_1fr_3.5rem] items-center">
-                        {/* 左侧：头像（移动端补齐桌面侧边栏的身份信息），点击跳个人信息 */}
-                        <div className="flex h-full items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => setUserCenterView("profile")}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            aria-label="查看个人信息"
-                            className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/60 transition-opacity hover:opacity-80 active:opacity-70"
-                          >
-                            {user.avatar ? (
-                              <Image
-                                src={user.avatar}
-                                alt="头像"
-                                fill
-                                unoptimized
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <User className="h-4 w-4 text-stone-500" strokeWidth={1.5} />
-                            )}
-                          </button>
-                        </div>
+                        {/* 左侧留白：保证标题居中（不使用头像，避免与底部 Tab / 个人信息面板重复） */}
+                        <div aria-hidden />
                         <h2 className="truncate text-center text-[15px] font-medium tracking-wide text-stone-800">
                           {MENU_ITEMS.find((i) => i.id === userCenterView)?.label || "个人动态"}
                         </h2>
