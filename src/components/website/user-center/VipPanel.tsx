@@ -159,11 +159,39 @@ export function VipPanel() {
   const [view, setView] = useState<VipView>("main");
   const [refreshingUsage, setRefreshingUsage] = useState(false);
   const [showChannelTip, setShowChannelTip] = useState(false);
+  // 权益卡内部滚动状态：溢出且未滚到底时显示底部渐隐遮罩
+  const [benefitsScroll, setBenefitsScroll] = useState({ overflowing: false, atBottom: false });
   const scrollRef = useRef<HTMLDivElement>(null);
+  const benefitsScrollRef = useRef<HTMLDivElement>(null);
   const { error: showError } = useToast();
   const { redirectToLogin, user, refreshUser, setUserCenterView } = useAuth();
   // 触屏设备（无 hover 能力）：官方渠道说明走点击展开；PC 端改为悬浮气泡
   const isTouch = useMediaQuery("(hover: none)");
+
+  const updateBenefitsScroll = useCallback(() => {
+    const el = benefitsScrollRef.current;
+    if (!el) return;
+    const overflowing = el.scrollHeight - el.clientHeight > 1;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+    setBenefitsScroll((prev) =>
+      prev.overflowing === overflowing && prev.atBottom === atBottom
+        ? prev
+        : { overflowing, atBottom }
+    );
+  }, []);
+
+  // 尺寸变化来源：右栏高度变化 / 视口缩放 / 字体加载（ResizeObserver），数据到达后重测
+  useEffect(() => {
+    updateBenefitsScroll();
+    const measure = () => updateBenefitsScroll();
+    window.addEventListener("resize", measure);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (benefitsScrollRef.current) observer?.observe(benefitsScrollRef.current);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
+  }, [updateBenefitsScroll, vipData]);
 
   const loadVIPData = useCallback(async () => {
     try {
@@ -569,21 +597,35 @@ export function VipPanel() {
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-stone-200/60 bg-white/40 p-5">
-                    {currentLevel.benefits.map((b, i) => {
-                      const BenefitIcon = benefitIcon(b.title);
-                      return (
-                        <div key={i} className="flex items-start gap-2.5">
-                          <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
-                              {b.desc}
-                            </p>
+                  <div className="relative flex min-h-0 flex-1 flex-col">
+                    <div
+                      ref={benefitsScrollRef}
+                      onScroll={updateBenefitsScroll}
+                      className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-stone-200/60 bg-white/40 p-5"
+                    >
+                      {currentLevel.benefits.map((b, i) => {
+                        const BenefitIcon = benefitIcon(b.title);
+                        return (
+                          <div key={i} className="flex items-start gap-2.5">
+                            <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-stone-800">{b.title}</p>
+                              <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                                {b.desc}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                    {/* 内容溢出且未滚到底：底部由实到虚的渐隐遮罩（不拦截滚动） */}
+                    {benefitsScroll.overflowing && !benefitsScroll.atBottom && (
+                      <div
+                        aria-hidden
+                        data-testid="benefits-fade"
+                        className="pointer-events-none absolute inset-x-px bottom-px h-8 rounded-b-[11px] bg-gradient-to-t from-[#FBF8F0] to-transparent"
+                      />
+                    )}
                   </div>
                 </div>
               </div>

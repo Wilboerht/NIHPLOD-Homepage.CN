@@ -9,7 +9,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const { mockFetchWithAuth } = vi.hoisted(() => ({ mockFetchWithAuth: vi.fn() }));
 
@@ -138,6 +138,27 @@ describe("VipPanel", () => {
     expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/points");
     // 主视图不再平铺四档等级卡
     expect(screen.queryByText("等级权益对比")).not.toBeInTheDocument();
+  });
+
+  it("权益内容溢出时显示底部渐隐遮罩，滚到底后隐藏", async () => {
+    render(<VipPanel />);
+    const scroller = (await screen.findByText("档案永久保留")).closest(
+      ".overflow-y-auto"
+    ) as HTMLElement;
+    expect(scroller).not.toBeNull();
+
+    // jsdom 无布局：手动模拟「内容高于容器」
+    Object.defineProperty(scroller, "scrollHeight", { value: 400, configurable: true });
+    Object.defineProperty(scroller, "clientHeight", { value: 200, configurable: true });
+    Object.defineProperty(scroller, "scrollTop", { value: 0, writable: true, configurable: true });
+    fireEvent(window, new Event("resize"));
+
+    expect(await screen.findByTestId("benefits-fade")).toBeInTheDocument();
+
+    // 滚到底部：遮罩隐藏
+    scroller.scrollTop = 200;
+    fireEvent.scroll(scroller);
+    await waitFor(() => expect(screen.queryByTestId("benefits-fade")).not.toBeInTheDocument());
   });
 
   it("PC：官方渠道问号改为悬浮气泡说明", async () => {
