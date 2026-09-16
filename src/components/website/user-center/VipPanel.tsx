@@ -618,14 +618,21 @@ export function VipPanel() {
                         );
                       })}
                     </div>
-                    {/* 内容溢出且未滚到底：底部由实到虚的渐隐遮罩（不拦截滚动） */}
-                    {benefitsScroll.overflowing && !benefitsScroll.atBottom && (
-                      <div
-                        aria-hidden
-                        data-testid="benefits-fade"
-                        className="pointer-events-none absolute inset-x-px bottom-px h-8 rounded-b-[11px] bg-gradient-to-t from-[#FBF8F0] to-transparent"
-                      />
-                    )}
+                    {/* 内容溢出且未滚到底：底部由实到虚的渐隐遮罩；
+                        淡入淡出过渡（滚到底时柔和消失），pointer-events-none 不拦截滚动 */}
+                    <AnimatePresence>
+                      {benefitsScroll.overflowing && !benefitsScroll.atBottom && (
+                        <m.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          aria-hidden
+                          data-testid="benefits-fade"
+                          className="pointer-events-none absolute inset-x-px bottom-px h-8 rounded-b-[11px] bg-gradient-to-t from-[#FBF8F0] to-transparent"
+                        />
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>
