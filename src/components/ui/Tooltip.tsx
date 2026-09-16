@@ -5,6 +5,8 @@
  *
  * 基于 hover / focus 显示提示文本，支持方向控制。
  * 使用 createPortal + fixed 定位，避免被父容器 overflow 裁剪。
+ * z-index 需高于 Modal / 用户中心弹窗（z-[9999]）、低于 Toast（z-[100000]），
+ * 否则气泡会被弹窗盖住不可见。
  *
  * @example
  * ```tsx
@@ -173,7 +175,7 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
             role="tooltip"
             style={{ left: pos.left, top: pos.top }}
             className={cn(
-              "pointer-events-none fixed z-[9998] max-w-xs whitespace-nowrap rounded-md bg-brand-charcoal/90 px-2.5 py-1.5 text-xs text-white opacity-100 shadow-lg",
+              "pointer-events-none fixed z-[99999] max-w-xs whitespace-nowrap rounded-md bg-brand-charcoal/90 px-2.5 py-1.5 text-xs text-white opacity-100 shadow-lg",
               transformBySide[arrowSide],
               className
             )}
