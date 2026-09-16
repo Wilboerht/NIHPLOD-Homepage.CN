@@ -738,8 +738,8 @@ export function VipPanel() {
                           </p>
                         </div>
 
-                        {/* 权益列表：适配图标 + 标题 + 描述 */}
-                        <div className="mt-4 space-y-3 border-t border-stone-200/60 pt-4">
+                        {/* 权益列表：适配图标 + 标题 + 描述；宽卡片两列（窄屏单列） */}
+                        <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-stone-200/60 pt-4 md:grid-cols-2">
                           {level.benefits.map((b, i) => {
                             const BenefitIcon = benefitIcon(b.title);
                             return (
@@ -766,9 +766,10 @@ export function VipPanel() {
                           })}
                         </div>
 
-                        {/* 未达档等级：解锁进度（等级色进度条）+ 补录引导 */}
+                        {/* 未达档等级：解锁进度（等级色进度条）+ 补录引导。
+                            通栏页脚（负边距贴卡片边缘、极浅底色），避免卡片套卡片 */}
                         {isLocked && (
-                          <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/60 px-4 py-3">
+                          <div className="-mx-5 -mb-5 mt-4 border-t border-stone-200/60 bg-stone-500/[0.04] px-5 py-4">
                             <div className="flex items-center justify-between gap-3">
                               <p className="flex min-w-0 items-center gap-1.5 text-xs text-stone-600">
                                 <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
@@ -804,9 +805,9 @@ export function VipPanel() {
                           </div>
                         )}
 
-                        {/* 当前为普通档：升级引导（解锁银卡全部权益） */}
+                        {/* 当前为普通档：升级引导（解锁银卡全部权益），同样用通栏页脚 */}
                         {isCurrent && level.level === "REGULAR" && (
-                          <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/60 px-4 py-3">
+                          <div className="-mx-5 -mb-5 mt-4 border-t border-stone-200/60 bg-stone-500/[0.04] px-5 py-4">
                             <div className="flex items-start gap-2">
                               <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
                               <p className="text-xs leading-relaxed text-stone-600">
