@@ -52,6 +52,8 @@ export function ProfilePanel() {
   const [addrDefault, setAddrDefault] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
+  // 移动端退出登录二次确认
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // 换绑手机号表单状态
   const [showPhoneForm, setShowPhoneForm] = useState(false);
@@ -1002,18 +1004,32 @@ export function ProfilePanel() {
             )}
           </div>
         </div>
+        {/* 移动端退出登录：置于内容末尾随内容滚动（iOS/微信「设置底部」惯例；
+            钉在屏幕底部既常驻占位又容易误触），点击后二次确认；桌面端在用户中心侧边栏 */}
+        <div className="mt-8 md:hidden">
+          <button
+            type="button"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/40 py-3 text-sm text-stone-500 transition-colors hover:bg-white/70 hover:text-stone-700 active:opacity-70"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.5} />
+            退出登录
+          </button>
+        </div>
       </div>
-      {/* 移动端退出登录（桌面端在用户中心侧边栏） */}
-      <div className="mt-2 md:hidden">
-        <button
-          type="button"
-          onClick={() => void logout()}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/40 py-3 text-sm text-stone-600 transition-colors hover:bg-white/70"
-        >
-          <LogOut className="h-4 w-4" strokeWidth={1.5} />
-          退出登录
-        </button>
-      </div>
+      {/* 移动端退出登录确认 */}
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={async () => {
+          setShowLogoutConfirm(false);
+          await logout();
+        }}
+        title="退出登录"
+        description="退出后需重新登录才能查看会员权益与个人资料，确定退出吗？"
+        confirmText="退出登录"
+        type="danger"
+      />
       <ConfirmDialog
         open={!!deletingAddressId}
         onClose={() => setDeletingAddressId(null)}
