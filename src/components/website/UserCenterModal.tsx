@@ -336,14 +336,15 @@ export function UserCenterModal() {
                 {/* 右侧内容区（移动端：标题 Header + 面板 + 底部 Tab，safe-area 适配） */}
                 <div className="relative flex h-full min-w-0 flex-1 flex-col">
                   {/* 移动端统一 Header（标题 + 关闭；导航移入底部 Tab 栏）。
-                       header 是下滑关闭的手势触发区（拖拽移动整个弹窗，不阻塞内容滚动） */}
+                       header 是下滑关闭的手势触发区（拖拽移动整个弹窗，不阻塞内容滚动；
+                       头像/关闭按钮已 stopPropagation 排除在外，避免误拖） */}
                   {isMobile && (
                     <m.div
                       onPointerDown={(e) => {
                         if (!isMobile || (e.button !== undefined && e.button !== 0)) return;
                         dragControls.start(e);
                       }}
-                      className="shrink-0 border-b border-stone-200/40 bg-[#FBF8F0]/80 backdrop-blur-md md:hidden"
+                      className="shrink-0 select-none border-b border-stone-200/40 bg-[#FBF8F0] md:hidden"
                     >
                       {/* 下滑把手提示 */}
                       <div aria-hidden className="flex justify-center pt-2">
@@ -355,6 +356,7 @@ export function UserCenterModal() {
                           <button
                             type="button"
                             onClick={() => setUserCenterView("profile")}
+                            onPointerDown={(e) => e.stopPropagation()}
                             aria-label="查看个人信息"
                             className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/60 transition-opacity hover:opacity-80 active:opacity-70"
                           >
@@ -377,7 +379,9 @@ export function UserCenterModal() {
                         <div className="flex h-full w-full items-center justify-center">
                           <button
                             onClick={closeUserCenter}
-                            className="flex h-10 w-10 items-center justify-center text-stone-500 transition-colors hover:text-stone-800"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            aria-label="关闭用户中心"
+                            className="flex h-11 w-11 items-center justify-center text-stone-500 transition-colors hover:text-stone-800 active:opacity-60"
                           >
                             <X className="h-5 w-5" strokeWidth={1.5} />
                           </button>
@@ -411,7 +415,7 @@ export function UserCenterModal() {
                               }`}
                             >
                               <Icon className="h-5 w-5" strokeWidth={isActive ? 2 : 1.5} />
-                              <span className="text-[10px] leading-none">{label}</span>
+                              <span className="text-[11px] leading-none">{label}</span>
                             </button>
                           );
                         })}
