@@ -118,6 +118,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   CHECKIN: "打卡奖励",
   REDEEM: "积分兑礼",
   EXPIRE: "积分过期",
+  ADJUST: "人工调整",
 };
 
 function formatDate(iso: string | null): string {
@@ -498,7 +499,9 @@ export function PointsMallPanel() {
                     <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
                       <span className="min-w-0 truncate text-stone-500">
                         {POINT_TYPE_LABELS[r.type] ?? r.type}
-                        {r.note && (r.type === "CONSUME" || r.type === "CHECKIN") ? `（${r.note.slice(0, 20)}）` : ""}
+                        {r.note && (r.type === "CONSUME" || r.type === "CHECKIN" || r.type === "ADJUST")
+                          ? `（${r.note.slice(0, 20)}）`
+                          : ""}
                       </span>
                       <span className="flex shrink-0 items-center gap-3">
                         <span className="text-stone-400">{formatDate(r.createdAt)}</span>

@@ -21,6 +21,8 @@ import {
   Award,
   Wallet,
   Trash2,
+  CalendarDays,
+  KeyRound,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
@@ -88,6 +90,8 @@ interface UserDetail {
   goldActivatedAt: string | null;
   diamondActivatedAt: string | null;
   wechatOpenId: string | null;
+  birthday: string | null;
+  birthdayLocked: boolean;
   // 多平台外部身份（聚合框架单一数据源）
   externalIdentities?: {
     id: string;
@@ -100,6 +104,25 @@ interface UserDetail {
   createdAt: string;
   updatedAt: string;
 }
+
+interface LoginAttemptItem {
+  id: string;
+  type: string;
+  success: boolean;
+  reason: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  clientId: string | null;
+  createdAt: string;
+}
+
+const LOGIN_TYPE_LABELS: Record<string, string> = {
+  password: "密码登录",
+  sms: "验证码登录",
+  admin: "管理员登录",
+  wechat: "微信登录",
+  douyin: "抖音登录",
+};
 
 interface RedemptionDetailItem {
   id: string;
@@ -151,6 +174,26 @@ interface LevelChangeItem {
   note: string | null;
   createdAt: string;
 }
+
+interface PointLedgerItem {
+  id: string;
+  type: string;
+  amount: number;
+  remaining: number | null;
+  note: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+const POINT_TYPE_LABELS: Record<string, string> = {
+  CONSUME: "消费获得",
+  REFUND: "退款冲正",
+  BIRTHDAY: "生日礼遇",
+  CHECKIN: "打卡奖励",
+  REDEEM: "积分兑礼",
+  EXPIRE: "积分过期",
+  ADJUST: "人工调整",
+};
 
 const REDEMPTION_STATUS_LABELS: Record<string, string> = {
   PENDING: "待履约",
@@ -219,8 +262,37 @@ export default function AdminUsersPage() {
   const [detailAdjustmentTotal, setDetailAdjustmentTotal] = useState(0);
   const [detailLevelChanges, setDetailLevelChanges] = useState<LevelChangeItem[]>([]);
   const [activeDetailTab, setActiveDetailTab] = useState<
-    "basic" | "points" | "address" | "spent" | "growth"
+    "basic" | "points" | "address" | "spent" | "growth" | "login"
   >("basic");
+  const [detailLoginAttempts, setDetailLoginAttempts] = useState<LoginAttemptItem[]>([]);
+
+  // 生日修改 / 解锁
+  const [birthdayEditOpen, setBirthdayEditOpen] = useState(false);
+  const [birthdayInput, setBirthdayInput] = useState("");
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
+
+  // 解绑外部身份
+  const [identityUnbindTarget, setIdentityUnbindTarget] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
+  const [identityUnbinding, setIdentityUnbinding] = useState(false);
+
+  // 重置密码
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+
+  // 积分流水与人工调整
+  const [isOwner, setIsOwner] = useState(false);
+  const [ledgerItems, setLedgerItems] = useState<PointLedgerItem[]>([]);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerTotalPages, setLedgerTotalPages] = useState(0);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
   const [revealedPhone, setRevealedPhone] = useState("");
   const [revealingPhone, setRevealingPhone] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -254,6 +326,165 @@ export default function AdminUsersPage() {
   useEffect(() => {
     deferInEffect(fetchUsers);
   }, [fetchUsers]);
+
+  // 角色：仅超级管理员可人工调整积分（与 API 层一致）
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<{ user: { role: string } }>("/api/admin/me")
+      .then((data) => {
+        if (!cancelled) setIsOwner(data.user?.role === "owner");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fetchLedger = useCallback(async (userId: string, targetPage: number) => {
+    setLedgerLoading(true);
+    try {
+      const data = await apiGet<{
+        available: number;
+        frozen: number;
+        items: PointLedgerItem[];
+        pagination: { totalPages: number };
+      }>(`/api/admin/users/${userId}/points`, { page: targetPage, pageSize: 20 });
+      setLedgerItems(data.items);
+      setLedgerPage(targetPage);
+      setLedgerTotalPages(data.pagination.totalPages);
+      // 余额以流水接口物化结果为准（含过期处理）
+      setDetailPoints((prev) =>
+        prev ? { ...prev, available: data.available, frozen: data.frozen } : prev
+      );
+    } catch {
+      toast.error("加载积分流水失败");
+    } finally {
+      setLedgerLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (activeDetailTab === "points" && detailUser) {
+      deferInEffect(() => fetchLedger(detailUser.id, 1));
+    }
+  }, [activeDetailTab, detailUser, fetchLedger]);
+
+  const handleAdjustPoints = async () => {
+    if (!detailUser) return;
+    const amount = Number(adjustAmount);
+    if (!Number.isInteger(amount) || amount === 0) {
+      toast.error("请输入非零整数分值");
+      return;
+    }
+    if (adjustNote.trim().length < 2) {
+      toast.error("请填写调整原因（至少 2 个字）");
+      return;
+    }
+
+    setAdjusting(true);
+    try {
+      await apiPost(`/api/admin/users/${detailUser.id}/points`, {
+        amount,
+        note: adjustNote.trim(),
+      });
+      toast.success(amount > 0 ? `已为该用户增加 ${amount} 积分` : `已为该用户扣减 ${-amount} 积分`);
+      setAdjustOpen(false);
+      setAdjustAmount("");
+      setAdjustNote("");
+      await fetchLedger(detailUser.id, 1);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "积分调整失败");
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  /** 保存生日（管理员代改，YYYY-MM-DD；空字符串表示清除并解锁） */
+  const handleSaveBirthday = async () => {
+    if (!detailUser) return;
+    setBirthdaySaving(true);
+    try {
+      const data = await apiPatch<{ user: { birthday: string | null; birthdayLocked: boolean } }>(
+        `/api/admin/users/${detailUser.id}`,
+        { birthday: birthdayInput === "" ? null : birthdayInput }
+      );
+      toast.success(birthdayInput === "" ? "已清除生日并解锁" : "生日已更新");
+      setDetailUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              birthday: data.user?.birthday ?? (birthdayInput === "" ? null : birthdayInput),
+              birthdayLocked: data.user?.birthdayLocked ?? birthdayInput !== "",
+            }
+          : prev
+      );
+      setBirthdayEditOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "生日更新失败");
+    } finally {
+      setBirthdaySaving(false);
+    }
+  };
+
+  /** 解锁生日（保留生日值，允许用户自助修改） */
+  const handleUnlockBirthday = async () => {
+    if (!detailUser) return;
+    setBirthdaySaving(true);
+    try {
+      await apiPatch(`/api/admin/users/${detailUser.id}`, { unlockBirthday: true });
+      toast.success("已解锁生日，用户可自助修改");
+      setDetailUser((prev) => (prev ? { ...prev, birthdayLocked: false } : prev));
+      setBirthdayEditOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "解锁失败");
+    } finally {
+      setBirthdaySaving(false);
+    }
+  };
+
+  /** 解绑外部身份 */
+  const confirmIdentityUnbind = async () => {
+    if (!detailUser || !identityUnbindTarget) return;
+    setIdentityUnbinding(true);
+    try {
+      await apiDelete(
+        `/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`
+      );
+      toast.success("已解绑该外部身份");
+      setDetailUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              externalIdentities: (prev.externalIdentities ?? []).filter(
+                (i) => i.id !== identityUnbindTarget.id
+              ),
+            }
+          : prev
+      );
+      setIdentityUnbindTarget(null);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "解绑失败");
+    } finally {
+      setIdentityUnbinding(false);
+    }
+  };
+
+  /** 重置用户密码（生成一次性临时密码） */
+  const confirmResetPassword = async () => {
+    if (!detailUser) return;
+    setResetPasswordLoading(true);
+    try {
+      const data = await apiPost<{ tempPassword: string }>(
+        `/api/admin/users/${detailUser.id}/reset-password`
+      );
+      setResetPasswordOpen(false);
+      setTempPassword(data.tempPassword);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "重置密码失败");
+    } finally {
+      setResetPasswordLoading(false);
+    }
+  };
 
   const updateUserStatus = (userId: string, status: UserStatus) => {
     setStatusTarget({ id: userId, status });
@@ -377,8 +608,12 @@ export default function AdminUsersPage() {
     setDetailAdjustments([]);
     setDetailAdjustmentTotal(0);
     setDetailLevelChanges([]);
+    setDetailLoginAttempts([]);
     setActiveDetailTab("basic");
     setRevealedPhone("");
+    setLedgerItems([]);
+    setLedgerPage(1);
+    setLedgerTotalPages(0);
     try {
       const data = await apiGet<{
         user: UserDetail;
@@ -386,6 +621,7 @@ export default function AdminUsersPage() {
         addresses: AddressItem[];
         spentAdjustments: { items: SpentAdjustmentItem[]; total: number };
         levelChanges: LevelChangeItem[];
+        loginAttempts: LoginAttemptItem[];
       }>(`/api/admin/users/${id}`);
       setDetailUser(data.user);
       setDetailPoints(data.points);
@@ -393,6 +629,7 @@ export default function AdminUsersPage() {
       setDetailAdjustments(data.spentAdjustments.items);
       setDetailAdjustmentTotal(data.spentAdjustments.total);
       setDetailLevelChanges(data.levelChanges ?? []);
+      setDetailLoginAttempts(data.loginAttempts ?? []);
     } catch (err) {
       // 区分真实原因：404 才是「用户不存在」，其他错误（400/500/网络）原样展示便于排查
       setDetailError(err instanceof ApiError ? err.message : "加载失败，请稍后重试");
@@ -699,6 +936,7 @@ export default function AdminUsersPage() {
                   { key: "address", label: "收货地址" },
                   { key: "spent", label: "消费记录" },
                   { key: "growth", label: "等级成长" },
+                  { key: "login", label: "登录历史" },
                 ] as const
               ).map((t) => (
                 <button
@@ -755,6 +993,40 @@ export default function AdminUsersPage() {
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      生日
+                    </dt>
+                    <dd className="flex items-center gap-2">
+                      <span>
+                        {detailUser.birthday
+                          ? new Date(detailUser.birthday).toLocaleDateString("zh-CN")
+                          : "未设置"}
+                      </span>
+                      {detailUser.birthdayLocked && (
+                        <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                          已锁定
+                        </Badge>
+                      )}
+                      {isOwner && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setBirthdayInput(
+                              detailUser.birthday
+                                ? new Date(detailUser.birthday).toISOString().slice(0, 10)
+                                : ""
+                            );
+                            setBirthdayEditOpen(true);
+                          }}
+                        >
+                          修改
+                        </Button>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
                       <Link2 className="h-3.5 w-3.5" />
                       第三方平台绑定
                     </dt>
@@ -773,6 +1045,20 @@ export default function AdminUsersPage() {
                             <span className="text-xs text-brand-charcoal/40">
                               {formatDate(identity.createdAt)}
                             </span>
+                            {isOwner && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setIdentityUnbindTarget({
+                                    id: identity.id,
+                                    label: providerLabelMap[identity.provider] || identity.provider,
+                                  })
+                                }
+                                className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                              >
+                                解绑
+                              </button>
+                            )}
                           </div>
                         ))
                       ) : detailUser.wechatOpenId ? (
@@ -829,6 +1115,16 @@ export default function AdminUsersPage() {
                       封禁账号
                     </Button>
                   )}
+                  {isOwner && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      leftIcon={<KeyRound className="h-4 w-4" />}
+                      onClick={() => setResetPasswordOpen(true)}
+                    >
+                      重置密码
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="danger"
@@ -850,7 +1146,7 @@ export default function AdminUsersPage() {
             {/* 积分与兑换 */}
             {activeDetailTab === "points" && (
               <div className="space-y-4">
-                <div className="flex gap-4">
+                <div className="flex items-start gap-4">
                   <div className="flex-1 rounded-xl bg-brand-charcoal/[0.03] p-4">
                     <p className="text-xs text-brand-charcoal/50">可用积分</p>
                     <p className="mt-1 font-mono text-2xl font-semibold text-brand-charcoal">
@@ -863,6 +1159,85 @@ export default function AdminUsersPage() {
                       {detailPoints ? detailPoints.frozen.toLocaleString() : "-"}
                     </p>
                   </div>
+                  {isOwner && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      leftIcon={<Wallet className="h-4 w-4" />}
+                      onClick={() => setAdjustOpen(true)}
+                    >
+                      调整积分
+                    </Button>
+                  )}
+                </div>
+
+                {/* 积分流水 */}
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-brand-charcoal">积分流水</h3>
+                  {ledgerLoading ? (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-brand-charcoal/30" />
+                    </div>
+                  ) : ledgerItems.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无积分流水</p>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {ledgerItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-brand-charcoal/10 bg-white px-4 py-2.5"
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="shrink-0 text-xs text-brand-charcoal/60">
+                                {POINT_TYPE_LABELS[item.type] || item.type}
+                              </span>
+                              {item.note && (
+                                <span className="truncate text-xs text-brand-charcoal/40">
+                                  {item.note}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3">
+                              <span
+                                className={`font-mono text-sm font-medium ${
+                                  item.amount > 0 ? "text-emerald-600" : "text-red-500"
+                                }`}
+                              >
+                                {item.amount > 0 ? `+${item.amount}` : item.amount}
+                              </span>
+                              <span className="text-xs text-brand-charcoal/40">
+                                {formatDate(item.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {ledgerTotalPages > 1 && (
+                        <div className="mt-2 flex items-center justify-end gap-2 text-xs text-brand-charcoal/50">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={ledgerPage <= 1 || ledgerLoading}
+                            onClick={() => detailUser && fetchLedger(detailUser.id, ledgerPage - 1)}
+                          >
+                            上一页
+                          </Button>
+                          <span>
+                            {ledgerPage}/{ledgerTotalPages}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={ledgerPage >= ledgerTotalPages || ledgerLoading}
+                            onClick={() => detailUser && fetchLedger(detailUser.id, ledgerPage + 1)}
+                          >
+                            下一页
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -919,6 +1294,60 @@ export default function AdminUsersPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* 登录历史 */}
+            {activeDetailTab === "login" && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
+                  登录历史
+                  {detailLoginAttempts.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                      展示最近 {detailLoginAttempts.length} 条
+                    </span>
+                  )}
+                </h3>
+                {detailLoginAttempts.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无登录记录</p>
+                ) : (
+                  <div className="space-y-2">
+                    {detailLoginAttempts.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-charcoal/10 bg-white px-4 py-2.5"
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span
+                            className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${
+                              a.success ? "bg-emerald-500" : "bg-red-500"
+                            }`}
+                          />
+                          <span className="text-sm text-brand-charcoal/80">
+                            {LOGIN_TYPE_LABELS[a.type] || a.type}
+                          </span>
+                          {!a.success && (
+                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">
+                              {a.reason || "失败"}
+                            </span>
+                          )}
+                          {a.clientId && (
+                            <span className="text-xs text-brand-charcoal/40">{a.clientId}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-brand-charcoal/40">
+                          {a.ipAddress && <span className="font-mono">{a.ipAddress}</span>}
+                          <span>{formatDate(a.createdAt)}</span>
+                        </div>
+                        {a.userAgent && (
+                          <p className="w-full truncate text-xs text-brand-charcoal/30" title={a.userAgent}>
+                            {a.userAgent}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1104,6 +1533,155 @@ export default function AdminUsersPage() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* 人工调整积分弹窗 */}
+      <Modal
+        open={adjustOpen}
+        onClose={() => {
+          if (!adjusting) setAdjustOpen(false);
+        }}
+        title="调整用户积分"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-brand-charcoal/60">
+            正数为增加（6 个月有效期，可参与兑礼与过期清理），负数为扣减（直接冲减可用积分，可为负）。
+            操作将写入审计日志，请填写可追溯的原因。
+          </p>
+          <Input
+            label="调整分值"
+            required
+            type="number"
+            value={adjustAmount}
+            onChange={(e) => setAdjustAmount(e.target.value)}
+            placeholder="如 100 或 -50"
+          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+              调整原因<span className="ml-0.5 text-red-500">*</span>
+            </label>
+            <textarea
+              value={adjustNote}
+              onChange={(e) => setAdjustNote(e.target.value)}
+              rows={3}
+              maxLength={200}
+              placeholder="如：客服补偿 / 退款冲正 / 活动奖励"
+              className="w-full resize-y rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setAdjustOpen(false)} disabled={adjusting}>
+              取消
+            </Button>
+            <Button onClick={handleAdjustPoints} loading={adjusting}>
+              确认调整
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 修改生日弹窗 */}
+      <Modal
+        open={birthdayEditOpen}
+        onClose={() => {
+          if (!birthdaySaving) setBirthdayEditOpen(false);
+        }}
+        title="修改用户生日"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-brand-charcoal/60">
+            生日用于生日积分发放（每年一次）。保存后会自动锁定；留空保存将清除生日并解锁，
+            用户可自行重新设置。操作将写入审计日志。
+          </p>
+          <Input
+            label="生日"
+            type="date"
+            value={birthdayInput}
+            onChange={(e) => setBirthdayInput(e.target.value)}
+          />
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={handleUnlockBirthday}
+              disabled={!detailUser?.birthdayLocked || birthdaySaving}
+            >
+              仅解锁（不改生日）
+            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setBirthdayEditOpen(false)}
+                disabled={birthdaySaving}
+              >
+                取消
+              </Button>
+              <Button onClick={handleSaveBirthday} loading={birthdaySaving}>
+                保存
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 解绑外部身份确认 */}
+      <ConfirmDialog
+        open={!!identityUnbindTarget}
+        onClose={() => setIdentityUnbindTarget(null)}
+        onConfirm={confirmIdentityUnbind}
+        title="解绑外部身份"
+        description={`确定解绑「${identityUnbindTarget?.label ?? ""}」吗？解绑后该平台将无法登录此账号，用户可在登录页重新绑定。`}
+        confirmText="确认解绑"
+        type="danger"
+        loading={identityUnbinding}
+      />
+
+      {/* 重置密码确认 */}
+      <ConfirmDialog
+        open={resetPasswordOpen}
+        onClose={() => setResetPasswordOpen(false)}
+        onConfirm={confirmResetPassword}
+        title="重置用户密码"
+        description={`确定重置「${detailUser?.nickname || detailUser?.phone || ""}」的密码吗？将生成一次性临时密码，并强制下线该用户全部会话（含 SSO）。`}
+        confirmText="确认重置"
+        type="danger"
+        loading={resetPasswordLoading}
+      />
+
+      {/* 临时密码展示（仅一次） */}
+      <Modal
+        open={!!tempPassword}
+        onClose={() => setTempPassword(null)}
+        title="临时密码（仅显示一次）"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-brand-charcoal/60">
+            请立即通过安全渠道将临时密码告知用户，关闭本窗口后无法再次查看。
+            用户所有会话已被强制下线，需使用该密码重新登录并尽快修改密码。
+          </p>
+          <div className="flex items-center gap-2 rounded-lg bg-brand-charcoal/[0.04] px-4 py-3">
+            <code className="flex-1 select-all break-all font-mono text-sm text-brand-charcoal">
+              {tempPassword}
+            </code>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!tempPassword) return;
+                try {
+                  await navigator.clipboard.writeText(tempPassword);
+                  toast.success("已复制");
+                } catch {
+                  toast.error("复制失败，请手动选择复制");
+                }
+              }}
+            >
+              复制
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setTempPassword(null)}>我已保存</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* 状态变更确认 */}

@@ -289,3 +289,91 @@ export async function retryFailedBackchannelLogouts(
 
   return { delivered, failed, dropped };
 }
+
+/**
+ * 管理端手动重投单条 Backchannel Logout（忽略 nextRetryAt，立即尝试一次）
+ * - 目标 client 已删除/未配置/不安全：丢弃记录
+ * - 成功：删除记录并写审计
+ * - 失败：attempts+1 指数退避；达到上限则丢弃并写审计
+ */
+export async function retryBackchannelFailureById(id: string): Promise<{
+  ok: boolean;
+  status: "delivered" | "failed" | "dropped" | "not_found";
+  error?: string;
+  attempts?: number;
+}> {
+  const failure = await prisma.backchannelLogoutFailure.findUnique({ where: { id } });
+  if (!failure) return { ok: false, status: "not_found" };
+
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId: failure.clientId },
+    select: { clientId: true, backchannelLogoutUri: true },
+  });
+  const uri = client?.backchannelLogoutUri;
+  if (!uri || !isSafeBackchannelUrl(uri)) {
+    await prisma.backchannelLogoutFailure.delete({ where: { id } });
+    recordSsoEvent({
+      event: "backchannel_logout",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      success: false,
+      detail: { reason: "target_unavailable", manual: true },
+    });
+    return { ok: true, status: "dropped" };
+  }
+
+  try {
+    const payload = (failure.payload ?? {}) as { sid?: string | null };
+    const logoutToken = await signLogoutToken({
+      sub: failure.userId,
+      aud: failure.clientId,
+      events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+      jti: crypto.randomUUID(),
+      sid: payload.sid ?? undefined,
+    });
+
+    const res = await fetch(uri, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ logout_token: logoutToken }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) throw new Error(`http_${res.status}`);
+
+    await prisma.backchannelLogoutFailure.delete({ where: { id } });
+    recordSsoEvent({
+      event: "backchannel_logout",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      success: true,
+      detail: { redelivered: true, manual: true, attempts: failure.attempts + 1 },
+    });
+    return { ok: true, status: "delivered" };
+  } catch (err) {
+    const attempts = failure.attempts + 1;
+    if (attempts >= REDELIVERY_MAX_ATTEMPTS) {
+      await prisma.backchannelLogoutFailure
+        .delete({ where: { id } })
+        .catch((e) => apiConsole.warn("[SLO] 删除超限失败记录出错:", e));
+      recordSsoEvent({
+        event: "backchannel_logout",
+        userId: failure.userId,
+        clientId: failure.clientId,
+        success: false,
+        detail: { reason: "max_retries_exceeded", attempts, manual: true },
+      });
+      return { ok: false, status: "dropped", error: "已达到最大重试次数，记录已丢弃" };
+    }
+    const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
+    await prisma.backchannelLogoutFailure.update({
+      where: { id },
+      data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
+    });
+    return {
+      ok: false,
+      status: "failed",
+      error: err instanceof Error ? err.message : "投递失败",
+      attempts,
+    };
+  }
+}

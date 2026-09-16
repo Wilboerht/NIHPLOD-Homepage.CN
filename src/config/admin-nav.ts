@@ -19,6 +19,9 @@ import {
   Activity,
   ClipboardCheck,
   Gift,
+  Crown,
+  Webhook,
+  Timer,
   LucideIcon,
 } from "lucide-react";
 
@@ -69,6 +72,13 @@ export const adminNavItems: NavItem[] = [
     roles: ["owner", "admin"],
     group: "商城管理",
   },
+  {
+    title: "会员权益",
+    href: "/admin/membership",
+    icon: Crown,
+    roles: ["owner"],
+    group: "商城管理",
+  },
   // 招聘管理
   {
     title: "职位管理",
@@ -107,6 +117,13 @@ export const adminNavItems: NavItem[] = [
     roles: ["owner", "admin"],
     group: "系统管理",
   },
+  {
+    title: "定时任务",
+    href: "/admin/cron-tasks",
+    icon: Timer,
+    roles: ["owner"],
+    group: "系统管理",
+  },
   // SSO 管理
   {
     title: "SSO 客户端",
@@ -140,6 +157,13 @@ export const adminNavItems: NavItem[] = [
     title: "SSO 统计概览",
     href: "/admin/oauth/stats",
     icon: Activity,
+    roles: ["owner"],
+    group: "SSO 管理",
+  },
+  {
+    title: "通知失败队列",
+    href: "/admin/webhook-failures",
+    icon: Webhook,
     roles: ["owner"],
     group: "SSO 管理",
   },

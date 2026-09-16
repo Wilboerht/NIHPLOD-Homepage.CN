@@ -65,8 +65,13 @@ const ACTION_LABELS: Record<string, string> = {
   point_gift_create: "新增积分礼品",
   point_gift_update: "更新积分礼品",
   point_redemption_fulfill: "兑换履约",
+  point_redemption_waybill_update: "更新兑换运单号",
+  point_redemption_cancel: "取消兑换并退分",
   user_detail_view: "查看用户详情",
   user_detail_sensitive_view: "查看用户敏感信息",
+  user_birthday_update: "修改用户生日",
+  user_password_reset: "重置用户密码",
+  user_identity_unbind: "解绑用户外部身份",
   oauth_client_create: "创建 SSO 客户端",
   oauth_client_update: "更新 SSO 客户端",
   oauth_client_delete: "删除 SSO 客户端",
@@ -74,6 +79,8 @@ const ACTION_LABELS: Record<string, string> = {
   oauth_client_test: "测试 SSO 客户端",
   oauth_consent_revoke: "撤销 SSO 授权",
   oauth_session_terminate: "终止 SSO 会话",
+  webhook_failure_retry: "重投失败 Webhook",
+  webhook_failure_delete: "删除失败 Webhook",
   user_login: "用户登录",
   user_logout: "用户登出",
   user_register: "用户注册",
@@ -113,6 +120,25 @@ const TARGET_TYPE_LABELS: Record<string, string> = {
   point_gift: "积分礼品",
   point_redemption: "积分兑换",
 };
+
+/**
+ * 从未写入的遗留动作（历史功能已下线）：
+ * 仅保留 ACTION_LABELS 映射用于历史数据展示，筛选下拉中隐藏避免误导。
+ */
+const HIDDEN_FILTER_ACTIONS = new Set([
+  "ship_order",
+  "update_order",
+  "refund_approve",
+  "refund_reject",
+  "create_coupon",
+  "update_coupon",
+  "delete_coupon",
+  "batch_coupon",
+  "create_point_campaign",
+  "update_point_campaign",
+  "delete_point_campaign",
+  "point_gift_create",
+]);
 
 const ACTION_COLORS: Record<string, string> = {
   // 认证类
@@ -243,7 +269,9 @@ export default function AuditLogsPage() {
         <Select
           options={[
             { value: "", label: "全部操作" },
-            ...Object.entries(ACTION_LABELS).map(([key, label]) => ({ value: key, label })),
+            ...Object.entries(ACTION_LABELS)
+              .filter(([key]) => !HIDDEN_FILTER_ACTIONS.has(key))
+              .map(([key, label]) => ({ value: key, label })),
           ]}
           value={action}
           onChange={(e) => updateParams({ action: e.target.value })}

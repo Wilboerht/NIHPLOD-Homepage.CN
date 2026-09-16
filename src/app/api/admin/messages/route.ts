@@ -4,12 +4,14 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   status: z.enum(["all", "unread", "read"]).default("all"),
+  type: z.string().max(50).optional(),
   search: z.string().max(100).optional(),
 });
 
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
       page: searchParams.get("page") || "1",
       pageSize: searchParams.get("pageSize") || "10",
       status: searchParams.get("status") || "all",
+      type: searchParams.get("type") || undefined,
       search: searchParams.get("search") || undefined,
     });
 
@@ -45,6 +48,10 @@ export async function GET(request: NextRequest) {
       where.read = false;
     } else if (params.status === "read") {
       where.read = true;
+    }
+
+    if (params.type) {
+      where.type = params.type;
     }
 
     if (params.search) {
@@ -76,6 +83,7 @@ export async function GET(request: NextRequest) {
       data: {
         items: items.map((item) => ({
           ...item,
+          phone: maskPhone(item.phone),
           createdAt: item.createdAt.toISOString(),
         })),
         pagination: {

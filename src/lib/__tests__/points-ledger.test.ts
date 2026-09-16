@@ -55,6 +55,7 @@ type MockTx = {
     findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
   };
   pointBalance: {
     findUnique: ReturnType<typeof vi.fn>;
@@ -73,6 +74,7 @@ function createTx(): MockTx {
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     pointBalance: {
       findUnique: vi.fn(),
@@ -89,6 +91,8 @@ function createTx(): MockTx {
   tx.pointLedger.findMany.mockResolvedValue([]);
   tx.pointLedger.create.mockResolvedValue({});
   tx.pointLedger.update.mockResolvedValue({});
+  // 过期清零 CAS 默认命中（并发抢占失败的场景在用例内单独覆写）
+  tx.pointLedger.updateMany.mockResolvedValue({ count: 1 });
   tx.pointBalance.findUnique.mockResolvedValue({ id: "bal-1" });
   tx.pointBalance.upsert.mockResolvedValue({});
   tx.pointBalance.update.mockResolvedValue({});
@@ -358,6 +362,24 @@ describe("expirePoints 过期扣减", () => {
     const total = await expirePoints(asTx(tx), "user-1", NOW);
 
     expect(total).toBe(0);
+    expect(tx.pointLedger.create).not.toHaveBeenCalled();
+  });
+
+  it("并发抢占失败（行已被其他事务清零）：不重复计入过期金额", async () => {
+    tx.pointLedger.findMany.mockResolvedValue([
+      { id: "r1", remaining: 200, releasedAt: NOW },
+    ]);
+    tx.pointLedger.updateMany.mockResolvedValue({ count: 0 });
+    tx.pointBalance.findUnique.mockResolvedValue({ available: 500, frozen: 0 });
+
+    const total = await expirePoints(asTx(tx), "user-1", NOW);
+
+    expect(total).toBe(0);
+    expect(tx.pointLedger.updateMany).toHaveBeenCalledWith({
+      where: { id: "r1", remaining: 200 },
+      data: { remaining: 0 },
+    });
+    expect(tx.pointBalance.upsert).not.toHaveBeenCalled();
     expect(tx.pointLedger.create).not.toHaveBeenCalled();
   });
 });

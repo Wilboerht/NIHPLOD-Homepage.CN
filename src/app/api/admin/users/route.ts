@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * 批量修改用户状态（冻结/封禁/恢复正常）
- * POST /api/admin/users/batch
+ * POST /api/admin/users
  * Body: { ids: string[], status: "ACTIVE" | "SUSPENDED" | "BANNED" }
  * 仅 owner 角色可操作（涉及用户权益）
  */

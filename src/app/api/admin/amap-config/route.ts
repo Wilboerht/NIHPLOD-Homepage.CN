@@ -14,6 +14,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 高德密钥（含安全密钥）仅限超级管理员读取；普通管理员的地图选择降级为手动填写地点/经纬度
+    if (admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "地图密钥仅超级管理员可用" } },
+        { status: 403 }
+      );
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 

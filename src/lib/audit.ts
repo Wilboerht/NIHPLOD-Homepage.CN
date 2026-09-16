@@ -58,6 +58,9 @@ export type AuditAction =
   | "user_deleted"
   | "user_detail_view"
   | "user_detail_sensitive_view"
+  | "user_birthday_update"
+  | "user_password_reset"
+  | "user_identity_unbind"
   | "user_points_adjust"
   | "update_vip_benefit"
   | "submit_spent_adjustment"
@@ -70,6 +73,7 @@ export type AuditAction =
   | "point_gift_update"
   | "point_redemption_fulfill"
   | "point_redemption_waybill_update"
+  | "point_redemption_cancel"
   | "create_point_campaign"
   | "update_point_campaign"
   | "delete_point_campaign"
@@ -80,6 +84,8 @@ export type AuditAction =
   | "oauth_client_test"
   | "oauth_consent_revoke"
   | "oauth_session_terminate"
+  | "webhook_failure_retry"
+  | "webhook_failure_delete"
   | "user_set_password"
   | "admin_login"
   | "admin_logout"
@@ -152,6 +158,9 @@ export const AUDIT_ACTIONS = [
   "user_deleted",
   "user_detail_view",
   "user_detail_sensitive_view",
+  "user_birthday_update",
+  "user_password_reset",
+  "user_identity_unbind",
   "user_points_adjust",
   "update_vip_benefit",
   "submit_spent_adjustment",
@@ -164,6 +173,7 @@ export const AUDIT_ACTIONS = [
   "point_gift_update",
   "point_redemption_fulfill",
   "point_redemption_waybill_update",
+  "point_redemption_cancel",
   "create_point_campaign",
   "update_point_campaign",
   "delete_point_campaign",
@@ -174,6 +184,8 @@ export const AUDIT_ACTIONS = [
   "oauth_client_test",
   "oauth_consent_revoke",
   "oauth_session_terminate",
+  "webhook_failure_retry",
+  "webhook_failure_delete",
   "user_set_password",
   "admin_login",
   "admin_logout",

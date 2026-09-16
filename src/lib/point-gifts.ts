@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
-import { redeemPoints } from "@/lib/points-ledger";
+import { adjustPoints, redeemPoints } from "@/lib/points-ledger";
 
 /** 可兑换产品（产品库标记 + 已发布），按产品排序 */
 export async function listRedeemableProducts() {
@@ -191,6 +191,42 @@ export async function fulfillRedemption(params: {
     },
   });
   return { ok: claimed.count > 0 };
+}
+
+/**
+ * 管理端：取消兑换并退还积分（PENDING → CANCELLED，CAS 抢占防并发重复取消）。
+ * 退款走正向 ADJUST 流水（reference=cancel:{redemptionId} 幂等，6 个月有效期），
+ * 已消耗的 FIFO 流水不回滚，保证账本余额与剩余量一致。
+ */
+export async function cancelRedemption(params: {
+  redemptionId: string;
+  note?: string;
+}): Promise<{ ok: boolean; code?: "NOT_FOUND" | "ALREADY_PROCESSED"; points?: number }> {
+  const { redemptionId, note } = params;
+
+  return prisma.$transaction(async (tx) => {
+    const redemption = await tx.pointRedemption.findUnique({
+      where: { id: redemptionId },
+      select: { id: true, userId: true, points: true, status: true, productName: true },
+    });
+    if (!redemption) return { ok: false, code: "NOT_FOUND" };
+    if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
+
+    const claimed = await tx.pointRedemption.updateMany({
+      where: { id: redemptionId, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+    if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
+
+    await adjustPoints(tx, {
+      userId: redemption.userId,
+      amount: redemption.points,
+      reference: `cancel:${redemptionId}`,
+      note: note?.trim() || `兑换取消退还：${redemption.productName}`,
+    });
+
+    return { ok: true, points: redemption.points };
+  });
 }
 
 /** 管理端：补录/更新运单号（已履约订单；传空字符串清除） */

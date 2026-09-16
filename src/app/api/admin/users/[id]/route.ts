@@ -69,6 +69,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         diamondActivatedAt: true,
         wechatOpenId: true,
         wechatUnionId: true,
+        birthday: true,
+        birthdayLocked: true,
         // 多平台外部身份（聚合框架单一数据源；旧列仅作双写过渡期前端兜底展示）
         externalIdentities: {
           orderBy: { createdAt: "asc" },
@@ -93,8 +95,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const [balance, redemptions, redemptionTotal, addresses, adjustments, adjustmentTotal, levelChanges] =
-      await Promise.all([
+    const [
+      balance,
+      redemptions,
+      redemptionTotal,
+      addresses,
+      adjustments,
+      adjustmentTotal,
+      levelChanges,
+      loginAttempts,
+    ] = await Promise.all([
         prisma.pointBalance.findUnique({
           where: { userId: id },
           select: { available: true, frozen: true, updatedAt: true },
@@ -155,6 +165,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
           take: RECENT_LIMIT,
           select: { id: true, fromLevel: true, toLevel: true, note: true, createdAt: true },
         }),
+        prisma.loginAttempt.findMany({
+          where: { userId: id },
+          orderBy: { createdAt: "desc" },
+          take: RECENT_LIMIT,
+          select: {
+            id: true,
+            type: true,
+            success: true,
+            reason: true,
+            ipAddress: true,
+            userAgent: true,
+            clientId: true,
+            createdAt: true,
+          },
+        }),
       ]);
 
     // 查看用户详情（含积分/地址等敏感档案）记审计——同一管理员 5 分钟内重复查看合并为一条
@@ -196,6 +221,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
           diamondActivatedAt: user.diamondActivatedAt?.toISOString() ?? null,
           wechatOpenId: user.wechatOpenId,
           wechatUnionId: user.wechatUnionId,
+          birthday: user.birthday?.toISOString() ?? null,
+          birthdayLocked: user.birthdayLocked,
           externalIdentities: user.externalIdentities.map((i) => ({
             ...i,
             createdAt: i.createdAt.toISOString(),
@@ -250,6 +277,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
           toLevel: c.toLevel,
           note: c.note,
           createdAt: c.createdAt.toISOString(),
+        })),
+        loginAttempts: loginAttempts.map((a) => ({
+          id: a.id,
+          type: a.type,
+          success: a.success,
+          reason: a.reason,
+          ipAddress: a.ipAddress,
+          userAgent: a.userAgent,
+          clientId: a.clientId,
+          createdAt: a.createdAt.toISOString(),
         })),
       },
     });
@@ -318,11 +355,33 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-const updateUserSchema = z.object({
-  status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"] as const),
-});
+const updateUserSchema = z
+  .object({
+    status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"] as const).optional(),
+    // 生日：YYYY-MM-DD 或 null（清除）；客服代改不受生日锁定限制
+    birthday: z
+      .union([
+        z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "生日格式应为 YYYY-MM-DD")
+          .refine((s) => !Number.isNaN(new Date(s).getTime()), "无效的生日日期")
+          .refine((s) => new Date(s).getTime() <= Date.now(), "生日不能晚于今天")
+          .refine(
+            (s) => new Date(s).getFullYear() >= new Date().getFullYear() - 100,
+            "生日日期超出合理范围"
+          ),
+        z.null(),
+      ])
+      .optional(),
+    // 仅解锁生日（保留已设置的生日值，允许用户自助修改）
+    unlockBirthday: z.literal(true).optional(),
+  })
+  .refine(
+    (d) => d.status !== undefined || d.birthday !== undefined || d.unlockBirthday !== undefined,
+    { message: "未提供可更新的字段" }
+  );
 
-// PATCH /api/admin/users/:id - 修改用户状态
+// PATCH /api/admin/users/:id - 修改用户状态 / 生日（客服代改）
 export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
@@ -354,11 +413,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const { status } = result.data;
+    const { status, birthday, unlockBirthday } = result.data;
 
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, phone: true, status: true },
+      select: {
+        id: true,
+        phone: true,
+        status: true,
+        birthday: true,
+        birthdayLocked: true,
+      },
     });
 
     if (!user) {
@@ -368,51 +433,91 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    if (user.status === status) {
-      return NextResponse.json({ success: true, data: { user } });
+    let updatedUser: {
+      id: string;
+      phone: string;
+      status: UserStatus;
+    } = { id: user.id, phone: user.phone, status: user.status };
+
+    // 1) 生日变更 / 解锁（客服代改，不受用户端生日锁定限制）
+    const birthdayData: { birthday?: Date | null; birthdayLocked?: boolean } = {};
+    const birthdayAudit: Record<string, unknown> = {};
+    if (birthday !== undefined) {
+      const next = birthday === null ? null : new Date(`${birthday}T00:00:00.000Z`);
+      if ((user.birthday?.getTime() ?? null) !== (next?.getTime() ?? null)) {
+        birthdayData.birthday = next;
+        // 管理员设置生日后保持锁定；清除生日则同时解锁
+        birthdayData.birthdayLocked = next !== null;
+        birthdayAudit.birthdayBefore = user.birthday?.toISOString() ?? null;
+        birthdayAudit.birthdayAfter = next?.toISOString() ?? null;
+      }
+    }
+    if (unlockBirthday && user.birthdayLocked) {
+      birthdayData.birthdayLocked = false;
+      birthdayAudit.unlocked = true;
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: { status: status as UserStatus },
-      select: { id: true, phone: true, status: true },
-    });
+    if (Object.keys(birthdayData).length > 0) {
+      const saved = await prisma.user.update({
+        where: { id },
+        data: birthdayData,
+        select: { id: true, phone: true, status: true },
+      });
+      updatedUser = saved;
 
-    // 冻结/封禁/解封的级联操作（撤销凭证 + OAuth 会话 + backchannel + webhook）
-    // 与批量端点共用 cascadeUserStatusChange，保证两处口径一致
-    await cascadeUserStatusChange({
-      userId: user.id,
-      previousStatus: user.status,
-      newStatus: status,
-    });
+      await createAuditLog({
+        action: "user_birthday_update",
+        targetType: "user",
+        targetId: user.id,
+        detail: { ...birthdayAudit, phone: user.phone },
+        adminId: admin.id,
+        request,
+      });
+    }
 
-    await createAuditLog({
-      action: "user_status_change",
-      targetType: "user",
-      targetId: user.id,
-      detail: { previousStatus: user.status, newStatus: status, phone: user.phone },
-      adminId: admin.id,
-      request,
-    });
+    // 2) 状态变更（含级联撤销凭证 + OAuth 会话 + backchannel + webhook）
+    if (status !== undefined && status !== user.status) {
+      const saved = await prisma.user.update({
+        where: { id },
+        data: { status: status as UserStatus },
+        select: { id: true, phone: true, status: true },
+      });
+      updatedUser = saved;
 
-    // SSO 审计：用户状态变更（合规敏感，同步等待写入）
-    await recordSsoEvent({
-      event: "status_change",
-      userId: user.id,
-      ip: getClientIP(request),
-      success: true,
-      detail: {
-        action:
-          status === "ACTIVE"
-            ? "user_unbanned"
-            : status === "SUSPENDED"
-              ? "user_suspended"
-              : "user_banned",
+      await cascadeUserStatusChange({
+        userId: user.id,
         previousStatus: user.status,
         newStatus: status,
+      });
+
+      await createAuditLog({
+        action: "user_status_change",
+        targetType: "user",
+        targetId: user.id,
+        detail: { previousStatus: user.status, newStatus: status, phone: user.phone },
         adminId: admin.id,
-      },
-    });
+        request,
+      });
+
+      // SSO 审计：用户状态变更（合规敏感，同步等待写入）
+      await recordSsoEvent({
+        event: "status_change",
+        userId: user.id,
+        ip: getClientIP(request),
+        success: true,
+        detail: {
+          action:
+            status === "ACTIVE"
+              ? "user_unbanned"
+              : status === "SUSPENDED"
+                ? "user_suspended"
+                : "user_banned",
+          previousStatus: user.status,
+          newStatus: status,
+          adminId: admin.id,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, data: { user: updatedUser } });
   } catch (error) {

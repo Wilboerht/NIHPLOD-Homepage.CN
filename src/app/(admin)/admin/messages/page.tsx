@@ -24,6 +24,8 @@ interface Message {
   type: string | null;
   content: string;
   read: boolean;
+  reply: string | null;
+  repliedAt: string | null;
   createdAt: string;
 }
 
@@ -57,6 +59,10 @@ export default function AdminMessagesPage() {
 
   // 详情弹窗
   const [detailMessage, setDetailMessage] = useState<Message | null>(null);
+
+  // 回复
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replying, setReplying] = useState(false);
 
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -119,8 +125,37 @@ export default function AdminMessagesPage() {
   // 查看详情
   const viewDetail = async (message: Message) => {
     setDetailMessage(message);
+    setReplyDraft(message.reply ?? "");
     if (!message.read) {
       await markAsRead(message);
+    }
+  };
+
+  // 发送/更新回复
+  const handleReply = async () => {
+    if (!detailMessage) return;
+    const reply = replyDraft.trim();
+    if (!reply) {
+      showError("请输入回复内容");
+      return;
+    }
+
+    setReplying(true);
+    try {
+      await apiPatch(`/api/admin/messages/${detailMessage.id}`, { reply });
+      success(detailMessage.reply ? "回复已更新" : "回复已发送");
+      const updated = {
+        ...detailMessage,
+        reply,
+        repliedAt: new Date().toISOString(),
+        read: true,
+      };
+      setDetailMessage(updated);
+      fetchMessages();
+    } catch {
+      showError("回复失败");
+    } finally {
+      setReplying(false);
     }
   };
 
@@ -389,6 +424,11 @@ export default function AdminMessagesPage() {
                               未读
                             </Badge>
                           )}
+                          {message.reply && (
+                            <Badge variant="success" size="sm">
+                              已回复
+                            </Badge>
+                          )}
                         </div>
                         <p className="mt-1 truncate text-sm text-brand-charcoal/50">
                           {message.content}
@@ -506,11 +546,35 @@ export default function AdminMessagesPage() {
               <p className="whitespace-pre-wrap text-brand-charcoal/80">{detailMessage.content}</p>
             </div>
 
-            {/* 操作按钮 */}
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
-                {detailMessage.read ? "标记为未读" : "标记为已读"}
-              </Button>
+            {/* 回复区域 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-brand-charcoal">管理员回复</h3>
+                {detailMessage.repliedAt && (
+                  <span className="text-xs text-brand-charcoal/40">
+                    上次回复：{new Date(detailMessage.repliedAt).toLocaleString("zh-CN")}
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={replyDraft}
+                onChange={(e) => setReplyDraft(e.target.value)}
+                rows={4}
+                maxLength={5000}
+                placeholder="输入回复内容（仅记录在后台用于回访跟进，用户端暂不展示）"
+                className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-brand-charcoal/40">{replyDraft.length}/5000</span>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
+                    {detailMessage.read ? "标记为未读" : "标记为已读"}
+                  </Button>
+                  <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
+                    {detailMessage.reply ? "更新回复" : "发送回复"}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

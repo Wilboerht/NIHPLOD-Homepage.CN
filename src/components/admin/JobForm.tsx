@@ -268,9 +268,29 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
               onChange={(checked) => updateField("published", checked)}
             />
           </div>
+          <Input
+            label="经度（选填，可手动录入）"
+            type="number"
+            step="0.000001"
+            value={formData.longitude ?? ""}
+            onChange={(e) =>
+              updateField("longitude", e.target.value === "" ? null : Number(e.target.value))
+            }
+            placeholder="如：121.472000"
+          />
+          <Input
+            label="纬度（选填，可手动录入）"
+            type="number"
+            step="0.000001"
+            value={formData.latitude ?? ""}
+            onChange={(e) =>
+              updateField("latitude", e.target.value === "" ? null : Number(e.target.value))
+            }
+            placeholder="如：31.232000"
+          />
         </div>
         {/* 显示经纬度调试 */}
-        {formData.longitude && formData.latitude && (
+        {formData.longitude != null && formData.latitude != null && (
           <p className="mt-2 text-xs text-brand-charcoal/50">
             已定位坐标: {formData.longitude.toFixed(6)}, {formData.latitude.toFixed(6)}
           </p>

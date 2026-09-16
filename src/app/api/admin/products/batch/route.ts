@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
     }
     const { ids, action } = parsed.data;
 
+    // 批量删除为高危操作：仅超级管理员可执行（与 jobs/batch 口径一致）
+    if (action === "delete" && admin.role !== "owner") {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可批量删除产品" } },
+        { status: 403 }
+      );
+    }
+
     let result: { count: number };
 
     switch (action) {

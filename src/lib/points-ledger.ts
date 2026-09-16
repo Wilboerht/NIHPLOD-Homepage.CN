@@ -103,6 +103,9 @@ export async function refundSpendPoints(
   return { duplicated: false };
 }
 
+/** 会记 remaining 并参与过期清理的发放类流水类型 */
+const GRANT_LEDGER_TYPES = ["CONSUME", "BIRTHDAY", "CHECKIN", "ADJUST"] as const;
+
 /**
  * 过期扣减：剩余 >0 且已过期的发放流水清零，余额同步扣减。
  * - 已释放部分从可用余额扣（仅扣正数：负余额是超兑债务，不因过期减免）
@@ -117,7 +120,7 @@ export async function expirePoints(
   const expired = await tx.pointLedger.findMany({
     where: {
       userId,
-      type: { in: ["CONSUME", "BIRTHDAY", "CHECKIN"] },
+      type: { in: [...GRANT_LEDGER_TYPES] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
     },
@@ -129,12 +132,15 @@ export async function expirePoints(
   let frozenExpired = 0;
   for (const row of expired) {
     const remaining = row.remaining ?? 0;
-    if (row.releasedAt) availableExpired += remaining;
-    else frozenExpired += remaining;
-    await tx.pointLedger.update({
-      where: { id: row.id },
+    // CAS 清零：并发场景（cron 与用户端物化同时执行）下只有一个事务能把该行剩余量清零，
+    // 避免同一批过期积分被重复计入两次、导致余额重复扣减
+    const claimed = await tx.pointLedger.updateMany({
+      where: { id: row.id, remaining },
       data: { remaining: 0 },
     });
+    if (claimed.count === 0) continue;
+    if (row.releasedAt) availableExpired += remaining;
+    else frozenExpired += remaining;
   }
 
   const total = availableExpired + frozenExpired;
@@ -290,6 +296,56 @@ export async function getPointBalanceView(
 }
 
 /**
+ * 人工调整积分（管理端补偿/冲正）：
+ * - 正向：写入 ADJUST 流水（remaining + 6 个月过期），余额增加，可参与 FIFO 兑礼消耗与过期清理
+ * - 负向：直接冲可用余额（可用可负，负余额代表超兑债务，由后续入账抵债）
+ * 幂等：userId+reference 唯一约束，重复调用返回 duplicated=true 不重复入账。
+ */
+export async function adjustPoints(
+  tx: PointTx,
+  params: { userId: string; amount: number; reference: string; note?: string }
+): Promise<{ duplicated: boolean }> {
+  const { userId, amount, reference, note } = params;
+  if (!Number.isInteger(amount) || amount === 0) {
+    throw new Error("POINT_ADJUST_INVALID_AMOUNT");
+  }
+
+  const existing = await tx.pointLedger.findUnique({
+    where: { userId_reference: { userId, reference } },
+  });
+  if (existing) return { duplicated: true };
+
+  const now = new Date();
+  await tx.pointLedger.create({
+    data:
+      amount > 0
+        ? {
+            userId,
+            type: "ADJUST",
+            amount,
+            remaining: amount,
+            reference,
+            note: note ?? null,
+            releasedAt: now,
+            expiresAt: addMonths(now, POINT_EXPIRY_MONTHS),
+          }
+        : {
+            userId,
+            type: "ADJUST",
+            amount,
+            reference,
+            note: note ?? null,
+          },
+  });
+  await tx.pointBalance.upsert({
+    where: { userId },
+    create: { userId, available: amount },
+    update: { available: { increment: amount } },
+  });
+  return { duplicated: false };
+}
+
+/**
  * 打卡奖励发放（测肤子站手动打卡，经 /api/v1/internal/points/grant 调用）：
  * 直接可用（无冻结），6 个月过期。
  * 幂等：同 userId+reference（checkin:{userId}:{date}）已存在则跳过——
@@ -373,7 +429,7 @@ export async function expirePointsCron(): Promise<number> {
   const now = new Date();
   const due = await prisma.pointLedger.findMany({
     where: {
-      type: { in: ["CONSUME", "BIRTHDAY", "CHECKIN"] },
+      type: { in: [...GRANT_LEDGER_TYPES] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
     },

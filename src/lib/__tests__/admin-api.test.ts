@@ -601,6 +601,7 @@ describe("管理端 API 集成测试", () => {
       mockPrisma.spentAdjustmentApplication.findMany.mockResolvedValue([]);
       mockPrisma.spentAdjustmentApplication.count.mockResolvedValue(0);
       mockPrisma.membershipLevelChange.findMany.mockResolvedValue([]);
+      mockPrisma.loginAttempt.findMany.mockResolvedValue([]);
 
       const { GET } = await import("@/app/api/admin/users/[id]/route");
       const res = await GET(req, { params: Promise.resolve({ id: "user-1" }) });

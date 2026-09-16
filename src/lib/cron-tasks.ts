@@ -20,12 +20,16 @@ import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePointsCron } from "./points-ledger";
 import { apiConsole } from "@/lib/logger";
+import { prisma } from "./prisma";
 
 interface ScheduledTask {
   name: string;
   cronExpression: string;
   handler: () => Promise<void>;
 }
+
+/** 定时任务运行记录的保留上限（超出后由 runTask 顺带清理） */
+const CRON_RUN_RETENTION = 500;
 
 // 清理类任务连续失败计数：单次失败已在 catch 中 console.error（下周期自愈），
 // 连续失败 >=2 次再打 warn，便于日志监控区分偶发抖动与持续性故障
@@ -57,6 +61,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期 Refresh Token 清理失败:", error);
         markCleanupFailed("过期 Refresh Token");
+        throw error;
       }
     },
   },
@@ -72,6 +77,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期限流记录清理失败:", error);
         markCleanupFailed("过期限流记录");
+        throw error;
       }
     },
   },
@@ -87,6 +93,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 登录尝试记录清理失败:", error);
         markCleanupFailed("登录尝试记录");
+        throw error;
       }
 
       try {
@@ -97,6 +104,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] SSO 审计日志清理失败:", error);
         markCleanupFailed("SSO 审计日志");
+        throw error;
       }
     },
   },
@@ -112,6 +120,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期验证码记录清理失败:", error);
         markCleanupFailed("过期验证码记录");
+        throw error;
       }
     },
   },
@@ -127,6 +136,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);
         markCleanupFailed("过期授权码");
+        throw error;
       }
     },
   },
@@ -142,6 +152,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期 nonce 记录清理失败:", error);
         markCleanupFailed("过期 nonce 记录");
+        throw error;
       }
     },
   },
@@ -159,6 +170,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 已撤销会话和 Token 清理失败:", error);
         markCleanupFailed("已撤销会话和 Token");
+        throw error;
       }
     },
   },
@@ -174,6 +186,7 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 已撤销用户授权记录清理失败:", error);
         markCleanupFailed("已撤销用户授权记录");
+        throw error;
       }
     },
   },
@@ -189,6 +202,7 @@ const tasks: ScheduledTask[] = [
         );
       } catch (error) {
         apiConsole.error("[Cron] Backchannel Logout 重投任务失败:", error);
+        throw error;
       }
     },
   },
@@ -204,6 +218,7 @@ const tasks: ScheduledTask[] = [
         );
       } catch (error) {
         apiConsole.error("[Cron] 资料变更 Webhook 重投任务失败:", error);
+        throw error;
       }
     },
   },
@@ -219,6 +234,7 @@ const tasks: ScheduledTask[] = [
         );
       } catch (error) {
         apiConsole.error("[Cron] 生日积分发放任务失败:", error);
+        throw error;
       }
     },
   },
@@ -233,10 +249,85 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 积分过期任务失败:", error);
+        throw error;
       }
     },
   },
 ];
+
+/** 任务元信息（供管理端展示，不暴露 handler） */
+export function listCronTasks(): { name: string; cronExpression: string }[] {
+  return tasks.map((t) => ({ name: t.name, cronExpression: t.cronExpression }));
+}
+
+let pruneCounter = 0;
+
+/** 顺带清理运行记录（每 50 次运行清理一次，保留最近 CRON_RUN_RETENTION 条） */
+async function pruneCronRuns(): Promise<void> {
+  pruneCounter += 1;
+  if (pruneCounter % 50 !== 0) return;
+  try {
+    const cutoff = await prisma.cronTaskRun.findMany({
+      orderBy: { startedAt: "desc" },
+      skip: CRON_RUN_RETENTION,
+      take: 1,
+      select: { startedAt: true },
+    });
+    if (cutoff[0]) {
+      await prisma.cronTaskRun.deleteMany({ where: { startedAt: { lt: cutoff[0].startedAt } } });
+    }
+  } catch (err) {
+    apiConsole.warn("[Cron] 运行记录清理失败:", err);
+  }
+}
+
+/**
+ * 执行指定任务并落运行记录（cron 调度与人工触发共用）
+ * handler 内部错误会 rethrow，由此统一记录失败原因。
+ */
+export async function runCronTask(
+  taskName: string,
+  trigger: "cron" | "manual",
+  adminId?: string
+): Promise<{ ok: boolean; error?: string }> {
+  const task = tasks.find((t) => t.name === taskName);
+  if (!task) return { ok: false, error: "任务不存在" };
+
+  const startedAt = new Date();
+  try {
+    await task.handler();
+    await prisma.cronTaskRun
+      .create({
+        data: {
+          taskName,
+          trigger,
+          success: true,
+          adminId: adminId ?? null,
+          startedAt,
+          finishedAt: new Date(),
+        },
+      })
+      .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
+    await pruneCronRuns();
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await prisma.cronTaskRun
+      .create({
+        data: {
+          taskName,
+          trigger,
+          success: false,
+          error: message.slice(0, 2000),
+          adminId: adminId ?? null,
+          startedAt,
+          finishedAt: new Date(),
+        },
+      })
+      .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
+    return { ok: false, error: message };
+  }
+}
 
 let scheduledTasks: ReturnType<typeof cron.schedule>[] = [];
 let isInitialized = false;
@@ -265,9 +356,15 @@ export function initializeCronTasks(): void {
   for (const task of tasks) {
     try {
       // runOnInit: false 表示不在启动时立即执行，而是在下一个定时周期执行
-      const job = cron.schedule(task.cronExpression, task.handler, {
-        runOnInit: false,
-      });
+      const job = cron.schedule(
+        task.cronExpression,
+        () => {
+          void runCronTask(task.name, "cron");
+        },
+        {
+          runOnInit: false,
+        }
+      );
 
       scheduledTasks.push(job);
       apiConsole.info(`[Cron] ✓ 任务已注册: ${task.name} (${task.cronExpression})`);

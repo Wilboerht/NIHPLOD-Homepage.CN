@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   MessageSquare,
   Briefcase,
+  Package,
   Plus,
   Eye,
   Clock,
@@ -117,6 +118,18 @@ export default async function AdminDashboard() {
           value={stats.unreadMessages}
           icon={<MessageSquare className="h-6 w-6" />}
           description="待处理"
+        />
+        <StatsCard
+          title="产品总数"
+          value={stats.products}
+          icon={<Package className="h-6 w-6" />}
+          description={`${stats.categories} 个分类`}
+        />
+        <StatsCard
+          title="在招职位"
+          value={stats.jobs}
+          icon={<Briefcase className="h-6 w-6" />}
+          description="已发布职位"
         />
       </div>
 

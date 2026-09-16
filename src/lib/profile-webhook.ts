@@ -258,3 +258,97 @@ export async function retryFailedWebhookDeliveries(
 
   return { delivered, failed, dropped };
 }
+
+export type ManualRetryResult = {
+  ok: boolean;
+  status: "delivered" | "failed" | "dropped" | "not_found";
+  error?: string;
+  attempts?: number;
+};
+
+/**
+ * 管理端手动重投单条资料变更 Webhook（忽略 nextRetryAt，立即尝试一次）
+ * - 目标 client 已删除/未配置/不安全：丢弃记录
+ * - 成功：删除记录并写审计
+ * - 失败：attempts+1 指数退避；达到上限则丢弃并写审计
+ */
+export async function retryWebhookFailureById(id: string): Promise<ManualRetryResult> {
+  const failure = await prisma.webhookDeliveryFailure.findUnique({ where: { id } });
+  if (!failure) return { ok: false, status: "not_found" };
+
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId: failure.clientId },
+    select: { clientId: true, webhookUri: true },
+  });
+  const uri = client?.webhookUri;
+  if (!uri || !isSafeBackchannelUrl(uri)) {
+    await prisma.webhookDeliveryFailure.delete({ where: { id } });
+    recordSsoEvent({
+      event: "profile_webhook",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      success: false,
+      detail: { reason: "target_unavailable", manual: true },
+    });
+    return { ok: true, status: "dropped" };
+  }
+
+  try {
+    const payload = (failure.payload ?? {}) as {
+      profile?: ProfileSnapshot;
+      membership?: { level: string; totalSpent: number } | null;
+    };
+    const eventToken = await signProfileEventToken({
+      sub: failure.userId,
+      aud: failure.clientId,
+      events: { [PROFILE_UPDATE_EVENT_URI]: {} },
+      jti: crypto.randomUUID(),
+      profile: payload.profile ?? { nickname: null, avatar: null, birthday: null },
+      ...(payload.membership !== undefined && { membership: payload.membership }),
+    });
+
+    const res = await fetch(uri, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_token: eventToken }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) throw new Error(`http_${res.status}`);
+
+    await prisma.webhookDeliveryFailure.delete({ where: { id } });
+    recordSsoEvent({
+      event: "profile_webhook",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      success: true,
+      detail: { redelivered: true, manual: true, attempts: failure.attempts + 1 },
+    });
+    return { ok: true, status: "delivered" };
+  } catch (err) {
+    const attempts = failure.attempts + 1;
+    if (attempts >= REDELIVERY_MAX_ATTEMPTS) {
+      await prisma.webhookDeliveryFailure
+        .delete({ where: { id } })
+        .catch((e) => apiConsole.warn("[ProfileWebhook] 删除超限失败记录出错:", e));
+      recordSsoEvent({
+        event: "profile_webhook",
+        userId: failure.userId,
+        clientId: failure.clientId,
+        success: false,
+        detail: { reason: "max_retries_exceeded", attempts, manual: true },
+      });
+      return { ok: false, status: "dropped", error: "已达到最大重试次数，记录已丢弃" };
+    }
+    const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
+    await prisma.webhookDeliveryFailure.update({
+      where: { id },
+      data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
+    });
+    return {
+      ok: false,
+      status: "failed",
+      error: err instanceof Error ? err.message : "投递失败",
+      attempts,
+    };
+  }
+}

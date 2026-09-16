@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiGet } from "@/lib/api-client";
+import { RequireAdminRole } from "@/components/admin/RequireAdminRole";
 import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 
 interface ScopeDef {
@@ -44,6 +45,14 @@ interface TestResultData {
 }
 
 export default function OAuthWizardPage() {
+  return (
+    <RequireAdminRole role="owner">
+      <OAuthWizardContent />
+    </RequireAdminRole>
+  );
+}
+
+function OAuthWizardContent() {
   const toast = useToast();
   const router = useRouter();
   const [step, setStep] = useState(1);

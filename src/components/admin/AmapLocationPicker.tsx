@@ -29,15 +29,24 @@ export function AmapLocationPicker({
   // Amap 密钥从服务端 API 获取，不通过 NEXT_PUBLIC_ 编入客户端 bundle
   const [amapKey, setAmapKey] = useState("");
   const [amapSecret, setAmapSecret] = useState("");
+  // 非超级管理员（403）或无密钥配置时降级为纯文本输入 + 手动经纬度
+  const [amapUnavailable, setAmapUnavailable] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/amap-config", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.data?.key) setAmapKey(d.data.key);
-        if (d?.data?.secret) setAmapSecret(d.data.secret);
+      .then((r) => {
+        if (!r.ok) throw new Error(`http_${r.status}`);
+        return r.json();
       })
-      .catch(() => {});
+      .then((d) => {
+        if (d?.data?.key && d?.data?.secret) {
+          setAmapKey(d.data.key);
+          setAmapSecret(d.data.secret);
+        } else {
+          setAmapUnavailable(true);
+        }
+      })
+      .catch(() => setAmapUnavailable(true));
   }, []);
 
   useEffect(() => {
@@ -65,9 +74,10 @@ export function AmapLocationPicker({
     };
   }, [amapKey, amapSecret]);
 
-  // 搜索建议逻辑
+  // 搜索建议逻辑（地图不可用时仅回填文本，不查询建议）
   const handleSearch = (keyword: string) => {
     onChange(keyword);
+    if (amapUnavailable) return;
     const amap = window.AMap;
     if (!amap) return;
 
@@ -130,7 +140,9 @@ export function AmapLocationPicker({
           id="amap-location-input"
           type="text"
           value={value}
-          placeholder="搜索工作地点，如：信泰中心广场"
+          placeholder={
+            amapUnavailable ? "填写工作地点，如：上海市普陀区信泰中心广场" : "搜索工作地点，如：信泰中心广场"
+          }
           onFocus={() => {
             if (suggestions.length > 0) setOpen(true);
           }}
@@ -162,6 +174,11 @@ export function AmapLocationPicker({
         />
       </div>
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {amapUnavailable && !error && (
+        <p className="mt-1 text-xs text-brand-charcoal/40">
+          地图搜索仅超级管理员可用，可直接填写地点，并在下方手动录入经纬度（选填）
+        </p>
+      )}
 
       {/* 下拉建议列表 */}
       {open && suggestions.length > 0 && (

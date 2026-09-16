@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -40,7 +41,7 @@ interface RedemptionItem {
   user: { id: string; phone: string; nickname: string | null };
 }
 
-type StatusTab = "PENDING" | "FULFILLED" | "ALL";
+type StatusTab = "PENDING" | "FULFILLED" | "CANCELLED" | "ALL";
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
@@ -67,6 +68,7 @@ function formatDateTime(iso: string | null): string {
 
 export default function AdminPointGiftsPage() {
   const { success, error: showError } = useToast();
+  const [isOwner, setIsOwner] = useState(false);
   const [products, setProducts] = useState<RedeemableProductItem[]>([]);
   const [productPage, setProductPage] = useState(1);
   const [productTotalPages, setProductTotalPages] = useState(0);
@@ -89,6 +91,8 @@ export default function AdminPointGiftsPage() {
   } | null>(null);
   const [waybillInput, setWaybillInput] = useState("");
   const [submittingFulfill, setSubmittingFulfill] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<RedemptionItem | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setProductsLoading(true);
@@ -140,6 +144,19 @@ export default function AdminPointGiftsPage() {
     deferInEffect(fetchRedemptions);
   }, [fetchProducts, fetchRedemptions]);
 
+  // 角色：仅超级管理员可设置"积分可兑"（与 API 层一致，非 owner 隐藏操作按钮）
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<{ user: { role: string } }>("/api/admin/me")
+      .then((data) => {
+        if (!cancelled) setIsOwner(data.user?.role === "owner");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleToggle = async (p: RedeemableProductItem) => {
     setTogglingId(p.id);
     try {
@@ -188,6 +205,25 @@ export default function AdminPointGiftsPage() {
       showError(e instanceof ApiError ? e.message : "操作失败");
     } finally {
       setSubmittingFulfill(false);
+    }
+  };
+
+  /** 取消兑换并退还积分（仅超级管理员） */
+  const handleCancelRedemption = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      const data = await apiPost<{ message: string }>(
+        `/api/admin/point-redemptions/${cancelTarget.id}/cancel`,
+        {}
+      );
+      success(data.message);
+      setCancelTarget(null);
+      fetchRedemptions();
+    } catch (e) {
+      showError(e instanceof ApiError ? e.message : "取消失败");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -320,18 +356,22 @@ export default function AdminPointGiftsPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={togglingId === p.id || !p.published}
-                        onClick={() => handleToggle(p)}
-                      >
-                        {togglingId === p.id
-                          ? "处理中..."
-                          : p.pointRedeemable
-                            ? "取消可兑"
-                            : "设为可兑"}
-                      </Button>
+                      {isOwner ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={togglingId === p.id || !p.published}
+                          onClick={() => handleToggle(p)}
+                        >
+                          {togglingId === p.id
+                            ? "处理中..."
+                            : p.pointRedeemable
+                              ? "取消可兑"
+                              : "设为可兑"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-gray-400">仅超级管理员可设置</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -379,6 +419,7 @@ export default function AdminPointGiftsPage() {
             [
               { key: "PENDING", label: "待履约" },
               { key: "FULFILLED", label: "已履约" },
+              { key: "CANCELLED", label: "已取消" },
               { key: "ALL", label: "全部" },
             ] as { key: StatusTab; label: string }[]
           ).map((t) => (
@@ -471,15 +512,29 @@ export default function AdminPointGiftsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{formatDateTime(r.createdAt)}</td>
                     <td className="px-6 py-4">
-                      {r.status === "PENDING" ? (
-                        <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
-                          标记履约
-                        </Button>
-                      ) : r.status === "FULFILLED" ? (
-                        <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
-                          {r.waybillNo ? "修改运单号" : "补录运单号"}
-                        </Button>
-                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {r.status === "PENDING" ? (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                              标记履约
+                            </Button>
+                            {isOwner && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-50"
+                                onClick={() => setCancelTarget(r)}
+                              >
+                                取消退分
+                              </Button>
+                            )}
+                          </>
+                        ) : r.status === "FULFILLED" ? (
+                          <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                            {r.waybillNo ? "修改运单号" : "补录运单号"}
+                          </Button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -554,6 +609,22 @@ export default function AdminPointGiftsPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* 取消兑换确认（退还积分） */}
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelRedemption}
+        title="取消兑换并退还积分"
+        description={
+          cancelTarget
+            ? `确定取消「${cancelTarget.productName}」的兑换吗？将向用户退还 ${cancelTarget.points.toLocaleString()} 积分（6 个月有效期），此操作不可撤销。`
+            : ""
+        }
+        confirmText="确认取消并退分"
+        type="danger"
+        loading={cancelling}
+      />
     </div>
   );
 }

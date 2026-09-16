@@ -553,6 +553,24 @@ model AuditLog {
 }
 
 // ============================================
+// 定时任务运行记录（管理端可视化/手动触发）
+// ============================================
+
+model CronTaskRun {
+  id         String   @id @default(cuid())
+  taskName   String // 任务名（lib/cron-tasks.ts 中定义的唯一名称）
+  trigger    String   @default("cron") // cron | manual
+  success    Boolean
+  error      String?  @db.Text // 失败原因（成功为 null）
+  adminId    String? // 手动触发的管理员（无 FK：管理员删除后保留历史记录）
+  startedAt  DateTime @default(now())
+  finishedAt DateTime @default(now())
+
+  @@index([taskName, startedAt(sort: Desc)])
+  @@index([startedAt])
+}
+
+// ============================================
 // 限流记录（支持多实例部署）
 // ============================================
 
@@ -710,6 +728,7 @@ enum PointLedgerType {
   CHECKIN // 打卡奖励（测肤子站手动打卡：连续第 1/2/3+ 天 +1/+2/+3 分，6 个月过期）
   REDEEM // 兑礼扣减（FIFO 消耗最旧可用流水）
   EXPIRE // 过期扣减
+  ADJUST // 人工调整（管理端补偿/冲正；正向计 remaining 并 6 个月过期，负向直接冲可用）
 }
 
 // 积分流水（FIFO 消耗：发放类流水记录 remaining，兑礼/过期按时间序消耗）
