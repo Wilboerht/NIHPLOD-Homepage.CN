@@ -16,13 +16,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Coins,
   Copy,
   Gift,
   Loader2,
   Lock,
   MapPin,
   Plus,
+  Sparkles,
   X,
   XCircle,
 } from "lucide-react";
@@ -455,12 +455,12 @@ export function PointsMallPanel() {
           </div>
         )}
 
-        {/* 积分余额概览：右下角淡积分水印装饰 */}
+        {/* 积分余额概览：右下角渐隐水印（Sparkles，向卡片内部淡出，纯装饰） */}
         <div className="relative overflow-hidden rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <Coins
+          <Sparkles
             aria-hidden
             strokeWidth={1}
-            className="pointer-events-none absolute -bottom-4 -right-4 h-20 w-20 text-[#00263e]/[0.06]"
+            className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 text-[#00263e]/[0.05] [-webkit-mask-image:linear-gradient(to_top_left,black,transparent_75%)] [mask-image:linear-gradient(to_top_left,black,transparent_75%)]"
           />
           <div className="relative flex items-center justify-between">
             <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
