@@ -364,10 +364,10 @@ export function ProfilePanel() {
 
       <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
         {/* 头像区域 */}
-        <div className="mb-6 flex items-center gap-6 md:mb-10">
+        <div className="mb-5 flex items-center gap-4 md:mb-10 md:gap-6">
           {/* 可点击上传头像 */}
           <div className="group relative">
-            <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#FBF8F0]/20 transition-all group-hover:border-stone-300">
+            <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#FBF8F0]/20 transition-all group-hover:border-stone-300 md:h-20 md:w-20">
               {user.avatar ? (
                 <Image
                   src={user.avatar}
@@ -377,7 +377,7 @@ export function ProfilePanel() {
                   className="h-full w-full object-cover transition-all"
                 />
               ) : (
-                <User className="h-8 w-8 text-stone-400" strokeWidth={1} />
+                <User className="h-7 w-7 text-stone-400 md:h-8 md:w-8" strokeWidth={1} />
               )}
             </div>
 
@@ -429,12 +429,10 @@ export function ProfilePanel() {
         {/* 信息卡片 - 移动端采用上下堆叠，PC 采用左右对齐 */}
         <div className="flex flex-col gap-1">
           {/* 昵称 */}
-          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-5 transition-all hover:bg-white/40 md:py-4">
-            <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
-              <div className="shrink-0 md:w-20">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
-                  昵称
-                </p>
+          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-4 transition-all hover:bg-white/40">
+            <div className="mr-4 flex min-w-0 flex-1 items-center gap-3 md:gap-6">
+              <div className="w-[4.5rem] shrink-0 md:w-20">
+                <p className="text-[13px] text-stone-400 md:text-sm md:font-light">昵称</p>
               </div>
               <div className="flex w-full min-w-0 flex-1 items-center gap-2">
                 {editingField === "nickname" ? (
@@ -453,7 +451,7 @@ export function ProfilePanel() {
                     autoFocus
                   />
                 ) : (
-                  <p className="truncate text-base font-medium text-stone-800 md:text-sm">
+                  <p className="truncate text-[15px] font-medium text-stone-800 md:text-sm">
                     {user.nickname || "未设置"}
                   </p>
                 )}
@@ -492,15 +490,13 @@ export function ProfilePanel() {
 
           {/* 性别：可选，会员身份属性（运营/个性化用），测肤问卷据此预填减少一步 */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
-            <div className="flex items-center justify-between py-5 md:py-4">
-              <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
-                <div className="shrink-0 md:w-20">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
-                    性别
-                  </p>
+            <div className="flex items-center justify-between py-4">
+              <div className="mr-4 flex min-w-0 flex-1 items-center gap-3 md:gap-6">
+                <div className="w-[4.5rem] shrink-0 md:w-20">
+                  <p className="text-[13px] text-stone-400 md:text-sm md:font-light">性别</p>
                 </div>
                 <div className="flex w-full min-w-0 flex-1 items-center gap-2">
-                  <p className="truncate text-base font-medium text-stone-800 md:text-sm">
+                  <p className="truncate text-[15px] font-medium text-stone-800 md:text-sm">
                     {user.gender === "male" ? "男" : user.gender === "female" ? "女" : "未设置"}
                   </p>
                 </div>
@@ -569,12 +565,10 @@ export function ProfilePanel() {
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
           {/* 生日 */}
-          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-5 transition-all hover:bg-white/40 md:py-4">
-            <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
-              <div className="shrink-0 md:w-20">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
-                  生日
-                </p>
+          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-4 transition-all hover:bg-white/40">
+            <div className="mr-4 flex min-w-0 flex-1 items-center gap-3 md:gap-6">
+              <div className="w-[4.5rem] shrink-0 md:w-20">
+                <p className="text-[13px] text-stone-400 md:text-sm md:font-light">生日</p>
               </div>
               <div className="flex w-full min-w-0 flex-1 items-center gap-2">
                 {editingField === "birthday" ? (
@@ -592,7 +586,7 @@ export function ProfilePanel() {
                     className="w-full border-b border-stone-400 bg-transparent py-1 text-base font-medium text-stone-800 outline-none transition-colors md:w-56"
                   />
                 ) : (
-                  <p className="truncate text-base font-medium text-stone-800 md:text-sm">
+                  <p className="truncate text-[15px] font-medium text-stone-800 md:text-sm">
                     {user.birthday ? user.birthday.slice(0, 10) : "未设置"}
                   </p>
                 )}
@@ -636,15 +630,13 @@ export function ProfilePanel() {
 
           {/* 绑定手机号 - 换绑需双向短信验证 */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
-            <div className="flex items-center justify-between py-5 md:py-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
-                <div className="md:w-20">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
-                    绑定手机号
-                  </p>
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3 md:gap-6">
+                <div className="w-[4.5rem] shrink-0 md:w-20">
+                  <p className="text-[13px] text-stone-400 md:text-sm md:font-light">绑定手机号</p>
                 </div>
                 <div>
-                  <p className="text-base font-medium text-stone-800 md:text-sm">
+                  <p className="text-[15px] font-medium text-stone-800 md:text-sm">
                     {isPlaceholderPhone
                       ? "未绑定"
                       : `${user.phone?.slice(0, 3)}****${user.phone?.slice(-4)}`}
@@ -767,16 +759,16 @@ export function ProfilePanel() {
               type="button"
               onClick={() => setShowPasswordForm((v) => !v)}
               aria-expanded={showPasswordForm}
-              className="flex w-full items-center justify-between py-5 md:py-4"
+              className="flex w-full items-center justify-between py-4"
             >
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
-                <div className="md:w-20">
-                  <p className="text-left text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
+              <div className="flex items-center gap-3 md:gap-6">
+                <div className="w-[4.5rem] shrink-0 md:w-20">
+                  <p className="text-left text-[13px] text-stone-400 md:text-sm md:font-light">
                     密码
                   </p>
                 </div>
                 <div>
-                  <p className="text-base font-medium text-stone-800 md:text-sm">
+                  <p className="text-[15px] font-medium text-stone-800 md:text-sm">
                     {user.hasPassword ? "已设置" : "未设置"}
                   </p>
                 </div>
@@ -799,7 +791,7 @@ export function ProfilePanel() {
           {/* 收货地址（积分兑礼礼品寄送用；收起时仅显示设置状态） */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
             <div
-              className="flex w-full cursor-pointer items-center justify-between py-5 md:py-4"
+              className="flex w-full cursor-pointer items-center justify-between py-4"
               onClick={() => {
                 if (showAddressSection) {
                   setShowAddressSection(false);
@@ -811,14 +803,14 @@ export function ProfilePanel() {
                 }
               }}
             >
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
-                <div className="shrink-0 md:w-20">
-                  <p className="text-left text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
+              <div className="flex items-center gap-3 md:gap-6">
+                <div className="w-[4.5rem] shrink-0 md:w-20">
+                  <p className="text-left text-[13px] text-stone-400 md:text-sm md:font-light">
                     收货地址
                   </p>
                 </div>
                 <div>
-                  <p className="text-base font-medium text-stone-800 md:text-sm">
+                  <p className="text-[15px] font-medium text-stone-800 md:text-sm">
                     {addressesLoading
                       ? "加载中..."
                       : addresses.length > 0
