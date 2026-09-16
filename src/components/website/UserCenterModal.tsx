@@ -5,8 +5,8 @@
  * 品牌风格 - 左侧菜单 + 右侧内容（桌面）；移动端全屏 + 底部 Tab 导航
  *
  * 移动端（<768px）：
- * - 底部抽屉形态：顶部留缝（calc(100dvh - 2.5rem)），两角圆角（rounded-t-3xl），
- *   上滑进场时可见完整滑过轨迹；顶部遮罩透出浮层层次；
+ * - 底部抽屉形态：顶部留缝（calc(100dvh - 2.5rem)），两角圆角（rounded-t-[28px]），
+ *   弹簧动画淡入上浮进场；遮罩毛玻璃模糊透出浮层层次；
  * - 顶部 Header 跟随抽屉顶部（不再覆盖状态栏/灵动岛，无需 safe-area-top 补偿）；
  * - 侧边栏改为底部 Tab 栏（4 个一级入口），两级导航收敛为单级；
  * - 底部保持贴边（Tab 栏 + safe-area-bottom）；
@@ -140,24 +140,24 @@ export function UserCenterModal() {
     <AnimatePresence>
       {userCenterOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 md:p-4">
-          {/* 遮罩：仅桌面有可点击边距；移动端全屏遮罩仅供淡入语义 */}
+          {/* 遮罩：全端毛玻璃模糊；仅桌面有可点击边距，移动端全屏遮罩仅供淡入语义 */}
           <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={closeUserCenter}
-            className="absolute inset-0 bg-black/40 md:backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-md"
           />
 
-          {/* 弹窗主体：移动端全屏（上滑进场），桌面端居中卡片（缩放淡入） */}
+          {/* 弹窗主体：移动端底部抽屉、桌面端居中卡片，均为缩放淡入；移动端用弹簧动画 */}
           <m.div
-            initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95, y: 10 }}
-            animate={isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
-            exit={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 10 }}
             transition={
               isMobile
-                ? { duration: 0.3, ease: [0.32, 0.72, 0, 1] }
+                ? { type: "spring", damping: 25, stiffness: 300 }
                 : { duration: 0.25, ease: "easeOut" }
             }
             ref={dialogRef}
@@ -177,7 +177,7 @@ export function UserCenterModal() {
             }}
             className="relative z-10 flex w-full items-center justify-center outline-none md:h-[min(680px,calc(100dvh-3rem))] md:max-w-[1100px]"
           >
-            <div className="relative flex h-[calc(100vh-2.5rem)] w-full items-stretch overflow-hidden rounded-t-3xl shadow-none supports-[height:100dvh]:h-[calc(100dvh-2.5rem)] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+            <div className="relative flex h-[calc(100vh-2.5rem)] w-full items-stretch overflow-hidden rounded-t-[28px] shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)] supports-[height:100dvh]:h-[calc(100dvh-2.5rem)] md:h-full md:rounded-[2.5rem] md:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
               {/* 底层基础色 */}
               <div className="absolute inset-0 z-0 bg-[#FBF8F0]" />
 
