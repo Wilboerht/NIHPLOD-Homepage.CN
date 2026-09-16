@@ -429,7 +429,7 @@ export function ProfilePanel() {
         {/* 信息卡片 - 移动端采用上下堆叠，PC 采用左右对齐 */}
         <div className="flex flex-col gap-1">
           {/* 昵称 */}
-          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-6 transition-all hover:bg-white/40">
+          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-5 transition-all hover:bg-white/40 md:py-4">
             <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
               <div className="shrink-0 md:w-20">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
@@ -492,7 +492,7 @@ export function ProfilePanel() {
 
           {/* 性别：可选，会员身份属性（运营/个性化用），测肤问卷据此预填减少一步 */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
-            <div className="flex items-center justify-between py-6">
+            <div className="flex items-center justify-between py-5 md:py-4">
               <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
                 <div className="shrink-0 md:w-20">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
@@ -569,7 +569,7 @@ export function ProfilePanel() {
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
           {/* 生日 */}
-          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-6 transition-all hover:bg-white/40">
+          <div className="group -mx-6 flex items-center justify-between rounded-2xl px-6 py-5 transition-all hover:bg-white/40 md:py-4">
             <div className="mr-4 flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-6">
               <div className="shrink-0 md:w-20">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
@@ -636,7 +636,7 @@ export function ProfilePanel() {
 
           {/* 绑定手机号 - 换绑需双向短信验证 */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
-            <div className="flex items-center justify-between py-6">
+            <div className="flex items-center justify-between py-5 md:py-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
                 <div className="md:w-20">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 md:text-sm md:font-light md:normal-case">
@@ -767,7 +767,7 @@ export function ProfilePanel() {
               type="button"
               onClick={() => setShowPasswordForm((v) => !v)}
               aria-expanded={showPasswordForm}
-              className="flex w-full items-center justify-between py-6"
+              className="flex w-full items-center justify-between py-5 md:py-4"
             >
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6">
                 <div className="md:w-20">
@@ -799,7 +799,7 @@ export function ProfilePanel() {
           {/* 收货地址（积分兑礼礼品寄送用；收起时仅显示设置状态） */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
             <div
-              className="flex w-full cursor-pointer items-center justify-between py-6"
+              className="flex w-full cursor-pointer items-center justify-between py-5 md:py-4"
               onClick={() => {
                 if (showAddressSection) {
                   setShowAddressSection(false);
