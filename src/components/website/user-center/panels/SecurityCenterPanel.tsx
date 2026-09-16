@@ -44,9 +44,9 @@ export function SecurityCenterPanel() {
               role="tab"
               aria-selected={securitySection === section}
               onClick={() => setSecuritySection(section)}
-              className={`rounded-full px-4 py-1.5 text-xs transition-colors ${
+              className={`rounded-full px-4 py-2 text-xs transition-colors active:opacity-70 ${
                 securitySection === section
-                  ? "bg-[#00263e] text-white"
+                  ? "bg-[#00263e]/10 font-medium text-[#00263e]"
                   : "text-stone-500 hover:text-stone-800"
               }`}
             >

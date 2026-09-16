@@ -139,7 +139,8 @@ export function UserCenterModal() {
   const content = (
     <AnimatePresence>
       {userCenterOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 md:p-4">
+        // 移动端底对齐（顶部留出 2.5rem 缝隙、底部贴边）；桌面端居中
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center p-0 md:items-center md:p-4">
           {/* 遮罩：全端毛玻璃模糊；仅桌面有可点击边距，移动端全屏遮罩仅供淡入语义 */}
           <m.div
             initial={{ opacity: 0 }}
@@ -346,7 +347,7 @@ export function UserCenterModal() {
                             type="button"
                             onClick={() => setUserCenterView("profile")}
                             aria-label="查看个人信息"
-                            className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white/60 transition-opacity hover:opacity-80"
+                            className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/60 transition-opacity hover:opacity-80 active:opacity-70"
                           >
                             {user.avatar ? (
                               <Image
@@ -396,7 +397,7 @@ export function UserCenterModal() {
                               type="button"
                               onClick={() => setUserCenterView(id)}
                               aria-current={isActive ? "page" : undefined}
-                              className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+                              className={`flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${
                                 isActive ? "text-[#00263e]" : "text-stone-400 hover:text-stone-800"
                               }`}
                             >

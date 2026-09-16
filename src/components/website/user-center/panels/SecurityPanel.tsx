@@ -16,7 +16,7 @@ import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { validatePasswordStrength } from "@/components/website/auth/auth-utils";
 
 const inputClass =
-  "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400";
+  "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400 md:text-sm";
 
 interface SecurityPanelProps {
   /** 初始模式：change = 旧密码修改；set = 首次设置（未设过密码的账号） */

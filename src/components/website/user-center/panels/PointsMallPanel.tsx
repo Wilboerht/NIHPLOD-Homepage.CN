@@ -462,7 +462,7 @@ export function PointsMallPanel() {
               type="button"
               onClick={() => setShowLedger((v) => !v)}
               aria-expanded={showLedger}
-              className="flex items-center gap-0.5 rounded-full border border-stone-200 px-2.5 py-0.5 text-[11px] font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800"
+              className="flex items-center gap-0.5 rounded-full border border-stone-200 px-3 py-1.5 text-xs font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
             >
               明细
               <ChevronRight
@@ -573,7 +573,7 @@ export function PointsMallPanel() {
                       type="button"
                       disabled={!g.affordable}
                       onClick={() => openRedeem(g)}
-                      className="rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
+                      className="rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
                     >
                       {g.affordable ? "兑换" : "积分不足"}
                     </button>
@@ -604,7 +604,7 @@ export function PointsMallPanel() {
                         <button
                           type="button"
                           onClick={() => openRedemptionDetail(r)}
-                          className="text-[#00263e] transition-opacity hover:opacity-70"
+                          className="py-1 text-[#00263e] transition-opacity hover:opacity-70 active:opacity-60"
                         >
                           查看
                         </button>
@@ -902,7 +902,7 @@ export function PointsMallPanel() {
                           value={newRecipient}
                           onChange={(e) => setNewRecipient(e.target.value)}
                           placeholder="收货人姓名"
-                          className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                          className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                         />
                         <input
                           type="text"
@@ -911,7 +911,7 @@ export function PointsMallPanel() {
                           value={newPhone}
                           onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, ""))}
                           placeholder="收货手机号"
-                          className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                          className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                         />
                       </div>
                       <input
@@ -920,7 +920,7 @@ export function PointsMallPanel() {
                         value={newRegion}
                         onChange={(e) => setNewRegion(e.target.value)}
                         placeholder="省市区（如：上海市 浦东新区）"
-                        className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                        className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                       />
                       <input
                         type="text"
@@ -928,7 +928,7 @@ export function PointsMallPanel() {
                         value={newDetail}
                         onChange={(e) => setNewDetail(e.target.value)}
                         placeholder="详细地址（街道、门牌号等）"
-                        className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                        className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                       />
                       <button
                         type="button"
@@ -942,7 +942,7 @@ export function PointsMallPanel() {
                     <button
                       type="button"
                       onClick={() => setShowNewAddress(true)}
-                      className="mt-2 flex items-center gap-1 text-xs text-[#00263e] transition-colors hover:opacity-70"
+                      className="mt-2 flex items-center gap-1 py-1 text-xs text-[#00263e] transition-colors hover:opacity-70 active:opacity-60"
                     >
                       <Plus className="h-3.5 w-3.5" />
                       使用新地址
@@ -960,7 +960,7 @@ export function PointsMallPanel() {
                       creatingAddress ||
                       (!showNewAddress && !selectedAddressId)
                     }
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00263e] px-8 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00263e] px-8 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {redeeming || creatingAddress ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

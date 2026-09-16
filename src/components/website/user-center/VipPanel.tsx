@@ -466,7 +466,7 @@ export function VipPanel() {
                                           onClick={toggleChannelTip}
                                           aria-label="查看官方渠道说明"
                                           aria-expanded={showChannelTip}
-                                          className="ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors hover:text-[#00263e]"
+                                          className="relative ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-[#00263e] active:opacity-60"
                                         >
                                           <CircleHelp className="h-3.5 w-3.5" />
                                         </button>
@@ -480,7 +480,7 @@ export function VipPanel() {
                                           <button
                                             type="button"
                                             aria-label="查看官方渠道说明"
-                                            className="ml-1 inline-flex translate-y-[2px] cursor-help text-stone-400 transition-colors hover:text-[#00263e]"
+                                            className="relative ml-1 inline-flex translate-y-[2px] cursor-help text-stone-400 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-[#00263e]"
                                           >
                                             <CircleHelp className="h-3.5 w-3.5" />
                                           </button>
@@ -497,7 +497,7 @@ export function VipPanel() {
                         <button
                           type="button"
                           onClick={focusSpentForm}
-                          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#00263e]/30 bg-white/40 px-5 py-2 text-xs text-[#00263e] transition-colors hover:border-[#00263e]/60 hover:bg-[#00263e]/5"
+                          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#00263e]/30 bg-white/40 px-5 py-2 text-xs text-[#00263e] transition-colors hover:border-[#00263e]/60 hover:bg-[#00263e]/5 active:opacity-70"
                         >
                           录入消费
                           <ChevronRight className="h-3.5 w-3.5" />
@@ -505,7 +505,7 @@ export function VipPanel() {
                         <button
                           type="button"
                           onClick={() => setView("spent-history")}
-                          className="text-xs text-stone-500 transition-colors hover:text-stone-800"
+                          className="py-1.5 text-xs text-stone-500 transition-colors hover:text-stone-800 active:opacity-60"
                         >
                           查看录入历史
                         </button>
@@ -568,7 +568,7 @@ export function VipPanel() {
                               <button
                                 type="button"
                                 onClick={focusSpentForm}
-                                className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                                className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
                               >
                                 了解会员升级
                               </button>
@@ -591,7 +591,7 @@ export function VipPanel() {
                     <button
                       type="button"
                       onClick={() => setView("levels")}
-                      className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800"
+                      className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3.5 py-1.5 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
                     >
                       全部等级
                       <ChevronRight className="h-3.5 w-3.5" />
@@ -610,7 +610,7 @@ export function VipPanel() {
                             <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                              <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                              <p className="mt-0.5 text-[13px] leading-relaxed text-stone-400 md:text-xs">
                                 {b.desc}
                               </p>
                             </div>
@@ -757,7 +757,7 @@ export function VipPanel() {
                                   >
                                     {b.title}
                                   </p>
-                                  <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                                  <p className="mt-0.5 text-[13px] leading-relaxed text-stone-400 md:text-xs">
                                     {b.desc}
                                   </p>
                                 </div>
@@ -784,7 +784,7 @@ export function VipPanel() {
                               <button
                                 type="button"
                                 onClick={focusSpentForm}
-                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
                               >
                                 补录消费记录
                               </button>
@@ -818,7 +818,7 @@ export function VipPanel() {
                             <button
                               type="button"
                               onClick={focusSpentForm}
-                              className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-1.5 text-xs text-white transition-colors hover:bg-[#0d3b5c]"
+                              className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
                             >
                               补录消费记录
                             </button>

@@ -17,6 +17,7 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   Clock,
   ImagePlus,
@@ -106,6 +107,8 @@ export function SpentAdjustmentPanel({
   const [purchasedAt, setPurchasedAt] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  // 录入历史中展开查看凭证缩略图的申请 id
+  const [expandedImages, setExpandedImages] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { error: showError, success: showSuccess } = useToast();
   const { redirectToLogin } = useAuth();
@@ -272,7 +275,7 @@ export function SpentAdjustmentPanel({
                         key={c}
                         type="button"
                         onClick={() => setChannel(c)}
-                        className={`relative inline-flex items-center rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                        className={`relative inline-flex items-center rounded-full border px-3.5 py-2 text-xs transition-colors active:opacity-70 ${
                           selected
                             ? "border-[#00263e]/40 font-medium text-[#00263e]"
                             : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
@@ -314,7 +317,7 @@ export function SpentAdjustmentPanel({
                     value={dealerName}
                     onChange={(e) => setDealerName(e.target.value)}
                     placeholder="如：XX 美妆集合店 / XX 贸易有限公司"
-                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                   />
                 </div>
               )}
@@ -335,7 +338,7 @@ export function SpentAdjustmentPanel({
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="请说明购买渠道与订单信息（如平台名称、购买方式等）"
-                    className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                    className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                   />
                 </div>
               )}
@@ -354,7 +357,7 @@ export function SpentAdjustmentPanel({
                   value={orderNo}
                   onChange={(e) => setOrderNo(e.target.value)}
                   placeholder="如：天猫订单号 / 线下小票号"
-                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                 />
               </div>
             </div>
@@ -377,7 +380,7 @@ export function SpentAdjustmentPanel({
                     value={amountClaimed}
                     onChange={(e) => setAmountClaimed(e.target.value)}
                     placeholder="1280"
-                    className="w-full rounded-xl border border-stone-200 bg-white/70 py-2.5 pl-8 pr-4 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 py-2.5 pl-8 pr-4 text-base text-stone-800 outline-none transition-colors [appearance:textfield] placeholder:text-stone-400 focus:border-[#00263e] md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
               </div>
@@ -391,7 +394,7 @@ export function SpentAdjustmentPanel({
                   value={purchasedAt}
                   max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setPurchasedAt(e.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors focus:border-[#00263e]"
+                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors focus:border-[#00263e] md:text-sm"
                 />
               </div>
             </div>
@@ -422,9 +425,9 @@ export function SpentAdjustmentPanel({
                       type="button"
                       onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
                       aria-label={`删除凭证 ${i + 1}`}
-                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
@@ -472,7 +475,7 @@ export function SpentAdjustmentPanel({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="补充说明（如订单含多个商品、退款情况等）"
-                  className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-sm text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e]"
+                  className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                 />
               </section>
             )}
@@ -483,7 +486,7 @@ export function SpentAdjustmentPanel({
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting || uploading || reachedPendingLimit}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -553,11 +556,45 @@ export function SpentAdjustmentPanel({
                         )}
                         {a.purchasedAt && <span>消费日期 {formatDate(a.purchasedAt)}</span>}
                         {a.images.length > 0 && (
-                          <span className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedImages((prev) => (prev === a.id ? null : a.id))
+                            }
+                            aria-expanded={expandedImages === a.id}
+                            className="flex items-center gap-1 transition-colors hover:text-stone-600 active:opacity-60"
+                          >
                             <Camera className="h-3 w-3" /> {a.images.length} 张凭证
-                          </span>
+                            <ChevronDown
+                              className={`h-3 w-3 transition-transform ${
+                                expandedImages === a.id ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
                         )}
                       </div>
+
+                      {/* 凭证缩略图（点击「N 张凭证」展开，可新窗口查看原图） */}
+                      {expandedImages === a.id && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {a.images.map((url, i) => (
+                            <a
+                              key={url}
+                              href={receiptImageSrc(url, "user")}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative block h-16 w-16 overflow-hidden rounded-lg border border-stone-200"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={receiptImageSrc(url, "user")}
+                                alt={`凭证 ${i + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
 
                       {a.status === "APPROVED" && a.reviewAmount != null && (
                         <p className="mt-1.5 text-xs text-[#00263e]">
