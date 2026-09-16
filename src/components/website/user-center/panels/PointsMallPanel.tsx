@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Coins,
   Copy,
   Gift,
   Loader2,
@@ -454,9 +455,14 @@ export function PointsMallPanel() {
           </div>
         )}
 
-        {/* 积分余额概览 */}
-        <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <div className="flex items-center justify-between">
+        {/* 积分余额概览：右下角淡积分水印装饰 */}
+        <div className="relative overflow-hidden rounded-xl border border-stone-200/60 bg-white/40 p-5">
+          <Coins
+            aria-hidden
+            strokeWidth={1}
+            className="pointer-events-none absolute -bottom-4 -right-4 h-20 w-20 text-[#00263e]/[0.06]"
+          />
+          <div className="relative flex items-center justify-between">
             <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
             <button
               type="button"
@@ -470,15 +476,16 @@ export function PointsMallPanel() {
               />
             </button>
           </div>
-          <div className="mt-4">
+          <div className="relative mt-4 flex items-baseline gap-1.5">
             <p className="text-3xl font-light text-stone-800">
               {giftsData ? giftsData.available.toLocaleString() : "—"}
             </p>
+            <span className="text-xs text-stone-400">积分</span>
           </div>
 
           {/* 积分明细（可折叠） */}
           {showLedger && (
-            <div className="mt-4 border-t border-stone-200/60 pt-3">
+            <div className="relative mt-4 border-t border-stone-200/60 pt-3">
               {!pointsData ? (
                 <div className="flex items-center justify-center gap-1.5 py-4 text-xs text-stone-400">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> 明细加载中...

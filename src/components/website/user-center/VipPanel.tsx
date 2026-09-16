@@ -323,7 +323,7 @@ export function VipPanel() {
               {/* 两栏排版：左栏会员卡 + 会员权益，右栏提升引导卡（纵跨两行，含 AI 测肤）。
                   PC：行高 auto/1fr 由右栏决定总高；权益区 contain:size 使内容不参与行高计算，
                   只占满会员卡以下剩余高度并在超出时卡片内滚动，底边与右栏（AI 测肤卡）对齐。
-                  移动端按 会员卡 → 提升引导 → 会员权益 顺序堆叠。 */}
+                  移动端按 会员卡 → 提升引导 → 会员权益 → AI 测肤 顺序堆叠（AI 卡 order-last）。 */}
               <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:grid-rows-[auto_1fr] lg:items-start">
                 {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，背景图按卡面铺满） */}
                 <div
@@ -375,8 +375,9 @@ export function VipPanel() {
                   </div>
                 </div>
 
-                {/* 右栏：提升引导卡（进度 + 如何提升 + 录入入口）与 AI 测肤用量卡，各自独立成卡 */}
-                <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                {/* 右栏：提升引导卡（进度 + 如何提升 + 录入入口）与 AI 测肤用量卡，各自独立成卡。
+                    移动端 display:contents 拍平，让 AI 测肤卡可用 order 排到会员权益之后 */}
+                <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
                   <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
                     <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
@@ -513,8 +514,9 @@ export function VipPanel() {
                     </div>
                   </div>
 
-                  {/* AI 测肤用量卡（来自测肤子站；不可用时弱提示 + 手动刷新，不影响其它内容） */}
-                  <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                  {/* AI 测肤用量卡（来自测肤子站；不可用时弱提示 + 手动刷新，不影响其它内容）。
+                      移动端 order-last：排在会员权益之后；PC 端仍在右栏原位 */}
+                  <div className="order-last rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:order-none">
                     <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
                       AI 测肤
