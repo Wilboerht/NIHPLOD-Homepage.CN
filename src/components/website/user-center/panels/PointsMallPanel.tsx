@@ -27,11 +27,19 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
+import type { ProductData } from "@/components/website/ProductDrawer";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+
+// 产品详情抽屉体积较大（图片轮播/富文本/购买链接），仅在用户点击礼品时按需加载
+const ProductDrawer = dynamic(
+  () => import("@/components/website/ProductDrawer").then((m) => m.ProductDrawer),
+  { ssr: false }
+);
 
 interface GiftItem {
   id: string;
@@ -41,6 +49,7 @@ interface GiftItem {
   priceYuan: number;
   cost: number | null; // 当前等级所需积分（普通档 null）
   affordable: boolean;
+  detail: ProductData; // 详情抽屉数据
 }
 
 interface RedemptionRecord {
@@ -197,6 +206,8 @@ export function PointsMallPanel() {
   const [loadingMoreRedemptions, setLoadingMoreRedemptions] = useState(false);
   const [hasMoreRedemptions, setHasMoreRedemptions] = useState(false);
   const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
+  /** 当前打开详情抽屉的礼品（null 表示关闭） */
+  const [detailGift, setDetailGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
@@ -708,7 +719,12 @@ export function PointsMallPanel() {
                   className="flex flex-col justify-between rounded-xl border border-stone-200/60 bg-white/60 p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDetailGift(g)}
+                      aria-label={`查看「${g.name}」详情`}
+                      className="group flex min-w-0 items-center gap-3 text-left"
+                    >
                       {g.image && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -718,14 +734,16 @@ export function PointsMallPanel() {
                         />
                       )}
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-stone-800">{g.name}</p>
+                        <p className="truncate text-sm font-medium text-stone-800 transition-colors group-hover:text-[#00263e]">
+                          {g.name}
+                        </p>
                         {g.description && (
                           <p className="mt-1 line-clamp-2 text-xs text-stone-400">
                             {stripHtml(g.description)}
                           </p>
                         )}
                       </div>
-                    </div>
+                    </button>
                     <span className="shrink-0 text-xs text-stone-400">
                       价格 ¥{g.priceYuan.toLocaleString()}
                     </span>
@@ -1231,6 +1249,48 @@ export function PointsMallPanel() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* 产品详情抽屉：Portal 到 body 并提高层级，覆盖在用户中心弹窗之上；
+          商城场景不展示三方购买入口，底部操作区改为「兑换」 */}
+      <ProductDrawer
+        isOpen={detailGift !== null}
+        onClose={() => setDetailGift(null)}
+        product={detailGift?.detail ?? null}
+        zIndexClassName="z-[10000]"
+        brandLinkEnabled={false}
+        actionArea={
+          detailGift ? (
+            <div className="rounded-2xl border border-brand-charcoal/10 bg-white/70 p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm text-brand-charcoal/70">
+                  所需积分{" "}
+                  <span className="text-lg font-medium text-brand-charcoal">
+                    {detailGift.cost?.toLocaleString()}
+                  </span>
+                </p>
+                <p className="shrink-0 text-xs text-brand-charcoal/40">
+                  参考价 ¥{detailGift.priceYuan.toLocaleString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!detailGift.affordable}
+                onClick={() => {
+                  const gift = detailGift;
+                  setDetailGift(null);
+                  openRedeem(gift);
+                }}
+                className="mt-3 w-full rounded-full bg-brand-charcoal py-2.5 text-sm text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:bg-stone-300"
+              >
+                {detailGift.affordable ? "立即兑换" : "积分不足"}
+              </button>
+              <p className="mt-2 text-center text-[11px] text-brand-charcoal/40">
+                兑换后可在「我的兑换记录」中查看发货进度
+              </p>
+            </div>
+          ) : null
+        }
+      />
     </div>
   );
 }

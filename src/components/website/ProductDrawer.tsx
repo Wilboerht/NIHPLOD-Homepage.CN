@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useMounted } from "@/hooks/useMounted";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
@@ -45,6 +47,21 @@ interface ProductDrawerProps {
   onClose: () => void;
   /** 产品数据 */
   product: ProductData | null;
+  /**
+   * 最外层层级类名（默认 z-[210]）。
+   * 在用户中心弹窗（z-[9999]）等更高层级内打开时传入更大值（如 z-[10000]）。
+   */
+  zIndexClassName?: string;
+  /**
+   * 底部操作区（如积分商城「兑换」按钮）。
+   * 传入时替代购买链接区块（桌面端与移动端各渲染一次），不展示三方购买入口。
+   */
+  actionArea?: ReactNode;
+  /**
+   * 顶栏 Logo 是否链接首页（默认 true）。
+   * 嵌在用户中心等弹层内时建议传 false，避免在弹层后面导航导致用户迷失。
+   */
+  brandLinkEnabled?: boolean;
 }
 
 /**
@@ -82,7 +99,15 @@ export function PlatformIcon({ platform }: { platform: string }) {
  * - 锁定背景滚动
  * - 左右分栏布局
  */
-export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) {
+export function ProductDrawer({
+  isOpen,
+  onClose,
+  product,
+  zIndexClassName = "z-[210]",
+  actionArea,
+  brandLinkEnabled = true,
+}: ProductDrawerProps) {
+  const mounted = useMounted();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"description" | "ingredients" | "usage">(
@@ -104,28 +129,27 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     setOpenAccordion(openAccordion === id ? null : id);
   };
 
-  // ESC 键关闭
+  // ESC 键关闭：捕获阶段拦截并阻止冒泡，避免同时触发下层弹窗（如用户中心）的 ESC 关闭
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      onClose();
     },
     [onClose]
   );
 
-  // 锁定背景滚动
+  // 锁定背景滚动（记录并恢复原值，抽屉关闭后不解除下层弹窗的滚动锁）
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      document.addEventListener("keydown", handleKeyDown);
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [isOpen, handleKeyDown]);
 
@@ -155,12 +179,26 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
     }
   };
 
-  return (
+  const brandLogo = (
+    <div className="relative h-[28px] w-[100px]">
+      <Image
+        src="/images/NIHPLOD-logo.svg"
+        alt="NIHPLOD Logo"
+        fill
+        className="object-contain"
+        priority
+      />
+    </div>
+  );
+
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && product && (
         <>
           <div
-            className="fixed inset-0 z-[210] flex items-center justify-center lg:p-6"
+            className={cn("fixed inset-0 flex items-center justify-center lg:p-6", zIndexClassName)}
             onClick={onClose}
           >
             {/* 遮罩层 */}
@@ -209,17 +247,13 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                 >
                   <ChevronLeft className="h-6 w-6 text-brand-charcoal" />
                 </button>
-                <Link href="/" className="flex items-center justify-center py-[30px]">
-                  <div className="relative h-[28px] w-[100px]">
-                    <Image
-                      src="/images/NIHPLOD-logo.svg"
-                      alt="NIHPLOD Logo"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
-                  </div>
-                </Link>
+                {brandLinkEnabled ? (
+                  <Link href="/" className="flex items-center justify-center py-[30px]">
+                    {brandLogo}
+                  </Link>
+                ) : (
+                  <div className="flex items-center justify-center py-[30px]">{brandLogo}</div>
+                )}
               </div>
 
               {/* 左侧 - 产品图片区域 */}
@@ -398,31 +432,35 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                         </div>
                       )}
 
-                      {/* 官方旗舰店 */}
+                      {/* 官方旗舰店（传入 actionArea 时改为自定义操作区，如积分商城「兑换」） */}
                       <div className="py-4">
-                        <div className="mb-4 text-[15px] font-semibold text-brand-charcoal">
-                          官方旗舰店
-                        </div>
+                        {actionArea ?? (
+                          <>
+                            <div className="mb-4 text-[15px] font-semibold text-brand-charcoal">
+                              官方旗舰店
+                            </div>
 
-                        <div className="flex flex-wrap items-center gap-4">
-                          {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-                            product.purchaseLinks.map((link) => (
-                              <a
-                                key={link.id}
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="transition-opacity hover:opacity-60"
-                              >
-                                <PlatformIcon platform={link.platform} />
-                              </a>
-                            ))
-                          ) : (
-                            <span className="text-[14px] text-brand-charcoal/50">
-                              暂无购买链接
-                            </span>
-                          )}
-                        </div>
+                            <div className="flex flex-wrap items-center gap-4">
+                              {product.purchaseLinks && product.purchaseLinks.length > 0 ? (
+                                product.purchaseLinks.map((link) => (
+                                  <a
+                                    key={link.id}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="transition-opacity hover:opacity-60"
+                                  >
+                                    <PlatformIcon platform={link.platform} />
+                                  </a>
+                                ))
+                              ) : (
+                                <span className="text-[14px] text-brand-charcoal/50">
+                                  暂无购买链接
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </section>
                   </div>
@@ -557,24 +595,26 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
                       ))}
                   </div>
 
-                  {/* 购买渠道（第三方平台外链） */}
+                  {/* 购买渠道（第三方平台外链）；传入 actionArea 时改为自定义操作区 */}
                   <div className="mt-6">
-                    <div className="flex flex-wrap gap-2">
-                      {product.purchaseLinks &&
-                        product.purchaseLinks.length > 0 &&
-                        product.purchaseLinks.map((link) => (
-                          <a
-                            key={link.id}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
-                          >
-                            <PlatformIcon platform={link.platform} />
-                            <span>{link.platform}</span>
-                          </a>
-                        ))}
-                    </div>
+                    {actionArea ?? (
+                      <div className="flex flex-wrap gap-2">
+                        {product.purchaseLinks &&
+                          product.purchaseLinks.length > 0 &&
+                          product.purchaseLinks.map((link) => (
+                            <a
+                              key={link.id}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
+                            >
+                              <PlatformIcon platform={link.platform} />
+                              <span>{link.platform}</span>
+                            </a>
+                          ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Footer */}
@@ -589,7 +629,8 @@ export function ProductDrawer({ isOpen, onClose, product }: ProductDrawerProps) 
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

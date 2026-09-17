@@ -12,7 +12,7 @@ import type { MembershipLevel } from "@/generated/prisma/client";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { adjustPoints, redeemPoints } from "@/lib/points-ledger";
 
-/** 可兑换产品（产品库标记 + 已发布），按产品排序 */
+/** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
   return prisma.product.findMany({
     where: { pointRedeemable: true, published: true },
@@ -20,13 +20,23 @@ export async function listRedeemableProducts() {
     select: {
       id: true,
       name: true,
+      nameEn: true,
+      slug: true,
       description: true,
       price: true,
+      capacity: true,
+      ingredients: true,
+      usage: true,
+      benefits: true,
       images: {
-        take: 1,
         orderBy: { order: "asc" },
-        select: { url: true },
+        select: { url: true, alt: true },
       },
+      purchaseLinks: {
+        orderBy: { order: "asc" },
+        select: { id: true, platform: true, url: true },
+      },
+      category: { select: { name: true } },
     },
   });
 }
