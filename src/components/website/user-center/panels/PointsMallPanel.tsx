@@ -514,9 +514,6 @@ export function PointsMallPanel() {
   const hiddenGiftsCount = giftsData
     ? Math.max(0, giftsData.gifts.length - GIFTS_PREVIEW_COUNT)
     : 0;
-  /** 明细收起时的「最近一笔」摘要 */
-  const lastLedger = pointsData?.recent[0] ?? null;
-
   /** 兑换记录列表（主视图预览与全部记录子视图复用） */
   const renderRedemptionList = (items: RedemptionRecord[], from: "main" | "records") => (
     <div className="space-y-2">
@@ -610,20 +607,6 @@ export function PointsMallPanel() {
             <span className="text-xs text-stone-400">积分</span>
           </div>
 
-          {/* 明细收起时的「最近一笔」摘要（展开后由完整明细替代） */}
-          {!showLedger && lastLedger && (
-            <p className="relative mt-2 truncate text-xs text-stone-400">
-              最近一笔：{POINT_TYPE_LABELS[lastLedger.type] ?? lastLedger.type}{" "}
-              <span
-                className={`font-medium ${lastLedger.amount >= 0 ? "text-stone-600" : "text-stone-400"}`}
-              >
-                {lastLedger.amount >= 0 ? "+" : ""}
-                {lastLedger.amount.toLocaleString()}
-              </span>
-              <span className="ml-1.5">{formatDate(lastLedger.createdAt)}</span>
-            </p>
-          )}
-
           {/* 即将过期提醒（常显，不依赖明细展开） */}
           {expiringSoon && (
             <p className="relative mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -699,7 +682,7 @@ export function PointsMallPanel() {
               兑换好礼
             </h4>
             {giftsData && giftsData.redeemRate !== null && (
-              <p className="text-xs text-stone-400">按当前等级折算所需积分</p>
+              <p className="text-xs text-stone-400">按当前会员等级折算所需积分</p>
             )}
           </div>
 
