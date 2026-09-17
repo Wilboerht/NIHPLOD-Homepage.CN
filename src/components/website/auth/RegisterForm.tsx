@@ -112,7 +112,7 @@ export function RegisterForm({
             onChange={(e) => onRegNameChange(e.target.value)}
             className={pcInputClass}
             autoComplete="name"
-            placeholder="姓名"
+            placeholder="昵称或名字"
           />
           <input
             type="tel"
@@ -223,7 +223,7 @@ export function RegisterForm({
             type="text"
             value={regName}
             onChange={(e) => onRegNameChange(e.target.value)}
-            placeholder="姓名"
+            placeholder="昵称或名字"
             className={mobileInputClass}
           />
         </div>

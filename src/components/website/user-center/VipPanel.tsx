@@ -376,8 +376,9 @@ export function VipPanel() {
                 </div>
 
                 {/* 右栏：提升引导卡（进度 + 如何提升 + 录入入口）与 AI 测肤用量卡，各自独立成卡。
+                    卡片间距与页面节奏统一为 gap-6（24px，与会员卡/会员权益及两栏列间距一致）。
                     移动端 display:contents 拍平，让 AI 测肤卡可用 order 排到会员权益之后 */}
-                <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
+                <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6">
                   <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
                     <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
                       <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
