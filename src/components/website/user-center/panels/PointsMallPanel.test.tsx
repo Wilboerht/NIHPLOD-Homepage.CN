@@ -140,7 +140,7 @@ describe("PointsMallPanel 礼品详情", () => {
     fireEvent.click(await screen.findByRole("button", { name: "查看「氨基酸洁面乳」详情" }));
     const drawer = screen.getByTestId("product-drawer");
     expect(drawer).toHaveAttribute("data-brand-link", "disabled");
-    expect(within(drawer).getByText("所需积分")).toBeInTheDocument();
+    expect(within(drawer).getByText("积分兑换")).toBeInTheDocument();
 
     fireEvent.click(within(drawer).getByRole("button", { name: "立即兑换" }));
 

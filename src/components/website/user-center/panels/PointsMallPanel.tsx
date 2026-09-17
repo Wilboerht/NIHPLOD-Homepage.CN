@@ -1262,37 +1262,32 @@ export function PointsMallPanel() {
           detailGift ? (
             <div>
               <div className="mb-4 text-[15px] font-semibold text-brand-charcoal">积分兑换</div>
-              <div className="rounded-2xl border border-brand-charcoal/10 bg-white/60 px-4 py-5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[13px] tracking-[0.08em] text-brand-charcoal/50">
-                    所需积分
-                  </span>
-                  <span className="shrink-0 text-xs text-brand-charcoal/40">
-                    参考价 ¥{detailGift.priceYuan.toLocaleString()}
-                  </span>
-                </div>
-                <p className="mt-2 flex items-baseline gap-1.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="flex items-baseline gap-1.5">
                   <span className="text-3xl font-light leading-none text-brand-charcoal">
                     {detailGift.cost?.toLocaleString()}
                   </span>
                   <span className="text-xs text-brand-charcoal/50">积分</span>
                 </p>
-                <button
-                  type="button"
-                  disabled={!detailGift.affordable}
-                  onClick={() => {
-                    const gift = detailGift;
-                    setDetailGift(null);
-                    openRedeem(gift);
-                  }}
-                  className="mt-5 w-full rounded-full bg-brand-charcoal py-3 text-[13px] tracking-[0.06em] text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:bg-brand-charcoal/10 disabled:text-brand-charcoal/40"
-                >
-                  {detailGift.affordable ? "立即兑换" : "积分不足"}
-                </button>
-                <p className="mt-3 text-center text-[11px] leading-relaxed text-brand-charcoal/40">
-                  兑换后可在「我的兑换记录」中查看发货进度
-                </p>
+                <span className="shrink-0 text-xs text-brand-charcoal/40">
+                  参考价 ¥{detailGift.priceYuan.toLocaleString()}
+                </span>
               </div>
+              <button
+                type="button"
+                disabled={!detailGift.affordable}
+                onClick={() => {
+                  const gift = detailGift;
+                  setDetailGift(null);
+                  openRedeem(gift);
+                }}
+                className="mt-5 w-full rounded-full bg-brand-charcoal py-3 text-[13px] tracking-[0.06em] text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:bg-brand-charcoal/10 disabled:text-brand-charcoal/40"
+              >
+                {detailGift.affordable ? "立即兑换" : "积分不足"}
+              </button>
+              <p className="mt-3 text-center text-[11px] leading-relaxed text-brand-charcoal/40">
+                兑换后可在「我的兑换记录」中查看发货进度
+              </p>
             </div>
           ) : null
         }
