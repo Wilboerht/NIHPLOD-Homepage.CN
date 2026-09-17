@@ -25,6 +25,7 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
           id: true,
           type: true,
           amount: true,
+          remaining: true,
           note: true,
           expiresAt: true,
           createdAt: true,
@@ -37,6 +38,8 @@ export const GET = withUserAuth(async (_request: NextRequest, payload) => {
           id: r.id,
           type: r.type,
           amount: r.amount,
+          // 剩余未消耗量：用于前端准确计算"即将过期"积分（FIFO 后仍有效的部分）
+          remaining: r.remaining,
           note: r.note,
           expiresAt: r.expiresAt?.toISOString() ?? null,
           createdAt: r.createdAt.toISOString(),

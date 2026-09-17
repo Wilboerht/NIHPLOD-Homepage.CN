@@ -16,12 +16,13 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
-const { mockFindMany } = vi.hoisted(() => ({
+const { mockFindMany, mockCount } = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
+  mockCount: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
-  prisma: { pointRedemption: { findMany: mockFindMany } },
+  prisma: { pointRedemption: { findMany: mockFindMany, count: mockCount } },
 }));
 
 import { GET } from "@/app/api/user/points/redemptions/route";
@@ -52,10 +53,12 @@ describe("GET /api/user/points/redemptions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
   });
 
-  it("默认第一页：按用户过滤、倒序、取 11 条判断 hasMore", async () => {
+  it("默认第一页：按用户过滤、倒序、取 11 条判断 hasMore，并返回总数", async () => {
     mockFindMany.mockResolvedValue([redemptionRow("r1")]);
+    mockCount.mockResolvedValue(1);
 
     const res = await GET(createRequest());
     const data = await res.json();
@@ -69,8 +72,10 @@ describe("GET /api/user/points/redemptions", () => {
         take: 11,
       })
     );
+    expect(mockCount).toHaveBeenCalledWith({ where: { userId: "user-1" } });
     expect(data.data.redemptions).toHaveLength(1);
     expect(data.data.hasMore).toBe(false);
+    expect(data.data.total).toBe(1);
   });
 
   it("超过 10 条时 hasMore 为 true 且只返回 10 条", async () => {

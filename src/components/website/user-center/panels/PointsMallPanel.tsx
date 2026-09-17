@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -78,11 +79,27 @@ interface PointsData {
     id: string;
     type: string;
     amount: number;
+    remaining: number | null;
     note: string | null;
     expiresAt: string | null;
     createdAt: string;
   }[];
 }
+
+/** 即将过期提示窗口（天） */
+const EXPIRING_WINDOW_DAYS = 30;
+
+/** 主视图「我的兑换记录」预览条数（更多记录进「查看全部」子视图） */
+const RECORDS_PREVIEW_COUNT = 3;
+
+/** 兑换好礼默认展示条数（超出显示「展开更多」） */
+const GIFTS_PREVIEW_COUNT = 4;
+
+/** 展开状态在会话内记忆（面板反复开关不重置） */
+const SESSION_KEYS = {
+  ledger: "nihplod:points:ledger-open",
+  gifts: "nihplod:points:gifts-expanded",
+} as const;
 
 interface AddressItem {
   id: string;
@@ -144,14 +161,39 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * 计算 30 天内即将过期的积分（加载时调用，避免渲染期取当前时间）
+ * 仅统计仍有剩余（remaining>0）的发放类流水：FIFO 消耗后仍有效的部分才是真实可损失积分。
+ */
+function computeExpiringSoon(data: PointsData): { points: number; date: number } | null {
+  const now = Date.now();
+  const deadline = now + EXPIRING_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  let points = 0;
+  let earliest: number | null = null;
+  for (const r of data.recent) {
+    if (r.amount <= 0 || !r.remaining || r.remaining <= 0 || !r.expiresAt) continue;
+    const t = new Date(r.expiresAt).getTime();
+    if (Number.isNaN(t) || t <= now || t > deadline) continue;
+    points += r.remaining;
+    if (earliest === null || t < earliest) earliest = t;
+  }
+  return points > 0 && earliest !== null ? { points, date: earliest } : null;
+}
+
 export function PointsMallPanel() {
   const [giftsData, setGiftsData] = useState<GiftsData | null>(null);
   const [giftsLoading, setGiftsLoading] = useState(true);
+  const [giftsExpanded, setGiftsExpanded] = useState(false);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
+  const [pointsError, setPointsError] = useState(false);
+  // 即将过期积分（加载时计算，避免渲染期调用 Date.now 触发 react-hooks/purity）
+  const [expiringSoon, setExpiringSoon] = useState<{ points: number; date: number } | null>(null);
   const [showLedger, setShowLedger] = useState(false);
   // 兑换记录：无限滚动加载（初始 10 条，滚动到底自动加载更多）
   const [redemptions, setRedemptions] = useState<RedemptionRecord[]>([]);
   const [redemptionsLoading, setRedemptionsLoading] = useState(true);
+  const [redemptionsError, setRedemptionsError] = useState(false);
+  const [redemptionTotal, setRedemptionTotal] = useState(0);
   const [loadingMoreRedemptions, setLoadingMoreRedemptions] = useState(false);
   const [hasMoreRedemptions, setHasMoreRedemptions] = useState(false);
   const [confirmGift, setConfirmGift] = useState<GiftItem | null>(null);
@@ -165,8 +207,10 @@ export function PointsMallPanel() {
   const [newRegion, setNewRegion] = useState("");
   const [newDetail, setNewDetail] = useState("");
   const [creatingAddress, setCreatingAddress] = useState(false);
-  // 面板视图：主视图 / 兑换详情 / 确认兑换（整版淡入淡出）
-  const [view, setView] = useState<"main" | "detail" | "redeem">("main");
+  // 面板视图：主视图 / 全部兑换记录 / 兑换详情 / 确认兑换（整版淡入淡出）
+  const [view, setView] = useState<"main" | "records" | "detail" | "redeem">("main");
+  // 兑换详情返回目标（从主视图或全部记录进入）
+  const [detailFrom, setDetailFrom] = useState<"main" | "records">("main");
   const [selectedRedemption, setSelectedRedemption] = useState<RedemptionRecord | null>(null);
   const [tracking, setTracking] = useState<TrackingData | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
@@ -191,29 +235,38 @@ export function PointsMallPanel() {
   }, []);
 
   const loadPointsData = useCallback(async () => {
+    setPointsError(false);
     try {
       const res = await fetchWithAuth("/api/user/points");
       const data = await res.json();
       if (data.success) {
-        setPointsData(data.data);
+        const points = data.data as PointsData;
+        setPointsData(points);
+        setExpiringSoon(computeExpiringSoon(points));
+      } else {
+        setPointsError(true);
       }
     } catch {
-      // 明细加载失败静默
+      // 失败态由 UI 呈现（可重试）
+      setPointsError(true);
     }
   }, []);
 
   /** 重置加载兑换记录（offset=0） */
   const loadRedemptions = useCallback(async () => {
     setRedemptionsLoading(true);
+    setRedemptionsError(false);
     try {
-      const data = await apiGet<{ redemptions: RedemptionRecord[]; hasMore: boolean }>(
+      const data = await apiGet<{ redemptions: RedemptionRecord[]; hasMore: boolean; total: number }>(
         "/api/user/points/redemptions",
         { offset: "0" }
       );
       setRedemptions(data.redemptions);
       setHasMoreRedemptions(data.hasMore);
+      setRedemptionTotal(data.total);
     } catch {
-      // 记录加载失败静默
+      // 失败态由 UI 呈现（可重试）
+      setRedemptionsError(true);
     } finally {
       setRedemptionsLoading(false);
     }
@@ -237,8 +290,9 @@ export function PointsMallPanel() {
     }
   }, [loadingMoreRedemptions, hasMoreRedemptions, redemptions.length]);
 
-  /** 滚动到底部附近时自动加载更多记录 */
+  /** 滚动到底部附近时自动加载更多记录（仅在「全部记录」子视图触发） */
   const handleScroll = () => {
+    if (view !== "records") return;
     const el = scrollRef.current;
     if (!el) return;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
@@ -263,9 +317,10 @@ export function PointsMallPanel() {
     }
   }, []);
 
-  /** 打开兑换详情：有运单号时拉取物流轨迹 */
-  const openRedemptionDetail = (r: RedemptionRecord) => {
+  /** 打开兑换详情：有运单号时拉取物流轨迹（记录来源视图，返回时回到原处） */
+  const openRedemptionDetail = (r: RedemptionRecord, from: "main" | "records" = "main") => {
     setSelectedRedemption(r);
+    setDetailFrom(from);
     setView("detail");
     setTracking(null);
     setCopiedWaybill(false);
@@ -415,6 +470,77 @@ export function PointsMallPanel() {
     return () => clearTimeout(timer);
   }, [redeemSuccess]);
 
+  // 会话内记忆展开状态（明细 / 礼品展开），面板反复开关不重置。
+  // 用 deferInEffect 延迟一个微任务，满足 react-hooks/set-state-in-effect 规则。
+  useEffect(() => {
+    deferInEffect(() => {
+      try {
+        if (sessionStorage.getItem(SESSION_KEYS.ledger) === "1") setShowLedger(true);
+        if (sessionStorage.getItem(SESSION_KEYS.gifts) === "1") setGiftsExpanded(true);
+      } catch {
+        // 隐私模式等场景忽略
+      }
+    });
+  }, []);
+
+  const toggleLedger = () => {
+    const next = !showLedger;
+    setShowLedger(next);
+    try {
+      sessionStorage.setItem(SESSION_KEYS.ledger, next ? "1" : "0");
+    } catch {
+      // 忽略存储失败
+    }
+  };
+
+  const toggleGiftsExpanded = () => {
+    const next = !giftsExpanded;
+    setGiftsExpanded(next);
+    try {
+      sessionStorage.setItem(SESSION_KEYS.gifts, next ? "1" : "0");
+    } catch {
+      // 忽略存储失败
+    }
+  };
+
+  /** 主视图预览：兑换记录仅展示最近 N 条 */
+  const previewRedemptions = redemptions.slice(0, RECORDS_PREVIEW_COUNT);
+  /** 兑换好礼：默认展示 N 条，可展开更多 */
+  const visibleGifts = giftsData
+    ? giftsExpanded
+      ? giftsData.gifts
+      : giftsData.gifts.slice(0, GIFTS_PREVIEW_COUNT)
+    : [];
+  const hiddenGiftsCount = giftsData
+    ? Math.max(0, giftsData.gifts.length - GIFTS_PREVIEW_COUNT)
+    : 0;
+  /** 明细收起时的「最近一笔」摘要 */
+  const lastLedger = pointsData?.recent[0] ?? null;
+
+  /** 兑换记录列表（主视图预览与全部记录子视图复用） */
+  const renderRedemptionList = (items: RedemptionRecord[], from: "main" | "records") => (
+    <div className="space-y-2">
+      {items.map((r) => (
+        <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+          <span className="min-w-0 truncate text-stone-600">
+            {r.productName}
+            <span className="ml-2 text-stone-400">{r.points.toLocaleString()} 积分</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-3">
+            <span className="text-stone-400">{formatDate(r.createdAt)}</span>
+            <button
+              type="button"
+              onClick={() => openRedemptionDetail(r, from)}
+              className="py-1 text-[#00263e] transition-opacity hover:opacity-70 active:opacity-60"
+            >
+              查看
+            </button>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-mall">
       {/* 标题 - 移动端由弹窗全局 Header 管理 */}
@@ -467,7 +593,7 @@ export function PointsMallPanel() {
             <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
             <button
               type="button"
-              onClick={() => setShowLedger((v) => !v)}
+              onClick={toggleLedger}
               aria-expanded={showLedger}
               className="flex items-center gap-0.5 rounded-full border border-stone-200 px-3 py-1.5 text-xs font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
             >
@@ -484,10 +610,53 @@ export function PointsMallPanel() {
             <span className="text-xs text-stone-400">积分</span>
           </div>
 
-          {/* 积分明细（可折叠） */}
-          {showLedger && (
+          {/* 明细收起时的「最近一笔」摘要（展开后由完整明细替代） */}
+          {!showLedger && lastLedger && (
+            <p className="relative mt-2 truncate text-xs text-stone-400">
+              最近一笔：{POINT_TYPE_LABELS[lastLedger.type] ?? lastLedger.type}{" "}
+              <span
+                className={`font-medium ${lastLedger.amount >= 0 ? "text-stone-600" : "text-stone-400"}`}
+              >
+                {lastLedger.amount >= 0 ? "+" : ""}
+                {lastLedger.amount.toLocaleString()}
+              </span>
+              <span className="ml-1.5">{formatDate(lastLedger.createdAt)}</span>
+            </p>
+          )}
+
+          {/* 即将过期提醒（常显，不依赖明细展开） */}
+          {expiringSoon && (
+            <p className="relative mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              {expiringSoon.points.toLocaleString()} 积分将于{" "}
+              {formatDate(new Date(expiringSoon.date).toISOString())} 过期，请尽快使用
+            </p>
+          )}
+
+          {/* 积分明细（可折叠，高度过渡动画） */}
+          <AnimatePresence initial={false}>
+            {showLedger && (
+              <m.div
+                key="ledger"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="relative overflow-hidden"
+              >
             <div className="relative mt-4 border-t border-stone-200/60 pt-3">
-              {!pointsData ? (
+              {pointsError ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-xs text-stone-400">
+                  明细加载失败
+                  <button
+                    type="button"
+                    onClick={() => void loadPointsData()}
+                    className="text-[#00263e] transition-opacity hover:opacity-70"
+                  >
+                    重试
+                  </button>
+                </div>
+              ) : !pointsData ? (
                 <div className="flex items-center justify-center gap-1.5 py-4 text-xs text-stone-400">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> 明细加载中...
                 </div>
@@ -517,7 +686,9 @@ export function PointsMallPanel() {
                 </div>
               )}
             </div>
-          )}
+              </m.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* 兑换好礼 */}
@@ -546,8 +717,9 @@ export function PointsMallPanel() {
           ) : giftsData.gifts.length === 0 ? (
             <p className="py-6 text-center text-xs text-stone-400">暂无上架礼品</p>
           ) : (
+            <>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {giftsData.gifts.map((g) => (
+              {visibleGifts.map((g) => (
                 <div
                   key={g.id}
                   className="flex flex-col justify-between rounded-xl border border-stone-200/60 bg-white/60 p-4"
@@ -591,48 +763,63 @@ export function PointsMallPanel() {
                 </div>
               ))}
             </div>
+            {giftsData.gifts.length > GIFTS_PREVIEW_COUNT && (
+              <button
+                type="button"
+                onClick={toggleGiftsExpanded}
+                aria-expanded={giftsExpanded}
+                className="mx-auto mt-3 flex items-center gap-1 rounded-full border border-stone-200 px-4 py-1.5 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
+              >
+                {giftsExpanded ? "收起" : `展开更多（还有 ${hiddenGiftsCount} 件）`}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${giftsExpanded ? "rotate-180" : ""}`}
+                />
+              </button>
+            )}
+            </>
           )}
 
-          {/* 我的兑换记录（滚动到底自动加载更多） */}
-          {!redemptionsLoading || redemptions.length > 0 ? (
-            <div className="mt-4 border-t border-stone-200/60 pt-3">
-              <p className="mb-2 text-xs font-medium text-stone-500">我的兑换记录</p>
-              {redemptions.length === 0 ? (
-                <p className="py-2 text-xs text-stone-400">暂无兑换记录</p>
-              ) : (
-                <div className="space-y-2">
-                  {redemptions.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
-                      <span className="min-w-0 truncate text-stone-600">
-                        {r.productName}
-                        <span className="ml-2 text-stone-400">
-                          {r.points.toLocaleString()} 积分
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-3">
-                        <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                        <button
-                          type="button"
-                          onClick={() => openRedemptionDetail(r)}
-                          className="py-1 text-[#00263e] transition-opacity hover:opacity-70 active:opacity-60"
-                        >
-                          查看
-                        </button>
-                      </span>
-                    </div>
-                  ))}
-                  {loadingMoreRedemptions && (
-                    <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-stone-400">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中...
-                    </div>
-                  )}
-                  {!hasMoreRedemptions && redemptions.length > 0 && (
-                    <p className="pt-1 text-center text-[11px] text-stone-300">已加载全部记录</p>
-                  )}
-                </div>
+          {/* 我的兑换记录：主视图仅预览最近 N 条，更多记录进「查看全部」 */}
+          <div className="mt-4 border-t border-stone-200/60 pt-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-stone-500">
+                我的兑换记录
+                {redemptionTotal > 0 && (
+                  <span className="ml-1 font-normal text-stone-400">（{redemptionTotal}）</span>
+                )}
+              </p>
+              {redemptionTotal > RECORDS_PREVIEW_COUNT && (
+                <button
+                  type="button"
+                  onClick={() => setView("records")}
+                  className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
+                >
+                  查看全部
+                  <ChevronRight className="h-3 w-3" />
+                </button>
               )}
             </div>
-          ) : null}
+            {redemptionsLoading && redemptions.length === 0 ? (
+              <div className="flex items-center gap-1.5 py-3 text-xs text-stone-400">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> 记录加载中...
+              </div>
+            ) : redemptionsError && redemptions.length === 0 ? (
+              <div className="flex items-center gap-2 py-3 text-xs text-stone-400">
+                记录加载失败
+                <button
+                  type="button"
+                  onClick={() => void loadRedemptions()}
+                  className="text-[#00263e] transition-opacity hover:opacity-70"
+                >
+                  重试
+                </button>
+              </div>
+            ) : redemptions.length === 0 ? (
+              <p className="py-2 text-xs text-stone-400">暂无兑换记录</p>
+            ) : (
+              renderRedemptionList(previewRedemptions, "main")
+            )}
+          </div>
         </div>
             </m.div>
           ) : view === "detail" ? (
@@ -648,7 +835,7 @@ export function PointsMallPanel() {
                   <h4 className="text-lg font-medium text-stone-800">兑换详情</h4>
                   <button
                     type="button"
-                    onClick={() => setView("main")}
+                    onClick={() => setView(detailFrom)}
                     className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
@@ -790,6 +977,76 @@ export function PointsMallPanel() {
                 </div>
               </m.div>
             )
+          ) : view === "records" ? (
+            <m.div
+              key="records"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-lg font-medium text-stone-800">
+                  我的兑换记录
+                  {redemptionTotal > 0 && (
+                    <span className="ml-1.5 text-sm font-normal text-stone-400">
+                      （{redemptionTotal}）
+                    </span>
+                  )}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setView("main")}
+                  className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  返回
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                {redemptionsLoading && redemptions.length === 0 ? (
+                  <div className="flex items-center justify-center gap-1.5 py-6 text-xs text-stone-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> 记录加载中...
+                  </div>
+                ) : redemptionsError && redemptions.length === 0 ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-xs text-stone-400">
+                    记录加载失败
+                    <button
+                      type="button"
+                      onClick={() => void loadRedemptions()}
+                      className="text-[#00263e] transition-opacity hover:opacity-70"
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : redemptions.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-stone-400">暂无兑换记录</p>
+                ) : (
+                  <>
+                    {renderRedemptionList(redemptions, "records")}
+                    {/* 记录不足一屏时滚动事件不触发，提供按钮兜底 */}
+                    {hasMoreRedemptions && !loadingMoreRedemptions && (
+                      <button
+                        type="button"
+                        onClick={() => void loadMoreRedemptions()}
+                        className="mt-3 w-full rounded-full border border-stone-200 py-2 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
+                      >
+                        加载更多
+                      </button>
+                    )}
+                    {loadingMoreRedemptions && (
+                      <div className="flex items-center justify-center gap-1.5 py-3 text-xs text-stone-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中...
+                      </div>
+                    )}
+                    {!hasMoreRedemptions && (
+                      <p className="pt-3 text-center text-[11px] text-stone-300">已加载全部记录</p>
+                    )}
+                  </>
+                )}
+              </div>
+            </m.div>
           ) : (
             confirmGift && (
               <m.div
@@ -902,9 +1159,31 @@ export function PointsMallPanel() {
                     </p>
                   )}
 
-                  {/* 内联新增地址 */}
-                  {showNewAddress ? (
-                    <div className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-white/50 p-3">
+                  {/* 内联新增地址：触发器常驻并暴露 aria-expanded，与「明细」交互语义一致 */}
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAddress((v) => !v)}
+                    aria-expanded={showNewAddress}
+                    aria-controls="new-redeem-address"
+                    className="mt-2 flex items-center gap-1 py-1 text-xs text-[#00263e] transition-colors hover:opacity-70 active:opacity-60"
+                  >
+                    {showNewAddress ? (
+                      <>
+                        <ChevronDown className="h-3.5 w-3.5 rotate-180 transition-transform duration-200" />
+                        取消新增
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-3.5 w-3.5" />
+                        使用新地址
+                      </>
+                    )}
+                  </button>
+                  {showNewAddress && (
+                    <div
+                      id="new-redeem-address"
+                      className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-white/50 p-3"
+                    >
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <input
                           type="text"
@@ -940,23 +1219,7 @@ export function PointsMallPanel() {
                         placeholder="详细地址（街道、门牌号等）"
                         className="w-full rounded-xl border border-stone-200 bg-white/70 px-3 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewAddress(false)}
-                        className="text-xs text-stone-500 transition-colors hover:text-stone-800"
-                      >
-                        取消新增，使用已有地址
-                      </button>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewAddress(true)}
-                      className="mt-2 flex items-center gap-1 py-1 text-xs text-[#00263e] transition-colors hover:opacity-70 active:opacity-60"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      使用新地址
-                    </button>
                   )}
                 </div>
 

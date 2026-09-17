@@ -35,27 +35,30 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
 
     const offset = parsed.data.offset;
 
-    // 多取 1 条用于判断是否还有更多
-    const rows = await prisma.pointRedemption.findMany({
-      where: { userId: payload.id },
-      orderBy: { createdAt: "desc" },
-      skip: offset,
-      take: PAGE_SIZE + 1,
-      select: {
-        id: true,
-        productName: true,
-        priceYuan: true,
-        points: true,
-        status: true,
-        recipient: true,
-        phone: true,
-        address: true,
-        carrier: true,
-        waybillNo: true,
-        fulfilledAt: true,
-        createdAt: true,
-      },
-    });
+    // 多取 1 条用于判断是否还有更多；同时返回总数供前端展示「查看全部 (N)」
+    const [rows, total] = await Promise.all([
+      prisma.pointRedemption.findMany({
+        where: { userId: payload.id },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: PAGE_SIZE + 1,
+        select: {
+          id: true,
+          productName: true,
+          priceYuan: true,
+          points: true,
+          status: true,
+          recipient: true,
+          phone: true,
+          address: true,
+          carrier: true,
+          waybillNo: true,
+          fulfilledAt: true,
+          createdAt: true,
+        },
+      }),
+      prisma.pointRedemption.count({ where: { userId: payload.id } }),
+    ]);
 
     const hasMore = rows.length > PAGE_SIZE;
     const redemptions = rows.slice(0, PAGE_SIZE).map((r) => ({
@@ -75,7 +78,7 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
 
     return NextResponse.json({
       success: true,
-      data: { redemptions, hasMore },
+      data: { redemptions, hasMore, total },
     });
   } catch (error) {
     apiConsole.error("[UserPointRedemptions] 查询失败:", error);
