@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
 interface PreviewRowItem {
   rowIndex: number;
@@ -78,6 +79,7 @@ export function SpentImportModal({
   onClose: () => void;
 }) {
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const [step, setStep] = useState<"upload" | "preview" | "result">("upload");
   const [uploading, setUploading] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -114,18 +116,31 @@ export function SpentImportModal({
     setImporting(true);
     try {
       const okRows = preview.rows.filter((r) => r.status === "ok");
-      const data = await apiPost<ExecuteData>("/api/admin/spent-import/execute", {
-        fileName: preview.fileName,
-        fileHash: preview.fileHash,
-        rows: okRows.map((r) => ({
-          phone: r.phone,
-          amount: r.amount,
-          channel: r.channel,
-          orderNo: r.orderNo,
-          purchasedAt: r.purchasedAt,
-          note: r.note,
-        })),
-      });
+      const submit = (totpCode?: string) =>
+        apiPost<ExecuteData>("/api/admin/spent-import/execute", {
+          fileName: preview.fileName,
+          fileHash: preview.fileHash,
+          totpCode,
+          rows: okRows.map((r) => ({
+            phone: r.phone,
+            amount: r.amount,
+            channel: r.channel,
+            orderNo: r.orderNo,
+            purchasedAt: r.purchasedAt,
+            note: r.note,
+          })),
+        });
+
+      let data: ExecuteData;
+      try {
+        data = await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!code) return;
+        data = await submit(code);
+      }
+
       setResult(data);
       setStep("result");
       success("导入完成");
@@ -137,6 +152,7 @@ export function SpentImportModal({
   };
 
   return (
+    <>
     <Modal open={open} onClose={handleClose} size="xl" title="Excel 批量导入消费记录">
       {step === "upload" && (
         <div>
@@ -284,6 +300,8 @@ export function SpentImportModal({
         </div>
       )}
     </Modal>
+    {totpModal}
+    </>
   );
 }
 
@@ -296,6 +314,7 @@ export function ImportHistoryModal({
   onClose: () => void;
 }) {
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const [batches, setBatches] = useState<ImportBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -329,7 +348,18 @@ export function ImportHistoryModal({
     if (!undoTarget) return;
     setUndoing(true);
     try {
-      await apiPost(`/api/admin/spent-import/${undoTarget.id}/undo`);
+      const submit = (totpCode?: string) =>
+        apiPost(`/api/admin/spent-import/${undoTarget.id}/undo`, { totpCode });
+
+      try {
+        await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!code) return;
+        await submit(code);
+      }
+
       success("已撤销该批次，消费额已按行冲正");
       setUndoTarget(null);
       fetchBatches();
@@ -435,6 +465,7 @@ export function ImportHistoryModal({
         confirmText="确认撤销"
         loading={undoing}
       />
+      {totpModal}
     </>
   );
 }

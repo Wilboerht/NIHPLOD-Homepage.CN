@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import {
   parseImportWorkbook,
   previewImportRows,
@@ -22,6 +23,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "spent:import")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费记录导入" } },
+        { status: 403 }
       );
     }
 

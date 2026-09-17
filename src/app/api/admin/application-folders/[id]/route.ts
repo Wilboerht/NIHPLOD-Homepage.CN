@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -29,6 +30,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { status: 401 }
       );
     }
+
+    if (!hasAdminPermission(admin, "applications:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：简历查看" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
 
@@ -78,6 +89,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "applications:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：简历编辑" } },
+        { status: 403 }
       );
     }
 
@@ -147,6 +165,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "applications:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：简历编辑" } },
+        { status: 403 }
       );
     }
 

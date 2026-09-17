@@ -10,6 +10,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { isLocalCronEnabled, listCronTasks, runCronTask } from "@/lib/cron-tasks";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +28,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "cron:read")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可查看定时任务" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：定时任务查看" } },
         { status: 403 }
       );
     }
@@ -102,9 +103,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "cron:run")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可手动触发定时任务" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：定时任务执行" } },
         { status: 403 }
       );
     }

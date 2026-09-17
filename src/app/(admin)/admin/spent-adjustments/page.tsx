@@ -24,6 +24,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
 import { levelDisplay } from "@/lib/membership";
 import { SpentImportModal, ImportHistoryModal } from "./SpentImport";
@@ -111,6 +113,12 @@ export default function AdminSpentAdjustmentsPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { success, error: showError } = useToast();
 
+  // 权限：Excel 导入/撤销导入需要 spent:import（与 API 层一致）
+  const { can: canAdmin } = useAdminPermissions();
+  const canImport = canAdmin("spent:import");
+  const canReview = canAdmin("spent:review");
+  const { requireTotp, totpModal } = useTotpConfirm();
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -140,9 +148,12 @@ export default function AdminSpentAdjustmentsPage() {
 
   const handleReview = async () => {
     if (!detail) return;
-    if (decision === "approve" && (!reviewAmount || Number(reviewAmount) <= 0)) {
-      showError("请填写核实金额");
-      return;
+    if (decision === "approve") {
+      const amount = Number(reviewAmount);
+      if (!reviewAmount || !Number.isInteger(amount) || amount <= 0) {
+        showError("请填写正整数核实金额（元）");
+        return;
+      }
     }
     if (decision === "reject" && !reviewNote.trim()) {
       showError("请填写驳回原因");
@@ -150,11 +161,23 @@ export default function AdminSpentAdjustmentsPage() {
     }
     setSaving(true);
     try {
-      await apiPost(`/api/admin/spent-adjustments/${detail.id}/review`, {
-        decision,
-        reviewAmount: decision === "approve" ? Number(reviewAmount) : undefined,
-        reviewNote: reviewNote.trim() || undefined,
-      });
+      const submit = (totpCode?: string) =>
+        apiPost(`/api/admin/spent-adjustments/${detail.id}/review`, {
+          decision,
+          reviewAmount: decision === "approve" ? Number(reviewAmount) : undefined,
+          reviewNote: reviewNote.trim() || undefined,
+          totpCode,
+        });
+
+      try {
+        await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!code) return;
+        await submit(code);
+      }
+
       success(decision === "approve" ? "已通过并完成入账" : "已驳回");
       setDetail(null);
       fetchData();
@@ -173,7 +196,18 @@ export default function AdminSpentAdjustmentsPage() {
     if (!undoTarget) return;
     setUndoing(true);
     try {
-      await apiPost(`/api/admin/spent-adjustments/${undoTarget.id}/undo`);
+      const submit = (totpCode?: string) =>
+        apiPost(`/api/admin/spent-adjustments/${undoTarget.id}/undo`, { totpCode });
+
+      try {
+        await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!code) return;
+        await submit(code);
+      }
+
       success("已撤销审核，申请回到待审核队列");
       setUndoTarget(null);
       setDetail(null);
@@ -197,14 +231,18 @@ export default function AdminSpentAdjustmentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-            <History className="mr-1.5 h-4 w-4" />
-            导入历史
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <FileSpreadsheet className="mr-1.5 h-4 w-4" />
-            Excel 导入
-          </Button>
+          {canImport && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+                <History className="mr-1.5 h-4 w-4" />
+                导入历史
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+                Excel 导入
+              </Button>
+            </>
+          )}
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="mr-1.5 h-4 w-4" />
             刷新
@@ -466,18 +504,22 @@ export default function AdminSpentAdjustmentsPage() {
               </div>
             )}
 
-            {/* 撤销审核（仅已通过） */}
+            {/* 撤销审核（仅已通过；需要 spent:review 权限） */}
             {detail.status === "APPROVED" && (
               <div className="mt-6 flex justify-end border-t border-gray-100 pt-4">
-                <Button variant="outline" onClick={() => setUndoTarget(detail)} disabled={undoing}>
-                  <Undo2 className="mr-1.5 h-4 w-4" />
-                  {undoing ? "撤销中..." : "撤销审核"}
-                </Button>
+                {canReview ? (
+                  <Button variant="outline" onClick={() => setUndoTarget(detail)} disabled={undoing}>
+                    <Undo2 className="mr-1.5 h-4 w-4" />
+                    {undoing ? "撤销中..." : "撤销审核"}
+                  </Button>
+                ) : (
+                  <span className="text-xs text-gray-400">只读查看（无审核权限）</span>
+                )}
               </div>
             )}
 
-            {/* 审核操作 */}
-            {detail.status === "PENDING" && (
+            {/* 审核操作（需要 spent:review 权限） */}
+            {detail.status === "PENDING" && canReview && (
               <div className="mt-6 border-t border-gray-100 pt-4">
                 <div className="flex gap-2">
                   <button
@@ -561,6 +603,11 @@ export default function AdminSpentAdjustmentsPage() {
                 </div>
               </div>
             )}
+            {detail.status === "PENDING" && !canReview && (
+              <div className="mt-6 border-t border-gray-100 pt-4 text-xs text-gray-400">
+                只读查看（无审核权限）
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -574,13 +621,20 @@ export default function AdminSpentAdjustmentsPage() {
         description="撤销后将按原核实金额扣减该用户的历史消费（会员等级同步重算），申请回到待审核队列，可重新审核。确认撤销？"
       />
 
-      {/* Excel 批量导入 */}
-      <SpentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-      <ImportHistoryModal
-        key={historyOpen ? "open" : "closed"}
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-      />
+      {/* Excel 批量导入（需要 spent:import 权限） */}
+      {canImport && (
+        <>
+          <SpentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+          <ImportHistoryModal
+            key={historyOpen ? "open" : "closed"}
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+          />
+        </>
+      )}
+
+      {/* 资金类操作二次验证 */}
+      {totpModal}
     </div>
   );
 }

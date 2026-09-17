@@ -8,6 +8,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { maskPhone } from "@/lib/mask-phone";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // 更新留言 Schema
 const UpdateSchema = z.object({
@@ -28,6 +29,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         { status: 401 }
       );
     }
+
+    if (!hasAdminPermission(admin, "messages:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：留言查看" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
 
@@ -76,6 +87,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!validateCSRFToken(request)) {
       return csrfForbiddenResponse();
+    }
+
+    if (!hasAdminPermission(admin, "messages:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：留言操作" } },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;
@@ -160,6 +178,13 @@ export async function DELETE(
 
     if (!validateCSRFToken(request)) {
       return csrfForbiddenResponse();
+    }
+
+    if (!hasAdminPermission(admin, "messages:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：留言删除" } },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;

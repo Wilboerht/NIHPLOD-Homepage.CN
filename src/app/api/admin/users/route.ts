@@ -9,6 +9,7 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -27,6 +28,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "users:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户查看" } },
+        { status: 403 }
       );
     }
 
@@ -145,7 +153,7 @@ export async function GET(request: NextRequest) {
  * 批量修改用户状态（冻结/封禁/恢复正常）
  * POST /api/admin/users
  * Body: { ids: string[], status: "ACTIVE" | "SUSPENDED" | "BANNED" }
- * 仅 owner 角色可操作（涉及用户权益）
+ * 需要 users:write 权限（涉及用户权益）
  */
 export async function POST(request: NextRequest) {
   try {
@@ -156,9 +164,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "users:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可批量修改用户状态" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户状态变更" } },
         { status: 403 }
       );
     }

@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { CategorySchema } from "@/schemas/product";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // GET /api/admin/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
@@ -19,6 +20,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "categories:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：分类查看" } },
+        { status: 403 }
       );
     }
 
@@ -41,6 +49,8 @@ export async function GET(request: NextRequest) {
         name: cat.name,
         nameEn: cat.nameEn,
         slug: cat.slug,
+        description: cat.description,
+        icon: cat.icon,
         order: cat.order,
         visible: cat.visible,
         productCount: cat._count.products,
@@ -75,6 +85,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!hasAdminPermission(admin, "categories:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：分类编辑" } },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const validated = CategorySchema.parse(body);
 
@@ -103,6 +120,8 @@ export async function POST(request: NextRequest) {
         name: validated.name,
         nameEn: validated.nameEn,
         slug: validated.slug,
+        description: validated.description ?? null,
+        icon: validated.icon ?? null,
         order,
         visible: validated.visible,
       },

@@ -7,6 +7,7 @@ import { Menu, ChevronRight, ChevronDown, LogOut, User, Loader2 } from "lucide-r
 import { getBreadcrumbs } from "@/config/admin-nav";
 import { apiPost } from "@/lib/api-client";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -91,7 +92,9 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
               <div className="py-0.5">
                 <p className="text-sm font-medium text-brand-charcoal">{userName || "管理员"}</p>
                 <p className="text-xs text-brand-charcoal/50">
-                  {userRole === "owner" ? "最高权限管理员" : "管理员"}
+                  {userRole
+                    ? (ROLE_LABELS[userRole as AdminRoleValue] ?? "管理员")
+                    : "管理员"}
                 </p>
               </div>
             ),

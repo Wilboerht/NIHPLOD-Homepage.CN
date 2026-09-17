@@ -18,6 +18,7 @@ import { prisma } from "./prisma";
 import type { UserStatus, AdminStatus } from "@/generated/prisma/client";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { resolveAdminPermissions } from "@/lib/admin-permissions";
 
 const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -54,10 +55,18 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     return null;
   }
 
-  // 校验管理员是否仍存在且未被禁用/删除
+  // 校验管理员是否仍存在且未被禁用/删除（含权限覆盖，供 SSR 页面渲染门禁）
   const admin = await prisma.admin.findUnique({
     where: { id: payload.id },
-    select: { id: true, email: true, name: true, role: true, status: true, deletedAt: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      permissions: true,
+      status: true,
+      deletedAt: true,
+    },
   });
 
   if (!admin || !isAdminActive(admin.status, admin.deletedAt)) {
@@ -69,6 +78,8 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     email: admin.email,
     name: admin.name,
     role: admin.role,
+    permissionOverrides: admin.permissions ?? [],
+    permissions: resolveAdminPermissions(admin.role, admin.permissions),
   };
 }
 
@@ -117,10 +128,18 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
-  // 验证管理员是否仍存在且未被禁用/删除
+  // 验证管理员是否仍存在且未被禁用/删除（权限覆盖同步从 DB 实时读取，撤权即时生效）
   const admin = await prisma.admin.findUnique({
     where: { id: payload.id },
-    select: { id: true, email: true, name: true, role: true, status: true, deletedAt: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      permissions: true,
+      status: true,
+      deletedAt: true,
+    },
   });
 
   if (!admin || !isAdminActive(admin.status, admin.deletedAt)) {
@@ -132,6 +151,7 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     email: admin.email,
     name: admin.name,
     role: admin.role,
+    permissionOverrides: admin.permissions ?? [],
   };
 }
 

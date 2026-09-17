@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { SUPPORTED_SCOPES } from "@/lib/oauth-constants";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "sso:clients:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端查看" } },
+        { status: 403 }
       );
     }
 

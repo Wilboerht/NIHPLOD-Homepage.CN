@@ -7,7 +7,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { apiConsole } from "@/lib/logger";
 import { signPrivateObjectUrl } from "@/lib/ali-oss";
 
@@ -22,6 +23,16 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    if (!hasAdminPermission(admin, "spent:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费凭证查看" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const key = request.nextUrl.searchParams.get("key");
     if (!key || key.length > 200) {

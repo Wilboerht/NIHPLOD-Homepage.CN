@@ -15,7 +15,8 @@ interface SidebarProps {
   isMobile: boolean;
   onClose: () => void;
   onToggleCollapse: () => void;
-  userRole?: string;
+  /** 当前管理员有效权限（未加载完成时显示骨架） */
+  permissions?: string[];
 }
 
 /**
@@ -27,16 +28,16 @@ export function Sidebar({
   isMobile,
   onClose,
   onToggleCollapse,
-  userRole,
+  permissions,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState<number | undefined>(undefined);
 
-  // 加载未读留言数（badge）
+  // 加载未读留言数（badge）：无 messages:read 权限的角色跳过请求，避免必然 403
   useEffect(() => {
-    if (!userRole) return;
+    if (!permissions || !permissions.includes("messages:read")) return;
     let cancelled = false;
     apiGet<{ unreadCount: number }>("/api/admin/messages?pageSize=1&status=unread")
       .then((data) => {
@@ -46,7 +47,7 @@ export function Sidebar({
     return () => {
       cancelled = true;
     };
-  }, [userRole, pathname]);
+  }, [permissions, pathname]);
 
   // 处理登出
   const handleLogout = async () => {
@@ -110,8 +111,8 @@ export function Sidebar({
       {/* 导航菜单 */}
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {!userRole
-            ? // 角色加载中：显示骨架屏，避免权限菜单闪烁
+          {!permissions
+            ? // 权限加载中：显示骨架屏，避免权限菜单闪烁
               Array.from({ length: 8 }).map((_, i) => (
                 <li key={`skeleton-${i}`}>
                   <div
@@ -130,7 +131,7 @@ export function Sidebar({
             : (() => {
                 // 按 group 分组渲染，组间显示标题（折叠时隐藏标题）
                 const filtered = adminNavItems.filter(
-                  (item) => !item.roles || item.roles.includes(userRole)
+                  (item) => !item.permission || permissions.includes(item.permission)
                 );
                 const groups: { label: string | null; items: typeof filtered }[] = [];
                 for (const item of filtered) {

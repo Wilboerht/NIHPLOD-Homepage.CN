@@ -4,7 +4,8 @@
  */
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withRole, checkAdminRateLimit } from "@/lib/auth";
+import { withAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { blacklistAdminTokens } from "@/lib/token-blacklist";
@@ -13,10 +14,16 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-export const DELETE = withRole(
-  ["owner"],
+export const DELETE = withAuth(
   async (request, admin, { params }: { params: Promise<{ id: string }> }) => {
     try {
+      if (!hasAdminPermission(admin, "admins:write")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：管理员管理" } },
+          { status: 403 }
+        );
+      }
+
       if (!validateCSRFToken(request)) {
         return csrfForbiddenResponse();
       }
@@ -42,14 +49,23 @@ export const DELETE = withRole(
         prisma.admin.findUnique({ where: { id, deletedAt: null }, select: { role: true } }),
         prisma.admin.count({ where: { role: "owner", deletedAt: null } }),
       ]);
-      if (target?.role === "owner" && ownerCount <= 1) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: "LAST_OWNER", message: "不能删除最后一个 owner 账号" },
-          },
-          { status: 403 }
-        );
+      // owner 账号保护：仅 owner 可删除 owner；且不得删除最后一个 owner
+      if (target?.role === "owner") {
+        if (admin.role !== "owner") {
+          return NextResponse.json(
+            { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可删除 owner 账号" } },
+            { status: 403 }
+          );
+        }
+        if (ownerCount <= 1) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "LAST_OWNER", message: "不能删除最后一个 owner 账号" },
+            },
+            { status: 403 }
+          );
+        }
       }
 
       const deletedAdmin = await prisma.admin.update({

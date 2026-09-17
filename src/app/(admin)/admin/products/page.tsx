@@ -11,6 +11,7 @@ import { Select, SelectOption } from "@/components/ui/Select";
 import { apiGet } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 // 产品类型
 interface ProductItem {
@@ -64,9 +65,13 @@ export default function AdminProductsPage() {
   // 搜索输入框状态
   const [searchInput, setSearchInput] = useState(search);
 
-  // 获取分类列表
+  // 权限：批量删除需要 products:batch-delete（与 API 层一致）
+  const { can: canAdmin } = useAdminPermissions();
+  const canBatchDelete = canAdmin("products:batch-delete");
+
+  // 获取分类列表（管理端接口：包含隐藏分类，公开接口仅返回 visible 分类）
   useEffect(() => {
-    apiGet<Category[]>("/api/categories")
+    apiGet<Category[]>("/api/admin/categories")
       .then((data) => setCategories(data))
       .catch(() => showError("加载分类列表失败"));
   }, []);
@@ -234,6 +239,7 @@ export default function AdminProductsPage() {
         onSort={(key, order) => updateParams({ sortBy: key, sortOrder: order })}
         sortBy={sortBy || undefined}
         sortOrder={sortOrder as "asc" | "desc" | undefined}
+        canDelete={canBatchDelete}
       />
     </div>
   );

@@ -24,74 +24,64 @@ import {
   Timer,
   LucideIcon,
 } from "lucide-react";
+import type { AdminPermission } from "@/lib/admin-permissions";
 
 export interface NavItem {
   title: string;
   href: string;
   icon: LucideIcon;
   badge?: number; // 可选的徽章数字（如未读消息数）
-  roles?: string[]; // 允许访问的角色，不填则全部允许
+  /** 访问所需权限点（不填表示所有管理员可见，如个人安全设置） */
+  permission?: AdminPermission;
   group?: string; // 导航分组（sidebar 渲染分组标题）
 }
 
 export const adminNavItems: NavItem[] = [
-  { title: "仪表盘", href: "/admin", icon: LayoutDashboard, roles: ["owner", "admin"] },
+  { title: "仪表盘", href: "/admin", icon: LayoutDashboard, permission: "dashboard:read" },
   // 商城管理
-  {
-    title: "用户管理",
-    href: "/admin/users",
-    icon: Users,
-    roles: ["owner", "admin"],
-    group: "商城管理",
-  },
+  { title: "用户管理", href: "/admin/users", icon: Users, permission: "users:read", group: "商城管理" },
   {
     title: "产品管理",
     href: "/admin/products",
     icon: Package,
-    roles: ["owner", "admin"],
+    permission: "products:read",
     group: "商城管理",
   },
   {
     title: "分类管理",
     href: "/admin/categories",
     icon: FolderTree,
-    roles: ["owner", "admin"],
+    permission: "categories:read",
     group: "商城管理",
   },
   {
     title: "消费记录审核",
     href: "/admin/spent-adjustments",
     icon: ClipboardCheck,
-    roles: ["owner", "admin"],
+    permission: "spent:read",
     group: "商城管理",
   },
   {
     title: "积分礼品",
     href: "/admin/point-gifts",
     icon: Gift,
-    roles: ["owner", "admin"],
+    permission: "redemptions:read",
     group: "商城管理",
   },
   {
     title: "会员权益",
     href: "/admin/membership",
     icon: Crown,
-    roles: ["owner"],
+    permission: "membership:read",
     group: "商城管理",
   },
   // 招聘管理
-  {
-    title: "职位管理",
-    href: "/admin/jobs",
-    icon: Briefcase,
-    roles: ["owner", "admin"],
-    group: "招聘管理",
-  },
+  { title: "职位管理", href: "/admin/jobs", icon: Briefcase, permission: "jobs:read", group: "招聘管理" },
   {
     title: "简历管理",
     href: "/admin/applications",
     icon: UserCheck,
-    roles: ["owner", "admin"],
+    permission: "applications:read",
     group: "招聘管理",
   },
   // 系统管理
@@ -99,29 +89,30 @@ export const adminNavItems: NavItem[] = [
     title: "留言管理",
     href: "/admin/messages",
     icon: MessageSquare,
-    roles: ["owner", "admin"],
+    permission: "messages:read",
     group: "系统管理",
   },
-  { title: "管理员管理", href: "/admin/admins", icon: Shield, roles: ["owner"], group: "系统管理" },
   {
-    title: "安全设置",
-    href: "/admin/settings/totp",
-    icon: ShieldCheck,
-    roles: ["owner", "admin"],
+    title: "管理员管理",
+    href: "/admin/admins",
+    icon: Shield,
+    permission: "admins:read",
     group: "系统管理",
   },
+  // 个人安全设置对所有管理员开放
+  { title: "安全设置", href: "/admin/settings/totp", icon: ShieldCheck, group: "系统管理" },
   {
     title: "审计日志",
     href: "/admin/audit-logs",
     icon: ScrollText,
-    roles: ["owner", "admin"],
+    permission: "audit:read",
     group: "系统管理",
   },
   {
     title: "定时任务",
     href: "/admin/cron-tasks",
     icon: Timer,
-    roles: ["owner"],
+    permission: "cron:read",
     group: "系统管理",
   },
   // SSO 管理
@@ -129,42 +120,42 @@ export const adminNavItems: NavItem[] = [
     title: "SSO 客户端",
     href: "/admin/oauth-clients",
     icon: Key,
-    roles: ["owner"],
+    permission: "sso:clients:read",
     group: "SSO 管理",
   },
   {
     title: "SSO 授权管理",
     href: "/admin/oauth/consents",
     icon: UserCog,
-    roles: ["owner"],
+    permission: "sso:read",
     group: "SSO 管理",
   },
   {
     title: "SSO 会话管理",
     href: "/admin/oauth/sessions",
     icon: MonitorStop,
-    roles: ["owner"],
+    permission: "sso:read",
     group: "SSO 管理",
   },
   {
     title: "SSO 审计日志",
     href: "/admin/oauth/audit",
     icon: FileSearch,
-    roles: ["owner"],
+    permission: "sso:read",
     group: "SSO 管理",
   },
   {
     title: "SSO 统计概览",
     href: "/admin/oauth/stats",
     icon: Activity,
-    roles: ["owner"],
+    permission: "sso:read",
     group: "SSO 管理",
   },
   {
     title: "通知失败队列",
     href: "/admin/webhook-failures",
     icon: Webhook,
-    roles: ["owner"],
+    permission: "webhooks:read",
     group: "SSO 管理",
   },
 ];

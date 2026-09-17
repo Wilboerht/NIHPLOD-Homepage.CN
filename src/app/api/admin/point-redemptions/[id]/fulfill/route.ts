@@ -11,6 +11,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { fulfillRedemption } from "@/lib/point-gifts";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,13 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "redemptions:fulfill")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：兑换履约" } },
+        { status: 403 }
       );
     }
 

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { listAuditLogs, AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -126,6 +127,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "audit:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计日志查看" } },
+        { status: 403 }
       );
     }
 

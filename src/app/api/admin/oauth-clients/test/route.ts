@@ -10,6 +10,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { getOAuthClientByClientId, verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -59,9 +60,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "sso:clients:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端测试" } },
         { status: 403 }
       );
     }
@@ -367,9 +374,12 @@ export async function POST(request: NextRequest) {
       request,
     });
 
+    // 请求本身成功即 success:true（测试结果放进 data.allPassed）：
+    // api-client 在 success!==true 时会抛错并丢弃 data，部分失败时页面将拿不到诊断步骤
     return NextResponse.json({
-      success: allPassed,
+      success: true,
       data: {
+        allPassed,
         steps,
         summary: allPassed
           ? "所有连接测试通过！配置正确。"

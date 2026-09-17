@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiGet } from "@/lib/api-client";
-import { RequireAdminRole } from "@/components/admin/RequireAdminRole";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
 
 interface ScopeDef {
@@ -39,6 +39,7 @@ interface CreateClientWizardResponse {
 }
 
 interface TestResultData {
+  allPassed: boolean;
   steps: Array<{ step: string; status: string; durationMs: number; detail?: string }>;
   summary: string;
   totalDurationMs: number;
@@ -46,9 +47,9 @@ interface TestResultData {
 
 export default function OAuthWizardPage() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="sso:clients:write">
       <OAuthWizardContent />
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }
 
@@ -156,7 +157,7 @@ function OAuthWizardContent() {
       });
 
       setTestResult(data);
-      const allPassed = data.steps.every((s) => s.status === "passed");
+      const allPassed = data.allPassed ?? data.steps.every((s) => s.status === "passed");
       if (allPassed) {
         toast.success("连接测试全部通过！");
       } else {

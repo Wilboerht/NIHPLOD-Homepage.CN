@@ -15,6 +15,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
 interface RedeemableProductItem {
   id: string;
@@ -68,7 +70,11 @@ function formatDateTime(iso: string | null): string {
 
 export default function AdminPointGiftsPage() {
   const { success, error: showError } = useToast();
-  const [isOwner, setIsOwner] = useState(false);
+  const { can: canAdmin } = useAdminPermissions();
+  const canGiftWrite = canAdmin("gifts:write");
+  const canFulfill = canAdmin("redemptions:fulfill");
+  const canCancelRedemption = canAdmin("redemptions:cancel");
+  const { requireTotp, totpModal } = useTotpConfirm();
   const [products, setProducts] = useState<RedeemableProductItem[]>([]);
   const [productPage, setProductPage] = useState(1);
   const [productTotalPages, setProductTotalPages] = useState(0);
@@ -144,19 +150,6 @@ export default function AdminPointGiftsPage() {
     deferInEffect(fetchRedemptions);
   }, [fetchProducts, fetchRedemptions]);
 
-  // 角色：仅超级管理员可设置"积分可兑"（与 API 层一致，非 owner 隐藏操作按钮）
-  useEffect(() => {
-    let cancelled = false;
-    apiGet<{ user: { role: string } }>("/api/admin/me")
-      .then((data) => {
-        if (!cancelled) setIsOwner(data.user?.role === "owner");
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const handleToggle = async (p: RedeemableProductItem) => {
     setTogglingId(p.id);
     try {
@@ -208,15 +201,26 @@ export default function AdminPointGiftsPage() {
     }
   };
 
-  /** 取消兑换并退还积分（仅超级管理员） */
+  /** 取消兑换并退还积分（需要 redemptions:cancel 权限 + TOTP 二次验证） */
   const handleCancelRedemption = async () => {
     if (!cancelTarget) return;
     setCancelling(true);
     try {
-      const data = await apiPost<{ message: string }>(
-        `/api/admin/point-redemptions/${cancelTarget.id}/cancel`,
-        {}
-      );
+      const submit = (totpCode?: string) =>
+        apiPost<{ message: string }>(`/api/admin/point-redemptions/${cancelTarget.id}/cancel`, {
+          totpCode,
+        });
+
+      let data: { message: string };
+      try {
+        data = await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!code) return;
+        data = await submit(code);
+      }
+
       success(data.message);
       setCancelTarget(null);
       fetchRedemptions();
@@ -356,7 +360,7 @@ export default function AdminPointGiftsPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      {isOwner ? (
+                      {canGiftWrite ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -515,10 +519,12 @@ export default function AdminPointGiftsPage() {
                       <div className="flex flex-wrap gap-2">
                         {r.status === "PENDING" ? (
                           <>
-                            <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
-                              标记履约
-                            </Button>
-                            {isOwner && (
+                            {canFulfill && (
+                              <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                                标记履约
+                              </Button>
+                            )}
+                            {canCancelRedemption && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -528,11 +534,16 @@ export default function AdminPointGiftsPage() {
                                 取消退分
                               </Button>
                             )}
+                            {!canFulfill && !canCancelRedemption && (
+                              <span className="text-xs text-gray-400">只读</span>
+                            )}
                           </>
                         ) : r.status === "FULFILLED" ? (
-                          <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
-                            {r.waybillNo ? "修改运单号" : "补录运单号"}
-                          </Button>
+                          canFulfill ? (
+                            <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                              {r.waybillNo ? "修改运单号" : "补录运单号"}
+                            </Button>
+                          ) : null
                         ) : null}
                       </div>
                     </td>
@@ -625,6 +636,9 @@ export default function AdminPointGiftsPage() {
         type="danger"
         loading={cancelling}
       />
+
+      {/* 资金类操作二次验证 */}
+      {totpModal}
     </div>
   );
 }

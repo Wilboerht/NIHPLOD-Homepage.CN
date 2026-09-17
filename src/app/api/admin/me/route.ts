@@ -5,6 +5,9 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { resolveAdminPermissions } from "@/lib/admin-permissions";
+import { blacklistAdminTokens } from "@/lib/token-blacklist";
+import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { z } from "zod";
 
 // GET /api/admin/me - 获取当前登录的管理员信息
@@ -21,6 +24,8 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
           email: admin.email,
           name: admin.name,
           role: admin.role,
+          // 有效权限（含个人覆盖），前端据此渲染导航与操作按钮
+          permissions: resolveAdminPermissions(admin.role, admin.permissionOverrides),
         },
       },
     });
@@ -108,10 +113,21 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
       action: "update_admin",
       targetType: "admin",
       targetId: admin.id,
-      detail: { updatedFields: Object.keys(updateData).filter((k) => k !== "password") },
+      detail: {
+        updatedFields: Object.keys(updateData).filter((k) => k !== "password"),
+        passwordChanged: Boolean(updateData.password),
+      },
       adminId: admin.id,
       request,
     }).catch(() => {});
+
+    // 修改密码后撤销全部会话（含当前会话）：要求重新登录，消除旧凭证窗口
+    if (updateData.password) {
+      await blacklistAdminTokens(admin.id, "admin_password_changed");
+      const response = NextResponse.json({ success: true, data: updatedAdmin });
+      response.cookies.set(AUTH_COOKIE_NAME, "", { ...COOKIE_OPTIONS, maxAge: 0 });
+      return response;
+    }
 
     return NextResponse.json({ success: true, data: updatedAdmin });
   } catch (error) {

@@ -7,13 +7,14 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Webhook, RefreshCw, RotateCw, Trash2, Info } from "lucide-react";
-import { RequireAdminRole } from "@/components/admin/RequireAdminRole";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { cn } from "@/lib/utils";
 
 type Kind = "webhook" | "backchannel";
@@ -44,14 +45,16 @@ function formatDateTime(iso: string): string {
 
 export default function AdminWebhookFailuresPage() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="webhooks:read">
       <AdminWebhookFailuresContent />
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }
 
 function AdminWebhookFailuresContent() {
   const { success, error: showError } = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("webhooks:write");
   const [kind, setKind] = useState<Kind>("webhook");
   const [items, setItems] = useState<FailureItem[]>([]);
   const [counts, setCounts] = useState<Record<Kind, number>>({ webhook: 0, backchannel: 0 });
@@ -241,26 +244,30 @@ function AdminWebhookFailuresContent() {
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          loading={actioningId === item.id}
-                          leftIcon={<RotateCw className="h-3.5 w-3.5" />}
-                          onClick={() => setRetryTarget(item)}
-                        >
-                          重投
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50"
-                          leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                          onClick={() => setDropTarget(item)}
-                        >
-                          丢弃
-                        </Button>
-                      </div>
+                      {canWrite ? (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            loading={actioningId === item.id}
+                            leftIcon={<RotateCw className="h-3.5 w-3.5" />}
+                            onClick={() => setRetryTarget(item)}
+                          >
+                            重投
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                            onClick={() => setDropTarget(item)}
+                          >
+                            丢弃
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-brand-charcoal/40">只读</span>
+                      )}
                     </td>
                   </tr>
                 );

@@ -12,12 +12,16 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { cancelRedemption } from "@/lib/point-gifts";
 
 export const dynamic = "force-dynamic";
 
 const cancelSchema = z.object({
   note: z.string().trim().max(200, "取消原因过长").optional(),
+  // 资金类操作二次验证码（TOTP 或备用码）
+  totpCode: z.string().max(20).optional(),
 });
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -33,9 +37,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "redemptions:cancel")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可取消兑换并退分" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：取消兑换并退分" } },
         { status: 403 }
       );
     }
@@ -58,6 +62,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 400 }
       );
     }
+
+    // 资金类操作：二次验证（TOTP / 备用码）
+    const totpResponse = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode);
+    if (totpResponse) return totpResponse;
 
     const result = await cancelRedemption({ redemptionId: id, note: parsed.data.note });
 

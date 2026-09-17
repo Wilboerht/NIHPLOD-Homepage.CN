@@ -8,3 +8,4 @@ export { ProductForm } from "./ProductForm";
 export { CategoryForm } from "./CategoryForm";
 export { JobForm } from "./JobForm";
 export { RequireAdminRole } from "./RequireAdminRole";
+export { RequirePermission } from "./RequirePermission";

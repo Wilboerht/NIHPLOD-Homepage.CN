@@ -12,7 +12,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
-import { RequireAdminRole } from "@/components/admin";
+import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface AuditEntry {
@@ -431,10 +431,10 @@ function OAuthAuditPage() {
 
 export default function OAuthAuditPageWrapper() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="sso:read">
       <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
         <OAuthAuditPage />
       </Suspense>
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }

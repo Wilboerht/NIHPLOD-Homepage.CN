@@ -7,12 +7,13 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Crown, Plus, Trash2, Info } from "lucide-react";
-import { RequireAdminRole } from "@/components/admin/RequireAdminRole";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPut } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { cn } from "@/lib/utils";
 
 type LevelKey = "REGULAR" | "SILVER" | "GOLD" | "DIAMOND";
@@ -52,14 +53,16 @@ const GRADING_THRESHOLDS: Record<LevelKey, number> = {
 
 export default function AdminMembershipPage() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="membership:read">
       <AdminMembershipContent />
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }
 
 function AdminMembershipContent() {
   const { success, error: showError } = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("membership:write");
   const [levels, setLevels] = useState<LevelBenefit[]>([]);
   const [active, setActive] = useState<LevelKey>("REGULAR");
   const [form, setForm] = useState<LevelBenefit | null>(null);
@@ -276,7 +279,13 @@ function AdminMembershipContent() {
               <h2 className="text-sm font-medium text-brand-charcoal">
                 权益列表（{form.benefits.length}）
               </h2>
-              <Button variant="outline" size="sm" onClick={addBenefit} leftIcon={<Plus className="h-4 w-4" />}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addBenefit}
+                leftIcon={<Plus className="h-4 w-4" />}
+                disabled={!canWrite}
+              >
                 添加权益
               </Button>
             </div>
@@ -313,7 +322,8 @@ function AdminMembershipContent() {
                     <button
                       type="button"
                       onClick={() => removeBenefit(index)}
-                      className="flex items-center justify-center rounded-lg p-2 text-brand-charcoal/40 hover:bg-red-50 hover:text-red-500"
+                      disabled={!canWrite}
+                      className="flex items-center justify-center rounded-lg p-2 text-brand-charcoal/40 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="删除权益"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -324,11 +334,16 @@ function AdminMembershipContent() {
             )}
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-brand-charcoal/8 pt-4">
+          <div className="flex items-center justify-end gap-3 border-t border-brand-charcoal/8 pt-4">
+            {!canWrite && (
+              <span className="mr-auto text-xs text-brand-charcoal/40">
+                只读模式：修改会员权益需要 membership:write 权限
+              </span>
+            )}
             <Button variant="outline" onClick={() => switchLevel(active)} disabled={saving}>
               重置
             </Button>
-            <Button onClick={handleSave} loading={saving}>
+            <Button onClick={handleSave} loading={saving} disabled={!canWrite}>
               保存配置
             </Button>
           </div>

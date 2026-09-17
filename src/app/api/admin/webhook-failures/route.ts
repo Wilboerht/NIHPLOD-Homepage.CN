@@ -16,6 +16,7 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { retryWebhookFailureById } from "@/lib/profile-webhook";
 import { retryBackchannelFailureById } from "@/lib/backchannel-logout";
 
@@ -42,9 +43,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "webhooks:read")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可查看失败队列" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：失败队列查看" } },
         { status: 403 }
       );
     }
@@ -148,9 +149,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "webhooks:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作失败队列" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：失败队列操作" } },
         { status: 403 }
       );
     }

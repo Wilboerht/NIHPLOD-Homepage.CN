@@ -60,7 +60,8 @@ export default function EditProductPage() {
     // 同时获取产品和分类
     Promise.all([
       apiGet<ProductData>(`/api/admin/products/${id}`),
-      apiGet<Category[]>("/api/categories"),
+      // 使用管理端接口：包含隐藏分类（公开接口仅返回 visible 分类）
+      apiGet<Category[]>("/api/admin/categories"),
     ])
       .then(([data, categoriesData]) => {
         setCategories(categoriesData);

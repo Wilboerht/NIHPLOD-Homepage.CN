@@ -10,6 +10,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -32,6 +33,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "gifts:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：积分礼品查看" } },
+        { status: 403 }
       );
     }
 
@@ -120,9 +128,9 @@ export async function PATCH(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "gifts:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可设置积分可兑" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：积分可兑设置" } },
         { status: 403 }
       );
     }

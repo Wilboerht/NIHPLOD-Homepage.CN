@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
@@ -21,13 +22,19 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request);
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
     if (rateLimitResponse) return rateLimitResponse;
 
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可查看" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "sso:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 查看" } },
         { status: 403 }
       );
     }
@@ -142,9 +149,15 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "sso:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 授权撤销" } },
         { status: 403 }
       );
     }

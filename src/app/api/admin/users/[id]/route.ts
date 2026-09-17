@@ -21,6 +21,7 @@ import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets } from "@/lib/webhook";
 import { cascadeUserStatusChange } from "@/lib/user-status";
 import { maskPhone } from "@/lib/mask-phone";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -40,6 +41,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "users:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户查看" } },
+        { status: 403 }
       );
     }
 
@@ -317,6 +325,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    if (!hasAdminPermission(admin, "users:sensitive:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：查看完整手机号" } },
+        { status: 403 }
+      );
+    }
+
     const rateLimitResponse = await checkAdminRateLimit(request, "user:read");
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -389,9 +404,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "只有超级管理员可操作" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "users:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户状态/生日变更" } },
         { status: 403 }
       );
     }
@@ -437,7 +458,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       id: string;
       phone: string;
       status: UserStatus;
-    } = { id: user.id, phone: user.phone, status: user.status };
+      birthday: Date | null;
+      birthdayLocked: boolean;
+    } = {
+      id: user.id,
+      phone: user.phone,
+      status: user.status,
+      birthday: user.birthday,
+      birthdayLocked: user.birthdayLocked,
+    };
 
     // 1) 生日变更 / 解锁（客服代改，不受用户端生日锁定限制）
     const birthdayData: { birthday?: Date | null; birthdayLocked?: boolean } = {};
@@ -461,7 +490,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const saved = await prisma.user.update({
         where: { id },
         data: birthdayData,
-        select: { id: true, phone: true, status: true },
+        select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
       });
       updatedUser = saved;
 
@@ -480,7 +509,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const saved = await prisma.user.update({
         where: { id },
         data: { status: status as UserStatus },
-        select: { id: true, phone: true, status: true },
+        select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
       });
       updatedUser = saved;
 
@@ -537,9 +566,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "只有超级管理员可操作" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "users:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户删除" } },
         { status: 403 }
       );
     }

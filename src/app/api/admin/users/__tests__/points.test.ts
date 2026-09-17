@@ -49,6 +49,12 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
 
+// 资金类操作二次验证（本测试聚焦积分调整逻辑，TOTP 视为通过）
+vi.mock("@/lib/admin-totp", () => ({
+  requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),
+  isMoneyOperationTotpEnforced: vi.fn().mockReturnValue(true),
+}));
+
 vi.mock("@/lib/validation", () => ({
   validateCUID: vi.fn().mockReturnValue(true),
   invalidIdResponse: () =>

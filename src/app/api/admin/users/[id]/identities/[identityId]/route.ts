@@ -11,6 +11,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,9 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "users:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可解绑用户外部身份" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：解绑外部身份" } },
         { status: 403 }
       );
     }

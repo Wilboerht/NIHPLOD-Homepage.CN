@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
@@ -23,6 +24,8 @@ const CreateJobSchema = z.object({
   longitude: z.number().optional().nullable(),
   latitude: z.number().optional().nullable(),
   published: z.boolean().optional(),
+  // 排序（可选；未提供时自动取当前最大值 +1）
+  order: z.number().int().min(0).optional(),
 });
 
 // GET /api/admin/jobs - 获取职位列表
@@ -36,6 +39,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "jobs:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位查看" } },
+        { status: 403 }
       );
     }
 
@@ -126,6 +136,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!hasAdminPermission(admin, "jobs:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位编辑" } },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const validated = CreateJobSchema.parse(body);
 
@@ -136,20 +153,25 @@ export async function POST(request: NextRequest) {
       requirements: sanitizeHtml(validated.requirements),
     };
 
-    // 获取最大排序值
-    const maxOrder = await prisma.job.aggregate({
-      _max: { order: true },
-    });
+    // 排序：显式传入则采用，否则取当前最大值 +1
+    let order = validated.order;
+    if (order === undefined) {
+      const maxOrder = await prisma.job.aggregate({
+        _max: { order: true },
+      });
+      order = (maxOrder._max.order || 0) + 1;
+    }
 
     // 创建职位
     const job = await prisma.job.create({
       data: {
         ...sanitized,
         salary: sanitized.salary || null,
-        longitude: sanitized.longitude || null,
-        latitude: sanitized.latitude || null,
+        // 经度 0 是合法值，仅在 null/undefined 时落库为 null
+        longitude: sanitized.longitude ?? null,
+        latitude: sanitized.latitude ?? null,
         published: sanitized.published ?? false,
-        order: (maxOrder._max.order || 0) + 1,
+        order,
       },
     });
 

@@ -30,10 +30,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { RequireAdminRole } from "@/components/admin";
+import { RequirePermission } from "@/components/admin";
 
 interface OAuthClient {
   id: string;
@@ -57,6 +58,7 @@ interface ClientsResponse {
 }
 
 interface TestResultData {
+  allPassed: boolean;
   steps: Array<{ step: string; status: string; durationMs: number; detail?: string }>;
   summary?: string;
 }
@@ -124,6 +126,8 @@ const generatePkcePair = async () => {
 function OAuthClientsPage() {
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("sso:clients:write");
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
@@ -405,7 +409,7 @@ function OAuthClientsPage() {
         redirectUri: testRedirectUri.trim(),
       });
       setTestResult(data);
-      const allPassed = data.steps.every((s) => s.status === "passed");
+      const allPassed = data.allPassed ?? data.steps.every((s) => s.status === "passed");
       if (allPassed) toast.success("连接测试全部通过！");
       else toast.warning("连接测试未完全通过，请检查配置");
     } catch (err) {
@@ -519,12 +523,16 @@ if (!payload) {
               className="w-64 pl-9"
             />
           </div>
-          <Link href="/admin/oauth-clients/wizard">
-            <Button variant="outline">向导创建</Button>
-          </Link>
-          <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
-            新建 Client
-          </Button>
+          {canWrite && (
+            <>
+              <Link href="/admin/oauth-clients/wizard">
+                <Button variant="outline">向导创建</Button>
+              </Link>
+              <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
+                新建 Client
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -641,54 +649,60 @@ if (!payload) {
                           <Code className="h-4 w-4" />
                         </button>
                       </Tooltip>
-                      <Tooltip content="在线测试" side="top">
-                        <button
-                          aria-label="在线测试"
-                          onClick={() => openTest(c)}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-green-600"
-                        >
-                          <Shield className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="编辑" side="top">
-                        <button
-                          aria-label="编辑"
-                          onClick={() => openEdit(c)}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="轮换密钥" side="top">
-                        <button
-                          aria-label="轮换密钥"
-                          onClick={() => setRotateClient(c)}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-purple-600"
-                        >
-                          <RotateCw className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content={c.isActive ? "禁用" : "启用"} side="top">
-                        <button
-                          aria-label={c.isActive ? "禁用" : "启用"}
-                          onClick={() => (c.isActive ? setDisableClient(c) : handleToggleActive(c))}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-orange-600"
-                        >
-                          <Power className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="删除 Client" side="top">
-                        <button
-                          aria-label="删除 Client"
-                          onClick={() => {
-                            setDeleteClient(c);
-                            setDeleteConfirmText("");
-                          }}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
+                      {canWrite && (
+                        <>
+                          <Tooltip content="在线测试" side="top">
+                            <button
+                              aria-label="在线测试"
+                              onClick={() => openTest(c)}
+                              className="inline-flex rounded p-1.5 text-gray-400 hover:text-green-600"
+                            >
+                              <Shield className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="编辑" side="top">
+                            <button
+                              aria-label="编辑"
+                              onClick={() => openEdit(c)}
+                              className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="轮换密钥" side="top">
+                            <button
+                              aria-label="轮换密钥"
+                              onClick={() => setRotateClient(c)}
+                              className="inline-flex rounded p-1.5 text-gray-400 hover:text-purple-600"
+                            >
+                              <RotateCw className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content={c.isActive ? "禁用" : "启用"} side="top">
+                            <button
+                              aria-label={c.isActive ? "禁用" : "启用"}
+                              onClick={() =>
+                                c.isActive ? setDisableClient(c) : handleToggleActive(c)
+                              }
+                              className="inline-flex rounded p-1.5 text-gray-400 hover:text-orange-600"
+                            >
+                              <Power className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="删除 Client" side="top">
+                            <button
+                              aria-label="删除 Client"
+                              onClick={() => {
+                                setDeleteClient(c);
+                                setDeleteConfirmText("");
+                              }}
+                              className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -712,6 +726,10 @@ if (!payload) {
           setNewSecret(null);
         }}
         title="新建 OAuth Client"
+        // 一次性 Secret 展示期间禁止 Esc/遮罩/关闭按钮误关（关闭按钮另有"已保存"勾选门控）
+        closeOnBackdrop={!newSecret}
+        closeOnEscape={!newSecret}
+        showCloseButton={!newSecret}
       >
         {newSecret ? (
           <div className="space-y-4">
@@ -987,6 +1005,10 @@ if (!payload) {
           setRotatedSecret(null);
         }}
         title="Client Secret 轮换成功"
+        // 一次性 Secret 展示期间禁止 Esc/遮罩/关闭按钮误关（关闭按钮另有"已保存"勾选门控）
+        closeOnBackdrop={!rotatedSecret}
+        closeOnEscape={!rotatedSecret}
+        showCloseButton={!rotatedSecret}
       >
         <div className="space-y-4">
           <div className="rounded-lg border border-green-200 bg-green-50 p-4">
@@ -1309,16 +1331,18 @@ if (!payload) {
               </div>
 
               <div className="flex gap-2 border-t pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setDetailClient(null);
-                    openEdit(detailClient);
-                  }}
-                  leftIcon={<Pencil className="h-4 w-4" />}
-                >
-                  编辑
-                </Button>
+                {canWrite && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDetailClient(null);
+                      openEdit(detailClient);
+                    }}
+                    leftIcon={<Pencil className="h-4 w-4" />}
+                  >
+                    编辑
+                  </Button>
+                )}
                 <Button
                   onClick={() => {
                     setDetailClient(null);
@@ -1339,10 +1363,10 @@ if (!payload) {
 
 export default function OAuthClientsPageWrapper() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="sso:clients:read">
       <Suspense fallback={<div className="p-6 text-center text-gray-500">加载中...</div>}>
         <OAuthClientsPage />
       </Suspense>
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }

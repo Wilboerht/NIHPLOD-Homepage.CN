@@ -2,8 +2,8 @@
  * 消费记录导入执行 API（管理端）
  * POST /api/admin/spent-import/execute - 确认导入，逐行入账
  *
- * Body: { fileName, fileHash?, rows: [{ phone, amount, channel?, orderNo?, purchasedAt?, note? }] }
- * 权限：仅超级管理员（owner）；操作写入审计日志。
+ * Body: { fileName, fileHash?, rows: [...], totpCode? }
+ * 权限：需要 spent:import 权限；资金类操作需 TOTP 二次验证；操作写入审计日志。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -11,6 +11,8 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import {
   executeImportBatch,
   IMPORT_MAX_ROWS,
@@ -30,6 +32,8 @@ const executeSchema = z.object({
   fileName: z.string().trim().min(1, "缺少文件名").max(200),
   fileHash: z.string().max(64).optional(),
   rows: z.array(rowSchema).min(1, "没有可导入的行").max(IMPORT_MAX_ROWS),
+  // 资金类操作二次验证码（TOTP 或备用码）
+  totpCode: z.string().max(20).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -44,9 +48,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "spent:import")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "只有超级管理员可执行导入" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费记录导入" } },
         { status: 403 }
       );
     }
@@ -70,7 +74,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { fileName, fileHash, rows } = parsed.data;
+    const { fileName, fileHash, rows, totpCode } = parsed.data;
+
+    // 资金类操作：二次验证（TOTP / 备用码）
+    const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode);
+    if (totpResponse) return totpResponse;
 
     const result = await executeImportBatch({
       rows,

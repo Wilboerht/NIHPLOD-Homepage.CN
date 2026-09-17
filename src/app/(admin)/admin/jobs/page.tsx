@@ -15,6 +15,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 interface Job {
   id: string;
@@ -54,6 +55,10 @@ export default function AdminJobsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+
+  // 权限：批量删除需要 jobs:batch-delete（与 API 层一致）
+  const { can: canAdmin } = useAdminPermissions();
+  const canBatchDelete = canAdmin("jobs:batch-delete");
 
   // 获取职位列表
   const fetchJobs = useCallback(async () => {
@@ -201,14 +206,16 @@ export default function AdminJobsPage() {
             <Button size="sm" variant="outline" onClick={() => handleBatchAction("unpublish")}>
               批量下架
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 hover:bg-red-50"
-              onClick={() => setShowBatchDeleteConfirm(true)}
-            >
-              批量删除
-            </Button>
+            {canBatchDelete && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:bg-red-50"
+                onClick={() => setShowBatchDeleteConfirm(true)}
+              >
+                批量删除
+              </Button>
+            )}
           </div>
         )}
       </div>

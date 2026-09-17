@@ -37,6 +37,8 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
@@ -234,6 +236,7 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,8 +286,14 @@ export default function AdminUsersPage() {
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
+  // 权限（导航与按钮按权限点收敛，服务端为最终权威）
+  const { can: canAdmin } = useAdminPermissions();
+  const canWriteUsers = canAdmin("users:write");
+  const canDeleteUsers = canAdmin("users:delete");
+  const canSecurityWrite = canAdmin("users:security:write");
+  const canRevealPhone = canAdmin("users:sensitive:read");
+
   // 积分流水与人工调整
-  const [isOwner, setIsOwner] = useState(false);
   const [ledgerItems, setLedgerItems] = useState<PointLedgerItem[]>([]);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerTotalPages, setLedgerTotalPages] = useState(0);
@@ -326,19 +335,6 @@ export default function AdminUsersPage() {
   useEffect(() => {
     deferInEffect(fetchUsers);
   }, [fetchUsers]);
-
-  // 角色：仅超级管理员可人工调整积分（与 API 层一致）
-  useEffect(() => {
-    let cancelled = false;
-    apiGet<{ user: { role: string } }>("/api/admin/me")
-      .then((data) => {
-        if (!cancelled) setIsOwner(data.user?.role === "owner");
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const fetchLedger = useCallback(async (userId: string, targetPage: number) => {
     setLedgerLoading(true);
@@ -383,10 +379,22 @@ export default function AdminUsersPage() {
 
     setAdjusting(true);
     try {
-      await apiPost(`/api/admin/users/${detailUser.id}/points`, {
-        amount,
-        note: adjustNote.trim(),
-      });
+      const submit = (totpCode?: string) =>
+        apiPost(`/api/admin/users/${detailUser.id}/points`, {
+          amount,
+          note: adjustNote.trim(),
+          totpCode,
+        });
+
+      try {
+        await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const code = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!code) return;
+        await submit(code);
+      }
+
       toast.success(amount > 0 ? `已为该用户增加 ${amount} 积分` : `已为该用户扣减 ${-amount} 积分`);
       setAdjustOpen(false);
       setAdjustAmount("");
@@ -574,7 +582,7 @@ export default function AdminUsersPage() {
     const { status: targetStatus } = batchTarget;
     setBatchLoading(true);
     try {
-      await apiPost<{ message: string }>("/api/admin/users", {
+      await apiPost<{ updated: number }>("/api/admin/users", {
         ids: Array.from(selectedIds),
         status: targetStatus,
       });
@@ -708,7 +716,7 @@ export default function AdminUsersPage() {
             onChange={(e) => updateParams({ status: e.target.value })}
             className="w-32"
           />
-          {selectedIds.size > 0 && (
+          {canWriteUsers && selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
               <Button
@@ -759,15 +767,17 @@ export default function AdminUsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-              <th scope="col" className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="h-4 w-4 rounded border-brand-charcoal/20"
-                  aria-label="全选"
-                />
-              </th>
+              {canWriteUsers && (
+                <th scope="col" className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                    aria-label="全选"
+                  />
+                </th>
+              )}
               <th scope="col" className="px-4 py-3">
                 用户
               </th>
@@ -790,10 +800,12 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={canWriteUsers ? 8 : 7} />
+              ))
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={canWriteUsers ? 8 : 7}>
                   <div className="flex justify-center py-12">
                     <Empty title="暂无用户" />
                   </div>
@@ -802,15 +814,17 @@ export default function AdminUsersPage() {
             ) : (
               users.map((user) => (
                 <tr key={user.id} className="hover:bg-brand-charcoal/[0.03]">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(user.id)}
-                      onChange={() => toggleSelect(user.id)}
-                      className="h-4 w-4 rounded border-brand-charcoal/20"
-                      aria-label={`选择 ${user.nickname || user.phone || user.id}`}
-                    />
-                  </td>
+                  {canWriteUsers && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => toggleSelect(user.id)}
+                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
@@ -853,16 +867,18 @@ export default function AdminUsersPage() {
                       <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                        onClick={() =>
-                          requestDeleteUser(user.id, user.nickname || user.phone || user.id)
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canDeleteUsers && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                          onClick={() =>
+                            requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -984,7 +1000,7 @@ export default function AdminUsersPage() {
                           已验证
                         </Badge>
                       )}
-                      {!revealedPhone && detailUser.phone && (
+                      {canRevealPhone && !revealedPhone && detailUser.phone && (
                         <Button size="sm" variant="ghost" loading={revealingPhone} onClick={revealPhone}>
                           显示完整号码
                         </Button>
@@ -1007,7 +1023,7 @@ export default function AdminUsersPage() {
                           已锁定
                         </Badge>
                       )}
-                      {isOwner && (
+                      {canWriteUsers && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -1045,7 +1061,7 @@ export default function AdminUsersPage() {
                             <span className="text-xs text-brand-charcoal/40">
                               {formatDate(identity.createdAt)}
                             </span>
-                            {isOwner && (
+                            {canWriteUsers && (
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1081,41 +1097,45 @@ export default function AdminUsersPage() {
                   </div>
                 </dl>
 
-                <div className="mt-5 flex flex-wrap gap-2 border-t border-brand-charcoal/15 pt-4">
-                  {detailUser.status !== "ACTIVE" && (
-                    <Button
-                      size="sm"
-                      leftIcon={<CheckCircle className="h-4 w-4" />}
-                      loading={statusLoading}
-                      onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
-                    >
-                      恢复正常
-                    </Button>
+                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-brand-charcoal/15 pt-4">
+                  {canWriteUsers && (
+                    <>
+                      {detailUser.status !== "ACTIVE" && (
+                        <Button
+                          size="sm"
+                          leftIcon={<CheckCircle className="h-4 w-4" />}
+                          loading={statusLoading}
+                          onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
+                        >
+                          恢复正常
+                        </Button>
+                      )}
+                      {detailUser.status !== "SUSPENDED" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                          leftIcon={<Lock className="h-4 w-4" />}
+                          loading={statusLoading}
+                          onClick={() => updateUserStatus(detailUser.id, "SUSPENDED")}
+                        >
+                          冻结账号
+                        </Button>
+                      )}
+                      {detailUser.status !== "BANNED" && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          leftIcon={<Ban className="h-4 w-4" />}
+                          loading={statusLoading}
+                          onClick={() => updateUserStatus(detailUser.id, "BANNED")}
+                        >
+                          封禁账号
+                        </Button>
+                      )}
+                    </>
                   )}
-                  {detailUser.status !== "SUSPENDED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                      leftIcon={<Lock className="h-4 w-4" />}
-                      loading={statusLoading}
-                      onClick={() => updateUserStatus(detailUser.id, "SUSPENDED")}
-                    >
-                      冻结账号
-                    </Button>
-                  )}
-                  {detailUser.status !== "BANNED" && (
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      leftIcon={<Ban className="h-4 w-4" />}
-                      loading={statusLoading}
-                      onClick={() => updateUserStatus(detailUser.id, "BANNED")}
-                    >
-                      封禁账号
-                    </Button>
-                  )}
-                  {isOwner && (
+                  {canSecurityWrite && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -1125,20 +1145,27 @@ export default function AdminUsersPage() {
                       重置密码
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
-                    leftIcon={<Trash2 className="h-4 w-4" />}
-                    onClick={() =>
-                      requestDeleteUser(
-                        detailUser.id,
-                        detailUser.nickname || detailUser.phone || detailUser.id
-                      )
-                    }
-                  >
-                    删除用户
-                  </Button>
+                  {canDeleteUsers && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                      leftIcon={<Trash2 className="h-4 w-4" />}
+                      onClick={() =>
+                        requestDeleteUser(
+                          detailUser.id,
+                          detailUser.nickname || detailUser.phone || detailUser.id
+                        )
+                      }
+                    >
+                      删除用户
+                    </Button>
+                  )}
+                  {!canWriteUsers && !canSecurityWrite && !canDeleteUsers && (
+                    <p className="text-xs text-brand-charcoal/40">
+                      账号状态变更、密码重置与删除需要更高权限
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -1159,7 +1186,7 @@ export default function AdminUsersPage() {
                       {detailPoints ? detailPoints.frozen.toLocaleString() : "-"}
                     </p>
                   </div>
-                  {isOwner && (
+                  {canSecurityWrite && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -1729,6 +1756,9 @@ export default function AdminUsersPage() {
         confirmText="确认删除"
         loading={deleteLoading}
       />
+
+      {/* 资金类操作二次验证 */}
+      {totpModal}
     </div>
   );
 }

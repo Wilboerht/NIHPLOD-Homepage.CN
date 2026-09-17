@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { IMPORT_HEADERS } from "@/lib/spent-import";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
       { status: 401 }
+    );
+  }
+
+  if (!hasAdminPermission(admin, "spent:import")) {
+    return NextResponse.json(
+      { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费记录导入" } },
+      { status: 403 }
     );
   }
 

@@ -13,6 +13,8 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { adjustPoints, getPointBalanceView } from "@/lib/points-ledger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,8 @@ const adjustSchema = z.object({
     .refine((v) => Math.abs(v) <= 1000000, "单次调整绝对值不能超过 1,000,000"),
   note: z.string().trim().min(2, "请填写调整原因（至少 2 个字）").max(200, "调整原因过长"),
   requestId: z.string().min(1).max(64).optional(),
+  // 资金类操作二次验证码（TOTP 或备用码）
+  totpCode: z.string().max(20).optional(),
 });
 
 /** GET：余额 + 流水分页 */
@@ -39,6 +43,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "users:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户查看" } },
+        { status: 403 }
       );
     }
 
@@ -129,9 +140,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "users:security:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可调整用户积分" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：积分调整" } },
         { status: 403 }
       );
     }
@@ -153,7 +164,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 400 }
       );
     }
-    const { amount, note, requestId } = parsed.data;
+    const { amount, note, requestId, totpCode } = parsed.data;
+
+    // 资金类操作：二次验证（TOTP / 备用码）
+    const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode);
+    if (totpResponse) return totpResponse;
 
     const user = await prisma.user.findUnique({ where: { id }, select: { id: true } });
     if (!user) {

@@ -19,6 +19,7 @@ import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
 import { getAdminStats, getSsoStats } from "@/lib/admin-stats";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // 格式化相对时间（基于服务端渲染时刻）
 function formatRelativeTime(dateString: string) {
@@ -55,6 +56,17 @@ export default async function AdminDashboard() {
   const admin = await getCurrentAdmin();
   if (!admin) {
     redirect("/admin-login");
+  }
+
+  // 无 dashboard:read 权限（个人覆盖可撤销）时不渲染统计数据
+  if (!hasAdminPermission(admin, "dashboard:read")) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2">
+        <Shield className="h-10 w-10 text-brand-charcoal/25" />
+        <p className="text-lg font-medium text-brand-charcoal/70">无权访问仪表盘</p>
+        <p className="text-sm text-brand-charcoal/50">请联系超级管理员开通 dashboard:read 权限</p>
+      </div>
+    );
   }
 
   let stats;

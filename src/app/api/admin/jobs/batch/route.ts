@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -35,9 +36,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { ids, action } = BatchSchema.parse(body);
 
-    if (action === "delete" && admin.role !== "owner") {
+    // 批量删除为高危操作：需要 jobs:batch-delete 权限（默认仅 owner）
+    if (action === "delete" && !hasAdminPermission(admin, "jobs:batch-delete")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可批量删除职位" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位批量删除" } },
+        { status: 403 }
+      );
+    }
+    if (action !== "delete" && !hasAdminPermission(admin, "jobs:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位编辑" } },
         { status: 403 }
       );
     }

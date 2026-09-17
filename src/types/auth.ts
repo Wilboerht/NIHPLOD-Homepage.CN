@@ -9,8 +9,9 @@ import type { JWTPayload } from "jose";
 
 /**
  * 管理员角色
+ * owner/admin 为历史角色；ops/support/hr/finance 为命名角色（权限模板见 lib/admin-permissions）
  */
-export type AdminRole = "owner" | "admin";
+export type AdminRole = "owner" | "admin" | "ops" | "support" | "hr" | "finance";
 
 /**
  * 管理员用户信息
@@ -20,16 +21,22 @@ export interface AdminUser {
   email: string;
   name: string;
   role: AdminRole;
+  /** 个人权限覆盖（原始覆盖条目，解析后权限见 AdminJWTPayload.permissions） */
+  permissionOverrides?: string[];
+  /** 解析后的有效权限点（owner 为全部） */
+  permissions?: string[];
 }
 
 /**
- * JWT Token 载荷
+ * JWT Token 载荷（不含权限：权限每次请求从 DB 实时解析，避免撤权延迟）
  */
 export interface AdminJWTPayload extends JWTPayload {
   id: string;
   email: string;
   name: string;
   role: AdminRole;
+  /** 个人权限覆盖原始条目（verifyAuth 从 DB 读取） */
+  permissionOverrides?: string[];
 }
 
 /**

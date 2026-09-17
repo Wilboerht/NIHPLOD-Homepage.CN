@@ -3,6 +3,7 @@ import { verifyAuth } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { getAdminStats } from "@/lib/admin-stats";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // 统计数据响应类型
 interface StatsResponse {
@@ -46,6 +47,13 @@ export async function GET(request: NextRequest) {
           },
         },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "dashboard:read")) {
+      return NextResponse.json<StatsResponse>(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：仪表盘查看" } },
+        { status: 403 }
       );
     }
 

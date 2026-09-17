@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
@@ -43,7 +44,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (!hasAdminPermission(admin, "applications:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：简历查看" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
     if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);

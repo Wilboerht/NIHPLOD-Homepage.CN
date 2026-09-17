@@ -15,14 +15,27 @@ import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
-import { RequireAdminRole } from "@/components/admin";
+import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import {
+  ADMIN_ROLES,
+  PERMISSION_GROUPS,
+  PERMISSION_LABELS,
+  ROLE_LABELS,
+  buildPermissionOverrides,
+  resolveAdminPermissions,
+  type AdminPermission,
+  type AdminRoleValue,
+} from "@/lib/admin-permissions";
+import { cn } from "@/lib/utils";
 
 interface AdminItem {
   id: string;
   email: string;
   name: string;
   role: string;
+  permissions: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -38,12 +51,18 @@ export default function AdminAdminsPage() {
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminItem | null>(null);
+  const { id: currentAdminId, role: myRole, can: canAdmin } = useAdminPermissions();
+  const canManage = canAdmin("admins:write");
+  const isOwnerActor = myRole === "owner";
   const [form, setForm] = useState({
     email: "",
     name: "",
     password: "",
-    role: "admin" as "owner" | "admin",
+    role: "admin" as AdminRoleValue,
   });
+  // 权限编辑器勾选状态（含个人覆盖后的有效权限）
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
+  const isEditingSelf = !!editing && editing.id === currentAdminId;
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -89,6 +108,7 @@ export default function AdminAdminsPage() {
   const openCreate = () => {
     setEditing(null);
     setForm({ email: "", name: "", password: "", role: "admin" });
+    setSelectedPermissions(new Set(resolveAdminPermissions("admin")));
     setShowModal(true);
   };
 
@@ -98,9 +118,16 @@ export default function AdminAdminsPage() {
       email: admin.email,
       name: admin.name,
       password: "",
-      role: admin.role as "owner" | "admin",
+      role: admin.role as AdminRoleValue,
     });
+    setSelectedPermissions(new Set(resolveAdminPermissions(admin.role, admin.permissions)));
     setShowModal(true);
+  };
+
+  /** 角色变化时重置为模板默认权限（owner 恒为全部） */
+  const handleRoleChange = (role: AdminRoleValue) => {
+    setForm((prev) => ({ ...prev, role }));
+    setSelectedPermissions(new Set(resolveAdminPermissions(role)));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,13 +143,34 @@ export default function AdminAdminsPage() {
 
     setSubmitting(true);
     try {
-      // 编辑且未修改密码时不提交 password 字段（不可变构造，避免直接删除 state 派生对象属性）
-      const { password, ...formWithoutPassword } = form;
-      const body = editing
-        ? password
-          ? { id: editing.id, ...form }
-          : { id: editing.id, ...formWithoutPassword }
-        : form;
+      // 权限覆盖：相对角色模板的差异（追加授权 / "!权限点" 撤销）
+      const permissions = buildPermissionOverrides(
+        form.role,
+        Array.from(selectedPermissions)
+      );
+      const base = {
+        email: form.email,
+        name: form.name,
+        role: form.role,
+        permissions,
+      };
+
+      let body: Record<string, unknown>;
+      if (editing) {
+        body = {
+          id: editing.id,
+          ...base,
+          ...(form.password ? { password: form.password } : {}),
+        };
+        // 自锁保护：后端禁止自改角色/权限/密码，本页同步不提交这些字段
+        if (editing.id === currentAdminId) {
+          delete body.role;
+          delete body.permissions;
+          delete body.password;
+        }
+      } else {
+        body = { ...base, password: form.password };
+      }
 
       if (editing) {
         await apiPut("/api/admin/admins", body);
@@ -176,7 +224,7 @@ export default function AdminAdminsPage() {
   const isAllSelected = admins.length > 0 && selectedIds.size === admins.length;
 
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="admins:read">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -192,9 +240,11 @@ export default function AdminAdminsPage() {
             >
               刷新
             </Button>
-            <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-              新增管理员
-            </Button>
+            {canManage && (
+              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+                新增管理员
+              </Button>
+            )}
           </div>
         </div>
 
@@ -210,7 +260,7 @@ export default function AdminAdminsPage() {
               className="pl-10"
             />
           </div>
-          {selectedIds.size > 0 && (
+          {canManage && selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
               <Button
@@ -237,18 +287,20 @@ export default function AdminAdminsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-                <th scope="col" className="w-10 px-4 py-3.5">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedIds(new Set(admins.map((a) => a.id)));
-                      else setSelectedIds(new Set());
-                    }}
-                    className="h-4 w-4 rounded border-brand-charcoal/20"
-                    aria-label="全选"
-                  />
-                </th>
+                {canManage && (
+                  <th scope="col" className="w-10 px-4 py-3.5">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedIds(new Set(admins.map((a) => a.id)));
+                        else setSelectedIds(new Set());
+                      }}
+                      className="h-4 w-4 rounded border-brand-charcoal/20"
+                      aria-label="全选"
+                    />
+                  </th>
+                )}
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
                   姓名
                 </th>
@@ -268,21 +320,25 @@ export default function AdminAdminsPage() {
             </thead>
             <tbody className="divide-y divide-brand-charcoal/[0.06]">
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRowSkeleton key={i} columns={canManage ? 6 : 5} />
+                ))
               ) : admins.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8">
+                  <td colSpan={canManage ? 6 : 5} className="px-5 py-8">
                     <Empty
                       title="暂无管理员"
                       className="py-6"
                       action={
-                        <Button
-                          size="sm"
-                          leftIcon={<Plus className="h-4 w-4" />}
-                          onClick={openCreate}
-                        >
-                          新增管理员
-                        </Button>
+                        canManage ? (
+                          <Button
+                            size="sm"
+                            leftIcon={<Plus className="h-4 w-4" />}
+                            onClick={openCreate}
+                          >
+                            新增管理员
+                          </Button>
+                        ) : undefined
                       }
                     />
                   </td>
@@ -290,39 +346,52 @@ export default function AdminAdminsPage() {
               ) : (
                 admins.map((admin) => (
                   <tr key={admin.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
-                    <td className="px-4 py-3.5">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(admin.id)}
-                        onChange={() => {
-                          const next = new Set(selectedIds);
-                          if (next.has(admin.id)) next.delete(admin.id);
-                          else next.add(admin.id);
-                          setSelectedIds(next);
-                        }}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
-                        aria-label={`选择 ${admin.name}`}
-                      />
-                    </td>
+                    {canManage && (
+                      <td className="px-4 py-3.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(admin.id)}
+                          onChange={() => {
+                            const next = new Set(selectedIds);
+                            if (next.has(admin.id)) next.delete(admin.id);
+                            else next.add(admin.id);
+                            setSelectedIds(next);
+                          }}
+                          className="h-4 w-4 rounded border-brand-charcoal/20"
+                          aria-label={`选择 ${admin.name}`}
+                        />
+                      </td>
+                    )}
                     <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
                     <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
                     <td className="px-5 py-3.5">
-                      <Badge variant={admin.role === "owner" ? "warning" : "default"}>
-                        {admin.role === "owner" ? "最高权限" : "管理员"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={admin.role === "owner" ? "warning" : "default"}>
+                          {ROLE_LABELS[admin.role as AdminRoleValue] ?? admin.role}
+                        </Badge>
+                        {admin.role !== "owner" && admin.permissions?.length > 0 && (
+                          <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                            已自定义
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 text-brand-charcoal/50">
                       {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(admin)}>
-                          <Trash2 className="h-4 w-4 text-red-400" />
-                        </Button>
-                      </div>
+                      {canManage && (admin.role !== "owner" || isOwnerActor) ? (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(admin)}>
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-brand-charcoal/40">只读</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -346,39 +415,118 @@ export default function AdminAdminsPage() {
           open={showModal}
           onClose={() => setShowModal(false)}
           title={editing ? "编辑管理员" : "新增管理员"}
-          size="sm"
+          size="lg"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="姓名"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <Input
-              label="邮箱"
-              type="email"
-              required
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-            <Input
-              label={`密码${editing ? "（留空则不修改）" : ""}`}
-              type="password"
-              required={!editing}
-              minLength={8}
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <Select
-              label="角色"
-              options={[
-                { value: "admin", label: "管理员" },
-                { value: "owner", label: "最高权限管理员" },
-              ]}
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="姓名"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <Input
+                label="邮箱"
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+              <Input
+                label={`密码${editing ? "（留空则不修改）" : ""}`}
+                type="password"
+                required={!editing}
+                minLength={8}
+                disabled={isEditingSelf}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
+              <Select
+                label="角色"
+                options={ADMIN_ROLES.filter((role) => role !== "owner" || isOwnerActor).map(
+                  (role) => ({
+                    value: role,
+                    label: ROLE_LABELS[role],
+                  })
+                )}
+                value={form.role}
+                disabled={isEditingSelf}
+                onChange={(e) => handleRoleChange(e.target.value as AdminRoleValue)}
+              />
+            </div>
+
+            {isEditingSelf && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                不能修改自己的角色、权限或密码（防自锁），请由其他超级管理员操作。
+              </p>
+            )}
+
+            {/* 权限覆盖编辑器：勾选相对角色模板调整，保存为个人权限覆盖 */}
+            {form.role !== "owner" && (
+              <div className="rounded-lg border border-brand-charcoal/15 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-brand-charcoal">权限（个人覆盖）</p>
+                    <p className="mt-0.5 text-xs text-brand-charcoal/50">
+                      默认继承「{ROLE_LABELS[form.role]}」模板，可单独增减；保存时自动生成覆盖差异
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isEditingSelf}
+                    onClick={() =>
+                      setSelectedPermissions(new Set(resolveAdminPermissions(form.role)))
+                    }
+                  >
+                    恢复模板默认
+                  </Button>
+                </div>
+                <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                  {PERMISSION_GROUPS.map((group) => (
+                    <div key={group.group}>
+                      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-brand-charcoal/40">
+                        {group.group}
+                      </p>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {group.permissions.map((permission: AdminPermission) => {
+                          const checked = selectedPermissions.has(permission);
+                          return (
+                            <label
+                              key={permission}
+                              className={cn(
+                                "flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-xs",
+                                isEditingSelf
+                                  ? "cursor-not-allowed opacity-60"
+                                  : "hover:bg-brand-charcoal/[0.04]"
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={isEditingSelf}
+                                onChange={(e) => {
+                                  const next = new Set(selectedPermissions);
+                                  if (e.target.checked) next.add(permission);
+                                  else next.delete(permission);
+                                  setSelectedPermissions(next);
+                                }}
+                                className="mt-0.5"
+                              />
+                              <span className="text-brand-charcoal/70">
+                                {PERMISSION_LABELS[permission]}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)}>
                 取消
@@ -414,6 +562,6 @@ export default function AdminAdminsPage() {
           loading={batchDeleting}
         />
       </div>
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }

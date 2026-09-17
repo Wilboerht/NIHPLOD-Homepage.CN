@@ -23,13 +23,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isOpen, isCollapsed, isMobile, toggle, close, toggleCollapse } = useSidebar();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [userName, setUserName] = useState<string | undefined>(undefined);
+  const [permissions, setPermissions] = useState<string[] | undefined>(undefined);
 
   useEffect(() => {
-    apiGet<{ user: { role: string; name: string } }>("/api/admin/me")
+    apiGet<{ user: { role: string; name: string; permissions?: string[] } }>("/api/admin/me")
       .then((data) => {
         if (data.user) {
           setUserRole(data.user.role);
           setUserName(data.user.name);
+          setPermissions(data.user.permissions ?? []);
         }
       })
       .catch((err: unknown) => {
@@ -64,7 +66,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           isMobile={isMobile}
           onClose={close}
           onToggleCollapse={toggleCollapse}
-          userRole={userRole}
+          permissions={permissions}
         />
 
         {/* 主内容区域 */}

@@ -61,13 +61,14 @@ model PurchaseLink {
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  name      String    // 分类名称（中文）
-  nameEn    String    // 分类名称（英文）
-  slug      String    @unique // URL 标识
-  icon      String?   @db.Text // 分类图标（SVG 代码）
-  order     Int       @default(0) // 排序
-  visible   Boolean   @default(true) // 是否在前台展示
+  id          String    @id @default(cuid())
+  name        String    // 分类名称（中文）
+  nameEn      String    // 分类名称（英文）
+  slug        String    @unique // URL 标识
+  description String?   @db.Text // 分类描述（管理端维护，前台可扩展展示）
+  icon        String?   @db.Text // 分类图标（SVG 代码）
+  order       Int       @default(0) // 排序
+  visible     Boolean   @default(true) // 是否在前台展示
   products  Product[] // 关联产品
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
@@ -835,9 +836,15 @@ enum PointRedemptionStatus {
 
 enum AdminRole {
   // 注意：AdminRole 与其他 enum 大小写不一致（lowercase vs UPPERCASE），
-  // 由于已投入生产且有 DB 记录，保留当前值避免 breaking change
-  owner
-  admin
+  // 由于已投入生产且有 DB 记录，保留当前值避免 breaking change。
+  // owner/admin 为历史角色；ops/support/hr/finance 为 2026-09 引入的命名角色，
+  // 具体权限由代码内角色模板（lib/admin-permissions.ts）决定。
+  owner   // 超级管理员：全部权限
+  admin   // 历史通用管理员：保持旧行为（不可管理管理员/SSO/资金导入等）
+  ops     // 运营：商品/分类/消费审核/积分礼品/兑换履约/留言/会员权益只读
+  support // 客服：留言、用户只读+手机号揭示、积分流水只读、兑换履约
+  hr      // 招聘：职位与简历
+  finance // 财务/审计：审计日志、消费与积分流水只读
 }
 
 enum AdminStatus {
@@ -851,6 +858,9 @@ model Admin {
   password        String      // 加密密码
   name            String      // 显示名称
   role            AdminRole   @default(admin)
+  // 个人权限覆盖：条目为权限点（追加授权）或 "!权限点"（从角色模板撤销）；
+  // 最终权限 = 角色模板 − 撤销 + 追加（owner 恒为全部权限，忽略覆盖）
+  permissions     String[]    @default([])
   status          AdminStatus @default(ACTIVE) // 账号状态
   deletedAt       DateTime?   // 软删除时间
   totpSecret      String?     // 加密后的 TOTP secret

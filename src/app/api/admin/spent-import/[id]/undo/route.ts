@@ -2,15 +2,23 @@
  * 撤销导入批次 API（管理端）
  * POST /api/admin/spent-import/[id]/undo - 整批反向冲正
  *
- * 权限：仅超级管理员（owner）；操作写入审计日志。
+ * 权限：需要 spent:import 权限；资金类操作需 TOTP 二次验证；操作写入审计日志。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { undoImportBatch } from "@/lib/spent-import";
+
+const undoBodySchema = z
+  .object({ totpCode: z.string().max(20).optional() })
+  .optional()
+  .default({});
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +35,9 @@ export async function POST(
       );
     }
 
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "spent:import")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "只有超级管理员可撤销导入" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：撤销导入" } },
         { status: 403 }
       );
     }
@@ -45,6 +53,18 @@ export async function POST(
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
+
+    const parsedBody = undoBodySchema.safeParse(await request.json().catch(() => ({})));
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+        { status: 400 }
+      );
+    }
+
+    // 资金类操作：二次验证（TOTP / 备用码）
+    const totpResponse = await requireMoneyOperationTotp(admin.id, parsedBody.data.totpCode);
+    if (totpResponse) return totpResponse;
 
     const result = await undoImportBatch(id);
 

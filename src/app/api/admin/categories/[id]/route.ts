@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -18,6 +19,8 @@ const CategoryUpdateSchema = z.object({
     .max(50, "URL别名不能超过50个字符")
     .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符")
     .optional(),
+  description: z.string().max(500, "描述不能超过500个字符").optional().nullable(),
+  icon: z.string().optional().nullable(),
   order: z.number().int().min(0).optional(),
   visible: z.boolean().optional(), // 是否在前台展示
 });
@@ -33,6 +36,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "categories:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：分类查看" } },
+        { status: 403 }
       );
     }
 
@@ -85,6 +95,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "categories:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：分类编辑" } },
+        { status: 403 }
       );
     }
 
@@ -184,6 +201,13 @@ export async function DELETE(
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "categories:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：分类删除" } },
+        { status: 403 }
       );
     }
 

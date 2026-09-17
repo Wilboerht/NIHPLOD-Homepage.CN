@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
@@ -42,9 +43,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "sso:clients:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可轮换密钥" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 密钥轮换" } },
         { status: 403 }
       );
     }

@@ -16,6 +16,7 @@ import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 interface Message {
   id: string;
@@ -42,6 +43,9 @@ export default function AdminMessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canDeleteMessages = canAdmin("messages:delete");
+  const canWriteMessages = canAdmin("messages:write");
 
   // 状态
   const [messages, setMessages] = useState<Message[]>([]);
@@ -109,9 +113,9 @@ export default function AdminMessagesPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // 标记已读
+  // 标记已读（只读角色跳过，避免必然 403）
   const markAsRead = async (message: Message) => {
-    if (message.read) return;
+    if (message.read || !canWriteMessages) return;
 
     try {
       await apiPatch(`/api/admin/messages/${message.id}`, { read: true });
@@ -308,14 +312,16 @@ export default function AdminMessagesPage() {
             <Button size="sm" variant="outline" onClick={() => handleBatchAction("unread")}>
               标记未读
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 hover:bg-red-50"
-              onClick={() => setShowBatchDeleteConfirm(true)}
-            >
-              批量删除
-            </Button>
+            {canDeleteMessages && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:bg-red-50"
+                onClick={() => setShowBatchDeleteConfirm(true)}
+              >
+                批量删除
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -450,26 +456,30 @@ export default function AdminMessagesPage() {
 
                   {/* 操作按钮 */}
                   <div className="flex w-24 items-center gap-1">
-                    <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
-                      <button
-                        onClick={() => toggleRead(message)}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                      >
-                        {message.read ? (
-                          <Mail className="h-4 w-4" />
-                        ) : (
-                          <MailOpen className="h-4 w-4" />
-                        )}
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="删除" side="top">
-                      <button
-                        onClick={() => setDeleteTarget(message)}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
+                    {canWriteMessages && (
+                      <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
+                        <button
+                          onClick={() => toggleRead(message)}
+                          className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                        >
+                          {message.read ? (
+                            <Mail className="h-4 w-4" />
+                          ) : (
+                            <MailOpen className="h-4 w-4" />
+                          )}
+                        </button>
+                      </Tooltip>
+                    )}
+                    {canDeleteMessages && (
+                      <Tooltip content="删除" side="top">
+                        <button
+                          onClick={() => setDeleteTarget(message)}
+                          className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
               ))}
@@ -561,19 +571,24 @@ export default function AdminMessagesPage() {
                 onChange={(e) => setReplyDraft(e.target.value)}
                 rows={4}
                 maxLength={5000}
+                disabled={!canWriteMessages}
                 placeholder="输入回复内容（仅记录在后台用于回访跟进，用户端暂不展示）"
-                className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-brand-charcoal/40">{replyDraft.length}/5000</span>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
-                    {detailMessage.read ? "标记为未读" : "标记为已读"}
-                  </Button>
-                  <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
-                    {detailMessage.reply ? "更新回复" : "发送回复"}
-                  </Button>
-                </div>
+                <span className="text-xs text-brand-charcoal/40">
+                  {canWriteMessages ? `${replyDraft.length}/5000` : "只读查看（无回复权限）"}
+                </span>
+                {canWriteMessages && (
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
+                      {detailMessage.read ? "标记为未读" : "标记为已读"}
+                    </Button>
+                    <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
+                      {detailMessage.reply ? "更新回复" : "发送回复"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

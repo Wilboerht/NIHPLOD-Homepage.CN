@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 interface TOTPSetupData {
@@ -28,8 +28,10 @@ export default function TOTPSettingsPage() {
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [setupData, setSetupData] = useState<TOTPSetupData | null>(null);
+  const [setupPassword, setSetupPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
+  const [disableCode, setDisableCode] = useState("");
   const [processing, setProcessing] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
@@ -50,12 +52,19 @@ export default function TOTPSettingsPage() {
   }, [toast]);
 
   const startSetup = async () => {
+    if (!setupPassword) {
+      toast.error("请输入当前密码以验证身份");
+      return;
+    }
     setProcessing(true);
     try {
-      const data = await apiPost<TOTPSetupData>("/api/admin/totp/setup");
+      const data = await apiPost<TOTPSetupData>("/api/admin/totp/setup", {
+        password: setupPassword,
+      });
       setSetupData(data);
-    } catch {
-      toast.error("初始化失败");
+      setSetupPassword("");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "初始化失败");
     } finally {
       setProcessing(false);
     }
@@ -73,8 +82,8 @@ export default function TOTPSettingsPage() {
       setTotpEnabled(true);
       setSetupData(null);
       setVerifyCode("");
-    } catch {
-      toast.error("验证失败");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "验证失败");
     } finally {
       setProcessing(false);
     }
@@ -85,14 +94,22 @@ export default function TOTPSettingsPage() {
       toast.error("请输入密码");
       return;
     }
+    if (disableCode.trim().length < 6) {
+      toast.error("请输入 6 位动态验证码或备用码");
+      return;
+    }
     setProcessing(true);
     try {
-      await apiPost("/api/admin/totp/disable", { password: disablePassword });
+      await apiPost("/api/admin/totp/disable", {
+        password: disablePassword,
+        totpCode: disableCode.trim(),
+      });
       toast.success("二次验证已关闭");
       setTotpEnabled(false);
       setDisablePassword("");
-    } catch {
-      toast.error("关闭失败");
+      setDisableCode("");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "关闭失败");
     } finally {
       setProcessing(false);
     }
@@ -146,10 +163,25 @@ export default function TOTPSettingsPage() {
       </div>
 
       {!totpEnabled && !setupData && (
-        <div className="rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
+        <div className="space-y-3 rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+              当前密码 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              value={setupPassword}
+              onChange={(e) => setSetupPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && startSetup()}
+              className="w-full max-w-sm rounded-lg border border-brand-charcoal/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              placeholder="请输入当前登录密码"
+              autoComplete="current-password"
+            />
+            <p className="mt-1 text-xs text-brand-charcoal/40">出于安全考虑，启用前需验证当前密码</p>
+          </div>
           <button
             onClick={startSetup}
-            disabled={processing}
+            disabled={processing || !setupPassword}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50"
           >
             {processing && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -256,8 +288,8 @@ export default function TOTPSettingsPage() {
           <p className="mb-4 text-sm text-brand-charcoal/50">
             关闭后登录不再需要动态验证码，账号安全性将降低。
           </p>
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[12rem] flex-1">
               <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
                 当前密码
               </label>
@@ -267,11 +299,25 @@ export default function TOTPSettingsPage() {
                 onChange={(e) => setDisablePassword(e.target.value)}
                 className="w-full rounded-lg border border-brand-charcoal/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 placeholder="请输入当前密码"
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="min-w-[12rem] flex-1">
+              <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+                动态验证码 / 备用码
+              </label>
+              <input
+                type="text"
+                value={disableCode}
+                onChange={(e) => setDisableCode(e.target.value)}
+                className="w-full rounded-lg border border-brand-charcoal/20 px-3 py-2 font-mono text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                placeholder="6 位验证码或备用码"
+                autoComplete="one-time-code"
               />
             </div>
             <button
               onClick={disableTOTP}
-              disabled={processing || !disablePassword}
+              disabled={processing || !disablePassword || disableCode.trim().length < 6}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
               {processing && <Loader2 className="h-4 w-4 animate-spin" />}

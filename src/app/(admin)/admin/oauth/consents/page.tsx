@@ -14,8 +14,9 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/api-client";
-import { RequireAdminRole } from "@/components/admin";
+import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 function maskPhone(phone: string): string {
   return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
@@ -58,6 +59,8 @@ function OAuthConsentsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("sso:write");
   const [consents, setConsents] = useState<Consent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
@@ -71,6 +74,26 @@ function OAuthConsentsPage() {
   const [searchClientId, setSearchClientId] = useState(() => searchParams.get("clientId") || "");
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
 
+  // 防抖后的查询值：避免每次按键都发请求 + 改写 URL
+  const [debouncedPhone, setDebouncedPhone] = useState(searchPhone.trim());
+  const [debouncedClientId, setDebouncedClientId] = useState(searchClientId.trim());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedPhone(searchPhone.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchPhone]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedClientId(searchClientId.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchClientId]);
+
   const [revokeTarget, setRevokeTarget] = useState<{
     userId: string;
     phone: string;
@@ -83,12 +106,12 @@ function OAuthConsentsPage() {
   const syncUrl = useCallback(() => {
     const params = new URLSearchParams();
     if (page !== 1) params.set("page", String(page));
-    if (searchPhone.trim()) params.set("search", searchPhone.trim());
-    if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
+    if (debouncedPhone) params.set("search", debouncedPhone);
+    if (debouncedClientId) params.set("clientId", debouncedClientId);
     if (statusFilter) params.set("status", statusFilter);
     const qs = params.toString();
     router.replace(`/admin/oauth/consents${qs ? `?${qs}` : ""}`);
-  }, [page, searchPhone, searchClientId, statusFilter, router]);
+  }, [page, debouncedPhone, debouncedClientId, statusFilter, router]);
 
   const fetchConsents = useCallback(async () => {
     setLoading(true);
@@ -97,8 +120,8 @@ function OAuthConsentsPage() {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
-      if (searchPhone.trim()) params.set("search", searchPhone.trim());
-      if (searchClientId.trim()) params.set("clientId", searchClientId.trim());
+      if (debouncedPhone) params.set("search", debouncedPhone);
+      if (debouncedClientId) params.set("clientId", debouncedClientId);
       if (statusFilter) params.set("status", statusFilter);
       const data = await apiGet<ConsentsResponse>(`/api/admin/oauth/consents?${params.toString()}`);
       setConsents(data.items);
@@ -108,13 +131,16 @@ function OAuthConsentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchPhone, searchClientId, statusFilter, toast, syncUrl]);
+  }, [page, debouncedPhone, debouncedClientId, statusFilter, toast, syncUrl]);
 
   useEffect(() => {
     deferInEffect(fetchConsents);
   }, [fetchConsents]);
 
+  /** Enter 立即搜索：跳过防抖等待 */
   const handleSearch = () => {
+    setDebouncedPhone(searchPhone.trim());
+    setDebouncedClientId(searchClientId.trim());
     setPage(1);
   };
 
@@ -256,23 +282,27 @@ function OAuthConsentsPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {c.status === "active" ? (
-                      <Tooltip content="撤销授权" side="top">
-                        <button
-                          aria-label="撤销授权"
-                          onClick={() => {
-                            setRevokeTarget({
-                              userId: c.userId,
-                              phone: c.phone,
-                              clientId: c.clientId,
-                              clientName: c.clientName,
-                            });
-                            setShowRevoke(true);
-                          }}
-                          className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-red-600"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
+                      canWrite ? (
+                        <Tooltip content="撤销授权" side="top">
+                          <button
+                            aria-label="撤销授权"
+                            onClick={() => {
+                              setRevokeTarget({
+                                userId: c.userId,
+                                phone: c.phone,
+                                clientId: c.clientId,
+                                clientName: c.clientName,
+                              });
+                              setShowRevoke(true);
+                            }}
+                            className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-red-600"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-xs text-brand-charcoal/40">只读</span>
+                      )
                     ) : (
                       <span
                         className="text-xs text-brand-charcoal/40"
@@ -312,10 +342,10 @@ function OAuthConsentsPage() {
 
 export default function OAuthConsentsPageWrapper() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="sso:read">
       <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
         <OAuthConsentsPage />
       </Suspense>
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }

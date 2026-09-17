@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -40,6 +41,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         { status: 401 }
       );
     }
+
+    if (!hasAdminPermission(admin, "jobs:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位查看" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
 
@@ -84,7 +95,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
-
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -93,7 +103,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
+    if (!hasAdminPermission(admin, "jobs:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位编辑" } },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
+
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
@@ -192,6 +210,13 @@ export async function DELETE(
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "jobs:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位删除" } },
+        { status: 403 }
       );
     }
 

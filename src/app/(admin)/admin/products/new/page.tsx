@@ -17,7 +17,8 @@ export default function NewProductPage() {
   const { error: showError } = useToast();
 
   useEffect(() => {
-    apiGet<Category[]>("/api/categories")
+    // 使用管理端接口：包含隐藏分类（公开接口仅返回 visible 分类）
+    apiGet<Category[]>("/api/admin/categories")
       .then((data) => setCategories(data))
       .catch(() => showError("加载分类列表失败"))
       .finally(() => setLoading(false));

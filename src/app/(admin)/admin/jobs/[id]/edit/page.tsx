@@ -19,6 +19,9 @@ interface JobData {
   requirements: string;
   salary: string | null;
   published: boolean;
+  order: number;
+  longitude: number | null;
+  latitude: number | null;
 }
 
 export default function EditJobPage() {
@@ -107,6 +110,10 @@ export default function EditJobPage() {
           requirements: job.requirements,
           salary: job.salary || "",
           published: job.published,
+          // 必须回填，否则表单默认值会在保存时把排序重置为 0、坐标清空
+          order: job.order,
+          longitude: job.longitude,
+          latitude: job.latitude,
         }}
       />
     </div>

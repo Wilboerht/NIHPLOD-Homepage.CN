@@ -6,7 +6,7 @@
  * - approve：必填 reviewAmount（核实金额，以人工核实为准），入账后自动重算会员等级
  * - reject：必填 reviewNote（驳回原因，展示给用户）
  *
- * 权限：所有管理员均可审核；操作写入审计日志。
+ * 权限：需要 spent:review 权限；资金类操作需二次验证（TOTP）；操作写入审计日志。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -15,6 +15,8 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { reviewApplication, MAX_REVIEW_AMOUNT, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
 
 const reviewSchema = z
@@ -22,6 +24,8 @@ const reviewSchema = z
     decision: z.enum(["approve", "reject"]),
     reviewAmount: z.number().int().min(1).max(MAX_REVIEW_AMOUNT).optional(),
     reviewNote: z.string().trim().max(500, "备注过长").optional(),
+    // 资金类操作二次验证码（TOTP 或备用码）
+    totpCode: z.string().max(20).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.decision === "approve" && !data.reviewAmount) {
@@ -52,6 +56,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
+    if (!hasAdminPermission(admin, "spent:review")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费补录审核" } },
+        { status: 403 }
+      );
+    }
+
     if (!validateCSRFToken(request)) {
       return csrfForbiddenResponse();
     }
@@ -76,7 +87,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    const { decision, reviewAmount, reviewNote } = parsed.data;
+    const { decision, reviewAmount, reviewNote, totpCode } = parsed.data;
+
+    // 资金类操作：二次验证（TOTP / 备用码）
+    const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode);
+    if (totpResponse) return totpResponse;
 
     const result = await reviewApplication({
       applicationId: id,

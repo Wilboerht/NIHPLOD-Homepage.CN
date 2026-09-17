@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { deleteUploadedFile } from "@/lib/upload";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -50,10 +51,17 @@ export async function POST(request: NextRequest) {
     }
     const { ids, action } = parsed.data;
 
-    // 批量删除为高危操作：仅超级管理员可执行（与 jobs/batch 口径一致）
-    if (action === "delete" && admin.role !== "owner") {
+    // 批量删除为高危操作：需要 products:batch-delete 权限（默认仅 owner）
+    if (action === "delete" && !hasAdminPermission(admin, "products:batch-delete")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可批量删除产品" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品批量删除" } },
+        { status: 403 }
+      );
+    }
+    // 批量发布/下架：需要产品编辑权限
+    if (action !== "delete" && !hasAdminPermission(admin, "products:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品编辑" } },
         { status: 403 }
       );
     }

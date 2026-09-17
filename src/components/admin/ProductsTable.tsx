@@ -53,6 +53,8 @@ interface ProductsTableProps {
   onSort?: (key: string, order: "asc" | "desc") => void;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  /** 是否可批量删除（仅超级管理员；默认 false 以最小暴露） */
+  canDelete?: boolean;
 }
 
 export function ProductsTable({
@@ -65,6 +67,7 @@ export function ProductsTable({
   onSort,
   sortBy,
   sortOrder,
+  canDelete = false,
 }: ProductsTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -287,13 +290,15 @@ export function ProductsTable({
             >
               取消发布
             </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => setDeleteConfirm({ open: true, batch: true })}
-            >
-              删除
-            </Button>
+            {canDelete && (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => setDeleteConfirm({ open: true, batch: true })}
+              >
+                删除
+              </Button>
+            )}
           </div>
           <button
             onClick={() => setSelectedIds([])}

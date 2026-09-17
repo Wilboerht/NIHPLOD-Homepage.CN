@@ -7,13 +7,14 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { Timer, RefreshCw, Play, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
-import { RequireAdminRole } from "@/components/admin/RequireAdminRole";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 interface TaskLastRun {
   startedAt: string;
@@ -54,14 +55,16 @@ function formatDuration(startedAt: string, finishedAt: string): string {
 
 export default function AdminCronTasksPage() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="cron:read">
       <AdminCronTasksContent />
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }
 
 function AdminCronTasksContent() {
   const { success, error: showError } = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canRun = canAdmin("cron:run");
   const [tasks, setTasks] = useState<CronTask[]>([]);
   const [recentRuns, setRecentRuns] = useState<CronRun[]>([]);
   const [cronEnabled, setCronEnabled] = useState(true);
@@ -202,14 +205,18 @@ function AdminCronTasksContent() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<Play className="h-3.5 w-3.5" />}
-                      onClick={() => setTriggerTarget(task)}
-                    >
-                      手动执行
-                    </Button>
+                    {canRun ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<Play className="h-3.5 w-3.5" />}
+                        onClick={() => setTriggerTarget(task)}
+                      >
+                        手动执行
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-brand-charcoal/40">只读</span>
+                    )}
                   </td>
                 </tr>
               ))}

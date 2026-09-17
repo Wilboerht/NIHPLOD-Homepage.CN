@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import {
   getOAuthClientById,
   updateOAuthClient,
@@ -36,11 +37,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "sso:clients:read")) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" },
+          error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端查看" },
         },
         { status: 403 }
       );
@@ -79,9 +80,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "sso:clients:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端管理" } },
         { status: 403 }
       );
     }
@@ -202,9 +209,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   try {
     const admin = await verifyAuth(request);
-    if (!admin || admin.role !== "owner") {
+    if (!admin) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可操作" } },
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "sso:clients:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端管理" } },
         { status: 403 }
       );
     }

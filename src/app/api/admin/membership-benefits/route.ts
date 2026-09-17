@@ -13,6 +13,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { LEVEL_DEFAULT_BENEFITS, type LevelDefaultBenefit, type LevelBenefitItem } from "@/lib/membership";
 import type { MembershipLevel } from "@/generated/prisma/client";
 
@@ -74,9 +75,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "membership:read")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可查看会员权益配置" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：会员权益查看" } },
         { status: 403 }
       );
     }
@@ -114,9 +115,9 @@ export async function PUT(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "membership:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可更新会员权益配置" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：会员权益编辑" } },
         { status: 403 }
       );
     }

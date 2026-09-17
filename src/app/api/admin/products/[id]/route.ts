@@ -11,6 +11,7 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -34,6 +35,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         { status: 401 }
       );
     }
+
+    if (!hasAdminPermission(admin, "products:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品查看" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
 
@@ -94,6 +105,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
+    }
+
+    if (!hasAdminPermission(admin, "products:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品编辑" } },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -183,6 +201,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
+    }
+
+    if (!hasAdminPermission(admin, "products:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品编辑" } },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
@@ -390,6 +415,12 @@ export async function DELETE(
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "products:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品删除" } },
+        { status: 403 }
       );
     }
 

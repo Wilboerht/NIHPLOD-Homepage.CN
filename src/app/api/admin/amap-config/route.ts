@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 高德密钥（含安全密钥）仅限超级管理员读取；普通管理员的地图选择降级为手动填写地点/经纬度
-    if (admin.role !== "owner") {
+    // 高德密钥（含安全密钥）需要 amap:read 权限（默认仅 owner）；无权限时地图选择降级为手动填写
+    if (!hasAdminPermission(admin, "amap:read")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "地图密钥仅超级管理员可用" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：地图密钥读取" } },
         { status: 403 }
       );
     }

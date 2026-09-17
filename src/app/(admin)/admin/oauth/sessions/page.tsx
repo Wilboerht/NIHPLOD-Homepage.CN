@@ -14,8 +14,9 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
-import { RequireAdminRole } from "@/components/admin";
+import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 function maskForList(phone: string | null): string {
   if (!phone || phone.length < 7) return phone || "";
@@ -68,6 +69,8 @@ function OAuthSessionsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("sso:write");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState({ activeSessions: 0, activeRefreshTokens: 0 });
   const [total, setTotal] = useState(0);
@@ -254,13 +257,15 @@ function OAuthSessionsPage() {
               搜索
             </Button>
           </div>
-          <Button
-            variant="danger"
-            onClick={() => setShowBatchTerminate(true)}
-            leftIcon={<Trash2 className="h-4 w-4" />}
-          >
-            批量终止全部会话
-          </Button>
+          {canWrite && (
+            <Button
+              variant="danger"
+              onClick={() => setShowBatchTerminate(true)}
+              leftIcon={<Trash2 className="h-4 w-4" />}
+            >
+              批量终止全部会话
+            </Button>
+          )}
         </div>
       </div>
 
@@ -339,24 +344,26 @@ function OAuthSessionsPage() {
                           <Eye className="h-4 w-4" />
                         </button>
                       </Tooltip>
-                      <Tooltip content="终止会话" side="top">
-                        <button
-                          aria-label="终止会话"
-                          onClick={() => {
-                            setTerminateTarget({
-                              id: s.id,
-                              userId: s.userId,
-                              phone: s.phone,
-                              nickname: s.nickname,
-                              clientId: s.clientId,
-                            });
-                            setShowTerminate(true);
-                          }}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
-                        >
-                          <LogOut className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
+                      {canWrite && (
+                        <Tooltip content="终止会话" side="top">
+                          <button
+                            aria-label="终止会话"
+                            onClick={() => {
+                              setTerminateTarget({
+                                id: s.id,
+                                userId: s.userId,
+                                phone: s.phone,
+                                nickname: s.nickname,
+                                clientId: s.clientId,
+                              });
+                              setShowTerminate(true);
+                            }}
+                            className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
+                          >
+                            <LogOut className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -504,23 +511,27 @@ function OAuthSessionsPage() {
               </div>
 
               <div className="flex gap-2 border-t pt-4">
-                <Button
-                  variant="danger"
-                  onClick={() => {
-                    setDetailSession(null);
-                    setTerminateTarget({
-                      id: detailSession.id,
-                      userId: detailSession.userId,
-                      phone: detailSession.phone,
-                      nickname: detailSession.nickname,
-                      clientId: detailSession.clientId,
-                    });
-                    setShowTerminate(true);
-                  }}
-                  leftIcon={<LogOut className="h-4 w-4" />}
-                >
-                  终止会话
-                </Button>
+                {canWrite ? (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setDetailSession(null);
+                      setTerminateTarget({
+                        id: detailSession.id,
+                        userId: detailSession.userId,
+                        phone: detailSession.phone,
+                        nickname: detailSession.nickname,
+                        clientId: detailSession.clientId,
+                      });
+                      setShowTerminate(true);
+                    }}
+                    leftIcon={<LogOut className="h-4 w-4" />}
+                  >
+                    终止会话
+                  </Button>
+                ) : (
+                  <span className="text-xs text-brand-charcoal/40">只读查看（无操作权限）</span>
+                )}
               </div>
             </div>
           </div>
@@ -532,10 +543,10 @@ function OAuthSessionsPage() {
 
 export default function OAuthSessionsPageWrapper() {
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="sso:read">
       <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
         <OAuthSessionsPage />
       </Suspense>
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }

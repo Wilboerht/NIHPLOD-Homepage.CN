@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
@@ -36,6 +37,20 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { ids, action } = BatchSchema.parse(body);
+
+    // 批量删除需 messages:delete，标记读/未读需 messages:write
+    if (action === "delete" && !hasAdminPermission(admin, "messages:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：留言删除" } },
+        { status: 403 }
+      );
+    }
+    if (action !== "delete" && !hasAdminPermission(admin, "messages:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：留言操作" } },
+        { status: 403 }
+      );
+    }
 
     let count = 0;
 

@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { createOAuthClient, listOAuthClients, toSafeClientResponse } from "@/lib/oauth-client";
@@ -80,11 +81,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "sso:clients:read")) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" },
+          error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端查看" },
         },
         { status: 403 }
       );
@@ -140,11 +141,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "sso:clients:write")) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "FORBIDDEN", message: "仅超级管理员可管理 OAuth Client" },
+          error: { code: "FORBIDDEN", message: "权限不足：SSO 客户端管理" },
         },
         { status: 403 }
       );

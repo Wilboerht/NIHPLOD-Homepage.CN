@@ -44,6 +44,12 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
+// 资金类操作二次验证（本测试聚焦审核逻辑，TOTP 视为通过）
+vi.mock("@/lib/admin-totp", () => ({
+  requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),
+  isMoneyOperationTotpEnforced: vi.fn().mockReturnValue(true),
+}));
+
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken } from "@/lib/csrf";
 import { reviewApplication } from "@/lib/spent-adjustments";

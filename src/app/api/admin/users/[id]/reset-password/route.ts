@@ -19,6 +19,7 @@ import { validatePasswordStrength } from "@/lib/password";
 import { randomInt } from "@/lib/random";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -62,9 +63,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "users:security:write")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可重置用户密码" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：重置用户密码" } },
         { status: 403 }
       );
     }

@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Users, KeyRound, RefreshCw, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 import { StatsCard } from "@/components/admin/StatsCard";
-import { RequireAdminRole } from "@/components/admin";
+import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 interface OAuthStats {
@@ -63,7 +63,7 @@ export default function OAuthStatsPage() {
 
   if (error) {
     return (
-      <RequireAdminRole role="owner">
+      <RequirePermission permission="sso:read">
         <div className="flex flex-col items-center justify-center gap-3 py-16">
           <p className="text-sm text-red-500">{error}</p>
           <button
@@ -73,14 +73,14 @@ export default function OAuthStatsPage() {
             重试
           </button>
         </div>
-      </RequireAdminRole>
+      </RequirePermission>
     );
   }
 
   const maxEventCount = stats ? Math.max(1, ...Object.values(stats.eventsByType)) : 1;
 
   return (
-    <RequireAdminRole role="owner">
+    <RequirePermission permission="sso:read">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -197,6 +197,6 @@ export default function OAuthStatsPage() {
           )}
         </div>
       </div>
-    </RequireAdminRole>
+    </RequirePermission>
   );
 }
