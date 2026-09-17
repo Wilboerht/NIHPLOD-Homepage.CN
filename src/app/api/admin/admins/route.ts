@@ -8,9 +8,14 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import {
+  ADMIN_PERMISSIONS,
   ADMIN_ROLES,
+  ROLE_TEMPLATES,
+  canDelegateRoleAndOverrides,
   hasAdminPermission,
+  resolveAdminPermissions,
   sanitizePermissionOverrides,
+  type AdminRoleValue,
 } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
@@ -215,10 +220,23 @@ export const POST = withAuth(async (request, admin) => {
     // 创建单个管理员
     const data = createSchema.parse(body);
 
+    const permissionOverrides = sanitizePermissionOverrides(data.permissions);
+
     // 仅 owner 可创建 owner 账号（防委派管理员提权）
     if (data.role === "owner" && admin.role !== "owner") {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可创建 owner 账号" } },
+        { status: 403 }
+      );
+    }
+
+    // 委派边界：不能授予超出自身权限范围的角色或追加授权（防二级提权）
+    if (!canDelegateRoleAndOverrides(admin, data.role, permissionOverrides)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "不能授予超出自身权限范围的角色或权限" },
+        },
         { status: 403 }
       );
     }
@@ -235,7 +253,6 @@ export const POST = withAuth(async (request, admin) => {
     }
 
     const hashedPassword = await hashPassword(data.password);
-    const permissionOverrides = sanitizePermissionOverrides(data.permissions);
     const newAdmin = await prisma.admin.create({
       data: {
         email: data.email,
@@ -312,7 +329,7 @@ export const PUT = withAuth(async (request, admin) => {
     // 目标管理员必须存在且未删除（避免 update 抛 P2025 变成 500）
     const targetAdmin = await prisma.admin.findUnique({
       where: { id: data.id, deletedAt: null },
-      select: { id: true, role: true },
+      select: { id: true, role: true, permissions: true },
     });
     if (!targetAdmin) {
       return NextResponse.json(
@@ -332,8 +349,8 @@ export const PUT = withAuth(async (request, admin) => {
       );
     }
 
-    // 最后一名 owner 保护：将 owner 降级为 admin 前必须确认还有其他 owner
-    if (data.role === "admin" && targetAdmin.role === "owner") {
+    // 最后一名 owner 保护：将 owner 降级为任意非 owner 角色前必须确认还有其他 owner
+    if (targetAdmin.role === "owner" && data.role !== undefined && data.role !== "owner") {
       const ownerCount = await prisma.admin.count({
         where: { role: "owner", deletedAt: null },
       });
@@ -342,6 +359,51 @@ export const PUT = withAuth(async (request, admin) => {
           { success: false, error: { code: "LAST_OWNER", message: "不能降级最后一个 owner 账号" } },
           { status: 409 }
         );
+      }
+    }
+
+    const permissionOverrides =
+      data.permissions !== undefined ? sanitizePermissionOverrides(data.permissions) : undefined;
+
+    // 委派边界（精确）：角色变更时校验目标模板；追加授权只校验"新增"部分，
+    // 既有授权（可能由 owner 授予）允许保留，避免委派管理员连改名都被拒。
+    if (
+      admin.role !== "owner" &&
+      (data.role !== undefined || permissionOverrides !== undefined)
+    ) {
+      const actorPerms = new Set<string>(
+        resolveAdminPermissions(admin.role, admin.permissionOverrides)
+      );
+      if (data.role !== undefined && data.role !== targetAdmin.role) {
+        const template =
+          data.role === "owner"
+            ? ADMIN_PERMISSIONS
+            : (ROLE_TEMPLATES[data.role as Exclude<AdminRoleValue, "owner">] ?? []);
+        if (![...template].every((p) => actorPerms.has(p))) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "FORBIDDEN", message: "不能授予超出自身权限范围的角色" },
+            },
+            { status: 403 }
+          );
+        }
+      }
+      if (permissionOverrides !== undefined) {
+        const currentOverrides = new Set(targetAdmin.permissions ?? []);
+        const hasOutOfScopeGrant = permissionOverrides.some(
+          (entry) =>
+            !entry.startsWith("!") && !currentOverrides.has(entry) && !actorPerms.has(entry)
+        );
+        if (hasOutOfScopeGrant) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "FORBIDDEN", message: "不能授予超出自身权限范围的权限" },
+            },
+            { status: 403 }
+          );
+        }
       }
     }
 
@@ -364,8 +426,6 @@ export const PUT = withAuth(async (request, admin) => {
     if (data.name) updateData.name = data.name;
     if (data.role) updateData.role = data.role;
     if (data.password) updateData.password = await hashPassword(data.password);
-    const permissionOverrides =
-      data.permissions !== undefined ? sanitizePermissionOverrides(data.permissions) : undefined;
     if (permissionOverrides !== undefined) updateData.permissions = permissionOverrides;
 
     if (Object.keys(updateData).length === 0) {

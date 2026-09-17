@@ -43,6 +43,12 @@ data/*.mmdb
 # Playwright MCP logs
 .playwright-mcp/
 
+# 临时 E2E / 安全扫描产物
+.tmp-e2e/
+
+# canvas / 工具状态文件
+*.canvas.status.json
+
 # Qoder IDE
 .qoder/
 

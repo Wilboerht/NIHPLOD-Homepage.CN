@@ -348,6 +348,30 @@ export function hasAdminPermission(
   return allowed;
 }
 
+/**
+ * 委派边界：非 owner 进行管理员角色/权限分配时，
+ * 目标角色模板与「追加授权」都不得超过自身有效权限（防二级提权）。
+ * 撤销条目（!权限点）不扩大权限范围，无需拦截。
+ */
+export function canDelegateRoleAndOverrides(
+  actor: { role: string; permissionOverrides?: string[] | null },
+  targetRole: AdminRoleValue,
+  overrides: string[]
+): boolean {
+  if (actor.role === "owner") return true;
+  const actorPerms = new Set<string>(
+    resolveAdminPermissions(actor.role, actor.permissionOverrides)
+  );
+  const template = targetRole === "owner" ? ADMIN_PERMISSIONS : (ROLE_TEMPLATES[targetRole] ?? []);
+  for (const permission of template) {
+    if (!actorPerms.has(permission)) return false;
+  }
+  for (const entry of overrides) {
+    if (!entry.startsWith("!") && !actorPerms.has(entry)) return false;
+  }
+  return true;
+}
+
 /** 计算个人覆盖差异：根据勾选状态生成 overrides（相对角色模板） */
 export function buildPermissionOverrides(
   role: AdminRoleValue,

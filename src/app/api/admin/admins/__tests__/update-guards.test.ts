@@ -166,6 +166,112 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
     expect(prisma.admin.updateMany).not.toHaveBeenCalled();
   });
 
+  it("将最后一个 owner 降级为 ops 同样被拒（角色扩展后不再只拦 admin）", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "owner",
+    });
+    (prisma.admin.count as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+
+    const res = await PUT(createRequest({ id: TARGET_ID, role: "ops" }), OWNER as never);
+
+    expect(res.status).toBe(409);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派边界：不能创建超出自身权限范围的角色（ops 委派建 support）", async () => {
+    const res = await POST(
+      createPostRequest({
+        email: "support@test.com",
+        name: "Support",
+        password: "NewPassw0rd!",
+        role: "support",
+      }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.create).not.toHaveBeenCalled();
+  });
+
+  it("委派边界：不能追加自身没有的权限（ops 委派授予 sso:read）", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "ops",
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, permissions: ["sso:read"] }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派边界：角色变更超出自身范围被拒（admin → support）", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "admin",
+      permissions: [],
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, role: "support" }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派边界：保留既有超范围授权（重复提交）不拦截，可正常改名", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "ops",
+      permissions: ["sso:read"],
+    });
+    (prisma.admin.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      email: "target@test.com",
+      name: "Target2",
+      role: "ops",
+      permissions: ["sso:read"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, name: "Target2", permissions: ["sso:read"] }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it("委派边界：同权限范围内的角色与撤销条目允许", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "ops",
+    });
+    (prisma.admin.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      email: "target@test.com",
+      name: "Target",
+      role: "ops",
+      permissions: ["!products:write"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, permissions: ["!products:write"] }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(200);
+  });
+
   it("owner 批量删除其他 owner（仍有 owner 保留）允许", async () => {
     (prisma.admin.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: TARGET_ID, role: "owner" },

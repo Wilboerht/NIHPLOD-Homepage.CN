@@ -12,6 +12,7 @@ import {
   ADMIN_PERMISSIONS,
   ROLE_TEMPLATES,
   buildPermissionOverrides,
+  canDelegateRoleAndOverrides,
   hasAdminPermission,
   resolveAdminPermissions,
   sanitizePermissionOverrides,
@@ -150,5 +151,25 @@ describe("buildPermissionOverrides 与模板互转", () => {
 
   it("owner 不生成覆盖", () => {
     expect(buildPermissionOverrides("owner", ["users:read"])).toEqual([]);
+  });
+});
+
+describe("canDelegateRoleAndOverrides 委派边界", () => {
+  const delegatedOps = { role: "ops", permissionOverrides: ["admins:write"] };
+
+  it("owner 不受限制", () => {
+    expect(canDelegateRoleAndOverrides({ role: "owner" }, "admin", ["sso:read"])).toBe(true);
+  });
+
+  it("目标角色模板超出自身权限时拒绝（ops 委派 support）", () => {
+    expect(canDelegateRoleAndOverrides(delegatedOps, "support", [])).toBe(false);
+  });
+
+  it("追加授权超出自身权限时拒绝（ops 授予 sso:read）", () => {
+    expect(canDelegateRoleAndOverrides(delegatedOps, "ops", ["sso:read"])).toBe(false);
+  });
+
+  it("同范围角色与撤销条目允许", () => {
+    expect(canDelegateRoleAndOverrides(delegatedOps, "ops", ["!products:write"])).toBe(true);
   });
 });

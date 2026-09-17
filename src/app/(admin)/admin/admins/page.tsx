@@ -23,6 +23,7 @@ import {
   PERMISSION_GROUPS,
   PERMISSION_LABELS,
   ROLE_LABELS,
+  ROLE_TEMPLATES,
   buildPermissionOverrides,
   resolveAdminPermissions,
   type AdminPermission,
@@ -51,9 +52,24 @@ export default function AdminAdminsPage() {
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminItem | null>(null);
-  const { id: currentAdminId, role: myRole, can: canAdmin } = useAdminPermissions();
+  const {
+    id: currentAdminId,
+    role: myRole,
+    permissions: myPermissions,
+    can: canAdmin,
+  } = useAdminPermissions();
   const canManage = canAdmin("admins:write");
   const isOwnerActor = myRole === "owner";
+  // 委派边界（与服务端一致）：非 owner 只能分配模板不超出自身权限的角色
+  const assignableRoles = ADMIN_ROLES.filter(
+    (role) =>
+      role !== "owner" &&
+      (ROLE_TEMPLATES[role as Exclude<AdminRoleValue, "owner">] ?? []).every((p) =>
+        myPermissions.has(p)
+      )
+  );
+  const canGrantPermission = (permission: string) =>
+    isOwnerActor || myPermissions.has(permission);
   const [form, setForm] = useState({
     email: "",
     name: "",
@@ -443,12 +459,14 @@ export default function AdminAdminsPage() {
               />
               <Select
                 label="角色"
-                options={ADMIN_ROLES.filter((role) => role !== "owner" || isOwnerActor).map(
-                  (role) => ({
-                    value: role,
-                    label: ROLE_LABELS[role],
-                  })
-                )}
+                options={(() => {
+                  const roles: AdminRoleValue[] = isOwnerActor
+                    ? [...ADMIN_ROLES]
+                    : [...assignableRoles];
+                  // 被编辑账号的既有角色若超出可委派范围，仍显示当前值（只能保留，不能新选）
+                  if (!roles.includes(form.role)) roles.push(form.role);
+                  return roles.map((role) => ({ value: role, label: ROLE_LABELS[role] }));
+                })()}
                 value={form.role}
                 disabled={isEditingSelf}
                 onChange={(e) => handleRoleChange(e.target.value as AdminRoleValue)}
@@ -505,7 +523,9 @@ export default function AdminAdminsPage() {
                               <input
                                 type="checkbox"
                                 checked={checked}
-                                disabled={isEditingSelf}
+                                disabled={
+                                  isEditingSelf || (!checked && !canGrantPermission(permission))
+                                }
                                 onChange={(e) => {
                                   const next = new Set(selectedPermissions);
                                   if (e.target.checked) next.add(permission);
