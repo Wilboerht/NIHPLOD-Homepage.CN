@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,
+  DEFAULT_NONCE_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
@@ -81,6 +82,9 @@ export interface SsoMiddlewareConfig {
 
   /** State Cookie 名称，默认 __Host-nihplod_sso_state */
   stateCookieName?: string;
+
+  /** OIDC Nonce Cookie 名称，默认 __Host-nihplod_sso_nonce */
+  nonceCookieName?: string;
 
   /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
   returnUrlCookieName?: string;
@@ -290,6 +294,9 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   const stateCookieName = insecureLocalDev
     ? toInsecureCookieName(config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME)
     : config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME;
+  const nonceCookieName = insecureLocalDev
+    ? toInsecureCookieName(config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME)
+    : config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME;
   const returnUrlCookieName = insecureLocalDev
     ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME)
     : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
@@ -303,19 +310,18 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   // authorize 等浏览器跳转仍用 normalizedBase（公网）
   const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
 
-  if (process.env.NODE_ENV !== "production") {
-    if (!validateSsoCookie) {
-      console.warn(
-        "[SSO SDK] validateSsoCookie=false：中间件仅检查 Cookie 存在性，可能放行已失效的会话。" +
-        "中间件只是 UX 层，敏感数据的鉴权必须在 Route Handler / Server Component 中完成。"
-      );
-    }
-    if (!clientSecret) {
-      console.warn(
-        "[SSO SDK] 未配置 clientSecret（Public Client 模式）：introspection 无客户端认证，" +
-        "中间件判定结果仅作 UX 参考。Confidential Client（BFF）请配置 clientSecret。"
-      );
-    }
+  // 弱配置告警不区分环境：生产环境风险最高，同样输出（不应静默）
+  if (!validateSsoCookie) {
+    console.warn(
+      "[SSO SDK] validateSsoCookie=false：中间件仅检查 Cookie 存在性，可能放行已失效的会话。" +
+      "中间件只是 UX 层，敏感数据的鉴权必须在 Route Handler / Server Component 中完成。"
+    );
+  }
+  if (!clientSecret) {
+    console.warn(
+      "[SSO SDK] 未配置 clientSecret（Public Client 模式）：introspection 无客户端认证，" +
+      "中间件判定结果仅作 UX 参考。Confidential Client（BFF）请配置 clientSecret。"
+    );
   }
 
   return async function ssoMiddleware(request: NextRequest) {
@@ -381,6 +387,9 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
 
     // No auth: redirect to SSO
     const state = generateRandomString(32);
+    // OIDC nonce（43 字符 ≈ 260 bit 熵，满足 256-bit 要求）：
+    // 绑定 ID Token 到本次登录会话，回调时 fail-closed 校验，防 ID Token 重放
+    const nonce = generateRandomString(43);
     const verifier = generateRandomString(64);
 
     // 在 Edge Runtime 中计算 PKCE code_challenge（SHA-256 + base64url）
@@ -392,6 +401,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     authorizeParams.set("redirect_uri", redirectUri);
     authorizeParams.set("scope", scopes);
     authorizeParams.set("state", state);
+    authorizeParams.set("nonce", nonce);
     authorizeParams.set("code_challenge", challenge);
     authorizeParams.set("code_challenge_method", "S256");
 
@@ -402,6 +412,9 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
 
     // Set state cookie for CSRF verification on callback
     response.cookies.set(stateCookieName, state, getHostCookieOptions(600, secureCookies));
+
+    // Set nonce cookie（与 state 同规格的 __Host- httpOnly cookie，供 callback 校验 ID Token）
+    response.cookies.set(nonceCookieName, nonce, getHostCookieOptions(600, secureCookies));
 
     // Set PKCE verifier cookie（httpOnly，供 callback handler 使用）
     // 使用 __Secure- 前缀，允许写入 callbackPath

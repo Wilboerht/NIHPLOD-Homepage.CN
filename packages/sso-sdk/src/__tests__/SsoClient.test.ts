@@ -15,6 +15,8 @@ import {
   getPkceVerifier,
   getLogoutState,
   getReturnUrl,
+  saveOAuthNonce,
+  getOAuthNonce,
   setTokenStorage,
 } from "../core/storage";
 import type { TokenData } from "../core/storage";
@@ -569,6 +571,107 @@ describe("SsoClient", () => {
       expect(result.access_token).toBe("new-access-token");
       // 成功后一次性临时数据被清除
       expect(getPkceVerifier(CLIENT_ID)).toBeNull();
+    });
+  });
+
+  describe("OIDC nonce", () => {
+    it("getLoginUrl 生成并携带 nonce，且存入与 state 相同的存储", async () => {
+      installFetchRouter();
+      const client = new SsoClient(defaultConfig);
+      const url = new URL(await client.getLoginUrl());
+
+      const nonce = url.searchParams.get("nonce");
+      expect(nonce).toBeTruthy();
+      // 256-bit 随机值（hex 64 字符）
+      expect(nonce).toMatch(/^[0-9a-f]{64}$/);
+      expect(getOAuthNonce(CLIENT_ID)).toBe(nonce);
+    });
+
+    it("id_token nonce 与存储值一致时登录成功，nonce 随后被清除", async () => {
+      const nonce = "test-nonce-abc123";
+      const idToken = await buildRs256IdToken(validPayload({ nonce }));
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "new-access-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+            id_token: idToken,
+          }),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("nonce-state", CLIENT_ID);
+      saveOAuthNonce(nonce, CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      const result = await client.handleCallback(
+        "https://test-app.com/callback?code=auth-code&state=nonce-state"
+      );
+      expect(result.access_token).toBe("new-access-token");
+      // 登录成功：nonce 一次性清除
+      expect(getOAuthNonce(CLIENT_ID)).toBeNull();
+    });
+
+    it("id_token nonce 不匹配时拒绝登录（防重放），不保存 token", async () => {
+      const idToken = await buildRs256IdToken(validPayload({ nonce: "attacker-nonce" }));
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "new-access-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+            id_token: idToken,
+          }),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("nonce-state-2", CLIENT_ID);
+      saveOAuthNonce("real-nonce", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      await expect(
+        client.handleCallback("https://test-app.com/callback?code=c&state=nonce-state-2")
+      ).rejects.toMatchObject({ code: "id_token_nonce_mismatch" });
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+    });
+
+    it("已存储 nonce 但 id_token 缺 nonce claim 时拒绝登录（fail-closed）", async () => {
+      const idToken = await buildRs256IdToken(validPayload());
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "new-access-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+            id_token: idToken,
+          }),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("nonce-state-3", CLIENT_ID);
+      saveOAuthNonce("real-nonce", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      await expect(
+        client.handleCallback("https://test-app.com/callback?code=c&state=nonce-state-3")
+      ).rejects.toMatchObject({ code: "id_token_nonce_mismatch" });
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+    });
+
+    it("state 不匹配时 nonce 一并清除", async () => {
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("expected-state", CLIENT_ID);
+      saveOAuthNonce("some-nonce", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      await expect(
+        client.handleCallback("https://test-app.com/callback?code=c&state=wrong-state")
+      ).rejects.toThrow("State 参数不匹配");
+      expect(getOAuthNonce(CLIENT_ID)).toBeNull();
     });
   });
 

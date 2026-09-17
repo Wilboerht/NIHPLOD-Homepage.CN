@@ -66,7 +66,7 @@ Build the login URL string without redirecting. Returns `Promise<string>`.
 
 ### `sso.handleCallback(callbackUrl)`
 
-Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens.
+Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens. When an `id_token` is present, the SDK verifies its signature, issuer, audience, expiry and `at_hash`, and — when the login was initiated via `login()` / `getLoginUrl()` / `loginPopup()` — also validates the OIDC `nonce` claim against the value generated at login time (constant-time comparison, fail-closed, protecting against ID Token replay).
 
 | Parameter | Type | Description |
 |------|------|------|
@@ -365,7 +365,8 @@ const handler = createLogoutRouteHandler({
 });
 
 // Prefer POST to trigger logout (prevents logout CSRF via cross-site GET);
-// GET is kept for compatibility with plain <a> navigations.
+// a GET without a valid logout state does NOT log out — it returns a
+// confirmation page (HTML) whose form POSTs to the same endpoint.
 export const GET = handler;
 export const POST = handler;
 ```
@@ -378,7 +379,7 @@ Trigger the logout endpoint with a POST request (recommended):
 </button>
 ```
 
-A plain `<a href="/api/auth/logout">` still works via GET, but note it can be triggered cross-site (logout CSRF).
+A plain `<a href="/api/auth/logout">` navigation (GET) renders the built-in confirmation page instead of logging out directly, so cross-site image/prefetch requests can no longer trigger a logout (logout CSRF protection). Only a POST — or a GET carrying a valid RP-Initiated Logout `state` — performs the logout.
 
 ### Cookie Configuration
 
@@ -389,6 +390,7 @@ Default cookie names:
 | access_token | `__Host-nihplod_sso_at` | Requires Secure + Path=/ + no Domain |
 | refresh_token | `__Host-nihplod_sso_rt` | Requires Secure + Path=/ + no Domain |
 | state | `__Host-nihplod_sso_state` | Requires Secure + Path=/ + no Domain |
+| nonce | `__Host-nihplod_sso_nonce` | OIDC nonce for ID Token replay protection (validated fail-closed in the callback); Requires Secure + Path=/ + no Domain |
 | return_url | `__Host-nihplod_sso_return` | Requires Secure + Path=/ + no Domain |
 | verifier | `__Secure-nihplod_sso_verifier` | Requires Secure + no Domain; Path is the callback path, therefore uses `__Secure-` prefix |
 
@@ -402,7 +404,7 @@ By default, the SDK stores tokens in **sessionStorage** (tab-scoped persistence)
 
 > ⚠️ XSS note: any token readable by JavaScript can be stolen by XSS. sessionStorage narrows the exposure compared with `localStorage` (tab-scoped, auto-cleared), but a `refresh_token` readable by JS is still exfiltratable while the tab is open. If you need stronger guarantees, use the Next.js BFF pattern below (tokens in `httpOnly` cookies) or keep the refresh token inside a Service Worker.
 
-Transient OAuth data (PKCE `code_verifier`, `state`, `returnUrl`, popup nonce) is stored separately in **sessionStorage**, because it must survive the full-page redirect to the SSO center and back; it is cleared automatically when the tab closes. In SSR environments without `sessionStorage`, it falls back to an in-memory map.
+Transient OAuth data (PKCE `code_verifier`, `state`, OIDC `nonce`, `returnUrl`, popup nonce) is stored separately in **sessionStorage**, because it must survive the full-page redirect to the SSO center and back; it is cleared automatically when the tab closes. In SSR environments without `sessionStorage`, it falls back to an in-memory map.
 
 If the sub-project is a **Next.js BFF / Confidential Client**, you can store tokens in `localStorage` for multi-tab sharing:
 

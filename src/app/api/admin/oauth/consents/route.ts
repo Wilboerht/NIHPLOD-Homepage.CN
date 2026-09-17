@@ -3,7 +3,7 @@
  * GET  /api/admin/oauth/consents — 分页查询用户授权列表
  * POST /api/admin/oauth/consents — 管理员吊销用户授权
  *
- * 权限：仅 owner 角色可操作
+ * 权限：GET 需 sso:read，POST 需 sso:write
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
@@ -40,8 +40,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20", 10), 100);
+    // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
+    // 必须先经 Number.isFinite 校验再钳制到合法范围
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
+    const pageSize = Number.isFinite(rawPageSize)
+      ? Math.min(Math.max(1, rawPageSize), 100)
+      : 20;
     const search = searchParams.get("search") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const status = searchParams.get("status") || undefined; // active | revoked
@@ -55,12 +61,21 @@ export async function GET(request: NextRequest) {
       where.revokedAt = { not: null };
     }
 
+    // 手机号模糊搜索：子查询有界（take 上限），避免无界全表扫描
+    let searchTruncated = false;
     if (search) {
-      // 通过 phone 搜索用户
+      if (search.trim().length < 2) {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_PARAMS", message: "搜索关键词至少 2 个字符" } },
+          { status: 400 }
+        );
+      }
       const users = await prisma.user.findMany({
         where: { phone: { contains: search } },
         select: { id: true },
+        take: 500,
       });
+      searchTruncated = users.length >= 500;
       where.userId = { in: users.map((u) => u.id) };
     }
 
@@ -123,6 +138,8 @@ export async function GET(request: NextRequest) {
           };
         }),
         pagination: { page, pageSize, total },
+        // 搜索子查询命中上限时为 true：匹配过多，提示前端要求精确搜索（向后兼容的新增字段）
+        searchTruncated,
       },
     });
   } catch (error) {

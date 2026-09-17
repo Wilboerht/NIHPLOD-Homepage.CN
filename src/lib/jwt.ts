@@ -114,8 +114,25 @@ if (
   );
 }
 
+// RS256 Access Token 密钥对：与 ID Token 同口径，生产环境必须配置，
+// 否则 signOAuthAccessToken 会静默回退 HS256（对称密钥分发给子项目的风险面更大）。
+// 显式设置 ALLOW_HS256_FALLBACK=true 可作为逃生门（密钥轮换/紧急回滚场景）。
+if (
+  process.env.NODE_ENV === "production" &&
+  !process.env.NEXT_PHASE &&
+  process.env.ALLOW_HS256_FALLBACK !== "true" &&
+  (!process.env.JWT_ACCESS_PRIVATE_KEY || !process.env.JWT_ACCESS_PUBLIC_KEY)
+) {
+  throw new Error(
+    "[JWT] 生产环境必须配置 JWT_ACCESS_PRIVATE_KEY 和 JWT_ACCESS_PUBLIC_KEY。" +
+      "缺少 RS256 密钥对时 OAuth Access Token 将静默回退 HS256 签名。" +
+      "如确需 HS256（紧急回滚），请显式设置 ALLOW_HS256_FALLBACK=true。"
+  );
+}
+
 // ============================================
-// OAuth Access Token RS256 迁移支持（可选）
+// OAuth Access Token RS256 迁移支持
+// （生产环境强制配置，见上方启动校验；非生产缺省时回退 HS256）
 // ============================================
 
 let cachedAccessPrivateKey: CryptoKey | null = null;

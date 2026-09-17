@@ -138,6 +138,18 @@ export interface SsoVerifierOptions {
    * 多实例部署时应注入共享存储（如 Redis 实现）以防跨实例重放。
    */
   logoutJtiStore?: LogoutJtiStore;
+
+  /**
+   * Introspection audience 严格模式（默认 false，保持向后兼容）。
+   *
+   * 默认模式下，introspection 响应既无 aud 又无 client_id 时保持信任
+   * （兼容不返回归属字段的端点）。设为 true 后：响应缺少归属字段即拒绝
+   * （fail-closed），防止被 confused deputy 攻击利用。
+   *
+   * ⚠️ 生产环境强烈建议开启。主站 introspection 端点始终返回 client_id，
+   * 开启后行为不变；仅在对接不返回归属字段的第三方端点时才需要保持 false。
+   */
+  strictAudience?: boolean;
 }
 
 /**
@@ -166,7 +178,7 @@ export interface VerifiedTokenPayload extends JWTPayload {
  * 主站签发 logout_token 时包含以下字段：
  * - iss: 主站 issuer
  * - aud: 目标 client_id
- * - sub: 用户 ID
+ * - sub: 用户 ID（与 sid 至少其一）
  * - iat: 签发时间
  * - jti: 唯一 ID（防重放，建议接收方缓存已处理的 jti）
  * - events: { "http://schemas.openid.net/event/backchannel-logout": {} }
@@ -178,8 +190,8 @@ export interface LogoutTokenPayload {
   iss: string;
   /** 目标 audience */
   aud: string;
-  /** 用户 ID */
-  sub: string;
+  /** 用户 ID（Back-Channel Logout 1.0：sub 与 sid 至少其一） */
+  sub?: string;
   /** 签发时间（UNIX timestamp） */
   iat: number;
   /** JWT ID（唯一标识，防重放） */
@@ -253,6 +265,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     introspectRetries = 1,
     clockToleranceSeconds = 60,
     logoutJtiStore,
+    strictAudience = false,
   } = options;
 
   const introspectCache = createIntrospectCache(introspectCacheTtl);
@@ -311,14 +324,15 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
    * Introspection 响应的 aud 归属校验（防 confused deputy）：
    * - 响应携带 aud（字符串或数组）时必须包含配置的 audience；
    * - 否则若携带 client_id，必须等于 audience（audience 即 client_id）；
-   * - 两者都缺失时保持信任（兼容不返回归属字段的端点，见 README）。
+   * - 两者都缺失时：默认保持信任（兼容不返回归属字段的端点，见 README）；
+   *   strictAudience=true 时 fail-closed 拒绝（生产环境推荐开启）。
    */
   function matchesAudience(data: IntrospectResponse): boolean {
     const aud = data.aud;
     if (typeof aud === "string") return aud === audience;
     if (Array.isArray(aud)) return aud.includes(audience);
     if (typeof data.client_id === "string") return data.client_id === audience;
-    return true;
+    return !strictAudience;
   }
 
   // 同一 token 的并发 introspect 共享同一个 Promise，避免重复请求主站
@@ -545,6 +559,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
      * 3. aud 包含当前 client_id
      * 4. exp 存在（规范要求）
      * 5. events 包含 backchannel-logout 事件，且事件值为对象
+     * 6. sub 或 sid 至少其一（§2.4，否则无法定位要终止的会话）
      *
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
@@ -573,6 +588,15 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         }
         const jti = (payload as { jti?: string }).jti;
         if (!jti || typeof jti !== "string") {
+          return null;
+        }
+        // Back-Channel Logout 1.0 §2.4：sub 与 sid 至少存在一个，
+        // 否则无法定位要终止的会话/用户，按验证失败处理
+        const sub = (payload as { sub?: unknown }).sub;
+        const sid = (payload as { sid?: unknown }).sid;
+        const hasSub = typeof sub === "string" && sub.length > 0;
+        const hasSid = typeof sid === "string" && sid.length > 0;
+        if (!hasSub && !hasSid) {
           return null;
         }
         // jti 缓存 key 带 issuer 前缀，避免跨 issuer / 跨 verifier 实例的 jti 冲突

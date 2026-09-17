@@ -4,9 +4,10 @@
  * 覆盖：state 不匹配拒绝、refresh_token 缺失走错误路径（不写 "undefined" cookie）、
  * 成功路径设置 at/rt cookie 并清除临时 cookie。
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { createCallbackRouteHandler } from "../next/callback";
+import { clearIdTokenCaches, type JwksKey } from "../core/id-token";
 
 const config = {
   clientId: "test-client",
@@ -38,12 +39,92 @@ function buildRequest(
 
 // cookie 名含连字符，使用常量引用
 const STATE_COOKIE = "__Host-nihplod_sso_state";
+const NONCE_COOKIE = "__Host-nihplod_sso_nonce";
 const VERIFIER_COOKIE = "__Secure-nihplod_sso_verifier";
 const RETURN_COOKIE = "__Host-nihplod_sso_return";
 
+// ============================================
+// RS256 密钥对与 ID Token 构造工具（nonce 校验用例）
+// ============================================
+
+let privateKey: CryptoKey;
+let publicJwk: JwksKey;
+
+function base64UrlEncodeStr(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function buildRs256IdToken(payload: Record<string, unknown>): Promise<string> {
+  const headerB64 = base64UrlEncodeStr(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "test-key-1" }));
+  const bodyB64 = base64UrlEncodeStr(JSON.stringify(payload));
+  const data = new TextEncoder().encode(`${headerB64}.${bodyB64}`);
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", privateKey, data);
+  return `${headerB64}.${bodyB64}.${base64UrlEncodeBytes(new Uint8Array(sig))}`;
+}
+
+function validIdTokenPayload(extra: Record<string, unknown> = {}): Record<string, unknown> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  return {
+    sub: "user-123",
+    iss: "https://nihplod.cn",
+    aud: "test-client",
+    iat: nowSec,
+    exp: nowSec + 3600,
+    ...extra,
+  };
+}
+
+/** 按 URL 路由的 fetch mock：token 交换返回携带 id_token 的响应，另含 discovery / JWKS */
+function installFetchRouterWithIdToken(idToken: string) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.includes("/.well-known/openid-configuration")) {
+      return jsonResponse({
+        issuer: "https://nihplod.cn",
+        jwks_uri: "https://nihplod.cn/api/oauth/jwks.json",
+      });
+    }
+    if (url.includes("jwks")) {
+      return jsonResponse({ keys: [publicJwk] });
+    }
+    if (url.includes("/api/oauth/token")) {
+      return jsonResponse({
+        access_token: "at-1",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-1",
+        id_token: idToken,
+      });
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+}
+
 describe("createCallbackRouteHandler", () => {
+  beforeAll(async () => {
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+      true,
+      ["sign", "verify"]
+    );
+    privateKey = keyPair.privateKey;
+    publicJwk = {
+      ...(await crypto.subtle.exportKey("jwk", keyPair.publicKey)),
+      alg: "RS256",
+      use: "sig",
+      kid: "test-key-1",
+    } as JwksKey;
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearIdTokenCaches();
   });
 
   afterEach(() => {
@@ -270,5 +351,82 @@ describe("createCallbackRouteHandler", () => {
     expect(res.status).toBe(307);
     expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-1");
     expect(res.cookies.get("nihplod_sso_at")).toBeUndefined();
+  });
+
+  describe("OIDC nonce", () => {
+    function buildNonceRequest(nonceCookie: string | null) {
+      const cookies: Record<string, string> = {
+        [STATE_COOKIE]: "saved-state",
+        [VERIFIER_COOKIE]: "v",
+      };
+      if (nonceCookie !== null) cookies[NONCE_COOKIE] = nonceCookie;
+      return buildRequest({ code: "auth-code", state: "saved-state" }, cookies);
+    }
+
+    it("nonce cookie 与 id_token nonce 一致时登录成功，nonce cookie 被清除", async () => {
+      const idToken = await buildRs256IdToken(validIdTokenPayload({ nonce: "nonce-abc" }));
+      installFetchRouterWithIdToken(idToken);
+
+      const handler = createCallbackRouteHandler(config);
+      const res = await handler(buildNonceRequest("nonce-abc"));
+
+      expect(res.status).toBe(307);
+      expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-1");
+      // 成功后 nonce cookie 一次性清除
+      expect(res.cookies.get(NONCE_COOKIE)?.value).toBe("");
+    });
+
+    it("id_token nonce 与 cookie 不一致时拒绝登录，不写 token cookie，且清除 nonce cookie", async () => {
+      const idToken = await buildRs256IdToken(validIdTokenPayload({ nonce: "attacker-nonce" }));
+      installFetchRouterWithIdToken(idToken);
+
+      const handler = createCallbackRouteHandler(config);
+      const res = await handler(buildNonceRequest("real-nonce"));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("id_token_invalid");
+      expect(body.error_description).toContain("nonce");
+      expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
+      // 错误路径也清除 nonce cookie，避免残留
+      expect(res.cookies.get(NONCE_COOKIE)?.value).toBe("");
+    });
+
+    it("nonce cookie 存在但 id_token 缺 nonce claim 时拒绝登录（fail-closed）", async () => {
+      const idToken = await buildRs256IdToken(validIdTokenPayload());
+      installFetchRouterWithIdToken(idToken);
+
+      const handler = createCallbackRouteHandler(config);
+      const res = await handler(buildNonceRequest("real-nonce"));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("id_token_invalid");
+      expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
+    });
+
+    it("无 nonce cookie（如旧版 middleware 发起的流程）时跳过 nonce 校验", async () => {
+      const idToken = await buildRs256IdToken(validIdTokenPayload());
+      installFetchRouterWithIdToken(idToken);
+
+      const handler = createCallbackRouteHandler(config);
+      const res = await handler(buildNonceRequest(null));
+
+      expect(res.status).toBe(307);
+      expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-1");
+    });
+
+    it("state 不匹配（可能的 CSRF）时 nonce cookie 一并清除", async () => {
+      const handler = createCallbackRouteHandler(config);
+      const res = await handler(
+        buildRequest(
+          { code: "auth-code", state: "wrong-state" },
+          { [STATE_COOKIE]: "saved-state", [NONCE_COOKIE]: "some-nonce" }
+        )
+      );
+
+      expect(res.status).toBe(400);
+      expect(res.cookies.get(NONCE_COOKIE)?.value).toBe("");
+    });
   });
 });

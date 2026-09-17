@@ -8,8 +8,9 @@
  *
  * 设计要点：
  * - 所有查询只读；写入通过 Prisma upsert 实现。
- * - 过期记录由数据库自身 TTL 清理或业务定时清理；这里不主动删除，
- *   但查询时跳过已过期的记录。
+ * - PostgreSQL 没有 TTL 机制，过期记录由 cron-tasks.ts 的
+ *   "Cleanup Expired Token Blacklist Records" 任务每小时物理删除；
+ *   这里不主动删除，但查询时跳过已过期的记录。
  * - 内存缓存作为数据库不可用的 fallback，避免硬依赖 Redis。
  */
 import { LRUCache } from "lru-cache";

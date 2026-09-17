@@ -7,7 +7,7 @@
  *   整页跳转与刷新后登录态保留，关闭标签页自动清除；SSR / 隐私模式写入失败时
  *   降级为内存 Map。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
  *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
- * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
+ * - 临时数据（PKCE verifier / state / OIDC nonce / returnUrl / popup nonce）：必须跨整页重定向存活
  *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
  *   SSR 等无 sessionStorage 环境自动降级为内存 Map。
  *
@@ -45,6 +45,7 @@ const STORAGE_PREFIX = "nihplod_sso_";
 const TOKEN_KEY = "token";
 const VERIFIER_KEY_PREFIX = "pkce_verifier_";
 const STATE_KEY = "oauth_state";
+const NONCE_KEY = "oidc_nonce";
 const RETURN_URL_KEY = "return_url";
 const LOGOUT_STATE_KEY = "logout_state";
 
@@ -245,6 +246,22 @@ export function removeOAuthState(clientId?: string): void {
 }
 
 // ============================================
+// OIDC nonce 存取（transient，ID Token 重放防护）
+// ============================================
+
+export function saveOAuthNonce(nonce: string, clientId?: string): void {
+  _transient.set(buildKey(NONCE_KEY, clientId), nonce);
+}
+
+export function getOAuthNonce(clientId?: string): string | null {
+  return _transient.get(buildKey(NONCE_KEY, clientId));
+}
+
+export function removeOAuthNonce(clientId?: string): void {
+  _transient.remove(buildKey(NONCE_KEY, clientId));
+}
+
+// ============================================
 // Logout State 存取（transient，RP-Initiated Logout CSRF 防护）
 // ============================================
 
@@ -283,6 +300,7 @@ export function clearAllSsoData(clientId?: string): void {
   if (clientId) {
     removeTokenData(clientId);
     removeOAuthState(clientId);
+    removeOAuthNonce(clientId);
     removeReturnUrl(clientId);
     removeLogoutState(clientId);
     removePkceVerifier(clientId);
@@ -293,6 +311,7 @@ export function clearAllSsoData(clientId?: string): void {
 
   removeTokenData();
   removeOAuthState();
+  removeOAuthNonce();
   removeReturnUrl();
   removeLogoutState();
 

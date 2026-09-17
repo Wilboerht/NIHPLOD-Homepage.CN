@@ -25,14 +25,23 @@ import { createHmac, timingSafeEqual, createHash, randomBytes } from "crypto";
  * 生成 cuid 兼容 ID（与 Prisma @default(cuid()) 生成的格式一致：
  * 24 位小写字母数字、首字符为字母）。用于 raw SQL INSERT 时应用层生成主键，
  * 避免使用 gen_random_uuid() 造成与全库 cuid 风格不一致。
+ * 拒绝采样消除取模偏置（256 不能被 26/36 整除），与 oauth-client.ts 的
+ * clientId 生成方式一致。
  */
 function generateConsentId(): string {
   const letters = "abcdefghijklmnopqrstuvwxyz";
   const alphabet = letters + "0123456789";
-  const bytes = randomBytes(24);
-  let id = letters[bytes[0] % 26];
+  // 从均匀分布的字节中取 < maxValid 的值再取模，拒绝尾部不均匀区间
+  const pickChar = (pool: string): string => {
+    const maxValid = Math.floor(256 / pool.length) * pool.length;
+    for (;;) {
+      const b = randomBytes(1)[0];
+      if (b < maxValid) return pool[b % pool.length];
+    }
+  };
+  let id = pickChar(letters);
   for (let i = 1; i < 24; i++) {
-    id += alphabet[bytes[i] % 36];
+    id += pickChar(alphabet);
   }
   return id;
 }
@@ -159,8 +168,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
 
     // OAuth 参数检索模式（consent 页通过 oauth_id 取回参数）
+    // 存储的参数包含 state/code_challenge 等授权上下文，要求请求携带有效登录会话：
+    // consent 页场景本来就已登录（authorize GET 重定向 consent 页面前已校验登录态），
+    // 未登录的匿名调用一律 401，防止任何人凭 oauth_id 读取授权参数
     const oauthId = searchParams.get("oauth_id");
     if (oauthId) {
+      const sessionToken = request.cookies.get(USER_COOKIE_NAME)?.value;
+      const sessionPayload = sessionToken ? await verifyUserToken(sessionToken) : null;
+      if (!sessionPayload) {
+        return NextResponse.json(
+          { error: "unauthorized", error_description: "请先登录" },
+          { status: 401 }
+        );
+      }
       const params = getOAuthParams(oauthId);
       if (!params) {
         return NextResponse.json(

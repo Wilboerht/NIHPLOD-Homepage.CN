@@ -104,6 +104,7 @@ After successful verification, the token payload is attached to `req.user`.
 | `logoutTokenPublicKey` | — | RS256 public key (PEM) for back-channel `logout_token` verification |
 | `logoutTokenSecret` | — | HS256 secret for local `logout_token` verification |
 | `logoutJtiStore` | — | External store for processed `logout_token` jtis (see "Multi-instance deployments" below) |
+| `strictAudience` | `false` | Reject introspection responses that carry neither `aud` nor `client_id` (fail-closed). **Recommended for production** |
 
 ### Revocation latency trade-off
 
@@ -119,11 +120,13 @@ When verifying via introspection, the response's audience binding is checked aga
 - Otherwise, if the response contains `client_id`, it must equal the configured `audience`.
 - If the endpoint returns neither field, the response is trusted as-is (legacy behavior); the main site's introspection endpoint always returns `client_id`, so tokens issued to other clients are rejected.
 
+> ⚠️ **Production recommendation: enable `strictAudience: true`.** In strict mode a response missing both `aud` and `client_id` is rejected (fail-closed) instead of trusted, eliminating the fail-open path entirely. The main site's introspection endpoint always returns `client_id`, so enabling it does not change behavior against the main site — only turn it off when integrating a third-party introspection endpoint that returns no audience fields.
+
 ### Logout token verification
 
 Back-channel `logout_token`s are signed with a dedicated key pair (`kid: logout-token-rs256-v1`), which is **different** from the access token key — do not use `accessTokenPublicKey` for them. Configure `logoutTokenPublicKey` (PEM) or `jwksUri` (keys matched by `kid`). Verification is dispatched by the JWT header `alg`: an RS256 logout token without any matching public key fails closed (returns `null`) instead of silently falling back to HS256; HS256 is only used when `logoutTokenSecret` (or the legacy `accessTokenSecret` fallback) is explicitly configured.
 
-Per OIDC Back-Channel Logout 1.0, a `logout_token` must carry an `exp` claim and an `events` claim whose `http://schemas.openid.net/event/backchannel-logout` member is an object (typically `{}`); tokens failing either check are rejected. Verified `jti`s are replay-guarded per issuer for 10 minutes.
+Per OIDC Back-Channel Logout 1.0, a `logout_token` must carry an `exp` claim, an `events` claim whose `http://schemas.openid.net/event/backchannel-logout` member is an object (typically `{}`), and at least one of `sub` / `sid` (§2.4); tokens failing any of these checks are rejected. Verified `jti`s are replay-guarded per issuer for 10 minutes.
 
 When the IdP revokes sessions administratively (consent revoke, session termination, user ban/deletion), the `logout_token` also carries a `sid` claim matching the terminated IdP session — RPs that track IdP `sid`s should invalidate the matching local session and may fall back to `sub`-level logout when `sid` is absent (e.g. user-initiated IdP logout without a known session). Failed deliveries are retried by the IdP with exponential backoff (up to 10 attempts), so RPs may receive a delayed `logout_token`; the `jti` replay guard still applies.
 

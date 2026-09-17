@@ -97,6 +97,7 @@ const ACTION_LABELS: Record<string, string> = {
   user_oauth_revoke: "用户 OAuth 撤销",
   refresh_token_reuse_detected: "检测到 Refresh Token 复用",
   user_set_password: "用户设置密码",
+  sso_audit_export: "导出 SSO 审计日志",
 };
 
 const TARGET_TYPE_LABELS: Record<string, string> = {

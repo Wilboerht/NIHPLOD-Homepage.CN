@@ -334,6 +334,36 @@ describe("GET /api/oauth/authorize", () => {
     expect(location.startsWith("https://example.com/cb")).toBe(true);
     expect(location).toContain("error=consent_required");
   });
+
+  it("oauth_id 参数检索：未携带有效登录会话应返回 401（防匿名读取授权参数）", async () => {
+    const req = new NextRequest("http://localhost/api/oauth/authorize?oauth_id=whatever.sig");
+    const res = await GET(req);
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("unauthorized");
+  });
+
+  it("oauth_id 参数检索：已登录时可取回服务端存储的授权参数", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 先通过完整 GET 流程（已登录未授权 → 302 consent 页）生成有效 oauth_id
+    const getReq = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const getRes = await GET(getReq);
+    expect(getRes.status).toBe(302);
+    const consentUrl = new URL(getRes.headers.get("location")!);
+    const oauthId = consentUrl.searchParams.get("oauth_id")!;
+
+    const req = new NextRequest(
+      `http://localhost/api/oauth/authorize?oauth_id=${encodeURIComponent(oauthId)}`,
+      { headers: { Cookie: "__Host-user_token=dummy-token" } }
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.params).toContain("client_id=test-client");
+  });
 });
 
 describe("POST /api/oauth/authorize", () => {

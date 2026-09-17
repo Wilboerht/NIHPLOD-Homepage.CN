@@ -3,7 +3,7 @@
  * GET /api/admin/oauth/stats
  *
  * 返回：活跃客户端数、活跃授权数、今日/本周/本月事件数、授权成功率
- * 权限：仅 owner 角色可操作
+ * 权限：需 sso:read
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";

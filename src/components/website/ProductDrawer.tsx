@@ -324,7 +324,7 @@ export function ProductDrawer({
               </div>
 
               {/* 右侧 - 产品信息区域 */}
-              <div className="flex-1 overflow-hidden lg:overflow-y-auto lg:px-10 lg:py-10">
+              <div className="scrollbar-hide flex-1 overflow-hidden lg:overflow-y-auto lg:px-10 lg:py-10">
                 {/* PC 端内容 */}
                 <div className="hidden h-full lg:block">
                   <div className="max-w-none">

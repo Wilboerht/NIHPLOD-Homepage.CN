@@ -32,6 +32,7 @@ import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
   hashRequestBody,
@@ -59,6 +60,9 @@ const exchangeSchema = z.object({
   password: passwordSchema.optional(),
   allowAutoPassword: z.boolean().default(false),
 });
+
+// 本端点允许的 project 白名单：微信授权兑换对所有已接入子站开放
+const ALLOWED_PROJECTS = ["advisor", "mall"] as const;
 
 export const dynamic = "force-dynamic";
 
@@ -95,14 +99,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(await checkAndRecordNonce(nonce))) {
-      return NextResponse.json(
-        { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
-        { status: 401 }
-      );
-    }
-
-    // 3. 读取 body 并校验签名
+    // 3. 读取 body 并校验签名（nonce 在验签通过后才消费，避免签名错误的请求烧掉 nonce）
     const bodyText = await request.text();
     const bodyHash = await hashRequestBody(bodyText);
     const path = "/api/v1/internal/wechat/exchange";
@@ -121,6 +118,23 @@ export async function POST(request: NextRequest) {
       apiConsole.warn(`[InternalApiV1] 签名验证失败，key: ${key}, ip: ${ip}`);
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "签名验证失败" } },
+        { status: 401 }
+      );
+    }
+
+    if (!isProjectAllowed(config, ALLOWED_PROJECTS)) {
+      apiConsole.warn(
+        `[InternalApiV1] project ${config.project} 无权访问 ${path}，key: ${key}, ip: ${ip}`
+      );
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN_PROJECT", message: "该密钥无权访问此端点" } },
+        { status: 403 }
+      );
+    }
+
+    if (!(await checkAndRecordNonce(nonce))) {
+      return NextResponse.json(
+        { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
         { status: 401 }
       );
     }

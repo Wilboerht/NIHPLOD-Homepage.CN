@@ -26,6 +26,9 @@ import {
   saveOAuthState,
   getOAuthState,
   removeOAuthState,
+  saveOAuthNonce,
+  getOAuthNonce,
+  removeOAuthNonce,
   saveLogoutState,
   getLogoutState,
   removeLogoutState,
@@ -257,10 +260,13 @@ export class SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    // OIDC nonce（256-bit 随机）：绑定 ID Token 到本次登录会话，防重放
+    const nonce = generateState();
 
-    // 保存 PKCE verifier 和 state 到 sessionStorage（整页重定向后仍可读取）
+    // 保存 PKCE verifier、state 和 nonce 到 sessionStorage（整页重定向后仍可读取）
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    saveOAuthNonce(nonce, this.config.clientId);
 
     if (returnUrl) {
       this._saveReturnUrlIfTrusted(returnUrl);
@@ -274,6 +280,7 @@ export class SsoClient {
     params.set("redirect_uri", this.config.redirectUri);
     params.set("scope", this.config.scopes || "openid profile");
     params.set("state", state);
+    params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
 
@@ -294,9 +301,12 @@ export class SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    // OIDC nonce（与 state 同等强度的随机值），回调时校验 ID Token 的 nonce claim
+    const nonce = generateState();
 
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    saveOAuthNonce(nonce, this.config.clientId);
     // returnUrl 按 clientId 隔离，与 login() / CallbackPage 保持一致
     if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
 
@@ -307,6 +317,7 @@ export class SsoClient {
     params.set("redirect_uri", this.config.redirectUri);
     params.set("scope", this.config.scopes || "openid profile");
     params.set("state", state);
+    params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
 
@@ -352,10 +363,12 @@ export class SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    const nonce = generateState(); // OIDC nonce：回调时校验 ID Token 的 nonce claim
     const popupNonce = generateState(); // 独立的 nonce 用于 postMessage 来源验证
 
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    saveOAuthNonce(nonce, this.config.clientId);
     // 保存 popup nonce 到 sessionStorage，用于 postMessage 校验
     savePkceVerifier(`${this.config.clientId}_popup_nonce`, popupNonce);
 
@@ -370,6 +383,7 @@ export class SsoClient {
     params.set("redirect_uri", this.config.redirectUri);
     params.set("scope", this.config.scopes || "openid profile");
     params.set("state", state);
+    params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
     // 弹窗 nonce：回调页通过 postMessage 回传，主窗口校验防伪造
@@ -399,6 +413,7 @@ export class SsoClient {
     if (!popup) {
       removePkceVerifier(this.config.clientId);
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(`${this.config.clientId}_popup_nonce`);
       throw new SsoError(
         "popup_blocked",
@@ -427,6 +442,17 @@ export class SsoClient {
           const savedNonce = getPkceVerifier(`${this.config.clientId}_popup_nonce`);
           if (!savedNonce || !timingSafeEqualString(event.data.nonce ?? "", savedNonce)) return;
           removePkceVerifier(`${this.config.clientId}_popup_nonce`);
+
+          // 回 ACK：回调页会每 500ms 重发直到收到 ACK（或超时提示手动关闭），
+          // 防止主窗口监听未挂载时消息丢失导致弹窗悬挂
+          try {
+            (event.source as Window | null)?.postMessage(
+              { type: "nihplod_sso_popup_ack", nonce: savedNonce },
+              event.origin
+            );
+          } catch {
+            // ACK 失败不影响主流程（弹窗会超时提示手动关闭）
+          }
 
           completed = true;
           cleanup();
@@ -466,6 +492,7 @@ export class SsoClient {
     } catch (err) {
       removePkceVerifier(this.config.clientId);
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(`${this.config.clientId}_popup_nonce`);
       throw err;
     }
@@ -489,8 +516,9 @@ export class SsoClient {
     // 检查错误（SSO 中心按 OAuth 2.0 规范回传 error 参数）
     const error = params.get("error");
     if (error) {
-      // 授权已失败，本次流程的临时数据（state/verifier）不再有用，一并清理避免残留
+      // 授权已失败，本次流程的临时数据（state/verifier/nonce）不再有用，一并清理避免残留
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       const desc = params.get("error_description") || error;
       throw new SsoError(mapOAuthErrorToSsoCode(error), `授权失败: ${desc}`);
@@ -502,6 +530,7 @@ export class SsoClient {
     if (!code) {
       // 缺 code 的回调无法继续，清理临时数据避免残留
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       throw new SsoError("token_request_failed", "回调 URL 中缺少 authorization code");
     }
@@ -511,12 +540,17 @@ export class SsoClient {
     if (!savedState || !timingSafeEqualString(savedState, returnedState ?? "")) {
       // state 不匹配：state 与 verifier 一并清除，避免残留半套临时数据
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State 参数不匹配，可能存在 CSRF 攻击"
       );
     }
+
+    // state 校验通过：读取登录时保存的 OIDC nonce（validateIdToken 时 fail-closed 校验，
+    // 成功后才随 state/verifier 一并清除——验签失败重试仍需它）
+    const expectedNonce = getOAuthNonce(this.config.clientId) ?? undefined;
 
     // 获取 code_verifier
     const verifier = getPkceVerifier(this.config.clientId);
@@ -571,7 +605,8 @@ export class SsoClient {
           data.id_token,
           data.access_token,
           this.config.ssoBaseUrl,
-          this.config.clientId
+          this.config.clientId,
+          { expectedNonce }
         );
       } catch (err) {
         // 验证失败：不保存任何 token，防止伪造 ID Token
@@ -580,10 +615,11 @@ export class SsoClient {
       }
     }
 
-    // 全部校验通过后清除 state 和 verifier（一次性临时数据）。
+    // 全部校验通过后清除 state、nonce 和 verifier（一次性临时数据）。
     // 推迟到验签之后：若 JWKS 暂时不可达导致验签失败，
-    // 保留 state/verifier，用户刷新回调页即可重试
+    // 保留 state/verifier/nonce，用户刷新回调页即可重试
     removeOAuthState(this.config.clientId);
+    removeOAuthNonce(this.config.clientId);
     removePkceVerifier(this.config.clientId);
 
     const now = Date.now();

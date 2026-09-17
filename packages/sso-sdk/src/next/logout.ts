@@ -18,7 +18,7 @@
  *   postLogoutRedirectUri: "https://myapp.com/",
  * });
  *
- * // 推荐使用 POST 触发登出（防登出 CSRF），GET 保留用于兼容 <a> 标签跳转
+ * // 推荐使用 POST 触发登出（防登出 CSRF）；GET 不执行登出，仅返回确认页
  * export const GET = handler;
  * export const POST = handler;
  * ```
@@ -31,6 +31,7 @@ import {
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
   DEFAULT_ID_TOKEN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,
+  DEFAULT_NONCE_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   DEFAULT_LOGOUT_STATE_COOKIE_NAME,
@@ -78,6 +79,9 @@ export interface LogoutRouteConfig {
   /** State Cookie 名称 */
   stateCookieName?: string;
 
+  /** OIDC Nonce Cookie 名称，默认 __Host-nihplod_sso_nonce（须与 middleware/callback 一致） */
+  nonceCookieName?: string;
+
   /** Return URL Cookie 名称 */
   returnUrlCookieName?: string;
 
@@ -110,6 +114,25 @@ export interface LogoutRouteConfig {
 // ============================================
 // 工具函数
 // ============================================
+
+/** GET 确认页 HTML（登出 CSRF 防护：GET 不执行登出，由用户点击按钮发起 POST） */
+function buildLogoutConfirmHtml(): string {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>确认退出登录</title>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;">
+  <form method="post" style="text-align:center;">
+    <p>确定要退出登录吗？</p>
+    <button type="submit" style="padding:10px 20px;background-color:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">退出登录</button>
+    <p><a href="/" style="color:#2563eb;text-decoration:underline;">取消并返回首页</a></p>
+  </form>
+</body>
+</html>`;
+}
 
 /** 生成安全随机字符串（用于 logout state，Node/Edge Runtime 均支持 Web Crypto） */
 function generateRandomString(length: number): string {
@@ -155,6 +178,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
   const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
   const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
@@ -172,9 +196,9 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
    * 登出 handler：同时适配 GET 与 POST（函数本身不区分 method，
    * 在 route.ts 中 `export const GET = handler; export const POST = handler;` 即可）。
    *
-   * ⚠️ CSRF 注意：GET 请求可被跨站触发（如 `<img src="/api/auth/logout">`）。
-   * 推荐做法：在 UI 层使用 POST（fetch/form）触发登出；
-   * GET 方法保留仅为兼容 <a> 标签跳转与 RP-Initiated Logout 回跳。
+   * ⚠️ CSRF 防护：GET 请求可被跨站触发（如 `<img src="/api/auth/logout">`），
+   * 因此 GET 且未携带合法 logout state 时不执行登出，仅返回确认页 HTML，
+   * 由用户点击按钮以 POST 确认；POST（或携带合法 state 的 GET 回跳）才执行登出。
    *
    * 当请求携带 state 参数时，视为 RP-Initiated Logout 的回跳（post_logout_redirect_uri
    * 指向本路由的场景），校验 logout state cookie 后放行，防止伪造回跳。
@@ -193,6 +217,15 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       const res = NextResponse.redirect(callbackOrigin + "/");
       res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
+    }
+
+    // GET 无 state：可能是跨站图片/预取触发的登出 CSRF，不执行登出，
+    // 返回确认页由用户主动 POST 确认（表单 POST 不受 <img>/预取影响）
+    if (request.method === "GET") {
+      return new NextResponse(buildLogoutConfirmHtml(), {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
     }
 
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
@@ -235,6 +268,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));

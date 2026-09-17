@@ -26,6 +26,8 @@ interface ScheduledTask {
   name: string;
   cronExpression: string;
   handler: () => Promise<void>;
+  /** 清理类任务标记：供外部调度器端点 /api/cron/run 批量触发 */
+  isCleanup?: boolean;
 }
 
 /** 定时任务运行记录的保留上限（超出后由 runTask 顺带清理） */
@@ -52,6 +54,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Expired Refresh Tokens",
     cronExpression: "0 3 * * *", // 每天凌晨 3 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理过期 Refresh Token...");
@@ -68,6 +71,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Expired Rate Limit Records",
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理过期限流记录...");
@@ -84,6 +88,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Old Login Attempts + SSO Audit Events",
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理陈旧登录尝试记录...");
@@ -111,6 +116,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Expired Sms Codes",
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理过期验证码记录...");
@@ -127,6 +133,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Expired OAuth Authorization Codes",
     cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理过期授权码...");
@@ -143,6 +150,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Internal API Nonces",
     cronExpression: "0 * * * *", // 每小时执行一次（nonce 记录随内部 API 调用量增长，需高频清理）
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理过期内部 API nonce 记录...");
@@ -157,8 +165,30 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Cleanup Expired Token Blacklist Records",
+    cronExpression: "0 * * * *", // 每小时执行一次（PostgreSQL 无 TTL，过期黑名单记录需定时物理删除）
+    isCleanup: true,
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理过期 Token 黑名单记录...");
+        // 覆盖 access_token / user / dpop_jti / internal_api_nonce 等全部 type 的过期记录；
+        // nonce 另有按 createdAt 的高频清理任务，两者互补
+        const result = await prisma.tokenBlacklist.deleteMany({
+          where: { expiresAt: { lt: new Date() } },
+        });
+        apiConsole.info(`[Cron] 过期 Token 黑名单记录清理完成: ${result.count} 条`);
+        markCleanupOk("过期 Token 黑名单记录");
+      } catch (error) {
+        apiConsole.error("[Cron] 过期 Token 黑名单记录清理失败:", error);
+        markCleanupFailed("过期 Token 黑名单记录");
+        throw error;
+      }
+    },
+  },
+  {
     name: "Cleanup Revoked Sessions and Tokens",
     cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理已撤销的会话和 Token...");
@@ -177,6 +207,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Cleanup Revoked User Consents",
     cronExpression: "0 5 * * *", // 每天凌晨 5 点执行
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始清理已撤销的用户授权记录...");
@@ -287,7 +318,7 @@ async function pruneCronRuns(): Promise<void> {
  */
 export async function runCronTask(
   taskName: string,
-  trigger: "cron" | "manual",
+  trigger: "cron" | "manual" | "external",
   adminId?: string
 ): Promise<{ ok: boolean; error?: string }> {
   const task = tasks.find((t) => t.name === taskName);
@@ -327,6 +358,22 @@ export async function runCronTask(
       .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
     return { ok: false, error: message };
   }
+}
+
+/**
+ * 依次执行全部清理类任务（供外部调度器端点 /api/cron/run 调用）
+ * 与进程内 cron / 管理端手动触发共用 runCronTask，运行记录同样落库 CronTaskRun
+ */
+export async function runCleanupCronTasks(
+  trigger: "cron" | "manual" | "external" = "external"
+): Promise<{ name: string; ok: boolean; error?: string }[]> {
+  const results: { name: string; ok: boolean; error?: string }[] = [];
+  for (const task of tasks) {
+    if (!task.isCleanup) continue;
+    const result = await runCronTask(task.name, trigger);
+    results.push({ name: task.name, ...result });
+  }
+  return results;
 }
 
 let scheduledTasks: ReturnType<typeof cron.schedule>[] = [];

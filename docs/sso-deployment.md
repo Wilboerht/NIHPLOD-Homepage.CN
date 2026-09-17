@@ -157,6 +157,21 @@ NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS=https://advisor.nihplod.cn,https://mall.nihplo
 
 完整防护需在连接建立时校验实际解析结果，代价是每次回调都引入 DNS 查询，当前实现未覆盖。生产部署建议配合网络层防护兜底：为应用出口配置防火墙/代理规则，禁止主站 Pod（或实例）访问内网网段与云元数据地址（169.254.169.254 等）。
 
+### 2.8 定时任务（本地 cron / 外部调度器）
+
+清理类任务（过期 Refresh Token / Token 黑名单 / 限流记录 / 验证码 / 授权码 / 审计日志等）与重投类任务（Backchannel Logout、资料变更 Webhook）有两种运行模式，**二选一**：
+
+1. **进程内 cron（默认）**：`ENABLE_LOCAL_CRON=true`，由 node-cron 在应用进程内按周期执行。
+   ⚠️ **多实例部署时仅允许一个实例设 `ENABLE_LOCAL_CRON=true`**——当前没有领导者选举，多实例同时开启会让重投类任务被重复投递、清理类任务重复执行。
+2. **外部调度器**：`ENABLE_LOCAL_CRON=false`，配置 `CRON_SECRET`（≥32 字符强随机串），由 K8s CronJob / 系统 crond 等周期性调用：
+
+```bash
+curl -X POST "https://nihplod.cn/api/cron/run" \
+  -H "Authorization: Bearer <CRON_SECRET>"
+```
+
+`POST /api/cron/run` 依次触发全部清理类任务（运行记录落库 `CronTaskRun`，`trigger=external`，可在管理端「定时任务」页面查看）；请求体传 `{"taskName": "<任务名>"}` 可单独触发指定任务。建议调度频率不低于每小时一次（过期 nonce / Token 黑名单记录按小时清理）。
+
 ---
 
 ## 3. 上线后冒烟清单
@@ -253,8 +268,8 @@ PostgreSQL 枚举值无法安全删除，因此**不要**尝试回退这两份�
 | --- | --- | --- |
 | Backchannel logout 投递失败 | 日志 `[SLO] Backchannel logout 通知失败`；审计事件 `backchannel_logout` 且 `success: false` | 单次失败可观察，同一 clientId 连续失败告警（子站登出状态将不一致） |
 | 资料变更 webhook 投递失败 | 审计事件 `profile_webhook` 且 `success: false`（失败会落 `WebhookDeliveryFailure` 补偿队列，cron 每 15 分钟重投，超 10 次丢弃） | 同一 clientId 连续失败告警（子站用户资料缓存将长期不一致） |
-| Refresh token 重用检测 | 审计事件 `refresh_token_family_revoked` | 出现即告警（可能是 refresh token 泄露后的重放，整个 token family 已被强制撤销） |
-| 授权码重放 | 审计事件 `code_replay_all_tokens_revoked` | 出现即告警（同一 code 二次使用，该 code 签发的所有 token 已被撤销） |
+| Refresh token 重用检测 | 审计事件 `status_change` 且 `detail.action = "refresh_token_family_revoked"`（落库字段：`event="status_change"`，`detail` 内含 `action` / `reason` / `familyRevokedCount`） | 出现即告警（可能是 refresh token 泄露后的重放，整个 token family 已被强制撤销） |
+| 授权码重放 | 审计事件 `token` 且 `success: false`、`detail.reason = "code_replay_all_tokens_revoked"`（良性并发重试记为 `code_replay_benign_retry`，可不告警） | 出现即告警（同一 code 二次使用，该 code 签发的所有 token 已被撤销） |
 | Introspect 端点失败率 | `/api/oauth/introspect` 返回非 200 / `active: false` 占比 | 失败率突增告警（可能密钥配置错误或子站 token 大面积失效） |
 | 登录失败激增 | 登录接口审计 / 日志中的失败记录 | 单位时间失败数超基线告警（可能撞库攻击） |
 | 限流 429 激增 | 各 OAuth 端点 429 响应数 | 激增告警（可能暴力破解或异常客户端轮询；同时确认 `RATE_LIMIT_STORAGE=database` 已生效） |

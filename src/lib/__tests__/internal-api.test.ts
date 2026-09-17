@@ -17,19 +17,23 @@ vi.mock("@/lib/prisma", () => ({
 import {
   generateInternalApiSignature,
   verifyInternalApiSignature,
+  isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
   cleanupInternalApiNonces,
+  getInternalApiKeys,
   hashRequestBody,
 } from "@/lib/internal-api";
 
 describe("internal-api", () => {
   const originalEnv = process.env;
+  // secret 需 ≥ 32 字符（启动解析会拒绝过短 secret）
+  const VALID_SECRET = "advisor-secret-0123456789abcdef0123456789";
 
   beforeEach(() => {
     process.env = { ...originalEnv };
     process.env.INTERNAL_API_KEYS = JSON.stringify([
-      { project: "advisor", key: "advisor-key", secret: "advisor-secret" },
+      { project: "advisor", key: "advisor-key", secret: VALID_SECRET },
     ]);
     mockTokenBlacklistCreate.mockReset();
     mockTokenBlacklistCreate.mockResolvedValue({});
@@ -48,7 +52,7 @@ describe("internal-api", () => {
       const bodyHash = await hashRequestBody(body);
 
       const signature = generateInternalApiSignature(
-        "advisor-secret",
+        VALID_SECRET,
         "POST",
         "/api/v1/internal/wechat/send-template",
         timestamp,
@@ -94,7 +98,7 @@ describe("internal-api", () => {
       const bodyHash = await hashRequestBody("{}");
 
       const signature = generateInternalApiSignature(
-        "advisor-secret",
+        VALID_SECRET,
         "POST",
         "/api/v1/internal/wechat/send-template",
         timestamp,
@@ -123,6 +127,52 @@ describe("internal-api", () => {
 
     it("过期时间戳应无效", () => {
       expect(isTimestampValid(Math.floor(Date.now() / 1000) - 400)).toBe(false);
+    });
+  });
+
+  describe("getInternalApiKeys 启动解析校验", () => {
+    it("应拒绝 .env.example 中的已知示例 key/secret", () => {
+      process.env.INTERNAL_API_KEYS = JSON.stringify([
+        {
+          project: "advisor",
+          key: "advisor-example-key",
+          secret: "example-secret-replace-with-32-byte-random-value-from-script",
+        },
+        {
+          project: "mall",
+          key: "mall-example-key",
+          secret: "example-secret-replace-with-32-byte-random-value-from-script",
+        },
+      ]);
+
+      const { keys, secrets } = getInternalApiKeys();
+      expect(keys.size).toBe(0);
+      expect(secrets.size).toBe(0);
+    });
+
+    it("应拒绝 secret 长度不足 32 字符的条目", () => {
+      process.env.INTERNAL_API_KEYS = JSON.stringify([
+        { project: "advisor", key: "advisor-key", secret: "too-short-secret" },
+      ]);
+
+      expect(getInternalApiKeys().keys.size).toBe(0);
+    });
+
+    it("合法条目应正常加载", () => {
+      const { keys } = getInternalApiKeys();
+      expect(keys.get("advisor-key")?.project).toBe("advisor");
+    });
+  });
+
+  describe("isProjectAllowed（project 级端点隔离）", () => {
+    it("白名单内的 project 应放行", () => {
+      expect(
+        isProjectAllowed({ project: "mall", key: "k", secret: "s" }, ["mall", "advisor"])
+      ).toBe(true);
+    });
+
+    it("白名单外的 project 应拒绝", () => {
+      expect(isProjectAllowed({ project: "advisor", key: "k", secret: "s" }, ["mall"])).toBe(false);
     });
   });
 

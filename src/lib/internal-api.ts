@@ -39,6 +39,15 @@ interface ParsedKeys {
 let cachedParsedKeys: ParsedKeys | null = null;
 let lastEnvValue: string | undefined = undefined;
 
+// secret 最小长度：脚本生成的为 32 字节 base64（44 字符），低于 32 字符的一律拒绝
+const MIN_INTERNAL_API_SECRET_LENGTH = 32;
+
+// .env.example 中的已知示例值（仓库公开、等同泄露），启动解析时拒绝加载
+const KNOWN_EXAMPLE_KEYS = new Set(["advisor-example-key", "mall-example-key"]);
+const KNOWN_EXAMPLE_SECRETS = new Set([
+  "example-secret-replace-with-32-byte-random-value-from-script",
+]);
+
 /**
  * 解析 INTERNAL_API_KEYS 环境变量
  *
@@ -60,10 +69,25 @@ export function getInternalApiKeys(): ParsedKeys {
       const parsed = JSON.parse(envValue) as InternalApiKeyConfig[];
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
-          if (item.key && item.secret && item.project) {
-            keys.set(item.key, item);
-            secrets.set(item.secret, item);
+          if (!item.key || !item.secret || !item.project) {
+            continue;
           }
+          if (KNOWN_EXAMPLE_KEYS.has(item.key) || KNOWN_EXAMPLE_SECRETS.has(item.secret)) {
+            apiConsole.error(
+              `[InternalApi] 拒绝加载 .env.example 中的示例密钥（key: ${item.key}）：` +
+                "示例值已公开，请使用 npx tsx scripts/generate-internal-api-keys.ts 生成真实密钥"
+            );
+            continue;
+          }
+          if (item.secret.length < MIN_INTERNAL_API_SECRET_LENGTH) {
+            apiConsole.error(
+              `[InternalApi] 拒绝加载 secret 长度不足的密钥（key: ${item.key}，当前 ${item.secret.length} 字符，` +
+                `要求 ≥ ${MIN_INTERNAL_API_SECRET_LENGTH}）`
+            );
+            continue;
+          }
+          keys.set(item.key, item);
+          secrets.set(item.secret, item);
         }
       }
     } catch (error) {
@@ -140,6 +164,17 @@ export function verifyInternalApiSignature(
   }
 
   return config;
+}
+
+/**
+ * 校验已验签密钥的 project 是否在端点白名单内（project 级端点隔离）
+ * 各内部路由验签通过后调用；返回 false 时路由应返回 403
+ */
+export function isProjectAllowed(
+  config: InternalApiKeyConfig,
+  allowedProjects: readonly string[]
+): boolean {
+  return allowedProjects.includes(config.project);
 }
 
 /**

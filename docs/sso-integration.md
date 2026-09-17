@@ -537,6 +537,18 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
 
+各内部端点在验签通过后还会比对密钥的 `project` 白名单，不匹配返回 403（`FORBIDDEN_PROJECT`）：
+
+| 端点 | 允许的 project |
+| --- | --- |
+| `POST /api/v1/internal/points/sync`（消费额同步） | `mall` |
+| `POST /api/v1/internal/points/redeem`（积分兑礼扣减） | `mall` |
+| `GET /api/v1/internal/points/balance`（余额/兑礼率查询） | `mall`、`advisor` |
+| `POST /api/v1/internal/points/grant`（活动积分发放） | `advisor` |
+| `POST /api/v1/internal/user/status`（用户状态同步） | `advisor`、`mall` |
+| `POST /api/v1/internal/wechat/exchange`（微信授权兑换） | `advisor`、`mall` |
+| `POST /api/v1/internal/wechat/send-template`（微信模板消息） | `advisor` |
+
 ### 会员等级（四档，2026-09 起）
 
 | 枚举值 | 等级 | 门槛 |

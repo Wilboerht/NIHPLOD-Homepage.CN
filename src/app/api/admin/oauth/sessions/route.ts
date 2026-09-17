@@ -4,7 +4,7 @@
  * POST   /api/admin/oauth/sessions — 终止指定会话
  * DELETE /api/admin/oauth/sessions — 批量终止所有活跃会话
  *
- * 权限：仅 owner 角色可操作
+ * 权限：GET 需 sso:read，POST/DELETE 需 sso:write
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
@@ -41,15 +41,29 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20", 10), 100);
+    // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
+    // 必须先经 Number.isFinite 校验再钳制到合法范围
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
+    const pageSize = Number.isFinite(rawPageSize)
+      ? Math.min(Math.max(1, rawPageSize), 100)
+      : 20;
     const userId = searchParams.get("userId") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const search = searchParams.get("search") || undefined;
 
     // 模糊搜索：匹配用户手机号/昵称 或 Client ID/名称
+    // 子查询有界（take 上限），避免无界全表扫描
     let searchOr: Record<string, unknown>[] | undefined;
+    let searchTruncated = false;
     if (search) {
+      if (search.trim().length < 2) {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_PARAMS", message: "搜索关键词至少 2 个字符" } },
+          { status: 400 }
+        );
+      }
       const [matchedUsers, matchedClients] = await Promise.all([
         prisma.user.findMany({
           where: {
@@ -59,6 +73,7 @@ export async function GET(request: NextRequest) {
             ],
           },
           select: { id: true },
+          take: 500,
         }),
         prisma.oAuthClient.findMany({
           where: {
@@ -68,10 +83,12 @@ export async function GET(request: NextRequest) {
             ],
           },
           select: { clientId: true },
+          take: 500,
         }),
       ]);
       const userIds = matchedUsers.map((u) => u.id);
       const clientIds = matchedClients.map((c) => c.clientId);
+      searchTruncated = matchedUsers.length >= 500 || matchedClients.length >= 500;
 
       searchOr = [];
       if (userIds.length > 0) searchOr.push({ userId: { in: userIds } });
@@ -84,6 +101,7 @@ export async function GET(request: NextRequest) {
             stats: { activeSessions: 0, activeRefreshTokens: 0 },
             items: [],
             pagination: { page, pageSize, total: 0 },
+            searchTruncated,
           },
         });
       }
@@ -157,6 +175,8 @@ export async function GET(request: NextRequest) {
           };
         }),
         pagination: { page, pageSize, total },
+        // 搜索子查询命中上限时为 true：匹配过多，提示前端要求精确搜索（向后兼容的新增字段）
+        searchTruncated,
       },
     });
   } catch (error) {

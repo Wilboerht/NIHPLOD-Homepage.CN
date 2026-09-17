@@ -3,7 +3,7 @@
  * GET  /api/admin/oauth-clients — 分页列表
  * POST /api/admin/oauth-clients — 创建新 Client
  *
- * 权限：仅 owner 角色可操作
+ * 权限：GET 需 sso:clients:read，POST 需 sso:clients:write
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
@@ -102,8 +102,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = request.nextUrl;
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const pageSize = Math.min(parseInt(searchParams.get("pageSize") || "20", 10), 100);
+    // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
+    // 必须先经 Number.isFinite 校验再钳制到合法范围（page=-1 会产生负 skip）
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
+    const pageSize = Number.isFinite(rawPageSize)
+      ? Math.min(Math.max(1, rawPageSize), 100)
+      : 20;
     const search = searchParams.get("search") || undefined;
 
     const result = await listOAuthClients({ page, pageSize, search });

@@ -7,6 +7,7 @@ const mockFailureCreate = vi.fn();
 const mockFailureFindMany = vi.fn();
 const mockFailureDelete = vi.fn();
 const mockFailureUpdate = vi.fn();
+const mockFailureUpdateMany = vi.fn();
 const mockSignProfileEventToken = vi.fn();
 const mockRecordSsoEvent = vi.fn();
 const globalFetch = vi.fn();
@@ -27,6 +28,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: (...args: unknown[]) => mockFailureFindMany(...args),
       delete: (...args: unknown[]) => mockFailureDelete(...args),
       update: (...args: unknown[]) => mockFailureUpdate(...args),
+      updateMany: (...args: unknown[]) => mockFailureUpdateMany(...args),
     },
   },
 }));
@@ -60,6 +62,8 @@ describe("profile-webhook", () => {
     mockFailureCreate.mockResolvedValue({});
     mockFailureDelete.mockResolvedValue({});
     mockFailureUpdate.mockResolvedValue({});
+    // 乐观锁认领默认成功（单实例语义），多实例竞争场景单独覆盖
+    mockFailureUpdateMany.mockResolvedValue({ count: 1 });
   });
 
   it("用户无任何有效授权时不查询 client、不投递", async () => {
@@ -249,6 +253,8 @@ describe("retryFailedWebhookDeliveries", () => {
     vi.clearAllMocks();
     mockFailureDelete.mockResolvedValue({});
     mockFailureUpdate.mockResolvedValue({});
+    // 乐观锁认领默认成功（单实例语义），多实例竞争场景单独覆盖
+    mockFailureUpdateMany.mockResolvedValue({ count: 1 });
     mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
   });
 
@@ -368,6 +374,24 @@ describe("retryFailedWebhookDeliveries", () => {
     expect(result).toEqual({ delivered: 0, failed: 0, dropped: 1 });
     expect(globalFetch).not.toHaveBeenCalled();
     expect(mockFailureDelete).toHaveBeenCalledWith({ where: { id: "failure-1" } });
+  });
+
+  it("乐观锁认领失败（其他实例已接管）时跳过该记录", async () => {
+    mockFailureFindMany.mockResolvedValue([failureRecord]);
+    mockFailureUpdateMany.mockResolvedValue({ count: 0 });
+
+    const result = await retryFailedWebhookDeliveries();
+
+    expect(result).toEqual({ delivered: 0, failed: 0, dropped: 0 });
+    expect(mockClientFindUnique).not.toHaveBeenCalled();
+    expect(globalFetch).not.toHaveBeenCalled();
+    expect(mockFailureDelete).not.toHaveBeenCalled();
+    // 认领请求必须携带原 nextRetryAt 作为乐观锁条件
+    expect(mockFailureUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "failure-1", nextRetryAt: failureRecord.nextRetryAt },
+      })
+    );
   });
 
   it("只取 nextRetryAt 已到期且未超上限的记录", async () => {

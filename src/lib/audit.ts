@@ -89,7 +89,8 @@ export type AuditAction =
   | "user_set_password"
   | "admin_login"
   | "admin_logout"
-  | "refresh_token_reuse_detected";
+  | "refresh_token_reuse_detected"
+  | "sso_audit_export";
 
 export type AuditTargetType =
   | "order"

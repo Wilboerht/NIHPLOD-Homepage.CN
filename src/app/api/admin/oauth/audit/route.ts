@@ -3,12 +3,13 @@
  * GET /api/admin/oauth/audit       — 多条件筛选分页
  * GET /api/admin/oauth/audit?export=csv — CSV 导出
  *
- * 权限：仅 owner 角色可操作
+ * 权限：需 sso:read（查询与 CSV 导出同一权限点）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 import { escapeCSV } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
 import { apiConsole } from "@/lib/logger";
@@ -49,10 +50,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const isExport = searchParams.get("export") === "csv";
 
-    const page = isExport ? 1 : Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
+    // 必须先经 Number.isFinite 校验再钳制到合法范围
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const page = isExport ? 1 : Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "50", 10);
     const pageSize = isExport
       ? 5000
-      : Math.min(parseInt(searchParams.get("pageSize") || "50", 10), 500);
+      : Number.isFinite(rawPageSize)
+        ? Math.min(Math.max(1, rawPageSize), 500)
+        : 50;
     const event = searchParams.get("event") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const userId = searchParams.get("userId") || undefined;
@@ -114,6 +121,19 @@ export async function GET(request: NextRequest) {
           ].join(",")
         )
         .join("\n");
+
+      // 导出行为本身留痕：导出内容含 userId/IP 等敏感字段
+      await createAuditLog({
+        action: "sso_audit_export",
+        targetType: "system",
+        targetId: "sso_audit_csv",
+        detail: {
+          filters: { event, clientId, userId, startDate, endDate, success },
+          exportedCount: items.length,
+        },
+        adminId: admin.id,
+        request,
+      });
 
       // 前置 BOM，防止 Excel 打开 UTF-8 CSV 时中文乱码
       return new NextResponse("\uFEFF" + csvHeaders + csvRows, {

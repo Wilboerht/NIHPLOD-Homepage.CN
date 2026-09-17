@@ -32,7 +32,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const ip = getClientIP(request);
-    const limitResult = await rateLimit(ip, "oauth-check-post-logout-uri");
+    // 独立限流桶：identifier 加前缀与 check-post-logout-uri 端点隔离配额
+    // （限流 key 为 `${type}:${identifier}`，复用同一预设的限流参数但不共享计数）
+    const limitResult = await rateLimit(`end-session:${ip}`, "oauth-check-post-logout-uri");
     if (!limitResult.success) {
       return NextResponse.json(
         { error: "rate_limited", error_description: "请求过于频繁" },
@@ -59,9 +61,11 @@ export async function GET(request: NextRequest) {
     // 收益：跳过 /logout 确认页与 /logout/confirm 成功页的两次整页加载与全部客户端 fetch。
     if (idTokenHint) {
       try {
-        // hint 允许过期（用户常在 id_token 过期后才登出），安全性由 sub 比对保证
+        // 快速通道是无确认的敏感操作（GET + SameSite=Lax cookie，跨站顶级导航可触发），
+        // hint 不允许过期：仅保留 5 分钟时钟偏移宽限。过期 hint 回落到下方确认页流程，
+        // 由用户显式确认后登出（确认页路径允许过期 hint，仅作身份提示展示用）。
         const hintClaims = await verifyIdToken(idTokenHint, clientId ?? undefined, {
-          clockToleranceSeconds: 30 * 24 * 3600,
+          clockToleranceSeconds: 5 * 60,
         });
         const user = await verifyUserAuth(request);
         if (hintClaims?.sub && user && hintClaims.sub === user.id) {

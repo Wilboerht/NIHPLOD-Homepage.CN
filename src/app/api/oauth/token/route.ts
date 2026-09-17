@@ -173,9 +173,132 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 消费授权码（原子化）
-      const codeData = await consumeAuthorizationCode(code);
+      // 先查后消费（防燃烧 DoS）：code 未消费且未过期时，先完成
+      // client_id / redirect_uri / PKCE 校验，全部通过后才原子化标记消费。
+      // 无凭证攻击者（仅持有 code、无 verifier/redirect_uri）无法让合法用户的
+      // code 提前作废；校验失败返回 400 时 code 保持未消费状态。
+      const pendingCode = await prisma.oAuthAuthorizationCode.findUnique({
+        where: { code: hashCode(code) },
+      });
+
+      let codeData: Awaited<ReturnType<typeof consumeAuthorizationCode>> = null;
+      if (pendingCode && !pendingCode.used && pendingCode.expiresAt > new Date()) {
+        // 校验 client_id 与授权码一致（消费前）
+        if (pendingCode.clientId !== client_id) {
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "client_id_mismatch", expected: pendingCode.clientId },
+          });
+          return resJson({ error: "invalid_grant", error_description: "Client ID 不匹配" }, 400);
+        }
+
+        // RFC 6749 §4.1.3: token 端点必须校验 redirect_uri 与授权请求一致（消费前）
+        const redirect_uri = body.redirect_uri;
+        if (!redirect_uri) {
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "missing_redirect_uri" },
+          });
+          return resJson({ error: "invalid_grant", error_description: "缺少 redirect_uri" }, 400);
+        }
+        if (redirect_uri !== pendingCode.redirectUri) {
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: {
+              grant_type,
+              reason: "redirect_uri_mismatch",
+              expected: pendingCode.redirectUri,
+              got: redirect_uri,
+            },
+          });
+          return resJson(
+            { error: "invalid_grant", error_description: "redirect_uri 与授权请求不一致" },
+            400
+          );
+        }
+
+        // PKCE 校验（强制，消费前）
+        if (!pendingCode.codeChallenge) {
+          return resJson(
+            {
+              error: "invalid_grant",
+              error_description: "Authorization code was issued without PKCE",
+            },
+            400
+          );
+        }
+        if (!code_verifier) {
+          // 燃烧行为检测：持有 code 但无 verifier 的请求是典型燃烧/探测特征，记审计
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "missing_code_verifier" },
+          });
+          return resJson(
+            { error: "invalid_grant", error_description: "Missing code_verifier" },
+            400
+          );
+        }
+        if (
+          !verifyPKCE(
+            code_verifier,
+            pendingCode.codeChallenge,
+            pendingCode.codeChallengeMethod || "S256"
+          )
+        ) {
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "pkce_failed" },
+          });
+          return resJson({ error: "invalid_grant", error_description: "Invalid code_verifier" }, 400);
+        }
+
+        // 凭证校验全部通过 → 原子化消费（并发下失败说明刚被消费，落入下方重放检测）
+        codeData = await consumeAuthorizationCode(code);
+        if (codeData) {
+          // 记录首次消费时间，供重放时的良性重试判定使用
+          recentCodeConsumptions.set(hashCode(code), Date.now());
+        } else {
+          // 竞态：查询与消费之间被并发请求消费。记录审计便于区分燃烧与并发重试，
+          // 随后按重放检测流程处理（含良性重试判定）
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "code_consume_race" },
+          });
+        }
+      }
+
       if (!codeData) {
+        // code 不存在 / 已使用 / 已过期 / 并发下刚被消费
         // RFC 9700 §4.5：授权码重放（code 已使用）时，撤销该 code 签发出的所有 token
         const usedCode = await findUsedAuthorizationCode(code);
         if (usedCode) {
@@ -183,11 +306,16 @@ export async function POST(request: NextRequest) {
           // 客户端超时自动重试/双击会在首次消费后极短时间内，由同一 client
           // 携带同一 PKCE verifier 重放同一 code。同时满足以下条件才放行
           // （返回与原换取一致的 invalid_grant 错误，但不吊销 session / refresh token）：
-          //   ① 距首次消费 ≤ 10 秒（优先取本实例消费记录；跨实例以首次换取创建的
+          //   ① 本次请求 client 与首次消费的 client 一致（防攻击者抢跑换取后，
+          //      合法 client 的重试落入良性分支而不触发吊销）；
+          //   ② 首次换取未成功签发 token（无关联 OAuthSession）——已有 session
+          //      说明 token 已签发，重放一律吊销（RFC 9700 §4.5）；
+          //   ③ 距首次消费 ≤ 10 秒（优先取本实例消费记录；跨实例以首次换取创建的
           //      OAuthSession.createdAt 兜底——session 在换取流程中紧随消费创建）；
-          //   ② 本次请求 client 认证已通过（路由入口处完成）且 PKCE verifier
+          //   ④ 本次请求 client 认证已通过（路由入口处完成）且 PKCE verifier
           //      与原 code_challenge 匹配。
-          // 任一不满足（间隔超窗、verifier 不符、无消费时间依据）即维持吊销。
+          // 任一不满足（client 不符、已有 session、间隔超窗、verifier 不符、
+          // 无消费时间依据）即维持吊销。
           // 注：OAuthAuthorizationCode 无 usedAt 字段，消费时间按上述方式近似。
           const consumedAtMem = recentCodeConsumptions.get(hashCode(code));
           const [codeRecord, firstSession] = await Promise.all([
@@ -212,7 +340,7 @@ export async function POST(request: NextRequest) {
               codeRecord.codeChallengeMethod || "S256"
             );
 
-          if (withinWindow && pkceMatches) {
+          if (usedCode.clientId === client_id && !firstSession && withinWindow && pkceMatches) {
             scheduleSsoEvent({
               event: "token",
               userId: usedCode.userId,
@@ -261,76 +389,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 记录首次消费时间，供重放时的良性重试判定使用
-      recentCodeConsumptions.set(hashCode(code), Date.now());
-
-      // 校验 client_id 与授权码一致
-      if (codeData.clientId !== client_id) {
-        scheduleSsoEvent({
-          event: "token",
-          userId: codeData.userId,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: { grant_type, reason: "client_id_mismatch", expected: codeData.clientId },
-        });
-        return resJson({ error: "invalid_grant", error_description: "Client ID 不匹配" }, 400);
-      }
-
-      // RFC 6749 §4.1.3: token 端点必须校验 redirect_uri 与授权请求一致
-      const redirect_uri = body.redirect_uri;
-      if (!redirect_uri) {
-        return resJson({ error: "invalid_grant", error_description: "缺少 redirect_uri" }, 400);
-      }
-      if (redirect_uri !== codeData.redirectUri) {
-        scheduleSsoEvent({
-          event: "token",
-          userId: codeData.userId,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: {
-            grant_type,
-            reason: "redirect_uri_mismatch",
-            expected: codeData.redirectUri,
-            got: redirect_uri,
-          },
-        });
-        return resJson(
-          { error: "invalid_grant", error_description: "redirect_uri 与授权请求不一致" },
-          400
-        );
-      }
-
-      // PKCE 校验（强制）
-      if (!codeData.codeChallenge) {
-        return resJson(
-          {
-            error: "invalid_grant",
-            error_description: "Authorization code was issued without PKCE",
-          },
-          400
-        );
-      }
-      if (!code_verifier) {
-        return resJson({ error: "invalid_grant", error_description: "Missing code_verifier" }, 400);
-      }
-      if (
-        !verifyPKCE(code_verifier, codeData.codeChallenge, codeData.codeChallengeMethod || "S256")
-      ) {
-        scheduleSsoEvent({
-          event: "token",
-          userId: codeData.userId,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: { grant_type, reason: "pkce_failed" },
-        });
-        return resJson({ error: "invalid_grant", error_description: "Invalid code_verifier" }, 400);
-      }
+      // client_id / redirect_uri / PKCE 校验已在消费前完成（见上方"先查后消费"块）
 
       // 查询用户信息
       const user = await prisma.user.findUnique({

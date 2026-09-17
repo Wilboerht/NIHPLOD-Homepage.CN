@@ -24,7 +24,7 @@ const logoutHandler = createLogoutRouteHandler({
   insecureLocalDev: isHttpLocalDev,
 });
 
-// GET：兼容 RP-Initiated Logout 规范（end_session_endpoint 支持 GET）
+// GET：不执行登出，返回确认页（防登出 CSRF）；带合法 state 的 GET 视为 RP-Initiated Logout 回跳
 export const GET = logoutHandler;
-// POST：UI 层推荐使用，避免 GET 登出被跨站图片/预取请求触发（CSRF）
+// POST：实际执行登出（撤销 refresh_token + 清 Cookie + 跳转 SSO 登出页）
 export const POST = logoutHandler;

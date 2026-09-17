@@ -7,6 +7,7 @@
 import { createHmac } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
+import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
 
 // 状态值约定（与商城侧 zod 校验对齐）：发送 User.status 原始大写枚举 ACTIVE/SUSPENDED/BANNED；
 // 删除事件 newStatus 固定为小写 "deleted"（商城侧按此约定映射为禁用账户）
@@ -40,6 +41,9 @@ function resolveWebhookSecret(target: WebhookTarget): string | undefined {
 /**
  * 从环境变量读取状态变更 Webhook 目标列表
  * SSO_STATUS_CHANGE_WEBHOOK_URLS：逗号分隔的 Webhook URL 列表
+ *
+ * SSRF 防护：env 配置的 URL 与 backchannel logout 回调同口径校验
+ * （https + 非公网主机名拒绝），不合规的条目直接丢弃并记录告警
  */
 export function getStatusChangeWebhookTargets(): WebhookTarget[] {
   const raw = process.env.SSO_STATUS_CHANGE_WEBHOOK_URLS;
@@ -48,6 +52,13 @@ export function getStatusChangeWebhookTargets(): WebhookTarget[] {
     .split(",")
     .map((url) => url.trim())
     .filter(Boolean)
+    .filter((url) => {
+      if (!isSafeBackchannelUrl(url)) {
+        apiConsole.warn(`[Webhook] 忽略不安全的 Webhook URL（要求 https 公网地址）: ${url}`);
+        return false;
+      }
+      return true;
+    })
     .map((url) => {
       let name = url;
       try {
@@ -74,6 +85,12 @@ async function sendWebhook(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (secret) {
     headers["X-Webhook-Signature"] = `t=${timestamp},v1=${signWebhookPayload(secret, timestamp, body)}`;
+  } else if (process.env.NODE_ENV === "production") {
+    // 生产环境拒绝无签名发送：接收方无法校验来源，明文通知可能被伪造利用
+    apiConsole.error(
+      `[Webhook] 生产环境未配置签名密钥（SSO_WEBHOOK_SECRET），拒绝发送 (${target.clientId})`
+    );
+    return false;
   } else {
     apiConsole.warn(`[Webhook] 未配置签名密钥（SSO_WEBHOOK_SECRET），通知将不带签名 (${target.clientId})`);
   }

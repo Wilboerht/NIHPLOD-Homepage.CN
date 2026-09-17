@@ -233,7 +233,14 @@ export function SsoProvider({
           ? err
           : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err))
       );
-      removeTokenData(client.config.clientId);
+      // 仅鉴权类错误（会话失效/未认证）清除本地 token；网络瞬断等可恢复错误
+      // 保留 token，避免一次抖动就强制重新登录，下次加载/刷新会自动重试
+      if (
+        err instanceof SsoError &&
+        (err.code === "not_authenticated" || err.code === "session_expired")
+      ) {
+        removeTokenData(client.config.clientId);
+      }
     } finally {
       setIsLoading(false);
     }

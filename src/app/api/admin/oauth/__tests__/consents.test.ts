@@ -204,6 +204,50 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       expect(data.data.items[0].phone).not.toContain("123456");
       expect(data.data.items[0].clientName).toBe("Test App");
     });
+
+    it("search 关键词少于 2 个字符应返回 400（防全表模糊扫描）", async () => {
+      const { GET } = await import("@/app/api/admin/oauth/consents/route");
+      const res = await GET(createRequest("/api/admin/oauth/consents?search=1"));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("INVALID_PARAMS");
+      expect(prismaMock.user.findMany).not.toHaveBeenCalled();
+      expect(prismaMock.userConsent.findMany).not.toHaveBeenCalled();
+    });
+
+    it("search 子查询有 take:500 上限，命中上限时响应标记 searchTruncated", async () => {
+      prismaMock.user.findMany.mockResolvedValue(
+        Array.from({ length: 500 }, (_, i) => ({ id: `user-${i}` }))
+      );
+      prismaMock.userConsent.findMany.mockResolvedValue([]);
+      prismaMock.userConsent.count.mockResolvedValue(0);
+
+      const { GET } = await import("@/app/api/admin/oauth/consents/route");
+      const res = await GET(createRequest("/api/admin/oauth/consents?search=138"));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const searchCall = prismaMock.user.findMany.mock.calls[0][0] as { take?: number };
+      expect(searchCall.take).toBe(500);
+      expect(data.data.searchTruncated).toBe(true);
+    });
+
+    it("page/pageSize 为负数或 NaN 时回退合法默认值（skip/take 不为 NaN/负数）", async () => {
+      prismaMock.userConsent.findMany.mockResolvedValue([]);
+      prismaMock.userConsent.count.mockResolvedValue(0);
+
+      const { GET } = await import("@/app/api/admin/oauth/consents/route");
+      const res = await GET(createRequest("/api/admin/oauth/consents?page=-1&pageSize=abc"));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const queryArgs = prismaMock.userConsent.findMany.mock.calls[0][0] as {
+        skip: number;
+        take: number;
+      };
+      expect(queryArgs.skip).toBe(0);
+      expect(queryArgs.take).toBe(20);
+      expect(data.data.pagination).toEqual({ page: 1, pageSize: 20, total: 0 });
+    });
   });
 
   // ------------------------------------------

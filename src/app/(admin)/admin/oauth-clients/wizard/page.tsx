@@ -46,9 +46,14 @@ interface TestResultData {
 }
 
 export default function OAuthWizardPage() {
+  // 除 sso:clients:write（创建 Client）外还需 sso:clients:read：
+  // 第②步调用的 /api/admin/oauth/scopes 要求 read 权限，
+  // 仅有 write 无 read 的管理员会卡在第②步，嵌套门禁直接给出缺权限提示
   return (
     <RequirePermission permission="sso:clients:write">
-      <OAuthWizardContent />
+      <RequirePermission permission="sso:clients:read">
+        <OAuthWizardContent />
+      </RequirePermission>
     </RequirePermission>
   );
 }

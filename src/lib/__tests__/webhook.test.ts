@@ -163,4 +163,31 @@ describe("webhook", () => {
       clientName: "a.example.com",
     });
   });
+
+  it("getStatusChangeWebhookTargets 过滤非 https / 私网 URL（SSRF 防护）", () => {
+    process.env.SSO_STATUS_CHANGE_WEBHOOK_URLS = [
+      "https://a.example.com/hook",
+      "http://b.example.com/hook",
+      "https://127.0.0.1/hook",
+      "https://192.168.1.10/hook",
+      "not-a-url",
+    ].join(",");
+    const targets = getStatusChangeWebhookTargets();
+    expect(targets).toHaveLength(1);
+    expect(targets[0].url).toBe("https://a.example.com/hook");
+  });
+
+  it("生产环境未配置签名密钥时拒绝发送（不带签名明文发送仅在非生产降级）", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      await dispatchStatusChangeWebhook(change, [target]);
+      expect(globalFetch).not.toHaveBeenCalled();
+      // 拒绝发送计入失败审计
+      expect(mockRecordSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ event: "status_change", success: false })
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

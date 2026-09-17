@@ -40,6 +40,13 @@ export interface ValidateIdTokenOptions {
    * 默认 true：只要 JWKS 中存在 RS256 签名密钥，就拒绝 HS256（安全推荐）。
    */
   rejectHs256WhenRs256Available?: boolean;
+  /**
+   * 期望的 OIDC nonce（login 时生成并随 authorize 请求发送）。
+   * 传入后 ID Token 必须携带 nonce claim 且与该值常量时间相等（fail-closed），
+   * 否则抛出 id_token_nonce_mismatch，防止 ID Token 重放。
+   * 不传则跳过 nonce 校验（如 refresh 流程签发的 ID Token）。
+   */
+  expectedNonce?: string;
 }
 
 function base64UrlDecode(input: string): Uint8Array {
@@ -89,10 +96,17 @@ interface OidcDiscoveryDoc {
 }
 
 let cachedJwks: { baseUrl: string; jwks: Jwks; fetchedAt: number } | null = null;
-let cachedDiscovery: { baseUrl: string; doc: OidcDiscoveryDoc | null; fetchedAt: number } | null = null;
+let cachedDiscovery: { baseUrl: string; doc: OidcDiscoveryDoc; fetchedAt: number } | null = null;
 const JWKS_CACHE_TTL_MS = 5 * 60 * 1000;
+/** discovery / JWKS 拉取超时（与 SsoClient._getDiscovery 的 10s 一致） */
+const FETCH_TIMEOUT_MS = 10000;
 
-/** 拉取 OIDC Discovery 文档（带内存缓存；失败返回 null 不抛错） */
+/**
+ * 拉取 OIDC Discovery 文档（带内存缓存；失败返回 null 不抛错）
+ *
+ * 只缓存成功结果：失败（网络错误 / 非 2xx）不缓存，主站短暂抖动不会让
+ * 登录持续失败到 TTL 期满，下一次调用立即重试（与 core/discovery.ts 策略一致）。
+ */
 async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | null> {
   const now = Date.now();
   if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
@@ -100,12 +114,14 @@ async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | nu
   }
 
   try {
-    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`);
-    const doc = res.ok ? ((await res.json()) as OidcDiscoveryDoc) : null;
+    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const doc = (await res.json()) as OidcDiscoveryDoc;
     cachedDiscovery = { baseUrl, doc, fetchedAt: now };
     return doc;
   } catch {
-    cachedDiscovery = { baseUrl, doc: null, fetchedAt: now };
     return null;
   }
 }
@@ -129,7 +145,10 @@ export async function fetchJwks(baseUrl: string, options: FetchJwksOptions = {})
   const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
 
   try {
-    const res = await fetch(jwksUri, options.forceRefresh ? { cache: "no-cache" } : undefined);
+    const res = await fetch(jwksUri, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      ...(options.forceRefresh ? { cache: "no-cache" as RequestCache } : {}),
+    });
     if (!res.ok) return null;
     const jwks = (await res.json()) as Jwks;
     cachedJwks = { baseUrl, jwks, fetchedAt: now };
@@ -197,7 +216,7 @@ export async function validateIdToken(
   expectedClientId: string,
   options: ValidateIdTokenOptions = {}
 ): Promise<ValidateIdTokenResult> {
-  const { rejectHs256WhenRs256Available = true } = options;
+  const { rejectHs256WhenRs256Available = true, expectedNonce } = options;
 
   const header = decodeJwtHeader(idToken);
   if (!header) {
@@ -317,6 +336,15 @@ export async function validateIdToken(
     const actual = await computeAtHash(accessToken);
     if (!timingSafeEqualString(actual, payload.at_hash)) {
       throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash 不匹配");
+    }
+  }
+
+  // 校验 nonce（OIDC Core §3.1.3.7）：调用方传入 expectedNonce 时 fail-closed，
+  // ID Token 必须携带 nonce 且与登录时生成的值常量时间相等，防 ID Token 重放
+  if (expectedNonce !== undefined) {
+    const tokenNonce = typeof payload.nonce === "string" ? payload.nonce : "";
+    if (!tokenNonce || !timingSafeEqualString(expectedNonce, tokenNonce)) {
+      throw new SsoError("id_token_nonce_mismatch", "ID Token nonce 不匹配");
     }
   }
 

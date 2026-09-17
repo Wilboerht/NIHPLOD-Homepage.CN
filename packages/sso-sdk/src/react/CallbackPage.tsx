@@ -75,6 +75,9 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
   const { client, refreshUser } = useSso();
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
+  // 弹窗模式：postMessage 已发送但超时未收到主窗口 ACK（主窗口监听未挂载等），
+  // 提示用户手动关闭窗口，避免弹窗悬挂
+  const [awaitingManualClose, setAwaitingManualClose] = useState(false);
 
   // useLatest 惯例：用 ref 保存最新的 onSuccess/onError，
   // 避免调用方传内联回调时父组件重渲染导致下方 effect 重跑、
@@ -97,13 +100,46 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
       } catch {
         // 跨源 opener：使用当前 origin（postMessage 会校验，不会泄露给第三方）
       }
-      window.opener.postMessage(
-        { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href, nonce: nonce || undefined },
-        targetOrigin
-      );
+
+      // postMessage 只发一次可能赶上主窗口监听未挂载而丢失；
+      // 每 500ms 重发直到收到主窗口 ACK，超时 10s 提示手动关闭窗口
+      const message = {
+        type: "nihplod_sso_popup_callback",
+        callbackUrl: window.location.href,
+        nonce: nonce || undefined,
+      };
+      let acked = false;
+      const send = () => {
+        if (acked || !window.opener || window.opener.closed) return;
+        window.opener.postMessage(message, targetOrigin);
+      };
+      send();
+      const resendTimer = setInterval(send, 500);
+      const ackTimeout = setTimeout(() => {
+        if (acked) return;
+        clearInterval(resendTimer);
+        setAwaitingManualClose(true);
+      }, 10_000);
+
+      const handleAck = (event: MessageEvent) => {
+        // origin 与 nonce 校验与主窗口侧对称：nonce 缺失时不校验（兼容旧主窗口），存在时必须匹配
+        if (event.origin !== targetOrigin) return;
+        if (!event.data || event.data.type !== "nihplod_sso_popup_ack") return;
+        if (nonce && event.data.nonce !== nonce) return;
+        acked = true;
+        clearInterval(resendTimer);
+        clearTimeout(ackTimeout);
+      };
+      window.addEventListener("message", handleAck);
+
       // 微任务延迟，避免 effect 内同步 setState
       Promise.resolve().then(() => setProcessing(false));
-      return;
+
+      return () => {
+        clearInterval(resendTimer);
+        clearTimeout(ackTimeout);
+        window.removeEventListener("message", handleAck);
+      };
     }
 
     let cancelled = false;
@@ -159,6 +195,22 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
   if (error) {
     if (renderError) return React.createElement(React.Fragment, null, renderError(error));
     return React.createElement(DefaultCallbackError, { error });
+  }
+
+  if (awaitingManualClose) {
+    return React.createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          fontFamily: "system-ui, sans-serif",
+        },
+      },
+      React.createElement("p", null, "登录已完成，请手动关闭此窗口")
+    );
   }
 
   if (processing) {

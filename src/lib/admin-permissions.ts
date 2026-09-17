@@ -302,10 +302,19 @@ export function sanitizePermissionOverrides(overrides?: string[] | null): string
   return result;
 }
 
-/** 取角色模板（未知角色回退 admin 模板） */
+/**
+ * 取角色模板（未知角色 fail-closed：回退空权限集并告警）
+ * 回退 admin 模板会把含 users:sensitive:read 在内的权限授予无法识别的角色，
+ * 属提权风险，故未知角色一律视为无任何权限。
+ */
 function templateFor(role: string): readonly AdminPermission[] {
   if (role === "owner") return ADMIN_PERMISSIONS;
-  return ROLE_TEMPLATES[role as Exclude<AdminRoleValue, "owner">] ?? ROLE_TEMPLATES.admin;
+  const template = ROLE_TEMPLATES[role as Exclude<AdminRoleValue, "owner">];
+  if (!template) {
+    console.warn(`[admin-permissions] 无法识别的角色 "${role}"，按空权限集处理`);
+    return [];
+  }
+  return template;
 }
 
 /** 解析管理员的有效权限（owner 恒为全部） */

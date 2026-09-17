@@ -214,6 +214,15 @@ export async function retryFailedBackchannelLogouts(
 
   for (const failure of failures) {
     try {
+      // 多实例部署时的乐观锁认领：先把 nextRetryAt 后移，
+      // 认领失败（count=0）说明其他实例已接管该记录，直接跳过。
+      // 认领后即使本实例崩溃，记录也会在被后移的时间点重新到期，不会丢失。
+      const claim = await prisma.backchannelLogoutFailure.updateMany({
+        where: { id: failure.id, nextRetryAt: failure.nextRetryAt },
+        data: { nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS) },
+      });
+      if (claim.count === 0) continue;
+
       const client = await prisma.oAuthClient.findUnique({
         where: { clientId: failure.clientId },
         select: { clientId: true, backchannelLogoutUri: true },

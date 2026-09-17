@@ -585,6 +585,42 @@ describe("Introspection aud 归属校验", () => {
     const verifier = createIntrospectVerifier();
     expect(await verifier.verify("token-no-aud-fields")).not.toBeNull();
   });
+
+  it("strictAudience=true 且 aud/client_id 都缺失时拒绝（fail-closed）", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1" }),
+    } as Response);
+
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+      strictAudience: true,
+    });
+    expect(await verifier.verify("token-no-aud-fields-strict")).toBeNull();
+  });
+
+  it("strictAudience=true 时 client_id 匹配仍通过", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1", client_id: audience }),
+    } as Response);
+
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+      strictAudience: true,
+    });
+    const payload = await verifier.verify("token-strict-ok");
+    expect(payload).not.toBeNull();
+    expect(payload!.sub).toBe("user-1");
+  });
 });
 
 describe("Introspection 重试与并发去重", () => {
@@ -833,6 +869,35 @@ describe("verifyLogoutToken 补充校验", () => {
     });
 
     expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("sub 与 sid 都缺失的 logout token 被拒绝（Back-Channel Logout 1.0 §2.4）", async () => {
+    // sub: undefined 会被 JSON 序列化丢弃，构造出无 sub 的 token
+    const token = await createLogoutToken({ sub: undefined, jti: "logout-no-sub-sid-1" });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+    });
+
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("仅携带 sid（无 sub）的 logout token 验证通过", async () => {
+    const token = await createLogoutToken({
+      sub: undefined,
+      sid: "session-abc",
+      jti: "logout-sid-only-1",
+    });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+    });
+
+    const payload = await verifier.verifyLogoutToken(token);
+    expect(payload).not.toBeNull();
+    expect(payload!.sid).toBe("session-abc");
   });
 
   it("注入 logoutJtiStore 时使用外部存储防重放", async () => {

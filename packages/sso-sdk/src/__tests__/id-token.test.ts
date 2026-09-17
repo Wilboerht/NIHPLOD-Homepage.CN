@@ -204,3 +204,132 @@ describe("id-token JWKS 缓存自愈", () => {
     expect(jwksCalls[1].init?.cache).toBe("no-cache");
   });
 });
+
+describe("validateIdToken nonce 校验", () => {
+  beforeAll(async () => {
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+      true,
+      ["sign", "verify"]
+    );
+    privateKey = keyPair.privateKey;
+    publicJwk = {
+      ...(await crypto.subtle.exportKey("jwk", keyPair.publicKey)),
+      alg: "RS256",
+      use: "sig",
+      kid: "new-key",
+    } as JwksKey;
+  });
+
+  beforeEach(() => {
+    clearIdTokenCaches();
+    vi.restoreAllMocks();
+  });
+
+  it("expectedNonce 与 id_token nonce 一致时通过", async () => {
+    installFetchMock([{ keys: [publicJwk] }]);
+    const token = await buildRs256IdToken(validPayload({ nonce: "n-1" }), "new-key");
+
+    const result = await validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID, {
+      expectedNonce: "n-1",
+    });
+    expect(result.sub).toBe("user123");
+  });
+
+  it("expectedNonce 与 id_token nonce 不一致时抛 id_token_nonce_mismatch", async () => {
+    installFetchMock([{ keys: [publicJwk] }]);
+    const token = await buildRs256IdToken(validPayload({ nonce: "n-other" }), "new-key");
+
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID, { expectedNonce: "n-1" })
+    ).rejects.toMatchObject({ code: "id_token_nonce_mismatch" });
+  });
+
+  it("传入 expectedNonce 但 id_token 缺 nonce claim 时拒绝（fail-closed）", async () => {
+    installFetchMock([{ keys: [publicJwk] }]);
+    const token = await buildRs256IdToken(validPayload(), "new-key");
+
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID, { expectedNonce: "n-1" })
+    ).rejects.toMatchObject({ code: "id_token_nonce_mismatch" });
+  });
+
+  it("不传 expectedNonce 时跳过 nonce 校验（如 refresh 场景）", async () => {
+    installFetchMock([{ keys: [publicJwk] }]);
+    const token = await buildRs256IdToken(validPayload(), "new-key");
+
+    const result = await validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID);
+    expect(result.sub).toBe("user123");
+  });
+});
+
+describe("discovery 失败不缓存", () => {
+  beforeEach(() => {
+    clearIdTokenCaches();
+    vi.restoreAllMocks();
+  });
+
+  it("discovery 拉取失败（网络错误）不缓存：下一次调用立即重试", async () => {
+    let discoveryCalls = 0;
+    let failAll = true;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/.well-known/openid-configuration")) {
+        discoveryCalls++;
+        if (failAll) throw new Error("network down");
+        return jsonResponse(mockDiscovery);
+      }
+      if (url.includes("jwks")) {
+        if (failAll) throw new Error("network down");
+        return jsonResponse({ keys: [publicJwk] });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    // 第一次整体失败（验签抛错），失败结果不得写入 discovery 缓存
+    const token = await buildRs256IdToken(validPayload(), "new-key");
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID)
+    ).rejects.toMatchObject({ code: "id_token_invalid_signature" });
+    const discoveryCallsAfterFailure = discoveryCalls;
+
+    // 主站恢复后立即重试成功；若失败结果被缓存 5 分钟，这里不会重新拉取 discovery
+    failAll = false;
+    const result = await validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID);
+    expect(result.sub).toBe("user123");
+    expect(discoveryCalls).toBeGreaterThan(discoveryCallsAfterFailure);
+  });
+
+  it("discovery 返回非 2xx 不缓存：下一次调用立即重试", async () => {
+    let discoveryCalls = 0;
+    let failAll = true;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/.well-known/openid-configuration")) {
+        discoveryCalls++;
+        if (failAll) {
+          return { ok: false, status: 503, json: async () => ({}) } as Response;
+        }
+        return jsonResponse(mockDiscovery);
+      }
+      if (url.includes("jwks")) {
+        if (failAll) {
+          return { ok: false, status: 503, json: async () => ({}) } as Response;
+        }
+        return jsonResponse({ keys: [publicJwk] });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    const token = await buildRs256IdToken(validPayload(), "new-key");
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID)
+    ).rejects.toMatchObject({ code: "id_token_invalid_signature" });
+    const discoveryCallsAfterFailure = discoveryCalls;
+
+    failAll = false;
+    const result = await validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID);
+    expect(result.sub).toBe("user123");
+    expect(discoveryCalls).toBeGreaterThan(discoveryCallsAfterFailure);
+  });
+});

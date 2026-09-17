@@ -72,9 +72,13 @@ describe("createSsoMiddleware", () => {
     expect(location.searchParams.get("code_challenge_method")).toBe("S256");
     const state = location.searchParams.get("state");
     expect(state).toBeTruthy();
+    const nonce = location.searchParams.get("nonce");
+    expect(nonce).toBeTruthy();
 
     // state cookie 与 authorize URL 中的 state 一致
     expect(res.cookies.get("__Host-nihplod_sso_state")?.value).toBe(state);
+    // nonce cookie 与 authorize URL 中的 nonce 一致（__Host- httpOnly，与 state 同规格）
+    expect(res.cookies.get("__Host-nihplod_sso_nonce")?.value).toBe(nonce);
     // PKCE verifier cookie（httpOnly，供 callback 使用）
     expect(res.cookies.get("__Secure-nihplod_sso_verifier")?.value).toBeTruthy();
     // return URL cookie 记录原始路径
@@ -139,9 +143,11 @@ describe("createSsoMiddleware", () => {
 
     // 前缀已去除，浏览器在 HTTP 下可写入
     expect(res.cookies.get("nihplod_sso_state")?.value).toBeTruthy();
+    expect(res.cookies.get("nihplod_sso_nonce")?.value).toBeTruthy();
     expect(res.cookies.get("nihplod_sso_verifier")?.value).toBeTruthy();
     expect(res.cookies.get("nihplod_sso_return")?.value).toBe("/dashboard");
     expect(res.cookies.get("__Host-nihplod_sso_state")).toBeUndefined();
+    expect(res.cookies.get("__Host-nihplod_sso_nonce")).toBeUndefined();
     // Secure 属性已关闭
     const setCookies =
       typeof res.headers.getSetCookie === "function"
@@ -173,8 +179,25 @@ describe("createSsoMiddleware", () => {
     expect(setCookies.join("\n")).toMatch(/;\s*secure\b/i);
   });
 
-  it("insecureLocalDev=true 且 ssoBaseUrl 为 http（如本地 http SSO）：生产环境也不触发守卫", async () => {
+  it("弱配置告警在生产环境同样输出（风险最高处不应静默）", () => {
     vi.stubEnv("NODE_ENV", "production");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    createSsoMiddleware({
+      clientId: "test-client",
+      // 无 clientSecret + validateSsoCookie=false：两个告警都应在生产环境输出
+      ssoBaseUrl: "https://nihplod.cn",
+      redirectUri: "https://myapp.com/api/auth/callback",
+      validateSsoCookie: false,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("validateSsoCookie=false")
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("未配置 clientSecret")
+    );
+  });
+
+  it("insecureLocalDev=true 且 ssoBaseUrl 为 http（如本地 http SSO）：生产环境也不触发守卫", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const middleware = createSsoMiddleware({
       ...config,

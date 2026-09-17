@@ -232,6 +232,55 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(data.data.items[0].clientName).toBe("Test App");
       expect(data.data.stats.activeSessions).toBe(1);
     });
+
+    it("search 关键词少于 2 个字符应返回 400（防全表模糊扫描）", async () => {
+      const { GET } = await import("@/app/api/admin/oauth/sessions/route");
+      const res = await GET(createRequest("/api/admin/oauth/sessions?search=a"));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("INVALID_PARAMS");
+      expect(prismaMock.user.findMany).not.toHaveBeenCalled();
+      expect(prismaMock.oAuthSession.findMany).not.toHaveBeenCalled();
+    });
+
+    it("search 的用户/客户端子查询均有 take:500 上限，命中上限时响应标记 searchTruncated", async () => {
+      prismaMock.user.findMany.mockResolvedValue(
+        Array.from({ length: 500 }, (_, i) => ({ id: `user-${i}` }))
+      );
+      prismaMock.oAuthClient.findMany.mockResolvedValue([]);
+      prismaMock.oAuthSession.findMany.mockResolvedValue([]);
+      prismaMock.oAuthSession.count.mockResolvedValue(0);
+      prismaMock.refreshToken.count.mockResolvedValue(0);
+
+      const { GET } = await import("@/app/api/admin/oauth/sessions/route");
+      const res = await GET(createRequest("/api/admin/oauth/sessions?search=138"));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const userSearchCall = prismaMock.user.findMany.mock.calls[0][0] as { take?: number };
+      expect(userSearchCall.take).toBe(500);
+      const clientSearchCall = prismaMock.oAuthClient.findMany.mock.calls[0][0] as { take?: number };
+      expect(clientSearchCall.take).toBe(500);
+      expect(data.data.searchTruncated).toBe(true);
+    });
+
+    it("page/pageSize 为负数或 NaN 时回退合法默认值（skip/take 不为 NaN/负数）", async () => {
+      prismaMock.oAuthSession.findMany.mockResolvedValue([]);
+      prismaMock.oAuthSession.count.mockResolvedValue(0);
+      prismaMock.refreshToken.count.mockResolvedValue(0);
+
+      const { GET } = await import("@/app/api/admin/oauth/sessions/route");
+      const res = await GET(createRequest("/api/admin/oauth/sessions?page=-1&pageSize=abc"));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const queryArgs = prismaMock.oAuthSession.findMany.mock.calls[0][0] as {
+        skip: number;
+        take: number;
+      };
+      expect(queryArgs.skip).toBe(0);
+      expect(queryArgs.take).toBe(20);
+      expect(data.data.pagination).toEqual({ page: 1, pageSize: 20, total: 0 });
+    });
   });
 
   // ------------------------------------------

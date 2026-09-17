@@ -5,16 +5,18 @@
  * 任一项 FAIL 时以退出码 1 结束（可用于 CI / 发布前检查）。
  *
  * 运行方式：npm run check:sso-config
- * 加载 .env / .env.local / .env.production（覆盖服务器只使用 .env 的部署方式）；
+ * 加载 .env / .env.local / .env.production / .env.production.local（覆盖服务器只使用 .env 的部署方式）；
  * 生产环境也可直接以系统环境变量运行（dotenv 不覆盖已设置的变量，先加载的优先生效）。
  */
 import dotenv from "dotenv";
 
-// 加载环境变量：dotenv 不覆盖已设置的变量，按 Next.js 优先级的逆序加载
-// （先 .env，再 .env.production，最后 .env.local），使优先级与 Next.js 运行时一致
-dotenv.config({ path: ".env" });
-dotenv.config({ path: ".env.production" });
+// 加载环境变量：dotenv 不覆盖已设置的变量，先加载的优先；
+// 按 Next.js 优先级从高到低依次加载（.env.production.local → .env.local → .env.production → .env），
+// 使最终生效值与 Next.js 运行时一致
+dotenv.config({ path: ".env.production.local" });
 dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env.production" });
+dotenv.config({ path: ".env" });
 
 // 与 src/lib/jwt.ts 的 MIN_SECRET_LENGTH 保持一致
 const MIN_SECRET_LENGTH = 32;

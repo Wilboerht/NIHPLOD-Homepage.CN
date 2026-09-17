@@ -167,6 +167,10 @@ describe("GET /api/oauth/end-session", () => {
       })
     );
     expect(res.status).toBe(302);
+    // 快速通道不允许过期 hint：仅保留 5 分钟时钟偏移宽限（过期则回落确认页）
+    expect(mockVerifyIdToken).toHaveBeenCalledWith("valid-hint", "client-1", {
+      clockToleranceSeconds: 5 * 60,
+    });
     const location = new URL(res.headers.get("location")!);
     // 直跳可信回跳地址（不再经过 /logout 确认页），state 透传
     expect(location.origin).toBe("https://a.com");

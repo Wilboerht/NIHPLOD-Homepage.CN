@@ -24,12 +24,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { validateIdToken } from "../core/id-token";
-import { isTrustedReturnUrl } from "../core/security";
+import { isTrustedReturnUrl, timingSafeEqualString } from "../core/security";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
   DEFAULT_ID_TOKEN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,
+  DEFAULT_NONCE_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
   getHostCookieOptions,
@@ -73,6 +74,9 @@ export interface CallbackRouteConfig {
 
   /** State Cookie 名称，默认 __Host-nihplod_sso_state */
   stateCookieName?: string;
+
+  /** OIDC Nonce Cookie 名称，默认 __Host-nihplod_sso_nonce（须与 createSsoMiddleware 一致） */
+  nonceCookieName?: string;
 
   /** Return URL Cookie 名称，默认 __Host-nihplod_sso_return */
   returnUrlCookieName?: string;
@@ -129,6 +133,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
   const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
   const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
 
@@ -137,6 +142,16 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
   const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
 
   return async function GET(request: NextRequest) {
+    const response = await handleCallback(request);
+    // 错误路径（4xx/5xx）统一清除 nonce cookie，避免残留；
+    // 成功路径在重定向响应中随 state/returnUrl cookie 一并清除
+    if (response.status >= 400) {
+      response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
+    }
+    return response;
+  };
+
+  async function handleCallback(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = request.nextUrl;
 
     // 检查错误
@@ -173,7 +188,8 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
         { status: 400 }
       );
     }
-    if (returnedState !== savedState) {
+    // state 比较使用常量时间比较（与 core/SsoClient.handleCallback 一致，防时序侧信道）
+    if (!timingSafeEqualString(returnedState ?? "", savedState)) {
       return NextResponse.json(
         {
           error: "invalid_request",
@@ -182,6 +198,10 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
         { status: 400 }
       );
     }
+
+    // 读取 middleware 发起授权时写入的 OIDC nonce（httpOnly cookie）。
+    // cookie 存在时 validateIdToken 会 fail-closed 校验 ID Token 的 nonce claim
+    const expectedNonce = request.cookies.get(nonceCookieName)?.value;
 
     // 读取 PKCE code_verifier（middleware 存入的 httpOnly cookie）
     const verifier = request.cookies.get(verifierCookieName)?.value;
@@ -284,7 +304,8 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
           tokenData.id_token,
           tokenData.access_token,
           normalizedBase,
-          clientId
+          clientId,
+          { expectedNonce }
         );
       } catch (err) {
         return NextResponse.json(
@@ -353,8 +374,9 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       }
     }
 
-    // 清除临时 cookies: state / return URL
+    // 清除临时 cookies: state / nonce / return URL
     response.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+    response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
     response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
 
     // 清除 PKCE verifier cookie，必须使用写入时的 path（callbackPath）
@@ -364,5 +386,5 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname, secureCookies));
 
     return response;
-  };
+  }
 }

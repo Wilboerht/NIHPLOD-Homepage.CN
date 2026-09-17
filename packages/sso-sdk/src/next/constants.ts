@@ -13,6 +13,8 @@ export const DEFAULT_ACCESS_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_at";
 export const DEFAULT_REFRESH_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_rt";
 export const DEFAULT_ID_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_id";
 export const DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
+// OIDC nonce cookie（ID Token 重放防护，与 state 同规格的 __Host- httpOnly cookie）
+export const DEFAULT_NONCE_COOKIE_NAME = "__Host-nihplod_sso_nonce";
 export const DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
 // Verifier 需要写入回调路径（非 /），因此使用 __Secure- 前缀而非 __Host-
 export const DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";

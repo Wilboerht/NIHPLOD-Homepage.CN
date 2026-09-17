@@ -25,6 +25,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
   hashRequestBody,
@@ -33,6 +34,9 @@ import { redeemPoints } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+
+// 本端点允许的 project 白名单：积分兑礼扣减仅对商城开放
+const ALLOWED_PROJECTS = ["mall"] as const;
 
 const redeemSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
@@ -76,14 +80,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(await checkAndRecordNonce(nonce))) {
-      return NextResponse.json(
-        { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
-        { status: 401 }
-      );
-    }
-
-    // 3. 读取 body 并校验签名
+    // 3. 读取 body 并校验签名（nonce 在验签通过后才消费，避免签名错误的请求烧掉 nonce）
     const bodyText = await request.text();
     const bodyHash = await hashRequestBody(bodyText);
     const path = "/api/v1/internal/points/redeem";
@@ -102,6 +99,23 @@ export async function POST(request: NextRequest) {
       apiConsole.warn(`[InternalApiV1] points/redeem 签名验证失败，key: ${key}, ip: ${ip}`);
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "签名验证失败" } },
+        { status: 401 }
+      );
+    }
+
+    if (!isProjectAllowed(config, ALLOWED_PROJECTS)) {
+      apiConsole.warn(
+        `[InternalApiV1] project ${config.project} 无权访问 ${path}，key: ${key}, ip: ${ip}`
+      );
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN_PROJECT", message: "该密钥无权访问此端点" } },
+        { status: 403 }
+      );
+    }
+
+    if (!(await checkAndRecordNonce(nonce))) {
+      return NextResponse.json(
+        { success: false, error: { code: "REPLAY_ATTACK", message: "重复的请求 nonce" } },
         { status: 401 }
       );
     }

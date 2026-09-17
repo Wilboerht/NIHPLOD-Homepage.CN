@@ -46,7 +46,7 @@ const mockUserFindUnique = (prisma.user as unknown as { findUnique: ReturnType<t
 
 const PATH = "/api/v1/internal/points/redeem";
 const KEY = "mall-key";
-const SECRET = "mall-secret";
+const SECRET = "mall-secret-0123456789abcdef0123456789";
 
 let nonceCounter = 0;
 

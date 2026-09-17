@@ -1,7 +1,6 @@
 /**
  * id_token_hint 验证端点
- * GET /api/oauth/logout/verify-hint（兼容旧调用）
- * POST /api/oauth/logout/verify-hint（推荐：id_token_hint 放请求体，避免进入 URL/日志）
+ * POST /api/oauth/logout/verify-hint（id_token_hint 放请求体，避免进入 URL/日志）
  *
  * OIDC RP-Initiated Logout：/logout 页收到 id_token_hint 后调用此端点验证。
  * - 验签 + iss/aud 校验（aud 为发起方 client_id）
@@ -9,6 +8,9 @@
  *
  * 按规范，hint 验证失败不应拒绝登出，调用方照常走用户确认流程并忽略 hint，
  * 因此本端点对非法 hint 返回 { valid: false } 而非 4xx。
+ *
+ * 注意：GET 变体已移除（405）。id_token 是凭证，放 query 会进入浏览器历史
+ * 与服务器访问日志；唯一调用方（/logout 页）已使用 POST。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, verifyUserToken } from "@/lib/jwt";
@@ -65,12 +67,12 @@ async function handleVerifyHint(
   }
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = request.nextUrl;
-  return handleVerifyHint(
-    request,
-    searchParams.get("id_token_hint"),
-    searchParams.get("client_id") || undefined
+export async function GET() {
+  // id_token 是凭证，不允许经 query 传递（会进入浏览器历史/服务器日志）。
+  // 代码库内无 GET 调用方（/logout 页使用 POST），直接 405。
+  return NextResponse.json(
+    { error: "method_not_allowed", error_description: "请使用 POST 提交 id_token_hint" },
+    { status: 405, headers: { Allow: "POST" } }
   );
 }
 

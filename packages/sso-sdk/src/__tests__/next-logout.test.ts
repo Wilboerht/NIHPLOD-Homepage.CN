@@ -2,7 +2,8 @@
  * next/logout.ts 测试
  *
  * 覆盖：RP-Initiated Logout 回跳的 state 校验（CSRF）、
- * 正常登出流程清除 cookie 并重定向到 SSO 登出页（写 logout state cookie）。
+ * GET 无 state 时返回确认页而不执行登出（登出 CSRF 防护）、
+ * 正常登出流程（POST）清除 cookie 并重定向到 SSO 登出页（写 logout state cookie）。
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -29,7 +30,8 @@ function jsonResponse(data: unknown, status = 200): Response {
 
 function buildRequest(
   query: Record<string, string> = {},
-  cookies: Record<string, string> = {}
+  cookies: Record<string, string> = {},
+  method: string = "GET"
 ): NextRequest {
   const qs = new URLSearchParams(query).toString();
   const cookieHeader = Object.entries(cookies)
@@ -37,7 +39,7 @@ function buildRequest(
     .join("; ");
   return new NextRequest(
     `https://myapp.com/api/auth/logout${qs ? `?${qs}` : ""}`,
-    { headers: cookieHeader ? { cookie: cookieHeader } : {} }
+    { method, headers: cookieHeader ? { cookie: cookieHeader } : {} }
   );
 }
 
@@ -91,7 +93,27 @@ describe("createLogoutRouteHandler", () => {
     expect(res.headers.get("location")).toBe("https://myapp.com/");
   });
 
-  it("正常登出：撤销 refresh_token、清除本地 cookie、重定向 SSO 并写 logout state cookie", async () => {
+  it("GET 无 state 时不执行登出：返回确认页 HTML，不撤销 token、不清 cookie", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => jsonResponse({}));
+
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" })
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain('method="post"');
+
+    // 不撤销 refresh_token、不清除本地 cookie、不重定向 SSO
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(res.cookies.get("__Host-nihplod_sso_rt")).toBeUndefined();
+  });
+
+  it("正常登出（POST）：撤销 refresh_token、清除本地 cookie、重定向 SSO 并写 logout state cookie", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (input) => {
@@ -108,7 +130,7 @@ describe("createLogoutRouteHandler", () => {
 
     const handler = createLogoutRouteHandler(config);
     const res = await handler(
-      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1", "__Host-nihplod_sso_id": "id-token-1" })
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1", "__Host-nihplod_sso_id": "id-token-1" }, "POST")
     );
 
     expect(res.status).toBe(307);
@@ -128,6 +150,8 @@ describe("createLogoutRouteHandler", () => {
     expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
     expect(res.cookies.get("__Host-nihplod_sso_rt")?.value).toBe("");
     expect(res.cookies.get("__Host-nihplod_sso_id")?.value).toBe("");
+    // nonce cookie（可能因登录流程中断而残留）一并清除
+    expect(res.cookies.get("__Host-nihplod_sso_nonce")?.value).toBe("");
 
     // 已调用 revocation 端点撤销 refresh_token
     const revokeCall = fetchSpy.mock.calls.find(([input]) =>
@@ -142,7 +166,7 @@ describe("createLogoutRouteHandler", () => {
       jsonResponse({})
     );
     const handler = createLogoutRouteHandler({ ...config, redirectToSso: false });
-    const res = await handler(buildRequest());
+    const res = await handler(buildRequest({}, {}, "POST"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://myapp.com/");
     expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
@@ -153,7 +177,7 @@ describe("createLogoutRouteHandler", () => {
       throw new Error("network down");
     });
     const handler = createLogoutRouteHandler(config);
-    const res = await handler(buildRequest());
+    const res = await handler(buildRequest({}, {}, "POST"));
     expect(res.status).toBe(307);
     const location = new URL(res.headers.get("location")!);
     expect(location.origin + location.pathname).toBe(
@@ -173,7 +197,7 @@ describe("createLogoutRouteHandler", () => {
     });
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("仅限 http://localhost"));
 
-    const res = await handler(buildRequest());
+    const res = await handler(buildRequest({}, {}, "POST"));
     expect(res.cookies.get("nihplod_sso_at")?.value).toBe("");
     expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
   });
@@ -192,7 +216,7 @@ describe("createLogoutRouteHandler", () => {
     // 告警明确说明开关被忽略
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("已被忽略"));
 
-    const res = await handler(buildRequest());
+    const res = await handler(buildRequest({}, {}, "POST"));
     expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
     expect(res.cookies.get("nihplod_sso_at")).toBeUndefined();
   });
@@ -217,7 +241,7 @@ describe("createLogoutRouteHandler", () => {
       serverBaseUrl: "http://127.0.0.1:3000",
     });
     const res = await handler(
-      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" })
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST")
     );
 
     // 配置内网地址时 revoke 直连内网默认端点（不使用 discovery 里的公网 URL）
@@ -247,8 +271,8 @@ describe("createLogoutRouteHandler", () => {
       });
 
     const handler = createLogoutRouteHandler(config);
-    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }));
-    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-2" }));
+    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST"));
+    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-2" }, "POST"));
 
     const discoveryCalls = fetchSpy.mock.calls.filter(([input]) =>
       String(input).includes("/.well-known/openid-configuration")

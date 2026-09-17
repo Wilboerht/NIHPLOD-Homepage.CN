@@ -258,6 +258,24 @@ describe("管理端 OAuth Client CRUD", () => {
       // 使用统计填充（聚合失败容错路径之外）
       expect(data.data.clients[0]).toHaveProperty("activeUserCount", 0);
     });
+
+    it("page/pageSize 为负数或 NaN 时回退合法默认值（skip 不为负数）", async () => {
+      prismaMock.oAuthClient.findMany.mockResolvedValue([]);
+      prismaMock.oAuthClient.count.mockResolvedValue(0);
+
+      const { GET } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await GET(createRequest("/api/admin/oauth-clients?page=-1&pageSize=abc"));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const queryArgs = prismaMock.oAuthClient.findMany.mock.calls[0][0] as {
+        skip: number;
+        take: number;
+      };
+      expect(queryArgs.skip).toBe(0);
+      expect(queryArgs.take).toBe(20);
+      expect(data.data.pagination).toEqual({ page: 1, pageSize: 20, total: 0 });
+    });
   });
 
   // ------------------------------------------

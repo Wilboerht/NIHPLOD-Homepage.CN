@@ -306,16 +306,6 @@ export async function validateDPoPProof(
     };
   }
 
-  // jti 不得重放：进程内互斥锁保证本实例原子性，DB 唯一约束保证跨实例原子性
-  const jtiOk = await withDpopMutex(`jti:${payload.jti}`, () => recordProofJti(payload.jti));
-  if (!jtiOk) {
-    return {
-      valid: false,
-      error: "invalid_dpop_proof",
-      errorDescription: "DPoP proof jti 已被使用",
-    };
-  }
-
   // htm 必须匹配实际 HTTP method
   if (payload.htm !== htm) {
     return {
@@ -370,6 +360,18 @@ export async function validateDPoPProof(
       error: "use_dpop_nonce",
       errorDescription: "DPoP nonce 非服务端签发或已过期，请使用服务端返回的 nonce",
       newNonce: clientUserId ? rotateNonce(clientUserId) : generateNonce(),
+    };
+  }
+
+  // 全部无状态校验通过后才消费 jti：若提前消费，攻击者抢先重放截获的 proof
+  // （即便因 htm/htu/iat 不符而验证失败）会烧掉合法 proof 的 jti，造成 DoS。
+  // 进程内互斥锁保证本实例原子性，DB 唯一约束保证跨实例原子性
+  const jtiOk = await withDpopMutex(`jti:${payload.jti}`, () => recordProofJti(payload.jti));
+  if (!jtiOk) {
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: "DPoP proof jti 已被使用",
     };
   }
 

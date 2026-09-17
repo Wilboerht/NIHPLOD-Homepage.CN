@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OAuth Token 端点单元测试
  * POST /api/oauth/token
  */
@@ -245,10 +245,7 @@ describe("POST /api/oauth/token", () => {
 
     it("授权码已使用或不存在应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      // consumeAuthorizationCode 返回 null（已使用/不存在）
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 0,
-      });
+      // 预检找不到 code（findUnique 默认 undefined），且不会发起消费
 
       const req = createRequest({
         grant_type: "authorization_code",
@@ -264,17 +261,21 @@ describe("POST /api/oauth/token", () => {
 
     it("授权码重放（已使用）应撤销该 code 签发出的所有 token（RFC 9700 §4.5）", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      // consumeAuthorizationCode 原子消费失败
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 0,
-      });
-      // findUsedAuthorizationCode 发现 code 存在且已使用 → 判定为重放
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        used: true,
-      });
+      // 消费前预检发现 code 已被使用 → 不再发起消费，直接走重放检测
+      // 消费前预检 + findUsedAuthorizationCode 均发现 code 存在且已使用 → 判定为重放
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        });
 
       const req = createRequest({
         grant_type: "authorization_code",
@@ -295,27 +296,52 @@ describe("POST /api/oauth/token", () => {
       expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
     });
 
-    it("良性重试（10s 内、client 认证通过且 PKCE 匹配）返回 invalid_grant 但不吊销会话族", async () => {
+    it("良性重试（同 client、首次换取未签发 token、10s 内且 PKCE 匹配）返回 invalid_grant 但不吊销会话族", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      // consumeAuthorizationCode 原子消费失败
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 0,
-      });
-      // findUsedAuthorizationCode 发现 code 已被使用
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      const codeRecord = {
         id: "code-1",
         clientId: "test-client",
         userId: "user-1",
-        used: true,
-      });
-      // 良性判定查询：code 携带 PKCE challenge，首次换取刚刚创建了 session（≤10s）
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
         codeChallenge: "some-challenge",
         codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+        nonce: null,
+      };
+
+      // —— 第一次请求：消费成功，但用户不可用导致换取失败（未创建 OAuthSession）——
+      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        count: 1,
       });
-      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        createdAt: new Date(),
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ ...codeRecord, used: false }) // 消费前预检
+        .mockResolvedValueOnce(codeRecord); // consumeAuthorizationCode 事务内
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+
+      const firstReq = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "benign-retry-code",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "verifier",
       });
+      const firstRes = await POST(firstReq as unknown as NextRequest);
+      expect(firstRes.status).toBe(400);
+
+      // —— 第二次请求：同一 client 携带同一 verifier 重放同一 code ——
+      // 消费前预检发现 code 已被使用
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        // findUsedAuthorizationCode 发现 code 已被使用
+        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        // 良性判定查询：code 携带 PKCE challenge
+        .mockResolvedValueOnce({ codeChallenge: "some-challenge", codeChallengeMethod: "S256" });
+      // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
+      // 首次换取未创建 session（未签发 token）→ 满足良性重试的"无关联 OAuthSession"条件
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
 
       const req = createRequest({
         grant_type: "authorization_code",
@@ -333,21 +359,58 @@ describe("POST /api/oauth/token", () => {
       expect(revokeRefreshToken).not.toHaveBeenCalled();
     });
 
+    it("首次换取已签发 token（存在关联 OAuthSession）时，10s 内的重试仍吊销全部 token", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      // 消费前预检 + findUsedAuthorizationCode 均发现 code 已被使用
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        // 良性判定查询：code 携带 PKCE challenge
+        .mockResolvedValueOnce({ codeChallenge: "some-challenge", codeChallengeMethod: "S256" });
+      // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
+      // 首次换取已成功创建 session（token 已签发）→ 即使间隔 ≤10s 且 PKCE 匹配也一律吊销
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        createdAt: new Date(),
+      });
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "issued-then-replayed-code",
+        code_verifier: "verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+        where: { authorizationCodeId: "code-1", revokedAt: null },
+        data: { revokedAt: expect.any(Date) },
+      });
+      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+    });
+
     it("重放间隔超过 10 秒（session 创建于 60s 前）仍吊销全部 token", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 0,
-      });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        used: true,
-      });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        codeChallenge: "some-challenge",
-        codeChallengeMethod: "S256",
-      });
+      // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        // 消费前预检：code 已被使用
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
+        // findUsedAuthorizationCode：code 已被使用
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
+        .mockResolvedValueOnce({
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+        });
       // 首次换取发生在 60 秒前，超出良性重试窗口
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         createdAt: new Date(Date.now() - 60 * 1000),
@@ -371,19 +434,26 @@ describe("POST /api/oauth/token", () => {
 
     it("重放请求 PKCE verifier 不符仍吊销（真实重放防护不削弱）", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 0,
-      });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        used: true,
-      });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        codeChallenge: "some-challenge",
-        codeChallengeMethod: "S256",
-      });
+      // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        // 消费前预检：code 已被使用
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
+        // findUsedAuthorizationCode：code 已被使用
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
+        .mockResolvedValueOnce({
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+        });
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         createdAt: new Date(),
       });
@@ -422,9 +492,7 @@ describe("POST /api/oauth/token", () => {
 
     it("授权码过期应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 1,
-      });
+      // 预检命中已过期 code → 不发起消费，走"无效或已使用"错误路径
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -457,9 +525,7 @@ describe("POST /api/oauth/token", () => {
         },
         reason: "ok",
       });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 1,
-      });
+      // 预检命中未消费 code 但 client_id 不匹配 → 不发起消费（updateMany 不应被调用）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client", // 与请求的 other-client 不匹配
@@ -482,13 +548,13 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
+      // client_id 不匹配时不消费授权码（防燃烧）
+      expect(prisma.oAuthAuthorizationCode.updateMany).not.toHaveBeenCalled();
     });
 
     it("缺少 redirect_uri 应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 1,
-      });
+      // 预检命中未消费 code 但凭证校验失败 → 不发起消费（updateMany 不应被调用）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -516,9 +582,7 @@ describe("POST /api/oauth/token", () => {
 
     it("redirect_uri 与授权请求不一致应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 1,
-      });
+      // 预检命中未消费 code 但凭证校验失败 → 不发起消费（updateMany 不应被调用）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -547,9 +611,7 @@ describe("POST /api/oauth/token", () => {
 
     it("PKCE code_verifier 缺失应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 1,
-      });
+      // 预检命中未消费 code 但凭证校验失败 → 不发起消费（updateMany 不应被调用）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -576,11 +638,50 @@ describe("POST /api/oauth/token", () => {
       expect(body.error).toBe("invalid_grant");
     });
 
+    it("燃烧 DoS 防护：持有 code 但无/错凭证的请求不消费授权码（先查后消费）", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "code-1",
+        clientId: "test-client",
+        userId: "user-1",
+        redirectUri: "https://example.com/cb",
+        scopes: ["openid"],
+        code: "hashed-code",
+        codeChallenge: "some-challenge",
+        codeChallengeMethod: "S256",
+        expiresAt: new Date(Date.now() + 60000),
+        nonce: null,
+        used: false,
+      });
+      // verifier 与 code_challenge 不匹配
+      vi.mocked(verifyPKCE).mockReturnValueOnce(false);
+
+      const req = createRequest({
+        grant_type: "authorization_code",
+        client_id: "test-client",
+        client_secret: "secret",
+        code: "burn-attempt-code",
+        redirect_uri: "https://example.com/cb",
+        code_verifier: "wrong-verifier",
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      // 关键断言：授权码未被消费（合法用户后续仍可用正确 verifier 完成换取）
+      expect(prisma.oAuthAuthorizationCode.updateMany).not.toHaveBeenCalled();
+      // 燃烧行为记入审计日志
+      expect(scheduleSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          detail: expect.objectContaining({ reason: "pkce_failed" }),
+        })
+      );
+    });
+
     it("授权码未携带 PKCE 应返回 400", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
-      (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        count: 1,
-      });
+      // 预检命中未消费 code 但无 PKCE challenge → 不发起消费（updateMany 不应被调用）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "code-1",
         clientId: "test-client",
@@ -613,18 +714,32 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         count: 1,
       });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        redirectUri: "https://example.com/cb",
-        scopes: ["openid"],
-        code: "hashed-code",
-        codeChallenge: "some-challenge",
-        codeChallengeMethod: "S256",
-        expiresAt: new Date(Date.now() + 60000),
-        nonce: null,
-      });
+      // 先查后消费：消费前预检与 consumeAuthorizationCode 事务内各查一次
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        });
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "user-1",
         phone: "13800138000",
@@ -662,18 +777,32 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         count: 1,
       });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        redirectUri: "https://example.com/cb",
-        scopes: ["openid"],
-        code: "hashed-code",
-        codeChallenge: "some-challenge",
-        codeChallengeMethod: "S256",
-        expiresAt: new Date(Date.now() + 60000),
-        nonce: null,
-      });
+      // 先查后消费：消费前预检与 consumeAuthorizationCode 事务内各查一次
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        });
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "user-1",
         phone: "13800138000",
@@ -709,18 +838,32 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         count: 1,
       });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        redirectUri: "https://example.com/cb",
-        scopes: ["openid"],
-        code: "hashed-code",
-        codeChallenge: "some-challenge",
-        codeChallengeMethod: "S256",
-        expiresAt: new Date(Date.now() + 60000),
-        nonce: null,
-      });
+      // 先查后消费：消费前预检与 consumeAuthorizationCode 事务内各查一次
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        });
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "user-1",
         phone: "13800138000",
@@ -761,18 +904,32 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthAuthorizationCode.updateMany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         count: 1,
       });
-      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-        id: "code-1",
-        clientId: "test-client",
-        userId: "user-1",
-        redirectUri: "https://example.com/cb",
-        scopes: ["openid"],
-        code: "hashed-code",
-        codeChallenge: "some-challenge",
-        codeChallengeMethod: "S256",
-        expiresAt: new Date(Date.now() + 60000),
-        nonce: null,
-      });
+      // 先查后消费：消费前预检与 consumeAuthorizationCode 事务内各查一次
+      (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          redirectUri: "https://example.com/cb",
+          scopes: ["openid"],
+          code: "hashed-code",
+          codeChallenge: "some-challenge",
+          codeChallengeMethod: "S256",
+          expiresAt: new Date(Date.now() + 60000),
+          nonce: null,
+        });
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "user-1",
         phone: "13800138000",

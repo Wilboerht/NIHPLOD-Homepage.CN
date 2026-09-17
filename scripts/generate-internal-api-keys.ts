@@ -16,9 +16,6 @@
  * 将生成的 JSON 数组分别配置到：
  * - 官网主站：INTERNAL_API_KEYS
  * - 对应子站：INTERNAL_API_KEYS
- *
- * 切换期间可以保留旧版 INTERNAL_API_SECRET 作为兼容回退，
- * 稳定后建议删除 INTERNAL_API_SECRET，只保留 INTERNAL_API_KEYS。
  */
 
 import { randomBytes } from "crypto";
@@ -45,16 +42,11 @@ console.log(JSON.stringify(config, null, 2));
 console.log("\n=== 环境变量配置（两边保持一致） ===\n");
 console.log(`# 官网主站 .env.production / .env.local`);
 console.log(`INTERNAL_API_KEYS='${jsonArray}'`);
-console.log(`# 切换期间可保留旧版兼容`);
-console.log(`INTERNAL_API_SECRET=你的旧版共享密钥`);
 console.log();
 console.log(`# ${project} 子站 .env.production / .env.local`);
 console.log(`OFFICIAL_API_URL=https://nihplod.cn`);
 console.log(`INTERNAL_API_KEYS='${jsonArray}'`);
-console.log(`# 切换期间可保留旧版兼容`);
-console.log(`INTERNAL_API_SECRET=你的旧版共享密钥`);
 console.log("\n=== 部署顺序 ===");
 console.log("1. 先部署官网主站，让 /api/v1/internal/* 能识别新 key");
-console.log(`2. 再部署 ${project} 子站，子站会优先使用 INTERNAL_API_KEYS 发送签名请求`);
-console.log("3. 观察日志确认内部 API 调用成功");
-console.log("4. 稳定后两边同时删除 INTERNAL_API_SECRET\n");
+console.log(`2. 再部署 ${project} 子站，子站会使用 INTERNAL_API_KEYS 发送签名请求`);
+console.log("3. 观察日志确认内部 API 调用成功\n");

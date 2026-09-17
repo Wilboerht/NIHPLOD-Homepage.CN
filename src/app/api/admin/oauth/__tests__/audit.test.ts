@@ -18,20 +18,23 @@ import { NextRequest, NextResponse } from "next/server";
 // vi.hoisted 共享 mock
 // ============================================
 
-const { mockVerifyAuth, mockCheckAdminRateLimit, prismaMock } = vi.hoisted(() => {
-  const createMockModel = () => ({
-    findMany: vi.fn(),
-    count: vi.fn(),
-  });
-  return {
-    mockVerifyAuth: vi.fn(),
-    mockCheckAdminRateLimit: vi.fn(),
-    prismaMock: {
-      ssoAuditEvent: createMockModel(),
-      user: createMockModel(),
-    } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
-  };
-});
+const { mockVerifyAuth, mockCheckAdminRateLimit, mockCreateAuditLog, prismaMock } = vi.hoisted(
+  () => {
+    const createMockModel = () => ({
+      findMany: vi.fn(),
+      count: vi.fn(),
+    });
+    return {
+      mockVerifyAuth: vi.fn(),
+      mockCheckAdminRateLimit: vi.fn(),
+      mockCreateAuditLog: vi.fn(),
+      prismaMock: {
+        ssoAuditEvent: createMockModel(),
+        user: createMockModel(),
+      } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
+    };
+  }
+);
 
 // ============================================
 // Mock 模块
@@ -53,6 +56,10 @@ vi.mock("@/lib/ratelimit", () => ({
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn(), log: vi.fn() },
   logError: vi.fn(),
+}));
+
+vi.mock("@/lib/audit", () => ({
+  createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
 }));
 
 // sso-audit：保留真实 escapeCSV（公式注入防护为安全关键路径），仅 stub 记录函数
@@ -97,6 +104,7 @@ describe("GET /api/admin/oauth/audit", () => {
     vi.clearAllMocks();
     mockVerifyAuth.mockResolvedValue(OWNER);
     mockCheckAdminRateLimit.mockResolvedValue(null);
+    mockCreateAuditLog.mockResolvedValue(true);
     prismaMock.user.findMany.mockResolvedValue([]);
   });
 
@@ -251,5 +259,56 @@ describe("GET /api/admin/oauth/audit", () => {
     };
     expect(args.take).toBe(5000);
     expect(args.skip).toBeUndefined();
+  });
+
+  it("CSV 导出应写入管理端审计日志（操作人、筛选条件、导出条数）", async () => {
+    prismaMock.ssoAuditEvent.findMany.mockResolvedValue([makeAuditItem()]);
+
+    const { GET } = await import("@/app/api/admin/oauth/audit/route");
+    const res = await GET(
+      createRequest("/api/admin/oauth/audit?export=csv&event=token&clientId=client-abc")
+    );
+    expect(res.status).toBe(200);
+
+    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sso_audit_export",
+        adminId: OWNER.id,
+        detail: expect.objectContaining({
+          exportedCount: 1,
+          filters: expect.objectContaining({ event: "token", clientId: "client-abc" }),
+        }),
+      })
+    );
+  });
+
+  it("分页参数为 NaN 时回退默认值，负数钳制到最小 1（不产生 NaN/负的 skip/take）", async () => {
+    prismaMock.ssoAuditEvent.findMany.mockResolvedValue([]);
+    prismaMock.ssoAuditEvent.count.mockResolvedValue(0);
+
+    const { GET } = await import("@/app/api/admin/oauth/audit/route");
+    const res = await GET(createRequest("/api/admin/oauth/audit?page=abc&pageSize=xyz"));
+    expect(res.status).toBe(200);
+
+    const args = prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as {
+      skip: number;
+      take: number;
+    };
+    expect(args.skip).toBe(0);
+    expect(args.take).toBe(50);
+
+    const data = await res.json();
+    expect(data.data.pagination).toEqual({ page: 1, pageSize: 50, total: 0 });
+
+    // 负数为有限值：钳制到最小 1，而非回退默认
+    prismaMock.ssoAuditEvent.findMany.mockClear();
+    const res2 = await GET(createRequest("/api/admin/oauth/audit?page=-3&pageSize=-5"));
+    expect(res2.status).toBe(200);
+    const args2 = prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as {
+      skip: number;
+      take: number;
+    };
+    expect(args2.skip).toBe(0);
+    expect(args2.take).toBe(1);
   });
 });

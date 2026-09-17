@@ -297,7 +297,7 @@ model RefreshToken {
   id        String   @id @default(cuid())
   userId    String
   clientId  String?                               // OAuth client_id（OAuth 刷新令牌使用）
-  token     String   @db.Text                      // 加密后的 refresh token
+  token     String   @db.Text                      // refresh token 的 SHA-256 哈希（不可逆，不落明文）
   expiresAt DateTime                               // 过期时间
   revokedAt DateTime?                              // 撤销时间（已登出）
 
@@ -560,7 +560,7 @@ model AuditLog {
 model CronTaskRun {
   id         String   @id @default(cuid())
   taskName   String // 任务名（lib/cron-tasks.ts 中定义的唯一名称）
-  trigger    String   @default("cron") // cron | manual
+  trigger    String   @default("cron") // cron | manual | external（外部调度器经 /api/cron/run 触发）
   success    Boolean
   error      String?  @db.Text // 失败原因（成功为 null）
   adminId    String? // 手动触发的管理员（无 FK：管理员删除后保留历史记录）

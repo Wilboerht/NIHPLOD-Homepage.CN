@@ -3,7 +3,7 @@
  *
  * 覆盖：
  * - 角色模板：owner 全量 / admin 保持旧行为 / ops/support/hr/finance 边界
- * - 个人覆盖：追加授权、撤销（!前缀）、owner 忽略覆盖、未知角色回退 admin
+ * - 个人覆盖：追加授权、撤销（!前缀）、owner 忽略覆盖、未知角色 fail-closed 为空权限集
  * - sanitizePermissionOverrides：过滤未知权限、去重
  * - buildPermissionOverrides：勾选状态与覆盖差异互转
  */
@@ -65,10 +65,15 @@ describe("角色模板", () => {
     expect(finance).not.toContain("users:write");
   });
 
-  it("未知角色回退 admin 模板", () => {
-    expect(resolveAdminPermissions("unknown-role")).toEqual(
-      resolveAdminPermissions("admin")
-    );
+  it("未知角色 fail-closed 回退空权限集（不回退 admin，防止提权）", () => {
+    expect(resolveAdminPermissions("unknown-role")).toEqual([]);
+    expect(
+      hasAdminPermission({ role: "unknown-role" }, "users:sensitive:read")
+    ).toBe(false);
+    // 个人追加授权在未知角色上仍可生效（空模板 + 覆盖）
+    expect(
+      hasAdminPermission({ role: "unknown-role", permissionOverrides: ["audit:read"] }, "audit:read")
+    ).toBe(true);
   });
 });
 
