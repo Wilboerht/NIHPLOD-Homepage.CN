@@ -367,6 +367,41 @@
     background-color: #d1d5db;
   }
 
+  /* 悬停时显示细滚动条（默认隐藏，保留长内容的滚动位置感知） */
+  .scrollbar-hover {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hover::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .scrollbar-hover:hover {
+    -ms-overflow-style: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 38, 62, 0.15) transparent;
+  }
+
+  .scrollbar-hover:hover::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-hover:hover::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-hover:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 38, 62, 0.15);
+    border-radius: 3px;
+  }
+
+  .scrollbar-hover:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 38, 62, 0.3);
+  }
+
   /* 矿物纹理叠加层 */
   .texture-overlay {
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef, type ReactNode } from "react";
+import { useEffect, useCallback, useId, useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useMounted } from "@/hooks/useMounted";
 import { sanitizeHtml } from "@/lib/html-sanitize";
@@ -115,6 +115,10 @@ export function ProductDrawer({
   );
 
   const mobileContentRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  // 无障碍关联 id（桌面/移动同组件渲染，useId 保证唯一）
+  const a11yId = useId();
 
   // 切换 Tab 时重置滚动位置
   const handleTabChange = (tab: "description" | "ingredients" | "usage") => {
@@ -152,6 +156,59 @@ export function ProductDrawer({
       window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [isOpen, handleKeyDown]);
+
+  // 打开时聚焦弹窗、关闭后归还焦点（弹层内嵌套场景下保持焦点上下文）
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+
+    return () => {
+      const previous = previousFocusRef.current;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+      previousFocusRef.current = null;
+    };
+  }, [isOpen]);
+
+  // 焦点陷阱：Tab 只在弹窗内部循环（过滤 display:none 的元素）
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.getClientRects().length > 0);
+
+      if (focusable.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const inside = active ? dialog.contains(active) : false;
+
+      if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && (!inside || active === first)) {
+        e.preventDefault();
+        last.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleTabKey);
+    return () => window.removeEventListener("keydown", handleTabKey);
+  }, [isOpen]);
 
   // 关闭时重置状态（渲染阶段同步，避免 effect 内 setState）
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -210,7 +267,12 @@ export function ProductDrawer({
               className="absolute inset-0 bg-[#FFFFFF] lg:bg-black/40 lg:backdrop-blur-sm"
             />
             <m.div
-              className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none bg-transparent shadow-2xl lg:h-[700px] lg:flex-row lg:rounded-3xl lg:bg-[#FBF8F0]"
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={product.name}
+              tabIndex={-1}
+              className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none bg-transparent shadow-2xl outline-none lg:h-[min(700px,calc(100dvh_-_3rem))] lg:flex-row lg:rounded-3xl lg:bg-[#FBF8F0]"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -221,7 +283,7 @@ export function ProductDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute right-4 top-4 z-[220] hidden h-8 w-8 items-center justify-center text-2xl font-light text-brand-charcoal transition-opacity hover:opacity-60 lg:right-6 lg:top-6 lg:flex"
+                className="absolute right-4 top-4 z-[220] hidden h-10 w-10 items-center justify-center rounded-full text-2xl font-light text-brand-charcoal transition-colors hover:bg-brand-charcoal/5 active:bg-brand-charcoal/10 lg:flex"
                 aria-label="关闭"
               >
                 &times;
@@ -238,8 +300,8 @@ export function ProductDrawer({
                 />
               </div>
 
-              {/* 手机端顶部栏 */}
-              <div className="relative flex h-[88px] w-full flex-shrink-0 items-center justify-center lg:hidden">
+              {/* 手机端顶部栏（高度含顶部安全区，避免返回键/Logo 顶到状态栏） */}
+              <div className="relative flex h-[calc(88px_+_env(safe-area-inset-top))] w-full flex-shrink-0 items-center justify-center pt-[env(safe-area-inset-top)] lg:hidden">
                 <button
                   type="button"
                   onClick={onClose}
@@ -314,8 +376,8 @@ export function ProductDrawer({
                         type="button"
                         onClick={() => setCurrentImageIndex(index)}
                         className={cn(
-                          "h-[2px] rounded-full border-none p-0 transition-all duration-300",
-                          currentImageIndex === index ? "w-5 bg-white" : "w-2 bg-white/40"
+                          "h-[2px] rounded-full border-none p-0 shadow-[0_1px_3px_rgba(0,38,62,0.4)] transition-all duration-300",
+                          currentImageIndex === index ? "w-5 bg-white" : "w-2 bg-white/60"
                         )}
                       />
                     ))}
@@ -324,7 +386,7 @@ export function ProductDrawer({
               </div>
 
               {/* 右侧 - 产品信息区域 */}
-              <div className="scrollbar-hide flex-1 overflow-hidden lg:overflow-y-auto lg:px-10 lg:py-10">
+              <div className="scrollbar-hover flex-1 overflow-hidden lg:overflow-y-auto lg:px-10 lg:py-10">
                 {/* PC 端内容 */}
                 <div className="hidden h-full lg:block">
                   <div className="max-w-none">
@@ -362,6 +424,7 @@ export function ProductDrawer({
                         <div className="border-b border-brand-charcoal/10">
                           <button
                             type="button"
+                            aria-expanded={openAccordion === "ingredients"}
                             onClick={() => toggleAccordion("ingredients")}
                             className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-brand-charcoal"
                           >
@@ -399,6 +462,7 @@ export function ProductDrawer({
                         <div className="border-b border-brand-charcoal/10">
                           <button
                             type="button"
+                            aria-expanded={openAccordion === "usage"}
                             onClick={() => toggleAccordion("usage")}
                             className="flex w-full cursor-pointer items-center justify-between py-4 text-left text-[15px] font-semibold uppercase tracking-wider text-brand-charcoal"
                           >
@@ -489,9 +553,17 @@ export function ProductDrawer({
 
                   {/* Tab 切换 */}
                   <div className="relative z-40 mb-4 shrink-0">
-                    <nav className="flex h-[37px] items-center rounded-full bg-[#FFFFFF] p-[4px]">
+                    <div
+                      role="tablist"
+                      aria-label="产品信息"
+                      className="flex h-[37px] items-center rounded-full bg-[#FFFFFF] p-[4px]"
+                    >
                       <button
                         type="button"
+                        role="tab"
+                        id={`${a11yId}-tab-description`}
+                        aria-selected={activeTab === "description"}
+                        aria-controls={`${a11yId}-panel-description`}
                         onClick={() => handleTabChange("description")}
                         className={cn(
                           "relative flex flex-1 items-center justify-center whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
@@ -514,6 +586,10 @@ export function ProductDrawer({
                       {product.ingredients && (
                         <button
                           type="button"
+                          role="tab"
+                          id={`${a11yId}-tab-ingredients`}
+                          aria-selected={activeTab === "ingredients"}
+                          aria-controls={`${a11yId}-panel-ingredients`}
                           onClick={() => handleTabChange("ingredients")}
                           className={cn(
                             "relative flex flex-1 items-center justify-center whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
@@ -537,6 +613,10 @@ export function ProductDrawer({
                       {product.usage && (
                         <button
                           type="button"
+                          role="tab"
+                          id={`${a11yId}-tab-usage`}
+                          aria-selected={activeTab === "usage"}
+                          aria-controls={`${a11yId}-panel-usage`}
                           onClick={() => handleTabChange("usage")}
                           className={cn(
                             "relative flex flex-1 items-center justify-center whitespace-nowrap text-[13px] font-normal leading-[20px] transition-all duration-300",
@@ -557,42 +637,53 @@ export function ProductDrawer({
                           </span>
                         </button>
                       )}
-                    </nav>
+                    </div>
                   </div>
 
-                  {/* Tab 内容 */}
+                  {/* Tab 内容（面板常驻，非激活用 hidden 隐藏，保证 aria-controls 引用有效） */}
                   <div className="flex-1">
-                    {activeTab === "description" && (
-                      <>
-                        <div
-                          className="mb-4 text-[13px] leading-[1.8] text-brand-charcoal/70"
-                          dangerouslySetInnerHTML={{
-                            __html: sanitizeHtml(product.description),
-                          }}
-                        />
-                        <XiaohongshuLink categoryName={product.category.name} />
-                      </>
-                    )}
-                    {activeTab === "ingredients" &&
-                      (product.ingredients ? (
+                    <div
+                      role="tabpanel"
+                      id={`${a11yId}-panel-description`}
+                      aria-labelledby={`${a11yId}-tab-description`}
+                      hidden={activeTab !== "description"}
+                    >
+                      <div
+                        className="mb-4 text-[13px] leading-[1.8] text-brand-charcoal/70"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeHtml(product.description),
+                        }}
+                      />
+                      <XiaohongshuLink categoryName={product.category.name} />
+                    </div>
+                    {product.ingredients && (
+                      <div
+                        role="tabpanel"
+                        id={`${a11yId}-panel-ingredients`}
+                        aria-labelledby={`${a11yId}-tab-ingredients`}
+                        hidden={activeTab !== "ingredients"}
+                      >
                         <div
                           className="text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{
                             __html: sanitizeHtml(product.ingredients),
                           }}
                         />
-                      ) : (
-                        <p className="py-4 text-[13px] text-brand-charcoal/40">暂无成分信息</p>
-                      ))}
-                    {activeTab === "usage" &&
-                      (product.usage ? (
+                      </div>
+                    )}
+                    {product.usage && (
+                      <div
+                        role="tabpanel"
+                        id={`${a11yId}-panel-usage`}
+                        aria-labelledby={`${a11yId}-tab-usage`}
+                        hidden={activeTab !== "usage"}
+                      >
                         <div
                           className="text-[13px] leading-[1.8] text-brand-charcoal/70"
                           dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.usage) }}
                         />
-                      ) : (
-                        <p className="py-4 text-[13px] text-brand-charcoal/40">暂无使用方法</p>
-                      ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* 购买渠道（第三方平台外链）；传入 actionArea 时改为自定义操作区 */}

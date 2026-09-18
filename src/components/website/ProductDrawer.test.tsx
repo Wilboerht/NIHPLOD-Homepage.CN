@@ -7,7 +7,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 vi.mock("next-view-transitions", () => ({
   Link: ({ children, ...props }: React.ComponentProps<"a">) => <a {...props}>{children}</a>,
@@ -62,6 +62,31 @@ describe("ProductDrawer", () => {
     expect(screen.queryByText("官方旗舰店")).not.toBeInTheDocument();
     expect(screen.queryByText("天猫")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /NIHPLOD Logo/ })).not.toBeInTheDocument();
+  });
+
+  it("具备 dialog 语义，打开时聚焦弹窗容器，关闭后归还焦点", () => {
+    const { rerender } = render(<ProductDrawer isOpen onClose={vi.fn()} product={PRODUCT} />);
+
+    const dialog = screen.getByRole("dialog", { name: "氨基酸洁面乳" });
+    expect(dialog).toHaveFocus();
+
+    rerender(<ProductDrawer isOpen={false} onClose={vi.fn()} product={null} />);
+    expect(document.body).toHaveFocus();
+  });
+
+  it("移动端信息 Tab 具备 tablist/tab/tabpanel 语义", () => {
+    render(<ProductDrawer isOpen onClose={vi.fn()} product={PRODUCT} />);
+
+    const tablist = screen.getByRole("tablist", { name: "产品信息" });
+    expect(within(tablist).getAllByRole("tab")).toHaveLength(3);
+    expect(within(tablist).getByRole("tab", { name: "产品简介" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByRole("tabpanel")).toHaveAttribute(
+      "aria-labelledby",
+      within(tablist).getByRole("tab", { name: "产品简介" }).id
+    );
   });
 
   it("ESC 关闭并阻止冒泡：不触发下层弹窗的 ESC 监听", () => {
