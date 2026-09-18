@@ -13,6 +13,7 @@ import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { SecurityPanel } from "./SecurityPanel";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 const phoneInputClass =
@@ -52,10 +53,8 @@ export function ProfilePanel() {
   const [addrDefault, setAddrDefault] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
-  // 移动端退出登录二次确认
+  // 移动端退出登录二次确认（分层退出：默认仅当前设备，勾选后全局退出）
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  // 分层退出：默认仅当前设备，勾选后全局退出（撤销全部设备会话并通知所有已授权平台）
-  const [logoutAllDevices, setLogoutAllDevices] = useState(false);
 
   // 换绑手机号表单状态
   const [showPhoneForm, setShowPhoneForm] = useState(false);
@@ -1020,39 +1019,14 @@ export function ProfilePanel() {
         </div>
       </div>
       {/* 移动端退出登录确认 */}
-      <ConfirmDialog
+      <LogoutConfirmDialog
         open={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
-        onConfirm={async () => {
+        onConfirm={async (allDevices) => {
           setShowLogoutConfirm(false);
-          await logout({ allDevices: logoutAllDevices });
+          await logout({ allDevices });
         }}
-        title="退出登录"
-        description="退出后需重新登录才能查看会员权益与个人资料，确定退出吗？"
-        confirmText="退出登录"
-        type="danger"
-      >
-        <label
-          className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3.5 py-3 transition-colors ${
-            logoutAllDevices
-              ? "border-brand-primary/40 bg-brand-primary/5"
-              : "border-stone-200 bg-stone-50/60 hover:border-stone-300 hover:bg-stone-50"
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={logoutAllDevices}
-            onChange={(e) => setLogoutAllDevices(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
-          />
-          <span className="text-[13px] font-medium leading-snug text-brand-charcoal">
-            同时退出所有设备和已授权的平台
-            <span className="mt-1 block text-xs font-normal leading-relaxed text-brand-charcoal/45">
-              勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
-            </span>
-          </span>
-        </label>
-      </ConfirmDialog>
+      />
       <ConfirmDialog
         open={!!deletingAddressId}
         onClose={() => setDeletingAddressId(null)}

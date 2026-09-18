@@ -21,7 +21,7 @@ import { m, AnimatePresence, useReducedMotion, useDragControls } from "framer-mo
 import Image from "next/image";
 import { X, User, LogOut, Crown, Gift, Shield } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { VipPanel } from "./user-center/VipPanel";
@@ -57,9 +57,8 @@ export function UserCenterModal() {
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   // 移动端 sheet 下滑关闭：手势只在头部触发（content 滚动不受影响），拖拽移动整个弹窗
   const dragControls = useDragControls();
-  // 退出登录二次确认 + 全局退出勾选（分层退出：默认仅当前设备）
+  // 退出登录二次确认（分层退出：默认仅当前设备，勾选后全局退出）
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [logoutAllDevices, setLogoutAllDevices] = useState(false);
 
   // 禁止背景滚动
   useEffect(() => {
@@ -137,13 +136,12 @@ export function UserCenterModal() {
   if (!mounted || !user) return null;
 
   const handleLogout = () => {
-    setLogoutAllDevices(false);
     setShowLogoutConfirm(true);
   };
 
-  const handleLogoutConfirm = async () => {
+  const handleLogoutConfirm = async (allDevices: boolean) => {
     setShowLogoutConfirm(false);
-    await logout({ allDevices: logoutAllDevices });
+    await logout({ allDevices });
   };
   const content = (
     <AnimatePresence>
@@ -435,36 +433,11 @@ export function UserCenterModal() {
     <>
       {content}
       {/* 退出登录二次确认：默认仅退出当前设备，勾选后全局退出（撤销全部设备会话并通知所有已授权平台） */}
-      <ConfirmDialog
+      <LogoutConfirmDialog
         open={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogoutConfirm}
-        title="退出登录"
-        description="退出后需重新登录才能查看会员权益与个人资料，确定退出吗？"
-        confirmText="退出登录"
-        type="danger"
-      >
-        <label
-          className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3.5 py-3 transition-colors ${
-            logoutAllDevices
-              ? "border-brand-primary/40 bg-brand-primary/5"
-              : "border-stone-200 bg-stone-50/60 hover:border-stone-300 hover:bg-stone-50"
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={logoutAllDevices}
-            onChange={(e) => setLogoutAllDevices(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
-          />
-          <span className="text-[13px] font-medium leading-snug text-brand-charcoal">
-            同时退出所有设备和已授权的平台
-            <span className="mt-1 block text-xs font-normal leading-relaxed text-brand-charcoal/45">
-              勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
-            </span>
-          </span>
-        </label>
-      </ConfirmDialog>
+      />
     </>,
     document.body
   );

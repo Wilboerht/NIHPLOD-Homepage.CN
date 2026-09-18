@@ -163,7 +163,7 @@ describe("UserCenterModal", () => {
     expect(mockCloseUserCenter).not.toHaveBeenCalled();
   });
 
-  // 侧边栏按钮与确认框按钮同名「退出登录」，getAllByRole 取最后一个（确认框的）
+  // 侧边栏按钮与确认框按钮（未勾选时）同名「退出登录」，getAllByRole 取最后一个（确认框的）
   const clickLogoutConfirm = () => {
     const buttons = screen.getAllByRole("button", { name: "退出登录" });
     fireEvent.click(buttons[buttons.length - 1]);
@@ -191,7 +191,8 @@ describe("UserCenterModal", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "退出登录" })[0]);
     fireEvent.click(await screen.findByRole("checkbox"));
 
-    clickLogoutConfirm();
+    // 勾选后确认按钮文案变为「退出所有平台」
+    fireEvent.click(await screen.findByRole("button", { name: "退出所有平台" }));
     await waitFor(() => expect(logoutMock).toHaveBeenCalledWith({ allDevices: true }));
   });
 });
