@@ -9,7 +9,12 @@ import {
   ReactNode,
   useEffect,
 } from "react";
-import { fetchWithAuth, refreshAccessToken, UnauthorizedError } from "@/lib/fetch-with-auth";
+import {
+  fetchWithAuth,
+  refreshAccessToken,
+  UnauthorizedError,
+  SESSION_EXPIRED_EVENT,
+} from "@/lib/fetch-with-auth";
 import { apiPost } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import type { UserCenterTab, SecuritySection } from "@/lib/user-center-tab";
@@ -201,6 +206,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // 会话终结处理：清态 + 跳登录页（expired=1 让登录页提示"登录已过期"）。
+  // 触发源：任一接口 401 且静默刷新最终失败（SESSION_EXPIRED_EVENT），
+  // 或下方周期性刷新发现 refresh token 已失效（如全局退出/令牌被吊销）。
+  const handleSessionExpired = useCallback(() => {
+    if (typeof window === "undefined") return;
+    // 仅"曾处于登录态"时反应：游客访问公开接口的 401 不应触发跳转
+    if (!user && !localStorage.getItem("auth_hint")) return;
+    localStorage.removeItem("auth_hint");
+    localStorage.removeItem("__nihplod_refresh_fail_count");
+    setUser(null);
+    setUserCenterOpen(false);
+    const returnTo = window.location.pathname + window.location.search;
+    window.location.href = `${buildAuthUrl("login", returnTo)}&expired=1`;
+  }, [user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [handleSessionExpired]);
+
   // 定时主动刷新 Access Token（每 119 分钟一次，Access Token 2 小时过期）
   useEffect(() => {
     const AUTH_HINT_KEY = "auth_hint";
@@ -252,23 +278,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
             } else {
               // 静默刷新最终失败（refresh token 已过期/被吊销）：
-              // 主动清除登录态，避免 UI 仍显示已登录而各面板 401 假空态
-              localStorage.removeItem(AUTH_HINT_KEY);
-              localStorage.removeItem(REFRESH_FAIL_COUNT_KEY);
-              setUser(null);
+              // 走统一的会话终结处理（清态 + 跳登录页），
+              // 避免 UI 仍显示已登录而各面板 401 假空态
+              handleSessionExpired();
             }
           })
           .catch(() => {
-            localStorage.removeItem(AUTH_HINT_KEY);
-            localStorage.removeItem(REFRESH_FAIL_COUNT_KEY);
-            setUser(null);
+            handleSessionExpired();
           });
       },
       14 * 60 * 1000
     );
 
     return () => clearInterval(intervalId);
-  }, [user]);
+  }, [user, handleSessionExpired]);
 
   const value = useMemo(
     () => ({

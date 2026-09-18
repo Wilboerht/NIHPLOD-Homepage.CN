@@ -14,6 +14,12 @@ export class UnauthorizedError extends Error {
   }
 }
 
+/**
+ * 会话终结事件：401 且静默刷新最终失败时广播（如全局退出/令牌被吊销）。
+ * 由 AuthContext 统一监听并执行"清态 + 跳登录页"，本库保持 UI 无关。
+ */
+export const SESSION_EXPIRED_EVENT = "nihplod:session-expired";
+
 let refreshPromise: Promise<boolean> | null = null;
 
 /**
@@ -120,6 +126,10 @@ export async function fetchWithAuth(
   if (response.status === 401) {
     const refreshed = await refreshAccessToken();
     if (!refreshed) {
+      // 刷新最终失败 = 会话已终结（全局退出/吊销），广播事件由 AuthContext 统一处理
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+      }
       throw new UnauthorizedError();
     }
     response = await fetch(input, mergedInit);

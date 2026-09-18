@@ -9,6 +9,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SESSION_EXPIRED_EVENT } from "@/lib/fetch-with-auth";
 
 const { mockFetchWithAuth } = vi.hoisted(() => ({ mockFetchWithAuth: vi.fn() }));
 
@@ -132,5 +133,58 @@ describe("AuthContext 跨标签页同步", () => {
     });
     expect(mockFetchWithAuth.mock.calls.length).toBe(callsBefore);
     expect(screen.getByText("未登录")).toBeInTheDocument();
+  });
+});
+
+describe("AuthContext 会话终结处理（401 拦截）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it("登录态下收到会话终结事件：清除登录态与 auth_hint", async () => {
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1", nickname: "测试用户" }));
+    localStorage.setItem("auth_hint", "1");
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
+    await waitFor(() => {
+      expect(screen.getByText("已登录:测试用户")).toBeInTheDocument();
+    });
+
+    // jsdom 不实现导航：location.href 赋值仅产生 stderr 噪音，不影响断言
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("未登录")).toBeInTheDocument();
+    });
+    expect(localStorage.getItem("auth_hint")).toBeNull();
+  });
+
+  it("游客态收到会话终结事件：不触发任何状态变化", async () => {
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1" }));
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
+    await waitFor(() => {
+      expect(screen.getByText("未登录")).toBeInTheDocument();
+    });
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("未登录")).toBeInTheDocument();
+    expect(mockFetchWithAuth).not.toHaveBeenCalled();
   });
 });

@@ -145,6 +145,16 @@ function LoginPageContent() {
   const reauth = searchParams.get("reauth") === "1";
   const loginHint = (searchParams.get("login_hint") || "").replace(/\D/g, "").slice(0, 11);
   const isSsoLogin = !!returnTo?.startsWith("/api/oauth/authorize");
+  // 会话过期被强制跳转而来（全局退出/令牌吊销）：提示原因
+  const sessionExpired = searchParams.get("expired") === "1";
+
+  useEffect(() => {
+    if (sessionExpired) {
+      toast.error("登录已过期，请重新登录");
+    }
+    // 仅在挂载时提示一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const mounted = useMounted();
   const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
