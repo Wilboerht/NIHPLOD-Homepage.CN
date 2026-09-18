@@ -48,7 +48,7 @@ interface AuthContextType {
   redirectToForgotPassword: (returnTo?: string | null) => void;
   redirectToWechatBind: (returnTo?: string | null) => void;
   refreshUser: (force?: boolean) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (options?: { allDevices?: boolean }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -150,9 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (options?: { allDevices?: boolean }) => {
     try {
-      await apiPost("/api/auth/logout");
+      // allDevices=true 时撤销全部设备的会话并 backchannel 通知所有已授权平台（全局退出）；
+      // 默认仅退出当前设备，其他设备与其他平台的会话不受影响
+      await apiPost("/api/auth/logout", { allDevices: options?.allDevices === true });
       setUser(null);
       setUserCenterOpen(false);
       localStorage.removeItem("auth_hint");

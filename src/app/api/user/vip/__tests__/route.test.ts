@@ -43,6 +43,7 @@ describe("GET /api/user/vip", () => {
     vi.clearAllMocks();
     delete process.env.ADVISOR_INTERNAL_SECRET;
     delete process.env.ADVISOR_API_BASE;
+    delete process.env.INTERNAL_API_KEYS;
   });
 
   it("普通会员（¥500）：下一等级为银卡，还差 ¥500，进度 50%", async () => {
@@ -161,5 +162,36 @@ describe("GET /api/user/vip", () => {
         headers: { Authorization: "Bearer test-secret" },
       })
     );
+  });
+
+  it("配置了 INTERNAL_API_KEYS 时优先使用 HMAC 签名头（不再用 Bearer）", async () => {
+    process.env.INTERNAL_API_KEYS = JSON.stringify([
+      { project: "advisor", key: "advisor-test-key", secret: "a".repeat(32) },
+    ]);
+    const usage = {
+      level: null,
+      totalUsed: 1,
+      todayUsed: 0,
+      quota: { lifetimeLimit: 10, dailyLimit: 3, unlimited: false },
+      remaining: 9,
+    };
+    globalFetch.mockResolvedValue({ ok: true, json: async () => usage });
+    mockUserFindUnique.mockResolvedValue({
+      id: "cm1234567890abc",
+      membershipLevel: "REGULAR",
+      totalSpent: 500,
+    });
+
+    const res = await GET(createRequest());
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.skinTestUsage).toEqual(usage);
+    const [, init] = globalFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
+    expect(init.headers["X-Internal-API-Key"]).toBe("advisor-test-key");
+    expect(init.headers["X-Internal-API-Timestamp"]).toMatch(/^\d+$/);
+    expect(init.headers["X-Internal-API-Nonce"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(init.headers["X-Internal-API-Signature"]).toMatch(/^[0-9a-f]{64}$/);
+    expect(init.headers.Authorization).toBeUndefined();
   });
 });

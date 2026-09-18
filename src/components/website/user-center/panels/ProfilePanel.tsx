@@ -54,6 +54,8 @@ export function ProfilePanel() {
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   // 移动端退出登录二次确认
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  // 分层退出：默认仅当前设备，勾选后全局退出（撤销全部设备会话并通知所有已授权平台）
+  const [logoutAllDevices, setLogoutAllDevices] = useState(false);
 
   // 换绑手机号表单状态
   const [showPhoneForm, setShowPhoneForm] = useState(false);
@@ -1023,13 +1025,28 @@ export function ProfilePanel() {
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={async () => {
           setShowLogoutConfirm(false);
-          await logout();
+          await logout({ allDevices: logoutAllDevices });
         }}
         title="退出登录"
         description="退出后需重新登录才能查看会员权益与个人资料，确定退出吗？"
         confirmText="退出登录"
         type="danger"
-      />
+      >
+        <label className="flex cursor-pointer items-start gap-2 text-sm text-brand-charcoal/70">
+          <input
+            type="checkbox"
+            checked={logoutAllDevices}
+            onChange={(e) => setLogoutAllDevices(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-brand-primary"
+          />
+          <span>
+            同时退出所有设备和已授权的平台
+            <span className="mt-0.5 block text-xs text-brand-charcoal/40">
+              勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
+            </span>
+          </span>
+        </label>
+      </ConfirmDialog>
       <ConfirmDialog
         open={!!deletingAddressId}
         onClose={() => setDeletingAddressId(null)}

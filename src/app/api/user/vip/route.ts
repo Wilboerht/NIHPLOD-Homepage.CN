@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { withUserAuth } from "@/lib/auth";
 import { LEVEL_DEFAULT_BENEFITS, type LevelBenefitItem } from "@/lib/membership";
 import { apiConsole } from "@/lib/logger";
+import { createSignedInternalRequestHeaders } from "@/lib/internal-api";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +33,20 @@ interface SkinTestUsage {
  */
 async function fetchSkinTestUsage(userId: string): Promise<SkinTestUsage | null> {
   try {
+    // 优先 HMAC 签名调用（防重放，子站不再产生"旧版 Bearer"告警）；
+    // INTERNAL_API_KEYS 未配置 advisor 条目时回退旧版 Bearer（ADVISOR_INTERNAL_SECRET）
+    const signedHeaders = createSignedInternalRequestHeaders(
+      "advisor",
+      "GET",
+      "/api/internal/skin-test-usage"
+    );
     const secret = process.env.ADVISOR_INTERNAL_SECRET;
-    if (!secret) return null;
+    if (!signedHeaders && !secret) return null;
     const base = (process.env.ADVISOR_API_BASE || "https://advisor.nihplod.cn").replace(/\/+$/, "");
     const res = await fetch(
       `${base}/api/internal/skin-test-usage?userId=${encodeURIComponent(userId)}`,
       {
-        headers: { Authorization: `Bearer ${secret}` },
+        headers: signedHeaders ?? { Authorization: `Bearer ${secret}` },
         signal: AbortSignal.timeout(3000),
         cache: "no-store",
       }

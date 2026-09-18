@@ -11,7 +11,7 @@
  * 注意：Nonce 存储使用内存 LRU，仅适用于单实例部署；多实例部署时需要接入 Redis。
  */
 
-import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { LRUCache } from "lru-cache";
 import { prisma } from "./prisma";
 import { apiConsole } from "@/lib/logger";
@@ -120,6 +120,43 @@ export function generateInternalApiSignature(
 ): string {
   const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`;
   return createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+/**
+ * 出站方向：官网调用子站内部接口（如 advisor 的 /api/internal/*）时生成 HMAC 签名请求头。
+ * 签名算法与子站入站校验一致：HMAC-SHA256(secret, "METHOD|path|timestamp|nonce|bodySha256")，
+ * path 仅含 pathname（不含 query）。
+ *
+ * @returns 签名请求头；INTERNAL_API_KEYS 中未配置该项目密钥时返回 null（调用方决定回退策略）
+ */
+export function createSignedInternalRequestHeaders(
+  project: string,
+  method: string,
+  path: string,
+  bodyText = ""
+): Record<string, string> | null {
+  const { keys } = getInternalApiKeys();
+  const config = [...keys.values()].find((item) => item.project === project);
+  if (!config) return null;
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const nonce = randomBytes(16).toString("hex");
+  const bodyHash = createHash("sha256").update(bodyText).digest("hex");
+  const signature = generateInternalApiSignature(
+    config.secret,
+    method,
+    path,
+    timestamp,
+    nonce,
+    bodyHash
+  );
+
+  return {
+    "X-Internal-API-Key": config.key,
+    "X-Internal-API-Timestamp": String(timestamp),
+    "X-Internal-API-Nonce": nonce,
+    "X-Internal-API-Signature": signature,
+  };
 }
 
 /**

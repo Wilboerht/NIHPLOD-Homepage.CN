@@ -39,18 +39,13 @@ const poolConfig: pg.PoolConfig = {
         : 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 30000,
+  // statement_timeout 通过连接启动参数下发（PG options），
+  // 替代 pool.on("connect") + client.query 的写法——后者会触发 pg 的
+  // "client.query() when the client is already executing a query" 弃用警告
+  options: "-c statement_timeout=30000",
 };
 
 const pool = globalForPrisma.pool ?? new pg.Pool(poolConfig);
-
-// 为每个新连接设置 statement_timeout，防止慢查询耗尽连接池
-pool.on("connect", async (client) => {
-  try {
-    await client.query("SET statement_timeout = 30000");
-  } catch {
-    // 连接可能在某些模式下不支持 SET，静默失败
-  }
-});
 
 // 创建 adapter
 const adapter = new PrismaPg(pool);
@@ -75,8 +70,9 @@ if (process.env.NEXT_PHASE !== "phase-production-build" && typeof process !== "u
   const gracefulShutdown = async (signal: string) => {
     apiConsole.info(`[Prisma] 收到 ${signal}，关闭连接池...`);
     try {
+      // PrismaPg adapter 的 dispose 已会 end 掉传入的 pool，
+      // 此处不能再调 pool.end()（会报 "Called end on pool more than once"）
       await prisma.$disconnect();
-      await pool.end();
     } catch (e) {
       apiConsole.error("[Prisma] 关闭连接池失败:", e);
     }

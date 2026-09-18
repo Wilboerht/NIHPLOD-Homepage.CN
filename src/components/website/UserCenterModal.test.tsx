@@ -8,7 +8,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 
 const mockSetUserCenterView = vi.fn();
 const mockCloseUserCenter = vi.fn();
@@ -58,7 +58,7 @@ function stubMatchMedia(mobile: boolean) {
   })) as unknown as typeof window.matchMedia;
 }
 
-function setupAuth(view = "profile", securitySection = "devices") {
+function setupAuth(view = "profile", securitySection = "devices", logoutMock = vi.fn()) {
   mockUseAuth.mockReturnValue({
     user: { id: "u1", phone: "13800138000", nickname: "测试用户" },
     userCenterOpen: true,
@@ -67,7 +67,7 @@ function setupAuth(view = "profile", securitySection = "devices") {
     setUserCenterView: mockSetUserCenterView,
     securitySection,
     setSecuritySection: mockSetSecuritySection,
-    logout: vi.fn(),
+    logout: logoutMock,
     refreshUser: vi.fn(),
   });
 }
@@ -161,5 +161,37 @@ describe("UserCenterModal", () => {
     fireEvent.click(within(nav).getByRole("button", { name: "积分商城" }));
     expect(mockSetUserCenterView).toHaveBeenCalledWith("mall");
     expect(mockCloseUserCenter).not.toHaveBeenCalled();
+  });
+
+  // 侧边栏按钮与确认框按钮同名「退出登录」，getAllByRole 取最后一个（确认框的）
+  const clickLogoutConfirm = () => {
+    const buttons = screen.getAllByRole("button", { name: "退出登录" });
+    fireEvent.click(buttons[buttons.length - 1]);
+  };
+
+  it("退出登录：默认仅退出当前设备（allDevices: false）", async () => {
+    const logoutMock = vi.fn().mockResolvedValue(undefined);
+    setupAuth("profile", "devices", logoutMock);
+    render(<UserCenterModal />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "退出登录" })[0]);
+    // 二次确认弹窗出现，复选框默认不勾选
+    const checkbox = await screen.findByRole("checkbox");
+    expect(checkbox).not.toBeChecked();
+
+    clickLogoutConfirm();
+    await waitFor(() => expect(logoutMock).toHaveBeenCalledWith({ allDevices: false }));
+  });
+
+  it("退出登录：勾选「同时退出所有设备和已授权的平台」后全局退出", async () => {
+    const logoutMock = vi.fn().mockResolvedValue(undefined);
+    setupAuth("profile", "devices", logoutMock);
+    render(<UserCenterModal />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "退出登录" })[0]);
+    fireEvent.click(await screen.findByRole("checkbox"));
+
+    clickLogoutConfirm();
+    await waitFor(() => expect(logoutMock).toHaveBeenCalledWith({ allDevices: true }));
   });
 });
