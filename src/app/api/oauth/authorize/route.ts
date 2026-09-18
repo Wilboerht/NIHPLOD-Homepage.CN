@@ -11,13 +11,21 @@ import { createAuthorizationCode } from "@/lib/oauth-code";
 import { verifyUserToken } from "@/lib/jwt";
 import { checkUserStatus } from "@/lib/auth";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
+import { refreshUserSession, type RefreshUserSessionResult } from "@/lib/session-refresh";
+import { extractDeviceInfo } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { respondOAuthError } from "@/lib/oauth-error-page";
-import { USER_COOKIE_NAME } from "@/types/auth";
+import {
+  USER_COOKIE_NAME,
+  USER_REFRESH_COOKIE_NAME,
+  USER_ACCESS_COOKIE_OPTIONS,
+  USER_REFRESH_COOKIE_OPTIONS,
+  type UserJWTPayload,
+} from "@/types/auth";
 import { prisma } from "@/lib/prisma";
 import { createHmac, timingSafeEqual, createHash, randomBytes } from "crypto";
 
@@ -154,6 +162,27 @@ function buildErrorRedirect(
 }
 
 export async function GET(request: NextRequest) {
+  // 透明刷新（第 6.1 步）成功后待下发的新会话 Cookie。
+  // GET 后续有多条返回路径（auto-approve 302、consent 页 302、prompt=none 错误回传、
+  // prompt=login / 未登录 302、max_age 回落等），统一经 withRefreshedSession 包装响应，
+  // 保证刷新成功后命中的那条响应都携带新双 token 的 Set-Cookie。
+  // 声明在 try 之外：catch 的 500 错误页同样可能发生在刷新成功之后，需要带上 Cookie。
+  let refreshedSessionCookies: { accessToken: string; refreshToken: string } | null = null;
+  const withRefreshedSession = (response: NextResponse): NextResponse => {
+    if (refreshedSessionCookies) {
+      response.cookies.set(
+        USER_COOKIE_NAME,
+        refreshedSessionCookies.accessToken,
+        USER_ACCESS_COOKIE_OPTIONS
+      );
+      response.cookies.set(
+        USER_REFRESH_COOKIE_NAME,
+        refreshedSessionCookies.refreshToken,
+        USER_REFRESH_COOKIE_OPTIONS
+      );
+    }
+    return response;
+  };
   try {
     const ip = getClientIP(request);
 
@@ -335,6 +364,8 @@ export async function GET(request: NextRequest) {
     const userToken = request.cookies.get(USER_COOKIE_NAME)?.value;
     let isLoggedIn = false;
     let userAuthTime: Date | null = null;
+    // 登录用户的 token 载荷：来自 access token 验证，或透明刷新后的新会话
+    let userPayload: UserJWTPayload | null = null;
     if (userToken) {
       const payload = await verifyUserToken(userToken);
       if (payload) {
@@ -344,8 +375,46 @@ export async function GET(request: NextRequest) {
         // 认证时间以固化的 auth_time 为准（refresh 换发不重置），
         // 旧 token 无 auth_time 时回退 iat，防止 max_age 被 token 刷新架空
         const authTime = payload.auth_time ?? payload.iat;
-        if (isLoggedIn && authTime) {
-          userAuthTime = new Date(authTime * 1000);
+        if (isLoggedIn) {
+          userPayload = payload;
+          if (authTime) {
+            userAuthTime = new Date(authTime * 1000);
+          }
+        }
+      }
+    }
+
+    // 6.1 透明刷新兜底：主站 access token 仅 2h，refresh token 30d。
+    // 用户主站长期未活动后子站发起 SSO 授权时，access cookie 已失效但 refresh
+    // cookie 仍有效；此处就地轮换双 token 并继续授权流程（用户无感知），
+    // 避免 SSO 会话寿命被偷换成 access token 的 2h。
+    // 不引入额外限流（authorize 自身已有限流）；审计日志由 refreshUserSession
+    // 以 channel="authorize_transparent_refresh" 记录。
+    if (!isLoggedIn) {
+      const refreshTokenCookie = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
+      if (refreshTokenCookie) {
+        let refreshResult: RefreshUserSessionResult | null = null;
+        try {
+          refreshResult = await refreshUserSession(refreshTokenCookie, {
+            ip,
+            deviceInfo: extractDeviceInfo(request),
+            channel: "authorize_transparent_refresh",
+          });
+        } catch (refreshErr) {
+          // 刷新异常不阻断授权流程：按未登录回落到下方既有路径（重新登录）
+          apiConsole.error("[OAuth Authorize GET] 透明刷新会话异常:", refreshErr);
+        }
+        if (refreshResult?.success) {
+          isLoggedIn = true;
+          userPayload = { id: refreshResult.userId, type: "user" };
+          refreshedSessionCookies = {
+            accessToken: refreshResult.accessToken,
+            refreshToken: refreshResult.refreshToken,
+          };
+          // max_age 语义沿用刷新后透传的 auth_time（刷新不重置认证时间）
+          if (refreshResult.authTime) {
+            userAuthTime = new Date(refreshResult.authTime * 1000);
+          }
         }
       }
     }
@@ -360,11 +429,8 @@ export async function GET(request: NextRequest) {
 
     // 8. prompt=none：未登录或 max_age 超期时按 OIDC 回传 login_required，而非 302 到交互页
     if (prompt === "none" && !isLoggedIn) {
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "login_required",
-        "用户未登录或会话已过期",
-        state
+      return withRefreshedSession(
+        buildErrorRedirect(safeRedirectUri, "login_required", "用户未登录或会话已过期", state)
       );
     }
 
@@ -375,10 +441,11 @@ export async function GET(request: NextRequest) {
       loginUrl.searchParams.set("return_to", returnTo);
       loginUrl.searchParams.set("client_name", client.name);
       if (loginHint) loginUrl.searchParams.set("login_hint", loginHint);
-      return NextResponse.redirect(loginUrl, 302);
+      return withRefreshedSession(NextResponse.redirect(loginUrl, 302));
     }
 
-    const userPayload = (await verifyUserToken(userToken!))!;
+    // isLoggedIn 为 true 时 userPayload 必已在第 6/6.1 步赋值
+    const sessionUserId = userPayload!.id;
 
     // 10. prompt=login: 强制重新认证
     if (prompt === "login") {
@@ -388,12 +455,12 @@ export async function GET(request: NextRequest) {
       loginUrl.searchParams.set("client_name", client.name);
       loginUrl.searchParams.set("reauth", "1");
       if (loginHint) loginUrl.searchParams.set("login_hint", loginHint);
-      return NextResponse.redirect(loginUrl, 302);
+      return withRefreshedSession(NextResponse.redirect(loginUrl, 302));
     }
 
     // 11. 已登录 → 查询用户是否已授权过该 client 且 scope 未扩大
     const existingConsent = await prisma.userConsent.findUnique({
-      where: { userId_clientId: { userId: userPayload.id, clientId: client_id } },
+      where: { userId_clientId: { userId: sessionUserId, clientId: client_id } },
     });
     const grantedScopes =
       existingConsent && !existingConsent.revokedAt ? existingConsent.scopes : [];
@@ -406,7 +473,7 @@ export async function GET(request: NextRequest) {
       try {
         codeData = await createAuthorizationCode({
           clientId: client_id,
-          userId: userPayload.id,
+          userId: sessionUserId,
           redirectUri: redirect_uri,
           scopes: requestedScopes,
           codeChallenge: code_challenge,
@@ -416,7 +483,9 @@ export async function GET(request: NextRequest) {
         });
       } catch (codeErr) {
         apiConsole.error("[OAuth Authorize GET] 创建授权码失败:", codeErr);
-        return buildErrorRedirect(safeRedirectUri, "server_error", "服务器内部错误", state);
+        return withRefreshedSession(
+          buildErrorRedirect(safeRedirectUri, "server_error", "服务器内部错误", state)
+        );
       }
 
       const redirectUrl = new URL(redirect_uri);
@@ -429,7 +498,7 @@ export async function GET(request: NextRequest) {
 
       scheduleSsoEvent({
         event: "authorize",
-        userId: userPayload.id,
+        userId: sessionUserId,
         clientId: client_id,
         clientName: client.name,
         ip,
@@ -437,16 +506,18 @@ export async function GET(request: NextRequest) {
         detail: { scope, scopes: requestedScopes, auto_approved: true },
       });
 
-      return NextResponse.redirect(redirectUrl, 302);
+      return withRefreshedSession(NextResponse.redirect(redirectUrl, 302));
     }
 
     // prompt=none 且需要 consent 交互：按 OIDC 回传 consent_required，而非 302 到 consent 页
     if (prompt === "none") {
-      return buildErrorRedirect(
-        safeRedirectUri,
-        "consent_required",
-        "需要用户授权交互，prompt=none 无法静默完成",
-        state
+      return withRefreshedSession(
+        buildErrorRedirect(
+          safeRedirectUri,
+          "consent_required",
+          "需要用户授权交互，prompt=none 无法静默完成",
+          state
+        )
       );
     }
 
@@ -462,11 +533,12 @@ export async function GET(request: NextRequest) {
     consentUrl.searchParams.set("redirect_uri", redirect_uri);
     consentUrl.searchParams.set("state", state);
 
-    return NextResponse.redirect(consentUrl, 302);
+    return withRefreshedSession(NextResponse.redirect(consentUrl, 302));
   } catch (error) {
     apiConsole.error("[OAuth Authorize GET] 异常:", error);
     // 浏览器直接访问时渲染品牌化错误页，API 调用返回 JSON
-    return respondOAuthError(request, 500, "server_error", "服务器内部错误");
+    // 若异常发生在透明刷新成功之后，同样携带新会话 Cookie，避免轮换后的 token 丢失
+    return withRefreshedSession(respondOAuthError(request, 500, "server_error", "服务器内部错误"));
   }
 }
 

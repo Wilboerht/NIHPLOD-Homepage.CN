@@ -125,6 +125,25 @@ describe("LoginPage", () => {
     expect(mockApiPost).not.toHaveBeenCalled();
   });
 
+  it("登录成功后淡入打勾成功态（不再弹成功 toast），最短展示后再跳转", async () => {
+    mockApiPost.mockResolvedValue({});
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("手机号"), { target: { value: "13800138000" } });
+    fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "Passw0rd" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.submit(document.getElementById("pc-login-form")!);
+
+    // 表单淡出 → 成功视图淡入（role=status 供读屏播报）
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("登录成功");
+    // 成功过渡替代 toast，且最短展示期内尚未跳转
+    expect(mockToastSuccess).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"), { timeout: 3000 });
+  });
+
   it("已登录用户直接访问 /login（无 SSO 参数）时重定向到首页", async () => {
     mockUseAuth.mockReturnValue({
       user: { id: "u1", phone: "13800138000" },

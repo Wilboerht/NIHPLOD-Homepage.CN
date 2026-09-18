@@ -13,7 +13,7 @@ import { useState, useEffect, Suspense, useCallback } from "react";
 import { useMounted } from "@/hooks/useMounted";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { m, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ChevronLeft } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,6 +75,52 @@ function buildLoginUrl(
   Object.entries(extra).forEach(([k, v]) => params.set(k, v));
   const query = params.toString();
   return `/login${query ? `?${query}` : ""}`;
+}
+
+/** 成功过渡视图最短展示时长：打勾描边 + 文案停留，避免网络快时一闪而过 */
+const MIN_AUTH_SUCCESS_MS = 800;
+
+/**
+ * 登录/注册/绑定成功过渡视图
+ * 面板内容淡出后淡入：圆环 + 对勾描边动画 + 文案，替代成功 toast。
+ */
+function AuthSuccessView({ message, hint }: { message: string; hint: string }) {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-col items-center justify-center gap-5 py-16"
+    >
+      <svg viewBox="0 0 48 48" className="h-16 w-16" fill="none" aria-hidden="true">
+        <m.circle
+          cx="24"
+          cy="24"
+          r="22"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-brand-charcoal/20"
+          initial={reduceMotion ? false : { pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        />
+        <m.path
+          d="M15 24.5 21.5 31 33 18.5"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-brand-charcoal"
+          initial={reduceMotion ? false : { pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.35, delay: reduceMotion ? 0 : 0.3, ease: "easeOut" }}
+        />
+      </svg>
+      <p className="text-lg font-light tracking-[0.2em] text-brand-charcoal">{message}</p>
+      <p className="text-xs font-light tracking-[0.1em] text-brand-charcoal/50">{hint}</p>
+    </div>
+  );
 }
 
 function LoginPageContent() {
@@ -174,6 +220,8 @@ function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [mobileAgreed, setMobileAgreed] = useState(false);
   const [agreementShake, setAgreementShake] = useState(0);
+  /** 登录/注册/绑定成功过渡文案（null 表示未进入成功态） */
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [mobileForgotStep, setMobileForgotStep] = useState<
     "phone" | "code" | "password" | "success"
   >("phone");
@@ -230,6 +278,8 @@ function LoginPageContent() {
   // 重定向会打断 SSO reauth 流程。consent / wechat-bind 模式同样依赖登录态，一并豁免。
   useEffect(() => {
     if (authLoading || !user) return;
+    // 成功过渡态由 handleAuthSuccess 统一控制跳转时序，避免刷新登录态后提前跳走打断动画
+    if (authSuccess) return;
     if (mode === "consent" || mode === "wechat-bind") return;
     const isSsoContext =
       isSsoLogin || !!oauthId || !!oauthParamsFromUrl || reauth || !!searchParams.get("client_id");
@@ -238,6 +288,7 @@ function LoginPageContent() {
   }, [
     authLoading,
     user,
+    authSuccess,
     mode,
     isSsoLogin,
     oauthId,
@@ -374,11 +425,19 @@ function LoginPageContent() {
     };
   }, [isMobile]);
 
-  const handleAuthSuccess = async () => {
+  const handleAuthSuccess = async (successMessage: string) => {
+    // 面板淡出并淡入成功视图（打勾动画），同时并行刷新登录态
+    setAuthSuccess(successMessage);
+    const startedAt = Date.now();
     try {
       await refreshUser(true);
     } catch {
       // refreshUser 失败时仍然继续导航——认证 Cookie 已由服务端设置
+    }
+    // 保证成功动画至少展示 MIN_AUTH_SUCCESS_MS，避免网络快时一闪而过
+    const remaining = MIN_AUTH_SUCCESS_MS - (Date.now() - startedAt);
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
     }
     // 登录成功返回站内原页：目标页抽屉保持收起（与 handleClose 行为一致）。
     // SSO 场景（return_to 指向 authorize）随即离站，不设此标记以免残留影响后续访问。
@@ -406,8 +465,7 @@ function LoginPageContent() {
       } else {
         await apiPost("/api/auth/login-password", { phone: loginPhone, password: loginPassword });
       }
-      toast.success("欢迎回来！");
-      await handleAuthSuccess();
+      await handleAuthSuccess("登录成功");
     } catch (error) {
       // 密码过期（密码登录/短信登录均可能）：引导进入"忘记密码"短信重置闭环。
       // 同时提示短信不可用时的兜底渠道（生产 mock 短信场景下短信重置走不通）。
@@ -449,8 +507,7 @@ function LoginPageContent() {
         password: regPassword,
         confirmPassword: regConfirmPassword,
       });
-      toast.success("注册成功！");
-      await handleAuthSuccess();
+      await handleAuthSuccess("注册成功");
     } catch (error) {
       toast.error(getErrorMessage(error, "注册失败，请稍后重试"));
     } finally {
@@ -476,8 +533,7 @@ function LoginPageContent() {
         code: regCode,
         password: regPassword,
       });
-      toast.success("绑定成功！");
-      await handleAuthSuccess();
+      await handleAuthSuccess("绑定成功");
     } catch (error) {
       toast.error(getErrorMessage(error, "绑定失败，请稍后重试"));
     } finally {
@@ -1026,8 +1082,8 @@ function LoginPageContent() {
               transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
               className="fixed inset-y-0 right-0 z-[99999] hidden w-full flex-col bg-white lg:flex"
             >
-              {/* Back button：login 模式返回 return_to（默认首页）；SSO 授权场景走取消授权（access_denied）；reset/register 返回登录 */}
-              {mode !== "wechat-bind" && mode !== "consent" && (
+              {/* Back button：login 模式返回 return_to（默认首页）；SSO 授权场景走取消授权（access_denied）；reset/register 返回登录；成功过渡期间隐藏避免误触中断 */}
+              {!authSuccess && mode !== "wechat-bind" && mode !== "consent" && (
                 <button
                   onClick={mode === "login" ? handleClose : handleSwitchToLogin}
                   disabled={loading}
@@ -1062,25 +1118,34 @@ function LoginPageContent() {
 
                   <AnimatePresence mode="wait">
                     <m.div
-                      key={mode}
+                      key={authSuccess ? "auth-success" : mode}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                     >
-                      {mode === "login" && isSsoLogin && clientNameParam && (
-                        <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
-                          <p className="text-sm text-brand-charcoal/80">
-                            登录以继续使用 <strong>{clientName}</strong>
-                          </p>
-                          {reauth && (
-                            <p className="mt-1 text-xs text-brand-charcoal/60">
-                              应用要求重新验证身份，请重新登录
-                            </p>
+                      {authSuccess ? (
+                        <AuthSuccessView
+                          message={authSuccess}
+                          hint={isSsoLogin ? "正在返回应用…" : "正在跳转，请稍候…"}
+                        />
+                      ) : (
+                        <>
+                          {mode === "login" && isSsoLogin && clientNameParam && (
+                            <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
+                              <p className="text-sm text-brand-charcoal/80">
+                                登录以继续使用 <strong>{clientName}</strong>
+                              </p>
+                              {reauth && (
+                                <p className="mt-1 text-xs text-brand-charcoal/60">
+                                  应用要求重新验证身份，请重新登录
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </div>
+                          {mode === "consent" ? renderConsent("pc") : renderForm("pc")}
+                        </>
                       )}
-                      {mode === "consent" ? renderConsent("pc") : renderForm("pc")}
                     </m.div>
                   </AnimatePresence>
                 </div>
@@ -1100,8 +1165,8 @@ function LoginPageContent() {
             >
               {/* Mobile top bar */}
               <div className="relative flex h-[56px] w-full flex-shrink-0 items-center justify-center">
-                {/* consent 模式隐藏返回箭头（与 PC 对齐），避免误触抛弃授权流程 */}
-                {mode !== "consent" && (
+                {/* consent 模式隐藏返回箭头（与 PC 对齐），避免误触抛弃授权流程；成功过渡期间同样隐藏 */}
+                {!authSuccess && mode !== "consent" && (
                   <button
                     type="button"
                     aria-label={
@@ -1141,25 +1206,34 @@ function LoginPageContent() {
                 <div className="flex min-h-full flex-col px-6 before:flex-[1_0_0] before:content-[''] after:flex-[1_0_0] after:content-['']">
                   <AnimatePresence mode="wait">
                     <m.div
-                      key={mode}
+                      key={authSuccess ? "auth-success" : mode}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                     >
-                      {mode === "login" && isSsoLogin && clientNameParam && (
-                        <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
-                          <p className="text-sm text-brand-charcoal/80">
-                            登录以继续使用 <strong>{clientName}</strong>
-                          </p>
-                          {reauth && (
-                            <p className="mt-1 text-xs text-brand-charcoal/60">
-                              应用要求重新验证身份，请重新登录
-                            </p>
+                      {authSuccess ? (
+                        <AuthSuccessView
+                          message={authSuccess}
+                          hint={isSsoLogin ? "正在返回应用…" : "正在跳转，请稍候…"}
+                        />
+                      ) : (
+                        <>
+                          {mode === "login" && isSsoLogin && clientNameParam && (
+                            <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
+                              <p className="text-sm text-brand-charcoal/80">
+                                登录以继续使用 <strong>{clientName}</strong>
+                              </p>
+                              {reauth && (
+                                <p className="mt-1 text-xs text-brand-charcoal/60">
+                                  应用要求重新验证身份，请重新登录
+                                </p>
+                              )}
+                            </div>
                           )}
-                        </div>
+                          {mode === "consent" ? renderConsent("mobile") : renderForm("mobile")}
+                        </>
                       )}
-                      {mode === "consent" ? renderConsent("mobile") : renderForm("mobile")}
                     </m.div>
                   </AnimatePresence>
                 </div>

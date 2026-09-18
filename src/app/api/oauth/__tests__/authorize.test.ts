@@ -59,6 +59,16 @@ vi.mock("@/lib/token-blacklist", () => ({
   isTokenBlacklisted: vi.fn().mockReturnValue(false),
 }));
 
+// === Mock session-refresh（authorize 透明刷新兜底）===
+vi.mock("@/lib/session-refresh", () => ({
+  refreshUserSession: vi.fn(),
+}));
+
+// === Mock auth-security（authorize 仅用于透明刷新时提取设备信息）===
+vi.mock("@/lib/auth-security", () => ({
+  extractDeviceInfo: vi.fn().mockReturnValue({}),
+}));
+
 // === Mock CSRF (simple, non-hoisted-safe) ===
 const mockValidateCSRFToken = vi.fn();
 const mockCsrfForbiddenResponse = vi.fn();
@@ -71,8 +81,11 @@ import { GET, POST } from "../authorize/route";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { createAuthorizationCode } from "@/lib/oauth-code";
 import { verifyUserToken } from "@/lib/jwt";
+import { refreshUserSession } from "@/lib/session-refresh";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
+
+const mockRefreshUserSession = refreshUserSession as ReturnType<typeof vi.fn>;
 
 function validClient() {
   return {
@@ -363,6 +376,152 @@ describe("GET /api/oauth/authorize", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.data.params).toContain("client_id=test-client");
+  });
+});
+
+describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+  });
+
+  // 注意统一用 mockResolvedValueOnce：clearAllMocks 只清调用历史不清实现，
+  // mockResolvedValue 会泄漏到后续 describe（POST 用例依赖工厂里的默认已登录 payload）
+  function mockRefreshSuccess() {
+    mockRefreshUserSession.mockResolvedValueOnce({
+      success: true,
+      userId: "user-1",
+      accessToken: "new-access-token",
+      refreshToken: "new-refresh-token",
+      authTime: Math.floor(Date.now() / 1000),
+    });
+  }
+
+  function mockConsentGranted() {
+    (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      scopes: ["openid"],
+      revokedAt: null,
+    });
+  }
+
+  it("access 失效 + refresh 有效：auto-approve 正常签发 code，且响应携带新会话 Cookie", async () => {
+    vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
+    mockRefreshSuccess();
+    mockConsentGranted();
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=valid-rt" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location.startsWith("https://example.com/cb")).toBe(true);
+    expect(location).toContain("code=test-auth-code");
+    expect(mockRefreshUserSession).toHaveBeenCalledTimes(1);
+    expect(mockRefreshUserSession).toHaveBeenCalledWith(
+      "valid-rt",
+      expect.objectContaining({ channel: "authorize_transparent_refresh" })
+    );
+    // 新双 token 通过 Set-Cookie 下发到重定向响应
+    expect(res.cookies.get("__Host-user_token")?.value).toBe("new-access-token");
+    expect(res.cookies.get("__Host-user_refresh_token")?.value).toBe("new-refresh-token");
+  });
+
+  it("access 缺失 + refresh 有效：prompt=none 不再回 login_required，而是正常签发 code", async () => {
+    mockRefreshSuccess();
+    mockConsentGranted();
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
+      headers: { Cookie: "__Host-user_refresh_token=valid-rt" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location")!;
+    expect(location.startsWith("https://example.com/cb")).toBe(true);
+    expect(location).toContain("code=test-auth-code");
+    expect(location).not.toContain("error=login_required");
+    expect(res.cookies.get("__Host-user_token")?.value).toBe("new-access-token");
+  });
+
+  it("access 失效 + refresh 无效/被撤销：维持 302 登录页，且不下发新 Cookie", async () => {
+    vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
+    mockRefreshUserSession.mockResolvedValueOnce({ success: false, reason: "revoked" });
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=revoked-rt" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("return_to")).toContain("/api/oauth/authorize");
+    expect(res.cookies.get("__Host-user_token")).toBeUndefined();
+    expect(res.cookies.get("__Host-user_refresh_token")).toBeUndefined();
+  });
+
+  it("access 失效 + refresh 无效 + prompt=none：仍回传 login_required", async () => {
+    vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
+    mockRefreshUserSession.mockResolvedValueOnce({ success: false, reason: "revoked" });
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
+      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=revoked-rt" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("error=login_required");
+  });
+
+  it("无 refresh cookie 且 access 失效：不调用刷新，直接 302 登录页", async () => {
+    vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=expired-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
+    expect(mockRefreshUserSession).not.toHaveBeenCalled();
+  });
+
+  it("access 有效：不触发透明刷新（refreshUserSession 不被调用）", async () => {
+    // 默认 verifyUserToken mock 返回有效 payload → 已登录
+    mockConsentGranted();
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("code=test-auth-code");
+    expect(mockRefreshUserSession).not.toHaveBeenCalled();
+    // 未发生刷新，响应不携带新会话 Cookie
+    expect(res.cookies.get("__Host-user_token")).toBeUndefined();
+  });
+
+  it("透明刷新后命中 consent 页路径：302 consent 页同样携带新会话 Cookie", async () => {
+    vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
+    mockRefreshSuccess();
+    // 默认 userConsent.findUnique → null（未授权）→ 走 consent 页路径
+    const req = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=valid-rt" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const consentUrl = new URL(res.headers.get("location")!);
+    expect(consentUrl.searchParams.get("mode")).toBe("consent");
+    expect(res.cookies.get("__Host-user_token")?.value).toBe("new-access-token");
+    expect(res.cookies.get("__Host-user_refresh_token")?.value).toBe("new-refresh-token");
+  });
+
+  it("透明刷新成功但 max_age 超期（auth_time 过旧）：仍要求重新登录", async () => {
+    vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
+    mockRefreshUserSession.mockResolvedValueOnce({
+      success: true,
+      userId: "user-1",
+      accessToken: "new-access-token",
+      refreshToken: "new-refresh-token",
+      authTime: Math.floor(Date.now() / 1000) - 3600, // 1 小时前认证
+    });
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "none", max_age: "600" }), {
+      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=valid-rt" },
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("error=login_required");
   });
 });
 
