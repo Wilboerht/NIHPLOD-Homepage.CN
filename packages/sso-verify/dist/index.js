@@ -54,7 +54,8 @@ function createTokenVerifier(options) {
     introspectNegativeCacheTtl = 5 * 1e3,
     introspectRetries = 1,
     clockToleranceSeconds = 60,
-    logoutJtiStore
+    logoutJtiStore,
+    strictAudience = false
   } = options;
   const introspectCache = createIntrospectCache(introspectCacheTtl);
   let _jwksKeySet = null;
@@ -107,7 +108,7 @@ function createTokenVerifier(options) {
     if (typeof aud === "string") return aud === audience;
     if (Array.isArray(aud)) return aud.includes(audience);
     if (typeof data.client_id === "string") return data.client_id === audience;
-    return true;
+    return !strictAudience;
   }
   const inflightIntrospects = /* @__PURE__ */ new Map();
   async function introspect(token) {
@@ -285,6 +286,7 @@ function createTokenVerifier(options) {
      * 3. aud 包含当前 client_id
      * 4. exp 存在（规范要求）
      * 5. events 包含 backchannel-logout 事件，且事件值为对象
+     * 6. sub 或 sid 至少其一（§2.4，否则无法定位要终止的会话）
      *
      * @returns LogoutTokenPayload 或 null（验证失败）
      */
@@ -303,6 +305,13 @@ function createTokenVerifier(options) {
         }
         const jti = payload.jti;
         if (!jti || typeof jti !== "string") {
+          return null;
+        }
+        const sub = payload.sub;
+        const sid = payload.sid;
+        const hasSub = typeof sub === "string" && sub.length > 0;
+        const hasSid = typeof sid === "string" && sid.length > 0;
+        if (!hasSub && !hasSid) {
           return null;
         }
         const iss = payload.iss || issuer;

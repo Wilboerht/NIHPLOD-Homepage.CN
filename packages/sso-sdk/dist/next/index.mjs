@@ -6,6 +6,7 @@ var DEFAULT_ACCESS_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_at";
 var DEFAULT_REFRESH_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_rt";
 var DEFAULT_ID_TOKEN_COOKIE_NAME = "__Host-nihplod_sso_id";
 var DEFAULT_STATE_COOKIE_NAME = "__Host-nihplod_sso_state";
+var DEFAULT_NONCE_COOKIE_NAME = "__Host-nihplod_sso_nonce";
 var DEFAULT_RETURN_COOKIE_NAME = "__Host-nihplod_sso_return";
 var DEFAULT_VERIFIER_COOKIE_NAME = "__Secure-nihplod_sso_verifier";
 var DEFAULT_LOGOUT_STATE_COOKIE_NAME = "__Host-nihplod_sso_logout_state";
@@ -161,21 +162,20 @@ function createSsoMiddleware(config) {
   const secureCookies = !insecureLocalDev;
   const accessTokenCookieName = insecureLocalDev ? toInsecureCookieName(config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME) : config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME;
   const stateCookieName = insecureLocalDev ? toInsecureCookieName(config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME) : config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME;
+  const nonceCookieName = insecureLocalDev ? toInsecureCookieName(config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME) : config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME;
   const returnUrlCookieName = insecureLocalDev ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME) : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
   const verifierCookieName = insecureLocalDev ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME) : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
-  if (process.env.NODE_ENV !== "production") {
-    if (!validateSsoCookie) {
-      console.warn(
-        "[SSO SDK] validateSsoCookie=false\uFF1A\u4E2D\u95F4\u4EF6\u4EC5\u68C0\u67E5 Cookie \u5B58\u5728\u6027\uFF0C\u53EF\u80FD\u653E\u884C\u5DF2\u5931\u6548\u7684\u4F1A\u8BDD\u3002\u4E2D\u95F4\u4EF6\u53EA\u662F UX \u5C42\uFF0C\u654F\u611F\u6570\u636E\u7684\u9274\u6743\u5FC5\u987B\u5728 Route Handler / Server Component \u4E2D\u5B8C\u6210\u3002"
-      );
-    }
-    if (!clientSecret) {
-      console.warn(
-        "[SSO SDK] \u672A\u914D\u7F6E clientSecret\uFF08Public Client \u6A21\u5F0F\uFF09\uFF1Aintrospection \u65E0\u5BA2\u6237\u7AEF\u8BA4\u8BC1\uFF0C\u4E2D\u95F4\u4EF6\u5224\u5B9A\u7ED3\u679C\u4EC5\u4F5C UX \u53C2\u8003\u3002Confidential Client\uFF08BFF\uFF09\u8BF7\u914D\u7F6E clientSecret\u3002"
-      );
-    }
+  if (!validateSsoCookie) {
+    console.warn(
+      "[SSO SDK] validateSsoCookie=false\uFF1A\u4E2D\u95F4\u4EF6\u4EC5\u68C0\u67E5 Cookie \u5B58\u5728\u6027\uFF0C\u53EF\u80FD\u653E\u884C\u5DF2\u5931\u6548\u7684\u4F1A\u8BDD\u3002\u4E2D\u95F4\u4EF6\u53EA\u662F UX \u5C42\uFF0C\u654F\u611F\u6570\u636E\u7684\u9274\u6743\u5FC5\u987B\u5728 Route Handler / Server Component \u4E2D\u5B8C\u6210\u3002"
+    );
+  }
+  if (!clientSecret) {
+    console.warn(
+      "[SSO SDK] \u672A\u914D\u7F6E clientSecret\uFF08Public Client \u6A21\u5F0F\uFF09\uFF1Aintrospection \u65E0\u5BA2\u6237\u7AEF\u8BA4\u8BC1\uFF0C\u4E2D\u95F4\u4EF6\u5224\u5B9A\u7ED3\u679C\u4EC5\u4F5C UX \u53C2\u8003\u3002Confidential Client\uFF08BFF\uFF09\u8BF7\u914D\u7F6E clientSecret\u3002"
+    );
   }
   return async function ssoMiddleware(request) {
     const { pathname } = request.nextUrl;
@@ -218,6 +218,7 @@ function createSsoMiddleware(config) {
       }
     }
     const state = generateRandomString(32);
+    const nonce = generateRandomString(43);
     const verifier = generateRandomString(64);
     const challenge = await computeCodeChallenge(verifier);
     const authorizeParams = new URLSearchParams();
@@ -226,12 +227,14 @@ function createSsoMiddleware(config) {
     authorizeParams.set("redirect_uri", redirectUri);
     authorizeParams.set("scope", scopes);
     authorizeParams.set("state", state);
+    authorizeParams.set("nonce", nonce);
     authorizeParams.set("code_challenge", challenge);
     authorizeParams.set("code_challenge_method", "S256");
     const loginUrl = new URL("/api/oauth/authorize", normalizedBase);
     loginUrl.search = authorizeParams.toString();
     const response = NextResponse.redirect(loginUrl);
     response.cookies.set(stateCookieName, state, getHostCookieOptions(600, secureCookies));
+    response.cookies.set(nonceCookieName, nonce, getHostCookieOptions(600, secureCookies));
     response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath, secureCookies));
     const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
     response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600, secureCookies));
@@ -320,18 +323,21 @@ function normalizeIssuer(url) {
 var cachedJwks = null;
 var cachedDiscovery = null;
 var JWKS_CACHE_TTL_MS = 5 * 60 * 1e3;
+var FETCH_TIMEOUT_MS = 1e4;
 async function fetchDiscoveryDoc(baseUrl) {
   const now = Date.now();
   if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
     return cachedDiscovery.doc;
   }
   try {
-    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`);
-    const doc = res.ok ? await res.json() : null;
+    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    });
+    if (!res.ok) return null;
+    const doc = await res.json();
     cachedDiscovery = { baseUrl, doc, fetchedAt: now };
     return doc;
   } catch {
-    cachedDiscovery = { baseUrl, doc: null, fetchedAt: now };
     return null;
   }
 }
@@ -343,7 +349,10 @@ async function fetchJwks(baseUrl, options = {}) {
   const discovery = await fetchDiscoveryDoc(baseUrl);
   const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
   try {
-    const res = await fetch(jwksUri, options.forceRefresh ? { cache: "no-cache" } : void 0);
+    const res = await fetch(jwksUri, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      ...options.forceRefresh ? { cache: "no-cache" } : {}
+    });
     if (!res.ok) return null;
     const jwks = await res.json();
     cachedJwks = { baseUrl, jwks, fetchedAt: now };
@@ -390,7 +399,7 @@ async function computeAtHash(accessToken) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 async function validateIdToken(idToken, accessToken, expectedIssuer, expectedClientId, options = {}) {
-  const { rejectHs256WhenRs256Available = true } = options;
+  const { rejectHs256WhenRs256Available = true, expectedNonce } = options;
   const header = decodeJwtHeader(idToken);
   if (!header) {
     throw new SsoError("id_token_invalid", "ID Token \u683C\u5F0F\u9519\u8BEF");
@@ -480,6 +489,12 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
       throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash \u4E0D\u5339\u914D");
     }
   }
+  if (expectedNonce !== void 0) {
+    const tokenNonce = typeof payload.nonce === "string" ? payload.nonce : "";
+    if (!tokenNonce || !timingSafeEqualString(expectedNonce, tokenNonce)) {
+      throw new SsoError("id_token_nonce_mismatch", "ID Token nonce \u4E0D\u5339\u914D");
+    }
+  }
   return { sub: payload.sub };
 }
 
@@ -500,11 +515,19 @@ function createCallbackRouteHandler(config) {
   const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
   const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
   return async function GET(request) {
+    const response = await handleCallback(request);
+    if (response.status >= 400) {
+      response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
+    }
+    return response;
+  };
+  async function handleCallback(request) {
     const { searchParams } = request.nextUrl;
     const error = searchParams.get("error");
     if (error) {
@@ -535,7 +558,7 @@ function createCallbackRouteHandler(config) {
         { status: 400 }
       );
     }
-    if (returnedState !== savedState) {
+    if (!timingSafeEqualString(returnedState ?? "", savedState)) {
       return NextResponse2.json(
         {
           error: "invalid_request",
@@ -544,6 +567,7 @@ function createCallbackRouteHandler(config) {
         { status: 400 }
       );
     }
+    const expectedNonce = request.cookies.get(nonceCookieName)?.value;
     const verifier = request.cookies.get(verifierCookieName)?.value;
     if (!verifier) {
       return NextResponse2.json(
@@ -625,7 +649,8 @@ function createCallbackRouteHandler(config) {
           tokenData.id_token,
           tokenData.access_token,
           normalizedBase,
-          clientId
+          clientId,
+          { expectedNonce }
         );
       } catch (err) {
         return NextResponse2.json(
@@ -669,11 +694,12 @@ function createCallbackRouteHandler(config) {
       }
     }
     response.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+    response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
     response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
     response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
     response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname, secureCookies));
     return response;
-  };
+  }
 }
 
 // src/next/logout.ts
@@ -681,7 +707,7 @@ import { NextResponse as NextResponse3 } from "next/server";
 
 // src/core/discovery.ts
 var DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1e3;
-var FETCH_TIMEOUT_MS = 5e3;
+var FETCH_TIMEOUT_MS2 = 5e3;
 var cache = /* @__PURE__ */ new Map();
 var inflight = /* @__PURE__ */ new Map();
 function fetchDiscoveryCached(baseUrl) {
@@ -693,7 +719,7 @@ function fetchDiscoveryCached(baseUrl) {
   if (existing) return existing;
   const promise = (async () => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS2);
     try {
       const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`, {
         signal: controller.signal
@@ -714,6 +740,23 @@ function fetchDiscoveryCached(baseUrl) {
 }
 
 // src/next/logout.ts
+function buildLogoutConfirmHtml() {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>\u786E\u8BA4\u9000\u51FA\u767B\u5F55</title>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;">
+  <form method="post" style="text-align:center;">
+    <p>\u786E\u5B9A\u8981\u9000\u51FA\u767B\u5F55\u5417\uFF1F</p>
+    <button type="submit" style="padding:10px 20px;background-color:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">\u9000\u51FA\u767B\u5F55</button>
+    <p><a href="/" style="color:#2563eb;text-decoration:underline;">\u53D6\u6D88\u5E76\u8FD4\u56DE\u9996\u9875</a></p>
+  </form>
+</body>
+</html>`;
+}
 function generateRandomString2(length) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const maxValid = Math.floor(256 / chars.length) * chars.length;
@@ -746,6 +789,7 @@ function createLogoutRouteHandler(config) {
   const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
+  const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
   const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
   const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
@@ -765,6 +809,12 @@ function createLogoutRouteHandler(config) {
       const res = NextResponse3.redirect(callbackOrigin + "/");
       res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
+    }
+    if (request.method === "GET") {
+      return new NextResponse3(buildLogoutConfirmHtml(), {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" }
+      });
     }
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
@@ -794,6 +844,7 @@ function createLogoutRouteHandler(config) {
       res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
+      res.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
@@ -826,6 +877,7 @@ export {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_ID_TOKEN_COOKIE_NAME,
   DEFAULT_LOGOUT_STATE_COOKIE_NAME,
+  DEFAULT_NONCE_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,

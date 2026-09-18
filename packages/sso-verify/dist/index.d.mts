@@ -111,6 +111,17 @@ interface SsoVerifierOptions {
      * 多实例部署时应注入共享存储（如 Redis 实现）以防跨实例重放。
      */
     logoutJtiStore?: LogoutJtiStore;
+    /**
+     * Introspection audience 严格模式（默认 false，保持向后兼容）。
+     *
+     * 默认模式下，introspection 响应既无 aud 又无 client_id 时保持信任
+     * （兼容不返回归属字段的端点）。设为 true 后：响应缺少归属字段即拒绝
+     * （fail-closed），防止被 confused deputy 攻击利用。
+     *
+     * ⚠️ 生产环境强烈建议开启。主站 introspection 端点始终返回 client_id，
+     * 开启后行为不变；仅在对接不返回归属字段的第三方端点时才需要保持 false。
+     */
+    strictAudience?: boolean;
 }
 /**
  * Logout Token jti 防重放存储接口（可注入 Redis 等共享存储实现）。
@@ -136,7 +147,7 @@ interface VerifiedTokenPayload extends JWTPayload {
  * 主站签发 logout_token 时包含以下字段：
  * - iss: 主站 issuer
  * - aud: 目标 client_id
- * - sub: 用户 ID
+ * - sub: 用户 ID（与 sid 至少其一）
  * - iat: 签发时间
  * - jti: 唯一 ID（防重放，建议接收方缓存已处理的 jti）
  * - events: { "http://schemas.openid.net/event/backchannel-logout": {} }
@@ -148,8 +159,8 @@ interface LogoutTokenPayload {
     iss: string;
     /** 目标 audience */
     aud: string;
-    /** 用户 ID */
-    sub: string;
+    /** 用户 ID（Back-Channel Logout 1.0：sub 与 sid 至少其一） */
+    sub?: string;
     /** 签发时间（UNIX timestamp） */
     iat: number;
     /** JWT ID（唯一标识，防重放） */
@@ -200,6 +211,7 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
      * 3. aud 包含当前 client_id
      * 4. exp 存在（规范要求）
      * 5. events 包含 backchannel-logout 事件，且事件值为对象
+     * 6. sub 或 sid 至少其一（§2.4，否则无法定位要终止的会话）
      *
      * @returns LogoutTokenPayload 或 null（验证失败）
      */

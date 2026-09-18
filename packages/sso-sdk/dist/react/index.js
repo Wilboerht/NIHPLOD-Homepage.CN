@@ -117,6 +117,7 @@ var STORAGE_PREFIX = "nihplod_sso_";
 var TOKEN_KEY = "token";
 var VERIFIER_KEY_PREFIX = "pkce_verifier_";
 var STATE_KEY = "oauth_state";
+var NONCE_KEY = "oidc_nonce";
 var RETURN_URL_KEY = "return_url";
 var LOGOUT_STATE_KEY = "logout_state";
 function buildKey(base, clientId) {
@@ -199,6 +200,15 @@ function getOAuthState(clientId) {
 function removeOAuthState(clientId) {
   _transient.remove(buildKey(STATE_KEY, clientId));
 }
+function saveOAuthNonce(nonce, clientId) {
+  _transient.set(buildKey(NONCE_KEY, clientId), nonce);
+}
+function getOAuthNonce(clientId) {
+  return _transient.get(buildKey(NONCE_KEY, clientId));
+}
+function removeOAuthNonce(clientId) {
+  _transient.remove(buildKey(NONCE_KEY, clientId));
+}
 function saveLogoutState(state, clientId) {
   _transient.set(buildKey(LOGOUT_STATE_KEY, clientId), state);
 }
@@ -221,6 +231,7 @@ function clearAllSsoData(clientId) {
   if (clientId) {
     removeTokenData(clientId);
     removeOAuthState(clientId);
+    removeOAuthNonce(clientId);
     removeReturnUrl(clientId);
     removeLogoutState(clientId);
     removePkceVerifier(clientId);
@@ -229,6 +240,7 @@ function clearAllSsoData(clientId) {
   }
   removeTokenData();
   removeOAuthState();
+  removeOAuthNonce();
   removeReturnUrl();
   removeLogoutState();
   const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
@@ -314,18 +326,21 @@ function normalizeIssuer(url) {
 var cachedJwks = null;
 var cachedDiscovery = null;
 var JWKS_CACHE_TTL_MS = 5 * 60 * 1e3;
+var FETCH_TIMEOUT_MS = 1e4;
 async function fetchDiscoveryDoc(baseUrl) {
   const now = Date.now();
   if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
     return cachedDiscovery.doc;
   }
   try {
-    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`);
-    const doc = res.ok ? await res.json() : null;
+    const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    });
+    if (!res.ok) return null;
+    const doc = await res.json();
     cachedDiscovery = { baseUrl, doc, fetchedAt: now };
     return doc;
   } catch {
-    cachedDiscovery = { baseUrl, doc: null, fetchedAt: now };
     return null;
   }
 }
@@ -337,7 +352,10 @@ async function fetchJwks(baseUrl, options = {}) {
   const discovery = await fetchDiscoveryDoc(baseUrl);
   const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
   try {
-    const res = await fetch(jwksUri, options.forceRefresh ? { cache: "no-cache" } : void 0);
+    const res = await fetch(jwksUri, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      ...options.forceRefresh ? { cache: "no-cache" } : {}
+    });
     if (!res.ok) return null;
     const jwks = await res.json();
     cachedJwks = { baseUrl, jwks, fetchedAt: now };
@@ -384,7 +402,7 @@ async function computeAtHash(accessToken) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 async function validateIdToken(idToken, accessToken, expectedIssuer, expectedClientId, options = {}) {
-  const { rejectHs256WhenRs256Available = true } = options;
+  const { rejectHs256WhenRs256Available = true, expectedNonce } = options;
   const header = decodeJwtHeader(idToken);
   if (!header) {
     throw new SsoError("id_token_invalid", "ID Token \u683C\u5F0F\u9519\u8BEF");
@@ -472,6 +490,12 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
     const actual = await computeAtHash(accessToken);
     if (!timingSafeEqualString(actual, payload.at_hash)) {
       throw new SsoError("id_token_at_hash_mismatch", "ID Token at_hash \u4E0D\u5339\u914D");
+    }
+  }
+  if (expectedNonce !== void 0) {
+    const tokenNonce = typeof payload.nonce === "string" ? payload.nonce : "";
+    if (!tokenNonce || !timingSafeEqualString(expectedNonce, tokenNonce)) {
+      throw new SsoError("id_token_nonce_mismatch", "ID Token nonce \u4E0D\u5339\u914D");
     }
   }
   return { sub: payload.sub };
@@ -580,8 +604,10 @@ var _SsoClient = class _SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    const nonce = generateState();
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    saveOAuthNonce(nonce, this.config.clientId);
     if (returnUrl) {
       this._saveReturnUrlIfTrusted(returnUrl);
     }
@@ -592,6 +618,7 @@ var _SsoClient = class _SsoClient {
     params.set("redirect_uri", this.config.redirectUri);
     params.set("scope", this.config.scopes || "openid profile");
     params.set("state", state);
+    params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
     window.location.href = `${authorizeEndpoint}?${params.toString()}`;
@@ -609,8 +636,10 @@ var _SsoClient = class _SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    const nonce = generateState();
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    saveOAuthNonce(nonce, this.config.clientId);
     if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
@@ -619,6 +648,7 @@ var _SsoClient = class _SsoClient {
     params.set("redirect_uri", this.config.redirectUri);
     params.set("scope", this.config.scopes || "openid profile");
     params.set("state", state);
+    params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
     return `${authorizeEndpoint}?${params.toString()}`;
@@ -660,9 +690,11 @@ var _SsoClient = class _SsoClient {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
+    const nonce = generateState();
     const popupNonce = generateState();
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
+    saveOAuthNonce(nonce, this.config.clientId);
     savePkceVerifier(`${this.config.clientId}_popup_nonce`, popupNonce);
     if (options.returnUrl) {
       this._saveReturnUrlIfTrusted(options.returnUrl);
@@ -674,6 +706,7 @@ var _SsoClient = class _SsoClient {
     params.set("redirect_uri", this.config.redirectUri);
     params.set("scope", this.config.scopes || "openid profile");
     params.set("state", state);
+    params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
     params.set("popup_nonce", popupNonce);
@@ -698,6 +731,7 @@ var _SsoClient = class _SsoClient {
     if (!popup) {
       removePkceVerifier(this.config.clientId);
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(`${this.config.clientId}_popup_nonce`);
       throw new SsoError(
         "popup_blocked",
@@ -717,6 +751,13 @@ var _SsoClient = class _SsoClient {
           const savedNonce = getPkceVerifier(`${this.config.clientId}_popup_nonce`);
           if (!savedNonce || !timingSafeEqualString(event.data.nonce ?? "", savedNonce)) return;
           removePkceVerifier(`${this.config.clientId}_popup_nonce`);
+          try {
+            event.source?.postMessage(
+              { type: "nihplod_sso_popup_ack", nonce: savedNonce },
+              event.origin
+            );
+          } catch {
+          }
           completed = true;
           cleanup();
           if (popup && !popup.closed) {
@@ -748,6 +789,7 @@ var _SsoClient = class _SsoClient {
     } catch (err) {
       removePkceVerifier(this.config.clientId);
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(`${this.config.clientId}_popup_nonce`);
       throw err;
     }
@@ -767,6 +809,7 @@ var _SsoClient = class _SsoClient {
     const error = params.get("error");
     if (error) {
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       const desc = params.get("error_description") || error;
       throw new SsoError(mapOAuthErrorToSsoCode(error), `\u6388\u6743\u5931\u8D25: ${desc}`);
@@ -775,18 +818,21 @@ var _SsoClient = class _SsoClient {
     const returnedState = params.get("state");
     if (!code) {
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       throw new SsoError("token_request_failed", "\u56DE\u8C03 URL \u4E2D\u7F3A\u5C11 authorization code");
     }
     const savedState = getOAuthState(this.config.clientId);
     if (!savedState || !timingSafeEqualString(savedState, returnedState ?? "")) {
       removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB"
       );
     }
+    const expectedNonce = getOAuthNonce(this.config.clientId) ?? void 0;
     const verifier = getPkceVerifier(this.config.clientId);
     if (!verifier) {
       throw new SsoError(
@@ -833,7 +879,8 @@ var _SsoClient = class _SsoClient {
           data.id_token,
           data.access_token,
           this.config.ssoBaseUrl,
-          this.config.clientId
+          this.config.clientId,
+          { expectedNonce }
         );
       } catch (err) {
         removeTokenData(this.config.clientId);
@@ -841,6 +888,7 @@ var _SsoClient = class _SsoClient {
       }
     }
     removeOAuthState(this.config.clientId);
+    removeOAuthNonce(this.config.clientId);
     removePkceVerifier(this.config.clientId);
     const now = Date.now();
     const tokenData = {
@@ -1192,7 +1240,9 @@ function SsoProvider({
       setError(
         err instanceof SsoError ? err : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err))
       );
-      removeTokenData(client.config.clientId);
+      if (err instanceof SsoError && (err.code === "not_authenticated" || err.code === "session_expired")) {
+        removeTokenData(client.config.clientId);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1429,6 +1479,7 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
   const { client, refreshUser } = useSso();
   const [error, setError] = (0, import_react3.useState)(null);
   const [processing, setProcessing] = (0, import_react3.useState)(true);
+  const [awaitingManualClose, setAwaitingManualClose] = (0, import_react3.useState)(false);
   const onSuccessRef = (0, import_react3.useRef)(onSuccess);
   const onErrorRef = (0, import_react3.useRef)(onError);
   (0, import_react3.useEffect)(() => {
@@ -1443,12 +1494,38 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
         targetOrigin = window.opener.location.origin;
       } catch {
       }
-      window.opener.postMessage(
-        { type: "nihplod_sso_popup_callback", callbackUrl: window.location.href, nonce: nonce || void 0 },
-        targetOrigin
-      );
+      const message = {
+        type: "nihplod_sso_popup_callback",
+        callbackUrl: window.location.href,
+        nonce: nonce || void 0
+      };
+      let acked = false;
+      const send = () => {
+        if (acked || !window.opener || window.opener.closed) return;
+        window.opener.postMessage(message, targetOrigin);
+      };
+      send();
+      const resendTimer = setInterval(send, 500);
+      const ackTimeout = setTimeout(() => {
+        if (acked) return;
+        clearInterval(resendTimer);
+        setAwaitingManualClose(true);
+      }, 1e4);
+      const handleAck = (event) => {
+        if (event.origin !== targetOrigin) return;
+        if (!event.data || event.data.type !== "nihplod_sso_popup_ack") return;
+        if (nonce && event.data.nonce !== nonce) return;
+        acked = true;
+        clearInterval(resendTimer);
+        clearTimeout(ackTimeout);
+      };
+      window.addEventListener("message", handleAck);
       Promise.resolve().then(() => setProcessing(false));
-      return;
+      return () => {
+        clearInterval(resendTimer);
+        clearTimeout(ackTimeout);
+        window.removeEventListener("message", handleAck);
+      };
     }
     let cancelled = false;
     async function handleCallback() {
@@ -1486,6 +1563,21 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
   if (error) {
     if (renderError) return import_react3.default.createElement(import_react3.default.Fragment, null, renderError(error));
     return import_react3.default.createElement(DefaultCallbackError, { error });
+  }
+  if (awaitingManualClose) {
+    return import_react3.default.createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          fontFamily: "system-ui, sans-serif"
+        }
+      },
+      import_react3.default.createElement("p", null, "\u767B\u5F55\u5DF2\u5B8C\u6210\uFF0C\u8BF7\u624B\u52A8\u5173\u95ED\u6B64\u7A97\u53E3")
+    );
   }
   if (processing) {
     return import_react3.default.createElement(

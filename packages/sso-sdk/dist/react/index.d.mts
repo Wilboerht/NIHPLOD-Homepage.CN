@@ -9,7 +9,7 @@ import React, { ReactNode, ComponentType } from 'react';
  *   整页跳转与刷新后登录态保留，关闭标签页自动清除；SSR / 隐私模式写入失败时
  *   降级为内存 Map。对需要多 Tab 共享 token 或 BFF/Confidential Client 场景，
  *   可通过 setTokenStorage() 注入 localStorage 实现（如 createSecureStorage({ persist: true })）。
- * - 临时数据（PKCE verifier / state / returnUrl / popup nonce）：必须跨整页重定向存活
+ * - 临时数据（PKCE verifier / state / OIDC nonce / returnUrl / popup nonce）：必须跨整页重定向存活
  *   （login() 会 302 跳转到 SSO 中心再回来），因此默认写入 sessionStorage；
  *   SSR 等无 sessionStorage 环境自动降级为内存 Map。
  *
@@ -270,7 +270,7 @@ declare class SsoClient {
  * SSO SDK 错误类型
  */
 /** SSO 错误码 */
-type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "authorization_code_expired" | "authorization_code_used" | "client_disabled" | "user_denied_authorization" | "account_disabled" | "sso_server_error" | "rate_limited" | "network_error" | "popup_blocked" | "popup_closed" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_hs256_unsupported" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch";
+type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "authorization_code_expired" | "authorization_code_used" | "client_disabled" | "user_denied_authorization" | "account_disabled" | "sso_server_error" | "rate_limited" | "network_error" | "popup_blocked" | "popup_closed" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_hs256_unsupported" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch" | "id_token_nonce_mismatch";
 /**
  * SSO SDK 自定义错误
  */
