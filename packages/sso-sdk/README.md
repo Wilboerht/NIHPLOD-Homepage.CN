@@ -50,19 +50,37 @@ Create an SSO client instance.
 | `scopes` | `string` | ❌ | Space-separated scopes, default `"openid profile"` |
 | `clientSecret` | `string` | ❌ | **Only for Confidential Clients**. Do NOT pass this in browser SPA (Public Client) to avoid leaking secrets. BFF / Next.js Route Handlers may pass it. |
 
-### `sso.login(returnUrl?)`
+### `sso.login(returnUrl?, options?)`
 
 Initiate SSO login. Generates PKCE parameters and redirects to the SSO login page.
 
 | Parameter | Type | Description |
 |------|------|------|
 | `returnUrl` | `string` | Optional URL to return to after login |
+| `options.prompt` | `"none" \| "login" \| "consent"` | Optional OIDC `prompt` parameter, passed through to the authorize URL |
 
-### `sso.getLoginUrl(returnUrl?)`
+### `sso.getLoginUrl(returnUrl?, options?)`
 
-Build the login URL string without redirecting. Returns `Promise<string>`.
+Build the login URL string without redirecting. Returns `Promise<string>`. Accepts the same `options.prompt` as `login()`.
 
 > ⚠️ Do NOT mix `getLoginUrl()` with `login()` for the same login attempt: both regenerate and overwrite the `state` / PKCE verifier in sessionStorage, so the flow started first will fail with a state mismatch. Use only one entry point per login.
+
+#### Silent session probe (`prompt: "none"`)
+
+Passing `prompt: "none"` starts a **silent probe**: if the user still has a session on the SSO center, the authorize endpoint redirects straight back with a code and login completes without UI; if not, the IdP redirects back with `error=login_required` (or `consent_required` / `interaction_required`). When you start the probe via `login()` / `getLoginUrl()`, the SDK records a probe marker alongside `state`; `handleCallback()` then recognizes the matching error callback, cleans up the transient data and returns `null` instead of throwing — treat `null` as "no SSO session". The default `<CallbackPage>` redirects back to your `returnUrl` with `sso_probe=no_session` appended.
+
+```typescript
+// Triggered by an explicit user action (e.g. clicking "继续 NIHPLOD 账户"):
+await sso.login("/dashboard", { prompt: "none" });
+
+// On the page returnUrl points to:
+const params = new URLSearchParams(location.search);
+if (params.get("sso_probe") === "no_session") {
+  // No SSO session — fall back to the normal interactive login button
+}
+```
+
+> ⚠️ Do NOT auto-probe on page load: it round-trips every visitor through the SSO center and adds latency for users without a session. Always trigger it from a deliberate user action (click).
 
 ### `sso.handleCallback(callbackUrl)`
 
@@ -72,7 +90,7 @@ Handle the OAuth callback. Parses `code` and `state` from the URL, validates sta
 |------|------|------|
 | `callbackUrl` | `string` | Full callback URL (`window.location.href`) |
 
-Returns `Promise<TokenData>`.
+Returns `Promise<TokenData | null>` — `null` only when a silent probe (`prompt: "none"`) finds no SSO session (see above).
 
 ### `sso.refreshToken()`
 
@@ -361,7 +379,11 @@ const handler = createLogoutRouteHandler({
   ssoBaseUrl: "https://nihplod.cn",
   redirectUri: "https://yourapp.com/api/auth/callback",
   postLogoutRedirectUri: "https://yourapp.com/",
-  redirectToSso: true,
+  // Logout scope: "local" (default) only signs out of THIS site (revoke
+  // refresh_token + clear cookies, redirect to the site home page);
+  // "global" additionally redirects to the SSO end-session endpoint to
+  // sign out of all NIHPLOD platforms (RP-Initiated Logout).
+  defaultScope: "local",
 });
 
 // Prefer POST to trigger logout (prevents logout CSRF via cross-site GET);
@@ -370,6 +392,25 @@ const handler = createLogoutRouteHandler({
 export const GET = handler;
 export const POST = handler;
 ```
+
+**Logout scopes (default changed):** the GET confirmation page now includes a "同时退出所有 NIHPLOD 平台" checkbox; when checked, the form POSTs `global=1` and the handler performs a global logout (end-session redirect) regardless of `defaultScope`. A POST without a `global` field uses `defaultScope`. If you trigger logout from your own fetch call, add `global=1` to the form body to opt into a global logout.
+
+> **Migration:** `redirectToSso` is deprecated and logs a one-time warning. `redirectToSso: true` → `defaultScope: "global"`; `redirectToSso: false` → `defaultScope: "local"`. Note the default changed from "redirect to SSO" to **local logout** — pass `defaultScope: "global"` to keep the old behavior.
+
+```typescript
+// src/app/api/auth/backchannel-logout/route.ts
+import { createBackchannelLogoutRouteHandler } from "@nihplod/sso-sdk/next";
+
+export const POST = createBackchannelLogoutRouteHandler({
+  clientId: "...",
+  ssoBaseUrl: "https://nihplod.cn",
+  onLogout: async ({ sub, sid }) => {
+    // Clear your own server-side session for this user/session
+  },
+});
+```
+
+The backchannel handler receives `logout_token` pushes from the SSO center (OIDC Back-Channel Logout) when the user signs out globally or revokes consent, verifies the token (RS256 signature via JWKS, issuer/audience/expiry, `events` claim, `jti` replay protection), clears the SSO cookies, and calls your `onLogout` hook. If the hook throws, it responds 500 so the IdP retries delivery. **Remember to register this route's public URL as `backchannelLogoutUri` in the SSO admin console for your client.**
 
 Trigger the logout endpoint with a POST request (recommended):
 

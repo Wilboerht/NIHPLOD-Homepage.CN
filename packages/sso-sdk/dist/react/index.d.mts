@@ -86,6 +86,21 @@ interface SsoUser {
     total_spent?: number;
     total_points?: number;
 }
+/** login() / getLoginUrl() 选项 */
+interface LoginOptions {
+    /**
+     * OIDC prompt 参数：
+     * - "none"：静默探测 SSO 会话。用户在 IdP 有会话时直接回跳完成登录；
+     *   无会话时 IdP 回跳 error=login_required（或 consent_required /
+     *   interaction_required），handleCallback() 识别后返回 null 而不抛错
+     *   （CallbackPage 默认跳回 returnUrl 并附 sso_probe=no_session）。
+     *   ⚠️ 不要在页面加载时自动探测（会打扰无会话用户并消耗请求），
+     *   应由用户点击等明确动作触发。
+     * - "login"：强制重新认证；
+     * - "consent"：强制重新授权确认。
+     */
+    prompt?: "none" | "login" | "consent";
+}
 /** OIDC Discovery 文档 */
 interface OidcDiscovery {
     issuer: string;
@@ -139,12 +154,15 @@ declare class SsoClient {
      *
      * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
      *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+     * @param options.prompt - OIDC prompt 参数。传 "none" 为静默探测：
+     *   额外在存储中记录探测标记（该次请求的 state），回调无会话时
+     *   handleCallback() 返回 null 而不抛错。
      *
      * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
      * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
      * 同一次登录只使用其中一个入口。
      */
-    login(returnUrl?: string): Promise<void>;
+    login(returnUrl?: string, options?: LoginOptions): Promise<void>;
     /**
      * 构建登录 URL（不跳转，返回 URL 字符串）
      *
@@ -154,7 +172,7 @@ declare class SsoClient {
      * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
      * 同一次登录只使用其中一个入口。
      */
-    getLoginUrl(returnUrl?: string): Promise<string>;
+    getLoginUrl(returnUrl?: string, options?: LoginOptions): Promise<string>;
     /**
      * 弹窗模式 SSO 登录
      *
@@ -200,9 +218,11 @@ declare class SsoClient {
      * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
      *
      * @param callbackUrl - 完整的回调 URL（window.location.href）
-     * @returns TokenData 或 null
+     * @returns TokenData；prompt=none 静默探测且无 SSO 会话时返回 null
+     *   （IdP 回跳 login_required / consent_required / interaction_required
+     *   且回调 state 与探测标记匹配），此时临时数据已清理，调用方按"未登录"处理即可
      */
-    handleCallback(callbackUrl: string): Promise<TokenData>;
+    handleCallback(callbackUrl: string): Promise<TokenData | null>;
     /**
      * 刷新 Access Token
      *
@@ -270,7 +290,7 @@ declare class SsoClient {
  * SSO SDK 错误类型
  */
 /** SSO 错误码 */
-type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "authorization_code_expired" | "authorization_code_used" | "client_disabled" | "user_denied_authorization" | "account_disabled" | "sso_server_error" | "rate_limited" | "network_error" | "popup_blocked" | "popup_closed" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_hs256_unsupported" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch" | "id_token_nonce_mismatch";
+type SsoErrorCode = "invalid_config" | "state_mismatch" | "pkce_required" | "token_request_failed" | "session_expired" | "no_refresh_token" | "userinfo_failed" | "not_authenticated" | "authorization_code_expired" | "authorization_code_used" | "client_disabled" | "user_denied_authorization" | "account_disabled" | "sso_server_error" | "rate_limited" | "network_error" | "popup_blocked" | "popup_closed" | "id_token_invalid" | "id_token_unsupported_alg" | "id_token_hs256_unsupported" | "id_token_missing_secret" | "id_token_invalid_signature" | "id_token_issuer_mismatch" | "id_token_audience_mismatch" | "id_token_expired" | "id_token_missing_sub" | "id_token_at_hash_mismatch" | "id_token_nonce_mismatch" | "logout_token_invalid" | "logout_token_unsupported_alg" | "logout_token_invalid_signature" | "logout_token_issuer_mismatch" | "logout_token_audience_mismatch" | "logout_token_expired" | "logout_token_replay";
 /**
  * SSO SDK 自定义错误
  */

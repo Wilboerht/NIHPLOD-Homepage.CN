@@ -90,7 +90,7 @@ function normalizeIssuer(url: string): string {
 }
 
 /** OIDC Discovery 文档（仅取本模块关心的字段） */
-interface OidcDiscoveryDoc {
+export interface OidcDiscoveryDoc {
   issuer?: string;
   jwks_uri?: string;
 }
@@ -107,7 +107,7 @@ const FETCH_TIMEOUT_MS = 10000;
  * 只缓存成功结果：失败（网络错误 / 非 2xx）不缓存，主站短暂抖动不会让
  * 登录持续失败到 TTL 期满，下一次调用立即重试（与 core/discovery.ts 策略一致）。
  */
-async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | null> {
+export async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | null> {
   const now = Date.now();
   if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
     return cachedDiscovery.doc;

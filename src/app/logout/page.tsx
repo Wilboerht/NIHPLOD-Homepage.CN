@@ -68,6 +68,9 @@ function LogoutContent() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // 分层退出：默认仅退出当前设备；勾选后升级为全设备登出
+  // （撤销所有 refresh token 并 backchannel 通知全部已授权平台）
+  const [allDevices, setAllDevices] = useState(false);
   const [trustedUri, setTrustedUri] = useState<string | null>(null);
   const [trustCheckDone, setTrustCheckDone] = useState(false);
   // id_token_hint 验签通过但其 sub 与当前 SSO 会话用户不一致时给出提示
@@ -162,9 +165,10 @@ function LogoutContent() {
         method: "POST",
         headers,
         credentials: "include",
-        // 仅结束当前设备会话：RP-Initiated Logout 的最佳实践，避免在子站
-        // 点一次退出就把用户手机/其他电脑的主站会话全部踢掉
-        body: JSON.stringify({ allDevices: false }),
+        // 默认仅结束当前设备会话：RP-Initiated Logout 的最佳实践，避免在子站
+        // 点一次退出就把用户手机/其他电脑的主站会话全部踢掉；
+        // 用户勾选"退出所有设备"时升级为全设备登出（通知全部已授权平台）
+        body: JSON.stringify({ allDevices }),
       });
 
       if (!res.ok) {
@@ -238,9 +242,7 @@ function LogoutContent() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">退出登录</h1>
-        <p className="mb-6 text-gray-500">
-          {clientId ? `确定要退出登录并同步退出已授权的应用吗？` : "确定要退出登录吗？"}
-        </p>
+        <p className="mb-6 text-gray-500">确定要退出当前设备的登录吗？</p>
 
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
@@ -255,6 +257,22 @@ function LogoutContent() {
             </p>
           </div>
         )}
+
+        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left">
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={allDevices}
+              onChange={(e) => setAllDevices(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
+            />
+            <span className="text-sm text-gray-700">同时退出所有设备和已授权的平台</span>
+          </label>
+          <p className="mt-1 pl-6 text-xs text-gray-400">
+            勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
+          </p>
+        </div>
 
         <div className="flex justify-center gap-3">
           <button

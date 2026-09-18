@@ -5,6 +5,7 @@
  * - createSsoMiddleware: Next.js Middleware 辅助函数
  * - createCallbackRouteHandler: App Router 回调 Route Handler
  * - createLogoutRouteHandler: App Router 登出 Route Handler
+ * - createBackchannelLogoutRouteHandler: App Router Backchannel Logout 接收端
  */
 
 export { createSsoMiddleware } from "./middleware";
@@ -15,6 +16,9 @@ export type { CallbackRouteConfig } from "./callback";
 
 export { createLogoutRouteHandler } from "./logout";
 export type { LogoutRouteConfig } from "./logout";
+
+export { createBackchannelLogoutRouteHandler } from "./backchannel-logout";
+export type { BackchannelLogoutRouteConfig } from "./backchannel-logout";
 
 export {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,

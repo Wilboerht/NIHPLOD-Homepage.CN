@@ -31,15 +31,21 @@ function jsonResponse(data: unknown, status = 200): Response {
 function buildRequest(
   query: Record<string, string> = {},
   cookies: Record<string, string> = {},
-  method: string = "GET"
+  method: string = "GET",
+  body?: string
 ): NextRequest {
   const qs = new URLSearchParams(query).toString();
   const cookieHeader = Object.entries(cookies)
     .map(([k, v]) => `${k}=${v}`)
     .join("; ");
+  const headers: Record<string, string> = {};
+  if (cookieHeader) headers.cookie = cookieHeader;
+  if (body !== undefined) {
+    headers["content-type"] = "application/x-www-form-urlencoded";
+  }
   return new NextRequest(
     `https://myapp.com/api/auth/logout${qs ? `?${qs}` : ""}`,
-    { method, headers: cookieHeader ? { cookie: cookieHeader } : {} }
+    { method, headers, ...(body !== undefined ? { body } : {}) }
   );
 }
 
@@ -107,13 +113,15 @@ describe("createLogoutRouteHandler", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
     const html = await res.text();
     expect(html).toContain('method="post"');
+    // 确认页提供"同时退出所有 NIHPLOD 平台"勾选框（勾选后表单携带 global=1）
+    expect(html).toContain('name="global"');
 
     // 不撤销 refresh_token、不清除本地 cookie、不重定向 SSO
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(res.cookies.get("__Host-nihplod_sso_rt")).toBeUndefined();
   });
 
-  it("正常登出（POST）：撤销 refresh_token、清除本地 cookie、重定向 SSO 并写 logout state cookie", async () => {
+  it("正常登出（POST + global=1）：撤销 refresh_token、清除本地 cookie、重定向 SSO 并写 logout state cookie", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (input) => {
@@ -130,7 +138,7 @@ describe("createLogoutRouteHandler", () => {
 
     const handler = createLogoutRouteHandler(config);
     const res = await handler(
-      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1", "__Host-nihplod_sso_id": "id-token-1" }, "POST")
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1", "__Host-nihplod_sso_id": "id-token-1" }, "POST", "global=1")
     );
 
     expect(res.status).toBe(307);
@@ -161,11 +169,101 @@ describe("createLogoutRouteHandler", () => {
     expect(String(revokeCall![1]?.body)).toContain("token=rt-1");
   });
 
-  it("redirectToSso=false 时仅清除 cookie 并重定向首页", async () => {
+  it("默认 local：POST 不带 global 字段时仅退出本站（不跳转 SSO）", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/.well-known/openid-configuration")) {
+          return jsonResponse({
+            end_session_endpoint: "https://nihplod.cn/api/oauth/end-session",
+            revocation_endpoint: "https://nihplod.cn/api/oauth/revoke",
+          });
+        }
+        if (url.includes("/api/oauth/revoke")) return jsonResponse({});
+        throw new Error(`unexpected fetch: ${url}`);
+      });
+
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST")
+    );
+
+    // local：重定向回本站首页，而非 IdP end-session
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://myapp.com/");
+    // 本地 cookie 已清除、refresh_token 已撤销
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
+    expect(res.cookies.get("__Host-nihplod_sso_rt")?.value).toBe("");
+    expect(
+      fetchSpy.mock.calls.some(([input]) => String(input).includes("/api/oauth/revoke"))
+    ).toBe(true);
+  });
+
+  it("defaultScope: \"global\" 配置生效：POST 不带 global 字段时走 end-session", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/.well-known/openid-configuration")) {
+        return jsonResponse({
+          end_session_endpoint: "https://nihplod.cn/api/oauth/end-session",
+          revocation_endpoint: "https://nihplod.cn/api/oauth/revoke",
+        });
+      }
+      if (url.includes("/api/oauth/revoke")) return jsonResponse({});
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+
+    const handler = createLogoutRouteHandler({ ...config, defaultScope: "global" });
+    const res = await handler(buildRequest({}, {}, "POST"));
+
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.origin + location.pathname).toBe(
+      "https://nihplod.cn/api/oauth/end-session"
+    );
+  });
+
+  it("表单携带 global=0 时即使 defaultScope 为 global 也按 local 处理（表单优先）", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse({}));
+
+    const handler = createLogoutRouteHandler({ ...config, defaultScope: "global" });
+    const res = await handler(buildRequest({}, {}, "POST", "global=0"));
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://myapp.com/");
+  });
+
+  it("redirectToSso 别名兼容：true 映射为 global 并输出弃用告警", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/.well-known/openid-configuration")) {
+        return jsonResponse({
+          end_session_endpoint: "https://nihplod.cn/api/oauth/end-session",
+        });
+      }
+      return jsonResponse({});
+    });
+
+    const handler = createLogoutRouteHandler({ ...config, redirectToSso: true });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("redirectToSso 已弃用"));
+
+    const res = await handler(buildRequest({}, {}, "POST"));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.origin + location.pathname).toBe(
+      "https://nihplod.cn/api/oauth/end-session"
+    );
+  });
+
+  it("redirectToSso 别名兼容：false 映射为 local 并输出弃用告警", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       jsonResponse({})
     );
     const handler = createLogoutRouteHandler({ ...config, redirectToSso: false });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("redirectToSso 已弃用"));
+
     const res = await handler(buildRequest({}, {}, "POST"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://myapp.com/");
@@ -177,7 +275,7 @@ describe("createLogoutRouteHandler", () => {
       throw new Error("network down");
     });
     const handler = createLogoutRouteHandler(config);
-    const res = await handler(buildRequest({}, {}, "POST"));
+    const res = await handler(buildRequest({}, {}, "POST", "global=1"));
     expect(res.status).toBe(307);
     const location = new URL(res.headers.get("location")!);
     expect(location.origin + location.pathname).toBe(
@@ -241,7 +339,7 @@ describe("createLogoutRouteHandler", () => {
       serverBaseUrl: "http://127.0.0.1:3000",
     });
     const res = await handler(
-      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST")
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST", "global=1")
     );
 
     // 配置内网地址时 revoke 直连内网默认端点（不使用 discovery 里的公网 URL）
@@ -271,8 +369,8 @@ describe("createLogoutRouteHandler", () => {
       });
 
     const handler = createLogoutRouteHandler(config);
-    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST"));
-    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-2" }, "POST"));
+    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST", "global=1"));
+    await handler(buildRequest({}, { "__Host-nihplod_sso_rt": "rt-2" }, "POST", "global=1"));
 
     const discoveryCalls = fetchSpy.mock.calls.filter(([input]) =>
       String(input).includes("/.well-known/openid-configuration")

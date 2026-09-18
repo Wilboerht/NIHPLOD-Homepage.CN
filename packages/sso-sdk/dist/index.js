@@ -139,6 +139,7 @@ var STATE_KEY = "oauth_state";
 var NONCE_KEY = "oidc_nonce";
 var RETURN_URL_KEY = "return_url";
 var LOGOUT_STATE_KEY = "logout_state";
+var SILENT_PROBE_KEY = "silent_probe";
 function buildKey(base, clientId) {
   return clientId ? `${base}:${clientId}` : base;
 }
@@ -275,6 +276,15 @@ function getReturnUrl(clientId) {
 function removeReturnUrl(clientId) {
   _transient.remove(buildKey(RETURN_URL_KEY, clientId));
 }
+function saveSilentProbe(state, clientId) {
+  _transient.set(buildKey(SILENT_PROBE_KEY, clientId), state);
+}
+function getSilentProbe(clientId) {
+  return _transient.get(buildKey(SILENT_PROBE_KEY, clientId));
+}
+function removeSilentProbe(clientId) {
+  _transient.remove(buildKey(SILENT_PROBE_KEY, clientId));
+}
 function clearAllSsoData(clientId) {
   if (clientId) {
     removeTokenData(clientId);
@@ -282,6 +292,7 @@ function clearAllSsoData(clientId) {
     removeOAuthNonce(clientId);
     removeReturnUrl(clientId);
     removeLogoutState(clientId);
+    removeSilentProbe(clientId);
     removePkceVerifier(clientId);
     removePkceVerifier(`${clientId}_popup_nonce`);
     return;
@@ -291,6 +302,7 @@ function clearAllSsoData(clientId) {
   removeOAuthNonce();
   removeReturnUrl();
   removeLogoutState();
+  removeSilentProbe();
   const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
   const stores = [
     typeof sessionStorage !== "undefined" ? sessionStorage : null,
@@ -555,6 +567,11 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
 }
 
 // src/core/SsoClient.ts
+var SILENT_PROBE_ERRORS = /* @__PURE__ */ new Set([
+  "login_required",
+  "consent_required",
+  "interaction_required"
+]);
 var _SsoClient = class _SsoClient {
   constructor(config) {
     this._discovery = null;
@@ -648,12 +665,15 @@ var _SsoClient = class _SsoClient {
    *
    * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
    *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+   * @param options.prompt - OIDC prompt 参数。传 "none" 为静默探测：
+   *   额外在存储中记录探测标记（该次请求的 state），回调无会话时
+   *   handleCallback() 返回 null 而不抛错。
    *
    * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
    * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
    * 同一次登录只使用其中一个入口。
    */
-  async login(returnUrl) {
+  async login(returnUrl, options = {}) {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
@@ -661,6 +681,11 @@ var _SsoClient = class _SsoClient {
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
     saveOAuthNonce(nonce, this.config.clientId);
+    if (options.prompt === "none") {
+      saveSilentProbe(state, this.config.clientId);
+    } else {
+      removeSilentProbe(this.config.clientId);
+    }
     if (returnUrl) {
       this._saveReturnUrlIfTrusted(returnUrl);
     }
@@ -674,6 +699,9 @@ var _SsoClient = class _SsoClient {
     params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
+    if (options.prompt) {
+      params.set("prompt", options.prompt);
+    }
     window.location.href = `${authorizeEndpoint}?${params.toString()}`;
   }
   /**
@@ -685,7 +713,7 @@ var _SsoClient = class _SsoClient {
    * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
    * 同一次登录只使用其中一个入口。
    */
-  async getLoginUrl(returnUrl) {
+  async getLoginUrl(returnUrl, options = {}) {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
@@ -693,6 +721,11 @@ var _SsoClient = class _SsoClient {
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
     saveOAuthNonce(nonce, this.config.clientId);
+    if (options.prompt === "none") {
+      saveSilentProbe(state, this.config.clientId);
+    } else {
+      removeSilentProbe(this.config.clientId);
+    }
     if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
     const authorizeEndpoint = await this._getAuthorizeEndpoint();
     const params = new URLSearchParams();
@@ -704,6 +737,9 @@ var _SsoClient = class _SsoClient {
     params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
+    if (options.prompt) {
+      params.set("prompt", options.prompt);
+    }
     return `${authorizeEndpoint}?${params.toString()}`;
   }
   /**
@@ -816,7 +852,15 @@ var _SsoClient = class _SsoClient {
           if (popup && !popup.closed) {
             popup.close();
           }
-          this.handleCallback(event.data.callbackUrl).then(resolve).catch(reject);
+          this.handleCallback(event.data.callbackUrl).then((tokenData) => {
+            if (tokenData === null) {
+              reject(
+                new SsoError("not_authenticated", "SSO \u4F1A\u8BDD\u4E0D\u5B58\u5728\uFF08\u9759\u9ED8\u63A2\u6D4B\u65E0\u4F1A\u8BDD\uFF09")
+              );
+              return;
+            }
+            resolve(tokenData);
+          }).catch(reject);
         };
         const pollTimer = setInterval(() => {
           if (popup.closed) {
@@ -854,16 +898,29 @@ var _SsoClient = class _SsoClient {
    * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
-   * @returns TokenData 或 null
+   * @returns TokenData；prompt=none 静默探测且无 SSO 会话时返回 null
+   *   （IdP 回跳 login_required / consent_required / interaction_required
+   *   且回调 state 与探测标记匹配），此时临时数据已清理，调用方按"未登录"处理即可
    */
   async handleCallback(callbackUrl) {
     const url = new URL(callbackUrl);
     const params = url.searchParams;
     const error = params.get("error");
     if (error) {
+      const returnedErrorState = params.get("state");
+      const probeState = getSilentProbe(this.config.clientId);
+      const savedStateForProbe = getOAuthState(this.config.clientId);
+      if (SILENT_PROBE_ERRORS.has(error) && probeState && savedStateForProbe && timingSafeEqualString(savedStateForProbe, returnedErrorState ?? "") && timingSafeEqualString(probeState, returnedErrorState ?? "")) {
+        removeOAuthState(this.config.clientId);
+        removeOAuthNonce(this.config.clientId);
+        removePkceVerifier(this.config.clientId);
+        removeSilentProbe(this.config.clientId);
+        return null;
+      }
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       const desc = params.get("error_description") || error;
       throw new SsoError(mapOAuthErrorToSsoCode(error), `\u6388\u6743\u5931\u8D25: ${desc}`);
     }
@@ -873,6 +930,7 @@ var _SsoClient = class _SsoClient {
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       throw new SsoError("token_request_failed", "\u56DE\u8C03 URL \u4E2D\u7F3A\u5C11 authorization code");
     }
     const savedState = getOAuthState(this.config.clientId);
@@ -880,6 +938,7 @@ var _SsoClient = class _SsoClient {
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB"
@@ -943,6 +1002,7 @@ var _SsoClient = class _SsoClient {
     removeOAuthState(this.config.clientId);
     removeOAuthNonce(this.config.clientId);
     removePkceVerifier(this.config.clientId);
+    removeSilentProbe(this.config.clientId);
     const now = Date.now();
     const tokenData = {
       access_token: data.access_token,

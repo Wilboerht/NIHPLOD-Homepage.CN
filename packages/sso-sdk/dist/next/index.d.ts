@@ -159,7 +159,9 @@ declare function createCallbackRouteHandler(config: CallbackRouteConfig): (reque
  * 在 /api/auth/logout 路由中处理本地登出 + RP-Initiated Logout：
  * 1. 从 cookie 读取 refresh_token 并调用 revocation_endpoint 撤销
  * 2. 清除所有 SSO cookie
- * 3. 可选重定向到 SSO 中心登出页
+ * 3. 按退出范围（defaultScope / 表单 global 字段）决定：
+ *    - "local"（默认）：仅退出本站，重定向回本站首页
+ *    - "global"：重定向到 SSO 中心 end-session，全局退出所有 NIHPLOD 平台
  *
  * 用法 (src/app/api/auth/logout/route.ts):
  * ```ts
@@ -193,7 +195,18 @@ interface LogoutRouteConfig {
     clientSecret?: string;
     /** 登出后跳转回子项目的地址，默认取 redirectUri 的 origin */
     postLogoutRedirectUri?: string;
-    /** 是否重定向到 SSO 中心登出页，默认 true */
+    /**
+     * 默认退出范围（默认 "local"）：
+     * - "local"：仅退出本站（撤销 refresh_token + 清本地 cookie），不跳转 SSO 中心；
+     * - "global"：同时跳转 SSO 中心 end-session 全局退出（RP-Initiated Logout）。
+     * 用户可在 GET 确认页勾选"同时退出所有 NIHPLOD 平台"后通过表单字段
+     * global=1 覆盖默认值；POST 表单携带 global 字段时以表单为准。
+     */
+    defaultScope?: "local" | "global";
+    /**
+     * @deprecated 请改用 defaultScope（true → "global"，false → "local"）。
+     * 仅为兼容保留；与 defaultScope 同时传入时以 defaultScope 为准。
+     */
     redirectToSso?: boolean;
     /** Access Token Cookie 名称 */
     accessTokenCookieName?: string;
@@ -229,6 +242,63 @@ interface LogoutRouteConfig {
     insecureLocalDev?: boolean;
 }
 declare function createLogoutRouteHandler(config: LogoutRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
+
+/** 验证通过的 logout_token 负载（仅暴露子站清会话所需的标识） */
+interface LogoutTokenPayload {
+    sub?: string;
+    sid?: string;
+}
+
+/**
+ * App Router Backchannel Logout 接收端 Route Handler
+ *
+ * 接收 SSO 中心在用户全局登出 / 撤销授权时推送的 logout_token
+ * （OIDC Back-Channel Logout 1.0），验证通过后清除本站 SSO cookie 并
+ * 调用 onLogout 钩子（子站在钩子里清除自己的本地会话，如数据库 session）。
+ *
+ * 前置条件：在 SSO 中心管理后台为本 client 注册 backchannelLogoutUri
+ * 指向本路由的公网地址（必须 HTTPS）。
+ *
+ * 用法 (src/app/api/auth/backchannel-logout/route.ts):
+ * ```ts
+ * import { createBackchannelLogoutRouteHandler } from "@nihplod/sso-sdk/next";
+ *
+ * export const POST = createBackchannelLogoutRouteHandler({
+ *   clientId: "my-app",
+ *   ssoBaseUrl: "https://nihplod.cn",
+ *   onLogout: async ({ sub, sid }) => {
+ *     // 清除子站本地会话（按 sub 或 sid 定位）
+ *   },
+ * });
+ * ```
+ */
+
+interface BackchannelLogoutRouteConfig {
+    /** OAuth Client ID（logout_token 的 aud 必须等于它） */
+    clientId: string;
+    /** SSO 中心地址（Discovery / JWKS 基准） */
+    ssoBaseUrl: string;
+    /**
+     * 登出通知钩子：logout_token 验证通过后调用，
+     * 子站在此处按 sub / sid 清除自己的本地会话（数据库 session 等）。
+     * 抛错时返回 500，让 IdP 重投。
+     */
+    onLogout?: (payload: LogoutTokenPayload, request: NextRequest) => void | Promise<void>;
+    /** Access Token Cookie 名称 */
+    accessTokenCookieName?: string;
+    /** Refresh Token Cookie 名称 */
+    refreshTokenCookieName?: string;
+    /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
+    idTokenCookieName?: string;
+    /**
+     * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
+     * __Host-/__Secure- 前缀；必须与 middleware / callback / logout 的配置保持一致。
+     * 生产严禁启用——生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）下
+     * 该开关会被强制忽略并告警。
+     */
+    insecureLocalDev?: boolean;
+}
+declare function createBackchannelLogoutRouteHandler(config: BackchannelLogoutRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
 /**
  * Next.js 集成默认 Cookie 名称
@@ -271,4 +341,4 @@ declare function getSecureCookieOptions(maxAge?: number, path?: string, secure?:
     maxAge?: number;
 };
 
-export { type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_NONCE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };
+export { type BackchannelLogoutRouteConfig, type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_NONCE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createBackchannelLogoutRouteHandler, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };

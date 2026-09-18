@@ -35,7 +35,14 @@ export type SsoErrorCode =
   | "id_token_expired"
   | "id_token_missing_sub"
   | "id_token_at_hash_mismatch"
-  | "id_token_nonce_mismatch";
+  | "id_token_nonce_mismatch"
+  | "logout_token_invalid"
+  | "logout_token_unsupported_alg"
+  | "logout_token_invalid_signature"
+  | "logout_token_issuer_mismatch"
+  | "logout_token_audience_mismatch"
+  | "logout_token_expired"
+  | "logout_token_replay";
 
 /**
  * 将 OAuth 2.0 服务端 error 字段映射到 SsoErrorCode

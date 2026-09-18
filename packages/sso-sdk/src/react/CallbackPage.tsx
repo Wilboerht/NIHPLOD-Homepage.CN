@@ -150,6 +150,21 @@ export function CallbackPage({ onSuccess, onError, renderError }: CallbackPagePr
 
         if (cancelled) return;
 
+        // 静默探测（prompt=none）无 SSO 会话：handleCallback 返回 null。
+        // 跳回 returnUrl 并附 sso_probe=no_session，子站据此按"未登录"展示
+        if (tokenData === null) {
+          const clientId = client.config.clientId;
+          const probeReturnUrl = getReturnUrl(clientId);
+          removeReturnUrl(clientId);
+          const target =
+            probeReturnUrl && isTrustedReturnUrl(probeReturnUrl, window.location.origin)
+              ? probeReturnUrl
+              : "/";
+          window.location.href =
+            target + (target.includes("?") ? "&" : "?") + "sso_probe=no_session";
+          return;
+        }
+
         // 刷新用户信息
         await refreshUser();
 

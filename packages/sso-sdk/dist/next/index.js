@@ -28,6 +28,7 @@ __export(next_exports, {
   DEFAULT_RETURN_COOKIE_NAME: () => DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME: () => DEFAULT_STATE_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME: () => DEFAULT_VERIFIER_COOKIE_NAME,
+  createBackchannelLogoutRouteHandler: () => createBackchannelLogoutRouteHandler,
   createCallbackRouteHandler: () => createCallbackRouteHandler,
   createLogoutRouteHandler: () => createLogoutRouteHandler,
   createSsoMiddleware: () => createSsoMiddleware,
@@ -790,6 +791,9 @@ function buildLogoutConfirmHtml() {
 <body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;">
   <form method="post" style="text-align:center;">
     <p>\u786E\u5B9A\u8981\u9000\u51FA\u767B\u5F55\u5417\uFF1F</p>
+    <label style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0;font-size:14px;color:#374151;cursor:pointer;">
+      <input type="checkbox" name="global" value="1">\u540C\u65F6\u9000\u51FA\u6240\u6709 NIHPLOD \u5E73\u53F0
+    </label>
     <button type="submit" style="padding:10px 20px;background-color:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">\u9000\u51FA\u767B\u5F55</button>
     <p><a href="/" style="color:#2563eb;text-decoration:underline;">\u53D6\u6D88\u5E76\u8FD4\u56DE\u9996\u9875</a></p>
   </form>
@@ -817,10 +821,18 @@ function createLogoutRouteHandler(config) {
     redirectUri,
     clientSecret,
     postLogoutRedirectUri = new URL(redirectUri).origin + "/",
-    redirectToSso = true,
     callbackPath = "/api/auth/callback",
     insecureLocalDev: insecureLocalDevOpt = false
   } = config;
+  let defaultScope = config.defaultScope ?? "local";
+  if (config.redirectToSso !== void 0) {
+    console.warn(
+      '[SSO SDK] redirectToSso \u5DF2\u5F03\u7528\uFF0C\u8BF7\u6539\u7528 defaultScope\uFF08redirectToSso: true \u2192 defaultScope: "global"\uFF0Cfalse \u2192 "local"\uFF09\u3002\u6CE8\u610F\uFF1A\u9ED8\u8BA4\u9000\u51FA\u8303\u56F4\u5DF2\u53D8\u66F4\u4E3A "local"\uFF08\u4EC5\u9000\u51FA\u672C\u7AD9\uFF0C\u4E0D\u8DF3\u8F6C SSO \u4E2D\u5FC3\uFF09\u3002'
+    );
+    if (config.defaultScope === void 0) {
+      defaultScope = config.redirectToSso ? "global" : "local";
+    }
+  }
   const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
   const secureCookies = !insecureLocalDev;
   const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
@@ -855,6 +867,12 @@ function createLogoutRouteHandler(config) {
         headers: { "content-type": "text/html; charset=utf-8" }
       });
     }
+    let formGlobal = null;
+    try {
+      formGlobal = new URLSearchParams(await request.text()).get("global");
+    } catch {
+    }
+    const effectiveScope = formGlobal !== null ? formGlobal === "1" || formGlobal === "true" ? "global" : "local" : defaultScope;
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
     if (refreshToken) {
@@ -889,7 +907,7 @@ function createLogoutRouteHandler(config) {
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
       return res;
     };
-    if (redirectToSso) {
+    if (effectiveScope === "global") {
       const discovery = await fetchDiscoveryCached(normalizedServerBase);
       const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
@@ -912,6 +930,198 @@ function createLogoutRouteHandler(config) {
     );
   };
 }
+
+// src/next/backchannel-logout.ts
+var import_server4 = require("next/server");
+
+// src/core/logout-token.ts
+var BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout";
+var JTI_CACHE_CAPACITY = 1e3;
+var seenJti = /* @__PURE__ */ new Map();
+function recordJti(jti, expiresAtMs) {
+  const now = Date.now();
+  const existing = seenJti.get(jti);
+  if (existing !== void 0 && existing > now) return false;
+  for (const [key, exp] of seenJti) {
+    if (exp <= now) seenJti.delete(key);
+  }
+  while (seenJti.size >= JTI_CACHE_CAPACITY) {
+    const oldest = seenJti.keys().next().value;
+    if (oldest === void 0) break;
+    seenJti.delete(oldest);
+  }
+  seenJti.set(jti, expiresAtMs);
+  return true;
+}
+async function verifyLogoutToken(logoutToken, ssoBaseUrl, clientId) {
+  const baseUrl = ssoBaseUrl.replace(/\/+$/, "");
+  const header = decodeJwtHeader(logoutToken);
+  if (!header) {
+    throw new SsoError("logout_token_invalid", "Logout Token \u683C\u5F0F\u9519\u8BEF");
+  }
+  if (header.alg !== "RS256") {
+    throw new SsoError(
+      "logout_token_unsupported_alg",
+      `\u4E0D\u652F\u6301\u7684 Logout Token \u7B7E\u540D\u7B97\u6CD5: ${String(header.alg)}`
+    );
+  }
+  const discovery = await fetchDiscoveryDoc(baseUrl);
+  const normalizedIssuer = (discovery?.issuer || baseUrl).replace(/\/+$/, "");
+  const jwks = await fetchJwks(baseUrl);
+  if (!jwks) {
+    throw new SsoError(
+      "logout_token_invalid_signature",
+      "\u65E0\u6CD5\u83B7\u53D6 JWKS \u9A8C\u8BC1 Logout Token \u7B7E\u540D"
+    );
+  }
+  const kid = typeof header.kid === "string" ? header.kid : void 0;
+  const matchCandidates = (set) => set.keys.filter(
+    (k) => k.kty === "RSA" && k.alg === "RS256" && k.use === "sig" && (kid ? k.kid === kid : true)
+  );
+  const verifyAny = async (keys) => {
+    for (const key of keys) {
+      if (await verifyRs256Signature(logoutToken, key)) return true;
+    }
+    return false;
+  };
+  let candidates = matchCandidates(jwks);
+  let validSig = candidates.length > 0 ? await verifyAny(candidates) : false;
+  if (candidates.length === 0 || !validSig) {
+    const freshJwks = await fetchJwks(baseUrl, { forceRefresh: true });
+    if (freshJwks) {
+      candidates = matchCandidates(freshJwks);
+      validSig = candidates.length > 0 ? await verifyAny(candidates) : false;
+    }
+  }
+  if (candidates.length === 0) {
+    throw new SsoError(
+      "logout_token_invalid_signature",
+      "JWKS \u4E2D\u672A\u627E\u5230\u5339\u914D\u7684 RS256 \u516C\u94A5"
+    );
+  }
+  if (!validSig) {
+    throw new SsoError(
+      "logout_token_invalid_signature",
+      "Logout Token \u7B7E\u540D\u9A8C\u8BC1\u5931\u8D25"
+    );
+  }
+  const payload = decodeJwtPayload(logoutToken);
+  if (!payload) {
+    throw new SsoError("logout_token_invalid", "Logout Token payload \u89E3\u6790\u5931\u8D25");
+  }
+  const tokenIssuer = typeof payload.iss === "string" ? payload.iss.replace(/\/+$/, "") : "";
+  if (tokenIssuer !== normalizedIssuer) {
+    throw new SsoError(
+      "logout_token_issuer_mismatch",
+      "Logout Token issuer \u4E0D\u5339\u914D"
+    );
+  }
+  const aud = payload.aud;
+  const audList = Array.isArray(aud) ? aud : typeof aud === "string" ? [aud] : [];
+  if (!audList.includes(clientId)) {
+    throw new SsoError(
+      "logout_token_audience_mismatch",
+      "Logout Token audience \u4E0D\u5339\u914D"
+    );
+  }
+  if (typeof payload.exp !== "number") {
+    throw new SsoError("logout_token_invalid", "Logout Token \u7F3A\u5C11 exp \u58F0\u660E");
+  }
+  if (Date.now() >= payload.exp * 1e3 + 6e4) {
+    throw new SsoError("logout_token_expired", "Logout Token \u5DF2\u8FC7\u671F");
+  }
+  const events = payload.events;
+  if (!events || typeof events !== "object" || !(BACKCHANNEL_LOGOUT_EVENT in events)) {
+    throw new SsoError(
+      "logout_token_invalid",
+      "Logout Token \u7F3A\u5C11 backchannel-logout events \u58F0\u660E"
+    );
+  }
+  const sub = typeof payload.sub === "string" && payload.sub ? payload.sub : void 0;
+  const sid = typeof payload.sid === "string" && payload.sid ? payload.sid : void 0;
+  if (!sub && !sid) {
+    throw new SsoError(
+      "logout_token_invalid",
+      "Logout Token \u5FC5\u987B\u5305\u542B sub \u6216 sid \u81F3\u5C11\u5176\u4E00"
+    );
+  }
+  const jti = typeof payload.jti === "string" ? payload.jti : "";
+  if (!jti) {
+    throw new SsoError("logout_token_invalid", "Logout Token \u7F3A\u5C11 jti \u58F0\u660E");
+  }
+  if (!recordJti(jti, payload.exp * 1e3 + 6e4)) {
+    throw new SsoError("logout_token_replay", "Logout Token jti \u91CD\u653E");
+  }
+  return { sub, sid };
+}
+
+// src/next/backchannel-logout.ts
+function createBackchannelLogoutRouteHandler(config) {
+  const { clientId, ssoBaseUrl, onLogout } = config;
+  const insecureLocalDev = resolveInsecureLocalDev(
+    config.insecureLocalDev ?? false,
+    ssoBaseUrl
+  );
+  const secureCookies = !insecureLocalDev;
+  const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
+  const accessTokenCookieName = pickName(
+    config.accessTokenCookieName,
+    DEFAULT_ACCESS_TOKEN_COOKIE_NAME
+  );
+  const refreshTokenCookieName = pickName(
+    config.refreshTokenCookieName,
+    DEFAULT_REFRESH_TOKEN_COOKIE_NAME
+  );
+  const idTokenCookieName = pickName(
+    config.idTokenCookieName,
+    DEFAULT_ID_TOKEN_COOKIE_NAME
+  );
+  return async function handler(request) {
+    if (request.method !== "POST") {
+      return import_server4.NextResponse.json(
+        { error: "method_not_allowed", error_description: "\u4EC5\u63A5\u53D7 POST \u8BF7\u6C42" },
+        { status: 405 }
+      );
+    }
+    const logoutToken = new URLSearchParams(await request.text()).get(
+      "logout_token"
+    );
+    if (!logoutToken) {
+      return import_server4.NextResponse.json(
+        { error: "invalid_request", error_description: "\u7F3A\u5C11 logout_token" },
+        { status: 400 }
+      );
+    }
+    let payload;
+    try {
+      payload = await verifyLogoutToken(logoutToken, ssoBaseUrl, clientId);
+    } catch (err) {
+      const code = err instanceof SsoError ? err.code : "logout_token_invalid";
+      const description = err instanceof SsoError ? err.description : "Logout Token \u9A8C\u8BC1\u5931\u8D25";
+      return import_server4.NextResponse.json(
+        { error: code, error_description: description },
+        { status: 400 }
+      );
+    }
+    try {
+      await onLogout?.(payload, request);
+    } catch (err) {
+      console.error(
+        "[SSO SDK] backchannel logout onLogout \u94A9\u5B50\u6267\u884C\u5931\u8D25:",
+        err
+      );
+      return import_server4.NextResponse.json(
+        { error: "server_error", error_description: "onLogout \u5904\u7406\u5931\u8D25" },
+        { status: 500 }
+      );
+    }
+    const res = new import_server4.NextResponse(null, { status: 200 });
+    res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+    res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+    res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0, secureCookies));
+    return res;
+  };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
@@ -922,6 +1132,7 @@ function createLogoutRouteHandler(config) {
   DEFAULT_RETURN_COOKIE_NAME,
   DEFAULT_STATE_COOKIE_NAME,
   DEFAULT_VERIFIER_COOKIE_NAME,
+  createBackchannelLogoutRouteHandler,
   createCallbackRouteHandler,
   createLogoutRouteHandler,
   createSsoMiddleware,

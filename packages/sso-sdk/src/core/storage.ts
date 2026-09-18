@@ -48,6 +48,8 @@ const STATE_KEY = "oauth_state";
 const NONCE_KEY = "oidc_nonce";
 const RETURN_URL_KEY = "return_url";
 const LOGOUT_STATE_KEY = "logout_state";
+// 静默登录探测标记（prompt=none 发起的 authorize 请求所携带的 state）
+const SILENT_PROBE_KEY = "silent_probe";
 
 function buildKey(base: string, clientId?: string): string {
   return clientId ? `${base}:${clientId}` : base;
@@ -293,6 +295,24 @@ export function removeReturnUrl(clientId?: string): void {
 }
 
 // ============================================
+// 静默登录探测标记存取（transient，prompt=none）
+// ============================================
+// 存的是该次探测 authorize 请求的 state 值，回调时用于匹配
+// （只有 state 与标记一致才按"探测无会话"处理，防伪造回调）
+
+export function saveSilentProbe(state: string, clientId?: string): void {
+  _transient.set(buildKey(SILENT_PROBE_KEY, clientId), state);
+}
+
+export function getSilentProbe(clientId?: string): string | null {
+  return _transient.get(buildKey(SILENT_PROBE_KEY, clientId));
+}
+
+export function removeSilentProbe(clientId?: string): void {
+  _transient.remove(buildKey(SILENT_PROBE_KEY, clientId));
+}
+
+// ============================================
 // 清理所有 SSO 数据
 // ============================================
 
@@ -303,6 +323,7 @@ export function clearAllSsoData(clientId?: string): void {
     removeOAuthNonce(clientId);
     removeReturnUrl(clientId);
     removeLogoutState(clientId);
+    removeSilentProbe(clientId);
     removePkceVerifier(clientId);
     // popup nonce 复用 verifier key 空间（`${clientId}_popup_nonce`）
     removePkceVerifier(`${clientId}_popup_nonce`);
@@ -314,6 +335,7 @@ export function clearAllSsoData(clientId?: string): void {
   removeOAuthNonce();
   removeReturnUrl();
   removeLogoutState();
+  removeSilentProbe();
 
   // 清理所有 PKCE verifier：当前版本存于 sessionStorage，同时清 localStorage 中可能的旧版本残留
   const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;

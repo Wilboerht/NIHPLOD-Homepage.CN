@@ -17,6 +17,8 @@ import {
   getReturnUrl,
   saveOAuthNonce,
   getOAuthNonce,
+  saveSilentProbe,
+  getSilentProbe,
   setTokenStorage,
 } from "../core/storage";
 import type { TokenData } from "../core/storage";
@@ -376,7 +378,7 @@ describe("SsoClient", () => {
       const callbackUrl =
         "https://test-app.com/callback?code=auth-code-123&state=test-state-123";
 
-      const result = await client.handleCallback(callbackUrl);
+      const result = (await client.handleCallback(callbackUrl))!;
 
       expect(result.access_token).toBe("new-access-token");
       expect(result.refresh_token).toBe("new-refresh-token");
@@ -413,9 +415,9 @@ describe("SsoClient", () => {
       saveOAuthState("no-kid-state", CLIENT_ID);
       savePkceVerifier(CLIENT_ID, "test-verifier");
 
-      const result = await client.handleCallback(
+      const result = (await client.handleCallback(
         "https://test-app.com/callback?code=auth-code&state=no-kid-state"
-      );
+      ))!;
       expect(result.access_token).toBe("new-access-token");
     });
 
@@ -567,7 +569,7 @@ describe("SsoClient", () => {
       // JWKS 恢复后刷新回调页重试 → 成功
       vi.restoreAllMocks();
       installFetchRouter({ token: tokenResponse });
-      const result = await client.handleCallback(callbackUrl);
+      const result = (await client.handleCallback(callbackUrl))!;
       expect(result.access_token).toBe("new-access-token");
       // 成功后一次性临时数据被清除
       expect(getPkceVerifier(CLIENT_ID)).toBeNull();
@@ -606,9 +608,9 @@ describe("SsoClient", () => {
       saveOAuthNonce(nonce, CLIENT_ID);
       savePkceVerifier(CLIENT_ID, "test-verifier");
 
-      const result = await client.handleCallback(
+      const result = (await client.handleCallback(
         "https://test-app.com/callback?code=auth-code&state=nonce-state"
-      );
+      ))!;
       expect(result.access_token).toBe("new-access-token");
       // 登录成功：nonce 一次性清除
       expect(getOAuthNonce(CLIENT_ID)).toBeNull();
@@ -672,6 +674,94 @@ describe("SsoClient", () => {
         client.handleCallback("https://test-app.com/callback?code=c&state=wrong-state")
       ).rejects.toThrow("State 参数不匹配");
       expect(getOAuthNonce(CLIENT_ID)).toBeNull();
+    });
+  });
+
+  describe("prompt 参数与静默登录探测", () => {
+    it("getLoginUrl 传 prompt=none 时 URL 携带 prompt 参数，并记录 silent 探测标记（值为本次 state）", async () => {
+      installFetchRouter();
+      const client = new SsoClient(defaultConfig);
+      const url = new URL(await client.getLoginUrl(undefined, { prompt: "none" }));
+
+      expect(url.searchParams.get("prompt")).toBe("none");
+      expect(getSilentProbe(CLIENT_ID)).toBe(url.searchParams.get("state"));
+    });
+
+    it("getLoginUrl 不传 prompt 时 URL 不带 prompt 参数，且无 silent 探测标记", async () => {
+      installFetchRouter();
+      const client = new SsoClient(defaultConfig);
+      const url = new URL(await client.getLoginUrl());
+
+      expect(url.searchParams.get("prompt")).toBeNull();
+      expect(getSilentProbe(CLIENT_ID)).toBeNull();
+    });
+
+    it("getLoginUrl 传 prompt=login 时透传参数但不记录 silent 探测标记", async () => {
+      installFetchRouter();
+      const client = new SsoClient(defaultConfig);
+      const url = new URL(await client.getLoginUrl(undefined, { prompt: "login" }));
+
+      expect(url.searchParams.get("prompt")).toBe("login");
+      expect(getSilentProbe(CLIENT_ID)).toBeNull();
+    });
+
+    it("静默探测无会话（error=login_required 且 state 匹配标记）：返回 null 并清理临时数据", async () => {
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("probe-state", CLIENT_ID);
+      saveOAuthNonce("probe-nonce", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "probe-verifier");
+      saveSilentProbe("probe-state", CLIENT_ID);
+
+      const result = await client.handleCallback(
+        "https://test-app.com/callback?error=login_required&state=probe-state"
+      );
+
+      expect(result).toBeNull();
+      // state/nonce/verifier/标记均已清除
+      expect(getOAuthState(CLIENT_ID)).toBeNull();
+      expect(getOAuthNonce(CLIENT_ID)).toBeNull();
+      expect(getPkceVerifier(CLIENT_ID)).toBeNull();
+      expect(getSilentProbe(CLIENT_ID)).toBeNull();
+    });
+
+    it("error=login_required 但无 silent 探测标记时按普通授权失败抛错", async () => {
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("normal-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      await expect(
+        client.handleCallback(
+          "https://test-app.com/callback?error=login_required&state=normal-state"
+        )
+      ).rejects.toThrow("授权失败");
+    });
+
+    it("error=login_required 但回调 state 与探测标记不匹配时抛错（防伪造 error 回调）", async () => {
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("probe-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "probe-verifier");
+      saveSilentProbe("probe-state", CLIENT_ID);
+
+      await expect(
+        client.handleCallback(
+          "https://test-app.com/callback?error=login_required&state=forged-state"
+        )
+      ).rejects.toThrow("授权失败");
+    });
+
+    it("静默探测以外的 error（access_denied）即使有标记也按普通失败抛错", async () => {
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("probe-state-2", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "probe-verifier");
+      saveSilentProbe("probe-state-2", CLIENT_ID);
+
+      const err = await client
+        .handleCallback(
+          "https://test-app.com/callback?error=access_denied&state=probe-state-2"
+        )
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(SsoError);
+      expect(err.code).toBe("user_denied_authorization");
     });
   });
 

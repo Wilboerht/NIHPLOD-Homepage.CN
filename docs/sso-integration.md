@@ -282,6 +282,33 @@ export const POST = logoutHandler; // UI 层推荐用 POST 触发，避免 GET �
 
 ---
 
+## 分层退出模型
+
+SSO 中心区分两种退出语义，子项目应按场景选择：
+
+### 本站退出（Local Logout）
+
+仅清除子站自身的登录态：删除本地会话/Cookie 中的 token，并调用 `/api/oauth/revoke` 撤销本站 refresh_token（SDK 的 `sso.logout()` 默认行为）。**不动 IdP 侧会话**，用户在其他子站和官网的登录不受影响。适用于子站界面上常规的"退出登录"按钮。
+
+### 全局退出（Global Logout）
+
+走 OIDC RP-Initiated Logout：重定向到 end_session_endpoint（SDK 的 `sso.logout(true)` / `createLogoutRouteHandler` 的 `redirectToSso: true`）。用户在官网 `/logout` 确认后，SSO 中心清除 IdP 会话、撤销 refresh token，并通过 Backchannel Logout 通知相关 RP。
+
+官网 `/logout` 确认页默认只退出**当前设备**（仅 backchannel 通知当前会话关联的 client）；用户可勾选"同时退出所有设备和已授权的平台"升级为全设备登出（撤销全部 refresh token 并通知**所有**已授权的活跃 client）。官网账户中心的"强制下线设备"也会对被踢设备关联的 client 发送 backchannel 通知。
+
+### 推荐 UI 模式
+
+- **子站退出按钮默认做本站退出**，并附可选入口"同时退出所有平台"（跳转全局退出）。避免用户在某个子站点一次退出就把手机/其他电脑的会话全部踢掉。
+- **官网账户中心**提供全局退出与单设备强制下线入口。
+
+### Backchannel Logout 的失效时效
+
+- 配置了 `backchannelLogoutUri` 的 RP 会收到 `logout_token`（携带 `sub`，有活跃会话时携带 `sid`），应立即清除该用户的本地会话；投递失败会重试一次后进入补偿队列，由 cron 周期重投。
+- **SSO access token 的撤销感知 ≤ 30 秒**：通过 Introspection 端点校验的 token 按 `sid` 关联会话状态判定，introspection 结果有 30s 进程内缓存，撤销后最长 30s 内全网失效。
+- **子站本地会话的失效取决于其 access token TTL**：只做本地 JWT 验签（不 introspect、不处理 backchannel）的子站，被撤销的 token 在其剩余 TTL 内仍会通过验签。需要即时感知撤销的子站应实现 backchannel logout 接收端点，或改用 Introspection 校验。
+
+---
+
 ## OAuth 流程详解
 
 ```

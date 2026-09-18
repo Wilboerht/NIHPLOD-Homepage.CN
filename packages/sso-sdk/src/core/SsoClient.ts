@@ -33,6 +33,9 @@ import {
   getLogoutState,
   removeLogoutState,
   saveReturnUrl,
+  saveSilentProbe,
+  getSilentProbe,
+  removeSilentProbe,
   clearAllSsoData,
   type TokenData,
 } from "./storage";
@@ -94,6 +97,29 @@ export interface SsoUser {
   total_spent?: number;
   total_points?: number;
 }
+
+/** login() / getLoginUrl() 选项 */
+export interface LoginOptions {
+  /**
+   * OIDC prompt 参数：
+   * - "none"：静默探测 SSO 会话。用户在 IdP 有会话时直接回跳完成登录；
+   *   无会话时 IdP 回跳 error=login_required（或 consent_required /
+   *   interaction_required），handleCallback() 识别后返回 null 而不抛错
+   *   （CallbackPage 默认跳回 returnUrl 并附 sso_probe=no_session）。
+   *   ⚠️ 不要在页面加载时自动探测（会打扰无会话用户并消耗请求），
+   *   应由用户点击等明确动作触发。
+   * - "login"：强制重新认证；
+   * - "consent"：强制重新授权确认。
+   */
+  prompt?: "none" | "login" | "consent";
+}
+
+/** prompt=none 静默探测失败时 IdP 回跳的 error 值（OIDC Core §3.1.2.6） */
+const SILENT_PROBE_ERRORS = new Set([
+  "login_required",
+  "consent_required",
+  "interaction_required",
+]);
 
 /** Token 响应 */
 export interface TokenResponse {
@@ -251,12 +277,15 @@ export class SsoClient {
    *
    * @param returnUrl - 登录成功后的返回地址（可选，保存到 sessionStorage；
    *   仅允许相对路径或同源绝对 URL，否则忽略并告警）
+   * @param options.prompt - OIDC prompt 参数。传 "none" 为静默探测：
+   *   额外在存储中记录探测标记（该次请求的 state），回调无会话时
+   *   handleCallback() 返回 null 而不抛错。
    *
    * ⚠️ 不要与 getLoginUrl() 混用：两者都会重新生成并覆盖 sessionStorage 中的
    * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
    * 同一次登录只使用其中一个入口。
    */
-  async login(returnUrl?: string): Promise<void> {
+  async login(returnUrl?: string, options: LoginOptions = {}): Promise<void> {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
@@ -267,6 +296,12 @@ export class SsoClient {
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
     saveOAuthNonce(nonce, this.config.clientId);
+    // 静默探测标记：存该次请求的 state，回调凭它识别"探测无会话"
+    if (options.prompt === "none") {
+      saveSilentProbe(state, this.config.clientId);
+    } else {
+      removeSilentProbe(this.config.clientId);
+    }
 
     if (returnUrl) {
       this._saveReturnUrlIfTrusted(returnUrl);
@@ -283,6 +318,9 @@ export class SsoClient {
     params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
+    if (options.prompt) {
+      params.set("prompt", options.prompt);
+    }
 
     // 跳转
     window.location.href = `${authorizeEndpoint}?${params.toString()}`;
@@ -297,7 +335,7 @@ export class SsoClient {
    * state / PKCE verifier，先调用的那次授权流程将因 state 不匹配而失败。
    * 同一次登录只使用其中一个入口。
    */
-  async getLoginUrl(returnUrl?: string): Promise<string> {
+  async getLoginUrl(returnUrl?: string, options: LoginOptions = {}): Promise<string> {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     const state = generateState();
@@ -307,6 +345,12 @@ export class SsoClient {
     savePkceVerifier(this.config.clientId, verifier);
     saveOAuthState(state, this.config.clientId);
     saveOAuthNonce(nonce, this.config.clientId);
+    // 静默探测标记（与 login() 一致）：prompt=none 时记录该次请求的 state
+    if (options.prompt === "none") {
+      saveSilentProbe(state, this.config.clientId);
+    } else {
+      removeSilentProbe(this.config.clientId);
+    }
     // returnUrl 按 clientId 隔离，与 login() / CallbackPage 保持一致
     if (returnUrl) this._saveReturnUrlIfTrusted(returnUrl);
 
@@ -320,6 +364,9 @@ export class SsoClient {
     params.set("nonce", nonce);
     params.set("code_challenge", challenge);
     params.set("code_challenge_method", "S256");
+    if (options.prompt) {
+      params.set("prompt", options.prompt);
+    }
 
     return `${authorizeEndpoint}?${params.toString()}`;
   }
@@ -462,7 +509,17 @@ export class SsoClient {
           }
 
           this.handleCallback(event.data.callbackUrl)
-            .then(resolve)
+            .then((tokenData) => {
+              // prompt=none 静默探测在弹窗模式不支持（loginPopup 不带 prompt），
+              // null 结果视为探测无会话
+              if (tokenData === null) {
+                reject(
+                  new SsoError("not_authenticated", "SSO 会话不存在（静默探测无会话）")
+                );
+                return;
+              }
+              resolve(tokenData);
+            })
             .catch(reject);
         };
 
@@ -505,21 +562,44 @@ export class SsoClient {
    * 成功后 token 自动保存到 token 存储（默认 sessionStorage，可通过 setTokenStorage 定制）。
    *
    * @param callbackUrl - 完整的回调 URL（window.location.href）
-   * @returns TokenData 或 null
+   * @returns TokenData；prompt=none 静默探测且无 SSO 会话时返回 null
+   *   （IdP 回跳 login_required / consent_required / interaction_required
+   *   且回调 state 与探测标记匹配），此时临时数据已清理，调用方按"未登录"处理即可
    */
   async handleCallback(
     callbackUrl: string
-  ): Promise<TokenData> {
+  ): Promise<TokenData | null> {
     const url = new URL(callbackUrl);
     const params = url.searchParams;
 
     // 检查错误（SSO 中心按 OAuth 2.0 规范回传 error 参数）
     const error = params.get("error");
     if (error) {
-      // 授权已失败，本次流程的临时数据（state/verifier/nonce）不再有用，一并清理避免残留
+      // 静默探测（prompt=none）无会话：IdP 以 error 回跳属预期结果而非异常。
+      // 要求回调 state 与登录 state、探测标记三者一致（常量时间比较），
+      // 防止伪造的 error 回调被当作探测结果
+      const returnedErrorState = params.get("state");
+      const probeState = getSilentProbe(this.config.clientId);
+      const savedStateForProbe = getOAuthState(this.config.clientId);
+      if (
+        SILENT_PROBE_ERRORS.has(error) &&
+        probeState &&
+        savedStateForProbe &&
+        timingSafeEqualString(savedStateForProbe, returnedErrorState ?? "") &&
+        timingSafeEqualString(probeState, returnedErrorState ?? "")
+      ) {
+        // 清除本次探测的全部临时数据（state/nonce/verifier/标记），返回 null
+        removeOAuthState(this.config.clientId);
+        removeOAuthNonce(this.config.clientId);
+        removePkceVerifier(this.config.clientId);
+        removeSilentProbe(this.config.clientId);
+        return null;
+      }
+      // 授权已失败，本次流程的临时数据（state/verifier/nonce/探测标记）不再有用，一并清理避免残留
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       const desc = params.get("error_description") || error;
       throw new SsoError(mapOAuthErrorToSsoCode(error), `授权失败: ${desc}`);
     }
@@ -532,6 +612,7 @@ export class SsoClient {
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       throw new SsoError("token_request_failed", "回调 URL 中缺少 authorization code");
     }
 
@@ -542,6 +623,7 @@ export class SsoClient {
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       throw new SsoError(
         "state_mismatch",
         "State 参数不匹配，可能存在 CSRF 攻击"
@@ -621,6 +703,7 @@ export class SsoClient {
     removeOAuthState(this.config.clientId);
     removeOAuthNonce(this.config.clientId);
     removePkceVerifier(this.config.clientId);
+    removeSilentProbe(this.config.clientId);
 
     const now = Date.now();
     const tokenData: TokenData = {

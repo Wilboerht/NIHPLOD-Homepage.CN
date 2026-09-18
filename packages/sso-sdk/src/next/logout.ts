@@ -4,7 +4,9 @@
  * 在 /api/auth/logout 路由中处理本地登出 + RP-Initiated Logout：
  * 1. 从 cookie 读取 refresh_token 并调用 revocation_endpoint 撤销
  * 2. 清除所有 SSO cookie
- * 3. 可选重定向到 SSO 中心登出页
+ * 3. 按退出范围（defaultScope / 表单 global 字段）决定：
+ *    - "local"（默认）：仅退出本站，重定向回本站首页
+ *    - "global"：重定向到 SSO 中心 end-session，全局退出所有 NIHPLOD 平台
  *
  * 用法 (src/app/api/auth/logout/route.ts):
  * ```ts
@@ -64,7 +66,19 @@ export interface LogoutRouteConfig {
   /** 登出后跳转回子项目的地址，默认取 redirectUri 的 origin */
   postLogoutRedirectUri?: string;
 
-  /** 是否重定向到 SSO 中心登出页，默认 true */
+  /**
+   * 默认退出范围（默认 "local"）：
+   * - "local"：仅退出本站（撤销 refresh_token + 清本地 cookie），不跳转 SSO 中心；
+   * - "global"：同时跳转 SSO 中心 end-session 全局退出（RP-Initiated Logout）。
+   * 用户可在 GET 确认页勾选"同时退出所有 NIHPLOD 平台"后通过表单字段
+   * global=1 覆盖默认值；POST 表单携带 global 字段时以表单为准。
+   */
+  defaultScope?: "local" | "global";
+
+  /**
+   * @deprecated 请改用 defaultScope（true → "global"，false → "local"）。
+   * 仅为兼容保留；与 defaultScope 同时传入时以 defaultScope 为准。
+   */
   redirectToSso?: boolean;
 
   /** Access Token Cookie 名称 */
@@ -127,6 +141,9 @@ function buildLogoutConfirmHtml(): string {
 <body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;">
   <form method="post" style="text-align:center;">
     <p>确定要退出登录吗？</p>
+    <label style="display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0;font-size:14px;color:#374151;cursor:pointer;">
+      <input type="checkbox" name="global" value="1">同时退出所有 NIHPLOD 平台
+    </label>
     <button type="submit" style="padding:10px 20px;background-color:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">退出登录</button>
     <p><a href="/" style="color:#2563eb;text-decoration:underline;">取消并返回首页</a></p>
   </form>
@@ -162,10 +179,23 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     redirectUri,
     clientSecret,
     postLogoutRedirectUri = new URL(redirectUri).origin + "/",
-    redirectToSso = true,
     callbackPath = "/api/auth/callback",
     insecureLocalDev: insecureLocalDevOpt = false,
   } = config;
+
+  // 退出范围解析：defaultScope 优先（默认 "local"，仅退出本站）；
+  // redirectToSso 为 deprecated 别名，传入时告警并按 true→global / false→local 映射
+  let defaultScope: "local" | "global" = config.defaultScope ?? "local";
+  if (config.redirectToSso !== undefined) {
+    console.warn(
+      "[SSO SDK] redirectToSso 已弃用，请改用 defaultScope" +
+      "（redirectToSso: true → defaultScope: \"global\"，false → \"local\"）。" +
+      "注意：默认退出范围已变更为 \"local\"（仅退出本站，不跳转 SSO 中心）。"
+    );
+    if (config.defaultScope === undefined) {
+      defaultScope = config.redirectToSso ? "global" : "local";
+    }
+  }
 
   // 生产守卫：NODE_ENV=production 且 ssoBaseUrl 为 https 时强制忽略该开关（与 middleware/callback 一致）
   const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
@@ -228,6 +258,21 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       });
     }
 
+    // 解析表单中的 global 字段（确认页勾选"同时退出所有 NIHPLOD 平台"后提交 global=1）；
+    // 表单未携带 global 字段时回落到配置的 defaultScope
+    let formGlobal: string | null = null;
+    try {
+      formGlobal = new URLSearchParams(await request.text()).get("global");
+    } catch {
+      // body 读取失败时视为未携带，按 defaultScope 处理
+    }
+    const effectiveScope: "local" | "global" =
+      formGlobal !== null
+        ? formGlobal === "1" || formGlobal === "true"
+          ? "global"
+          : "local"
+        : defaultScope;
+
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
 
@@ -275,8 +320,9 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       return res;
     };
 
-    // 3. 若需要 RP-Initiated Logout，重定向到 SSO 中心，同时必须清除本地 Cookie
-    if (redirectToSso) {
+    // 3. global 范围：RP-Initiated Logout 重定向到 SSO 中心，同时必须清除本地 Cookie；
+    //    local 范围：仅本站退出，重定向回本站首页
+    if (effectiveScope === "global") {
       // discovery 经内网地址拉取（若配置），但文档内端点是 SSO 中心按公网 origin
       // 生成的，可直接用于浏览器跳转；兜底也用公网 base，不得使用内网地址
       const discovery = await fetchDiscoveryCached(normalizedServerBase);
