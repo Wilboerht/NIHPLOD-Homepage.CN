@@ -1032,16 +1032,22 @@ export function ProfilePanel() {
         confirmText="退出登录"
         type="danger"
       >
-        <label className="flex cursor-pointer items-start gap-2 text-sm text-brand-charcoal/70">
+        <label
+          className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3.5 py-3 transition-colors ${
+            logoutAllDevices
+              ? "border-brand-primary/40 bg-brand-primary/5"
+              : "border-stone-200 bg-stone-50/60 hover:border-stone-300 hover:bg-stone-50"
+          }`}
+        >
           <input
             type="checkbox"
             checked={logoutAllDevices}
             onChange={(e) => setLogoutAllDevices(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-brand-primary"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
           />
-          <span>
+          <span className="text-[13px] font-medium leading-snug text-brand-charcoal">
             同时退出所有设备和已授权的平台
-            <span className="mt-0.5 block text-xs text-brand-charcoal/40">
+            <span className="mt-1 block text-xs font-normal leading-relaxed text-brand-charcoal/45">
               勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
             </span>
           </span>

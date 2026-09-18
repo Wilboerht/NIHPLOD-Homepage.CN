@@ -74,7 +74,7 @@ describe("LogoutPage 分层退出", () => {
     expect(screen.queryByText(/同步退出已授权的应用/)).not.toBeInTheDocument();
 
     const checkbox = screen.getByRole("checkbox", {
-      name: "同时退出所有设备和已授权的平台",
+      name: /同时退出所有设备和已授权的平台/,
     });
     expect(checkbox).not.toBeChecked();
   });
@@ -99,7 +99,7 @@ describe("LogoutPage 分层退出", () => {
       expect(screen.getByRole("button", { name: "确认退出" })).toBeEnabled();
     });
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "同时退出所有设备和已授权的平台" })
+      screen.getByRole("checkbox", { name: /同时退出所有设备和已授权的平台/ })
     );
     fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
 

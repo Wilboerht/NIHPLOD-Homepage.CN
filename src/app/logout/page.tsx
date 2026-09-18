@@ -258,21 +258,27 @@ function LogoutContent() {
           </div>
         )}
 
-        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left">
-          <label className="flex cursor-pointer items-start gap-2">
-            <input
-              type="checkbox"
-              checked={allDevices}
-              onChange={(e) => setAllDevices(e.target.checked)}
-              disabled={loading}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
-            />
-            <span className="text-sm text-gray-700">同时退出所有设备和已授权的平台</span>
-          </label>
-          <p className="mt-1 pl-6 text-xs text-gray-400">
-            勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
-          </p>
-        </div>
+        <label
+          className={`mb-6 flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-left transition-colors ${
+            allDevices
+              ? "border-red-300 bg-red-50/60"
+              : "border-gray-200 bg-gray-50 hover:border-gray-300"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={allDevices}
+            onChange={(e) => setAllDevices(e.target.checked)}
+            disabled={loading}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
+          />
+          <span className="text-sm leading-snug text-gray-700">
+            同时退出所有设备和已授权的平台
+            <span className="mt-1 block text-xs leading-relaxed text-gray-400">
+              勾选后将退出所有设备上的登录，并通知所有已授权的平台同步退出
+            </span>
+          </span>
+        </label>
 
         <div className="flex justify-center gap-3">
           <button
