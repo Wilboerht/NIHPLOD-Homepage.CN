@@ -10,6 +10,7 @@
  * CORS：仅允许已注册 redirect_uri 的 origin。
  */
 import { NextRequest, NextResponse, after } from "next/server";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
@@ -221,21 +222,53 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // 生日首次设置（此前未设置且未锁定）才需要并发安全的条件写认领：
+    // 防止两个并发请求都通过上方的读-检-写检查后互相覆盖（等效绕过锁定）。
+    // 已设置后提交相同值走下方常规更新（上方锁检查已放行"值未变"的情况）。
+    const settingNewBirthday =
+      birthday !== undefined && birthday !== "" && !previous.birthday && !previous.birthdayLocked;
+    if (settingNewBirthday) {
+      const claim = await prisma.user.updateMany({
+        where: { id: payload.id, birthday: null, birthdayLocked: false },
+        data: { birthday, birthdayLocked: true },
+      });
+      if (claim.count === 0) {
+        scheduleSsoEvent({
+          event: "userinfo",
+          userId: payload.id,
+          clientId: payload.client_id,
+          ip,
+          userAgent,
+          success: false,
+          detail: { action: "profile_update", reason: "birthday_locked" },
+        });
+        return resJson(
+          { error: "birthday_locked", error_description: "生日已设置过，如需修改请联系客服" },
+          403
+        );
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: payload.id },
       data: {
         ...(nickname !== undefined && { nickname: nickname || null }),
         ...(avatar !== undefined && { avatar: avatar || null }),
-        // 首次设置生日时写入锁定标记（此后不可自助修改）
-        ...(birthday !== undefined && {
-          birthday: birthday === "" ? null : birthday,
-          birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
-        }),
+        // 首次设置已在上方条件写认领；其余生日场景（清除 "" / 同值提交）按原语义处理
+        ...(birthday !== undefined &&
+          !settingNewBirthday && {
+            birthday: birthday === "" ? null : birthday,
+            birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
+          }),
         // 性别不锁定：null 表示清除（保密）
         ...(gender !== undefined && { gender }),
       },
       select: { id: true, nickname: true, avatar: true, birthday: true, gender: true },
     });
+
+    // 资料变更后立即失效缓存，与主站 PUT 一致：
+    // 主站个人中心（unstable_cache 30s + user-profile tag）不会读到陈旧资料
+    revalidateTag("user-profile", { expire: 0 });
 
     // 昵称/头像/生日有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
     // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）

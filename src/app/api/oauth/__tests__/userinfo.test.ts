@@ -37,11 +37,13 @@ vi.mock("@/lib/logger", () => ({
 // === Mock prisma ===
 const mockUserFindUnique = vi.fn();
 const mockUserUpdate = vi.fn();
+const mockUserUpdateMany = vi.fn();
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
       update: (...args: unknown[]) => mockUserUpdate(...args),
+      updateMany: (...args: unknown[]) => mockUserUpdateMany(...args),
     },
   },
 }));
@@ -55,6 +57,11 @@ vi.mock("@/lib/profile-webhook", () => ({
 // === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
 vi.mock("@/lib/oauth-cors", () => ({
   getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
+}));
+
+// === Mock next/cache（revalidateTag 在测试环境无 request store，会抛错）===
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
 }));
 
 import { GET, PATCH } from "../userinfo/route";
@@ -298,6 +305,8 @@ describe("PATCH /api/oauth/userinfo", () => {
     // 默认 token 验证失败（401 路径）
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+    // 生日首次设置的条件写认领默认成功（并发场景单独覆盖）
+    mockUserUpdateMany.mockResolvedValue({ count: 1 });
   });
 
   function patchRequest(body: unknown, token = "valid-token") {
@@ -445,12 +454,11 @@ describe("PATCH /api/oauth/userinfo", () => {
 
     const res = await PATCH(patchRequest({ birthday: "1990-05-20" }));
     expect(res.status).toBe(200);
-    // 首次设置生日：update data 应包含 birthdayLocked: true
-    expect(mockUserUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ birthdayLocked: true }),
-      })
-    );
+    // 首次设置生日：通过条件写认领（updateMany）写入并锁定，防并发双设置
+    expect(mockUserUpdateMany).toHaveBeenCalledWith({
+      where: { id: "user-1", birthday: null, birthdayLocked: false },
+      data: { birthday: new Date("1990-05-20T00:00:00.000Z"), birthdayLocked: true },
+    });
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
       nickname: "旧昵称",
       avatar: null,

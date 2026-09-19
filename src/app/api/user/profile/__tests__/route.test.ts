@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 
 const mockUserFindUnique = vi.fn();
 const mockUserUpdate = vi.fn();
+const mockUserUpdateMany = vi.fn();
 const mockSendProfileUpdateWebhook = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
@@ -10,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({
     user: {
       findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
       update: (...args: unknown[]) => mockUserUpdate(...args),
+      updateMany: (...args: unknown[]) => mockUserUpdateMany(...args),
     },
   },
 }));
@@ -72,6 +74,8 @@ const NEW_USER = {
 describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 生日首次设置的条件写认领默认成功（并发场景由 updateMany 条件保证）
+    mockUserUpdateMany.mockResolvedValue({ count: 1 });
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
   });
 
@@ -161,11 +165,11 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
     const res = await PUT(putRequest({ birthday: "1995-05-20" }));
 
     expect(res.status).toBe(200);
-    expect(mockUserUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ birthday, birthdayLocked: true }),
-      })
-    );
+    // 首次设置生日：通过条件写认领（updateMany）写入并锁定，防并发双设置
+    expect(mockUserUpdateMany).toHaveBeenCalledWith({
+      where: { id: "user-1", birthday: null, birthdayLocked: false },
+      data: { birthday, birthdayLocked: true },
+    });
   });
 
   it("未来日期应被拒绝（400），不触发更新", async () => {
@@ -182,6 +186,8 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
 describe("PUT /api/user/profile - 性别保存与缓存失效", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 生日首次设置的条件写认领默认成功（并发场景由 updateMany 条件保证）
+    mockUserUpdateMany.mockResolvedValue({ count: 1 });
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
   });
 

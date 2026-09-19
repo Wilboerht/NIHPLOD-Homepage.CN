@@ -109,6 +109,7 @@ describe("GET /api/oauth/membership", () => {
       id: "cm1234567890abc",
       membershipLevel: "GOLD",
       totalSpent: 6800,
+      status: "ACTIVE",
     });
 
     const res = await GET(getRequest());
@@ -144,6 +145,7 @@ describe("GET /api/oauth/membership", () => {
       id: "user-1",
       membershipLevel: "DIAMOND",
       totalSpent: 12000,
+      status: "ACTIVE",
     });
 
     const res = await GET(getRequest());
@@ -153,13 +155,27 @@ describe("GET /api/oauth/membership", () => {
     expect(body.nextLevel).toBeNull();
   });
 
-  it("用户不存在应返回 403 account_disabled", async () => {
+  it("用户不存在应返回 404 not_found", async () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "test-client",
       scope: "openid membership",
     });
     mockUserFindUnique.mockResolvedValue(null);
+
+    const res = await GET(getRequest());
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toBe("not_found");
+  });
+
+  it("账户非 ACTIVE 应返回 403 account_disabled", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid membership",
+    });
+    mockUserFindUnique.mockResolvedValue({ status: "FROZEN" });
 
     const res = await GET(getRequest());
     expect(res.status).toBe(403);
