@@ -928,6 +928,7 @@ function LoginPageContent() {
     phone: "手机号（脱敏后）",
     membership: "会员等级、累计消费",
     birthday: "生日",
+    "profile:write": "修改昵称、头像、生日、性别",
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {

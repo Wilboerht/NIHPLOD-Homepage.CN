@@ -36,12 +36,20 @@ vi.mock("@/lib/logger", () => ({
 
 // === Mock prisma ===
 const mockUserFindUnique = vi.fn();
+const mockUserUpdate = vi.fn();
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+      update: (...args: unknown[]) => mockUserUpdate(...args),
     },
   },
+}));
+
+// === Mock profile-webhook ===
+const mockSendProfileUpdateWebhook = vi.fn();
+vi.mock("@/lib/profile-webhook", () => ({
+  sendProfileUpdateWebhook: (...args: unknown[]) => mockSendProfileUpdateWebhook(...args),
 }));
 
 // === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
@@ -49,7 +57,7 @@ vi.mock("@/lib/oauth-cors", () => ({
   getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
 }));
 
-import { GET } from "../userinfo/route";
+import { GET, PATCH } from "../userinfo/route";
 
 describe("GET /api/oauth/userinfo", () => {
   beforeEach(() => {
@@ -280,5 +288,200 @@ describe("GET /api/oauth/userinfo", () => {
     const body = await res.json();
     expect(body.total_spent).toBeUndefined();
     expect(body.membership_level).toBeUndefined();
+  });
+});
+
+describe("PATCH /api/oauth/userinfo", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsBlacklisted.mockReturnValue(false);
+    // 默认 token 验证失败（401 路径）
+    mockVerifyOAuthAccessToken.mockResolvedValue(null);
+    mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+  });
+
+  function patchRequest(body: unknown, token = "valid-token") {
+    return new Request("http://localhost/api/oauth/userinfo", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }) as unknown as NextRequest;
+  }
+
+  it("缺少 Authorization header 应返回 401", async () => {
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nickname: "新昵称" }),
+    });
+    const res = await PATCH(req as unknown as NextRequest);
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_token");
+  });
+
+  it("scope 不含 profile:write 应返回 403 insufficient_scope", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile",
+    });
+    const res = await PATCH(patchRequest({ nickname: "新昵称" }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("insufficient_scope");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("M2M token 应返回 403（无用户身份，不支持资料修改）", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "client:test-client",
+      client_id: "test-client",
+      client_type: "m2m",
+      scope: "profile:write",
+    });
+    const res = await PATCH(patchRequest({ nickname: "新昵称" }));
+    expect(res.status).toBe(403);
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("参数校验失败（昵称超过 20 字）应返回 400", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    const res = await PATCH(patchRequest({ nickname: "x".repeat(21) }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("生日已锁定后修改应返回 403 birthday_locked", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: new Date("1990-05-20T00:00:00.000Z"),
+      birthdayLocked: true,
+      status: "ACTIVE",
+    });
+    const res = await PATCH(patchRequest({ birthday: "1995-01-01" }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("birthday_locked");
+    expect(body.error_description).toBe("生日已设置过，如需修改请联系客服");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("成功更新资料：返回更新后的 profile claims 并触发 webhook", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      birthdayLocked: false,
+      status: "ACTIVE",
+    });
+    mockUserUpdate.mockResolvedValue({
+      id: "user-1",
+      nickname: "新昵称",
+      avatar: null,
+      birthday: null,
+      gender: "female",
+    });
+
+    const res = await PATCH(patchRequest({ nickname: "新昵称", gender: "female" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // 形状同 GET 的 profile scope 分支
+    expect(body.sub).toBe("user-1");
+    expect(body.nickname).toBe("新昵称");
+    expect(body.avatar).toBeNull();
+    expect(body.gender).toBe("female");
+    expect(body.birthday).toBeNull();
+
+    // 昵称实际变更 → 触发 profile_update webhook（快照为变更后的公开资料）
+    expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
+      nickname: "新昵称",
+      avatar: null,
+      birthday: null,
+    });
+  });
+
+  it("首次设置生日成功：写入锁定标记并触发 webhook", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      birthdayLocked: false,
+      status: "ACTIVE",
+    });
+    mockUserUpdate.mockResolvedValue({
+      id: "user-1",
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: new Date("1990-05-20T00:00:00.000Z"),
+      gender: null,
+    });
+
+    const res = await PATCH(patchRequest({ birthday: "1990-05-20" }));
+    expect(res.status).toBe(200);
+    // 首次设置生日：update data 应包含 birthdayLocked: true
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ birthdayLocked: true }),
+      })
+    );
+    expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: "1990-05-20T00:00:00.000Z",
+    });
+  });
+
+  it("资料无实际变更时不触发 webhook", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      birthdayLocked: false,
+      status: "ACTIVE",
+    });
+    mockUserUpdate.mockResolvedValue({
+      id: "user-1",
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      gender: "male",
+    });
+
+    // 仅修改性别（不触发 webhook 的字段）
+    const res = await PATCH(patchRequest({ gender: "male" }));
+    expect(res.status).toBe(200);
+    expect(mockSendProfileUpdateWebhook).not.toHaveBeenCalled();
   });
 });

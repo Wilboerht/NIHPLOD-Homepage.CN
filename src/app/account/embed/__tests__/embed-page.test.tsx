@@ -2,18 +2,27 @@
 
 /**
  * 嵌入式用户中心（/account/embed）postMessage 协议回归测试
- * 覆盖：NIHPLOD_SSO_READY / NIHPLOD_SSO_REVOKE / NIHPLOD_SSO_LOGOUT，
+ * 覆盖：NIHPLOD_SSO_READY / NIHPLOD_SSO_REVOKE / NIHPLOD_SSO_LOGOUT /
+ * NIHPLOD_SSO_RESIZE（防抖 200ms）、mall tab 渲染冒烟、?tab=mall 直达，
  * 以及授权管理复用共享面板后撤销链路不回归
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(),
+}));
+
 vi.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+  ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 import EmbedAccountPage from "@/app/account/embed/page";
+import { useSearchParams } from "next/navigation";
+
+const mockUseSearchParams = useSearchParams as unknown as ReturnType<typeof vi.fn>;
 
 const USER = {
   id: "u1",
@@ -52,6 +61,22 @@ function mockApiFetch() {
     if (url.startsWith("/api/user/oauth/revoke")) {
       return jsonResponse({ success: true });
     }
+    // 积分商城面板接口（注意需先于 /api/user/points 通用前缀判断）
+    if (url.startsWith("/api/user/points/gifts")) {
+      return jsonResponse({
+        success: true,
+        data: { membershipLevel: "REGULAR", redeemRate: null, available: 1200, gifts: [] },
+      });
+    }
+    if (url.startsWith("/api/user/points/redemptions")) {
+      return jsonResponse({
+        success: true,
+        data: { redemptions: [], hasMore: false, total: 0 },
+      });
+    }
+    if (url.startsWith("/api/user/points")) {
+      return jsonResponse({ success: true, data: { available: 1200, recent: [] } });
+    }
     if (url.startsWith("/api/auth/logout")) {
       return jsonResponse({ success: true });
     }
@@ -69,6 +94,7 @@ describe("EmbedAccountPage postMessage 协议", () => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", mockApiFetch());
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockUseSearchParams.mockReturnValue(new URLSearchParams(""));
     // jsdom 中 window.parent === window，模拟被父窗口嵌入的场景
     Object.defineProperty(window, "parent", {
       value: { postMessage },
@@ -135,5 +161,80 @@ describe("EmbedAccountPage postMessage 协议", () => {
 
     expect(postMessage).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
+  });
+
+  it("切换到积分商城 tab 渲染共享面板 PointsMallPanel", async () => {
+    render(<EmbedAccountPage />);
+    await screen.findByText("138****8000");
+
+    fireEvent.click(screen.getByRole("button", { name: "积分商城" }));
+
+    expect(await screen.findByTestId("panel-mall")).toBeTruthy();
+    expect(await screen.findByText("积分余额")).toBeTruthy();
+    // 普通档（redeemRate=null）展示解锁提示
+    expect(await screen.findByText(/升级银卡会员解锁积分兑换/)).toBeTruthy();
+  });
+
+  it("?tab=mall 直达积分商城 tab", async () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams("tab=mall"));
+
+    render(<EmbedAccountPage />);
+
+    // 不点击 tab，直接渲染积分商城面板
+    expect(await screen.findByTestId("panel-mall")).toBeTruthy();
+  });
+
+  it("非法 ?tab 参数回退到默认 profile tab", async () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams("tab=hacked"));
+
+    render(<EmbedAccountPage />);
+
+    expect(await screen.findByText("138****8000")).toBeTruthy();
+    expect(screen.queryByTestId("panel-mall")).toBeNull();
+  });
+
+  it("内容高度变化时发送 NIHPLOD_SSO_RESIZE（防抖 200ms）", async () => {
+    // jsdom 无 ResizeObserver，mock 并捕获回调
+    let resizeCallback: (() => void) | null = null;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(cb: () => void) {
+          resizeCallback = cb;
+        }
+        observe = observe;
+        unobserve() {}
+        disconnect = disconnect;
+      }
+    );
+
+    render(<EmbedAccountPage />);
+    await screen.findByText("138****8000");
+
+    expect(observe).toHaveBeenCalledWith(document.body);
+
+    // 连续触发两次，验证防抖后只发送一次
+    resizeCallback!();
+    resizeCallback!();
+
+    await waitFor(
+      () => {
+        expect(postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "NIHPLOD_SSO_RESIZE",
+            height: expect.any(Number),
+          }),
+          "https://child.example.com"
+        );
+      },
+      { timeout: 2000 }
+    );
+
+    const resizeCalls = postMessage.mock.calls.filter(
+      ([msg]) => (msg as { type?: string }).type === "NIHPLOD_SSO_RESIZE"
+    );
+    expect(resizeCalls).toHaveLength(1);
   });
 });

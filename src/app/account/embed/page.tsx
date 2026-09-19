@@ -6,22 +6,29 @@
  * 去除导航头/尾，仅保留内容区（裸面板，无弹窗遮罩/动画/焦点陷阱）。
  * 通过 postMessage 与父窗口通信。
  *
- * 通信协议（子项目依赖，不可变更）：
+ * 通信协议（子项目依赖，不可变更，只新增不修改既有消息）：
  * - NIHPLOD_SSO_READY: iframe 加载完成
  * - NIHPLOD_SSO_LOGOUT: 用户在主站登出
  * - NIHPLOD_SSO_REVOKE: 用户撤销授权
+ * - NIHPLOD_SSO_RESIZE: 内容高度变化（父窗口据此调整 iframe 高度）
  *
  * 授权管理复用共享面板 AuthorizationsPanel（撤销成功后经 onRevoked
- * 回调向父窗口发 NIHPLOD_SSO_REVOKE）；个人信息保持 embed 原有行为：
- * 资料显示为主 + 昵称行内编辑 + 退出登录。
+ * 回调向父窗口发 NIHPLOD_SSO_REVOKE）；积分商城复用共享面板
+ * PointsMallPanel（API 全部走主站 session cookie，iframe 内同源零改动）；
+ * 个人信息保持 embed 原有行为：资料显示为主 + 昵称行内编辑 + 退出登录。
+ *
+ * 支持 URL 参数 ?tab=profile|authorizations|mall 直达指定 tab（默认 profile）。
  */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { levelDisplay } from "@/lib/membership";
 import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 import { AuthorizationsPanel } from "@/components/website/user-center/panels/AuthorizationsPanel";
+import { PointsMallPanel } from "@/components/website/user-center/panels/PointsMallPanel";
+import { ToastProvider } from "@/components/ui/Toast";
 import { getParentTargetOrigin } from "./parent-origin";
 
 /** 可选白名单：逗号分隔的允许父窗口 origin（未配置则不做白名单校验） */
@@ -56,12 +63,28 @@ interface UserProfile {
   membershipLevel: string;
 }
 
-type Tab = "profile" | "authorizations";
+type Tab = "profile" | "authorizations" | "mall";
 
-export default function EmbedAccountPage() {
+/** 从 ?tab= URL 参数解析初始 tab（子站 iframe 直达用），非法值回退 profile */
+function parseInitialTab(param: string | null): Tab {
+  if (param === "authorizations" || param === "mall") return param;
+  return "profile";
+}
+
+/** 加载占位（也用作外层 Suspense fallback） */
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center p-8">
+      <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-600" />
+    </div>
+  );
+}
+
+function EmbedAccountContent() {
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [activeTab, setActiveTab] = useState<Tab>(() => parseInitialTab(searchParams.get("tab")));
   const [error, setError] = useState("");
   const [nickname, setNickname] = useState("");
   const [saving, setSaving] = useState(false);
@@ -88,6 +111,28 @@ export default function EmbedAccountPage() {
     // 通知父窗口 iframe 已加载完成
     postToParent({ type: "NIHPLOD_SSO_READY" });
   }, [fetchProfile]);
+
+  // 高度自适应：监听内容高度变化，防抖 200ms 后通知父窗口调整 iframe 高度。
+  // ResizeObserver 首次 observe 会立即回调一次，兼作初始高度上报；
+  // jsdom 等环境无 ResizeObserver 时静默跳过。
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new ResizeObserver(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        postToParent({
+          type: "NIHPLOD_SSO_RESIZE",
+          height: document.documentElement.scrollHeight,
+        });
+      }, 200);
+    });
+    observer.observe(document.body);
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   const handleSaveNickname = async () => {
     setSaving(true);
@@ -121,11 +166,7 @@ export default function EmbedAccountPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-600" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!user) {
@@ -172,6 +213,16 @@ export default function EmbedAccountPage() {
           }`}
         >
           授权管理
+        </button>
+        <button
+          onClick={() => setActiveTab("mall")}
+          className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === "mall"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          积分商城
         </button>
       </div>
 
@@ -226,6 +277,24 @@ export default function EmbedAccountPage() {
           onRevoked={(clientId) => postToParent({ type: "NIHPLOD_SSO_REVOKE", clientId })}
         />
       )}
+
+      {/* Mall Tab：共享面板。PointsMallPanel 依赖 useToast（无 Provider 会抛错），
+          embed 页本身无 ToastProvider，这里局部补齐；面板内部自带滚动与响应式布局，
+          iframe 宽度下 grid 自动降为单列，无需额外容器样式 */}
+      {activeTab === "mall" && (
+        <ToastProvider>
+          <PointsMallPanel />
+        </ToastProvider>
+      )}
     </div>
+  );
+}
+
+export default function EmbedAccountPage() {
+  // useSearchParams 需要在 Suspense 边界内（与 guide/contact 页一致）
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <EmbedAccountContent />
+    </Suspense>
   );
 }

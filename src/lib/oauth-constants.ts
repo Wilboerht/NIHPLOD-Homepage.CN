@@ -11,6 +11,7 @@ export const SUPPORTED_SCOPES: readonly string[] = [
   "phone",
   "membership",
   "birthday",
+  "profile:write",
 ];
 
 /**
