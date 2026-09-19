@@ -14,7 +14,7 @@ import { useMounted } from "@/hooks/useMounted";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { m, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ChevronLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft, Clock } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -79,6 +79,30 @@ function buildLoginUrl(
 
 /** 成功过渡视图最短展示时长：打勾描边 + 文案停留，避免网络快时一闪而过 */
 const MIN_AUTH_SUCCESS_MS = 800;
+
+/**
+ * 会话过期内嵌提示
+ * 随登录表单一起淡入（替代浮动 toast），说明被强制退出登录的原因。
+ */
+function SessionExpiredNotice() {
+  return (
+    <m.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      role="alert"
+      className="mb-8 flex items-start gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/60 p-3"
+    >
+      <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+      <div>
+        <p className="text-sm text-brand-charcoal/80">登录已过期，请重新登录</p>
+        <p className="mt-0.5 text-xs text-brand-charcoal/50">
+          为保障账号安全，请重新验证身份后继续
+        </p>
+      </div>
+    </m.div>
+  );
+}
 
 /**
  * 登录/注册/绑定成功过渡视图
@@ -147,14 +171,6 @@ function LoginPageContent() {
   const isSsoLogin = !!returnTo?.startsWith("/api/oauth/authorize");
   // 会话过期被强制跳转而来（全局退出/令牌吊销）：提示原因
   const sessionExpired = searchParams.get("expired") === "1";
-
-  useEffect(() => {
-    if (sessionExpired) {
-      toast.error("登录已过期，请重新登录");
-    }
-    // 仅在挂载时提示一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const mounted = useMounted();
   const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
@@ -1141,6 +1157,7 @@ function LoginPageContent() {
                         />
                       ) : (
                         <>
+                          {sessionExpired && mode === "login" && <SessionExpiredNotice />}
                           {mode === "login" && isSsoLogin && clientNameParam && (
                             <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
                               <p className="text-sm text-brand-charcoal/80">
@@ -1229,6 +1246,7 @@ function LoginPageContent() {
                         />
                       ) : (
                         <>
+                          {sessionExpired && mode === "login" && <SessionExpiredNotice />}
                           {mode === "login" && isSsoLogin && clientNameParam && (
                             <div className="mb-8 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-center">
                               <p className="text-sm text-brand-charcoal/80">

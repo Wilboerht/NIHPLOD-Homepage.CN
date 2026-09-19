@@ -144,6 +144,14 @@ describe("LoginPage", () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"), { timeout: 3000 });
   });
 
+  it("会话过期（expired=1）时在面板内嵌提示登录已过期，不再弹 toast", async () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams("expired=1"));
+    render(<LoginPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("登录已过期，请重新登录");
+    expect(mockToastError).not.toHaveBeenCalled();
+  });
+
   it("已登录用户直接访问 /login（无 SSO 参数）时重定向到首页", async () => {
     mockUseAuth.mockReturnValue({
       user: { id: "u1", phone: "13800138000" },
