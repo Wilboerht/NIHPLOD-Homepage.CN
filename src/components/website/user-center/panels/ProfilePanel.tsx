@@ -99,8 +99,14 @@ export function ProfilePanel() {
     }
   };
 
-  /** 性别：点击即保存（null=保密/清除），无草稿态 */
+  /** 性别：三态（男/女/保密，null=保密），点击即保存，无草稿态 */
   const saveGender = async (value: "male" | "female" | null) => {
+    // 与当前值相同（如默认保密再点保密）：不重复提交，直接收起编辑态
+    if (value === (user?.gender ?? null)) {
+      setEditingField(null);
+      return;
+    }
+    setGender(value);
     setSaving(true);
     try {
       await apiPut("/api/user/profile", { gender: value });
@@ -108,6 +114,8 @@ export function ProfilePanel() {
       setEditingField(null);
       showSuccess("性别已更新");
     } catch (e) {
+      // 失败回滚乐观更新，避免界面显示未落库的值
+      setGender(user?.gender ?? null);
       const message = e instanceof Error ? e.message : "保存失败，请稍后重试";
       showError(message);
     } finally {
@@ -491,7 +499,7 @@ export function ProfilePanel() {
 
           <div className="h-px w-full bg-stone-100 opacity-40 md:hidden" />
 
-          {/* 性别：可选，会员身份属性（运营/个性化用），测肤问卷据此预填减少一步 */}
+          {/* 性别：男/女/保密三态，未设置（null）默认保密；会员身份属性（运营/个性化用），测肤问卷据此预填减少一步 */}
           <div className="group -mx-6 rounded-2xl px-6 transition-all hover:bg-white/40">
             <div className="flex items-center justify-between py-4">
               <div className="mr-4 flex min-w-0 flex-1 items-center gap-3 md:gap-6">
@@ -537,10 +545,7 @@ export function ProfilePanel() {
                       key={opt.label}
                       type="button"
                       disabled={saving}
-                      onClick={() => {
-                        setGender(opt.value);
-                        void saveGender(opt.value);
-                      }}
+                      onClick={() => void saveGender(opt.value)}
                       className={`rounded-full border px-5 py-2 text-sm transition-colors disabled:opacity-50 ${
                         gender === opt.value
                           ? "border-[#00263e] bg-[#00263e] text-white"

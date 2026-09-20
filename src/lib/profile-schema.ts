@@ -40,7 +40,7 @@ export const updateProfileSchema = z.object({
       ])
       .optional()
   ),
-  // 性别：male / female；null 表示清除（保密）。不锁定，可随时自助修改
+  // 性别：male / female；null = 未设置/保密（默认）。不锁定，可随时自助修改
   gender: z.enum(["male", "female"]).nullable().optional(),
 });
 
