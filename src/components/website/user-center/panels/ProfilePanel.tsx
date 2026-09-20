@@ -500,7 +500,7 @@ export function ProfilePanel() {
                 </div>
                 <div className="flex w-full min-w-0 flex-1 items-center gap-2">
                   <p className="truncate text-[15px] font-medium text-stone-800 md:text-sm">
-                    {user.gender === "male" ? "男" : user.gender === "female" ? "女" : "未设置"}
+                    {user.gender === "male" ? "男" : user.gender === "female" ? "女" : "保密"}
                   </p>
                 </div>
               </div>
@@ -510,9 +510,7 @@ export function ProfilePanel() {
                   aria-expanded={editingField === "gender"}
                   className="group -my-2 flex items-center gap-1.5 py-2 text-xs font-light text-stone-500 transition-colors hover:text-stone-800 active:opacity-60"
                 >
-                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">
-                    {user.gender ? "修改" : "设置"}
-                  </span>
+                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100">修改</span>
                   <ChevronRight
                     className={`h-3.5 w-3.5 text-stone-300 transition-transform duration-200 md:hidden ${
                       editingField === "gender" ? "rotate-90" : ""
