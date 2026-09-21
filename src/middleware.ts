@@ -95,13 +95,20 @@ function generateNonce(): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
+// 允许被配置的父窗口源嵌入（iframe）的页面路径白名单。
+// 命中后 frame-ancestors 追加服务端环境变量 EMBED_ALLOWED_ORIGINS
+// （逗号分隔 origin 列表；客户端白名单为 NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS，两者需保持一致）
+const EMBEDDABLE_PATHS = ["/account/embed", "/privacy/embed", "/terms/embed"];
+
+function isEmbeddablePath(pathname: string): boolean {
+  return EMBEDDABLE_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
 function buildCspHeader(nonce: string, pathname: string): string {
   const isDev = process.env.NODE_ENV !== "production";
 
-  // /account/embed 允许被配置的父窗口源嵌入（服务端环境变量 EMBED_ALLOWED_ORIGINS，
-  // 逗号分隔 origin 列表；客户端白名单为 NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS，两者需保持一致）
   let frameAncestors = "'self'";
-  if (pathname === "/account/embed" || pathname.startsWith("/account/embed/")) {
+  if (isEmbeddablePath(pathname)) {
     const embedOrigins = (process.env.EMBED_ALLOWED_ORIGINS || "")
       .split(",")
       .map((s) => s.trim())
