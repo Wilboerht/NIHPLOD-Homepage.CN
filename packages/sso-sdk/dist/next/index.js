@@ -122,6 +122,7 @@ function matchesPath(pathname, paths) {
 var introspectionCache = /* @__PURE__ */ new Map();
 var INTROSPECT_CACHE_TTL_MS = 3e4;
 var INTROSPECT_CACHE_MAX_ENTRIES = 500;
+var INTROSPECT_TIMEOUT_MS = 5e3;
 async function introspectCacheKey(token, clientId) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -154,7 +155,7 @@ async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) 
   const cacheKey = await introspectCacheKey(token, clientId);
   const cached = introspectCacheGet(cacheKey);
   if (cached) {
-    return cached.active;
+    return cached.active ? "active" : "inactive";
   }
   try {
     const body = new URLSearchParams({
@@ -168,21 +169,22 @@ async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) 
     const res = await fetch(`${ssoBaseUrl}/api/oauth/introspect`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString()
+      body: body.toString(),
+      signal: AbortSignal.timeout(INTROSPECT_TIMEOUT_MS)
     });
     if (!res.ok) {
       if (res.status !== 401 && res.status !== 403) {
-        return false;
+        return "unreachable";
       }
       introspectCacheSet(cacheKey, false);
-      return false;
+      return "inactive";
     }
     const data = await res.json();
     const active = data.active === true;
     introspectCacheSet(cacheKey, active);
-    return active;
+    return active ? "active" : "inactive";
   } catch {
-    return false;
+    return "unreachable";
   }
 }
 function createSsoMiddleware(config) {
@@ -232,13 +234,13 @@ function createSsoMiddleware(config) {
     const ssoSession = request.cookies.get(ssoCookieName);
     if (ssoSession?.value) {
       if (validateSsoCookie) {
-        const tokenActive = await introspectAccessToken(
+        const introspectResult = await introspectAccessToken(
           ssoSession.value,
           normalizedServerBase,
           clientId,
           clientSecret
         );
-        if (tokenActive) {
+        if (introspectResult === "active") {
           return import_server.NextResponse.next();
         }
       } else {
@@ -247,13 +249,19 @@ function createSsoMiddleware(config) {
     }
     const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
-      const tokenActive = await introspectAccessToken(
+      const introspectResult = await introspectAccessToken(
         accessTokenCookie.value,
         normalizedServerBase,
         clientId,
         clientSecret
       );
-      if (tokenActive) {
+      if (introspectResult === "active") {
+        return import_server.NextResponse.next();
+      }
+      if (introspectResult === "unreachable") {
+        console.warn(
+          "[SSO SDK] introspection \u4E0D\u53EF\u8FBE\uFF08\u7F51\u7EDC\u5F02\u5E38/\u8D85\u65F6/5xx\uFF09\uFF0C\u5BF9\u6301\u6709 SSO access token Cookie \u7684\u8BF7\u6C42 fail-open \u653E\u884C\uFF1B\u654F\u611F\u6570\u636E\u7684\u9274\u6743\u7531 Route Handler \u515C\u5E95\u3002"
+        );
         return import_server.NextResponse.next();
       }
     }

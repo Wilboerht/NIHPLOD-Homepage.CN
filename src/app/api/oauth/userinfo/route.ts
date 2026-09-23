@@ -18,7 +18,7 @@ import { maskPhone } from "@/lib/mask-phone";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { updateProfileSchema } from "@/lib/profile-schema";
-import { sendProfileUpdateWebhook } from "@/lib/profile-webhook";
+import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -185,7 +185,7 @@ export async function PATCH(request: NextRequest) {
     // 以及生日锁定判定
     const previous = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true, status: true },
+      select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true, status: true, gender: true },
     });
 
     if (!previous || previous.status !== "ACTIVE") {
@@ -270,17 +270,19 @@ export async function PATCH(request: NextRequest) {
     // 主站个人中心（unstable_cache 30s + user-profile tag）不会读到陈旧资料
     revalidateTag("user-profile", { expire: 0 });
 
-    // 昵称/头像/生日有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
+    // 昵称/头像/生日/性别有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
     // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）
     const profileChanged =
       previous.nickname !== user.nickname ||
       previous.avatar !== user.avatar ||
-      (previous.birthday?.getTime() ?? null) !== (user.birthday?.getTime() ?? null);
+      (previous.birthday?.getTime() ?? null) !== (user.birthday?.getTime() ?? null) ||
+      (previous.gender ?? null) !== (user.gender ?? null);
     if (profileChanged) {
       const snapshot = {
         nickname: user.nickname,
         avatar: user.avatar,
         birthday: user.birthday?.toISOString() ?? null,
+        gender: normalizeGender(user.gender),
       };
       try {
         after(() => sendProfileUpdateWebhook(payload.id, snapshot));

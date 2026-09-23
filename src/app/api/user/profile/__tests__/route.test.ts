@@ -43,6 +43,7 @@ vi.mock("@/lib/upload", () => ({
 
 vi.mock("@/lib/profile-webhook", () => ({
   sendProfileUpdateWebhook: (...args: unknown[]) => mockSendProfileUpdateWebhook(...args),
+  normalizeGender: (g: string | null | undefined) => (g === "male" || g === "female" ? g : null),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -90,6 +91,7 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
       nickname: "新昵称",
       avatar: null,
       birthday: null,
+      gender: null,
     });
   });
 
@@ -120,6 +122,22 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
       "user-1",
       expect.objectContaining({ avatar: "https://cdn.example.com/new.png" })
     );
+  });
+
+  it("仅性别变更也应触发 webhook 推送（快照含新性别）", async () => {
+    // 其余字段与现状一致，仅 gender 变化
+    mockUserFindUnique.mockResolvedValue({ ...OLD_USER, nickname: "新昵称", gender: null });
+    mockUserUpdate.mockResolvedValue({ ...NEW_USER, gender: "female" });
+
+    const res = await PUT(putRequest({ gender: "female" }));
+
+    expect(res.status).toBe(200);
+    expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
+      nickname: "新昵称",
+      avatar: null,
+      birthday: null,
+      gender: "female",
+    });
   });
 
   it("参数校验失败时不触发 webhook", async () => {

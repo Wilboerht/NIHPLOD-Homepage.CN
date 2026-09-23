@@ -53,7 +53,12 @@ import {
   PROFILE_UPDATE_EVENT_URI,
 } from "@/lib/profile-webhook";
 
-const PROFILE = { nickname: "新昵称", avatar: "https://cdn.example.com/a.png", birthday: null };
+const PROFILE = {
+  nickname: "新昵称",
+  avatar: "https://cdn.example.com/a.png",
+  birthday: null,
+  gender: "female" as const,
+};
 
 describe("profile-webhook", () => {
   beforeEach(() => {

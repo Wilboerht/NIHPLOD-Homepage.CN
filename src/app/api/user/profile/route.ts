@@ -11,7 +11,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { updateProfileSchema } from "@/lib/profile-schema";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
-import { sendProfileUpdateWebhook } from "@/lib/profile-webhook";
+import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 
 // 用户资料缓存标签（静态标签，资料更新时统一失效）
 const USER_PROFILE_TAG = "user-profile";
@@ -173,18 +173,20 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     // 保证前端保存后紧跟的 refreshUser 能读到新值（"max" 会先把旧资料再服务一次）
     revalidateTag(USER_PROFILE_TAG, { expire: 0 });
 
-    // 昵称/头像/生日有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
+    // 昵称/头像/生日/性别有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
     // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）
     const profileChanged =
       !previous ||
       previous.nickname !== user.nickname ||
       previous.avatar !== user.avatar ||
-      (previous.birthday?.getTime() ?? null) !== (user.birthday?.getTime() ?? null);
+      (previous.birthday?.getTime() ?? null) !== (user.birthday?.getTime() ?? null) ||
+      (previous.gender ?? null) !== (user.gender ?? null);
     if (profileChanged) {
       const snapshot = {
         nickname: user.nickname,
         avatar: user.avatar,
         birthday: user.birthday?.toISOString() ?? null,
+        gender: normalizeGender(user.gender),
       };
       try {
         after(() => sendProfileUpdateWebhook(payload.id, snapshot));
@@ -277,14 +279,35 @@ export async function POST(request: NextRequest) {
     // 使用统一上传逻辑 (自动根据策略选择 OSS 或本地)
     const result = await processAndSaveImage(buffer, safeName || "avatar", "avatars");
 
-    // 5. 更新数据库中的头像链接
-    await prisma.user.update({
+    // 5. 更新数据库中的头像链接（先读旧值，用于判断头像是否实际变更以决定是否推 webhook）
+    const previousAvatar = (
+      await prisma.user.findUnique({ where: { id: payload.id }, select: { avatar: true } })
+    )?.avatar;
+    const updatedUser = await prisma.user.update({
       where: { id: payload.id },
       data: { avatar: result.url },
+      select: { nickname: true, avatar: true, birthday: true, gender: true },
     });
 
     // 头像变更后立即失效缓存（{ expire: 0 }：下一次请求阻塞重取，不返回陈旧数据）
     revalidateTag(USER_PROFILE_TAG, { expire: 0 });
+
+    // 头像实际变更后向已授权子项目推送 profile_update（快照含新头像，
+    // 与 PUT 同样的 fire-and-forget 模式，失败不影响上传响应）
+    if (previousAvatar !== updatedUser.avatar) {
+      const snapshot = {
+        nickname: updatedUser.nickname,
+        avatar: updatedUser.avatar,
+        birthday: updatedUser.birthday?.toISOString() ?? null,
+        gender: normalizeGender(updatedUser.gender),
+      };
+      try {
+        after(() => sendProfileUpdateWebhook(payload.id, snapshot));
+      } catch {
+        // 非请求场景（测试等无 request scope）：降级为 fire-and-forget promise
+        void sendProfileUpdateWebhook(payload.id, snapshot);
+      }
+    }
 
     return NextResponse.json({
       success: true,

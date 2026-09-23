@@ -52,6 +52,7 @@ vi.mock("@/lib/prisma", () => ({
 const mockSendProfileUpdateWebhook = vi.fn();
 vi.mock("@/lib/profile-webhook", () => ({
   sendProfileUpdateWebhook: (...args: unknown[]) => mockSendProfileUpdateWebhook(...args),
+  normalizeGender: (g: string | null | undefined) => (g === "male" || g === "female" ? g : null),
 }));
 
 // === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
@@ -423,11 +424,12 @@ describe("PATCH /api/oauth/userinfo", () => {
     expect(body.gender).toBe("female");
     expect(body.birthday).toBeNull();
 
-    // 昵称实际变更 → 触发 profile_update webhook（快照为变更后的公开资料）
+    // 昵称实际变更 → 触发 profile_update webhook（快照为变更后的公开资料，含性别）
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
       nickname: "新昵称",
       avatar: null,
       birthday: null,
+      gender: "female",
     });
   });
 
@@ -463,6 +465,7 @@ describe("PATCH /api/oauth/userinfo", () => {
       nickname: "旧昵称",
       avatar: null,
       birthday: "1990-05-20T00:00:00.000Z",
+      gender: null,
     });
   });
 
@@ -478,6 +481,7 @@ describe("PATCH /api/oauth/userinfo", () => {
       birthday: null,
       birthdayLocked: false,
       status: "ACTIVE",
+      gender: "male",
     });
     mockUserUpdate.mockResolvedValue({
       id: "user-1",
@@ -487,9 +491,41 @@ describe("PATCH /api/oauth/userinfo", () => {
       gender: "male",
     });
 
-    // 仅修改性别（不触发 webhook 的字段）
+    // 提交与现状完全一致的资料（含性别），无任何字段实际变更
     const res = await PATCH(patchRequest({ gender: "male" }));
     expect(res.status).toBe(200);
     expect(mockSendProfileUpdateWebhook).not.toHaveBeenCalled();
+  });
+
+  it("仅变更性别也触发 webhook（快照含新性别）", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      birthdayLocked: false,
+      status: "ACTIVE",
+      gender: null,
+    });
+    mockUserUpdate.mockResolvedValue({
+      id: "user-1",
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      gender: "female",
+    });
+
+    const res = await PATCH(patchRequest({ gender: "female" }));
+    expect(res.status).toBe(200);
+    expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      gender: "female",
+    });
   });
 });

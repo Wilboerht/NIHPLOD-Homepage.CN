@@ -16,7 +16,7 @@ import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { creditSpendPoints, refundSpendPoints } from "@/lib/points-ledger";
-import { sendProfileUpdateWebhook } from "@/lib/profile-webhook";
+import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 
 // 等级阈值（按历史消费金额，元）
 // 判级以此处硬编码阈值为准（唯一权威）；管理端可编辑的 MembershipBenefit.minSpent
@@ -244,7 +244,7 @@ async function pushMembershipUpdateWebhook(
 ): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { nickname: true, avatar: true, birthday: true },
+    select: { nickname: true, avatar: true, birthday: true, gender: true },
   });
   if (!user) return;
   await sendProfileUpdateWebhook(
@@ -253,6 +253,7 @@ async function pushMembershipUpdateWebhook(
       nickname: user.nickname,
       avatar: user.avatar,
       birthday: user.birthday?.toISOString() ?? null,
+      gender: normalizeGender(user.gender),
     },
     { level: result.membershipLevel, totalSpent: result.totalSpent }
   );

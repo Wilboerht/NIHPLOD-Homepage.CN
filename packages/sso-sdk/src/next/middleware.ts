@@ -176,10 +176,16 @@ function matchesPath(pathname: string, paths: string[]): boolean {
  * 附带进程级缓存（key = token 的 SHA-256 hex + clientId），
  * 减少同一用户 session 在短时间内对 SSO 中心的重复 introspection 调用。
  * 缓存带 TTL（30s）与容量上限（LRU 淘汰），避免无界增长。
+ *
+ * 返回三态以区分两类失败：
+ * - "inactive"：token 确证无效（401/403 或 active:false），调用方应重定向登录
+ * - "unreachable"：introspect 不可达（网络异常/超时/5xx），结果不确定，
+ *   由调用方决定 fail-open 或 fail-closed；此结果不缓存，下次请求重试
  */
 const introspectionCache = new Map<string, { active: boolean; until: number }>();
 const INTROSPECT_CACHE_TTL_MS = 30_000; // 30 秒
 const INTROSPECT_CACHE_MAX_ENTRIES = 500;
+const INTROSPECT_TIMEOUT_MS = 5_000; // introspect 请求超时，避免 SSO 中心 hang 住 middleware
 
 /** 计算 token 的 SHA-256 hex（Edge Runtime Web Crypto），用作缓存 key 避免跨用户碰撞 */
 async function introspectCacheKey(token: string, clientId: string): Promise<string> {
@@ -218,16 +224,18 @@ function introspectCacheSet(key: string, active: boolean): void {
   introspectionCache.set(key, { active, until: now + INTROSPECT_CACHE_TTL_MS });
 }
 
+type IntrospectResult = "active" | "inactive" | "unreachable";
+
 async function introspectAccessToken(
   token: string,
   ssoBaseUrl: string,
   clientId: string,
   clientSecret?: string
-): Promise<boolean> {
+): Promise<IntrospectResult> {
   const cacheKey = await introspectCacheKey(token, clientId);
   const cached = introspectCacheGet(cacheKey);
   if (cached) {
-    return cached.active;
+    return cached.active ? "active" : "inactive";
   }
 
   try {
@@ -244,24 +252,25 @@ async function introspectAccessToken(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
+      signal: AbortSignal.timeout(INTROSPECT_TIMEOUT_MS),
     });
 
     if (!res.ok) {
-      // 仅缓存确定性的"token 无效"结果；网络错误不缓存，下次重试
       if (res.status !== 401 && res.status !== 403) {
-        // 非认证错误（如 500、网络问题）：不缓存，让下次请求重试
-        return false;
+        // 非认证错误（如 500）：introspect 不可达，不缓存，让下次请求重试
+        return "unreachable";
       }
+      // 401/403：token 确证无效，缓存该确定性结论
       introspectCacheSet(cacheKey, false);
-      return false;
+      return "inactive";
     }
     const data = (await res.json()) as { active?: boolean };
     const active = data.active === true;
     introspectCacheSet(cacheKey, active);
-    return active;
+    return active ? "active" : "inactive";
   } catch {
-    // 网络异常不缓存：下次请求会重试 introspection
-    return false;
+    // 网络异常/超时：introspect 不可达，不缓存，下次请求会重试 introspection
+    return "unreachable";
   }
 }
 
@@ -352,16 +361,17 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     if (ssoSession?.value) {
       // 可选：对主站 Cookie 进行 Introspection 二次验证
       if (validateSsoCookie) {
-        const tokenActive = await introspectAccessToken(
+        const introspectResult = await introspectAccessToken(
           ssoSession.value,
           normalizedServerBase,
           clientId,
           clientSecret
         );
-        if (tokenActive) {
+        if (introspectResult === "active") {
           return NextResponse.next();
         }
-        // Token 无效：继续到 access_token cookie 检查或重定向
+        // Token 无效（inactive）或 introspect 不可达（unreachable）：
+        // 继续到 access_token cookie 检查或重定向
       } else {
         return NextResponse.next();
       }
@@ -372,17 +382,27 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     if (accessTokenCookie?.value) {
       // 调用 Introspection 精确校验 token 是否仍有效。
       // Confidential Client 携带 clientSecret；Public Client 仅传 clientId。
-      const tokenActive = await introspectAccessToken(
+      const introspectResult = await introspectAccessToken(
         accessTokenCookie.value,
         normalizedServerBase,
         clientId,
         clientSecret
       );
 
-      if (tokenActive) {
+      if (introspectResult === "active") {
         return NextResponse.next();
       }
-      // Token 无效或已过期：清除 cookie 并继续到 SSO 重定向
+      if (introspectResult === "unreachable") {
+        // introspect 不可达（网络异常/超时/5xx）：对已持有 SSO access token
+        // Cookie 的请求 fail-open 放行——middleware 只是 UX 层，Route Handler /
+        // Server Component 仍会强制鉴权；此时重定向到 SSO 也只会得到同样的故障。
+        // token 确证无效（inactive）不在此列，仍走下方重定向。
+        console.warn(
+          "[SSO SDK] introspection 不可达（网络异常/超时/5xx），对持有 SSO access token Cookie 的请求 fail-open 放行；敏感数据的鉴权由 Route Handler 兜底。"
+        );
+        return NextResponse.next();
+      }
+      // Token 确证无效或已过期：清除 cookie 并继续到 SSO 重定向
     }
 
     // No auth: redirect to SSO

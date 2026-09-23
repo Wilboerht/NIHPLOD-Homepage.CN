@@ -357,6 +357,15 @@ export const config = {
 > code (silent re-auth), and the callback handler issues new cookies — the user typically
 > only sees a quick redirect loop through the SSO center. No client-side action is needed.
 
+> **Introspection outage behavior (since 1.4.1):** introspection requests time out after
+> 5s. When introspection is *unreachable* (network error, timeout, or 5xx — as opposed to
+> a confirmed-invalid token), the middleware fails open for requests that already carry an
+> SSO `access_token` cookie: it lets the request through (with one `console.warn`) instead
+> of redirecting to an SSO center that is likely down. This is safe because the middleware
+> is only a UX gate — Route Handlers / Server Components must still re-verify the token.
+> Confirmed-invalid tokens (401/403 or `active:false`) still trigger the redirect, and
+> requests without any SSO cookie still redirect as before.
+
 ```typescript
 // src/app/api/auth/callback/route.ts
 import { createCallbackRouteHandler } from "@nihplod/sso-sdk/next";

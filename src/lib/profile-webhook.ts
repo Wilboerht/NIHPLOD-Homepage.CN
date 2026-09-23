@@ -25,6 +25,13 @@ export interface ProfileSnapshot {
   nickname: string | null;
   avatar: string | null;
   birthday: string | null; // ISO 字符串
+  /** OIDC 标准 gender claim；null = 未设置/保密 */
+  gender: "male" | "female" | null;
+}
+
+/** 归一化 DB 中的 gender 字段（String?）为快照三态：非法/未设置一律为 null */
+export function normalizeGender(gender: string | null | undefined): "male" | "female" | null {
+  return gender === "male" || gender === "female" ? gender : null;
 }
 
 /**
@@ -118,6 +125,7 @@ export async function sendProfileUpdateWebhook(
                     nickname: profile.nickname,
                     avatar: profile.avatar,
                     birthday: profile.birthday,
+                    gender: profile.gender,
                   },
                   // 会员信息快照一并落库，cron 重投时按原快照重新签发
                   ...(membership !== undefined && { membership }),
@@ -211,7 +219,7 @@ export async function retryFailedWebhookDeliveries(
         aud: failure.clientId,
         events: { [PROFILE_UPDATE_EVENT_URI]: {} },
         jti: crypto.randomUUID(),
-        profile: payload.profile ?? { nickname: null, avatar: null, birthday: null },
+        profile: payload.profile ?? { nickname: null, avatar: null, birthday: null, gender: null },
         ...(payload.membership !== undefined && { membership: payload.membership }),
       });
 
@@ -312,7 +320,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       aud: failure.clientId,
       events: { [PROFILE_UPDATE_EVENT_URI]: {} },
       jti: crypto.randomUUID(),
-      profile: payload.profile ?? { nickname: null, avatar: null, birthday: null },
+      profile: payload.profile ?? { nickname: null, avatar: null, birthday: null, gender: null },
       ...(payload.membership !== undefined && { membership: payload.membership }),
     });
 

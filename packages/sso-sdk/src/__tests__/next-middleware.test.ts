@@ -131,6 +131,81 @@ describe("createSsoMiddleware", () => {
     expect(res.headers.get("location")).toContain("/api/oauth/authorize");
   });
 
+  it("introspect 请求携带超时 AbortSignal", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => jsonResponse({ active: true }));
+    const middleware = createSsoMiddleware(config);
+    const req = new NextRequest("https://myapp.com/dashboard", {
+      headers: { cookie: "__Host-nihplod_sso_at=token-timeout-check" },
+    });
+    await middleware(req);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining("/api/oauth/introspect"),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+
+  it("introspect 不可达（网络异常）且持有 access token cookie：fail-open 放行并告警一次", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware(config);
+    const req = new NextRequest("https://myapp.com/dashboard", {
+      headers: { cookie: "__Host-nihplod_sso_at=token-net-down" },
+    });
+    const res = await middleware(req);
+    // fail-open：不重定向、不清除 cookie（token 可能仍有效，只是 SSO 暂时不可达）
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("fail-open"));
+  });
+
+  it("introspect 返回 5xx（未确证 token 无效）：fail-open 放行且不缓存失败结论", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => jsonResponse({}, 500));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware(config);
+    const makeReq = () =>
+      new NextRequest("https://myapp.com/dashboard", {
+        headers: { cookie: "__Host-nihplod_sso_at=token-5xx" },
+      });
+
+    const res = await middleware(makeReq());
+    expect(res.headers.get("location")).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("fail-open"));
+
+    // 5xx 结论不缓存：第二次请求重新调用 introspection
+    await middleware(makeReq());
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("introspect 确证 token 无效（active:false）：access token cookie 仍被清除并重定向", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({ active: false })
+    );
+    const middleware = createSsoMiddleware(config);
+    const req = new NextRequest("https://myapp.com/dashboard", {
+      headers: { cookie: "__Host-nihplod_sso_at=token-confirmed-inactive" },
+    });
+    const res = await middleware(req);
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
+    // 过期/无效的 access token cookie 被立即清除
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
+  });
+
+  it("introspect 不可达但请求无任何 SSO cookie：维持 302 重定向", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    const middleware = createSsoMiddleware(config);
+    const res = await middleware(new NextRequest("https://myapp.com/dashboard"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
+    // 无 cookie 不触发 introspection
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("insecureLocalDev=true：Cookie 去除 __Host-/__Secure- 前缀且不设置 Secure", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const middleware = createSsoMiddleware({ ...config, insecureLocalDev: true });

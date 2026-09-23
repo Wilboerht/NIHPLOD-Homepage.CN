@@ -33,6 +33,7 @@ vi.mock("@/lib/points-ledger", () => ({
 
 vi.mock("@/lib/profile-webhook", () => ({
   sendProfileUpdateWebhook: (...args: unknown[]) => mockSendProfileUpdateWebhook(...args),
+  normalizeGender: (g: string | null | undefined) => (g === "male" || g === "female" ? g : null),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -86,6 +87,7 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
         nickname: "张三",
         avatar: "https://cdn.example.com/a.png",
         birthday: "1995-06-01T00:00:00.000Z",
+        gender: null,
       },
       { level: "SILVER", totalSpent: 1300 }
     );

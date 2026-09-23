@@ -19,6 +19,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
+import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import {
   checkAccountLockout,
   recordLoginAttempt,
@@ -163,11 +164,25 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
         data: { revokedAt: new Date() },
       });
 
-      // 同步撤销 OAuth 会话，使携带 sid 的 access token 即时失效
+      // 同步撤销 OAuth 会话，使携带 sid 的 access token 即时失效；
+      // 撤销前查出活跃会话的 clientId/sid，撤销后通过 backchannel logout 通知子站即时踢人
+      // （否则子站最长要等到 access token 自然过期才发现会话已撤销）
+      const activeSessions = await prisma.oAuthSession.findMany({
+        where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
+        select: { clientId: true, sessionId: true },
+      });
       await prisma.oAuthSession.updateMany({
         where: { userId: user.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      if (activeSessions.length > 0) {
+        const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
+        const sids: Record<string, string> = {};
+        for (const s of activeSessions) {
+          if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
+        }
+        await sendBackchannelLogout(user.id, clientIds, { sids });
+      }
     } catch (err) {
       // 密码已修改成功，会话撤销失败不阻断主流程，仅记录（风险窗口由 token 自然过期兜底）
       apiConsole.error("[ChangePassword] 撤销其他设备会话失败:", err);

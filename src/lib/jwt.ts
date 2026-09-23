@@ -1062,6 +1062,8 @@ export interface ProfileEventTokenClaims {
     nickname: string | null;
     avatar: string | null;
     birthday: string | null;
+    /** OIDC 标准 gender claim；null = 未设置/保密（子站测肤问卷据此预填性别） */
+    gender: "male" | "female" | null;
   };
   /**
    * 会员信息快照（可选）：累计消费/会员等级变化时由主站推送，
