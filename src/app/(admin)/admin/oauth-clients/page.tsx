@@ -41,6 +41,7 @@ interface OAuthClient {
   clientId: string;
   name: string;
   redirectUris: string[];
+  postLogoutRedirectUris: string[];
   scopes: string[];
   isActive: boolean;
   isPublic: boolean;
@@ -113,6 +114,35 @@ const validateRedirectUris = (
   return { valid: true, parsed };
 };
 
+/**
+ * Post Logout Redirect URI 校验：与 redirectUris 同规则（https、不允许 fragment），
+ * 但允许为空（登出后跳转为可选能力，空表示不允许任何 post_logout_redirect_uri）。
+ */
+const validatePostLogoutUris = (
+  uris: string
+): { valid: boolean; error?: string; parsed: string[] } => {
+  const lines = uris
+    .split("\n")
+    .map((u) => u.trim())
+    .filter(Boolean);
+  const parsed: string[] = [];
+  for (const line of lines) {
+    try {
+      const url = new URL(line);
+      if (url.protocol !== "https:") {
+        return { valid: false, error: `Post Logout URL 必须使用 https:// 协议：${line}`, parsed: [] };
+      }
+      if (url.hash) {
+        return { valid: false, error: `Post Logout URL 不能包含 hash 片段：${line}`, parsed: [] };
+      }
+      parsed.push(line);
+    } catch {
+      return { valid: false, error: `Post Logout URL 格式不正确：${line}`, parsed: [] };
+    }
+  }
+  return { valid: true, parsed };
+};
+
 const generatePkcePair = async () => {
   const verifier = crypto.randomUUID() + crypto.randomUUID();
   const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
@@ -173,6 +203,7 @@ function OAuthClientsPage() {
   // Form
   const [formName, setFormName] = useState("");
   const [formRedirectUris, setFormRedirectUris] = useState("");
+  const [formPostLogoutUris, setFormPostLogoutUris] = useState("");
   const [formScopes, setFormScopes] = useState("openid profile phone");
   const [formIsPublic, setFormIsPublic] = useState(false);
   const [formBackchannelUri, setFormBackchannelUri] = useState("");
@@ -235,6 +266,7 @@ function OAuthClientsPage() {
   const resetForm = () => {
     setFormName("");
     setFormRedirectUris("");
+    setFormPostLogoutUris("");
     setFormScopes("openid profile phone");
     setFormIsPublic(false);
     setFormBackchannelUri("");
@@ -252,6 +284,11 @@ function OAuthClientsPage() {
       setFormError(uriValidation.error || "回调 URL 格式错误");
       return;
     }
+    const postLogoutValidation = validatePostLogoutUris(formPostLogoutUris);
+    if (!postLogoutValidation.valid) {
+      setFormError(postLogoutValidation.error || "Post Logout URL 格式错误");
+      return;
+    }
     const scopes = formScopes.split(" ").filter(Boolean);
     if (scopes.length === 0 || !scopes.includes("openid")) {
       setFormError("Scopes 必须包含 openid");
@@ -263,6 +300,7 @@ function OAuthClientsPage() {
       const data = await apiPost<CreateClientResponse>("/api/admin/oauth-clients", {
         name: formName.trim(),
         redirectUris: uriValidation.parsed,
+        postLogoutRedirectUris: postLogoutValidation.parsed,
         scopes,
         isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || undefined,
@@ -290,6 +328,11 @@ function OAuthClientsPage() {
       setFormError(uriValidation.error || "回调 URL 格式错误");
       return;
     }
+    const postLogoutValidation = validatePostLogoutUris(formPostLogoutUris);
+    if (!postLogoutValidation.valid) {
+      setFormError(postLogoutValidation.error || "Post Logout URL 格式错误");
+      return;
+    }
     const scopes = formScopes.split(" ").filter(Boolean);
     if (scopes.length === 0 || !scopes.includes("openid")) {
       setFormError("Scopes 必须包含 openid");
@@ -301,6 +344,7 @@ function OAuthClientsPage() {
       await apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${editClient.id}`, {
         name: formName.trim(),
         redirectUris: uriValidation.parsed,
+        postLogoutRedirectUris: postLogoutValidation.parsed,
         scopes,
         isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || null,
@@ -377,6 +421,7 @@ function OAuthClientsPage() {
     setEditClient(client);
     setFormName(client.name);
     setFormRedirectUris(client.redirectUris.join("\n"));
+    setFormPostLogoutUris((client.postLogoutRedirectUris || []).join("\n"));
     setFormScopes(client.scopes.join(" "));
     setFormIsPublic(client.isPublic);
     setFormBackchannelUri(client.backchannelLogoutUri || "");
@@ -822,6 +867,21 @@ if (!payload) {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
+                Post Logout Redirect URIs（可选，每行一个）
+              </label>
+              <textarea
+                value={formPostLogoutUris}
+                onChange={(e) => setFormPostLogoutUris(e.target.value)}
+                placeholder="https://advisor.nihplod.cn/login&#10;https://shop.nihplod.cn/logged-out"
+                rows={2}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                用户从主站登出后允许跳转回的地址白名单，须为 https://；留空则不允许跳转
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 Scopes（空格分隔）
               </label>
               <Input
@@ -901,6 +961,20 @@ if (!payload) {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             />
             <p className="mt-1 text-xs text-gray-400">生产环境回调 URL 必须使用 https://</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Post Logout Redirect URIs（可选，每行一个）
+            </label>
+            <textarea
+              value={formPostLogoutUris}
+              onChange={(e) => setFormPostLogoutUris(e.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              用户从主站登出后允许跳转回的地址白名单，须为 https://；留空则不允许跳转
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -1308,6 +1382,21 @@ if (!payload) {
                     ))}
                   </ul>
                 </div>
+
+                {(detailClient.postLogoutRedirectUris || []).length > 0 && (
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium text-gray-700">
+                      Post Logout Redirect URIs
+                    </h3>
+                    <ul className="space-y-2">
+                      {detailClient.postLogoutRedirectUris.map((uri) => (
+                        <li key={uri} className="break-all rounded bg-gray-50 p-2 font-mono text-sm">
+                          {uri}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {detailClient.backchannelLogoutUri && (
                   <div>

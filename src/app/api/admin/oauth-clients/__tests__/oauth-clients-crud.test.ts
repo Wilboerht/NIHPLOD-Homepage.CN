@@ -5,9 +5,12 @@
  * - GET  /api/admin/oauth-clients      未认证 401 / 非 owner 403 / 超限 429 / 正常分页
  * - POST /api/admin/oauth-clients      未认证 401 / 非 owner 403 / 创建成功返回一次性明文 secret /
  *                                      私网 redirectUri 400 / 带 fragment redirectUri 400 /
- *                                      scopes 非白名单 400
- * - GET    /api/admin/oauth-clients/:id  非 owner 403 / 404 / 响应不含 clientSecret
- * - PATCH  /api/admin/oauth-clients/:id  非 owner 403 / 404 / 停用时级联撤销 session
+ *                                      scopes 非白名单 400 / postLogoutRedirectUris 写入与回显 /
+ *                                      非法 postLogoutRedirectUri（http、私网）400
+ * - GET    /api/admin/oauth-clients/:id  非 owner 403 / 404 / 响应不含 clientSecret /
+ *                                        响应包含 postLogoutRedirectUris 供表单回显
+ * - PATCH  /api/admin/oauth-clients/:id  非 owner 403 / 404 / 停用时级联撤销 session /
+ *                                        postLogoutRedirectUris 更新写入与非法值 400
  * - DELETE /api/admin/oauth-clients/:id  非 owner 403 / 404 / 删除后审计事件保留
  *                                        （ssoAuditEvent.deleteMany 不被调用）/
  *                                        不再调用 blacklistUserTokens（即时失效由 sid 会话校验承担）
@@ -447,6 +450,78 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(data.data.client.webhookUri).toBe("https://newapp.example.com/webhook");
     });
 
+    it("合法 postLogoutRedirectUris 创建时应写入数据库并在响应中返回（供表单回显）", async () => {
+      const postLogoutUris = ["https://newapp.example.com/login"];
+      prismaMock.oAuthClient.create.mockImplementation(
+        async (args: { data: Record<string, unknown> }) =>
+          makeClientRecord({
+            clientId: args.data.clientId,
+            clientSecret: args.data.clientSecret,
+            name: args.data.name,
+            redirectUris: args.data.redirectUris,
+            postLogoutRedirectUris: args.data.postLogoutRedirectUris,
+          })
+      );
+
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", {
+          method: "POST",
+          body: { ...validBody, postLogoutRedirectUris: postLogoutUris },
+        })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const createArg = prismaMock.oAuthClient.create.mock.calls[0][0] as {
+        data: { postLogoutRedirectUris: string[] };
+      };
+      expect(createArg.data.postLogoutRedirectUris).toEqual(postLogoutUris);
+      expect(data.data.client.postLogoutRedirectUris).toEqual(postLogoutUris);
+    });
+
+    it("未提供 postLogoutRedirectUris 时默认为空数组", async () => {
+      prismaMock.oAuthClient.create.mockImplementation(
+        async (args: { data: Record<string, unknown> }) => makeClientRecord(args.data)
+      );
+
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody })
+      );
+
+      expect(res.status).toBe(200);
+      const createArg = prismaMock.oAuthClient.create.mock.calls[0][0] as {
+        data: { postLogoutRedirectUris: string[] };
+      };
+      expect(createArg.data.postLogoutRedirectUris).toEqual([]);
+    });
+
+    it("http（非 https）postLogoutRedirectUri 应返回 400", async () => {
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", {
+          method: "POST",
+          body: { ...validBody, postLogoutRedirectUris: ["http://app.example.com/login"] },
+        })
+      );
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("INVALID_PARAMS");
+      expect(prismaMock.oAuthClient.create).not.toHaveBeenCalled();
+    });
+
+    it("私网 postLogoutRedirectUri（192.168.x.x）应返回 400", async () => {
+      const { POST } = await import("@/app/api/admin/oauth-clients/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", {
+          method: "POST",
+          body: { ...validBody, postLogoutRedirectUris: ["https://192.168.1.10/login"] },
+        })
+      );
+      expect(res.status).toBe(400);
+      expect(prismaMock.oAuthClient.create).not.toHaveBeenCalled();
+    });
+
     it("scopes 含非白名单值应返回 400", async () => {
       const { POST } = await import("@/app/api/admin/oauth-clients/route");
       const res = await POST(
@@ -501,6 +576,18 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(res.status).toBe(200);
       expect(data.data.client.clientId).toBe("abc123clientid");
       expect(data.data.client).not.toHaveProperty("clientSecret");
+    });
+
+    it("详情响应应包含 postLogoutRedirectUris（供编辑表单回显）", async () => {
+      const postLogoutUris = ["https://app.example.com/login"];
+      prismaMock.oAuthClient.findUnique.mockResolvedValue(
+        makeClientRecord({ postLogoutRedirectUris: postLogoutUris })
+      );
+      const { GET } = await import("@/app/api/admin/oauth-clients/[id]/route");
+      const res = await GET(createRequest("/api/admin/oauth-clients/client-db-id-1"), routeContext("client-db-id-1"));
+      const data = await res.json();
+      expect(res.status).toBe(200);
+      expect(data.data.client.postLogoutRedirectUris).toEqual(postLogoutUris);
     });
   });
 
@@ -583,6 +670,48 @@ describe("管理端 OAuth Client CRUD", () => {
 
       expect(res.status).toBe(200);
       expect(prismaMock.oAuthSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("PATCH 更新 postLogoutRedirectUris 应写入数据库并在响应中返回", async () => {
+      const postLogoutUris = ["https://app.example.com/logged-out"];
+      prismaMock.oAuthClient.findUnique.mockResolvedValue(makeClientRecord());
+      prismaMock.oAuthClient.update.mockImplementation(
+        async (args: { data: Record<string, unknown> }) =>
+          makeClientRecord({
+            postLogoutRedirectUris: args.data.postLogoutRedirectUris as string[],
+          })
+      );
+
+      const { PATCH } = await import("@/app/api/admin/oauth-clients/[id]/route");
+      const res = await PATCH(
+        createRequest("/api/admin/oauth-clients/client-db-id-1", {
+          method: "PATCH",
+          body: { postLogoutRedirectUris: postLogoutUris },
+        }),
+        routeContext("client-db-id-1")
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      const updateArg = prismaMock.oAuthClient.update.mock.calls[0][0] as {
+        data: { postLogoutRedirectUris: string[] };
+      };
+      expect(updateArg.data.postLogoutRedirectUris).toEqual(postLogoutUris);
+      expect(data.data.client.postLogoutRedirectUris).toEqual(postLogoutUris);
+    });
+
+    it("PATCH postLogoutRedirectUris 含 http 地址应返回 400", async () => {
+      prismaMock.oAuthClient.findUnique.mockResolvedValue(makeClientRecord());
+      const { PATCH } = await import("@/app/api/admin/oauth-clients/[id]/route");
+      const res = await PATCH(
+        createRequest("/api/admin/oauth-clients/client-db-id-1", {
+          method: "PATCH",
+          body: { postLogoutRedirectUris: ["http://app.example.com/login"] },
+        }),
+        routeContext("client-db-id-1")
+      );
+      expect(res.status).toBe(400);
+      expect(prismaMock.oAuthClient.update).not.toHaveBeenCalled();
     });
 
     it("PATCH 更新 scopes 含非白名单值应返回 400", async () => {
