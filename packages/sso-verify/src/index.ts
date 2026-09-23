@@ -434,6 +434,21 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
   }
 
   /**
+   * 本地验签路径返回的是 token 原始 payload：主站 access token 把用户 ID
+   * 放在 `id` claim（`sub` 只存在于 id_token 与 introspect 响应）。此处
+   * 归一化为 `sub`，保持与 introspect 路径一致的返回契约——消费方
+   * （session-init / getSessionUser 等）一律读 payload.sub。
+   * 两者皆无时视为无效 token（对齐 introspect 路径"必须有非空 sub"的口径）。
+   */
+  function normalizeLocalPayload(payload: JWTPayload): VerifiedTokenPayload | null {
+    const p = payload as VerifiedTokenPayload & { id?: string };
+    if (!p.sub && typeof p.id === "string" && p.id) {
+      p.sub = p.id;
+    }
+    return p.sub ? p : null;
+  }
+
+  /**
    * 本地 JWT 验证（仅当提供 accessTokenSecret 时，使用 HS256）
    */
   async function verifyLocally(token: string): Promise<VerifiedTokenPayload | null> {
@@ -452,7 +467,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         return null;
       }
 
-      return payload as unknown as VerifiedTokenPayload;
+      return normalizeLocalPayload(payload);
     } catch {
       return null;
     }
@@ -478,7 +493,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           clockTolerance: clockToleranceSeconds,
         });
         if ((payload as { type?: string }).type !== "access_token") return null;
-        return payload as unknown as VerifiedTokenPayload;
+        return normalizeLocalPayload(payload);
       }
 
       // 回退到 JWKS 远程获取
@@ -491,7 +506,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           clockTolerance: clockToleranceSeconds,
         });
         if ((payload as { type?: string }).type !== "access_token") return null;
-        return payload as unknown as VerifiedTokenPayload;
+        return normalizeLocalPayload(payload);
       }
 
       return null;

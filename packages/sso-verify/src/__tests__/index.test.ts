@@ -309,6 +309,20 @@ describe("RS256 本地验证", () => {
 
     expect(await verifier.verify(token)).toBeNull();
   });
+
+  it("主站风格 token（用户 ID 在 id claim、无 sub）本地验签后归一化出 sub", async () => {
+    // 回归测试：主站 access token 的 payload 是 { id, client_id, ... } 无 sub；
+    // 本地验签路径曾原样返回导致消费方读 payload.sub 得到 undefined（session-init 误判未登录）
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const pem = await exportSPKI(publicKey);
+    const token = await createRS256AccessToken(privateKey, { sub: undefined, id: "user-no-sub" });
+
+    const verifier = createTokenVerifier({ audience, issuer, accessTokenPublicKey: pem });
+
+    const payload = await verifier.verify(token);
+    expect(payload).not.toBeNull();
+    expect(payload!.sub).toBe("user-no-sub");
+  });
 });
 
 describe("verifyLogoutToken", () => {

@@ -166,6 +166,13 @@ function createTokenVerifier(options) {
     }
     return data;
   }
+  function normalizeLocalPayload(payload) {
+    const p = payload;
+    if (!p.sub && typeof p.id === "string" && p.id) {
+      p.sub = p.id;
+    }
+    return p.sub ? p : null;
+  }
   async function verifyLocally(token) {
     if (!accessTokenSecret) return null;
     try {
@@ -179,7 +186,7 @@ function createTokenVerifier(options) {
       if (payload.type !== "access_token") {
         return null;
       }
-      return payload;
+      return normalizeLocalPayload(payload);
     } catch {
       return null;
     }
@@ -198,7 +205,7 @@ function createTokenVerifier(options) {
           clockTolerance: clockToleranceSeconds
         });
         if (payload.type !== "access_token") return null;
-        return payload;
+        return normalizeLocalPayload(payload);
       }
       const jwks = getJwksKeySet();
       if (jwks) {
@@ -209,7 +216,7 @@ function createTokenVerifier(options) {
           clockTolerance: clockToleranceSeconds
         });
         if (payload.type !== "access_token") return null;
-        return payload;
+        return normalizeLocalPayload(payload);
       }
       return null;
     } catch {
