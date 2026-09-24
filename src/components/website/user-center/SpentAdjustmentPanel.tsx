@@ -30,6 +30,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { localDateStr } from "@/lib/local-date";
 import {
   SPENT_CHANNELS,
   SPENT_CHANNEL_LABELS,
@@ -85,6 +86,16 @@ function formatDate(iso: string | null): string {
   ).padStart(2, "0")}`;
 }
 
+/** 日历日（后端按 UTC 零点存储，如消费日期）格式化：锁 UTC，避免 UTC 以西时区显示前一天 */
+function formatCalendarDate(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    d.getUTCDate()
+  ).padStart(2, "0")}`;
+}
+
 export function SpentAdjustmentPanel({
   view,
   onViewChange,
@@ -107,11 +118,41 @@ export function SpentAdjustmentPanel({
   const [purchasedAt, setPurchasedAt] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  // 新上传但尚未提交的凭证：私有 bucket 下签名端点按"申请归属"校验，key 还没挂到
+  // 申请上会 404；预览统一用本地 blob URL，提交成功后清空（历史列表走服务端签名地址）
+  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
+  const localPreviewsRef = useRef<Record<string, string>>({});
   // 录入历史中展开查看凭证缩略图的申请 id
   const [expandedImages, setExpandedImages] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { error: showError, success: showSuccess } = useToast();
   const { redirectToLogin } = useAuth();
+
+  // 卸载时释放本地预览 blob，避免内存泄漏
+  useEffect(() => {
+    return () => {
+      Object.values(localPreviewsRef.current).forEach((url) => URL.revokeObjectURL(url));
+      localPreviewsRef.current = {};
+    };
+  }, []);
+
+  const clearLocalPreviews = useCallback(() => {
+    Object.values(localPreviewsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    localPreviewsRef.current = {};
+    setLocalPreviews({});
+  }, []);
+
+  const removeImage = useCallback((url: string) => {
+    setImages((prev) => prev.filter((u) => u !== url));
+    setLocalPreviews((prev) => {
+      const local = prev[url];
+      if (local) URL.revokeObjectURL(local);
+      const next = { ...prev };
+      delete next[url];
+      localPreviewsRef.current = next;
+      return next;
+    });
+  }, []);
 
   const pendingCount = applications.filter((a) => a.status === "PENDING").length;
   const reachedPendingLimit = pendingCount >= MAX_PENDING_PER_USER;
@@ -164,6 +205,10 @@ export function SpentAdjustmentPanel({
         const data = await res.json();
         if (data.success) {
           setImages((prev) => [...prev, data.data.url]);
+          // 本地预览：立即展示且不受私有 bucket 归属校验影响
+          const previewUrl = URL.createObjectURL(file);
+          localPreviewsRef.current = { ...localPreviewsRef.current, [data.data.url]: previewUrl };
+          setLocalPreviews((prev) => ({ ...prev, [data.data.url]: previewUrl }));
         } else {
           showError(data.error?.message || "图片上传失败");
         }
@@ -216,6 +261,7 @@ export function SpentAdjustmentPanel({
         setImages([]);
         setNote("");
         setChannel("TMALL");
+        clearLocalPreviews();
         await loadApplications();
       } else {
         showError(data.error?.message || "提交失败");
@@ -394,7 +440,7 @@ export function SpentAdjustmentPanel({
                   id="spent-date"
                   type="date"
                   value={purchasedAt}
-                  max={new Date().toISOString().slice(0, 10)}
+                  max={localDateStr(new Date())}
                   onChange={(e) => setPurchasedAt(e.target.value)}
                   className="w-full min-w-0 appearance-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors focus:border-[#00263e] md:text-sm"
                 />
@@ -419,13 +465,13 @@ export function SpentAdjustmentPanel({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={receiptImageSrc(url, "user")}
+                      src={localPreviews[url] ?? receiptImageSrc(url, "user")}
                       alt={`凭证 ${i + 1}`}
                       className="h-full w-full object-cover"
                     />
                     <button
                       type="button"
-                      onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      onClick={() => removeImage(url)}
                       aria-label={`删除凭证 ${i + 1}`}
                       className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
                     >
@@ -556,7 +602,7 @@ export function SpentAdjustmentPanel({
                         {a.amountClaimed != null && (
                           <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
                         )}
-                        {a.purchasedAt && <span>消费日期 {formatDate(a.purchasedAt)}</span>}
+                        {a.purchasedAt && <span>消费日期 {formatCalendarDate(a.purchasedAt)}</span>}
                         {a.images.length > 0 && (
                           <button
                             type="button"

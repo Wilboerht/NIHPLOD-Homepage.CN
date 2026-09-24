@@ -19,6 +19,7 @@ import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { updateProfileSchema } from "@/lib/profile-schema";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
+import { isActiveAccount } from "@/lib/oauth-user-guard";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (!user || user.status !== "ACTIVE") {
+    if (!isActiveAccount(user)) {
       scheduleSsoEvent({
         event: "userinfo",
         userId: payload.id,
@@ -188,7 +189,7 @@ export async function PATCH(request: NextRequest) {
       select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true, status: true, gender: true },
     });
 
-    if (!previous || previous.status !== "ACTIVE") {
+    if (!isActiveAccount(previous)) {
       scheduleSsoEvent({
         event: "userinfo",
         userId: payload.id,

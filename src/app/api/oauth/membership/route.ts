@@ -13,7 +13,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { getMembershipView } from "@/lib/membership-view";
-import { prisma } from "@/lib/prisma";
+import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -57,31 +57,17 @@ export async function GET(request: NextRequest) {
 
     // 账户状态校验（与 userinfo GET/PATCH 行为对齐）：区分"不存在"(404) 与"已禁用"(403)，
     // 且非 ACTIVE 用户在 token 未过期窗口内也不得读取会员数据
-    const account = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: { status: true },
-    });
-    if (!account) {
+    const guard = await guardOAuthUserActive(payload.id);
+    if (!guard.ok) {
       scheduleSsoEvent({
         event: "userinfo",
         userId: payload.id,
         clientId: payload.client_id,
         ip,
         success: false,
-        detail: { action: "membership", reason: "user_not_found" },
+        detail: { action: "membership", reason: guard.reason },
       });
-      return resJson({ error: "not_found", error_description: "用户不存在" }, 404);
-    }
-    if (account.status !== "ACTIVE") {
-      scheduleSsoEvent({
-        event: "userinfo",
-        userId: payload.id,
-        clientId: payload.client_id,
-        ip,
-        success: false,
-        detail: { action: "membership", reason: "account_disabled" },
-      });
-      return resJson({ error: "account_disabled", error_description: "账户已被封禁或冻结" }, 403);
+      return resJson({ error: guard.error, error_description: guard.errorDescription }, guard.status);
     }
 
     // 会员视图与主站 /api/user/vip 共用组装逻辑（不含 skinTestUsage 子站私有数据）
