@@ -2,57 +2,15 @@
  * 用户积分 API
  * GET /api/user/points - 查询积分余额（含物化：过期/释放）与最近流水
  *
- * 积分体系（2026-09 重新上线）：消费 1 元 = 1 分（所有等级，普通档仅累积不可兑礼），
- * 立即到账（无冻结期），6 个月过期，退款冲正可负；兑礼入口在商城侧。
+ * 数据操作与 OAuth 资源端点（/api/oauth/points）共用
+ * （见 src/lib/points-mall-api.ts），保证两套入口契约一致。
  */
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest } from "next/server";
 import { withUserAuth } from "@/lib/auth";
-import { apiConsole } from "@/lib/logger";
-import { getPointBalanceView } from "@/lib/points-ledger";
+import { getPointsOverviewResponse } from "@/lib/points-mall-api";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withUserAuth(async (_request: NextRequest, payload) => {
-  try {
-    const data = await prisma.$transaction(async (tx) => {
-      const balance = await getPointBalanceView(tx, payload.id);
-      const recent = await tx.pointLedger.findMany({
-        where: { userId: payload.id },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        select: {
-          id: true,
-          type: true,
-          amount: true,
-          remaining: true,
-          note: true,
-          expiresAt: true,
-          createdAt: true,
-        },
-      });
-      return {
-        ...balance,
-        nextReleaseAt: balance.nextReleaseAt?.toISOString() ?? null,
-        recent: recent.map((r) => ({
-          id: r.id,
-          type: r.type,
-          amount: r.amount,
-          // 剩余未消耗量：用于前端准确计算"即将过期"积分（FIFO 后仍有效的部分）
-          remaining: r.remaining,
-          note: r.note,
-          expiresAt: r.expiresAt?.toISOString() ?? null,
-          createdAt: r.createdAt.toISOString(),
-        })),
-      };
-    });
-
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    apiConsole.error("[UserPoints] 查询失败:", error);
-    return NextResponse.json(
-      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
-      { status: 500 }
-    );
-  }
-});
+export const GET = withUserAuth(async (_request: NextRequest, payload) =>
+  getPointsOverviewResponse(payload.id)
+);

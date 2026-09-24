@@ -10,6 +10,7 @@ import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/rateli
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
+import { verifyUserToken } from "@/lib/jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 请求参数验证
@@ -88,7 +89,24 @@ export async function POST(request: NextRequest) {
     const hasBrowserOrigin = Boolean(
       request.headers.get("origin") || request.headers.get("referer")
     );
-    const csrfExempt = result.success && result.data.type === "bind" && !hasBrowserOrigin;
+    // 子站 BFF（Bearer 鉴权）代理发码：跨站请求无法携带自定义 Authorization 头
+    //（非简单请求会触发预检并被 CORS 拦截），因此 Bearer 请求天然免疫 CSRF
+    //（与 withUserAuth 对 Bearer 免 CSRF 的口径一致）；额外要求手机号与 token 所有者一致、
+    // 且账户为 ACTIVE，避免被用于给任意号码发码/枚举账户。
+    let bearerOwnedPhone = false;
+    const authHeader = request.headers.get("authorization");
+    if (!hasBrowserOrigin && result.success && authHeader?.startsWith("Bearer ")) {
+      const payload = await verifyUserToken(authHeader.slice("Bearer ".length));
+      if (payload?.id) {
+        const owner = await prisma.user.findUnique({
+          where: { id: payload.id },
+          select: { phone: true, status: true },
+        });
+        bearerOwnedPhone = owner?.status === "ACTIVE" && owner?.phone === result.data.phone;
+      }
+    }
+    const csrfExempt =
+      (result.success && result.data.type === "bind" && !hasBrowserOrigin) || bearerOwnedPhone;
     if (!csrfExempt && !validateCSRFToken(request)) {
       return csrfForbiddenResponse();
     }

@@ -663,6 +663,36 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 `GET /api/user/points`（用户登录态）：返回 `{ available, frozen, nextReleaseAt, recent[] }`，available 可为负（退款超兑债务，新积分入账先行抵债）。
 
+### 积分商城 / 消费补录 / 收货地址（OAuth 资源端点）
+
+子项目（如测肤站 advisor）可将积分商城、消费补录与收货地址簿**原生接入**（无需 iframe 嵌入官网页面）；数据操作与主站会话路由共用同一实现，契约完全一致。
+
+积分商城与地址簿：
+
+| 方法 | 端点 | 说明 |
+| --- | --- | --- |
+| GET | `/api/oauth/points` | 积分余额（含物化过期/释放）、冻结与最近 20 条流水 |
+| GET | `/api/oauth/points/gifts` | 可兑换礼品（按当前等级兑礼率折算所需积分 + 产品详情） |
+| POST | `/api/oauth/points/redeem` | 兑换礼品，body `{ productId, addressId, requestId }`（requestId 幂等，不重复扣分） |
+| GET | `/api/oauth/points/redemptions?offset=10` | 我的兑换记录（offset 分页，每页 10 条） |
+| GET | `/api/oauth/points/redemptions/{id}/tracking` | 兑换物流轨迹（未录运单号 400 `NO_WAYBILL`；丰桥未配置 `supported=false`） |
+| GET/POST | `/api/oauth/addresses` | 收货地址列表 / 新增（第一条自动默认，上限 20 条） |
+| PATCH/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址（删除或取消默认后自动顺延一条默认） |
+
+消费补录（凭证含个人信息，私有 bucket 优先存储）：
+
+| 方法 | 端点 | 说明 |
+| --- | --- | --- |
+| GET/POST | `/api/oauth/spent-adjustments` | 我的补录申请列表 / 提交申请（渠道 + 订单号必填；待审上限 2 条；订单号唯一） |
+| POST | `/api/oauth/spent-adjustments/upload` | 凭证图片上传（multipart 字段名 `file`，仅图片 ≤10MB，返回 objectName） |
+| GET | `/api/oauth/spent-adjustments/image?key=` | 本人凭证图片（302 到私有 bucket 短时签名地址） |
+
+统一约定：
+
+- **鉴权**：`Authorization: Bearer <access_token>`，要求 scope 含 `membership`；仅限用户身份（M2M / client_credentials token 一律拒绝），账户非 ACTIVE 返回 403 `account_disabled`。
+- **响应契约**：成功 `{ success: true, data }`，失败 `{ success: false, error: { code, message } }`；越权访问他人记录统一 404，不泄露存在性。
+- **积分口径**：兑换按服务端当前等级兑礼率折算并幂等；普通档不可兑礼（403 `NOT_ELIGIBLE`）。地址快照随兑换记录入库，事后修改地址簿不影响历史订单。
+
 ### 官网用户面板兑换（2026-09 起）
 
 官网用户中心「会员中心」内置积分兑换板块：**兑换产品复用产品库数据**——管理端在「积分兑换」页面（`/admin/point-gifts`）将产品库中的已发布产品标记为「积分可兑」（`Product.pointRedeemable`），该产品即出现在用户面板兑换板块；用户实际扣分 = ⌊产品参考价格 ÷ 当前兑礼率⌋，兑换成功生成兑换记录（`PointRedemption`，PENDING → 管理端「标记履约」）。商城侧如已有自己的兑礼入口，继续走 `POST /api/v1/internal/points/redeem` 扣分即可，两处共享同一积分账本与幂等约束。

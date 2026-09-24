@@ -107,7 +107,7 @@ function benefitIcon(title: string): typeof Check {
 
 // 官方渠道说明文案（触屏点击展开 / PC 悬浮气泡共用，避免两处文案漂移）
 const CHANNEL_TIP_TEXT =
-  "官方渠道指 NIHPLOD 在天猫国际、抖音商城、小红书、快手、微信小店等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。";
+  "官方渠道指 NIHPLOD 在天猫国际、抖音商城、小红书、快手、微信小铺等平台开设的官方旗舰店，以及经品牌正式授权的其他线上经销商与线下实体门店。";
 
 interface LevelInfo {
   level: string;

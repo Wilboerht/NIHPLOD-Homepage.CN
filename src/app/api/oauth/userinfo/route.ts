@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
         status: true,
         membershipLevel: true,
         totalSpent: true,
+        // 子站账户面板展示「密码：已设置/未设置」用（仅布尔语义，不暴露哈希）
+        password: true,
       },
     });
 
@@ -82,6 +84,8 @@ export async function GET(request: NextRequest) {
       response.avatar = user.avatar;
       // OIDC 标准 profile claim；null = 未设置/保密（子站测肤问卷据此预填性别）
       response.gender = user.gender ?? null;
+      // 是否已设置密码：子站（如测肤站）账户面板据此展示「已设置/未设置」并选择设置/修改表单
+      response.has_password = Boolean(user.password);
     }
 
     if (scopes.includes("phone")) {
