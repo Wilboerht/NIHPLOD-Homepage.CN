@@ -65,3 +65,6 @@ Desktop.ini
 
 # Turbo
 .turbo/
+
+# 运行时上传的文件（本地存储模式）
+public/uploads/

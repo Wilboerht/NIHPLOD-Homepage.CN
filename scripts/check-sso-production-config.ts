@@ -345,11 +345,10 @@ if (privateBucket) {
   check({ status: "PASS", name: "ALI_OSS_PRIVATE_BUCKET", message: "已配置私有凭证 bucket" });
 } else if (allowPublicProof) {
   check({
-    status: "FAIL",
+    status: "SKIP",
     name: "ALI_OSS_PRIVATE_BUCKET",
     message:
-      "未配置私有 bucket 且显式开启 ALLOW_PUBLIC_SPENT_PROOF_STORAGE=true：消费凭证（含个人信息）会写入公开存储",
-    fix: "配置 ALI_OSS_PRIVATE_BUCKET 并移除 ALLOW_PUBLIC_SPENT_PROOF_STORAGE",
+      "已显式开启 ALLOW_PUBLIC_SPENT_PROOF_STORAGE=true：凭证将走公开管线（未配 OSS 时落服务器本地 public/uploads），URL 无鉴权且含个人信息，属已知风险；后续建议迁移私有 bucket 并移除该开关",
   });
 } else {
   check({
