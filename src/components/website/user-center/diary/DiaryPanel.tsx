@@ -569,9 +569,9 @@ export function DiaryPanel() {
                 </div>
 
                 {/* ===== 登录：概览（肌肤变化 + 打卡）+ 时间线 ===== */}
-                {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；左列 sticky 且限高内部滚动，
+                {/* PC 端（lg+）非对称双列（6:4，左列概览更宽）；左列 sticky 且限高内部滚动，
                     避免左列高于视口时 pin 住后底部内容不可达；移动端单列堆叠 */}
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,4fr)] lg:gap-10">
                     {/* 左列：肌肤变化（趋势）+ 打卡（色带/连续性统计），语义分组 */}
                     <section className="mb-8 lg:mb-0 lg:self-start lg:sticky lg:top-0 lg:max-h-[min(576px,calc(100dvh_-_9.5rem))] lg:overflow-y-auto lg:scrollbar-hide lg:pr-1">
                       <div className="flex items-center justify-between mb-4">
