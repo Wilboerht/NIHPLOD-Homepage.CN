@@ -4,6 +4,7 @@ const mockFindMany = vi.fn();
 const mockClientFindUnique = vi.fn();
 const mockSessionFindMany = vi.fn();
 const mockFailureCreate = vi.fn();
+const mockFailureCreateMany = vi.fn();
 const mockFailureFindMany = vi.fn();
 const mockFailureDelete = vi.fn();
 const mockFailureUpdate = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     backchannelLogoutFailure: {
       create: (...args: unknown[]) => mockFailureCreate(...args),
+      createMany: (...args: unknown[]) => mockFailureCreateMany(...args),
       findMany: (...args: unknown[]) => mockFailureFindMany(...args),
       delete: (...args: unknown[]) => mockFailureDelete(...args),
       update: (...args: unknown[]) => mockFailureUpdate(...args),
@@ -45,7 +47,12 @@ vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: (...args: unknown[]) => mockRecordSsoEvent(...args),
 }));
 
-import { sendBackchannelLogout, retryFailedBackchannelLogouts } from "@/lib/backchannel-logout";
+import {
+  sendBackchannelLogout,
+  retryFailedBackchannelLogouts,
+  enqueueBackchannelLogoutNotifications,
+  enqueueBackchannelLogoutForActiveSessions,
+} from "@/lib/backchannel-logout";
 
 describe("backchannel-logout", () => {
   beforeEach(() => {
@@ -53,6 +60,7 @@ describe("backchannel-logout", () => {
     globalFetch.mockResolvedValue({ ok: true });
     mockSessionFindMany.mockResolvedValue([]);
     mockFailureCreate.mockResolvedValue({});
+    mockFailureCreateMany.mockResolvedValue({ count: 1 });
     mockFailureDelete.mockResolvedValue({});
     mockFailureUpdate.mockResolvedValue({});
     // 乐观锁认领默认成功（单实例语义），多实例竞争场景单独覆盖
@@ -338,6 +346,44 @@ describe("retryFailedBackchannelLogouts", () => {
     expect(mockFailureDelete).toHaveBeenCalledWith({ where: { id: "failure-1" } });
   });
 
+  it("client 已删除但 payload 带 URI 快照时仍投递（级联删除场景）", async () => {
+    mockFailureFindMany.mockResolvedValue([
+      {
+        ...failureRecord,
+        payload: { sid: "sid-123", logoutUri: "https://deleted-client.example.com/slo" },
+      },
+    ]);
+    mockClientFindUnique.mockResolvedValue(null);
+    globalFetch.mockResolvedValue({ ok: true, status: 200 });
+
+    const result = await retryFailedBackchannelLogouts();
+
+    expect(result).toEqual({ delivered: 1, failed: 0, dropped: 0 });
+    expect(globalFetch).toHaveBeenCalledWith(
+      "https://deleted-client.example.com/slo",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("client 仍存在但 URI 已被清空时丢弃记录（管理员止损语义）", async () => {
+    mockFailureFindMany.mockResolvedValue([
+      {
+        ...failureRecord,
+        payload: { sid: "sid-123", logoutUri: "https://snapshot.example.com/slo" },
+      },
+    ]);
+    mockClientFindUnique.mockResolvedValue({
+      clientId: "client-1",
+      backchannelLogoutUri: null,
+    });
+
+    const result = await retryFailedBackchannelLogouts();
+
+    expect(result).toEqual({ delivered: 0, failed: 0, dropped: 1 });
+    expect(globalFetch).not.toHaveBeenCalled();
+    expect(mockFailureDelete).toHaveBeenCalledWith({ where: { id: "failure-1" } });
+  });
+
   it("乐观锁认领失败（其他实例已接管）时跳过该记录", async () => {
     mockFailureFindMany.mockResolvedValue([failureRecord]);
     mockFailureUpdateMany.mockResolvedValue({ count: 0 });
@@ -369,5 +415,101 @@ describe("retryFailedBackchannelLogouts", () => {
         },
       })
     );
+  });
+
+  describe("enqueueBackchannelLogoutNotifications", () => {
+    it("按 user+client 去重后批量入队，nextRetryAt 立即到期", async () => {
+      const count = await enqueueBackchannelLogoutNotifications([
+        { userId: "user-1", clientId: "client-a", sid: "sid-1" },
+        { userId: "user-1", clientId: "client-a", sid: "sid-2" },
+        { userId: "user-1", clientId: "client-b", sid: "sid-3" },
+      ]);
+
+      expect(count).toBe(2);
+      expect(mockFailureCreateMany).toHaveBeenCalledTimes(1);
+      const arg = mockFailureCreateMany.mock.calls[0][0] as {
+        data: { userId: string; clientId: string; payload: { sid: string | null } }[];
+      };
+      expect(arg.data).toHaveLength(2);
+      expect(arg.data[0]).toMatchObject({
+        userId: "user-1",
+        clientId: "client-a",
+        payload: { sid: "sid-1" },
+      });
+      expect(arg.data[1]).toMatchObject({ clientId: "client-b", payload: { sid: "sid-3" } });
+    });
+
+    it("空列表不写库", async () => {
+      expect(await enqueueBackchannelLogoutNotifications([])).toBe(0);
+      expect(mockFailureCreateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("enqueueBackchannelLogoutForActiveSessions", () => {
+    const clientUriA = "https://rp-a.example.com/slo";
+    const clientUriB = "https://rp-b.example.com/slo";
+
+    it("分页扫描活跃会话并入队（payload 带 URI 快照），返回会话数与去重通知数", async () => {
+      mockFindMany.mockResolvedValue([
+        { clientId: "client-a", backchannelLogoutUri: clientUriA },
+        { clientId: "client-b", backchannelLogoutUri: clientUriB },
+      ]);
+      mockSessionFindMany
+        .mockResolvedValueOnce([
+          { id: "s1", userId: "user-1", clientId: "client-a", sessionId: "sid-1" },
+          { id: "s2", userId: "user-1", clientId: "client-a", sessionId: "sid-2" },
+        ])
+        .mockResolvedValueOnce([
+          { id: "s3", userId: "user-1", clientId: "client-b", sessionId: "sid-3" },
+        ]);
+
+      const result = await enqueueBackchannelLogoutForActiveSessions({
+        clientId: "client-a",
+        pageSize: 2,
+      });
+
+      expect(result).toEqual({ sessionCount: 3, userClientCount: 2 });
+      expect(mockSessionFindMany).toHaveBeenCalledTimes(2);
+      // 第二页必须带 cursor（分页，避免一次性全量读入内存）
+      expect(mockSessionFindMany.mock.calls[1][0]).toMatchObject({
+        cursor: { id: "s2" },
+        skip: 1,
+      });
+      // URI 快照随 payload 落库：client 删除后仍可投递
+      expect(mockFailureCreateMany).toHaveBeenCalledTimes(2);
+      const firstBatch = mockFailureCreateMany.mock.calls[0][0] as {
+        data: { payload: { sid: string | null; logoutUri: string | null } }[];
+      };
+      expect(firstBatch.data[0].payload).toEqual({ sid: "sid-1", logoutUri: clientUriA });
+      const secondBatch = mockFailureCreateMany.mock.calls[1][0] as {
+        data: { payload: { logoutUri: string | null } }[];
+      };
+      expect(secondBatch.data[0].payload.logoutUri).toBe(clientUriB);
+    });
+
+    it("未配置 backchannelLogoutUri 的 client 不入队", async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockSessionFindMany.mockResolvedValue([
+        { id: "s1", userId: "user-1", clientId: "client-no-uri", sessionId: "sid-1" },
+      ]);
+
+      const result = await enqueueBackchannelLogoutForActiveSessions({});
+
+      expect(result).toEqual({ sessionCount: 0, userClientCount: 0 });
+      expect(mockSessionFindMany).not.toHaveBeenCalled();
+      expect(mockFailureCreateMany).not.toHaveBeenCalled();
+    });
+
+    it("无活跃会话时不入队", async () => {
+      mockFindMany.mockResolvedValue([
+        { clientId: "client-a", backchannelLogoutUri: clientUriA },
+      ]);
+      mockSessionFindMany.mockResolvedValue([]);
+
+      const result = await enqueueBackchannelLogoutForActiveSessions({ clientId: "client-a" });
+
+      expect(result).toEqual({ sessionCount: 0, userClientCount: 0 });
+      expect(mockFailureCreateMany).not.toHaveBeenCalled();
+    });
   });
 });

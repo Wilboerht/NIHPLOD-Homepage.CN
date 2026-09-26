@@ -11,7 +11,7 @@ import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
-import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
+import { recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import {
@@ -80,19 +80,9 @@ export async function POST(request: NextRequest) {
     const { phone, code, password } = result.data;
 
     // 1. 账户级防爆破检查
-    const { locked, remainingMinutes } = await checkAccountLockout(phone);
-    if (locked) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "ACCOUNT_LOCKED",
-            message: `账户已被锁定，请在 ${remainingMinutes} 分钟后重试`,
-          },
-        },
-        { status: 429 }
-      );
-    }
+    // 注意：不再使用「登录失败锁定」作为本端点的前置门禁——登录锁定不应阻塞
+    // 账号找回通道（否则攻击者可每 15 分钟发 5 次错误密码，持续 DoS 受害者重置密码）。
+    // 本端点自身的防爆破由：IP 限流（5 次/15 分钟）+ 单验证码 5 次尝试上限 + 60 秒发送间隔承担。
 
     // 验证验证码
     // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）
@@ -239,7 +229,7 @@ export async function POST(request: NextRequest) {
     await prisma.$transaction(async (tx) => {
       await tx.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: new Date(), revokedReason: "credential_change" },
       });
 
       const sessions = await tx.oAuthSession.findMany({
@@ -253,7 +243,7 @@ export async function POST(request: NextRequest) {
         });
         await tx.refreshToken.updateMany({
           where: { userId: user.id, clientId: { not: null }, revokedAt: null },
-          data: { revokedAt: new Date() },
+          data: { revokedAt: new Date(), revokedReason: "credential_change" },
         });
       }
     });

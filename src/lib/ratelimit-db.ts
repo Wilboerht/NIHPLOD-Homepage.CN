@@ -2,12 +2,13 @@
  * 基于 PostgreSQL 的限流实现
  *
  * 用于多实例部署场景，替代内存 LRU 限流。
- * 通过 Prisma 事务保证并发安全。
+ * 原子性：固定时间窗桶 + `INSERT ... ON CONFLICT (key, windowStart) DO UPDATE ... RETURNING`
+ * 单条语句完成"取桶/自增/读取计数"，并发请求不会各自生成计数行。
  *
- * 故障降级：当数据库不可用时，自动回退到内存 LRU 限流，
- * 避免 fail-open（放行） 也避免 fail-closed（全拦截）。
+ * 故障降级：当数据库不可用时，自动回退到内存 LRU 限流（仅单实例语义，会记录告警）。
  */
 
+import { randomUUID } from "crypto";
 import { prisma } from "./prisma";
 import { LRUCache } from "lru-cache";
 import { apiConsole } from "./logger";
@@ -62,91 +63,34 @@ export async function rateLimitDB(
   identifier: string,
   options: RateLimitOptions
 ): Promise<RateLimitResult> {
-  const now = Date.now();
-  const windowStart = new Date(now - options.windowMs);
-  const reset = now + options.windowMs;
+  const windowMs = Math.max(1, options.windowMs);
+  // 固定窗口桶：同一窗口内所有请求命中同一 (key, windowStart) 行，
+  // 由 ON CONFLICT 原子自增，避免"每请求一个 windowStart"导致并发重置额度
+  const bucketStartMs = Math.floor(Date.now() / windowMs) * windowMs;
+  const bucketStart = new Date(bucketStartMs);
+  const reset = bucketStartMs + windowMs;
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const record = await tx.rateLimitRecord.findFirst({
-        where: {
-          key: identifier,
-          windowStart: { gte: windowStart },
-        },
-        orderBy: { windowStart: "desc" },
-      });
+    const rows = await prisma.$queryRaw<{ count: number }[]>`
+      INSERT INTO "RateLimitRecord" ("id", "key", "windowStart", "count", "createdAt", "updatedAt")
+      VALUES (${randomUUID()}, ${identifier}, ${bucketStart}, 1, NOW(), NOW())
+      ON CONFLICT ("key", "windowStart")
+      DO UPDATE SET "count" = "RateLimitRecord"."count" + 1, "updatedAt" = NOW()
+      RETURNING "count"
+    `;
 
-      if (!record) {
-        try {
-          await tx.rateLimitRecord.create({
-            data: {
-              key: identifier,
-              windowStart: new Date(now),
-              count: 1,
-            },
-          });
-        } catch (err: unknown) {
-          // 并发唯一约束冲突时重试一次
-          const isUniqueConflict =
-            typeof err === "object" && err !== null && (err as { code?: string }).code === "P2002";
-          if (isUniqueConflict) {
-            const existing = await tx.rateLimitRecord.findFirst({
-              where: { key: identifier, windowStart: { gte: windowStart } },
-              orderBy: { windowStart: "desc" },
-            });
-            if (!existing) {
-              // 极限情况：create P2002 后记录被删除（如清理任务），重新抛出让外层 catch 走 fallback
-              throw err;
-            }
-            if (existing.count >= options.maxRequests) {
-              return { success: false, remaining: 0, reset, limit: options.maxRequests };
-            }
-            await tx.rateLimitRecord.update({
-              where: { id: existing.id },
-              data: { count: existing.count + 1 },
-            });
-            return {
-              success: true,
-              remaining: options.maxRequests - existing.count - 1,
-              reset,
-              limit: options.maxRequests,
-            };
-          }
-          throw err;
-        }
-
-        return {
-          success: true,
-          remaining: options.maxRequests - 1,
-          reset,
-          limit: options.maxRequests,
-        };
-      }
-
-      if (record.count >= options.maxRequests) {
-        return {
-          success: false,
-          remaining: 0,
-          reset,
-          limit: options.maxRequests,
-        };
-      }
-
-      await tx.rateLimitRecord.update({
-        where: { id: record.id },
-        data: { count: { increment: 1 }, updatedAt: new Date(now) },
-      });
-
-      return {
-        success: true,
-        remaining: options.maxRequests - record.count - 1,
-        reset,
-        limit: options.maxRequests,
-      };
-    });
-
-    return result;
+    const count = Number(rows?.[0]?.count ?? 1);
+    if (count > options.maxRequests) {
+      return { success: false, remaining: 0, reset, limit: options.maxRequests };
+    }
+    return {
+      success: true,
+      remaining: Math.max(0, options.maxRequests - count),
+      reset,
+      limit: options.maxRequests,
+    };
   } catch (error) {
+    // DB 不可用：降级为单实例内存限流（多实例下额度会放大，记录告警）
     console.error("[RateLimitDB] 数据库异常，降级到内存限流:", error);
     return fallbackRateLimit(identifier, options);
   }
@@ -168,6 +112,6 @@ export async function cleanupRateLimitRecords(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupRateLimitRecords] 清理失败:", error);
-    return 0;
+    throw error;
   }
 }

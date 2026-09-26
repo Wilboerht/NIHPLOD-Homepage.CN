@@ -21,5 +21,7 @@ export const GET = createCallbackRouteHandler({
   clientSecret: process.env.SSO_CLIENT_SECRET,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
   redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
+  // 必须与 middleware 的 scopes 保持一致；含 openid 时缺失 id_token 会 fail-closed 拒绝
+  scopes: "openid profile phone",
   insecureLocalDev: isHttpLocalDev,
 });

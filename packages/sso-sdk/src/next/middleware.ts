@@ -430,19 +430,40 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
 
     const response = NextResponse.redirect(loginUrl);
 
+    // 瞬态 cookie 以本次 state 为后缀：浏览器 cookie 是全局的，固定名称会让
+    // 并发标签页的登录互相覆盖（state/nonce/verifier 错配 → 登录失败或低度 DoS）。
+    // 回调侧按返回的 state 精确查找对应 cookie；旧固定名称仅作过渡期回退。
+    const attemptSuffix = `_${state}`;
+
     // Set state cookie for CSRF verification on callback
-    response.cookies.set(stateCookieName, state, getHostCookieOptions(600, secureCookies));
+    response.cookies.set(
+      `${stateCookieName}${attemptSuffix}`,
+      state,
+      getHostCookieOptions(600, secureCookies)
+    );
 
     // Set nonce cookie（与 state 同规格的 __Host- httpOnly cookie，供 callback 校验 ID Token）
-    response.cookies.set(nonceCookieName, nonce, getHostCookieOptions(600, secureCookies));
+    response.cookies.set(
+      `${nonceCookieName}${attemptSuffix}`,
+      nonce,
+      getHostCookieOptions(600, secureCookies)
+    );
 
     // Set PKCE verifier cookie（httpOnly，供 callback handler 使用）
     // 使用 __Secure- 前缀，允许写入 callbackPath
-    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath, secureCookies));
+    response.cookies.set(
+      `${verifierCookieName}${attemptSuffix}`,
+      verifier,
+      getSecureCookieOptions(600, callbackPath, secureCookies)
+    );
 
     // Set return URL cookie（仅存储 pathname + search，截断至安全长度）
     const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
-    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600, secureCookies));
+    response.cookies.set(
+      `${returnUrlCookieName}${attemptSuffix}`,
+      safeReturnUrl,
+      getHostCookieOptions(600, secureCookies)
+    );
 
     // 如果存在过期的 access_token cookie，立即清除
     if (accessTokenCookie?.value) {

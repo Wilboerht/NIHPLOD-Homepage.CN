@@ -1,6 +1,6 @@
 "use client";
 
-import { InputHTMLAttributes, forwardRef } from "react";
+import { InputHTMLAttributes, forwardRef, useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -10,11 +10,14 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, id, disabled, required, ...props }, ref) => {
-    const errorId = id ? `${id}-error` : undefined;
+    // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
+    const errorId = `${inputId}-error`;
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={id} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
             {label}
             {required && (
               <span className="ml-0.5 text-red-500" aria-hidden="true">
@@ -25,7 +28,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           ref={ref}
-          id={id}
+          id={inputId}
           disabled={disabled}
           required={required}
           aria-invalid={error ? true : undefined}

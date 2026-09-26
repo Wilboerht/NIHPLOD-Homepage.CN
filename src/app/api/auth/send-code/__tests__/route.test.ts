@@ -2,11 +2,22 @@
  * POST /api/auth/send-code 路由测试（type=bind 通道）
  * 覆盖：type=bind 无 Origin 豁免 CSRF（小程序 wx.request 不携带来源头）；
  *       携带 Origin/Referer 的 bind 请求不豁免（浏览器跨站必带 Origin，仍走 CSRF 校验）；
- *       未注册手机号假发送（防枚举）；已注册真实发码；60 秒频控仍生效；
- *       其余 type 回归（无 CSRF 仍 403）
+ *       无凭证未注册手机号假发送（防枚举）；已注册真实发码；
+ *       带 bindToken / Bearer 凭证时未注册号码也真实发码（修复绑定死胡同）；
+ *       60 秒频控仍生效；其余 type 回归（无 CSRF 仍 403）
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
+
+const { mockVerifyUserToken, mockVerifyBindToken } = vi.hoisted(() => ({
+  mockVerifyUserToken: vi.fn(),
+  mockVerifyBindToken: vi.fn(),
+}));
+
+vi.mock("@/lib/jwt", () => ({
+  verifyUserToken: (...args: unknown[]) => mockVerifyUserToken(...args),
+  verifyWechatBindToken: (...args: unknown[]) => mockVerifyBindToken(...args),
+}));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -87,6 +98,8 @@ describe("POST /api/auth/send-code type=bind", () => {
     mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 0 });
     mockPrisma.smsCode.create.mockResolvedValue({ id: "sms-1" });
     mockSendLoginCode.mockResolvedValue({ success: true, messageId: "mock_1" });
+    mockVerifyUserToken.mockResolvedValue(null);
+    mockVerifyBindToken.mockResolvedValue(null);
   });
 
   it("type=bind 无 CSRF 头也应豁免校验并真实发码（已注册手机号）", async () => {
@@ -169,6 +182,57 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
     expect(mockSendLoginCode).not.toHaveBeenCalled();
   }, 10000);
+
+  it("type=bind 未注册手机号 + 有效 bindToken：真实发码（修复绑定死胡同）", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockVerifyBindToken.mockResolvedValue({ openid: "o1", jti: "j1" });
+
+    const res = await POST(createRequest({ ...bindBody, bindToken: "signed-token" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockVerifyBindToken).toHaveBeenCalledWith("signed-token");
+    expect(mockSendLoginCode).toHaveBeenCalledWith(bindBody.phone, "123456");
+  });
+
+  it("type=bind 未注册手机号 + 伪造 bindToken：仍假发送（防枚举）", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockVerifyBindToken.mockResolvedValue(null);
+
+    const res = await POST(createRequest({ ...bindBody, bindToken: "forged" }));
+
+    expect(res.status).toBe(200);
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
+
+  it("type=bind 未注册手机号 + Bearer 本人号码：真实发码（小程序关联账户）", async () => {
+    mockPrisma.user.findUnique
+      .mockResolvedValueOnce({ id: "u1", phone: bindBody.phone, status: "ACTIVE" })
+      .mockResolvedValueOnce(null); // 待绑定手机号未注册
+    mockVerifyUserToken.mockResolvedValue({ id: "u1" });
+
+    const res = await POST(
+      createRequest(bindBody, { Authorization: "Bearer access-token" })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockSendLoginCode).toHaveBeenCalledWith(bindBody.phone, "123456");
+  });
+
+  it("type=bind Bearer 非本人号码：未注册号码仍假发送（不得借通道给任意号码发码）", async () => {
+    mockPrisma.user.findUnique
+      .mockResolvedValueOnce({ id: "u1", phone: "13900139000", status: "ACTIVE" })
+      .mockResolvedValueOnce(null); // 目标号码未注册
+    mockVerifyUserToken.mockResolvedValue({ id: "u1" });
+
+    const res = await POST(
+      createRequest(bindBody, { Authorization: "Bearer access-token" })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
 
   it("假发送与真实发送的响应体结构完全一致（防枚举 oracle）", async () => {
     // 真实发送：已注册手机号，走真实短信通道

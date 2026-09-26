@@ -5,7 +5,7 @@
  * - 四档会员（普通/银卡/金卡/钻石）的展示文案与权益项
  * - 实际等级判定以代码硬编码阈值为准（0/1000/5000/10000），此处 minSpent 仅影响前台展示
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Crown, Plus, Trash2, Info } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPut } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { cn } from "@/lib/utils";
 
 type LevelKey = "REGULAR" | "SILVER" | "GOLD" | "DIAMOND";
@@ -67,19 +68,33 @@ function AdminMembershipContent() {
   const [active, setActive] = useState<LevelKey>("REGULAR");
   const [form, setForm] = useState<LevelBenefit | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 当前编辑档位的基线快照（未保存更改检测）
+  const [baseline, setBaseline] = useState("");
+  const activeRef = useRef<LevelKey>("REGULAR");
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  const cloneLevel = (level: LevelBenefit): LevelBenefit => ({
+    ...level,
+    benefits: level.benefits.map((b) => ({ ...b })),
+  });
 
   const fetchLevels = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiGet<{ levels: LevelBenefit[] }>("/api/admin/membership-benefits");
       setLevels(data.levels);
-      setForm((prev) => {
-        const target = data.levels.find((l) => l.level === (prev?.level ?? "REGULAR"));
-        return target ? { ...target } : null;
-      });
-    } catch {
-      showError("加载会员权益配置失败");
+      const target = data.levels.find((l) => l.level === activeRef.current) ?? null;
+      const next = target ? cloneLevel(target) : null;
+      setForm(next);
+      setBaseline(next ? JSON.stringify(next) : "");
+      setLoadError(false);
+    } catch (e) {
+      setLoadError(true);
+      showError(e instanceof Error ? e.message : "加载会员权益配置失败");
     } finally {
       setLoading(false);
     }
@@ -89,10 +104,30 @@ function AdminMembershipContent() {
     deferInEffect(fetchLevels);
   }, [fetchLevels]);
 
-  const switchLevel = (level: LevelKey) => {
+  const isDirty = useMemo(
+    () => !!form && baseline !== "" && JSON.stringify(form) !== baseline,
+    [form, baseline]
+  );
+  const { guard: guardDiscard } = useUnsavedChanges(
+    isDirty,
+    "当前修改尚未保存，确定要放弃吗？"
+  );
+
+  /** 直接切换档位（内部使用，不做脏值确认） */
+  const loadLevel = (level: LevelKey) => {
     setActive(level);
+    activeRef.current = level;
     const target = levels.find((l) => l.level === level);
-    if (target) setForm({ ...target, benefits: target.benefits.map((b) => ({ ...b })) });
+    if (target) {
+      const next = cloneLevel(target);
+      setForm(next);
+      setBaseline(JSON.stringify(next));
+    }
+  };
+
+  const switchLevel = (level: LevelKey) => {
+    if (level === active) return;
+    guardDiscard(() => loadLevel(level));
   };
 
   const updateBenefit = (index: number, patch: Partial<BenefitItem>) => {
@@ -135,6 +170,10 @@ function AdminMembershipContent() {
       showError("消费上限必须为不小于 0 的整数或留空");
       return;
     }
+    if (form.maxSpent !== null && form.maxSpent < form.minSpent) {
+      showError("消费上限不能小于消费门槛");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -156,7 +195,9 @@ function AdminMembershipContent() {
       setLevels((prev) =>
         prev.map((l) => (l.level === data.level ? { ...data } : l))
       );
-      setForm({ ...data, benefits: data.benefits.map((b) => ({ ...b })) });
+      const next = cloneLevel(data);
+      setForm(next);
+      setBaseline(JSON.stringify(next));
     } catch (e) {
       showError(e instanceof Error ? e.message : "保存失败");
     } finally {
@@ -168,6 +209,17 @@ function AdminMembershipContent() {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <p className="text-sm text-red-500">加载会员权益配置失败</p>
+        <Button variant="outline" size="sm" onClick={fetchLevels}>
+          重试
+        </Button>
       </div>
     );
   }
@@ -235,18 +287,21 @@ function AdminMembershipContent() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               maxLength={50}
+              disabled={!canWrite}
             />
             <Input
               label="英文名称"
               value={form.nameEn}
               onChange={(e) => setForm({ ...form, nameEn: e.target.value })}
               maxLength={50}
+              disabled={!canWrite}
             />
             <Input
               label="图标（emoji 或字符，选填）"
               value={form.icon}
               onChange={(e) => setForm({ ...form, icon: e.target.value })}
               maxLength={200}
+              disabled={!canWrite}
             />
             <Input
               label="颜色类名（Tailwind，选填）"
@@ -254,6 +309,7 @@ function AdminMembershipContent() {
               onChange={(e) => setForm({ ...form, colorClass: e.target.value })}
               maxLength={100}
               placeholder="如 text-amber-600"
+              disabled={!canWrite}
             />
             <Input
               label="消费门槛 minSpent（元，仅展示）"
@@ -261,6 +317,7 @@ function AdminMembershipContent() {
               min={0}
               value={String(form.minSpent)}
               onChange={(e) => setForm({ ...form, minSpent: Number(e.target.value || 0) })}
+              disabled={!canWrite}
             />
             <Input
               label="消费上限 maxSpent（元，留空表示无上限）"
@@ -270,6 +327,7 @@ function AdminMembershipContent() {
               onChange={(e) =>
                 setForm({ ...form, maxSpent: e.target.value === "" ? null : Number(e.target.value) })
               }
+              disabled={!canWrite}
             />
           </div>
 
@@ -306,18 +364,21 @@ function AdminMembershipContent() {
                       onChange={(e) => updateBenefit(index, { icon: e.target.value })}
                       placeholder="图标"
                       maxLength={200}
+                      disabled={!canWrite}
                     />
                     <Input
                       value={benefit.title}
                       onChange={(e) => updateBenefit(index, { title: e.target.value })}
                       placeholder="权益标题（必填）"
                       maxLength={50}
+                      disabled={!canWrite}
                     />
                     <Input
                       value={benefit.desc}
                       onChange={(e) => updateBenefit(index, { desc: e.target.value })}
                       placeholder="权益描述（必填）"
                       maxLength={300}
+                      disabled={!canWrite}
                     />
                     <button
                       type="button"
@@ -340,7 +401,11 @@ function AdminMembershipContent() {
                 只读模式：修改会员权益需要 membership:write 权限
               </span>
             )}
-            <Button variant="outline" onClick={() => switchLevel(active)} disabled={saving}>
+            <Button
+              variant="outline"
+              onClick={() => guardDiscard(() => loadLevel(active))}
+              disabled={saving || !isDirty}
+            >
               重置
             </Button>
             <Button onClick={handleSave} loading={saving} disabled={!canWrite}>

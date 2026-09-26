@@ -101,6 +101,8 @@ async function sendWebhook(
         method: "POST",
         headers,
         body,
+        // 禁止跟随重定向：防目标 302 到内网（SSRF 绕过主机校验）
+        redirect: "manual",
         signal: AbortSignal.timeout(10000),
       });
 

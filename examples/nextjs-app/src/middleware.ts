@@ -13,14 +13,24 @@ if (!clientSecret && process.env.NODE_ENV === "production") {
   throw new Error("SSO_CLIENT_SECRET is required for Confidential Client in production");
 }
 
-// 本地 HTTP 开发（redirectUri 为 http:// 时）自动开启 insecureLocalDev
-const isHttpLocalDev = (process.env.SSO_REDIRECT_URI || "").startsWith("http://");
+const isProduction = process.env.NODE_ENV === "production";
+const redirectUri = process.env.SSO_REDIRECT_URI;
+
+// 生产环境必须显式配置 https 回调地址：否则误配（缺省 localhost / http）会静默关闭
+// Secure Cookie 与 __Host-/__Secure- 前缀，或在登录后反复跳转 SSO。
+if (isProduction && (!redirectUri || !redirectUri.startsWith("https://"))) {
+  throw new Error("生产环境必须配置 https:// 的 SSO_REDIRECT_URI");
+}
+
+// 本地 HTTP 开发（仅非生产环境且回调为 http://）自动开启 insecureLocalDev；
+// 生产环境恒为 false（SDK 内部还有一道生产守卫兜底）。
+const isHttpLocalDev = !isProduction && (redirectUri || "").startsWith("http://");
 
 const SSO_CONFIG = {
   clientId: process.env.SSO_CLIENT_ID || "your-client-id",
   clientSecret,
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
-  redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
+  redirectUri: redirectUri || "http://localhost:3002/api/auth/callback",
   scopes: "openid profile phone",
   publicPaths: ["/", "/api/auth/logout"],
   insecureLocalDev: isHttpLocalDev,

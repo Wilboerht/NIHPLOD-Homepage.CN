@@ -259,7 +259,7 @@ describe("POST /api/oauth/token", () => {
       expect(body.error).toBe("invalid_grant");
     });
 
-    it("授权码重放（已使用）应撤销该 code 签发出的所有 token（RFC 9700 §4.5）", async () => {
+    it("授权码重放（已使用）仅撤销该 code 关联会话，不全量吊销 refresh token（防持久 DoS）", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // 消费前预检发现 code 已被使用 → 不再发起消费，直接走重放检测
       // 消费前预检 + findUsedAuthorizationCode 均发现 code 存在且已使用 → 判定为重放
@@ -287,13 +287,14 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toBe("invalid_grant");
-      // 撤销关联的 OAuthSession（通过 authorizationCodeId）
+      // 仅撤销关联的 OAuthSession（通过 authorizationCodeId）
       expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
         where: { authorizationCodeId: "code-1", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
-      // 撤销该 user+client 的 refresh token（会话族）
-      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+      // 关键回归：不再全量吊销 user+client 的 refresh token（access/refresh 均由
+      // 会话 fail-closed 校验兜底，避免旧 code 反复重放踢掉用户所有会话）
+      expect(revokeRefreshToken).not.toHaveBeenCalled();
     });
 
     it("良性重试（同 client、首次换取未签发 token、10s 内且 PKCE 匹配）返回 invalid_grant 但不吊销会话族", async () => {
@@ -359,7 +360,7 @@ describe("POST /api/oauth/token", () => {
       expect(revokeRefreshToken).not.toHaveBeenCalled();
     });
 
-    it("首次换取已签发 token（存在关联 OAuthSession）时，10s 内的重试仍吊销全部 token", async () => {
+    it("首次换取已签发 token（存在关联 OAuthSession）的重放：仅撤销会话，不全量吊销 token", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // 消费前预检 + findUsedAuthorizationCode 均发现 code 已被使用
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
@@ -386,10 +387,11 @@ describe("POST /api/oauth/token", () => {
         where: { authorizationCodeId: "code-1", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
-      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+      // 不再按 userId+clientId 全量吊销 refresh token
+      expect(revokeRefreshToken).not.toHaveBeenCalled();
     });
 
-    it("重放间隔超过 10 秒（session 创建于 60s 前）仍吊销全部 token", async () => {
+    it("重放间隔超过 10 秒（session 创建于 60s 前）仍仅撤销会话", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
@@ -429,10 +431,11 @@ describe("POST /api/oauth/token", () => {
         where: { authorizationCodeId: "code-1", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
-      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+      // 仅撤销会话；不再全量吊销 refresh token
+      expect(revokeRefreshToken).not.toHaveBeenCalled();
     });
 
-    it("重放请求 PKCE verifier 不符仍吊销（真实重放防护不削弱）", async () => {
+    it("重放请求 PKCE verifier 不符仍撤销会话（真实重放防护不削弱）", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
@@ -473,7 +476,7 @@ describe("POST /api/oauth/token", () => {
         where: { authorizationCodeId: "code-1", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
-      expect(revokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "test-client");
+      expect(revokeRefreshToken).not.toHaveBeenCalled();
     });
 
     it("请求体非法 JSON 应返回 400 invalid_request 且响应不可缓存", async () => {
@@ -739,6 +742,7 @@ describe("POST /api/oauth/token", () => {
           codeChallengeMethod: "S256",
           expiresAt: new Date(Date.now() + 60000),
           nonce: null,
+          authTime: 1700000000,
         });
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "user-1",
@@ -770,6 +774,10 @@ describe("POST /api/oauth/token", () => {
         .calls[0][0] as { data: { sessionId: string } };
       expect(createArg.data.sessionId).toBeTruthy();
       expect(decodeJwt(body.access_token).sid).toBe(createArg.data.sessionId);
+      // ID Token 同步携带 sid（backchannel logout 可按会话定位）与 auth_time（max_age 校验）
+      const idTokenPayload = decodeJwt(body.id_token);
+      expect(idTokenPayload.sid).toBe(createArg.data.sessionId);
+      expect(idTokenPayload.auth_time).toBe(1700000000);
     });
 
     it("授权码已有 session（重试）时复用其 sessionId 作为 sid，不重复创建", async () => {

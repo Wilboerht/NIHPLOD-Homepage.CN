@@ -23,7 +23,9 @@ vi.mock("@/lib/password", async (importOriginal) => {
 });
 
 vi.mock("@/lib/auth-security", () => ({
-  checkAccountLockout: vi.fn().mockResolvedValue({ locked: false }),
+  checkAccountLockout: vi
+    .fn()
+    .mockResolvedValue({ locked: false, remainingMinutes: 0, failedAttempts: 2, maxAttempts: 5 }),
   recordLoginAttempt: vi.fn().mockResolvedValue(undefined),
   saveRefreshToken: vi.fn().mockResolvedValue(undefined),
   clearLoginAttempts: vi.fn().mockResolvedValue(undefined),
@@ -134,5 +136,32 @@ describe("POST /api/auth/login-password 审计顺序", () => {
       "password_incorrect",
       "password"
     );
+  });
+
+  it("密码错误：返回剩余可尝试次数（5 次上限、已失败 2 次 → 还可尝试 2 次）", async () => {
+    mockVerifyPassword.mockResolvedValue(false);
+
+    const res = await POST(createRequest(loginBody));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("LOGIN_FAILED");
+    expect(data.error.details?.remainingAttempts).toBe(2);
+  });
+
+  it("剩余次数为 0 时不返回数字（避免泄露精确计数）", async () => {
+    const { checkAccountLockout } = await import("@/lib/auth-security");
+    (checkAccountLockout as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      locked: false,
+      remainingMinutes: 0,
+      failedAttempts: 5,
+      maxAttempts: 5,
+    });
+    mockVerifyPassword.mockResolvedValue(false);
+
+    const res = await POST(createRequest(loginBody));
+    const data = await res.json();
+
+    expect(data.error.details).toBeUndefined();
   });
 });

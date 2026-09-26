@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Download,
@@ -30,8 +31,11 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
+import { formatDateTime as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 
 interface Job {
   id: string;
@@ -75,8 +79,12 @@ const statusConfig: Record<
   hired: { label: "已录用", color: "success" },
 };
 
-export default function AdminApplicationsPage() {
+function AdminApplicationsContent() {
+  const router = useRouter();
   const { success, error: showError } = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("applications:write");
+  const canDelete = canAdmin("applications:delete");
 
   // 状态
   const [applications, setApplications] = useState<Application[]>([]);
@@ -160,7 +168,7 @@ export default function AdminApplicationsPage() {
       apiConsole.error("获取申请列表失败:", error);
       if (error instanceof ApiError && error.status === 401) {
         showError("登录已过期，请重新登录");
-        window.location.href = "/admin-login";
+        router.push("/admin-login");
         return;
       }
       showError("网络异常，请刷新重试");
@@ -170,7 +178,7 @@ export default function AdminApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter, jobFilter, folderFilter, showError]);
+  }, [page, debouncedSearch, statusFilter, jobFilter, folderFilter, showError, router]);
 
   useEffect(() => {
     deferInEffect(fetchApplications);
@@ -185,31 +193,41 @@ export default function AdminApplicationsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // 更新状态
+  // 更新状态（详情弹窗用函数式更新，避免闭包里的旧状态覆盖）
   const updateStatus = async (application: Application, newStatus: string, toastMsg?: string) => {
     try {
       await apiPatch(`/api/admin/applications/${application.id}`, { status: newStatus });
       success(toastMsg || "状态已更新");
+      setDetailApplication((prev) =>
+        prev && prev.id === application.id ? { ...prev, status: newStatus } : prev
+      );
       fetchApplications();
-      if (detailApplication?.id === application.id) {
-        setDetailApplication({ ...application, status: newStatus });
-      }
-    } catch {
-      showError("更新失败");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "更新失败");
     }
   };
 
   // 保存备注
+  const [savingNotes, setSavingNotes] = useState(false);
   const saveNotes = async () => {
     if (!detailApplication) return;
+    if (editingNotes.length > 5000) {
+      showError("备注不能超过 5000 字");
+      return;
+    }
 
+    setSavingNotes(true);
     try {
       await apiPatch(`/api/admin/applications/${detailApplication.id}`, { notes: editingNotes });
       success("备注已保存");
-      setDetailApplication({ ...detailApplication, notes: editingNotes });
+      setDetailApplication((prev) =>
+        prev ? { ...prev, notes: editingNotes } : prev
+      );
       fetchApplications();
-    } catch {
-      showError("保存失败");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -222,11 +240,28 @@ export default function AdminApplicationsPage() {
       await apiDelete(`/api/admin/applications/${deleteTarget.id}`);
       success("申请已删除");
       setDeleteTarget(null);
-      fetchApplications();
-    } catch {
-      showError("删除失败");
+      // 删除本页最后一条时回退一页
+      if (applications.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchApplications();
+      }
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "删除失败");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const autoMarkReviewed = async (application: Application) => {
+    try {
+      await apiPatch(`/api/admin/applications/${application.id}`, { status: "reviewed" });
+      setDetailApplication((prev) =>
+        prev && prev.id === application.id ? { ...prev, status: "reviewed" } : prev
+      );
+      fetchApplications();
+    } catch {
+      // 自动标记失败不打断查看流程
     }
   };
 
@@ -234,22 +269,10 @@ export default function AdminApplicationsPage() {
   const viewDetail = (application: Application) => {
     setDetailApplication(application);
     setEditingNotes(application.notes || "");
-    // 自动标记为已查看
-    if (application.status === "pending") {
-      updateStatus(application, "reviewed", "已将申请标记为已查看");
+    // 自动标记为已查看（需要 applications:write，异步更新详情状态）
+    if (application.status === "pending" && canWrite) {
+      void autoMarkReviewed(application);
     }
-  };
-
-  // 格式化日期
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   // 下载简历
@@ -322,11 +345,15 @@ export default function AdminApplicationsPage() {
       fetchFolders();
       if (detailApplication?.id === application.id) {
         const updatedFolder = folderId ? folders.find((f) => f.id === folderId) : null;
-        setDetailApplication({
-          ...application,
-          folderId,
-          folder: updatedFolder ? { id: updatedFolder.id, name: updatedFolder.name } : null,
-        });
+        setDetailApplication((prev) =>
+          prev && prev.id === application.id
+            ? {
+                ...prev,
+                folderId,
+                folder: updatedFolder ? { id: updatedFolder.id, name: updatedFolder.name } : null,
+              }
+            : prev
+        );
       }
     } catch {
       showError("更新失败");
@@ -346,9 +373,11 @@ export default function AdminApplicationsPage() {
             )}
           </p>
         </div>
-        <Button leftIcon={<FolderPlus className="h-4 w-4" />} onClick={() => openFolderModal()}>
-          新建分类
-        </Button>
+        {canWrite && (
+          <Button leftIcon={<FolderPlus className="h-4 w-4" />} onClick={() => openFolderModal()}>
+            新建分类
+          </Button>
+        )}
       </div>
 
       {/* 分类夹列表 */}
@@ -410,29 +439,35 @@ export default function AdminApplicationsPage() {
                   {folder.applicationCount}
                 </span>
               </button>
-              <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 gap-0.5 group-hover:flex">
-                <Tooltip content="编辑" side="top">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openFolderModal(folder);
-                    }}
-                    className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-brand-charcoal/60"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                  </button>
-                </Tooltip>
-                <Tooltip content="删除" side="top">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteFolderTarget(folder);
-                    }}
-                    className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-red-500"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Tooltip>
+              <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 gap-0.5 group-hover:flex group-focus-within:flex">
+                {canWrite && (
+                  <Tooltip content="编辑" side="top">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openFolderModal(folder);
+                      }}
+                      aria-label={`编辑分类 ${folder.name}`}
+                      className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-brand-charcoal/60"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </button>
+                  </Tooltip>
+                )}
+                {canDelete && (
+                  <Tooltip content="删除" side="top">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteFolderTarget(folder);
+                      }}
+                      aria-label={`删除分类 ${folder.name}`}
+                      className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-red-500"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Tooltip>
+                )}
               </div>
             </div>
           ))}
@@ -488,8 +523,8 @@ export default function AdminApplicationsPage() {
         </div>
       </div>
 
-      {/* 申请列表 */}
-      <div className="rounded-xl bg-white shadow-sm">
+      {/* 申请列表（窄屏横向滚动，避免 12 列网格挤压错位） */}
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
@@ -497,7 +532,7 @@ export default function AdminApplicationsPage() {
         ) : applications.length === 0 ? (
           <Empty className="h-64" title="暂无简历申请" />
         ) : (
-          <>
+          <div className="min-w-[880px]">
             {/* 表头 */}
             <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <span className="col-span-3">申请人</span>
@@ -568,6 +603,7 @@ export default function AdminApplicationsPage() {
                       <Tooltip content="查看详情" side="top">
                         <button
                           onClick={() => viewDetail(application)}
+                          aria-label={`查看 ${application.name} 的简历`}
                           className="hover:bg-brand-charcoal/8 rounded p-2 text-brand-charcoal/50 hover:text-brand-charcoal/60"
                         >
                           <Eye className="h-4 w-4" />
@@ -576,30 +612,34 @@ export default function AdminApplicationsPage() {
                       <Tooltip content="下载简历" side="top">
                         <button
                           onClick={() => downloadResume(application)}
+                          aria-label={`下载 ${application.name} 的简历`}
                           className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
                         >
                           <Download className="h-4 w-4" />
                         </button>
                       </Tooltip>
-                      <Tooltip content="删除" side="top">
-                        <button
-                          onClick={() => setDeleteTarget(application)}
-                          className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
+                      {canDelete && (
+                        <Tooltip content="删除" side="top">
+                          <button
+                            onClick={() => setDeleteTarget(application)}
+                            aria-label={`删除 ${application.name} 的申请`}
+                            className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
 
-      {/* 分页 */}
-      {total > 20 && (
+      {/* 分页（始终展示总数） */}
+      {total > 0 && (
         <div className="flex justify-center">
           <Pagination page={page} pageSize={20} total={total} onChange={setPage} />
         </div>
@@ -674,11 +714,12 @@ export default function AdminApplicationsPage() {
                   <button
                     key={key}
                     onClick={() => updateStatus(detailApplication, key)}
+                    disabled={!canWrite || detailApplication.status === key}
                     className={cn(
-                      "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                      "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.status === key
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06]"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                     )}
                   >
                     {config.label}
@@ -693,11 +734,12 @@ export default function AdminApplicationsPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => updateApplicationFolder(detailApplication, null)}
+                  disabled={!canWrite || !detailApplication.folderId}
                   className={cn(
-                    "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                    "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                     !detailApplication.folderId
                       ? "bg-brand-charcoal text-white"
-                      : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06]"
+                      : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                   )}
                 >
                   未分类
@@ -706,11 +748,12 @@ export default function AdminApplicationsPage() {
                   <button
                     key={folder.id}
                     onClick={() => updateApplicationFolder(detailApplication, folder.id)}
+                    disabled={!canWrite || detailApplication.folderId === folder.id}
                     className={cn(
-                      "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                      "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.folderId === folder.id
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06]"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                     )}
                   >
                     {folder.name}
@@ -727,9 +770,16 @@ export default function AdminApplicationsPage() {
                 onChange={(e) => setEditingNotes(e.target.value)}
                 placeholder="添加备注信息..."
                 rows={3}
+                maxLength={5000}
+                disabled={!canWrite}
               />
               <div className="mt-2 flex justify-end">
-                <Button size="sm" onClick={saveNotes}>
+                <Button
+                  size="sm"
+                  onClick={saveNotes}
+                  loading={savingNotes}
+                  disabled={!canWrite || savingNotes}
+                >
                   保存备注
                 </Button>
               </div>
@@ -794,5 +844,13 @@ export default function AdminApplicationsPage() {
         type="danger"
       />
     </div>
+  );
+}
+
+export default function AdminApplicationsPage() {
+  return (
+    <RequirePermission permission="applications:read">
+      <AdminApplicationsContent />
+    </RequirePermission>
   );
 }

@@ -271,8 +271,8 @@ export function DataTable<T extends object>({
         </table>
       </div>
 
-      {/* 分页 */}
-      {pagination && pagination.total > pagination.pageSize && (
+      {/* 分页：即使只有一页也展示总数/每页条数（Pagination 内部按需隐藏页码） */}
+      {pagination && (pagination.total > 0 || pagination.onPageSizeChange) && (
         <div className="border-t border-brand-charcoal/15 px-6 py-4">
           <Pagination
             page={pagination.page}
@@ -286,7 +286,12 @@ export function DataTable<T extends object>({
 
       {/* 加载遮罩 — 仅覆盖表格内容区，不影响分页 */}
       {loading && data.length > 0 && (
-        <div className="absolute inset-0 bottom-[60px] flex items-center justify-center bg-white/50">
+        <div
+          className={cn(
+            "absolute inset-0 flex items-center justify-center bg-white/50",
+            pagination ? "bottom-[60px]" : "bottom-0"
+          )}
+        >
           <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
         </div>
       )}

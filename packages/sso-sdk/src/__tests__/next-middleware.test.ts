@@ -75,16 +75,19 @@ describe("createSsoMiddleware", () => {
     const nonce = location.searchParams.get("nonce");
     expect(nonce).toBeTruthy();
 
-    // state cookie 与 authorize URL 中的 state 一致
-    expect(res.cookies.get("__Host-nihplod_sso_state")?.value).toBe(state);
+    // 瞬态 cookie 以本次 state 为后缀（多标签页隔离）；state cookie 值与 authorize URL 一致
+    expect(res.cookies.get(`__Host-nihplod_sso_state_${state}`)?.value).toBe(state);
     // nonce cookie 与 authorize URL 中的 nonce 一致（__Host- httpOnly，与 state 同规格）
-    expect(res.cookies.get("__Host-nihplod_sso_nonce")?.value).toBe(nonce);
+    expect(res.cookies.get(`__Host-nihplod_sso_nonce_${state}`)?.value).toBe(nonce);
     // PKCE verifier cookie（httpOnly，供 callback 使用）
-    expect(res.cookies.get("__Secure-nihplod_sso_verifier")?.value).toBeTruthy();
+    expect(res.cookies.get(`__Secure-nihplod_sso_verifier_${state}`)?.value).toBeTruthy();
     // return URL cookie 记录原始路径
-    expect(res.cookies.get("__Host-nihplod_sso_return")?.value).toBe(
+    expect(res.cookies.get(`__Host-nihplod_sso_return_${state}`)?.value).toBe(
       "/dashboard?tab=1"
     );
+    // 不再写入固定名称（避免并发登录互相覆盖）
+    expect(res.cookies.get("__Host-nihplod_sso_state")).toBeUndefined();
+    expect(res.cookies.get("__Secure-nihplod_sso_verifier")).toBeUndefined();
   });
 
   it("主站 SSO cookie 有效（introspection active）时放行", async () => {
@@ -215,12 +218,13 @@ describe("createSsoMiddleware", () => {
       new NextRequest("http://localhost:3002/dashboard")
     );
     expect(res.status).toBe(307);
+    const state = new URL(res.headers.get("location")!).searchParams.get("state")!;
 
-    // 前缀已去除，浏览器在 HTTP 下可写入
-    expect(res.cookies.get("nihplod_sso_state")?.value).toBeTruthy();
-    expect(res.cookies.get("nihplod_sso_nonce")?.value).toBeTruthy();
-    expect(res.cookies.get("nihplod_sso_verifier")?.value).toBeTruthy();
-    expect(res.cookies.get("nihplod_sso_return")?.value).toBe("/dashboard");
+    // 前缀已去除，浏览器在 HTTP 下可写入；瞬态 cookie 带 state 后缀
+    expect(res.cookies.get(`nihplod_sso_state_${state}`)?.value).toBeTruthy();
+    expect(res.cookies.get(`nihplod_sso_nonce_${state}`)?.value).toBeTruthy();
+    expect(res.cookies.get(`nihplod_sso_verifier_${state}`)?.value).toBeTruthy();
+    expect(res.cookies.get(`nihplod_sso_return_${state}`)?.value).toBe("/dashboard");
     expect(res.cookies.get("__Host-nihplod_sso_state")).toBeUndefined();
     expect(res.cookies.get("__Host-nihplod_sso_nonce")).toBeUndefined();
     // Secure 属性已关闭
@@ -242,10 +246,11 @@ describe("createSsoMiddleware", () => {
       new NextRequest("https://myapp.com/dashboard")
     );
     expect(res.status).toBe(307);
+    const state = new URL(res.headers.get("location")!).searchParams.get("state")!;
 
-    // 前缀保留、Secure 仍开启
-    expect(res.cookies.get("__Host-nihplod_sso_state")?.value).toBeTruthy();
-    expect(res.cookies.get("__Secure-nihplod_sso_verifier")?.value).toBeTruthy();
+    // 前缀保留、Secure 仍开启；瞬态 cookie 带 state 后缀
+    expect(res.cookies.get(`__Host-nihplod_sso_state_${state}`)?.value).toBeTruthy();
+    expect(res.cookies.get(`__Secure-nihplod_sso_verifier_${state}`)?.value).toBeTruthy();
     expect(res.cookies.get("nihplod_sso_state")).toBeUndefined();
     const setCookies =
       typeof res.headers.getSetCookie === "function"
@@ -285,7 +290,8 @@ describe("createSsoMiddleware", () => {
     const res = await middleware(
       new NextRequest("http://localhost:3002/dashboard")
     );
-    expect(res.cookies.get("nihplod_sso_state")?.value).toBeTruthy();
+    const state = new URL(res.headers.get("location")!).searchParams.get("state")!;
+    expect(res.cookies.get(`nihplod_sso_state_${state}`)?.value).toBeTruthy();
     expect(res.cookies.get("__Host-nihplod_sso_state")).toBeUndefined();
   });
 });

@@ -140,27 +140,29 @@ export interface SsoVerifierOptions {
   logoutJtiStore?: LogoutJtiStore;
 
   /**
-   * Introspection audience 严格模式（默认 false，保持向后兼容）。
+   * Introspection audience 严格模式（默认 true，fail-closed）。
    *
-   * 默认模式下，introspection 响应既无 aud 又无 client_id 时保持信任
-   * （兼容不返回归属字段的端点）。设为 true 后：响应缺少归属字段即拒绝
-   * （fail-closed），防止被 confused deputy 攻击利用。
-   *
-   * ⚠️ 生产环境强烈建议开启。主站 introspection 端点始终返回 client_id，
-   * 开启后行为不变；仅在对接不返回归属字段的第三方端点时才需要保持 false。
+   * 严格模式下，introspection 响应既无 aud 又无 client_id 时拒绝
+   * （防止 confused deputy：把发给其他 client 的 token 当成自己的）。
+   * 主站 introspection 端点始终返回 client_id，默认开启不影响主站接入；
+   * 仅在对接不返回归属字段的第三方端点时才需要显式设为 false（不推荐）。
    */
   strictAudience?: boolean;
 }
 
 /**
  * Logout Token jti 防重放存储接口（可注入 Redis 等共享存储实现）。
- * has/add 均支持同步或异步返回。
+ *
+ * 多实例部署应实现 addIfAbsent（原子 SET NX EX 语义）以保证并发/跨实例下
+ * 同一 jti 只会被接受一次。未实现时回退 has + add（非原子，仅建议单实例使用）。
  */
 export interface LogoutJtiStore {
   /** 判断 jti 是否已处理过 */
   has(key: string): boolean | Promise<boolean>;
   /** 记录已处理的 jti，ttlSeconds 后过期 */
   add(key: string, ttlSeconds: number): void | Promise<void>;
+  /** 原子地"不存在则记录"：返回 true 表示本次成功占用（首次使用），false 表示已存在 */
+  addIfAbsent?(key: string, ttlSeconds: number): boolean | Promise<boolean>;
 }
 
 export interface VerifiedTokenPayload extends JWTPayload {
@@ -265,8 +267,30 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     introspectRetries = 1,
     clockToleranceSeconds = 60,
     logoutJtiStore,
-    strictAudience = false,
+    strictAudience = true,
   } = options;
+
+  // 端点传输安全：生产环境禁止 http://（introspection 会携带 client_secret）
+  // 允许 localhost/127.0.0.1/::1 方便本地联调。
+  const assertHttpsEndpoint = (value: string | undefined, name: string): void => {
+    if (!value || process.env.NODE_ENV !== "production") return;
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error(`[sso-verify] ${name} 不是合法 URL: ${value}`);
+    }
+    if (url.protocol === "https:") return;
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (url.protocol === "http:" && isLoopback) return;
+    throw new Error(
+      `[sso-verify] 生产环境 ${name} 必须为 https://（当前 ${url.protocol}//${url.host}），` +
+        "避免凭证/令牌经明文传输"
+    );
+  };
+  assertHttpsEndpoint(introspectionEndpoint, "introspectionEndpoint");
+  assertHttpsEndpoint(jwksUri, "jwksUri");
 
   const introspectCache = createIntrospectCache(introspectCacheTtl);
 
@@ -324,8 +348,8 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
    * Introspection 响应的 aud 归属校验（防 confused deputy）：
    * - 响应携带 aud（字符串或数组）时必须包含配置的 audience；
    * - 否则若携带 client_id，必须等于 audience（audience 即 client_id）；
-   * - 两者都缺失时：默认保持信任（兼容不返回归属字段的端点，见 README）；
-   *   strictAudience=true 时 fail-closed 拒绝（生产环境推荐开启）。
+   * - 两者都缺失时：strictAudience=false 时保持信任（兼容不返回归属字段的端点）；
+   *   默认 strictAudience=true 时 fail-closed 拒绝。
    */
   function matchesAudience(data: IntrospectResponse): boolean {
     const aud = data.aud;
@@ -394,13 +418,30 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         if (response.status >= 500 && attempt < introspectRetries) continue;
         return null;
       }
-      data = (await response.json()) as IntrospectResponse;
+      // 响应体非法 JSON（网关/代理返回 HTML、空体、截断 JSON 等）按端点不可用处理：
+      // 重试后仍失败则 fail-closed 返回 null，避免异常穿透到 verify/中间件
+      try {
+        data = (await response.json()) as IntrospectResponse;
+      } catch {
+        if (attempt < introspectRetries) continue;
+        return null;
+      }
       break;
     }
     if (!data) return null;
 
+    // active 必须是严格布尔 true：非布尔（如字符串 "false"/1）一律视为不可用
+    if (data.active !== true) {
+      if (introspectNegativeCacheTtl > 0) {
+        introspectCache.set(token, { active: false, payload: null }, {
+          ttl: introspectNegativeCacheTtl,
+        });
+      }
+      return { active: false };
+    }
+
     // aud 归属不匹配（token 颁发给其他 client）视为无效，按负缓存处理
-    if (data.active && !matchesAudience(data)) {
+    if (!matchesAudience(data)) {
       if (introspectNegativeCacheTtl > 0) {
         introspectCache.set(token, { active: false, payload: null }, {
           ttl: introspectNegativeCacheTtl,
@@ -410,7 +451,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     }
 
     let payload: VerifiedTokenPayload | null = null;
-    if (data.active && data.sub) {
+    if (data.sub) {
       payload = {
         sub: data.sub,
         aud: audience,
@@ -421,14 +462,14 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
       } as VerifiedTokenPayload;
     }
 
-    // active:false（已撤销）结果使用更短的 TTL，降低撤销生效延迟；
-    // introspectNegativeCacheTtl 为 0 时不缓存。
-    if (data.active) {
-      introspectCache.set(token, { active: true, payload });
-    } else if (introspectNegativeCacheTtl > 0) {
-      introspectCache.set(token, { active: false, payload: null }, {
-        ttl: introspectNegativeCacheTtl,
-      });
+    // 正缓存 TTL 不得超过 token 自身剩余有效期（避免缓存结果比 token 活得更久）；
+    // 已过期/无剩余有效期时不缓存。
+    let ttl = introspectCacheTtl;
+    if (typeof data.exp === "number") {
+      ttl = Math.min(ttl, data.exp * 1000 - Date.now());
+    }
+    if (ttl > 0) {
+      introspectCache.set(token, { active: true, payload }, { ttl });
     }
     return data;
   }
@@ -539,8 +580,8 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
 
       // 3. Introspection 验证（兜底方案）
       const result = await introspect(token);
-      // active:true 必须携带非空 sub，否则视为无效（防 confused deputy）
-      if (!result?.active || !result.sub) return null;
+      // active 必须严格为 true，且必须携带非空 sub，否则视为无效（防 confused deputy）
+      if (result?.active !== true || !result.sub) return null;
 
       return {
         sub: result.sub,
@@ -618,11 +659,18 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         const iss = (payload as { iss?: string }).iss || issuer;
         const jtiKey = `${iss}:${jti}`;
         if (logoutJtiStore) {
-          // 注入了外部存储（多实例部署应注入共享存储，如 Redis）
-          if (await logoutJtiStore.has(jtiKey)) {
-            return null;
+          // 优先原子接口（Redis SET NX EX 等）：消除 has + add 之间的 TOCTOU 窗口
+          if (typeof logoutJtiStore.addIfAbsent === "function") {
+            const firstUse = await logoutJtiStore.addIfAbsent(jtiKey, 10 * 60);
+            if (!firstUse) return null;
+          } else {
+            // 兼容旧实现：has + add 非原子，并发/跨实例下可能重复接受同一 jti；
+            // 多实例部署请补充 addIfAbsent 实现
+            if (await logoutJtiStore.has(jtiKey)) {
+              return null;
+            }
+            await logoutJtiStore.add(jtiKey, 10 * 60);
           }
-          await logoutJtiStore.add(jtiKey, 10 * 60);
         } else {
           if (processedLogoutJtis.has(jtiKey)) {
             return null;
@@ -658,7 +706,14 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           }
         }
 
-        const jwks = getJwksKeySet();
+        // jwksUri 非法（或生产环境非 https）时 getJwksKeySet 可能抛错：
+        // 与 verify() 一致按验证失败处理，而不是异常穿透
+        let jwks: ReturnType<typeof getJwksKeySet> = null;
+        try {
+          jwks = getJwksKeySet();
+        } catch {
+          return null;
+        }
         if (jwks) {
           try {
             const { payload } = await jwtVerify(token, jwks, {

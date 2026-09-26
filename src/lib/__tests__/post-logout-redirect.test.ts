@@ -33,6 +33,14 @@ describe("isTrustedPostLogoutRedirectUri", () => {
     expect(await isTrustedPostLogoutRedirectUri("//evil.com", "client-1")).toBe(false);
   });
 
+  it("反斜杠与控制字符绕过路径不信任（浏览器会解析为跨站 URL）", async () => {
+    expect(await isTrustedPostLogoutRedirectUri("/\\evil.com", "client-1")).toBe(false);
+    expect(await isTrustedPostLogoutRedirectUri("/\n//evil.com", "client-1")).toBe(false);
+    expect(await isTrustedPostLogoutRedirectUri("/\r//evil.com", "client-1")).toBe(false);
+    expect(await isTrustedPostLogoutRedirectUri("/\t//evil.com", "client-1")).toBe(false);
+    expect(mockFindFirst).not.toHaveBeenCalled();
+  });
+
   it("client_id 缺失时拒绝绝对 URL 回跳（调用方兜底跳首页）", async () => {
     expect(await isTrustedPostLogoutRedirectUri("https://a.com/done")).toBe(false);
     expect(await isTrustedPostLogoutRedirectUri("https://a.com/done", null)).toBe(false);

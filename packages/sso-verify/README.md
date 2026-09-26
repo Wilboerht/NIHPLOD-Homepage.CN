@@ -104,11 +104,11 @@ After successful verification, the token payload is attached to `req.user`.
 | `logoutTokenPublicKey` | — | RS256 public key (PEM) for back-channel `logout_token` verification |
 | `logoutTokenSecret` | — | HS256 secret for local `logout_token` verification |
 | `logoutJtiStore` | — | External store for processed `logout_token` jtis (see "Multi-instance deployments" below) |
-| `strictAudience` | `false` | Reject introspection responses that carry neither `aud` nor `client_id` (fail-closed). **Recommended for production** |
+| `strictAudience` | `true` | Reject introspection responses that carry neither `aud` nor `client_id` (fail-closed). Set `false` only for legacy third-party endpoints that return no audience fields |
 
 ### Revocation latency trade-off
 
-Introspection results are cached to reduce latency and load on the main site. This means a revoked access token may remain accepted locally until its cache entry expires. `active: true` results are cached for `introspectCacheTtl` (default 30s); `active: false` results use the much shorter `introspectNegativeCacheTtl` (default 5s), so a previously-invalid token that becomes valid (e.g. re-issued) converges quickly, while revocation of an already-cached token takes at most `introspectCacheTtl`. Lower `introspectCacheTtl` for stronger revocation guarantees at the cost of more introspection calls. Use `verifier.invalidateCache(token)` to evict a specific token immediately.
+Introspection results are cached to reduce latency and load on the main site. This means a revoked access token may remain accepted locally until its cache entry expires. `active: true` results are cached for `introspectCacheTtl` (default 30s, additionally capped at the token's remaining `exp`); `active: false` results use the much shorter `introspectNegativeCacheTtl` (default 5s), so a previously-invalid token that becomes valid (e.g. re-issued) converges quickly, while revocation of an already-cached token takes at most `introspectCacheTtl`. Lower `introspectCacheTtl` for stronger revocation guarantees at the cost of more introspection calls. Use `verifier.invalidateCache(token)` to evict a specific token immediately.
 
 Concurrent `verify()` calls for the same token share a single in-flight introspection request, and failed requests (network errors / 5xx) are retried once by default — see `introspectRetries`.
 
@@ -118,9 +118,9 @@ When verifying via introspection, the response's audience binding is checked aga
 
 - If the response contains `aud` (string or array), it must include the configured `audience`.
 - Otherwise, if the response contains `client_id`, it must equal the configured `audience`.
-- If the endpoint returns neither field, the response is trusted as-is (legacy behavior); the main site's introspection endpoint always returns `client_id`, so tokens issued to other clients are rejected.
+- If the endpoint returns neither field, the response is rejected by default (`strictAudience: true`, fail-closed). The main site's introspection endpoint always returns `client_id`, so tokens issued to other clients are always rejected. Set `strictAudience: false` only when integrating a legacy third-party endpoint that returns no audience fields (not recommended).
 
-> ⚠️ **Production recommendation: enable `strictAudience: true`.** In strict mode a response missing both `aud` and `client_id` is rejected (fail-closed) instead of trusted, eliminating the fail-open path entirely. The main site's introspection endpoint always returns `client_id`, so enabling it does not change behavior against the main site — only turn it off when integrating a third-party introspection endpoint that returns no audience fields.
+> ⚠️ **Fail-closed by default.** A response missing both `aud` and `client_id` is rejected instead of trusted, eliminating the confused-deputy fail-open path. Only lower this when you fully trust the introspection endpoint and cannot change it.
 
 ### Logout token verification
 
@@ -140,10 +140,15 @@ const verifier = createTokenVerifier({
   logoutTokenPublicKey: process.env.LOGOUT_TOKEN_PUBLIC_KEY,
   logoutJtiStore: {
     // Both sync and async implementations are supported.
+    // addIfAbsent is strongly recommended: it must atomically SET NX EX and
+    // return true only when this call created the key (first use).
+    addIfAbsent: (key, ttlSeconds) => redis.set(key, "1", "EX", ttlSeconds, "NX").then((r) => r === "OK"),
+    // has/add are the legacy fallback used only when addIfAbsent is not provided
+    // (non-atomic check-then-act; single-instance use only).
     has: (key) => redis.exists(key).then((n) => n > 0),
     add: (key, ttlSeconds) => redis.set(key, "1", "EX", ttlSeconds),
   },
 });
 ```
 
-`has(key)` reports whether a jti was already processed; `add(key, ttlSeconds)` records it with expiry (the verifier passes 600 seconds, matching the built-in cache).
+`addIfAbsent(key, ttlSeconds)` atomically records the jti and returns whether this call was the first use (implement with Redis `SET key 1 EX ttl NX`). It prevents the TOCTOU race between `has` and `add` across instances. If it is not implemented, the verifier falls back to `has` + `add` (the verifier passes 600 seconds, matching the built-in cache) �?acceptable only for single-instance deployments.

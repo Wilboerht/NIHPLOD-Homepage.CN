@@ -12,15 +12,20 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { maskPhone } from "@/lib/mask-phone";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import {
   executeImportBatch,
+  verifyImportPhoneToken,
   IMPORT_MAX_ROWS,
   IMPORT_MAX_AMOUNT,
+  type ExecuteRowInput,
 } from "@/lib/spent-import";
 
 const rowSchema = z.object({
-  phone: z.string().max(32),
+  // 优先使用预览接口签发的签名令牌（PII 最小化），兼容旧客户端回传明文
+  phoneToken: z.string().max(1024).optional(),
+  phone: z.string().max(32).optional(),
   amount: z.number().int().min(-IMPORT_MAX_AMOUNT).max(IMPORT_MAX_AMOUNT),
   channel: z.string().max(32).nullish(),
   orderNo: z.string().max(64).nullish(),
@@ -76,12 +81,35 @@ export async function POST(request: NextRequest) {
 
     const { fileName, fileHash, rows, totpCode } = parsed.data;
 
+    // 解析行手机号：令牌优先（服务端还原），旧客户端明文作为兼容回退
+    const resolvedRows: ExecuteRowInput[] = [];
+    for (const row of rows) {
+      const phone = row.phoneToken ? verifyImportPhoneToken(row.phoneToken) : row.phone;
+      if (!phone) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "INVALID_PHONE_TOKEN", message: "行令牌无效或已过期，请重新上传文件" },
+          },
+          { status: 400 }
+        );
+      }
+      resolvedRows.push({
+        phone,
+        amount: row.amount,
+        channel: row.channel,
+        orderNo: row.orderNo,
+        purchasedAt: row.purchasedAt,
+        note: row.note,
+      });
+    }
+
     // 资金类操作：二次验证（TOTP / 备用码）
     const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode);
     if (totpResponse) return totpResponse;
 
     const result = await executeImportBatch({
-      rows,
+      rows: resolvedRows,
       fileName,
       fileHash,
       adminId: admin.id,
@@ -103,7 +131,14 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    return NextResponse.json({ success: true, data: result });
+    // 逐行结果中的手机号脱敏后返回（前端展示/导出失败行用；明文只存在于服务端与原始 Excel）
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...result,
+        rows: result.rows.map((row) => ({ ...row, phone: maskPhone(row.phone) })),
+      },
+    });
   } catch (error) {
     apiConsole.error("[AdminSpentImport] 执行导入失败:", error);
     return NextResponse.json(

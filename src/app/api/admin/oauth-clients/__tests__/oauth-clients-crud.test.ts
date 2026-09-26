@@ -34,6 +34,7 @@ const {
   mockRecordSsoEvent,
   mockCreateAuditLog,
   mockSendBackchannelLogout,
+  mockEnqueueBackchannelLogoutForActiveSessions,
   prismaMock,
 } = vi.hoisted(() => {
   const createMockModel = () => ({
@@ -67,6 +68,7 @@ const {
     mockRecordSsoEvent: vi.fn(),
     mockCreateAuditLog: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
+    mockEnqueueBackchannelLogoutForActiveSessions: vi.fn(),
     prismaMock: prisma as Record<string, Record<string, ReturnType<typeof vi.fn>>> & {
       $transaction: ReturnType<typeof vi.fn>;
     },
@@ -120,12 +122,15 @@ vi.mock("@/lib/token-blacklist", () => ({
 }));
 
 // backchannel-logout：isBlockedHostname 保留真实实现（redirectUri 私网校验依赖它），
-// 仅 stub sendBackchannelLogout 避免真实网络/JWT 逻辑
+// 仅 stub 投递/入队函数避免真实网络/JWT 逻辑
 vi.mock("@/lib/backchannel-logout", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backchannel-logout")>();
   return {
     ...actual,
     sendBackchannelLogout: (...args: unknown[]) => mockSendBackchannelLogout(...args),
+    enqueueBackchannelLogoutForActiveSessions: (...args: unknown[]) =>
+      mockEnqueueBackchannelLogoutForActiveSessions(...args),
+    scheduleBackchannelRedelivery: vi.fn(),
   };
 });
 
@@ -210,6 +215,10 @@ describe("管理端 OAuth Client CRUD", () => {
     mockRecordSsoEvent.mockResolvedValue(undefined);
     mockCreateAuditLog.mockResolvedValue(true);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
+    mockEnqueueBackchannelLogoutForActiveSessions.mockResolvedValue({
+      sessionCount: 0,
+      userClientCount: 0,
+    });
     prismaMock.oAuthSession.groupBy.mockResolvedValue([]);
     prismaMock.ssoAuditEvent.groupBy.mockResolvedValue([]);
   });
@@ -620,7 +629,6 @@ describe("管理端 OAuth Client CRUD", () => {
       const previous = makeClientRecord({ isActive: true });
       prismaMock.oAuthClient.findUnique.mockResolvedValue(previous);
       prismaMock.oAuthClient.update.mockResolvedValue(makeClientRecord({ isActive: false }));
-      prismaMock.oAuthSession.findMany.mockResolvedValue([{ userId: "user-1" }]);
 
       const { PATCH } = await import("@/app/api/admin/oauth-clients/[id]/route");
       const res = await PATCH(
@@ -644,15 +652,14 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { clientId: previous.clientId, revokedAt: null },
-          data: { revokedAt: expect.any(Date) },
+          data: { revokedAt: expect.any(Date), revokedReason: "admin_revoke" },
         })
       );
-      // 通知受影响用户 Backchannel Logout
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith(
-        "user-1",
-        [previous.clientId],
-        expect.objectContaining({ includeInactive: true })
-      );
+      // 通知写入补偿队列（分页 + 异步投递，不在请求内逐用户同步 HTTP）
+      expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({
+        clientId: previous.clientId,
+      });
+      expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
     });
 
     it("未变更 isActive 时不触发级联撤销", async () => {
@@ -768,8 +775,11 @@ describe("管理端 OAuth Client CRUD", () => {
       const record = makeClientRecord();
       // 路由层 findUnique（无 select）与 lib 层 findUnique（带 select）均命中同一 mock
       prismaMock.oAuthClient.findUnique.mockResolvedValue(record);
-      prismaMock.oAuthSession.findMany.mockResolvedValue([{ userId: "user-1" }, { userId: "user-2" }]);
       prismaMock.oAuthClient.delete.mockResolvedValue(record);
+      mockEnqueueBackchannelLogoutForActiveSessions.mockResolvedValue({
+        sessionCount: 2,
+        userClientCount: 2,
+      });
 
       const { DELETE } = await import("@/app/api/admin/oauth-clients/[id]/route");
       const res = await DELETE(
@@ -788,11 +798,14 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { clientId: record.clientId, revokedAt: null } })
       );
-      // 受影响用户 Backchannel Logout；
-      // 关键回归点：不再逐用户拉黑 token（会把用户误登出主站），
+      // 受影响用户 Backchannel Logout 入队（异步投递）；不再逐用户同步 HTTP，
+      // 也不再逐用户拉黑 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
+      expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({
+        clientId: record.clientId,
+      });
+      expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      expect(mockSendBackchannelLogout).toHaveBeenCalledTimes(2);
 
       // 关联数据级联清理
       expect(prismaMock.oAuthSession.deleteMany).toHaveBeenCalledWith({
@@ -819,6 +832,31 @@ describe("管理端 OAuth Client CRUD", () => {
           clientId: record.clientId,
           detail: expect.objectContaining({ action: "client_deleted" }),
         })
+      );
+    });
+
+    it("client 未配置 backchannelLogoutUri（入队 0 条）时仍必须撤销会话与 refresh token", async () => {
+      const record = makeClientRecord();
+      prismaMock.oAuthClient.findUnique.mockResolvedValue(record);
+      prismaMock.oAuthClient.delete.mockResolvedValue(record);
+      // 无 URI → 入队 helper 返回 0，但撤销不得被跳过
+      mockEnqueueBackchannelLogoutForActiveSessions.mockResolvedValue({
+        sessionCount: 0,
+        userClientCount: 0,
+      });
+
+      const { DELETE } = await import("@/app/api/admin/oauth-clients/[id]/route");
+      const res = await DELETE(
+        createRequest("/api/admin/oauth-clients/client-db-id-1", { method: "DELETE" }),
+        routeContext("client-db-id-1")
+      );
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: record.clientId, revokedAt: null } })
+      );
+      expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: record.clientId, revokedAt: null } })
       );
     });
   });

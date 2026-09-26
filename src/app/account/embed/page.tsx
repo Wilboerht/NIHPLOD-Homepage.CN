@@ -170,16 +170,29 @@ function EmbedAccountContent() {
   }
 
   if (!user) {
+    const loginHref = `/login?return_to=${encodeURIComponent("/account/embed")}`;
     return (
       <div className="p-8 text-center">
         <p className="text-sm text-gray-500">{error || "请先登录"}</p>
         <a
-          href="/login"
+          href={loginHref}
           target="_top"
           className="mt-2 inline-block text-sm text-blue-600 hover:underline"
         >
           前往登录
         </a>
+        <p className="mt-3 text-xs leading-relaxed text-gray-400">
+          嵌入式窗口登录可能受浏览器第三方 Cookie 限制；若登录后此处仍提示未登录，请
+          <a
+            href={loginHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mx-1 text-blue-500 hover:underline"
+          >
+            在新窗口登录
+          </a>
+          后刷新页面。
+        </p>
       </div>
     );
   }

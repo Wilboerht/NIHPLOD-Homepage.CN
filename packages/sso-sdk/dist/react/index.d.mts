@@ -63,6 +63,11 @@ interface SsoClientConfig {
     /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
     postLogoutRedirectUri?: string;
     /**
+     * 调试日志开关（默认 false）。开启后输出登录/回调/刷新/登出等关键流程日志，
+     * 便于接入方定位问题（生产默认关闭，避免日志噪音）。
+     */
+    debug?: boolean;
+    /**
      * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
      * 仅用于 discovery / token / userinfo / revocation 等服务器间请求；
      * 浏览器跳转（authorize、end-session）始终使用 ssoBaseUrl 公网地址。
@@ -128,6 +133,12 @@ declare class SsoClient {
     /** Discovery fetch 超时（10 秒） */
     private static readonly DISCOVERY_TIMEOUT_MS;
     constructor(config: SsoClientConfig);
+    /**
+     * 调试日志（config.debug=true 时输出，前缀 [SSO SDK]）：
+     * 覆盖登录发起 / 回调结果 / 刷新失败 / 登出等关键节点，便于接入方定位问题。
+     * 不会输出 token/授权码等敏感值。
+     */
+    debugLog(...args: unknown[]): void;
     /**
      * 获取 OIDC Discovery 文档（带缓存 + 超时）
      *
@@ -339,6 +350,12 @@ interface SsoContextValue {
     refreshUser: () => Promise<void>;
     /** 获取 access_token（自动刷新过期 token） */
     getAccessToken: () => Promise<string | null>;
+    /**
+     * 会话已失效（refresh_token 被撤销/过期），需要用户重新登录。
+     * 与 `error` 不同：该标志在 loadUser 拿到"无 token"时不会被清空，
+     * 登录成功后才复位，便于子站稳定展示"登录已过期"提示。
+     */
+    sessionExpired: boolean;
     /** SsoClient 实例（高级用法） */
     client: SsoClient;
 }
@@ -359,8 +376,13 @@ interface SsoProviderProps {
      * SDK 不会据此自动重试先前失败的 API 请求，重试需由调用方自行实现。
      */
     onTokenRefreshed?: (token: string) => void;
+    /**
+     * 会话失效回调（可选）。refresh_token 被撤销/过期时触发一次，
+     * 子站可据此展示"登录已过期，请重新登录"或埋点上报。
+     */
+    onSessionExpired?: (error: SsoError) => void;
 }
-declare function SsoProvider({ config, children, refreshThreshold, onTokenRefreshed, }: SsoProviderProps): React.FunctionComponentElement<React.ProviderProps<SsoContextValue | null>>;
+declare function SsoProvider({ config, children, refreshThreshold, onTokenRefreshed, onSessionExpired, }: SsoProviderProps): React.FunctionComponentElement<React.ProviderProps<SsoContextValue | null>>;
 /**
  * useSso Hook
  *
@@ -481,6 +503,8 @@ declare function DefaultCallbackError({ error }: {
         justifyContent: "center";
         minHeight: string;
         fontFamily: "system-ui, sans-serif";
+        padding: string;
+        textAlign: "center";
     };
 }, HTMLElement>;
 declare function CallbackPage({ onSuccess, onError, renderError }?: CallbackPageProps): React.FunctionComponentElement<React.FragmentProps> | React.FunctionComponentElement<{

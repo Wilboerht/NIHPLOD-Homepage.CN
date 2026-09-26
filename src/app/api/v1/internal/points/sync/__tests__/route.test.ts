@@ -163,7 +163,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   });
 
   it("成功入账：CAS 更新消费额、写幂等记录并按新消费额重算等级", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     txClient.user.findUnique.mockResolvedValue({
       totalSpent: 850,
       membershipLevel: "REGULAR",
@@ -222,7 +222,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   });
 
   it("普通档消费（未达银卡门槛）：同样发放积分（仅累积，不可兑礼）", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     // 500 + 400 = 900 < 1000，仍为普通档
     txClient.user.findUnique.mockResolvedValue({ totalSpent: 500, membershipLevel: "REGULAR" });
 
@@ -255,7 +255,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   });
 
   it("退款扣减（负 spentDelta）应钳制到 0，不出现负消费额", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     txClient.user.findUnique.mockResolvedValue({
       totalSpent: 50,
       membershipLevel: "GOLD",
@@ -286,7 +286,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   });
 
   it("并发同步（CAS 命中 0 行）应重读快照重试，不丢失更新", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     // 模拟并发：本请求读到快照 800 时，另一笔 +200 已先入账（消费额变 1000）
     txClient.user.findUnique
       .mockResolvedValueOnce({ totalSpent: 800, membershipLevel: "REGULAR" })
@@ -310,7 +310,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   });
 
   it("重复上报（幂等记录已存在）应返回当前权威消费额并标记 duplicated", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     txClient.spentSyncRecord.findUnique.mockResolvedValue({ id: "rec-1" });
     txClient.user.findUnique.mockResolvedValue({
       totalSpent: 1000,
@@ -335,7 +335,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   it("并发重复上报（写入触发 P2002）应幂等返回当前权威消费额并标记 duplicated", async () => {
     mockUserFindUnique
       // 第一次：路由按手机号查用户
-      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce({ id: "user-1", status: "ACTIVE" })
       // 第二次：P2002 后回读权威消费额
       .mockResolvedValueOnce({ totalSpent: 1000, membershipLevel: "SILVER" });
     txClient.user.findUnique.mockResolvedValue({

@@ -9,7 +9,14 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/api-client";
+import {
+  AUDIT_ACTION_LABELS as ACTION_LABELS,
+  AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
+} from "@/lib/audit-labels";
+import { formatDateTimeSeconds as formatDate } from "@/lib/format";
+import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 
 interface AuditLogItem {
   id: string;
@@ -22,105 +29,6 @@ interface AuditLogItem {
   admin: { id: string; email: string; name: string } | null;
   createdAt: string;
 }
-
-const ACTION_LABELS: Record<string, string> = {
-  login: "登录",
-  logout: "登出",
-  ship_order: "发货",
-  update_order: "更新订单",
-  refund_approve: "同意退款",
-  refund_reject: "拒绝退款",
-  create_admin: "创建管理员",
-  update_admin: "更新管理员",
-  delete_admin: "删除管理员",
-  create_product: "创建产品",
-  update_product: "更新产品",
-  delete_product: "删除产品",
-  batch_product: "批量操作产品",
-  create_category: "创建分类",
-  update_category: "更新分类",
-  delete_category: "删除分类",
-  create_job: "创建职位",
-  update_job: "更新职位",
-  delete_job: "删除职位",
-  batch_job: "批量操作职位",
-  update_application: "更新简历",
-  delete_application: "删除简历",
-  update_message: "更新留言",
-  delete_message: "删除留言",
-  batch_message: "批量操作留言",
-  create_coupon: "创建优惠券",
-  update_coupon: "更新优惠券",
-  delete_coupon: "删除优惠券",
-  batch_coupon: "批量操作优惠券",
-  run_cron_task: "执行定时任务",
-  user_points_adjust: "调整用户积分",
-  update_vip_benefit: "更新会员权益",
-  submit_spent_adjustment: "提交消费记录",
-  approve_spent_adjustment: "通过消费记录",
-  reject_spent_adjustment: "驳回消费记录",
-  undo_spent_adjustment: "撤销消费记录",
-  import_spent_records: "导入消费记录",
-  undo_spent_import: "撤销消费导入",
-  point_gift_create: "新增积分礼品",
-  point_gift_update: "更新积分礼品",
-  point_redemption_fulfill: "兑换履约",
-  point_redemption_waybill_update: "更新兑换运单号",
-  point_redemption_cancel: "取消兑换并退分",
-  user_detail_view: "查看用户详情",
-  user_detail_sensitive_view: "查看用户敏感信息",
-  user_birthday_update: "修改用户生日",
-  user_password_reset: "重置用户密码",
-  user_identity_unbind: "解绑用户外部身份",
-  oauth_client_create: "创建 SSO 客户端",
-  oauth_client_update: "更新 SSO 客户端",
-  oauth_client_delete: "删除 SSO 客户端",
-  oauth_client_rotate_secret: "轮换 SSO 客户端密钥",
-  oauth_client_test: "测试 SSO 客户端",
-  oauth_consent_revoke: "撤销 SSO 授权",
-  oauth_session_terminate: "终止 SSO 会话",
-  webhook_failure_retry: "重投失败 Webhook",
-  webhook_failure_delete: "删除失败 Webhook",
-  user_login: "用户登录",
-  user_logout: "用户登出",
-  user_register: "用户注册",
-  user_reset_password: "用户重置密码",
-  user_status_change: "用户状态变更",
-  user_deleted: "用户删除",
-  admin_login: "管理员登录",
-  admin_logout: "管理员登出",
-  create_application_folder: "创建简历文件夹",
-  update_application_folder: "更新简历文件夹",
-  delete_application_folder: "删除简历文件夹",
-  reorder_categories: "重排分类",
-  user_wechat_bind: "用户微信绑定",
-  user_oauth_revoke: "用户 OAuth 撤销",
-  refresh_token_reuse_detected: "检测到 Refresh Token 复用",
-  user_set_password: "用户设置密码",
-  sso_audit_export: "导出 SSO 审计日志",
-};
-
-const TARGET_TYPE_LABELS: Record<string, string> = {
-  order: "订单",
-  admin: "管理员",
-  product: "产品",
-  category: "分类",
-  job: "职位",
-  message: "留言",
-  application: "简历",
-  coupon: "优惠券",
-  system: "系统",
-  oauth_client: "SSO 客户端",
-  user: "用户",
-  application_folder: "简历文件夹",
-  oauth_consent: "SSO 授权",
-  vip: "会员",
-  oauth_session: "SSO 会话",
-  spent_adjustment: "消费记录",
-  spent_import: "消费导入",
-  point_gift: "积分礼品",
-  point_redemption: "积分兑换",
-};
 
 /**
  * 从未写入的遗留动作（历史功能已下线）：
@@ -179,7 +87,7 @@ const ACTION_COLORS: Record<string, string> = {
   run_cron_task: "bg-purple-50 text-purple-700",
 };
 
-export default function AuditLogsPage() {
+function AuditLogsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -216,7 +124,7 @@ export default function AuditLogsPage() {
       setPagination(data.pagination);
       setLoadError(false);
     } catch {
-      console.error("获取审计日志失败");
+      apiConsole.error("获取审计日志失败");
       setLoadError(true);
     } finally {
       setLoading(false);
@@ -240,10 +148,6 @@ export default function AuditLogsPage() {
   const openDetail = (log: AuditLogItem) => {
     setSelectedLog(log);
     setDetailOpen(true);
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString("zh-CN");
   };
 
   return (
@@ -438,8 +342,15 @@ export default function AuditLogsPage() {
               {logs.map((log) => (
                 <tr
                   key={log.id}
-                  className="cursor-pointer hover:bg-brand-charcoal/[0.03]"
+                  tabIndex={0}
+                  className="cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   onClick={() => openDetail(log)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openDetail(log);
+                    }
+                  }}
                 >
                   <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/50">
                     {formatDate(log.createdAt)}
@@ -564,5 +475,13 @@ export default function AuditLogsPage() {
         ) : null}
       </Modal>
     </div>
+  );
+}
+
+export default function AuditLogsPage() {
+  return (
+    <RequirePermission permission="audit:read">
+      <AuditLogsContent />
+    </RequirePermission>
   );
 }

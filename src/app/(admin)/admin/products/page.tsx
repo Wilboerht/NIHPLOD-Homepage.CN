@@ -4,14 +4,15 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, X } from "lucide-react";
-import { ProductsTable } from "@/components/admin";
+import { ProductsTable, RequirePermission } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
-import { apiGet } from "@/lib/api-client";
+import { apiGet, ApiError } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 // 产品类型
 interface ProductItem {
@@ -53,9 +54,11 @@ export default function AdminProductsPage() {
     totalPages: 0,
   });
 
-  // 从 URL 获取筛选参数
-  const page = parseInt(searchParams.get("page") || "1");
-  const pageSize = parseInt(searchParams.get("pageSize") || "10");
+  // 从 URL 获取筛选参数（非法值回退默认，避免 NaN 传给 API）
+  const pageParam = Number(searchParams.get("page"));
+  const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
+  const pageSizeParam = Number(searchParams.get("pageSize"));
+  const pageSize = Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
   const search = searchParams.get("search") || "";
@@ -65,28 +68,25 @@ export default function AdminProductsPage() {
   // 搜索输入框状态
   const [searchInput, setSearchInput] = useState(search);
 
-  // 权限：批量删除需要 products:batch-delete（与 API 层一致）
+  // 权限：逐项删除/批量删除/编辑发布分别对应不同权限点（与 API 层一致）
   const { can: canAdmin } = useAdminPermissions();
   const canBatchDelete = canAdmin("products:batch-delete");
+  const canDelete = canAdmin("products:delete");
+  const canWriteProducts = canAdmin("products:write");
 
   // 获取分类列表（管理端接口：包含隐藏分类，公开接口仅返回 visible 分类）
   useEffect(() => {
     apiGet<Category[]>("/api/admin/categories")
       .then((data) => setCategories(data))
       .catch(() => showError("加载分类列表失败"));
-  }, []);
+  }, [showError]);
 
   // 获取产品列表
+  const takeLatestProducts = useLatestRequest();
   const fetchProducts = useCallback(async () => {
+    const isLatest = takeLatestProducts();
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.set("page", String(page));
-      params.set("pageSize", String(pageSize));
-      if (categoryId) params.set("categoryId", categoryId);
-      if (status && status !== "all") params.set("status", status);
-      if (search) params.set("search", search);
-
       const data = await apiGet<{ products: ProductItem[]; pagination: typeof pagination }>(
         "/api/admin/products",
         {
@@ -99,16 +99,21 @@ export default function AdminProductsPage() {
           sortOrder: sortOrder || undefined,
         }
       );
+      if (!isLatest()) return;
       setLoadError("");
       setProducts(data.products);
       setPagination(data.pagination);
     } catch (error) {
-      console.error("获取产品列表失败:", error);
-      setLoadError("列表加载失败，请重试");
+      if (!isLatest()) return;
+      if (error instanceof ApiError && error.status === 401) {
+        router.push("/admin-login");
+        return;
+      }
+      setLoadError(error instanceof Error ? error.message : "列表加载失败，请重试");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, categoryId, status, search, sortBy, sortOrder]);
+  }, [page, pageSize, categoryId, status, search, sortBy, sortOrder, router, takeLatestProducts]);
 
   useEffect(() => {
     deferInEffect(fetchProducts);
@@ -160,6 +165,7 @@ export default function AdminProductsPage() {
   ];
 
   return (
+    <RequirePermission permission="products:read">
     <div className="space-y-6">
       {/* 页面头部 */}
       <div className="flex items-center justify-between">
@@ -169,9 +175,11 @@ export default function AdminProductsPage() {
             管理所有产品，共 {pagination.total} 个
           </p>
         </div>
-        <Link href="/admin/products/new">
-          <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
-        </Link>
+        {canWriteProducts && (
+          <Link href="/admin/products/new">
+            <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
+          </Link>
+        )}
       </div>
 
       {/* 筛选栏 */}
@@ -218,29 +226,31 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* 加载失败错误态 */}
-      {loadError && (
+      {/* 加载失败错误态（替代表格，避免错误与旧数据同时展示） */}
+      {loadError ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12">
           <p className="text-sm text-red-500">{loadError}</p>
           <Button variant="outline" size="sm" onClick={fetchProducts}>
             重试
           </Button>
         </div>
+      ) : (
+        <ProductsTable
+          products={products}
+          loading={loading}
+          pagination={pagination}
+          onPageChange={(p) => updateParams({ page: String(p) })}
+          onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
+          onRefresh={fetchProducts}
+          onSort={(key, order) => updateParams({ sortBy: key, sortOrder: order })}
+          sortBy={sortBy || undefined}
+          sortOrder={sortOrder as "asc" | "desc" | undefined}
+          canDelete={canDelete}
+          canBatchDelete={canBatchDelete}
+          canWrite={canWriteProducts}
+        />
       )}
-
-      {/* 产品表格 */}
-      <ProductsTable
-        products={products}
-        loading={loading}
-        pagination={pagination}
-        onPageChange={(p) => updateParams({ page: String(p) })}
-        onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
-        onRefresh={fetchProducts}
-        onSort={(key, order) => updateParams({ sortBy: key, sortOrder: order })}
-        sortBy={sortBy || undefined}
-        sortOrder={sortOrder as "asc" | "desc" | undefined}
-        canDelete={canBatchDelete}
-      />
     </div>
+    </RequirePermission>
   );
 }

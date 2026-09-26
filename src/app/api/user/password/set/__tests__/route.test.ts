@@ -50,6 +50,15 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: vi.fn(),
 }));
 
+const { mockRevokeOtherSessions } = vi.hoisted(() => ({
+  mockRevokeOtherSessions: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/session-revocation", () => ({
+  revokeOtherSessionsAfterCredentialChange: (...args: unknown[]) =>
+    mockRevokeOtherSessions(...args),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
 import { POST } from "@/app/api/user/password/set/route";
@@ -129,5 +138,17 @@ describe("POST /api/user/password/set 验证码防爆破", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockRecordSmsCodeFailure).not.toHaveBeenCalled();
+  });
+
+  it("设置成功后撤销其他设备会话（保留当前设备，无 Cookie 时撤销全部）", async () => {
+    mockVerifyCode.mockReturnValue(true);
+
+    const res = await POST(createRequest(setBody));
+
+    expect(res.status).toBe(200);
+    expect(mockRevokeOtherSessions).toHaveBeenCalledWith({
+      userId: "user-1",
+      currentRefreshToken: null,
+    });
   });
 });

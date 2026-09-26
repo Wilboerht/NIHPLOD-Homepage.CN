@@ -35,6 +35,8 @@ export interface AuthorizationCodeData {
   codeChallenge: string | null;
   codeChallengeMethod: string | null;
   nonce: string | null;
+  /** 用户认证时间（Unix 秒），供 ID Token 的 auth_time claim */
+  authTime: number | null;
   expiresAt: Date;
 }
 
@@ -57,6 +59,7 @@ export async function createAuthorizationCode(params: {
   codeChallenge?: string;
   codeChallengeMethod?: string;
   nonce?: string;
+  authTime?: number;
   ttlMs?: number;
 }): Promise<AuthorizationCodeData> {
   const rawCode = generateCode();
@@ -74,6 +77,7 @@ export async function createAuthorizationCode(params: {
       codeChallenge: params.codeChallenge || null,
       codeChallengeMethod: params.codeChallengeMethod || null,
       nonce: params.nonce || null,
+      authTime: params.authTime ?? null,
       expiresAt,
     },
   });
@@ -88,6 +92,7 @@ export async function createAuthorizationCode(params: {
     codeChallenge: record.codeChallenge,
     codeChallengeMethod: record.codeChallengeMethod,
     nonce: record.nonce,
+    authTime: record.authTime,
     expiresAt: record.expiresAt,
   };
 }
@@ -133,6 +138,7 @@ export async function consumeAuthorizationCode(
     codeChallenge: record.codeChallenge,
     codeChallengeMethod: record.codeChallengeMethod,
     nonce: record.nonce,
+    authTime: record.authTime,
     expiresAt: record.expiresAt,
   };
 }

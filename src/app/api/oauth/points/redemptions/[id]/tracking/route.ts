@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getRedemptionTrackingResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
 
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
     if (!auth.ok) return auth.response;
     const { id } = await context.params;
-    return await getRedemptionTrackingResponse(auth.payload.id, id);
+    return decorateOAuthResponse(
+      await getRedemptionTrackingResponse(auth.payload.id, id),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth PointTracking] 异常:", error);
     return NextResponse.json(

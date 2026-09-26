@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signUserToken, signRefreshToken } from "@/lib/jwt";
-import { verifyPassword } from "@/lib/password";
+import { verifyPassword, hashPassword } from "@/lib/password";
 import {
   USER_ACCESS_COOKIE_OPTIONS,
   USER_REFRESH_COOKIE_OPTIONS,
@@ -37,11 +37,17 @@ const loginSchema = z.object({
 });
 
 /**
- * 预计算的 bcrypt dummy hash（cost 12，与真实密码哈希一致）。
- * 用户不存在/未设置密码/账号非 ACTIVE 时也执行一次比较，
- * 消除"有效手机号枚举"的时序侧信道。
+ * bcrypt dummy hash（惰性生成，cost 与真实密码一致 SALT_ROUNDS=13）。
+ * 用户不存在/未设置密码/账号非 ACTIVE 时也执行一次同等开销的比较，
+ * 消除"有效手机号枚举"的时序侧信道（此前硬编码 cost 12，比真实 cost 13 快约一倍）。
  */
-const DUMMY_PASSWORD_HASH = "$2b$12$AyjtwQqCYG.hGK52B6QhFu9sRyDY4DvhbtRSi3FneLI7JztzHaF..";
+let dummyPasswordHashPromise: Promise<string> | null = null;
+function getDummyPasswordHash(): Promise<string> {
+  if (!dummyPasswordHashPromise) {
+    dummyPasswordHashPromise = hashPassword("__nihplod_dummy_timing_defense__");
+  }
+  return dummyPasswordHashPromise;
+}
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -88,7 +94,8 @@ export async function POST(request: NextRequest) {
     const { phone, password } = result.data;
 
     // 2. 检查账户是否被锁定（防爆破）
-    const { locked, remainingMinutes } = await checkAccountLockout(phone);
+    const lockStatus = await checkAccountLockout(phone);
+    const { locked, remainingMinutes } = lockStatus;
     if (locked) {
       return NextResponse.json(
         {
@@ -102,6 +109,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 本次失败后剩余可尝试次数（>0 时随错误详情返回，前端提示"还可尝试 X 次"；
+    // 0 表示下一次失败将触发锁定，不返回数字避免泄露精确计数）
+    const remainingAttempts = Math.max(
+      0,
+      lockStatus.maxAttempts - lockStatus.failedAttempts - 1
+    );
+    const loginFailedError = (): {
+      code: string;
+      message: string;
+      details?: { remainingAttempts: number };
+    } => ({
+      code: "LOGIN_FAILED",
+      message: "登录失败，请检查手机号和密码",
+      ...(remainingAttempts > 0 ? { details: { remainingAttempts } } : {}),
+    });
+
     // 3. 查找用户
     const user = await prisma.user.findUnique({
       where: { phone },
@@ -112,7 +135,7 @@ export async function POST(request: NextRequest) {
       // 防止攻击者通过不同错误码枚举有效手机号
       // 时序侧信道缓解：执行一次 dummy bcrypt 比较，使"用户不存在"与"密码错误"
       // 响应时间一致（verifyPassword 占登录失败路径的主要耗时）
-      await verifyPassword(password, DUMMY_PASSWORD_HASH);
+      await verifyPassword(password, await getDummyPasswordHash());
       await recordLoginAttempt(
         phone,
         false,
@@ -124,10 +147,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: "LOGIN_FAILED",
-            message: "登录失败，请检查手机号和密码",
-          },
+          error: loginFailedError(),
         },
         { status: 400 }
       );
@@ -137,7 +157,7 @@ export async function POST(request: NextRequest) {
     if (user.status !== "ACTIVE") {
       // 账号被禁用/冻结时也返回统一错误，不暴露状态
       // 同样先做 dummy 比较，避免与"密码错误"路径产生时序差异
-      await verifyPassword(password, DUMMY_PASSWORD_HASH);
+      await verifyPassword(password, await getDummyPasswordHash());
       await recordLoginAttempt(
         phone,
         false,
@@ -148,10 +168,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: "LOGIN_FAILED",
-            message: "登录失败，请检查手机号和密码",
-          },
+          error: loginFailedError(),
         },
         { status: 400 }
       );
@@ -166,10 +183,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: "LOGIN_FAILED",
-            message: "登录失败，请检查手机号和密码",
-          },
+          error: loginFailedError(),
         },
         { status: 400 }
       );

@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
           reason: rotation.reason,
           ip: clientIP,
         });
-        await revokeRefreshToken(payload.id);
+        await revokeRefreshToken(payload.id, undefined, undefined, "reuse");
       }
 
       logAuthEvent("user_refresh_token", {

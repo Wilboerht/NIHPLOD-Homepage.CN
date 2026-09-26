@@ -20,6 +20,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { isSafeRelativePath } from "@/lib/url-safety";
 
 function LogoutConfirmContent() {
   const searchParams = useSearchParams();
@@ -46,7 +47,7 @@ function LogoutConfirmContent() {
         return;
       }
 
-      if (rawRedirectUri.startsWith("/") && !rawRedirectUri.startsWith("//")) {
+      if (isSafeRelativePath(rawRedirectUri)) {
         setRedirectUri(rawRedirectUri);
         return;
       }

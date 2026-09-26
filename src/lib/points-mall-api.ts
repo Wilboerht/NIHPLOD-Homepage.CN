@@ -410,8 +410,30 @@ export async function createAddressResponse(userId: string, request: Request): P
 
     const { recipient, phone, region, detail, isDefault } = parsed.data;
 
-    const count = await prisma.userAddress.count({ where: { userId } });
-    if (count >= MAX_ADDRESSES) {
+    const result = await prisma.$transaction(async (tx) => {
+      // 锁定用户行：序列化同用户的地址写入，消除"上限计数"与"默认地址切换"的竞态
+      // （并发下曾可超出 MAX_ADDRESSES 或产生多条默认地址）
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+
+      const count = await tx.userAddress.count({ where: { userId } });
+      if (count >= MAX_ADDRESSES) {
+        return { kind: "limit" as const };
+      }
+
+      const makeDefault = isDefault === true || count === 0;
+      if (makeDefault) {
+        await tx.userAddress.updateMany({
+          where: { userId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+      const created = await tx.userAddress.create({
+        data: { userId, recipient, phone, region, detail, isDefault: makeDefault },
+      });
+      return { kind: "ok" as const, address: created };
+    });
+
+    if (result.kind === "limit") {
       return NextResponse.json(
         {
           success: false,
@@ -421,21 +443,7 @@ export async function createAddressResponse(userId: string, request: Request): P
       );
     }
 
-    const makeDefault = isDefault === true || count === 0;
-
-    const address = await prisma.$transaction(async (tx) => {
-      if (makeDefault) {
-        await tx.userAddress.updateMany({
-          where: { userId, isDefault: true },
-          data: { isDefault: false },
-        });
-      }
-      return tx.userAddress.create({
-        data: { userId, recipient, phone, region, detail, isDefault: makeDefault },
-      });
-    });
-
-    return NextResponse.json({ success: true, data: { address: toAddressView(address) } });
+    return NextResponse.json({ success: true, data: { address: toAddressView(result.address) } });
   } catch (error) {
     apiConsole.error("[UserAddress] 新增失败:", error);
     return internalError();
@@ -463,19 +471,21 @@ export async function updateAddressResponse(
 
     const { recipient, phone, region, detail, isDefault } = parsed.data;
 
-    const existing = await prisma.userAddress.findUnique({
-      where: { id },
-      select: { userId: true, isDefault: true },
-    });
-    if (!existing || existing.userId !== userId) {
-      // 越权查询统一 404，不泄露地址存在性
-      return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "收货地址不存在" } },
-        { status: 404 }
-      );
-    }
-
     const address = await prisma.$transaction(async (tx) => {
+      // 锁定用户行：与新增/删除互斥，保证"单一默认地址"不变量
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+
+      // 锁内重新读取当前状态：事务外读取的 isDefault 可能已被并发请求改变，
+      // 基于陈旧值做"顺延默认"会与部分唯一索引冲突（500）
+      const current = await tx.userAddress.findUnique({
+        where: { id },
+        select: { userId: true, isDefault: true },
+      });
+      if (!current || current.userId !== userId) {
+        // 越权/已被并发删除：统一 404，不泄露存在性
+        return null;
+      }
+
       if (isDefault === true) {
         await tx.userAddress.updateMany({
           where: { userId, isDefault: true, id: { not: id } },
@@ -493,7 +503,7 @@ export async function updateAddressResponse(
           isDefault: isDefault === undefined ? undefined : isDefault,
         },
       });
-      if (existing.isDefault && isDefault === false) {
+      if (current.isDefault && isDefault === false) {
         const earliest = await tx.userAddress.findFirst({
           where: { userId, id: { not: id } },
           orderBy: { createdAt: "asc" },
@@ -505,6 +515,13 @@ export async function updateAddressResponse(
       }
       return updated;
     });
+
+    if (!address) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "收货地址不存在" } },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: { address: toAddressView(address) } });
   } catch (error) {
@@ -523,20 +540,21 @@ export async function deleteAddressResponse(userId: string, id: string): Promise
       );
     }
 
-    const existing = await prisma.userAddress.findUnique({
-      where: { id },
-      select: { userId: true, isDefault: true },
-    });
-    if (!existing || existing.userId !== userId) {
-      return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "收货地址不存在" } },
-        { status: 404 }
-      );
-    }
+    const deleted = await prisma.$transaction(async (tx) => {
+      // 锁定用户行：与新增/编辑互斥，保证"单一默认地址"不变量
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
 
-    await prisma.$transaction(async (tx) => {
+      // 锁内重新读取：避免用陈旧 isDefault 做"顺延默认"而撞部分唯一索引
+      const current = await tx.userAddress.findUnique({
+        where: { id },
+        select: { userId: true, isDefault: true },
+      });
+      if (!current || current.userId !== userId) {
+        return false;
+      }
+
       await tx.userAddress.delete({ where: { id } });
-      if (existing.isDefault) {
+      if (current.isDefault) {
         const earliest = await tx.userAddress.findFirst({
           where: { userId },
           orderBy: { createdAt: "asc" },
@@ -546,7 +564,15 @@ export async function deleteAddressResponse(userId: string, id: string): Promise
           await tx.userAddress.update({ where: { id: earliest.id }, data: { isDefault: true } });
         }
       }
+      return true;
     });
+
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "收货地址不存在" } },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: {} });
   } catch (error) {

@@ -95,17 +95,17 @@ describe("GET /api/admin/oauth/stats", () => {
     expect(res.status).toBe(429);
   });
 
-  it("基本口径：活跃计数按 revokedAt:null 过滤，成功率按本月事件计算", async () => {
+  it("基本口径：活跃计数按未撤销未过期过滤，成功率按本月 authorize 计算", async () => {
     prismaMock.oAuthClient.count.mockResolvedValue(3);
     prismaMock.oAuthSession.count.mockResolvedValue(7);
     prismaMock.refreshToken.count.mockResolvedValue(5);
-    // ssoAuditEvent.count 依次：today / week / month / successfulMonth / totalMonth
+    // ssoAuditEvent.count 依次：today / week / month / authorizeMonth / authorizeSuccessMonth
     prismaMock.ssoAuditEvent.count
       .mockResolvedValueOnce(10) // today
       .mockResolvedValueOnce(40) // week
       .mockResolvedValueOnce(100) // month
-      .mockResolvedValueOnce(80) // successful (month)
-      .mockResolvedValueOnce(100); // total (month)
+      .mockResolvedValueOnce(40) // authorize (month)
+      .mockResolvedValueOnce(32); // authorize success (month)
     prismaMock.ssoAuditEvent.groupBy.mockResolvedValue([
       { event: "token", _count: { event: 60 } },
       { event: "authorize", _count: { event: 40 } },

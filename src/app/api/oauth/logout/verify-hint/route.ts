@@ -41,10 +41,11 @@ async function handleVerifyHint(
 
     // 验签 + iss/aud 校验；失败按规范忽略 hint（valid: false）
     // OIDC RP-Initiated Logout：id_token_hint 只是身份提示，规范允许其已过期
-    // （用户可能在 id_token 过期后才发起登出）。过期但签名有效的 hint 仍接受，
-    // 安全性由下方 matchesSession 与当前会话的比对保证。
+    // （用户可能在 id_token 过期后才发起登出）。这里仅保留 15 分钟时钟偏移宽限：
+    // 过期过久的 hint 返回 valid:false，由调用方回落"用户显式确认"流程，
+    // 避免长期留存/泄漏的旧 hint 被用于免确认登出。
     const claims = await verifyIdToken(idTokenHint, clientId, {
-      clockToleranceSeconds: 30 * 24 * 3600,
+      clockToleranceSeconds: 15 * 60,
     });
     if (!claims?.sub) {
       return NextResponse.json({ valid: false });

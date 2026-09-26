@@ -32,13 +32,14 @@ function buildRequest(
   query: Record<string, string> = {},
   cookies: Record<string, string> = {},
   method: string = "GET",
-  body?: string
+  body?: string,
+  extraHeaders: Record<string, string> = {}
 ): NextRequest {
   const qs = new URLSearchParams(query).toString();
   const cookieHeader = Object.entries(cookies)
     .map(([k, v]) => `${k}=${v}`)
     .join("; ");
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...extraHeaders };
   if (cookieHeader) headers.cookie = cookieHeader;
   if (body !== undefined) {
     headers["content-type"] = "application/x-www-form-urlencoded";
@@ -75,6 +76,22 @@ describe("createLogoutRouteHandler", () => {
     const handler = createLogoutRouteHandler(config);
     const res = await handler(buildRequest({ state: "any-state" }));
     expect(res.status).toBe(400);
+  });
+
+  it("跨站 POST 登出被拒绝（Origin 校验）", async () => {
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(
+      buildRequest({}, {}, "POST", "global=1", { origin: "https://evil.com" })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("无 Origin 且 Sec-Fetch-Site: cross-site 的 POST 被拒绝", async () => {
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(
+      buildRequest({}, {}, "POST", "global=1", { "sec-fetch-site": "cross-site" })
+    );
+    expect(res.status).toBe(403);
   });
 
   it("回跳 state 匹配时重定向到首页并清除 logout state cookie", async () => {

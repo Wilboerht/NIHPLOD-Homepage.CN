@@ -123,7 +123,8 @@ export async function recordLoginAttempt(
     });
   } catch (error) {
     const { logError } = await import("./logger");
-    logError("RecordLoginAttempt", error, { identifier, success });
+    // 日志中不落明文手机号，与数据库存储保持一致（HMAC）
+    logError("RecordLoginAttempt", error, { identifier: hashIdentifier(identifier), success });
   }
 }
 
@@ -136,10 +137,19 @@ export async function recordLoginAttempt(
 export async function checkAccountLockout(
   identifier: string,
   config: BruteForceConfig = DEFAULT_BRUTE_FORCE_CONFIG
-): Promise<{ locked: boolean; remainingMinutes: number }> {
+): Promise<{
+  locked: boolean;
+  remainingMinutes: number;
+  /** 锁定窗口内已失败次数（供调用方计算剩余可尝试次数） */
+  failedAttempts: number;
+  /** 允许的最大失败次数 */
+  maxAttempts: number;
+}> {
   try {
-    // 查询时间窗口内的失败尝试
-    const windowStart = new Date(Date.now() - config.windowMinutes * 60 * 1000);
+    // 计数窗口至少覆盖锁定周期：若窗口（15m）短于锁定时长（30m），
+    // 失败记录滑出窗口后计数归零，锁定会被提前解除（30 分钟锁定最多只生效 15 分钟）
+    const effectiveWindowMinutes = Math.max(config.windowMinutes, config.lockoutMinutes);
+    const windowStart = new Date(Date.now() - effectiveWindowMinutes * 60 * 1000);
 
     const failedAttempts = await prisma.loginAttempt.count({
       where: {
@@ -169,16 +179,26 @@ export async function checkAccountLockout(
         if (lockoutUntil > now) {
           const remainingMs = lockoutUntil.getTime() - now.getTime();
           const remainingMinutes = Math.ceil(remainingMs / 60 / 1000);
-          return { locked: true, remainingMinutes };
+          return {
+            locked: true,
+            remainingMinutes,
+            failedAttempts,
+            maxAttempts: config.maxAttempts,
+          };
         }
       }
     }
 
-    return { locked: false, remainingMinutes: 0 };
+    return {
+      locked: false,
+      remainingMinutes: 0,
+      failedAttempts,
+      maxAttempts: config.maxAttempts,
+    };
   } catch (error) {
     apiConsole.error("[CheckAccountLockout] 检查错误:", error);
     // fail-closed：数据库异常时默认锁定 15 分钟，防止攻击者利用故障绕过防爆破
-    return { locked: true, remainingMinutes: 15 };
+    return { locked: true, remainingMinutes: 15, failedAttempts: config.maxAttempts, maxAttempts: config.maxAttempts };
   }
 }
 
@@ -272,6 +292,44 @@ function getDeviceFingerprint(info?: DeviceInfo): string {
   return createHash("sha256").update(`${name}|${ua}`).digest("hex");
 }
 
+/**
+ * 数据库存量行的设备指纹：字段全空时与"请求未提供设备信息"一致（"unknown"），
+ * 避免 `{deviceName: undefined,...}` 被哈希成 `sha256("|")` 造成同设备误判为新设备。
+ */
+function getStoredDeviceFingerprint(t: {
+  deviceName?: string | null;
+  deviceInfo?: string | null;
+  userAgent?: string | null;
+}): string {
+  if (!t.deviceName && !t.deviceInfo && !t.userAgent) return getDeviceFingerprint(undefined);
+  return getDeviceFingerprint({
+    deviceName: t.deviceName || undefined,
+    deviceInfo: t.deviceInfo || undefined,
+    userAgent: t.userAgent || undefined,
+  });
+}
+
+/** 良性并发轮换窗口（收紧至 3 秒）：多 Tab/请求拦截器几乎同时重发才会命中 */
+const BENIGN_CONCURRENT_ROTATION_WINDOW_MS = 3_000;
+
+/**
+ * 判定"良性并发轮换"：必须在时间窗内 **且设备指纹一致**。
+ * 跨设备在窗口内重放（真实窃取竞态）不适用良性窗口，按重用吊销家族。
+ */
+function isBenignConcurrentRotation(
+  revokedAt: Date,
+  existing: {
+    deviceName?: string | null;
+    deviceInfo?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  },
+  requestFingerprint: string
+): boolean {
+  if (Date.now() - revokedAt.getTime() > BENIGN_CONCURRENT_ROTATION_WINDOW_MS) return false;
+  return getStoredDeviceFingerprint(existing) === requestFingerprint;
+}
+
 export async function saveRefreshToken(
   userId: string,
   token: string,
@@ -282,6 +340,8 @@ export async function saveRefreshToken(
   try {
     const tokenHash = hashToken(token);
     const fingerprint = getDeviceFingerprint(deviceInfo);
+    // 被淘汰设备对应的 OAuthSession sid（事务提交后发送 backchannel logout）
+    let evictedSessions: { clientId: string; sessionId: string }[] = [];
 
     await prisma.$transaction(async (tx) => {
       // 1. 查找同一用户、同一 client 下的活跃 Token（按 client 隔离设备复用）
@@ -296,12 +356,7 @@ export async function saveRefreshToken(
       });
 
       const sameDeviceToken = existingTokens.find((t) => {
-        const existingFingerprint = getDeviceFingerprint({
-          deviceName: t.deviceName || undefined,
-          deviceInfo: t.deviceInfo || undefined,
-          ipAddress: t.ipAddress || undefined,
-          userAgent: t.userAgent || undefined,
-        });
+        const existingFingerprint = getStoredDeviceFingerprint(t);
         return existingFingerprint === fingerprint;
       });
 
@@ -331,8 +386,25 @@ export async function saveRefreshToken(
           );
           await tx.refreshToken.updateMany({
             where: { id: { in: tokensToRevoke.map((t) => t.id) } },
-            data: { revokedAt: new Date() },
+            data: { revokedAt: new Date(), revokedReason: "device_limit" },
           });
+
+          // 同步撤销对应 OAuthSession（设备与会话一一对应，按创建时间近似匹配）：
+          // access token 携带 sid，撤销会话后即时失效；sid 收集后由事务外发送 backchannel
+          if (clientId && tokensToRevoke.length > 0) {
+            const cutoff = tokensToRevoke[tokensToRevoke.length - 1].createdAt;
+            const sessions = await tx.oAuthSession.findMany({
+              where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+              select: { sessionId: true },
+            });
+            if (sessions.length > 0) {
+              await tx.oAuthSession.updateMany({
+                where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+                data: { revokedAt: new Date() },
+              });
+              evictedSessions = sessions.map((s) => ({ clientId, sessionId: s.sessionId }));
+            }
+          }
         }
 
         // 创建新 Token
@@ -350,6 +422,20 @@ export async function saveRefreshToken(
         });
       }
     });
+
+    // 设备淘汰后的 backchannel 通知（best-effort）：携带被撤销会话 sid，
+    // 使子站在 access token 自然过期前即时登出被挤出设备
+    if (evictedSessions.length > 0) {
+      const evictedClientId = evictedSessions[0].clientId;
+      void import("./backchannel-logout")
+        .then(({ sendBackchannelLogout }) =>
+          sendBackchannelLogout(userId, [evictedClientId], {
+            sids: { [evictedClientId]: evictedSessions[0].sessionId },
+            includeInactive: true,
+          })
+        )
+        .catch((err) => apiConsole.warn("[SaveRefreshToken] backchannel 通知失败:", err));
+    }
   } catch (error) {
     apiConsole.error("[SaveRefreshToken] 保存失败:", error);
     throw error;
@@ -361,10 +447,43 @@ export type RefreshTokenValidationResult =
   | {
       valid: false;
       reason:
-        "missing" | "revoked" | "expired" | "account_disabled" | "concurrent_rotation" | "error";
+        | "missing"
+        | "revoked"
+        | "account_disabled"
+        | "concurrent_rotation"
+        | "device_limit"
+        | "session_revoked"
+        | "error";
       /** concurrent_rotation / revoked / missing 时存在：本次吊销的 token 家族成员数（RFC 6819 §5.2.2.3） */
       familyRevokedCount?: number;
     };
+
+/**
+ * Refresh Token 撤销原因：
+ * - 非泄漏类（用户登出/改密/换绑、强制下线、管理端或用户主动撤销、设备超限淘汰）：
+ *   记录原因后，重放该 token 仅拒绝本次请求，不按"token 泄漏"吊销整个家族，
+ *   避免把仍在正常使用的操作端一起踢下线。
+ * - reuse：真正判定为重用泄漏时的家族吊销原因，重放仍按泄漏处理（幂等）。
+ * - 不写原因（null）：轮换产生的旧 token，重放视为明确的泄漏信号。
+ */
+export type RefreshTokenRevokedReason =
+  | "logout"
+  | "credential_change"
+  | "force_logout"
+  | "admin_revoke"
+  | "user_revoke"
+  | "device_limit"
+  | "reuse";
+
+/** 非泄漏类原因集合：重放时不吊销 token 家族 */
+const NON_LEAK_REVOKED_REASONS: ReadonlySet<string> = new Set([
+  "logout",
+  "credential_change",
+  "force_logout",
+  "admin_revoke",
+  "user_revoke",
+  "device_limit",
+]);
 
 /**
  * 原子化验证并轮换 Refresh Token
@@ -385,6 +504,8 @@ export async function atomicallyRotateRefreshToken(
     const oldTokenHash = hashToken(oldToken);
     const newTokenHash = hashToken(newToken);
     const fingerprint = getDeviceFingerprint(deviceInfo);
+    // 被淘汰设备对应的 OAuthSession sid（事务提交后发送 backchannel logout）
+    let evictedSessions: { clientId: string; sessionId: string }[] = [];
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. 查找旧 Token（必须是未撤销、未过期的）
@@ -405,7 +526,7 @@ export async function atomicallyRotateRefreshToken(
             clientId: clientId ?? null,
             revokedAt: null,
           },
-          data: { revokedAt: new Date() },
+          data: { revokedAt: new Date(), revokedReason: "reuse" },
         });
         // 同步撤销对应 OAuthSession，确保携带 sid 的 access token 即时失效
         // （仅 OAuth 场景有会话；内部 token 无 clientId，跳过）
@@ -427,10 +548,30 @@ export async function atomicallyRotateRefreshToken(
       }
 
       if (existing.revokedAt) {
-        // 良性并发窗口：刚被轮换（≤10 秒）视为多 Tab / 拦截器并发重发，
-        // 仅拒绝本次请求、不吊销家族，避免误伤同一用户的所有设备；
-        // 超出窗口才视为顺序重用已撤销的 Refresh Token（泄漏信号）
-        if (Date.now() - existing.revokedAt.getTime() <= 10_000) {
+        // 设备数超限被自动淘汰：明确告知原因（非泄漏信号，不吊销家族、不按重用处理）
+        if (existing.revokedReason === "device_limit") {
+          return {
+            valid: false as const,
+            reason: "device_limit" as const,
+            familyRevokedCount: 0,
+          };
+        }
+        // 其他非泄漏类撤销（登出/改密/换绑/强制下线/管理端或用户主动撤销）：
+        // 重放多为原设备 Cookie 未清理干净的正常行为，仅拒绝本次请求；
+        // 若按泄漏处理会反向吊销操作端/当前设备（家族全量撤销）
+        if (
+          existing.revokedReason &&
+          NON_LEAK_REVOKED_REASONS.has(existing.revokedReason)
+        ) {
+          return {
+            valid: false as const,
+            reason: "session_revoked" as const,
+            familyRevokedCount: 0,
+          };
+        }
+        // 良性并发窗口：刚被轮换（≤3 秒）且设备指纹一致，视为多 Tab / 拦截器并发重发，
+        // 仅拒绝本次请求、不吊销家族；跨设备或超窗一律视为顺序重用（泄漏信号）
+        if (isBenignConcurrentRotation(existing.revokedAt, existing, fingerprint)) {
           return {
             valid: false as const,
             reason: "concurrent_rotation" as const,
@@ -445,7 +586,7 @@ export async function atomicallyRotateRefreshToken(
             clientId: clientId ?? null,
             revokedAt: null,
           },
-          data: { revokedAt: new Date() },
+          data: { revokedAt: new Date(), revokedReason: "reuse" },
         });
         // 同步撤销对应 OAuthSession，确保携带 sid 的 access token 即时失效
         // （仅 OAuth 场景有会话；内部 token 无 clientId，跳过）
@@ -487,13 +628,13 @@ export async function atomicallyRotateRefreshToken(
 
       if (revokeResult.count === 0) {
         // 并发竞态：另一个请求已先撤销此 Token。重读 revokedAt 区分良性并发与重用攻击：
-        // ≤10 秒内刚被轮换 → 良性并发（多 Tab / 拦截器重发），仅拒绝本次请求不吊销家族；
-        // 超出窗口才按 RFC 6819 §5.2.2.3 吊销整个 token 家族
+        // ≤3 秒内刚被轮换且设备指纹一致 → 良性并发（多 Tab / 拦截器重发），仅拒绝本次请求；
+        // 否则按 RFC 6819 §5.2.2.3 吊销整个 token 家族
         const reread = await tx.refreshToken.findUnique({
           where: { id: existing.id },
           select: { revokedAt: true },
         });
-        if (reread?.revokedAt && Date.now() - reread.revokedAt.getTime() <= 10_000) {
+        if (reread?.revokedAt && isBenignConcurrentRotation(reread.revokedAt, existing, fingerprint)) {
           return {
             valid: false as const,
             reason: "concurrent_rotation" as const,
@@ -506,7 +647,7 @@ export async function atomicallyRotateRefreshToken(
             clientId: clientId ?? null,
             revokedAt: null,
           },
-          data: { revokedAt: new Date() },
+          data: { revokedAt: new Date(), revokedReason: "reuse" },
         });
         return {
           valid: false as const,
@@ -527,12 +668,7 @@ export async function atomicallyRotateRefreshToken(
       });
 
       const sameDeviceToken = existingTokens.find((t) => {
-        const existingFingerprint = getDeviceFingerprint({
-          deviceName: t.deviceName || undefined,
-          deviceInfo: t.deviceInfo || undefined,
-          ipAddress: t.ipAddress || undefined,
-          userAgent: t.userAgent || undefined,
-        });
+        const existingFingerprint = getStoredDeviceFingerprint(t);
         return existingFingerprint === fingerprint;
       });
 
@@ -560,8 +696,24 @@ export async function atomicallyRotateRefreshToken(
           );
           await tx.refreshToken.updateMany({
             where: { id: { in: tokensToRevoke.map((t) => t.id) } },
-            data: { revokedAt: new Date() },
+            data: { revokedAt: new Date(), revokedReason: "device_limit" },
           });
+
+          // 同步撤销对应 OAuthSession（按创建时间近似匹配），携带 sid 的 access token 即时失效
+          if (clientId && tokensToRevoke.length > 0) {
+            const cutoff = tokensToRevoke[tokensToRevoke.length - 1].createdAt;
+            const sessions = await tx.oAuthSession.findMany({
+              where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+              select: { sessionId: true },
+            });
+            if (sessions.length > 0) {
+              await tx.oAuthSession.updateMany({
+                where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+                data: { revokedAt: new Date() },
+              });
+              evictedSessions = sessions.map((s) => ({ clientId, sessionId: s.sessionId }));
+            }
+          }
         }
 
         await tx.refreshToken.create({
@@ -604,6 +756,20 @@ export async function atomicallyRotateRefreshToken(
       });
     }
 
+    // 设备淘汰后的 backchannel 通知（best-effort）：携带被撤销会话 sid，
+    // 使子站在 access token 自然过期前即时登出被挤出设备
+    if (evictedSessions.length > 0) {
+      const evictedClientId = evictedSessions[0].clientId;
+      void import("./backchannel-logout")
+        .then(({ sendBackchannelLogout }) =>
+          sendBackchannelLogout(userId, [evictedClientId], {
+            sids: { [evictedClientId]: evictedSessions[0].sessionId },
+            includeInactive: true,
+          })
+        )
+        .catch((err) => apiConsole.warn("[AtomicallyRotateRefreshToken] backchannel 通知失败:", err));
+    }
+
     return result;
   } catch (error) {
     apiConsole.error("[AtomicallyRotateRefreshToken] 失败:", error);
@@ -614,13 +780,26 @@ export async function atomicallyRotateRefreshToken(
 /**
  * 撤销 Refresh Token（登出时调用）
  * 返回实际被撤销的记录数，便于调用方检测并发重用。
+ *
+ * @param clientId - 传入字符串：仅撤销该 client；显式传入 null：仅撤销内部（非 OAuth）token；
+ *   不传（undefined）：撤销该用户全部 token（含所有 client）。
+ * @param reason - 撤销原因；传入非泄漏类原因后，该 token 被重放时不会按泄漏吊销家族。
+ *   省略时保持 null（= 轮换旧 token，重放按泄漏处理）。
  */
 export async function revokeRefreshToken(
   userId: string,
   token?: string,
-  clientId?: string
+  clientId?: string | null,
+  reason?: RefreshTokenRevokedReason
 ): Promise<number> {
   try {
+    // 显式 null → 仅内部 token；undefined → 全部；字符串 → 指定 client
+    const clientFilter =
+      clientId === undefined ? {} : { clientId };
+    const data = {
+      revokedAt: new Date(),
+      ...(reason ? { revokedReason: reason } : {}),
+    };
     if (token) {
       // 撤销特定 token（比对哈希值），仅撤销尚未撤销的，便于检测并发重用
       const tokenHash = hashToken(token);
@@ -629,24 +808,20 @@ export async function revokeRefreshToken(
           userId,
           token: tokenHash,
           revokedAt: null,
-          ...(clientId ? { clientId } : {}),
+          ...clientFilter,
         },
-        data: {
-          revokedAt: new Date(),
-        },
+        data,
       });
       return result.count;
     } else {
-      // 撤销用户所有有效 token（可指定 clientId 精确撤销）
+      // 撤销用户有效 token（可按 client 精确撤销）
       const result = await prisma.refreshToken.updateMany({
         where: {
           userId,
           revokedAt: null,
-          ...(clientId ? { clientId } : {}),
+          ...clientFilter,
         },
-        data: {
-          revokedAt: new Date(),
-        },
+        data,
       });
       return result.count;
     }
@@ -670,7 +845,7 @@ export async function cleanupExpiredRefreshTokens(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupExpiredRefreshTokens] 清理失败:", error);
-    return 0;
+    throw error;
   }
 }
 
@@ -691,7 +866,7 @@ export async function cleanupOldLoginAttempts(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupLoginAttempts] 清理失败:", error);
-    return 0;
+    throw error;
   }
 }
 
@@ -712,7 +887,7 @@ export async function cleanupExpiredSmsCodes(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupSmsCodes] 清理失败:", error);
-    return 0;
+    throw error;
   }
 }
 
@@ -742,7 +917,7 @@ export async function cleanupRevokedSessionsAndTokens(): Promise<{
     return { sessions: sessions.count, tokens: tokens.count };
   } catch (error) {
     apiConsole.error("[CleanupRevoked] 清理失败:", error);
-    return { sessions: 0, tokens: 0 };
+    throw error;
   }
 }
 
@@ -759,6 +934,6 @@ export async function cleanupRevokedUserConsents(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupUserConsents] 清理失败:", error);
-    return 0;
+    throw error;
   }
 }

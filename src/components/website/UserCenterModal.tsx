@@ -8,7 +8,7 @@
  * - 底部抽屉形态：顶部留缝 = max(4rem, safe-area-top + 0.75rem)（≥64px，避开状态栏/灵动岛，
  *   同时透出遮罩提示可点击关闭），两角圆角（rounded-t-[28px]），弹簧动画淡入上浮进场；
  * - 顶部 Header 跟随抽屉顶部；
- * - 侧边栏改为底部 Tab 栏（4 个一级入口），两级导航收敛为单级；
+ * - 侧边栏改为底部 Tab 栏（5 个一级入口），两级导航收敛为单级；
  * - 底部保持贴边（Tab 栏 + safe-area-bottom）；
  * - 键盘弹起时 dvh 自动收缩、内容保持可滚动。
  * 桌面端（≥768px）保持原居中卡片（侧边栏 + 内容 + 独立关闭按钮）。
@@ -19,19 +19,21 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useReducedMotion, useDragControls } from "framer-motion";
 import Image from "next/image";
-import { X, User, LogOut, Crown, Gift, Shield } from "lucide-react";
+import { X, User, LogOut, Crown, Gift, Shield, NotebookPen } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
+import { DiaryPanel } from "./user-center/diary/DiaryPanel";
 import { VipPanel } from "./user-center/VipPanel";
 import { PointsMallPanel } from "./user-center/panels/PointsMallPanel";
 import { SecurityCenterPanel } from "./user-center/panels/SecurityCenterPanel";
 
-// 菜单项配置：四个一级入口。设备管理/授权管理/登录历史已合并进安全中心
+// 菜单项配置：五个一级入口。设备管理/授权管理/登录历史已合并进安全中心
 // （对应 /account 旧链接经 openUserCenter 归一化为 security + 分段）。
 const MENU_ITEMS: { id: UserCenterView; label: string; icon: typeof User }[] = [
   { id: "profile", label: "个人信息", icon: User },
+  { id: "diary", label: "护肤档案", icon: NotebookPen },
   { id: "vip", label: "会员中心", icon: Crown },
   { id: "mall", label: "积分商城", icon: Gift },
   { id: "security", label: "安全中心", icon: Shield },
@@ -248,9 +250,9 @@ export function UserCenterModal() {
               <div className="relative z-30 flex h-full w-full flex-col items-stretch md:flex-row">
                 {/* 桌面侧边栏（移动端由底部 Tab 栏替代） */}
                 {!isMobile && (
-                  <div className="flex w-full shrink-0 flex-col border-r border-stone-200/60 md:w-72">
+                  <div className="flex w-full shrink-0 flex-col border-r border-stone-200/60 md:w-64">
                     {/* 用户头像区域 */}
-                    <div className="px-16 pb-4 pt-12">
+                    <div className="px-12 pb-4 pt-12">
                       <div className="flex flex-col items-start gap-4 text-left">
                         <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF8F0]/40 object-cover">
                           {user.avatar ? (
@@ -283,7 +285,7 @@ export function UserCenterModal() {
                     </div>
 
                     {/* 菜单列表 */}
-                    <nav className="scrollbar-hide relative flex w-full flex-1 flex-col items-start justify-start space-y-1 overflow-y-auto px-16 py-2">
+                    <nav className="scrollbar-hide relative flex w-full flex-1 flex-col items-start justify-start space-y-1 overflow-y-auto px-12 py-2">
                       {MENU_ITEMS.map((item) => {
                         const Icon = item.icon;
                         const isActive = userCenterView === item.id;
@@ -328,7 +330,7 @@ export function UserCenterModal() {
                       })}
                     </nav>
 
-                    <div className="mt-auto px-12 py-8">
+                    <div className="mt-auto px-10 py-8">
                       <button
                         onClick={handleLogout}
                         className="group -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"
@@ -388,7 +390,7 @@ export function UserCenterModal() {
                       className="shrink-0 border-t border-stone-200/40 bg-[#FBF8F0]/95 backdrop-blur-md md:hidden"
                       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
                     >
-                      <div className="grid h-16 grid-cols-4">
+                      <div className="grid h-16 grid-cols-5">
                         {MENU_ITEMS.map(({ id, label, icon: Icon }) => {
                           const isActive = userCenterView === id;
                           return (
@@ -443,10 +445,12 @@ export function UserCenterModal() {
   );
 }
 
-// 内容面板路由：四个一级菜单（安全中心内部再分设备/授权/登录历史三段）
+// 内容面板路由：五个一级菜单（安全中心内部再分设备/授权/登录历史三段）
 // 旧的安全类 tab 已由 openUserCenter 归一化，此处兜底同指安全中心。
 function ContentPanel({ view }: { view: UserCenterView }) {
   switch (view) {
+    case "diary":
+      return <DiaryPanel />;
     case "vip":
       return <VipPanel />;
     case "mall":

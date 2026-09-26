@@ -22,9 +22,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
-    if (rateLimitResponse) return rateLimitResponse;
-
+    // 先鉴权后限流：未认证请求不消耗已登录管理员共用的限流桶
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -32,6 +30,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
     if (!hasAdminPermission(admin, "sso:read")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 查看" } },
@@ -151,10 +152,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const revokeSchema = z.object({
-  userId: z.string().min(1),
-  clientId: z.string().min(1),
-});
+const revokeSchema = z
+  .object({
+    userId: z.string().min(1),
+    /** 单客户端撤销 */
+    clientId: z.string().min(1).optional(),
+    /** 批量撤销该用户在多个客户端的授权（最多 100 个） */
+    clientIds: z.array(z.string().min(1)).min(1).max(100).optional(),
+  })
+  .refine((data) => Boolean(data.clientId || data.clientIds?.length), {
+    message: "缺少 clientId",
+  });
 
 export async function POST(request: NextRequest) {
   if (!validateCSRFToken(request)) {
@@ -162,9 +170,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-consents");
-    if (rateLimitResponse) return rateLimitResponse;
-
+    // 先鉴权后限流：未认证请求不消耗已登录管理员共用的限流桶
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -172,6 +178,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-consents");
+    if (rateLimitResponse) return rateLimitResponse;
     if (!hasAdminPermission(admin, "sso:write")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 授权撤销" } },
@@ -188,79 +197,90 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, clientId } = parsed.data;
+    const { userId } = parsed.data;
+    const clientIds = parsed.data.clientIds ?? (parsed.data.clientId ? [parsed.data.clientId] : []);
     const ip = getClientIP(request);
 
-    // 撤销前先查出最新活跃会话的 sid，供 backchannel logout_token 携带
-    const activeSessions = await prisma.oAuthSession.findMany({
-      where: { userId, clientId, revokedAt: null, expiresAt: { gt: new Date() } },
-      select: { sessionId: true },
-      orderBy: { createdAt: "desc" },
-    });
+    let revokedCount = 0;
+    let revokedClients = 0;
 
-    // 撤销所有活跃 session；同步撤销已有 UserConsent，确保授权状态一致性
-    // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
-    // 两者任一存在即可执行撤销，都不存在才判定为无活跃授权
-    const [sessionResult, consentResult] = await Promise.all([
-      prisma.oAuthSession.updateMany({
-        where: { userId, clientId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
-      prisma.userConsent.updateMany({
-        where: { userId, clientId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
-    ]);
+    for (const clientId of clientIds) {
+      // 撤销前先查出最新活跃会话的 sid，供 backchannel logout_token 携带
+      const activeSessions = await prisma.oAuthSession.findMany({
+        where: { userId, clientId, revokedAt: null, expiresAt: { gt: new Date() } },
+        select: { sessionId: true },
+        orderBy: { createdAt: "desc" },
+      });
 
-    if (sessionResult.count === 0 && consentResult.count === 0) {
+      // 撤销所有活跃 session；同步撤销已有 UserConsent，确保授权状态一致性
+      // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
+      // 两者任一存在即可执行撤销，都不存在则跳过该 client
+      const [sessionResult, consentResult] = await Promise.all([
+        prisma.oAuthSession.updateMany({
+          where: { userId, clientId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        }),
+        prisma.userConsent.updateMany({
+          where: { userId, clientId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        }),
+      ]);
+
+      if (sessionResult.count === 0 && consentResult.count === 0) continue;
+
+      // 同步撤销该用户在该 client 下的所有 Refresh Token
+      await revokeRefreshToken(userId, undefined, clientId, "admin_revoke");
+
+      // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
+      // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
+
+      // 记录 SSO 审计事件（合规敏感，同步等待写入）
+      await recordSsoEvent({
+        event: "consent",
+        userId,
+        clientId,
+        ip,
+        success: true,
+        detail: {
+          action: "admin_revoke",
+          sessionCount: sessionResult.count,
+          consentCount: consentResult.count,
+        },
+      });
+
+      // 触发 Backchannel Logout（sid 取撤销前查出的最新活跃会话）
+      await sendBackchannelLogout(userId, [clientId], {
+        sids: activeSessions.length > 0 ? { [clientId]: activeSessions[0].sessionId } : {},
+      });
+
+      await createAuditLog({
+        action: "oauth_consent_revoke",
+        targetType: "oauth_consent",
+        targetId: `${userId}:${clientId}`,
+        detail: {
+          userId,
+          clientId,
+          sessionCount: sessionResult.count,
+          consentCount: consentResult.count,
+        },
+        adminId: admin.id,
+        request,
+      });
+
+      revokedCount += sessionResult.count + consentResult.count;
+      revokedClients += 1;
+    }
+
+    if (revokedClients === 0) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "未找到活跃授权" } },
         { status: 404 }
       );
     }
 
-    // 同步撤销该用户在该 client 下的所有 Refresh Token
-    await revokeRefreshToken(userId, undefined, clientId);
-
-    // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
-    // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
-
-    // 记录 SSO 审计事件（合规敏感，同步等待写入）
-    await recordSsoEvent({
-      event: "consent",
-      userId,
-      clientId,
-      ip,
-      success: true,
-      detail: {
-        action: "admin_revoke",
-        sessionCount: sessionResult.count,
-        consentCount: consentResult.count,
-      },
-    });
-
-    // 触发 Backchannel Logout（sid 取撤销前查出的最新活跃会话）
-    await sendBackchannelLogout(userId, [clientId], {
-      sids: activeSessions.length > 0 ? { [clientId]: activeSessions[0].sessionId } : {},
-    });
-
-    await createAuditLog({
-      action: "oauth_consent_revoke",
-      targetType: "oauth_consent",
-      targetId: `${userId}:${clientId}`,
-      detail: {
-        userId,
-        clientId,
-        sessionCount: sessionResult.count,
-        consentCount: consentResult.count,
-      },
-      adminId: admin.id,
-      request,
-    });
-
     return NextResponse.json({
       success: true,
-      data: { revokedCount: sessionResult.count + consentResult.count },
+      data: { revokedCount, revokedClients },
     });
   } catch (error) {
     apiConsole.error("[AdminOAuthConsents POST] 异常:", error);

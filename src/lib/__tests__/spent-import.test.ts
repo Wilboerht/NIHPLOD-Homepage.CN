@@ -29,6 +29,8 @@ import {
   previewImportRows,
   executeImportBatch,
   undoImportBatch,
+  signImportPhoneToken,
+  verifyImportPhoneToken,
 } from "@/lib/spent-import";
 
 const mockUserFindMany = prisma.user.findMany as ReturnType<typeof vi.fn>;
@@ -463,5 +465,28 @@ describe("undoImportBatch", () => {
 
     expect(result).toMatchObject({ ok: false, code: "INTERNAL_ERROR" });
     expect(mockBatchUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("导入行手机号令牌（PII 最小化）", () => {
+  it("签名令牌可还原手机号", () => {
+    const token = signImportPhoneToken("file-hash-1", 7, "13800138000");
+    expect(token).not.toContain("13800138000");
+    expect(verifyImportPhoneToken(token)).toBe("13800138000");
+  });
+
+  it("篡改令牌返回 null", () => {
+    const token = signImportPhoneToken("file-hash-1", 7, "13800138000");
+    const [payload, sig] = token.split(".");
+    const tamperedPayload = Buffer.from("file-hash-1:7:13900000000", "utf8").toString("base64url");
+    expect(verifyImportPhoneToken(`${tamperedPayload}.${sig}`)).toBeNull();
+    expect(verifyImportPhoneToken(`${payload}.${"A".repeat(sig.length)}`)).toBeNull();
+  });
+
+  it("非法格式令牌返回 null", () => {
+    expect(verifyImportPhoneToken("")).toBeNull();
+    expect(verifyImportPhoneToken("no-dot")).toBeNull();
+    expect(verifyImportPhoneToken("a.")).toBeNull();
+    expect(verifyImportPhoneToken(".b")).toBeNull();
   });
 });

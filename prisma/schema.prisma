@@ -300,6 +300,7 @@ model RefreshToken {
   token     String   @db.Text                      // refresh token 的 SHA-256 哈希（不可逆，不落明文）
   expiresAt DateTime                               // 过期时间
   revokedAt DateTime?                              // 撤销时间（已登出）
+  revokedReason String?                            // 撤销原因（device_limit=设备数超限自动淘汰）
 
   // 设备/会话信息
   deviceName  String?  // 设备名称/浏览器摘要
@@ -404,6 +405,7 @@ model OAuthAuthorizationCode {
   codeChallenge       String?               // PKCE code_challenge
   codeChallengeMethod String?               // PKCE method（S256）
   nonce               String?               // OIDC nonce（防重放）
+  authTime            Int?                  // 用户认证时间（Unix 秒），供 ID Token 的 auth_time claim（max_age 校验）
   expiresAt           DateTime              // 过期时间（5 分钟）
   used                Boolean   @default(false)
   createdAt           DateTime  @default(now())
@@ -886,6 +888,7 @@ model Admin {
 enum TokenBlacklistType {
   access_token
   user
+  /// @deprecated 无写入方（历史预留）；删除枚举值需重建 PG 类型，保留不用即可
   logout_jti
   wechat_exchange_token
   internal_api_nonce

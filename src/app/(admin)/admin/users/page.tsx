@@ -38,6 +38,10 @@ import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import { apiConsole } from "@/lib/logger";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 
@@ -232,7 +236,7 @@ function getIdentityNickname(metadata: unknown): string | null {
   return null;
 }
 
-export default function AdminUsersPage() {
+function AdminUsersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -249,8 +253,12 @@ export default function AdminUsersPage() {
   const status = searchParams.get("status") || "";
   const [searchInput, setSearchInput] = useState(search);
 
-  // 批量操作状态
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 批量操作状态（翻页/筛选/搜索变化时自动清空勾选）
+  const userSelection = useRowSelection<UserItem>(
+    (u) => u.id,
+    `${page}|${pageSize}|${search}|${status}`
+  );
+  const { selectedIds, selectedCount } = userSelection;
   const [batchTarget, setBatchTarget] = useState<{ status: UserStatus } | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
 
@@ -309,7 +317,9 @@ export default function AdminUsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const takeLatestUsers = useLatestRequest();
   const fetchUsers = useCallback(async () => {
+    const isLatest = takeLatestUsers();
     setLoading(true);
     try {
       const data = await apiGet<{ users: UserItem[]; pagination: typeof pagination }>(
@@ -321,16 +331,23 @@ export default function AdminUsersPage() {
           status: status || undefined,
         }
       );
+      // 丢弃过期响应：快速切换分页/筛选时只接受最新一次请求
+      if (!isLatest()) return;
       setLoadError("");
       setUsers(data.users);
       setPagination(data.pagination);
-    } catch {
-      console.error("获取用户失败");
-      setLoadError("列表加载失败，请重试");
+    } catch (err) {
+      if (!isLatest()) return;
+      // 会话过期统一回登录页，而不是停留在“列表加载失败”
+      if (err instanceof ApiError && err.status === 401) {
+        router.push("/admin-login");
+        return;
+      }
+      setLoadError(err instanceof Error ? err.message : "列表加载失败，请重试");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, search, status]);
+  }, [page, pageSize, search, status, router, takeLatestUsers]);
 
   useEffect(() => {
     deferInEffect(fetchUsers);
@@ -359,11 +376,13 @@ export default function AdminUsersPage() {
     }
   }, [toast]);
 
+  // 仅按用户 id 重置流水：详情对象因状态变更刷新时不重置当前翻页
+  const detailUserId = detailUser?.id;
   useEffect(() => {
-    if (activeDetailTab === "points" && detailUser) {
-      deferInEffect(() => fetchLedger(detailUser.id, 1));
+    if (activeDetailTab === "points" && detailUserId) {
+      deferInEffect(() => fetchLedger(detailUserId, 1));
     }
-  }, [activeDetailTab, detailUser, fetchLedger]);
+  }, [activeDetailTab, detailUserId, fetchLedger]);
 
   const handleAdjustPoints = async () => {
     if (!detailUser) return;
@@ -510,17 +529,16 @@ export default function AdminUsersPage() {
       await apiDelete(`/api/admin/users/${id}`);
       toast.success("用户已删除");
       setDeleteTarget(null);
-      setSelectedIds((prev) => {
-        if (!prev.has(id)) return prev;
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
       if (detailUser?.id === id) {
         setDetailOpen(false);
         setDetailUser(null);
       }
-      await fetchUsers();
+      // 删除的是本页最后一条时回退一页，避免停留在空页
+      if (users.length === 1 && page > 1) {
+        updateParams({ page: String(page - 1) });
+      } else {
+        await fetchUsers();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "删除用户失败");
     } finally {
@@ -559,23 +577,11 @@ export default function AdminUsersPage() {
   };
 
   const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(users.map((u) => u.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
+    userSelection.toggleAll(users, checked);
   };
 
-  const isAllSelected = users.length > 0 && selectedIds.size === users.length;
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const isAllSelected = userSelection.isAllSelected(users);
+  const isSelectionIndeterminate = userSelection.isIndeterminate(users);
 
   const confirmBatchChange = async () => {
     if (!batchTarget || selectedIds.size === 0) return;
@@ -587,10 +593,10 @@ export default function AdminUsersPage() {
         status: targetStatus,
       });
       toast.success(
-        `已将选中的 ${selectedIds.size} 个用户设置为「${userStatusMap[targetStatus].label}」`
+        `已将选中的 ${selectedCount} 个用户设置为「${userStatusMap[targetStatus].label}」`
       );
       setBatchTarget(null);
-      setSelectedIds(new Set());
+      userSelection.clear();
       await fetchUsers();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "批量操作失败");
@@ -641,7 +647,7 @@ export default function AdminUsersPage() {
     } catch (err) {
       // 区分真实原因：404 才是「用户不存在」，其他错误（400/500/网络）原样展示便于排查
       setDetailError(err instanceof ApiError ? err.message : "加载失败，请稍后重试");
-      console.error("获取用户详情失败:", err);
+      apiConsole.error("获取用户详情失败:", err);
     } finally {
       setDetailLoading(false);
     }
@@ -718,7 +724,7 @@ export default function AdminUsersPage() {
           />
           {canWriteUsers && selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
+              <span className="text-sm text-brand-charcoal/50">已选 {selectedCount} 项</span>
               <Button
                 size="sm"
                 variant="outline"
@@ -772,6 +778,9 @@ export default function AdminUsersPage() {
                   <input
                     type="checkbox"
                     checked={isAllSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isSelectionIndeterminate;
+                    }}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="h-4 w-4 rounded border-brand-charcoal/20"
                     aria-label="全选"
@@ -819,7 +828,7 @@ export default function AdminUsersPage() {
                       <input
                         type="checkbox"
                         checked={selectedIds.has(user.id)}
-                        onChange={() => toggleSelect(user.id)}
+                        onChange={() => userSelection.toggle(user)}
                         className="h-4 w-4 rounded border-brand-charcoal/20"
                         aria-label={`选择 ${user.nickname || user.phone || user.id}`}
                       />
@@ -1624,6 +1633,9 @@ export default function AdminUsersPage() {
             label="生日"
             type="date"
             value={birthdayInput}
+            min="1900-01-01"
+            // 生日不能晚于今天，避免未来日期影响生日积分发放
+            max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setBirthdayInput(e.target.value)}
           />
           <div className="flex items-center justify-between">
@@ -1734,7 +1746,7 @@ export default function AdminUsersPage() {
         title="批量修改用户状态"
         description={
           batchTarget
-            ? `确定要将选中的 ${selectedIds.size} 个用户状态设置为「${userStatusMap[batchTarget.status].label}」吗？${userStatusMap[batchTarget.status].description}`
+            ? `确定要将选中的 ${selectedCount} 个用户状态设置为「${userStatusMap[batchTarget.status].label}」吗？${userStatusMap[batchTarget.status].description}`
             : ""
         }
         confirmText={`确认${batchTarget ? userStatusMap[batchTarget.status].label : ""}`}
@@ -1760,5 +1772,13 @@ export default function AdminUsersPage() {
       {/* 资金类操作二次验证 */}
       {totpModal}
     </div>
+  );
+}
+
+export default function AdminUsersPage() {
+  return (
+    <RequirePermission permission="users:read">
+      <AdminUsersContent />
+    </RequirePermission>
   );
 }

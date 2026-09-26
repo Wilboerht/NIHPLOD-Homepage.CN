@@ -21,6 +21,8 @@ interface Device {
   createdAt: string;
   lastActiveAt: string;
   expiresAt?: string;
+  /** 是否为当前设备（服务端按 refresh token 哈希比对） */
+  isCurrent?: boolean;
 }
 
 interface DevicesPanelProps {
@@ -100,18 +102,29 @@ export function DevicesPanel({ embedded }: DevicesPanelProps) {
                 <div className="flex min-w-0 items-center gap-3">
                   <MonitorSmartphone className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-stone-800">{d.deviceName}</p>
+                    <p className="truncate text-sm font-medium text-stone-800">
+                      {d.deviceName}
+                      {d.isCurrent && (
+                        <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 align-middle text-[10px] font-normal text-emerald-600">
+                          当前设备
+                        </span>
+                      )}
+                    </p>
                     <p className="mt-0.5 truncate text-xs text-stone-400">
                       IP: {d.ipAddress} · 登录时间：{new Date(d.createdAt).toLocaleString()}
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleForceLogout(d.id)}
-                  className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50"
-                >
-                  强制下线
-                </button>
+                {d.isCurrent ? (
+                  <span className="shrink-0 text-xs text-stone-300">本机</span>
+                ) : (
+                  <button
+                    onClick={() => handleForceLogout(d.id)}
+                    className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50"
+                  >
+                    强制下线
+                  </button>
+                )}
               </div>
             ))}
           </div>

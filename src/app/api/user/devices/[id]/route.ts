@@ -91,7 +91,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     await prisma.$transaction(async (tx) => {
       await tx.refreshToken.update({
         where: { id: target.id },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: new Date(), revokedReason: "force_logout" },
       });
       if (target.clientId) {
         await tx.oAuthSession.updateMany({

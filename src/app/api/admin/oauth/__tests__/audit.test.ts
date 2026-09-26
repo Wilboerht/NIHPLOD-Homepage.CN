@@ -149,7 +149,7 @@ describe("GET /api/admin/oauth/audit", () => {
     expect((await badRes.json()).error.code).toBe("INVALID_PARAMS");
   });
 
-  it("endDate 为 YYYY-MM-DD 时按次日零点（不含）过滤，包含当天事件", async () => {
+  it("日期筛选按 UTC+8 日界归一：YYYY-MM-DD 结束日期为次日零点（不含）", async () => {
     prismaMock.ssoAuditEvent.findMany.mockResolvedValue([]);
     prismaMock.ssoAuditEvent.count.mockResolvedValue(0);
 
@@ -162,8 +162,10 @@ describe("GET /api/admin/oauth/audit", () => {
     const where = (prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as {
       where: { createdAt: { gte: Date; lt: Date } };
     }).where;
-    expect(where.createdAt.gte).toEqual(new Date("2026-08-01T00:00:00.000Z"));
-    expect(where.createdAt.lt).toEqual(new Date("2026-08-11T00:00:00.000Z"));
+    // UTC+8 当天 00:00 = 前一日 UTC 16:00
+    expect(where.createdAt.gte).toEqual(new Date("2026-07-31T16:00:00.000Z"));
+    // UTC+8 08-10 当日结束 = 08-10 UTC 16:00（= 08-11 00:00 UTC+8）
+    expect(where.createdAt.lt).toEqual(new Date("2026-08-10T16:00:00.000Z"));
   });
 
   it("JSON 分页查询：联表 User 返回脱敏手机号，无关联用户时为 null", async () => {

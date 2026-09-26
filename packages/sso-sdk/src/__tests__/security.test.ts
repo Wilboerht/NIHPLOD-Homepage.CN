@@ -40,6 +40,17 @@ describe("isTrustedReturnUrl", () => {
     expect(isTrustedReturnUrl("https://myapp.com/\\@evil.com", ORIGIN)).toBe(false);
   });
 
+  it("控制字符绕过拒绝（URL 解析会剥离 TAB/LF/CR）", () => {
+    expect(isTrustedReturnUrl("/\n//evil.com", ORIGIN)).toBe(false);
+    expect(isTrustedReturnUrl("/\r//evil.com", ORIGIN)).toBe(false);
+    expect(isTrustedReturnUrl("/\t//evil.com", ORIGIN)).toBe(false);
+    expect(isTrustedReturnUrl("/\u0000evil.com", ORIGIN)).toBe(false);
+  });
+
+  it("带 userinfo 的同源 URL 拒绝", () => {
+    expect(isTrustedReturnUrl("https://user:pass@myapp.com/x", ORIGIN)).toBe(false);
+  });
+
   it("javascript: 等危险 scheme 拒绝", () => {
     expect(isTrustedReturnUrl("javascript:alert(1)", ORIGIN)).toBe(false);
     expect(isTrustedReturnUrl("data:text/html,<script>alert(1)</script>", ORIGIN)).toBe(false);

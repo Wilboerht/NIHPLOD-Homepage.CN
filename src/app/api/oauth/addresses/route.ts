@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getAddressesResponse, createAddressResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
 
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       action: "addresses_list",
     });
     if (!auth.ok) return auth.response;
-    return await getAddressesResponse(auth.payload.id);
+    return decorateOAuthResponse(await getAddressesResponse(auth.payload.id), auth.corsHeaders);
   } catch (error) {
     apiConsole.error("[OAuth Addresses] 查询异常:", error);
     return NextResponse.json(
@@ -38,7 +39,10 @@ export async function POST(request: NextRequest) {
       action: "addresses_create",
     });
     if (!auth.ok) return auth.response;
-    return await createAddressResponse(auth.payload.id, request);
+    return decorateOAuthResponse(
+      await createAddressResponse(auth.payload.id, request),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth Addresses] 新增异常:", error);
     return NextResponse.json(

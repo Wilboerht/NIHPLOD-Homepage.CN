@@ -25,6 +25,11 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/auth-security", () => ({
   revokeRefreshToken: vi.fn().mockResolvedValue(undefined),
 }));
+// client_id 缺失时从 hint aud 解析，需校验 aud 对应 client 已注册且启用
+const mockGetOAuthClient = vi.fn();
+vi.mock("@/lib/oauth-client", () => ({
+  getOAuthClientByClientId: (...args: unknown[]) => mockGetOAuthClient(...args),
+}));
 vi.mock("@/lib/token-blacklist", () => ({
   revokeAccessToken: vi.fn().mockResolvedValue(undefined),
 }));
@@ -73,6 +78,7 @@ describe("GET /api/oauth/end-session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsTrusted.mockResolvedValue(true);
+    mockGetOAuthClient.mockResolvedValue({ clientId: "client-a", isActive: true });
     mockVerifyIdToken.mockResolvedValue(null);
     // 默认无会话：快速通道跳过，走 /logout 确认页回落路径
     mockVerifyUserAuth.mockResolvedValue(null);

@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { getInternalApiKeys } from "./internal-api";
 import { apiConsole } from "@/lib/logger";
-import { sendBackchannelLogout, isBlockedHostname } from "./backchannel-logout";
+import { enqueueBackchannelLogoutForActiveSessions, isBlockedHostname } from "./backchannel-logout";
 import { SUPPORTED_SCOPES } from "./oauth-constants";
 
 // ============================================
@@ -483,16 +483,10 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
     });
     if (!client) return false;
 
-    // 删除前查询活跃用户 → 发送 Backchannel Logout 通知
+    // 删除前将活跃会话的 Backchannel Logout 通知写入补偿队列（分页 + 异步投递）。
+    // client 行删除后重投任务查不到 client，会按 target_unavailable 丢弃，属预期行为。
     if (client.backchannelLogoutUri) {
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: { clientId: client.clientId, revokedAt: null },
-        select: { userId: true },
-        distinct: ["userId"],
-      });
-      for (const uid of new Set(activeSessions.map((s) => s.userId))) {
-        await sendBackchannelLogout(uid, [client.clientId], { includeInactive: true });
-      }
+      await enqueueBackchannelLogoutForActiveSessions({ clientId: client.clientId });
     }
 
     await prisma.$transaction(async (tx) => {

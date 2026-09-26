@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Upload, X, GripVertical, ImageIcon, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiConsole } from "@/lib/logger";
 import imageCompression from "browser-image-compression";
 
 interface ImageItem {
@@ -49,9 +50,10 @@ export function ImageUploader({
 
   const handleChange = useCallback(
     (newImages: ImageItem[]) => {
-      const prevIds = new Set(value.map((img) => img.url));
+      // 回收「旧值中存在、新值中已移除」的 blob URL，避免内存泄漏
+      const nextUrls = new Set(newImages.map((img) => img.url));
       value.forEach((img) => {
-        if (img.url?.startsWith("blob:") && !prevIds.has(img.url)) {
+        if (img.url?.startsWith("blob:") && !nextUrls.has(img.url)) {
           URL.revokeObjectURL(img.url);
         }
       });
@@ -82,8 +84,12 @@ export function ImageUploader({
       setIsCompressing(true);
       const errors: string[] = [];
       const newImages: ImageItem[] = [];
-      const remainingSlots = maxImages - valueRef.current.length;
-      const fileArray = Array.from(files).slice(0, remainingSlots);
+      const remainingSlots = Math.max(0, maxImages - valueRef.current.length);
+      const allFiles = Array.from(files);
+      if (allFiles.length > remainingSlots) {
+        errors.push(`最多还能上传 ${remainingSlots} 张图片（当前已选 ${valueRef.current.length}/${maxImages}）`);
+      }
+      const fileArray = allFiles.slice(0, remainingSlots);
 
       for (let i = 0; i < fileArray.length; i++) {
         let file = fileArray[i];
@@ -103,7 +109,7 @@ export function ImageUploader({
               file = await imageCompression(file, options);
             }
           } catch (e) {
-            console.error("图片压缩失败:", e);
+            apiConsole.error("图片压缩失败:", e);
           }
         }
 
@@ -133,7 +139,7 @@ export function ImageUploader({
       }
       setIsCompressing(false);
     },
-    [maxImages, onChange, validateFile]
+    [maxImages, validateFile, handleChange]
   );
 
   // 拖拽事件
@@ -151,7 +157,7 @@ export function ImageUploader({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    handleFiles(e.dataTransfer.files);
+    void handleFiles(e.dataTransfer.files);
   };
 
   // 删除图片
@@ -253,7 +259,7 @@ export function ImageUploader({
                 type="button"
                 onClick={() => removeImage(index)}
                 aria-label={`删除第 ${index + 1} 张图片`}
-                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 opacity-0 transition-opacity hover:bg-red-500 group-hover:opacity-100"
+                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 opacity-0 transition-opacity hover:bg-red-500 focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <X className="h-4 w-4 text-white" />
               </button>
@@ -297,7 +303,11 @@ export function ImageUploader({
             type="file"
             multiple
             accept={accept}
-            onChange={(e) => handleFiles(e.target.files)}
+            onChange={(e) => {
+              void handleFiles(e.target.files);
+              // 重置 input，保证同一文件可再次选择
+              e.target.value = "";
+            }}
             className="hidden"
           />
           <div className="bg-brand-charcoal/8 mb-3 rounded-full p-3">

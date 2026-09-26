@@ -35,10 +35,23 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const key = request.nextUrl.searchParams.get("key");
-    if (!key || key.length > 200) {
+    if (!key || key.length > 200 || key.includes("..")) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
         { status: 400 }
+      );
+    }
+
+    // 只允许本系统凭证命名空间：新格式 spent-adjustments/<userId>/<uuid>.webp
+    // 或历史格式 spent-adjustments/<uuid>.webp（防止对 bucket 内任意对象签名）
+    const OWNED_KEY_PATTERN =
+      /^spent-adjustments\/[A-Za-z0-9_-]{1,64}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/i;
+    const LEGACY_KEY_PATTERN =
+      /^spent-adjustments\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/i;
+    if (!OWNED_KEY_PATTERN.test(key) && !LEGACY_KEY_PATTERN.test(key)) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "图片不存在" } },
+        { status: 404 }
       );
     }
 
@@ -55,7 +68,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const signedUrl = signPrivateObjectUrl(key);
+    const signedUrl = signPrivateObjectUrl(key, 15 * 60);
     if (!signedUrl) {
       apiConsole.warn("[AdminSpentAdjustment] 私有 bucket 未配置，无法签发图片 URL");
       return NextResponse.json(

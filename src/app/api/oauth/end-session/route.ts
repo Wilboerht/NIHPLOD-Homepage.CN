@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isTrustedPostLogoutRedirectUri } from "@/lib/post-logout-redirect";
 import { verifyIdToken } from "@/lib/jwt";
+import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { verifyUserAuth } from "@/lib/auth";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { revokeAccessToken } from "@/lib/token-blacklist";
@@ -46,12 +47,18 @@ export async function GET(request: NextRequest) {
     const idTokenHint = searchParams.get("id_token_hint");
     const postLogoutRedirectUri = searchParams.get("post_logout_redirect_uri");
     const state = searchParams.get("state");
-    let clientId = searchParams.get("client_id");
+    const explicitClientId = searchParams.get("client_id");
+    let clientId = explicitClientId;
 
-    // client_id 未显式传入时，从 id_token_hint 的 aud 解析（验签失败则视为无法解析）
-    if (!clientId && idTokenHint) {
+    // 未显式传 client_id 时从 id_token_hint 的 aud 解析；解析出的 client 必须是
+    // 已注册且启用的 client（否则快速通道不生效，回落确认页，避免任意合法 hint
+    // 走免确认直登出）
+    if (!explicitClientId && idTokenHint) {
       const hintClaims = await verifyIdToken(idTokenHint);
-      if (hintClaims?.aud) clientId = hintClaims.aud;
+      if (hintClaims?.aud && typeof hintClaims.aud === "string") {
+        const audClient = await getOAuthClientByClientId(hintClaims.aud).catch(() => null);
+        if (audClient?.isActive) clientId = hintClaims.aud;
+      }
     }
 
     // ===== 快速通道：免页面、免确认，服务端直接登出后 302 直跳 =====
@@ -79,7 +86,7 @@ export async function GET(request: NextRequest) {
           // 单设备登出，与 POST /api/auth/logout 的 allDevices=false 同口径
           const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
           if (refreshToken) {
-            await revokeRefreshToken(user.id, refreshToken);
+            await revokeRefreshToken(user.id, refreshToken, undefined, "logout");
             // refresh token 关联 OAuth client 时（经子站 SSO 授权建立的会话），
             // 同步撤销其 OAuthSession 并广播 backchannel logout
             const { createHash } = await import("crypto");
@@ -96,9 +103,9 @@ export async function GET(request: NextRequest) {
               });
             }
           }
-          if (user.jti) {
-            await revokeAccessToken(user.jti);
-          }
+      if (user.jti) {
+        await revokeAccessToken(user.jti, user.exp ? user.exp * 1000 : undefined);
+      }
           logAuthEvent("user_logout", {
             userId: user.id,
             success: true,

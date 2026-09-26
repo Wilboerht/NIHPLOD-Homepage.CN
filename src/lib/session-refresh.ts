@@ -34,7 +34,7 @@ export interface RefreshUserSessionOptions {
   channel?: string;
 }
 
-/** 原子轮换失败原因（missing / revoked / expired / account_disabled / concurrent_rotation / error） */
+/** 原子轮换失败原因（missing / revoked / account_disabled / concurrent_rotation / device_limit / session_revoked / error） */
 type RotationFailureReason = Extract<RefreshTokenValidationResult, { valid: false }>["reason"];
 
 export type RefreshUserSessionResult =
@@ -82,10 +82,10 @@ export async function refreshUserSession(
   }
 
   // refresh token 已不再携带明文手机号 claim，审计日志的 identifier 按 id 查库获取
-  // （与 logout 路由的既有做法一致）
+  // （与 logout 路由的既有做法一致）；同时读取改密时间用于会话失效校验
   const tokenUser = await prisma.user.findUnique({
     where: { id: payload.id },
-    select: { phone: true },
+    select: { phone: true, passwordChangedAt: true },
   });
   const userPhone = tokenUser?.phone;
 
@@ -120,6 +120,26 @@ export async function refreshUserSession(
       userPhone,
       statusReason: statusCheck.reason,
     };
+  }
+
+  // 3.1 改密即时失效（纵深防御，与 verifyUserToken 同口径）：
+  // 签发时间早于最近一次密码变更的 refresh token 一律拒绝，
+  // 防止「被撤销动作遗漏（如历史遗留令牌）」的会话在改密后继续续期。
+  const passwordChangedAt = tokenUser?.passwordChangedAt ?? null;
+  if (
+    passwordChangedAt &&
+    typeof payload.iat === "number" &&
+    payload.iat < Math.floor(passwordChangedAt.getTime() / 1000)
+  ) {
+    logAuthEvent("user_refresh_token", {
+      success: false,
+      reason: "password_changed",
+      userId: payload.id,
+      identifier: userPhone,
+      ip,
+      channel,
+    });
+    return { success: false, reason: "invalid_token", userId: payload.id, userPhone };
   }
 
   // 4. 签发新双 Token（先签发，后续在原子事务中与旧 Token 一起处理）
@@ -158,7 +178,9 @@ export async function refreshUserSession(
         ip,
         channel,
       });
-      await revokeRefreshToken(payload.id);
+      // 仅撤销内部（非 OAuth）token 家族：本函数只处理内部 refresh token，
+      // 不应把用户在所有子站的 OAuth 授权一并吊销（第三方授权有独立的重用检测与撤销路径）
+      await revokeRefreshToken(payload.id, undefined, null, "reuse");
     }
 
     logAuthEvent("user_refresh_token", {

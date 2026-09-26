@@ -20,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  canonicalizeQuery,
   isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
@@ -91,7 +92,8 @@ export async function GET(request: NextRequest) {
       path,
       timestamp,
       nonce,
-      hashRequestBody("")
+      hashRequestBody(""),
+      { query: canonicalizeQuery(new URL(request.url).search) }
     );
     if (!config) {
       apiConsole.warn(`[InternalApiV1] points/balance 签名验证失败，key: ${key}, ip: ${ip}`);

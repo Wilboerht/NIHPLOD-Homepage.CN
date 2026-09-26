@@ -10,6 +10,7 @@
  * - client_id 缺失或无法解析：拒绝，调用方回退到首页
  */
 import { prisma } from "./prisma";
+import { isSafeRelativePath } from "./url-safety";
 
 /**
  * 校验 post_logout_redirect_uri 是否可信
@@ -23,7 +24,10 @@ export async function isTrustedPostLogoutRedirectUri(
   clientId?: string | null
 ): Promise<boolean> {
   if (!uri) return true;
-  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
+  // 站内相对路径：必须拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站 URL）
+  if (isSafeRelativePath(uri)) return true;
+  // 含反斜杠/控制字符的其它值一律拒绝（绝对 URL 由其注册匹配与协议约束兜底）
+  if (uri.includes("\\") || /[\u0000-\u001F\u007F]/.test(uri)) return false;
 
   // 绝对 URL 必须绑定到具体 client：无法解析 client_id 时拒绝回跳（调用方兜底跳首页）
   if (!clientId) return false;

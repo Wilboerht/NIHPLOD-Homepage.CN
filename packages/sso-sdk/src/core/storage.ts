@@ -36,6 +36,12 @@ export interface TokenStorage {
   get(key: string): string | null;
   set(key: string, value: string): void;
   remove(key: string): void;
+  /**
+   * 可选：枚举当前存储中的 key（不含 SDK 内部前缀）。
+   * 供 clearAllSsoData() 清理 client 级残留（`token:<clientId>` 等）。
+   * 自定义存储若不实现，clearAllSsoData() 仅能按已知 key 清理。
+   */
+  keys?(): string[];
 }
 
 /** 默认 localStorage/sessionStorage key 前缀 */
@@ -75,6 +81,9 @@ function createMemoryStorageAdapter(): TokenStorage {
     remove(key: string) {
       store.delete(key);
     },
+    keys() {
+      return [...store.keys()];
+    },
   };
 }
 
@@ -92,23 +101,45 @@ const memoryStorageAdapter = createMemoryStorageAdapter();
  */
 const localStorageAdapter: TokenStorage = {
   get(key: string) {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage.getItem(STORAGE_PREFIX + key);
+    try {
+      if (typeof localStorage === "undefined") return null;
+      return localStorage.getItem(STORAGE_PREFIX + key);
+    } catch {
+      // 沙箱 iframe / 禁用存储等场景访问 localStorage 会抛 SecurityError
+      return null;
+    }
   },
   set(key: string, value: string) {
-    if (typeof localStorage === "undefined") return;
     try {
+      if (typeof localStorage === "undefined") return;
       localStorage.setItem(STORAGE_PREFIX + key, value);
     } catch (err) {
-      // QuotaExceededError 等写入失败不应中断登录流程
+      // QuotaExceededError / SecurityError 等写入失败不应中断登录流程
       console.warn(
         `[SSO SDK] localStorage 写入失败（${err instanceof Error ? err.name : String(err)}），数据未持久化`
       );
     }
   },
   remove(key: string) {
-    if (typeof localStorage === "undefined") return;
-    localStorage.removeItem(STORAGE_PREFIX + key);
+    try {
+      if (typeof localStorage === "undefined") return;
+      localStorage.removeItem(STORAGE_PREFIX + key);
+    } catch {
+      // 忽略存储不可用
+    }
+  },
+  keys() {
+    try {
+      if (typeof localStorage === "undefined") return [];
+      const result: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(STORAGE_PREFIX)) result.push(key.slice(STORAGE_PREFIX.length));
+      }
+      return result;
+    } catch {
+      return [];
+    }
   },
 };
 
@@ -127,27 +158,48 @@ function createSessionStorageAdapter(): TokenStorage {
   const fallback = new Map<string, string>();
   return {
     get(key: string) {
-      if (typeof sessionStorage !== "undefined") {
-        return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+        }
+      } catch {
+        // 沙箱 iframe / 禁用存储：退化为内存 fallback
       }
       return fallback.get(key) ?? null;
     },
     set(key: string, value: string) {
-      if (typeof sessionStorage === "undefined") {
-        fallback.set(key, value);
-        return;
-      }
       try {
-        sessionStorage.setItem(STORAGE_PREFIX + key, value);
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(STORAGE_PREFIX + key, value);
+          return;
+        }
       } catch {
         // 隐私模式等场景写入失败时降级到内存
-        fallback.set(key, value);
       }
+      fallback.set(key, value);
     },
     remove(key: string) {
       fallback.delete(key);
-      if (typeof sessionStorage === "undefined") return;
-      sessionStorage.removeItem(STORAGE_PREFIX + key);
+      try {
+        if (typeof sessionStorage === "undefined") return;
+        sessionStorage.removeItem(STORAGE_PREFIX + key);
+      } catch {
+        // 忽略存储不可用
+      }
+    },
+    keys() {
+      const result = new Set<string>(fallback.keys());
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key?.startsWith(STORAGE_PREFIX)) result.add(key.slice(STORAGE_PREFIX.length));
+          }
+        }
+      } catch {
+        // 存储不可用：仅返回 fallback
+      }
+      return [...result];
     },
   };
 }
@@ -337,23 +389,56 @@ export function clearAllSsoData(clientId?: string): void {
   removeLogoutState();
   removeSilentProbe();
 
-  // 清理所有 PKCE verifier：当前版本存于 sessionStorage，同时清 localStorage 中可能的旧版本残留
-  const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-  const stores = [
-    typeof sessionStorage !== "undefined" ? sessionStorage : null,
-    typeof localStorage !== "undefined" ? localStorage : null,
-  ];
+  // 无参调用必须清理全部 client 级残留（token:<clientId>、oauth_state:<clientId>、
+  // oidc_nonce:<clientId>、return_url:<clientId>、pkce_verifier_<clientId> 等）。
+  // 枚举浏览器存储中所有带前缀的 key：从原生存储、临时数据存储与 token 存储同时移除，
+  // 且访问存储属性本身也要 try/catch（沙箱 iframe 下会抛 SecurityError）。
+  const stores: Storage[] = [];
+  try {
+    if (typeof sessionStorage !== "undefined") stores.push(sessionStorage);
+  } catch {
+    /* 存储不可用 */
+  }
+  try {
+    if (typeof localStorage !== "undefined") stores.push(localStorage);
+  } catch {
+    /* 存储不可用 */
+  }
+
+  const abstractKeys = new Set<string>();
   for (const store of stores) {
-    if (!store) continue;
     const keys: string[] = [];
-    for (let i = 0; i < store.length; i++) {
-      const key = store.key(i);
-      if (key?.startsWith(prefix)) keys.push(key);
+    try {
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key?.startsWith(STORAGE_PREFIX)) keys.push(key);
+      }
+    } catch {
+      continue;
     }
     for (const key of keys) {
-      _transient.remove(key.slice(STORAGE_PREFIX.length));
-      store.removeItem(key);
+      abstractKeys.add(key.slice(STORAGE_PREFIX.length));
+      try {
+        store.removeItem(key);
+      } catch {
+        /* 忽略 */
+      }
     }
+  }
+
+  // 适配器级枚举：覆盖自定义 TokenStorage / 内存 fallback 中的 client 级 key
+  // （这些 key 不在浏览器存储中，仅靠上方枚举无法发现）
+  for (const store of [_transient, _storage]) {
+    try {
+      for (const key of store.keys?.() ?? []) abstractKeys.add(key);
+    } catch {
+      /* 忽略自定义实现异常 */
+    }
+  }
+
+  for (const key of abstractKeys) {
+    _transient.remove(key);
+    _storage.remove(key);
   }
 }
 

@@ -11,14 +11,31 @@
  *   npx tsx scripts/register-post-logout-uri.ts q6n4aitms0wgn2sz1nj96au5 \
  *     https://advisor.nihplod.cn https://advisor.nihplod.cn/
  *
- * 加载 .env / .env.local / .env.production（与 Next.js 运行时优先级一致）。
+ * 加载 .env.production.local / .env.local / .env.production / .env
+ * （与 Next.js 运行时优先级一致：靠前的文件优先，dotenv 默认不覆盖已设置变量）。
+ * ⚠️ 脚本会写入 DATABASE_URL 指向的数据库：运行前请核对下方打印的目标库主机，
+ *    本地执行时确保 .env.local 指向开发库，避免误改生产数据。
  * 幂等：已存在的地址不会重复写入。
  */
 import dotenv from "dotenv";
+import { isSafeRelativePath } from "../src/lib/url-safety";
 
-dotenv.config({ path: ".env" });
-dotenv.config({ path: ".env.production" });
+dotenv.config({ path: ".env.production.local" });
 dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env.production" });
+dotenv.config({ path: ".env" });
+
+/** 打印目标数据库主机（隐藏账号密码），降低误操作生产库的风险 */
+function logDatabaseTarget(): void {
+  const url = process.env.DATABASE_URL;
+  if (!url) return;
+  try {
+    const parsed = new URL(url);
+    console.log(`目标数据库: ${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}${parsed.pathname}`);
+  } catch {
+    console.log("目标数据库: (DATABASE_URL 无法解析)");
+  }
+}
 
 async function main() {
   const [, , clientId, ...uris] = process.argv;
@@ -29,9 +46,12 @@ async function main() {
     process.exit(1);
   }
 
+  logDatabaseTarget();
+
   // 基础格式校验：必须是 http(s) 绝对 URL 或站内相对路径
+  // （相对路径拒绝反斜杠/控制字符："/\evil.com" 会被浏览器解析为跨站地址）
   for (const uri of uris) {
-    const isRelative = uri.startsWith("/") && !uri.startsWith("//");
+    const isRelative = isSafeRelativePath(uri);
     if (!isRelative) {
       try {
         const parsed = new URL(uri);

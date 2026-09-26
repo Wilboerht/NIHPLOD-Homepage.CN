@@ -111,10 +111,10 @@ describe("POST /api/auth/refresh 手机号查库（A4）", () => {
     expect(data.success).toBe(true);
     // 新 refresh token 不写入明文手机号 claim
     expect(signRefreshToken).toHaveBeenCalledWith({ id: "user-1", authTime: 1700000000 });
-    // 审计日志 identifier 按 id 查库取手机号
+    // 审计日志 identifier 按 id 查库取手机号；同时读取改密时间用于会话失效校验
     expect(mockUserFindUnique).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      select: { phone: true },
+      select: { phone: true, passwordChangedAt: true },
     });
     expect(mockLogAuthEvent).toHaveBeenCalledWith(
       "user_refresh_token",
@@ -151,6 +151,22 @@ describe("POST /api/auth/refresh 手机号查库（A4）", () => {
     expect(mockLogAuthEvent).toHaveBeenCalledWith(
       "user_refresh_token",
       expect.objectContaining({ success: true, identifier: undefined })
+    );
+  });
+
+  it("设备数超限被淘汰（device_limit）：返回专属错误码与可操作提示", async () => {
+    mockVerify.mockResolvedValue(basePayload);
+    mockRotate.mockResolvedValue({ valid: false, reason: "device_limit", familyRevokedCount: 0 });
+
+    const res = await POST(createRequest("evicted-rt"));
+    const data = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(data.error.code).toBe("DEVICE_LIMIT_EXCEEDED");
+    expect(data.error.message).toContain("设备数量已达上限");
+    expect(mockLogAuthEvent).toHaveBeenCalledWith(
+      "user_refresh_token",
+      expect.objectContaining({ success: false, reason: "device_limit" })
     );
   });
 });

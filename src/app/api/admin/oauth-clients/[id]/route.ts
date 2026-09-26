@@ -21,11 +21,43 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { enqueueBackchannelLogoutForActiveSessions, scheduleBackchannelRedelivery } from "@/lib/backchannel-logout";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 审计日志仅记录白名单内的可编辑字段。
+ * 禁止把原始请求体整体写入审计：管理员误粘贴的 clientSecret 等凭证会被永久留存。
+ */
+const AUDITABLE_UPDATE_FIELDS = [
+  "name",
+  "redirectUris",
+  "postLogoutRedirectUris",
+  "scopes",
+  "isActive",
+  "isPublic",
+  "backchannelLogoutUri",
+  "webhookUri",
+  "codeTtlSeconds",
+  "accessTokenTtlSeconds",
+] as const;
+
+function sanitizeClientPatchForAudit(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object") return {};
+  const source = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of AUDITABLE_UPDATE_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+    // 纵深防御：字段名含 secret 的一律不落审计（理论上白名单已排除）
+    if (/secret/i.test(key)) continue;
+    // 数组字段限制记录条数，避免超长请求体放大审计存储
+    const value = source[key];
+    out[key] = Array.isArray(value) ? value.slice(0, 50) : value;
+  }
+  return out;
+}
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
@@ -126,12 +158,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       try {
         const clientId = client.clientId;
 
-        // 撤销前先查出活跃会话（sid 供 backchannel logout_token 携带）
-        const affectedSessions = await prisma.oAuthSession.findMany({
-          where: { clientId, revokedAt: null, expiresAt: { gt: new Date() } },
-          select: { userId: true, sessionId: true },
-          orderBy: { createdAt: "desc" },
-        });
+        // 分页扫描活跃会话并写入 backchannel 补偿队列（不同步 HTTP）：
+        // 避免大 client 停用时无界查询 + 逐用户串行投递拖垮请求
+        const enqueued = await enqueueBackchannelLogoutForActiveSessions({ clientId });
 
         // 撤销所有活跃 OAuthSession 与 RefreshToken
         await prisma.$transaction(async (tx) => {
@@ -141,21 +170,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           });
           await tx.refreshToken.updateMany({
             where: { clientId, revokedAt: null },
-            data: { revokedAt: new Date() },
+            data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
           });
         });
 
-        // 通知所有受影响用户登出（按 userId 去重，减少请求）
-        const sidsByUser = new Map<string, string>();
-        for (const s of affectedSessions) {
-          if (!sidsByUser.has(s.userId)) sidsByUser.set(s.userId, s.sessionId);
-        }
-        for (const [userId, sid] of sidsByUser) {
-          await sendBackchannelLogout(userId, [clientId], {
-            includeInactive: true,
-            sids: { [clientId]: sid },
-          });
-        }
+        apiConsole.info(
+          `[AdminOAuthClient PATCH] 停用 ${clientId}：撤销 ${enqueued.sessionCount} 个会话，入队 ${enqueued.userClientCount} 条 backchannel 通知`
+        );
+        // 响应后立即补投小批量，避免等待 cron 周期
+        scheduleBackchannelRedelivery();
       } catch (err) {
         apiConsole.error("[AdminOAuthClient PATCH] 停用 Client 级联撤销失败:", err);
       }
@@ -181,7 +204,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       action: "oauth_client_update",
       targetType: "oauth_client",
       targetId: id,
-      detail: { changes: body, clientId: client.clientId },
+      // 只记录白名单字段，避免原始 body 中的敏感内容（如误粘贴的 secret）进入审计
+      detail: { changes: sanitizeClientPatchForAudit(body), clientId: client.clientId },
       adminId: admin.id,
       request,
     });
@@ -238,35 +262,23 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 级联撤销：通知所有活跃用户并撤销 session，发送 Backchannel Logout
-    // 撤销前先查出活跃会话（sid 供 backchannel logout_token 携带）
-    const activeSessions = await prisma.oAuthSession.findMany({
-      where: { clientId: client.clientId, revokedAt: null, expiresAt: { gt: new Date() } },
-      select: { userId: true, sessionId: true },
-      orderBy: { createdAt: "desc" },
+    // 级联撤销：分页扫描活跃会话入队 backchannel 通知，再撤销 session/token。
+    // 分页 + 队列化避免大 client 删除时无界查询与逐用户同步 HTTP。
+    // 注意：撤销必须无条件执行（与是否配置/入队 backchannel 通知无关），
+    // 否则未配置 backchannelLogoutUri 的 client 被删后，用户会话仍可继续使用。
+    const enqueued = await enqueueBackchannelLogoutForActiveSessions({
+      clientId: client.clientId,
     });
-    if (activeSessions.length > 0) {
-      await prisma.oAuthSession.updateMany({
-        where: { clientId: client.clientId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      await prisma.refreshToken.updateMany({
-        where: { clientId: client.clientId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
-      // sid 查到 OAuthSession.revokedAt 即拒绝），不再逐用户拉黑 token，避免误登出主站会话。
-      const sidsByUser = new Map<string, string>();
-      for (const s of activeSessions) {
-        if (!sidsByUser.has(s.userId)) sidsByUser.set(s.userId, s.sessionId);
-      }
-      for (const [userId, sid] of sidsByUser) {
-        await sendBackchannelLogout(userId, [client.clientId], {
-          includeInactive: true,
-          sids: { [client.clientId]: sid },
-        });
-      }
-    }
+    await prisma.oAuthSession.updateMany({
+      where: { clientId: client.clientId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await prisma.refreshToken.updateMany({
+      where: { clientId: client.clientId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
+    });
+    // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
+    // sid 查到 OAuthSession.revokedAt 即拒绝），不再逐用户拉黑 token，避免误登出主站会话。
 
     const deleted = await deleteOAuthClient(id);
 
@@ -277,6 +289,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 响应后立即补投小批量（client 行已删除，投递使用 payload 中的 URI 快照）
+    scheduleBackchannelRedelivery();
+
     // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
     await recordSsoEvent({
       event: "status_change",
@@ -284,7 +299,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       clientName: client.name,
       ip: getClientIP(request),
       success: true,
-      detail: { action: "client_deleted", affectedUserCount: activeSessions.length },
+      detail: { action: "client_deleted", affectedUserCount: enqueued.userClientCount },
     });
 
     await createAuditLog({

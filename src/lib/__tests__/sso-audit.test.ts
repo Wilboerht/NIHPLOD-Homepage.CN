@@ -132,6 +132,14 @@ describe("sso-audit", () => {
       expect(escapeCSV("@mention")).toBe("'@mention");
     });
 
+    it("前导空白/控制字符开头也应加单引号前缀（防绕过）", () => {
+      expect(escapeCSV(" =1+1")).toBe("' =1+1");
+      // tab/CR/LF 触发 CSV 引号包裹，输出为 "'...原始值..." 形式
+      expect(escapeCSV("\t=1+1")).toBe(`"'\t=1+1"`);
+      expect(escapeCSV("\r=1+1")).toBe(`"'\r=1+1"`);
+      expect(escapeCSV("\n=1+1")).toBe(`"'\n=1+1"`);
+    });
+
     it("以 = 开头且含逗号的单元格不应绕过公式防护", () => {
       // 修复前：先引号包裹使单元格以 " 开头，^[=...] 检测被绕过
       expect(escapeCSV("=1,2")).toBe(`"'=1,2"`);

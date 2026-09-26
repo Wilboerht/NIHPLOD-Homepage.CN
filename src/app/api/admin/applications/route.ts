@@ -9,7 +9,7 @@ import { apiConsole } from "@/lib/logger";
 const folderIdSchema = z.union([z.literal("uncategorized"), z.string().cuid()]);
 
 const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
+  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   status: z.preprocess(
     (val) => (val === null || val === "" ? undefined : val),
@@ -134,6 +134,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        { status: 400 }
+      );
+    }
     apiConsole.error("获取简历列表失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "获取失败" } },

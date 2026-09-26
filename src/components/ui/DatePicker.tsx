@@ -16,7 +16,7 @@
  * />
  * ```
  */
-import { forwardRef, InputHTMLAttributes } from "react";
+import { forwardRef, InputHTMLAttributes, useId } from "react";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,12 +32,15 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     { className, label, error, value, onChange, id, required, disabled, min, max, ...props },
     ref
   ) => {
-    const errorId = id ? `${id}-error` : undefined;
+    // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
+    const generatedId = useId();
+    const dateId = id ?? generatedId;
+    const errorId = `${dateId}-error`;
 
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={id} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          <label htmlFor={dateId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
             {label}
             {required && (
               <span className="ml-0.5 text-red-500" aria-hidden="true">
@@ -50,7 +53,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           <input
             ref={ref}
             type="date"
-            id={id}
+            id={dateId}
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
             disabled={disabled}

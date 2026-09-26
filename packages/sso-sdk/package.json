@@ -1,8 +1,11 @@
 {
   "name": "@nihplod/sso-sdk",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "NIHPLOD SSO 子项目接入 SDK — OAuth 2.0 授权码 + PKCE 客户端封装",
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

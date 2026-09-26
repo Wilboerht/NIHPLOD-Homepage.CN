@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { z } from "zod";
 import { Modal } from "@/components/ui/Modal";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -54,39 +55,49 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
   const slugManuallySetRef = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  // 打开时的基线快照（用于未保存更改检测）
+  const [baseline, setBaseline] = useState("");
 
   const isEdit = !!category;
 
-  // 初始化表单数据（渲染阶段同步，避免 effect 内 setState；sentinel 为 null 确保首次挂载也执行）
+  // 初始化表单数据（渲染阶段同步，避免 effect 内 setState；sentinel 为 null 确保首次挂载也执行）。
+  // 仅在「打开/关闭」或「切换编辑对象 id」时重置，避免父组件后台刷新导致编辑内容被清空。
   const [prevInit, setPrevInit] = useState<{
-    category: Category | null | undefined;
+    categoryId: string | null;
     open: boolean;
   } | null>(null);
-  if (!prevInit || prevInit.category !== category || prevInit.open !== open) {
-    setPrevInit({ category, open });
-    if (category) {
-      setFormData({
-        name: category.name,
-        nameEn: category.nameEn,
-        slug: category.slug,
-        description: category.description || "",
-        icon: category.icon || "",
-        order: category.order ?? 0,
-        visible: category.visible ?? true,
-      });
-    } else {
-      setFormData({
-        name: "",
-        nameEn: "",
-        slug: "",
-        description: "",
-        icon: "",
-        order: 0,
-        visible: true,
-      });
-    }
+  const nextInit = { categoryId: category?.id ?? null, open };
+  if (!prevInit || prevInit.categoryId !== nextInit.categoryId || prevInit.open !== open) {
+    setPrevInit(nextInit);
+    const nextForm = category
+      ? {
+          name: category.name,
+          nameEn: category.nameEn,
+          slug: category.slug,
+          description: category.description || "",
+          icon: category.icon || "",
+          order: category.order ?? 0,
+          visible: category.visible ?? true,
+        }
+      : {
+          name: "",
+          nameEn: "",
+          slug: "",
+          description: "",
+          icon: "",
+          order: 0,
+          visible: true,
+        };
+    setFormData(nextForm);
+    setBaseline(JSON.stringify(nextForm));
     setErrors({});
   }
+
+  const isDirty = useMemo(
+    () => open && baseline !== "" && JSON.stringify(formData) !== baseline,
+    [open, baseline, formData]
+  );
+  const { guard: guardClose } = useUnsavedChanges(isDirty);
 
   // ref 重置放在 effect 中（避免渲染期写 ref）
   useEffect(() => {
@@ -150,6 +161,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
       }
 
       success(isEdit ? "分类已更新" : "分类已创建");
+      setBaseline(JSON.stringify(formData));
       onSuccess();
       onClose();
     } catch (err) {
@@ -160,7 +172,12 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? "编辑分类" : "新增分类"} size="md">
+    <Modal
+      open={open}
+      onClose={() => guardClose(onClose)}
+      title={isEdit ? "编辑分类" : "新增分类"}
+      size="md"
+    >
       <div className="space-y-4">
         <Input
           label="分类名称（中文）"
@@ -241,7 +258,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
       </div>
 
       <div className="mt-6 flex justify-end gap-3">
-        <Button variant="outline" onClick={onClose}>
+        <Button variant="outline" onClick={() => guardClose(onClose)} disabled={saving}>
           取消
         </Button>
         <Button onClick={handleSave} loading={saving}>

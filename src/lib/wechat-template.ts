@@ -42,10 +42,10 @@ export async function sendWechatTemplateMessage(
 ): Promise<SendTemplateMessageResult> {
   const { userId, score, primaryConcern, reportUrl } = input;
 
-  // 1. 查询用户微信 OpenID
+  // 1. 查询用户微信 OpenID（同时校验账户状态：封禁/冻结用户不再发送消息）
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { wechatOpenId: true, phone: true },
+    select: { wechatOpenId: true, phone: true, status: true },
   });
 
   if (!user?.wechatOpenId) {
@@ -53,6 +53,14 @@ export async function sendWechatTemplateMessage(
       success: true,
       sent: false,
       reason: "用户未绑定微信",
+    };
+  }
+
+  if (user.status !== "ACTIVE") {
+    return {
+      success: true,
+      sent: false,
+      reason: "用户账户不可用",
     };
   }
 
@@ -154,14 +162,18 @@ export async function sendSpentAdjustmentReviewMessage(
 ): Promise<SendTemplateMessageResult> {
   const { userId, status, orderNo, reviewAmount, reviewNote } = input;
 
-  // 1. 查询用户微信 OpenID
+  // 1. 查询用户微信 OpenID（同时校验账户状态）
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { wechatOpenId: true },
+    select: { wechatOpenId: true, status: true },
   });
 
   if (!user?.wechatOpenId) {
     return { success: true, sent: false, reason: "用户未绑定微信" };
+  }
+
+  if (user.status !== "ACTIVE") {
+    return { success: true, sent: false, reason: "用户账户不可用" };
   }
 
   // 2. 获取 AccessToken

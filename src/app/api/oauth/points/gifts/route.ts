@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getPointGiftsResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
 
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       action: "points_gifts",
     });
     if (!auth.ok) return auth.response;
-    return await getPointGiftsResponse(auth.payload.id);
+    return decorateOAuthResponse(await getPointGiftsResponse(auth.payload.id), auth.corsHeaders);
   } catch (error) {
     apiConsole.error("[OAuth PointGifts] 异常:", error);
     return NextResponse.json(

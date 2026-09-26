@@ -120,7 +120,9 @@ export async function GET(request: NextRequest) {
             attempts: item.attempts,
             nextRetryAt: item.nextRetryAt.toISOString(),
             createdAt: item.createdAt.toISOString(),
-            payload: item.payload,
+            // 不回传 payload：其中含手机号等用户资料快照（PII），
+            // 仅保留定位所需元数据；需要排查时走服务端日志。
+            hasPayload: Boolean(item.payload),
           };
         }),
         pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },

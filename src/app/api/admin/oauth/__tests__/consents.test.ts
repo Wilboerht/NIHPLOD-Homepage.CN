@@ -369,7 +369,12 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       // 同步撤销 refresh token + backchannel 通知；
       // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
+      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        "client-abc",
+        "admin_revoke"
+      );
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
       // sid 取撤销前查出的最新活跃会话
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
@@ -385,6 +390,38 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
           detail: expect.objectContaining({ action: "admin_revoke" }),
         })
       );
+    });
+
+    it("批量撤销：clientIds 分组逐个撤销并汇总计数，无活跃授权的 client 跳过", async () => {
+      prismaMock.oAuthSession.findMany.mockResolvedValue([]);
+      prismaMock.oAuthSession.updateMany
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 0 });
+      prismaMock.userConsent.updateMany
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 0 });
+
+      const { POST } = await import("@/app/api/admin/oauth/consents/route");
+      const res = await POST(
+        createRequest("/api/admin/oauth/consents", {
+          method: "POST",
+          body: { userId: "user-1", clientIds: ["client-a", "client-b"] },
+        })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      // client-a：session 1 + consent 1；client-b 无活跃授权被跳过
+      expect(data.data.revokedCount).toBe(2);
+      expect(data.data.revokedClients).toBe(1);
+      expect(mockRevokeRefreshToken).toHaveBeenCalledTimes(1);
+      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        "client-a",
+        "admin_revoke"
+      );
+      expect(mockSendBackchannelLogout).toHaveBeenCalledTimes(1);
     });
   });
 });

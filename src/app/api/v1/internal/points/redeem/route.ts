@@ -25,6 +25,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  canonicalizeQuery,
   isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
@@ -92,7 +93,8 @@ export async function POST(request: NextRequest) {
       path,
       timestamp,
       nonce,
-      bodyHash
+      bodyHash,
+      { query: canonicalizeQuery(new URL(request.url).search) }
     );
 
     if (!config) {
@@ -147,13 +149,20 @@ export async function POST(request: NextRequest) {
     // 5. 按手机号定位用户（与消费同步口径一致）
     const user = await prisma.user.findUnique({
       where: { phone },
-      select: { id: true, membershipLevel: true },
+      select: { id: true, membershipLevel: true, status: true },
     });
 
     if (!user) {
       return NextResponse.json(
         { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
+      );
+    }
+
+    if (user.status !== "ACTIVE") {
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DISABLED", message: "账户不可用" } },
+        { status: 403 }
       );
     }
 

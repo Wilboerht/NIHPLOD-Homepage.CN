@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { apiGet } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 
@@ -11,7 +12,7 @@ interface Category {
   slug: string;
 }
 
-export default function NewProductPage() {
+function NewProductContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const { error: showError } = useToast();
@@ -22,7 +23,7 @@ export default function NewProductPage() {
       .then((data) => setCategories(data))
       .catch(() => showError("加载分类列表失败"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [showError]);
 
   if (loading) {
     return (
@@ -37,5 +38,13 @@ export default function NewProductPage() {
       <h1 className="mb-6 text-2xl font-medium text-brand-charcoal">新增产品</h1>
       <ProductForm mode="create" categories={categories} />
     </div>
+  );
+}
+
+export default function NewProductPage() {
+  return (
+    <RequirePermission permission="products:write">
+      <NewProductContent />
+    </RequirePermission>
   );
 }

@@ -281,7 +281,7 @@ export async function resolveWechatBinding(
       return {
         success: false,
         code: "WECHAT_ALREADY_BOUND",
-        message: "登录信息验证失败，请重试",
+        message: "该微信已绑定其他账号，请直接用微信登录，或联系客服处理",
       };
     }
     throw error;

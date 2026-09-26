@@ -96,6 +96,28 @@ describe("GET /api/auth/wechat/callback 子站 exchange token 重定向", () => 
     mockOAuthClientFindMany.mockResolvedValue([{ redirectUris: [`${SUBSITE}/cb`] }]);
   });
 
+  it("state 校验失败：error message 单次编码，前端可直接得到中文（防双重编码乱码）", async () => {
+    const state = Buffer.from(
+      JSON.stringify({ nonce: NONCE, type: "open", callback: SUBSITE })
+    ).toString("base64url");
+    const url = new URL("/api/auth/wechat/callback", "http://localhost:3000");
+    url.searchParams.set("code", "wx-code");
+    url.searchParams.set("state", state);
+    const request = new NextRequest(url, {
+      method: "GET",
+      headers: { cookie: `${WECHAT_NONCE_COOKIE_NAME}=wrong-nonce` },
+    } as never);
+
+    const res = await GET(request);
+
+    const location = res.headers.get("location");
+    expect(location).toBeTruthy();
+    const parsed = new URL(location as string);
+    expect(parsed.searchParams.get("code")).toBe("INVALID_STATE");
+    // URLSearchParams 会自动解码一次；若服务端再次 encodeURIComponent，这里将是 %E6%8A%80… 乱码
+    expect(parsed.searchParams.get("message")).toBe("授权状态验证失败，请重试");
+  });
+
   it("已有账户直接登录：302 携带 exchange token，且带 Referrer-Policy: no-referrer", async () => {
     mockUserFindFirst.mockResolvedValue({
       id: "user-1",

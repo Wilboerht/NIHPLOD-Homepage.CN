@@ -32,6 +32,7 @@ import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  canonicalizeQuery,
   isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
@@ -111,7 +112,8 @@ export async function POST(request: NextRequest) {
       path,
       timestamp,
       nonce,
-      bodyHash
+      bodyHash,
+      { query: canonicalizeQuery(new URL(request.url).search) }
     );
 
     if (!config) {
@@ -174,6 +176,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // 消费审计：token 为一次性凭证，记录兑换来源便于异常排查（不记录 token/openid 本体）
+    apiConsole.info("[InternalApiV1] 微信 exchange token 已消费", {
+      ip,
+      flow: phone && code ? "bind" : "login",
+      userAgent: request.headers.get("user-agent") || undefined,
+    });
 
     // 6. 查找现有微信用户
     const oldWechatUser = await prisma.user.findFirst({

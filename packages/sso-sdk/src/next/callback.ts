@@ -85,6 +85,13 @@ export interface CallbackRouteConfig {
   verifierCookieName?: string;
 
   /**
+   * 请求的 OAuth scope（空格分隔），建议与 createSsoMiddleware 的 scopes 保持一致。
+   * 仅当**显式配置**且包含 openid 时回调才强制要求 token 响应携带 id_token（fail-closed）；
+   * 未配置时保持兼容行为（id_token 存在则校验，缺失不拒绝），避免升级后旧接入方登录失败。
+   */
+  scopes?: string;
+
+  /**
    * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
    * __Host-/__Secure- 前缀；必须与 createSsoMiddleware 的配置保持一致，
    * 否则读不到 middleware 写入的 state/verifier Cookie。生产严禁启用——
@@ -98,6 +105,22 @@ export interface CallbackRouteConfig {
    * 仅用于 token 交换等服务器间请求；浏览器跳转仍使用 ssoBaseUrl 公网地址。
    */
   serverBaseUrl?: string;
+
+  /**
+   * 自定义回调错误响应（可选）。
+   * 传入后优先生效；返回 undefined 时回退默认行为。
+   * 默认行为：浏览器导航（Accept 含 text/html 且未带 ?format=json）渲染内置中文错误页
+   * （含"重新登录"入口）；其他请求（fetch/自动化）返回 JSON，保持 API 兼容。
+   */
+  renderErrorPage?: (ctx: {
+    error: string;
+    errorDescription: string;
+    status: number;
+    request: NextRequest;
+  }) => Response | undefined | Promise<Response | undefined>;
+
+  /** 调试日志开关（默认 false）：回调失败时输出服务端告警日志，便于定位配置/流程问题 */
+  debug?: boolean;
 }
 
 // ============================================
@@ -107,6 +130,115 @@ export interface CallbackRouteConfig {
 // returnUrl 开放重定向校验统一使用 ../core/security 的 isTrustedReturnUrl
 
 // ID Token 预校验逻辑已收敛到 ../core/id-token.ts
+
+/** HTML 转义（错误描述可能含服务端返回的任意文本） */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
+}
+
+/** 内置品牌化错误页：面向浏览器用户，避免裸 JSON 与"重新登录"断头路 */
+function buildErrorPage(status: number, error: string, errorDescription: string): string {
+  const safeDescription = escapeHtml(errorDescription);
+  const safeError = escapeHtml(error);
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>登录失败</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #fafafa; color: #2c2c2c; }
+  main { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+  h1 { font-size: 1.25rem; font-weight: 500; letter-spacing: 0.08em; margin: 0 0 0.75rem; }
+  p { margin: 0 0 1.5rem; color: #6b7280; font-size: 0.875rem; line-height: 1.6; max-width: 28rem; }
+  .actions { display: flex; gap: 0.75rem; }
+  a { display: inline-block; padding: 0.6rem 1.4rem; font-size: 0.8125rem; letter-spacing: 0.08em; text-decoration: none; }
+  a.primary { background: #2c2c2c; color: #fff; }
+  a.secondary { border: 1px solid rgba(44, 44, 44, 0.25); color: #2c2c2c; }
+  .code { margin-top: 2rem; font-size: 0.6875rem; color: #9ca3af; }
+</style>
+</head>
+<body>
+<main>
+  <h1>登录失败</h1>
+  <p>${safeDescription}</p>
+  <div class="actions">
+    <a class="primary" href="/">重新登录</a>
+    <a class="secondary" href="/">返回首页</a>
+  </div>
+  <p class="code">错误码：${safeError}（反馈问题时请附上）</p>
+</main>
+</body>
+</html>`;
+}
+
+/** 错误响应：自定义渲染 > HTML（浏览器）> JSON（API/自动化） */
+function buildErrorResponse(
+  request: NextRequest,
+  status: number,
+  error: string,
+  errorDescription: string,
+  custom?: CallbackRouteConfig["renderErrorPage"]
+): NextResponse | Promise<NextResponse> {
+  if (custom) {
+    const handled = custom({ error, errorDescription, status, request });
+    if (handled instanceof Promise) {
+      return handled.then((res) =>
+        res
+          ? toNextResponse(res)
+          : defaultErrorResponse(request, status, error, errorDescription)
+      );
+    }
+    if (handled) return toNextResponse(handled);
+  }
+  return defaultErrorResponse(request, status, error, errorDescription);
+}
+
+/** 将自定义 Response 包装为 NextResponse（GET 包装层需要改写 cookies 清 nonce） */
+function toNextResponse(res: Response): NextResponse {
+  if (res instanceof NextResponse) return res;
+  return new NextResponse(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers,
+  });
+}
+
+function defaultErrorResponse(
+  request: NextRequest,
+  status: number,
+  error: string,
+  errorDescription: string
+): NextResponse {
+  const accept = request.headers.get("accept") ?? "";
+  const wantsHtml =
+    accept.includes("text/html") && request.nextUrl.searchParams.get("format") !== "json";
+  if (wantsHtml) {
+    return new NextResponse(buildErrorPage(status, error, errorDescription), {
+      status,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+  return NextResponse.json({ error, error_description: errorDescription }, { status });
+}
 
 // ============================================
 // Route Handler 工厂函数
@@ -119,6 +251,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     redirectUri,
     clientSecret,
     defaultReturnPath = "/",
+    scopes,
     insecureLocalDev: insecureLocalDevOpt = false,
   } = config;
 
@@ -146,7 +279,21 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     // 错误路径（4xx/5xx）统一清除 nonce cookie，避免残留；
     // 成功路径在重定向响应中随 state/returnUrl cookie 一并清除
     if (response.status >= 400) {
+      if (config.debug) {
+        console.warn(
+          `[SSO SDK] 回调失败 status=${response.status}`,
+          request.nextUrl.searchParams.get("error") ?? ""
+        );
+      }
       response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
+      const returnedState = request.nextUrl.searchParams.get("state");
+      if (returnedState && /^[A-Za-z0-9\-._~]{8,512}$/.test(returnedState)) {
+        response.cookies.set(
+          `${nonceCookieName}_${returnedState}`,
+          "",
+          getHostCookieOptions(0, secureCookies)
+        );
+      }
     }
     return response;
   };
@@ -158,9 +305,12 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     const error = searchParams.get("error");
     if (error) {
       const desc = searchParams.get("error_description") || error;
-      return NextResponse.json(
-        { error: "authorization_failed", error_description: desc },
-        { status: 400 }
+      return buildErrorResponse(
+        request,
+        400,
+        "authorization_failed",
+        desc,
+        config.renderErrorPage
       );
     }
 
@@ -168,50 +318,85 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     const returnedState = searchParams.get("state");
 
     if (!code) {
-      return NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "缺少 authorization code",
-        },
-        { status: 400 }
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "登录信息不完整，请重新发起登录",
+        config.renderErrorPage
       );
     }
 
-    // 验证 state（从 cookie 中读取原始 state，CSRF 必需）
-    const savedState = request.cookies.get(stateCookieName)?.value;
+    // 验证 state（从 cookie 中读取原始 state，CSRF 必需）。
+    // state 同时是瞬态 cookie 的名称后缀，先做字符集/长度校验（middleware 生成 32 位；
+    // 放宽下限仅为兼容测试/自定义 state，安全性由下方常量时间比较保证）
+    if (!returnedState || !/^[A-Za-z0-9\-._~]{8,512}$/.test(returnedState)) {
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "State 参数缺失或格式非法，请重新发起授权请求",
+        config.renderErrorPage
+      );
+    }
+    const attemptSuffix = `_${returnedState}`;
+    // 瞬态 cookie 按 state 隔离读取；旧固定名称仅作滚动升级过渡期回退
+    const readTransientCookie = (name: string): string | undefined =>
+      request.cookies.get(`${name}${attemptSuffix}`)?.value ??
+      request.cookies.get(name)?.value;
+
+    const savedState = readTransientCookie(stateCookieName);
     if (!savedState) {
-      return NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "State 参数缺失，请重新发起授权请求",
-        },
-        { status: 400 }
+      // 配置一致性诊断：若以"另一种命名口径"存在的 state cookie，说明
+      // insecureLocalDev/Cookie 名称在 middleware 与 callback 之间不一致（最常见错配，
+      // 表现为登录成功却被判未登录/无限跳转），给出针对性错误而非泛化的 state 缺失
+      const alternateName = secureCookies
+        ? toInsecureCookieName(stateCookieName)
+        : DEFAULT_STATE_COOKIE_NAME;
+      const alternateValue =
+        request.cookies.get(`${alternateName}${attemptSuffix}`)?.value ??
+        request.cookies.get(alternateName)?.value;
+      if (alternateValue) {
+        return buildErrorResponse(
+          request,
+          500,
+          "invalid_config",
+          "检测到 SSO SDK 配置不一致：middleware 与 callback 的 insecureLocalDev 或 Cookie 名称不匹配，请统一配置",
+          config.renderErrorPage
+        );
+      }
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "登录会话已失效，请重新发起授权请求",
+        config.renderErrorPage
       );
     }
     // state 比较使用常量时间比较（与 core/SsoClient.handleCallback 一致，防时序侧信道）
-    if (!timingSafeEqualString(returnedState ?? "", savedState)) {
-      return NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "State 参数不匹配，可能存在 CSRF 攻击",
-        },
-        { status: 400 }
+    if (!timingSafeEqualString(returnedState, savedState)) {
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "登录会话校验失败，请重新发起授权请求",
+        config.renderErrorPage
       );
     }
 
     // 读取 middleware 发起授权时写入的 OIDC nonce（httpOnly cookie）。
     // cookie 存在时 validateIdToken 会 fail-closed 校验 ID Token 的 nonce claim
-    const expectedNonce = request.cookies.get(nonceCookieName)?.value;
+    const expectedNonce = readTransientCookie(nonceCookieName);
 
     // 读取 PKCE code_verifier（middleware 存入的 httpOnly cookie）
-    const verifier = request.cookies.get(verifierCookieName)?.value;
+    const verifier = readTransientCookie(verifierCookieName);
     if (!verifier) {
-      return NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "PKCE verifier 缺失，请重新发起授权请求",
-        },
-        { status: 400 }
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "登录会话已过期（可能切换了标签页），请重新发起登录",
+        config.renderErrorPage
       );
     }
 
@@ -248,18 +433,24 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       } catch (err) {
         lastError = err;
         if (attempt >= maxRetries) {
-          return NextResponse.json(
-            { error: "server_error", error_description: "Token 请求失败，已重试仍不可达" },
-            { status: 502 }
+          return buildErrorResponse(
+            request,
+            502,
+            "server_error",
+            "登录服务暂时不可用（Token 请求失败），请稍后重试",
+            config.renderErrorPage
           );
         }
       }
     }
 
     if (lastError || !res) {
-      return NextResponse.json(
-        { error: "server_error", error_description: "Token 请求失败" },
-        { status: 502 }
+      return buildErrorResponse(
+        request,
+        502,
+        "server_error",
+        "登录服务暂时不可用（Token 请求失败），请稍后重试",
+        config.renderErrorPage
       );
     }
 
@@ -268,13 +459,12 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       try {
         errData = await res.json();
       } catch { /* ignore */ }
-      return NextResponse.json(
-        {
-          error: "token_request_failed",
-          error_description:
-            (errData.error_description as string) || `Token 请求失败: HTTP ${res.status}`,
-        },
-        { status: 502 }
+      return buildErrorResponse(
+        request,
+        502,
+        "token_request_failed",
+        (errData.error_description as string) || `登录失败（Token 请求失败: HTTP ${res.status}），请稍后重试`,
+        config.renderErrorPage
       );
     }
 
@@ -288,12 +478,26 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
 
     // 服务端异常可能省略必要字段；不校验会把字符串 "undefined" 写进 cookie
     if (!tokenData.access_token || !tokenData.refresh_token) {
-      return NextResponse.json(
-        {
-          error: "server_error",
-          error_description: "Token 响应缺少 access_token 或 refresh_token",
-        },
-        { status: 502 }
+      return buildErrorResponse(
+        request,
+        502,
+        "server_error",
+        "登录服务返回异常（Token 响应不完整），请稍后重试",
+        config.renderErrorPage
+      );
+    }
+
+    // OIDC fail-closed（仅在显式配置 scopes 且含 openid 时生效）：
+    // 防止 nonce/at_hash 绑定校验被静默跳过。未显式配置 scope 的旧接入方保持兼容行为。
+    const requiresIdToken =
+      scopes !== undefined && scopes.split(" ").filter(Boolean).includes("openid");
+    if (requiresIdToken && !tokenData.id_token) {
+      return buildErrorResponse(
+        request,
+        400,
+        "id_token_invalid",
+        "登录校验失败，请重新发起登录",
+        config.renderErrorPage
       );
     }
 
@@ -308,12 +512,14 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
           { expectedNonce }
         );
       } catch (err) {
-        return NextResponse.json(
-          {
-            error: "id_token_invalid",
-            error_description: err instanceof Error ? err.message : "ID Token 验证失败",
-          },
-          { status: 400 }
+        return buildErrorResponse(
+          request,
+          400,
+          "id_token_invalid",
+          err instanceof Error && /[\u4e00-\u9fff]/.test(err.message)
+            ? err.message
+            : "登录校验失败，请重新发起登录",
+          config.renderErrorPage
         );
       }
     }
@@ -323,8 +529,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     // 而非 request.url / request.nextUrl.origin：Next standalone 部署下后者是进程
     // 监听地址（如 http://0.0.0.0:3002），反代场景会把用户重定向到不可达地址。
     const callbackOrigin = new URL(redirectUri).origin;
-    const rawReturnUrl =
-      request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
+    const rawReturnUrl = readTransientCookie(returnUrlCookieName) || defaultReturnPath;
     const returnUrl = isTrustedReturnUrl(rawReturnUrl, callbackOrigin)
       ? rawReturnUrl
       : "/";
@@ -374,16 +579,23 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       }
     }
 
-    // 清除临时 cookies: state / nonce / return URL
-    response.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
-    response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
-    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
+    // 清除临时 cookies: state / nonce / return URL（同时清除本次 state 后缀名与旧固定名）
+    for (const name of [stateCookieName, nonceCookieName, returnUrlCookieName]) {
+      response.cookies.set(name, "", getHostCookieOptions(0, secureCookies));
+      response.cookies.set(`${name}${attemptSuffix}`, "", getHostCookieOptions(0, secureCookies));
+    }
 
     // 清除 PKCE verifier cookie，必须使用写入时的 path（callbackPath）
     // 由于 callback handler 不知道 middleware 的 callbackPath，这里保守地
     // 同时清除 path=/ 和 path=当前请求路径两种可能
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname, secureCookies));
+    for (const path of ["/", request.nextUrl.pathname]) {
+      response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, path, secureCookies));
+      response.cookies.set(
+        `${verifierCookieName}${attemptSuffix}`,
+        "",
+        getSecureCookieOptions(0, path, secureCookies)
+      );
+    }
 
     return response;
   }

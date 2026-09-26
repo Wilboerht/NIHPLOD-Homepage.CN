@@ -7,7 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
-import { maskPhone } from "@/lib/mask-phone";
+import { maskPhone, maskAddress } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 
 const querySchema = z.object({
@@ -53,6 +53,9 @@ export async function GET(request: NextRequest) {
 
     const { page, pageSize, status } = parsed.data;
     const where = status ? { status } : {};
+    // PII 最小化：仅具备"兑换履约"权限的管理员可见完整收件人手机号/地址，
+    // 仅查看权限（redemptions:read）时脱敏，减少数据导出面。
+    const canFulfill = hasAdminPermission(admin, "redemptions:fulfill");
 
     const [redemptions, total, statusCounts, pointsAgg] = await Promise.all([
       prisma.pointRedemption.findMany({
@@ -97,8 +100,8 @@ export async function GET(request: NextRequest) {
           points: r.points,
           status: r.status,
           recipient: r.recipient,
-          phone: r.phone,
-          address: r.address,
+          phone: canFulfill ? r.phone : r.phone ? maskPhone(r.phone) : null,
+          address: canFulfill ? r.address : maskAddress(r.address),
           carrier: r.carrier,
           waybillNo: r.waybillNo,
           createdAt: r.createdAt.toISOString(),

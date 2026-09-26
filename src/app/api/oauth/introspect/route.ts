@@ -29,7 +29,10 @@ export async function POST(request: NextRequest) {
     const ip = getClientIP(request);
     const corsHeaders = await getOAuthCorsHeaders(request);
     const resJson = (body: unknown, status = 200) =>
-      NextResponse.json(body, { status, headers: corsHeaders });
+      NextResponse.json(body, {
+        status,
+        headers: { ...corsHeaders, "Cache-Control": "no-store" },
+      });
 
     // 限流
     const limitResult = await rateLimit(ip, "oauth-introspect");
@@ -143,7 +146,7 @@ export async function POST(request: NextRequest) {
     const corsHeaders = await getOAuthCorsHeaders(request);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: { ...corsHeaders, "Cache-Control": "no-store" } }
     );
   }
 }

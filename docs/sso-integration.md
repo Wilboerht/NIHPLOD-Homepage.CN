@@ -304,7 +304,8 @@ SSO 中心区分两种退出语义，子项目应按场景选择：
 ### Backchannel Logout 的失效时效
 
 - 配置了 `backchannelLogoutUri` 的 RP 会收到 `logout_token`（携带 `sub`，有活跃会话时携带 `sid`），应立即清除该用户的本地会话；投递失败会重试一次后进入补偿队列，由 cron 周期重投。
-- **SSO access token 的撤销感知 ≤ 30 秒**：通过 Introspection 端点校验的 token 按 `sid` 关联会话状态判定，introspection 结果有 30s 进程内缓存，撤销后最长 30s 内全网失效。
+- 管理端批量级联操作（停用/删除 Client、批量终止会话）改为队列化投递：通知按用户写入补偿队列，响应返回后立即补投小批量，剩余积压由 cron 任务（每 15 分钟、每轮最多 200 条、并发 10）排空；队列同时保存目标 URI 快照，client 被删除后仍可投递。
+- **SSO access token 的撤销感知 ≤ 30 秒**：服务端 `POST /api/oauth/introspect` 会实时按 `sid` 查会话状态（服务端不缓存结果，撤销立即反映）；子站侧（`@nihplod/sso-verify` / SDK middleware）默认把 introspection 结果缓存 30s（`introspectCacheTtl` 可调低），因此撤销后子站最长 30s 内停止接受该 token。
 - **子站本地会话的失效取决于其 access token TTL**：只做本地 JWT 验签（不 introspect、不处理 backchannel）的子站，被撤销的 token 在其剩余 TTL 内仍会通过验签。需要即时感知撤销的子站应实现 backchannel logout 接收端点，或改用 Introspection 校验。
 
 ---
@@ -369,10 +370,13 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - `openid` — 仅返回用户 ID
 - `profile` — 昵称、头像
 - `phone` — 手机号（脱敏）
-- `membership` — 会员等级（`membership_level`）、累计消费金额（`total_spent`，number，单位元）、积分兑礼率（`points_redeem_rate`）
+- `membership` — 会员等级（`membership_level`）、累计消费金额（`total_spent`，number，单位元）、积分兑礼率（`points_redeem_rate`）；同时是积分余额/流水、兑换与收货地址、消费补录等资源端点的准入 scope（**高敏感，授予前请评估**）
 - `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
+- `profile:write` — 允许子站调用 `PATCH /api/oauth/userinfo` 修改昵称、头像、生日、性别（写操作独立 scope，不随 `profile` 隐含）
 
 示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`
+
+> ⚠️ `profile` scope 的 userinfo 响应还包含 `gender`（未设置为 null）与 `has_password`（是否已设置密码的布尔值），`birthday` scope 返回 `birthday`。
 
 > ⚠️ userinfo 会同时返回两个手机号 claim：OIDC 标准的 `phone_number` 与兼容保留的 `phone`（两者内容一致，均**脱敏**，如 `138****8000`）。新接入的子项目请使用 `phone_number`；无法通过 SSO 获取明文手机号。id_token 中的手机号 claim 仍为 `phone`。
 
@@ -410,6 +414,20 @@ npx tsx scripts/generate-oauth-rs256-keys.ts
 但其他参数（scope、PKCE、state、response_type 等）校验失败时，
 SSO 中心不会直接返回 JSON 400，而是按 OAuth 2.0 规范 302 重定向到 `redirect_uri?error=...&error_description=...&state=...`。
 子项目回调处理必须同时检查 `code` 和 `error` 参数。
+
+### 会话失效错误码（内部刷新 / OAuth 刷新）
+
+主站内部刷新（`POST /api/auth/refresh`，浏览器 Cookie 会话）失败时返回 401，`error.code` 取值：
+
+| code | 含义 | 建议处理 |
+| --- | --- | --- |
+| `TOKEN_REVOKED` | 会话被撤销/过期/顺序重用 | 重新登录 |
+| `DEVICE_LIMIT_EXCEEDED` | 登录设备数超限，本设备被自动下线（403/401 中带专属文案） | 提示原因后重新登录；官网登录页会自动展示该原因 |
+| `MISSING_REFRESH_TOKEN` / `INVALID_TOKEN` | 缺少或无效 refresh_token | 重新登录 |
+| `ACCOUNT_DISABLED` | 账号被禁用/冻结 | 提示联系客服 |
+| `RATE_LIMITED` | 刷新过于频繁 | 稍后重试（可恢复，不应立即登出） |
+
+OAuth 侧（`POST /api/oauth/token` 的 `refresh_token` grant）为协议兼容统一返回 `invalid_grant`，不细分上述原因；`@nihplod/sso-sdk` 会映射为 `session_expired` 并清空本地 token。网络异常/5xx/429 等可恢复失败不会清空登录态（SDK/主站均有重试容错）。
 
 ### 登录页取消（返回）行为
 
@@ -562,7 +580,25 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ## 消费额/等级/积分同步（商城对接）
 
-官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret，HMAC-SHA256 签名 = `"METHOD|path|timestamp|nonce|bodyHash"`）。
+官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret）。
+
+**签名格式（query 绑定，2026-09 新增）**：
+
+- 新格式（推荐，防 query 篡改）：`HMAC-SHA256(secret, "METHOD|path|canonicalQuery|timestamp|nonce|bodyHash")`
+  - `canonicalQuery`：解析 query 后按 **key/value 码点排序**（禁止 localeCompare），再对 key/value 分别 `encodeURIComponent` 后以 `k=v&...` 拼接（无 query 时为空串）。参考实现：
+    ```ts
+    function canonicalizeQuery(search: string): string {
+      const params = new URLSearchParams(search.replace(/^\?/, ""));
+      const pairs = [...params.entries()];
+      pairs.sort((a, b) =>
+        a[0] !== b[0] ? (a[0] < b[0] ? -1 : 1) : a[1] !== b[1] ? (a[1] < b[1] ? -1 : 1) : 0
+      );
+      return pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
+    }
+    ```
+  - 主站入站在过渡期内**同时接受**旧格式（`METHOD|path|timestamp|nonce|bodyHash`），以保证未升级子站可用；子站全部升级后将 `INTERNAL_API_ALLOW_LEGACY_SIGNATURE=false` 强制新格式；
+  - 主站出站（调用 advisor）默认仍签旧格式；advisor 支持新格式后设置 `INTERNAL_API_SIGN_QUERY=true` 切换。
+  - ⚠️ 旧格式不绑定 query，`GET /api/v1/internal/points/balance?phone=...` 的 `phone` 可被篡改（需先窃取请求头），升级期间请尽快切换。
 
 各内部端点在验签通过后还会比对密钥的 `project` 白名单，不匹配返回 403（`FORBIDDEN_PROJECT`）：
 
@@ -575,6 +611,15 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | `POST /api/v1/internal/user/status`（用户状态同步） | `advisor`、`mall` |
 | `POST /api/v1/internal/wechat/exchange`（微信授权兑换） | `advisor`、`mall` |
 | `POST /api/v1/internal/wechat/send-template`（微信模板消息） | `advisor` |
+
+### 微信跨域登录 exchange token 传输（子站）
+
+主站微信回调后重定向到子站并携带一次性 `wechat_exchange_token`（兑换一次即作废）：
+
+- 默认（兼容现有子站）：`?wechat_auth=success|binding_required&wechat_exchange_token=...`；
+- 推荐（需子站改造）：主站设置 `WECHAT_EXCHANGE_TOKEN_TRANSPORT=fragment` 后改为 `#wechat_exchange_token=...`，子站从 `location.hash` 读取后立即 `history.replaceState` 清除。fragment 不随请求发送、不进服务器日志与 Referer，可显著降低凭证泄漏面；
+- 自动登录场景（`wechat_auth=success`）token TTL 已缩短为 2 分钟（`WECHAT_EXCHANGE_SUCCESS_TTL` 可调，该 token 会在子站落地页立即被兑换）；需要用户填写绑定表单的场景保留 10 分钟；
+- 子站读取后应尽快调用 `POST /api/v1/internal/wechat/exchange` 兑换，且不得把该 token 写入日志/埋点/统计。
 
 ### 会员等级（四档，2026-09 起）
 
@@ -721,11 +766,14 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 { "phone": "13800138000", "type": "bind" }
 ```
 
-- **用途**：仅为「小程序微信身份 ↔ 官网手机号账户」绑定流程发码；验证码核销在 `POST /api/auth/wechat/bind`（短信通道，body 携带 `bindToken + phone + code`）完成。
-- **CSRF 豁免**：小程序无 Cookie，无法完成双提交校验，故 `type=bind` 豁免 CSRF（其余 `type` 仍强制校验）。安全性由短信验证码本身 + 限流保证，与 `/api/auth/wechat/bind` 对 `bindToken` 通道的豁免逻辑同理。
-- **防枚举假发送**：仅当手机号**已存在官网账户**时才真实发码；未注册手机号返回与真实发送完全相同的成功响应（`{ success: true, data: { expiresIn: 300 } }`）但不发码、不入库，且响应耗时与真实短信通道同量级，避免通过响应体或时序枚举官网注册用户。
+- **用途**：微信身份 ↔ 手机号账户绑定流程发码；验证码核销在 `POST /api/auth/wechat/bind`（短信通道，body 携带 `bindToken + phone + code`；官网绑定页通过 Cookie 携带 `bindToken`）。
+- **CSRF 豁免**：小程序无 Cookie，无法完成双提交校验，故 `type=bind` 在无 Origin/Referer 时豁免 CSRF（其余 `type` 仍强制校验；携带 Origin 的浏览器请求照常校验）。安全性由短信验证码本身 + 限流保证，与 `/api/auth/wechat/bind` 对 `bindToken` 通道的豁免逻辑同理。
+- **真实发码准入（防枚举）**：满足以下任一凭证时，已注册与未注册手机号均真实发码，保证绑定可用：
+  1. 有效 `bindToken`（官网绑定页 Cookie 或小程序 body 字段 `bindToken`）；
+  2. 有效 Bearer 用户 token，且目标手机号即 token 所有者本人（子站 BFF/小程序代理发码）。
+  无凭证时：未注册手机号返回与真实发送完全相同的成功响应（`{ success: true, data: { expiresIn: 300 } }`）但不发码、不入库，且响应耗时与真实短信通道同量级；已注册手机号维持历史行为（真实发码）。避免匿名者借用该通道枚举官网注册用户。
 - **限流不变**：60 秒发送间隔、每小时最多 5 次、IP 级限流对 `type=bind` 照常生效；频控按 `phone + type` 维度独立计数，不影响 login/register/reset 通道。
-- **验证码语义**：`SmsCode.type = "bind"`，有效期 5 分钟；绑定校验同时兼容 `register` 与 `bind` 两种类型（取最新未使用记录），官网扫码绑定页原有 `register` 通道行为不变。
+- **验证码语义**：`SmsCode.type = "bind"`，有效期 5 分钟；绑定校验同时兼容 `register` 与 `bind` 两种类型（取最新未使用记录），历史数据与旧客户端不受影响。
 
 ---
 
@@ -785,7 +833,7 @@ const payload = await verifier.verify(token);
 
 ### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
 
-A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；用户确认后，SSO 中心会撤销其所有会话并触发 backchannel logout。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
+A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；**默认只结束当前设备的 SSO 会话**（与子站单设备退出同口径），并触发对应会话的 backchannel logout；用户在主站登出页勾选"同时退出所有设备和已授权的平台"才会撤销该用户全部会话。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
 
 ### Q: Next.js middleware 是否支持 PKCE？
 

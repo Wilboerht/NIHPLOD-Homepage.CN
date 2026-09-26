@@ -21,10 +21,23 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { blacklistAdminTokens } from "@/lib/token-blacklist";
+import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
 const roleSchema = z.enum(ADMIN_ROLES);
+
+/** PUT 事务内的守卫错误（映射为对应 HTTP 状态，而非 500） */
+class AdminUpdateError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = "AdminUpdateError";
+  }
+}
 
 const createSchema = z.object({
   email: z.string().email(),
@@ -36,7 +49,7 @@ const createSchema = z.object({
 });
 
 const batchSchema = z.object({
-  ids: z.array(z.string().cuid()),
+  ids: z.array(z.string().cuid()).min(1).max(100),
   action: z.enum(["delete"]),
 });
 
@@ -50,7 +63,7 @@ const updateSchema = z.object({
 });
 
 const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
+  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   search: z.string().max(100).nullish(),
 });
@@ -122,6 +135,12 @@ export const GET = withAuth(async (request, admin) => {
       },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        { status: 400 }
+      );
+    }
     apiConsole.error("[AdminAdmins] GET 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
@@ -153,65 +172,41 @@ export const POST = withAuth(async (request, admin) => {
     if (body.ids && body.action) {
       const batch = batchSchema.parse(body);
       if (batch.action === "delete") {
-        // 不允许删除自己
-        const idsToDelete = batch.ids.filter((id) => id !== admin.id);
-        if (idsToDelete.length === 0) {
+        // 委派边界 + owner 保护 + 最后 owner 原子保护统一在 deleteAdminsSafely 内完成
+        const result = await deleteAdminsSafely({
+          actorId: admin.id,
+          actorRole: admin.role,
+          actorOverrides: admin.permissionOverrides ?? [],
+          targetIds: batch.ids,
+        });
+        if (!result.ok) {
           return NextResponse.json(
-            { success: false, error: { code: "SELF_DELETE", message: "不能删除自己的账号" } },
-            { status: 400 }
+            { success: false, error: { code: result.code, message: result.message } },
+            { status: result.status }
           );
         }
 
-        // owner 账号保护（纵深防御）：仅 owner 可删除 owner，且不得删除全部 owner
-        const targets = await prisma.admin.findMany({
-          where: { id: { in: idsToDelete }, deletedAt: null },
-          select: { id: true, role: true },
-        });
-        const ownerTargets = targets.filter((t) => t.role === "owner");
-        if (ownerTargets.length > 0) {
-          if (admin.role !== "owner") {
-            return NextResponse.json(
-              {
-                success: false,
-                error: { code: "FORBIDDEN", message: "仅超级管理员可删除 owner 账号" },
-              },
-              { status: 403 }
-            );
-          }
-          const ownerCount = await prisma.admin.count({
-            where: { role: "owner", deletedAt: null },
-          });
-          if (ownerTargets.length >= ownerCount) {
-            return NextResponse.json(
-              { success: false, error: { code: "LAST_OWNER", message: "不能删除全部 owner 账号" } },
-              { status: 409 }
-            );
-          }
-        }
-
-        await prisma.admin.updateMany({
-          where: { id: { in: idsToDelete } },
-          data: { deletedAt: new Date(), status: "DISABLED" },
-        });
-
-        // 吊销所有被删除管理员的 token
-        for (const id of idsToDelete) {
-          blacklistAdminTokens(id, "admin_deleted");
+        // 吊销所有被删除管理员的 token（await + 捕获，避免未处理 rejection）
+        for (const target of result.deleted) {
+          await blacklistAdminTokens(target.id, "admin_deleted").catch((err) =>
+            apiConsole.warn(`[AdminAdmins] 吊销管理员 ${target.id} token 失败:`, err)
+          );
         }
 
         await createAuditLog({
           action: "delete_admin",
           targetType: "admin",
-          detail: { ids: idsToDelete, count: idsToDelete.length },
+          detail: { ids: result.deleted.map((t) => t.id), count: result.deleted.length },
           adminId: admin.id,
           request,
         });
 
-        const skipped = batch.ids.length - idsToDelete.length;
         return NextResponse.json({
           success: true,
           data: {
-            message: `已删除 ${idsToDelete.length} 名管理员${skipped > 0 ? `，${skipped} 名跳过（含自身）` : ""}`,
+            message: `已删除 ${result.deleted.length} 名管理员${
+              result.selfSkipped > 0 ? `，${result.selfSkipped} 名跳过（含自身）` : ""
+            }`,
           },
         });
       }
@@ -281,6 +276,19 @@ export const POST = withAuth(async (request, admin) => {
 
     return NextResponse.json({ success: true, data: newAdmin });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        { status: 400 }
+      );
+    }
+    // 并发创建同邮箱：唯一约束冲突映射为 409，而非 500
+    if ((error as { code?: string }).code === "P2002") {
+      return NextResponse.json(
+        { success: false, error: { code: "DUPLICATE_EMAIL", message: "该邮箱已被使用" } },
+        { status: 409 }
+      );
+    }
     apiConsole.error("[AdminAdmins] POST 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
@@ -323,6 +331,20 @@ export const PUT = withAuth(async (request, admin) => {
           },
         },
         { status: 400 }
+      );
+    }
+
+    // 凭证类变更收归 owner：非 owner 不得修改他人密码/邮箱（防委派管理员接管高权限账号）
+    if (admin.role !== "owner" && (data.password !== undefined || data.email !== undefined)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "仅超级管理员可修改其他管理员的密码或邮箱",
+          },
+        },
+        { status: 403 }
       );
     }
 
@@ -435,18 +457,36 @@ export const PUT = withAuth(async (request, admin) => {
       );
     }
 
-    const updatedAdmin = await prisma.admin.update({
-      where: { id: data.id, deletedAt: null },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        permissions: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    // owner 降级在事务内加 advisory lock 二次校验，避免并发降级不同 owner 导致零 owner
+    // （与 admin-safety.ts 的删除路径使用同一锁名）
+    const demotingOwner = targetAdmin.role === "owner" && data.role !== undefined && data.role !== "owner";
+    const updatedAdmin = await prisma.$transaction(async (tx) => {
+      if (demotingOwner) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('nihplod_admin_owner_guard'))`;
+        const [current, ownerCount] = await Promise.all([
+          tx.admin.findUnique({ where: { id: data.id, deletedAt: null }, select: { role: true } }),
+          tx.admin.count({ where: { role: "owner", deletedAt: null } }),
+        ]);
+        if (!current) {
+          throw new AdminUpdateError("NOT_FOUND", "管理员不存在", 404);
+        }
+        if (current.role === "owner" && ownerCount <= 1) {
+          throw new AdminUpdateError("LAST_OWNER", "不能降级最后一个 owner 账号", 409);
+        }
+      }
+      return tx.admin.update({
+        where: { id: data.id, deletedAt: null },
+        data: updateData,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          permissions: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
     });
 
     // 角色或密码变更：撤销该管理员全部会话，避免旧凭证继续有效
@@ -478,6 +518,30 @@ export const PUT = withAuth(async (request, admin) => {
 
     return NextResponse.json({ success: true, data: updatedAdmin });
   } catch (error) {
+    if (error instanceof AdminUpdateError) {
+      return NextResponse.json(
+        { success: false, error: { code: error.code, message: error.message } },
+        { status: error.status }
+      );
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        { status: 400 }
+      );
+    }
+    if ((error as { code?: string }).code === "P2002") {
+      return NextResponse.json(
+        { success: false, error: { code: "DUPLICATE_EMAIL", message: "该邮箱已被使用" } },
+        { status: 409 }
+      );
+    }
+    if ((error as { code?: string }).code === "P2025") {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "管理员不存在" } },
+        { status: 404 }
+      );
+    }
     apiConsole.error("[AdminAdmins] PUT 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },

@@ -63,15 +63,23 @@ export function ProfilePanel() {
   const [newCode, setNewCode] = useState("");
   const [phoneSending, setPhoneSending] = useState<"current" | "new" | null>(null);
   const [phoneSaving, setPhoneSaving] = useState(false);
-  const [phoneCountdown, setPhoneCountdown] = useState(0);
+  // 换绑手机号：当前号码与新号码各自独立倒计时（互不阻塞）
+  const [phoneCountdowns, setPhoneCountdowns] = useState<{ current: number; new: number }>({
+    current: 0,
+    new: 0,
+  });
 
   // 短信倒计时
   useEffect(() => {
-    if (phoneCountdown > 0) {
-      const t = setTimeout(() => setPhoneCountdown((c) => c - 1), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [phoneCountdown]);
+    if (phoneCountdowns.current <= 0 && phoneCountdowns.new <= 0) return;
+    const t = setTimeout(() => {
+      setPhoneCountdowns((c) => ({
+        current: Math.max(0, c.current - 1),
+        new: Math.max(0, c.new - 1),
+      }));
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [phoneCountdowns]);
 
   // 生日输入上限：今天（本地时区）
   const now = new Date();
@@ -240,7 +248,7 @@ export function ProfilePanel() {
 
   /** 发送换绑验证码：target=current 发到当前手机（验证身份），target=new 发到新手机 */
   const sendPhoneCode = async (target: "current" | "new") => {
-    if (phoneCountdown > 0) return;
+    if (phoneCountdowns[target] > 0) return;
     if (target === "current" && isPlaceholderPhone) return;
     if (target === "new" && !/^1[3-9]\d{9}$/.test(newPhone)) {
       showError("请输入正确的新手机号");
@@ -255,7 +263,7 @@ export function ProfilePanel() {
       });
       const data = await res.json();
       if (data.success) {
-        setPhoneCountdown(60);
+        setPhoneCountdowns((c) => ({ ...c, [target]: 60 }));
         showSuccess("验证码已发送");
       } else {
         showError(data.error?.message || "验证码发送失败");
@@ -300,7 +308,7 @@ export function ProfilePanel() {
         setNewCode("");
         setShowPhoneForm(false);
         await refreshUser();
-        showSuccess("手机号已更新");
+        showSuccess("手机号已更新，其他设备已退出登录");
       } else {
         showError(data.error?.message || "换绑失败");
       }
@@ -705,10 +713,10 @@ export function ProfilePanel() {
                       />
                       <button
                         onClick={() => sendPhoneCode("current")}
-                        disabled={phoneCountdown > 0 || phoneSending === "current"}
+                        disabled={phoneCountdowns.current > 0 || phoneSending === "current"}
                         className="shrink-0 rounded-xl border border-stone-200 px-4 py-2.5 text-sm text-stone-600 transition-colors hover:bg-white/60 active:opacity-70 disabled:opacity-50"
                       >
-                        {phoneCountdown > 0 ? `${phoneCountdown}s 后重发` : "发送验证码"}
+                        {phoneCountdowns.current > 0 ? `${phoneCountdowns.current}s 后重发` : "发送验证码"}
                       </button>
                     </div>
                   </div>
@@ -730,10 +738,10 @@ export function ProfilePanel() {
                     />
                     <button
                       onClick={() => sendPhoneCode("new")}
-                      disabled={phoneCountdown > 0 || phoneSending === "new"}
+                      disabled={phoneCountdowns.new > 0 || phoneSending === "new"}
                       className="shrink-0 rounded-xl border border-stone-200 px-4 py-2.5 text-sm text-stone-600 transition-colors hover:bg-white/60 active:opacity-70 disabled:opacity-50"
                     >
-                      {phoneCountdown > 0 ? `${phoneCountdown}s 后重发` : "发送验证码"}
+                      {phoneCountdowns.new > 0 ? `${phoneCountdowns.new}s 后重发` : "发送验证码"}
                     </button>
                   </div>
                 </div>

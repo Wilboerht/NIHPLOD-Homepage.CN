@@ -32,6 +32,12 @@ interface TokenStorage {
     get(key: string): string | null;
     set(key: string, value: string): void;
     remove(key: string): void;
+    /**
+     * 可选：枚举当前存储中的 key（不含 SDK 内部前缀）。
+     * 供 clearAllSsoData() 清理 client 级残留（`token:<clientId>` 等）。
+     * 自定义存储若不实现，clearAllSsoData() 仅能按已知 key 清理。
+     */
+    keys?(): string[];
 }
 /**
  * 创建存储实现
@@ -111,6 +117,11 @@ interface SsoClientConfig {
     /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
     postLogoutRedirectUri?: string;
     /**
+     * 调试日志开关（默认 false）。开启后输出登录/回调/刷新/登出等关键流程日志，
+     * 便于接入方定位问题（生产默认关闭，避免日志噪音）。
+     */
+    debug?: boolean;
+    /**
      * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
      * 仅用于 discovery / token / userinfo / revocation 等服务器间请求；
      * 浏览器跳转（authorize、end-session）始终使用 ssoBaseUrl 公网地址。
@@ -184,6 +195,12 @@ declare class SsoClient {
     /** Discovery fetch 超时（10 秒） */
     private static readonly DISCOVERY_TIMEOUT_MS;
     constructor(config: SsoClientConfig);
+    /**
+     * 调试日志（config.debug=true 时输出，前缀 [SSO SDK]）：
+     * 覆盖登录发起 / 回调结果 / 刷新失败 / 登出等关键节点，便于接入方定位问题。
+     * 不会输出 token/授权码等敏感值。
+     */
+    debugLog(...args: unknown[]): void;
     /**
      * 获取 OIDC Discovery 文档（带缓存 + 超时）
      *
@@ -417,9 +434,11 @@ declare class OAuthError extends Error {
  */
 /**
  * 校验 returnUrl 是否可信（防开放重定向）。
- * 仅允许：相对路径（且不以 // 开头）或与 currentOrigin 完全同源的绝对 URL。
- * 拒绝一切含反斜杠 \ 的值：浏览器会把 "/\evil.com" 归一化为 "//evil.com"，
- * 形成协议相对 URL 开放重定向。
+ * 仅允许：
+ * - 站内相对路径（以单个 "/" 开头且不以 "//" 开头）
+ * - 与 currentOrigin 完全同源的 http(s) 绝对 URL
+ * 拒绝一切含反斜杠/控制字符的值（浏览器会将 "/\evil.com" 解析为跨站 URL），
+ * 拒绝 userinfo 与危险 scheme。
  */
 declare function isTrustedReturnUrl(url: string, currentOrigin: string): boolean;
 /**

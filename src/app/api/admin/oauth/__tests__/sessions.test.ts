@@ -24,6 +24,7 @@ const {
   mockRevokeRefreshToken,
   mockBlacklistUserTokens,
   mockSendBackchannelLogout,
+  mockEnqueueBackchannelLogoutForActiveSessions,
   mockRecordSsoEvent,
   mockCreateAuditLog,
   prismaMock,
@@ -42,6 +43,7 @@ const {
     mockRevokeRefreshToken: vi.fn(),
     mockBlacklistUserTokens: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
+    mockEnqueueBackchannelLogoutForActiveSessions: vi.fn(),
     mockRecordSsoEvent: vi.fn(),
     mockCreateAuditLog: vi.fn(),
     prismaMock: {
@@ -105,6 +107,9 @@ vi.mock("@/lib/token-blacklist", () => ({
 
 vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: (...args: unknown[]) => mockSendBackchannelLogout(...args),
+  enqueueBackchannelLogoutForActiveSessions: (...args: unknown[]) =>
+    mockEnqueueBackchannelLogoutForActiveSessions(...args),
+  scheduleBackchannelRedelivery: vi.fn(),
   isBlockedHostname: vi.fn().mockReturnValue(false),
 }));
 
@@ -383,7 +388,12 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
         data: { revokedAt: expect.any(Date) },
       });
       // 同步撤销该 user+client 的 refresh token
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
+      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        "client-abc",
+        "admin_revoke"
+      );
       // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
@@ -429,7 +439,12 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
         },
         data: { revokedAt: expect.any(Date) },
       });
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
+      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        "client-abc",
+        "admin_revoke"
+      );
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
       // sid 取撤销前查出的最新活跃会话
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
@@ -462,12 +477,11 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(prismaMock.oAuthSession.updateMany).not.toHaveBeenCalled();
     });
 
-    it("批量撤销所有会话与 refresh token，并逐用户 Backchannel 通知（不再拉黑 token）", async () => {
-      prismaMock.oAuthSession.findMany.mockResolvedValue([
-        { userId: "user-1", clientId: "client-a", sessionId: "sid-a1" },
-        { userId: "user-1", clientId: "client-b", sessionId: "sid-b1" },
-        { userId: "user-2", clientId: "client-a", sessionId: "sid-a2" },
-      ]);
+    it("批量撤销所有会话与 refresh token，Backchannel 通知批量入队（不再逐用户同步投递/拉黑 token）", async () => {
+      mockEnqueueBackchannelLogoutForActiveSessions.mockResolvedValue({
+        sessionCount: 3,
+        userClientCount: 3,
+      });
       prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 3 });
       prismaMock.refreshToken.updateMany.mockResolvedValue({ count: 5 });
 
@@ -480,24 +494,19 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(res.status).toBe(200);
       expect(data.data.sessionsRevoked).toBe(3);
       expect(data.data.refreshTokensRevoked).toBe(5);
+      expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({});
       expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith({
         where: { revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
       expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
         where: { revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+        data: { revokedAt: expect.any(Date), revokedReason: "admin_revoke" },
       });
-      // 按用户聚合 backchannel 通知（user-1 聚合了两个 client），sid 取撤销前查出的活跃会话；
-      // 关键回归点：不再逐用户拉黑 token（会把用户误登出主站），
-      // access token 即时失效由 sid 会话校验承担
+      // 关键回归点：批量操作不再逐用户同步 HTTP 投递，也不再拉黑 token（会把用户误登出主站），
+      // access token 即时失效由 sid 会话校验承担；通知统一入队由 cron 投递
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-a", "client-b"], {
-        sids: { "client-a": "sid-a1", "client-b": "sid-b1" },
-      });
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-2", ["client-a"], {
-        sids: { "client-a": "sid-a2" },
-      });
+      expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
     });
   });
 });

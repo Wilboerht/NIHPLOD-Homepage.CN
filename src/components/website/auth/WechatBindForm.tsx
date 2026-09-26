@@ -8,7 +8,8 @@ import {
   mobileInputFlexClass,
   mobileBtnClass,
 } from "./auth-styles";
-import { PASSWORD_MIN_LENGTH } from "./auth-utils";
+import { PASSWORD_MAX_LENGTH } from "./auth-utils";
+import { AgreementCheckbox } from "./LoginForm";
 
 export interface WechatBindFormProps {
   variant: "pc" | "mobile";
@@ -19,10 +20,13 @@ export interface WechatBindFormProps {
   regCodeSending: boolean;
   regCountdown: number;
   loading: boolean;
+  mobileAgreed: boolean;
+  agreementShake: number;
   onRegPhoneChange: (v: string) => void;
   onRegCodeChange: (v: string) => void;
   onRegPasswordChange: (v: string) => void;
   onShowPasswordToggle: () => void;
+  onMobileAgreedChange: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   onSendRegCode: () => void;
 }
@@ -36,10 +40,13 @@ export function WechatBindForm({
   regCodeSending,
   regCountdown,
   loading,
+  mobileAgreed,
+  agreementShake,
   onRegPhoneChange,
   onRegCodeChange,
   onRegPasswordChange,
   onShowPasswordToggle,
+  onMobileAgreedChange,
   onSubmit,
   onSendRegCode,
 }: WechatBindFormProps) {
@@ -84,13 +91,12 @@ export function WechatBindForm({
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              required
-              minLength={PASSWORD_MIN_LENGTH}
               value={regPassword}
               onChange={(e) => onRegPasswordChange(e.target.value)}
               className={`${pcInputClass} pr-10`}
-              maxLength={64}
-              placeholder="密码（8位且含大写/小写/数字）"
+              maxLength={PASSWORD_MAX_LENGTH}
+              autoComplete="new-password"
+              placeholder="设置登录密码（可选，留空将自动生成）"
             />
             <button
               type="button"
@@ -100,6 +106,11 @@ export function WechatBindForm({
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+          <AgreementCheckbox
+            checked={mobileAgreed}
+            onChange={onMobileAgreedChange}
+            agreementShake={agreementShake}
+          />
           <button type="submit" disabled={loading} className={pcBtnClass}>
             {loading ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-charcoal/20 border-t-brand-charcoal" />
@@ -110,6 +121,12 @@ export function WechatBindForm({
             )}
           </button>
         </form>
+        <p className="mt-6 text-center text-xs text-brand-charcoal/50">
+          授权已过期或绑定失败？
+          <a href="/api/auth/wechat" className="text-blue-600 hover:underline">
+            重新扫码授权
+          </a>
+        </p>
       </>
     );
   }
@@ -161,12 +178,11 @@ export function WechatBindForm({
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
-            required
-            minLength={PASSWORD_MIN_LENGTH}
             value={regPassword}
             onChange={(e) => onRegPasswordChange(e.target.value)}
-            placeholder="密码（8位且含大写/小写/数字）"
-            maxLength={64}
+            placeholder="设置登录密码（可选，留空将自动生成）"
+            maxLength={PASSWORD_MAX_LENGTH}
+            autoComplete="new-password"
             className={`${mobileInputClass} pr-10`}
           />
           <button
@@ -177,6 +193,11 @@ export function WechatBindForm({
             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+        <AgreementCheckbox
+          checked={mobileAgreed}
+          onChange={onMobileAgreedChange}
+          agreementShake={agreementShake}
+        />
         <div className="pt-2">
           <button type="submit" disabled={loading} className={mobileBtnClass}>
             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -189,6 +210,12 @@ export function WechatBindForm({
           </button>
         </div>
       </form>
+      <p className="text-center text-xs text-brand-charcoal/50">
+        授权已过期或绑定失败？
+        <a href="/api/auth/wechat" className="text-blue-600 hover:underline">
+          重新扫码授权
+        </a>
+      </p>
     </div>
   );
 }

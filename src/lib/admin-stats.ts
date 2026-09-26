@@ -1,24 +1,13 @@
 /**
  * 管理员仪表盘统计数据
  *
- * 该函数同时被以下两处使用：
- * - API 路由：src/app/api/admin/stats/route.ts
- * - Server Component：src/app/(admin)/admin/page.tsx
+ * 使用方：Server Component src/app/(admin)/admin/page.tsx
  *
  * 通过共享函数保持数据逻辑单一来源，避免重复查询。
  */
 import { unstable_cache } from "next/cache";
 import prisma from "./prisma";
-
-function getTodayUTC8(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), -8, 0, 0, 0));
-}
-
-function getMonthStartUTC8(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, -8, 0, 0, 0));
-}
+import { getSsoOverview } from "./sso-overview";
 
 const STATS_REVALIDATE = parseInt(process.env.ADMIN_STATS_CACHE_TTL ?? "", 10) || 300;
 
@@ -42,7 +31,8 @@ export interface SsoStatsData {
   activeClients: number;
   activeSessions: number;
   todayEvents: number;
-  successRate: number;
+  /** 本月 authorize 成功率；无授权事件时为 null（展示为 —） */
+  successRate: number | null;
 }
 
 const STATS_CACHE_TAGS = ["admin-stats"];
@@ -117,27 +107,13 @@ export async function getAdminStats(): Promise<AdminStatsData> {
 
 const getCachedSsoStats = unstable_cache(
   async () => {
-    const todayStart = getTodayUTC8();
-    const monthStart = getMonthStartUTC8();
-
-    const [activeClients, activeSessions, todayEvents, successfulEvents, totalEvents] =
-      await Promise.all([
-        prisma.oAuthClient.count({ where: { isActive: true } }),
-        prisma.oAuthSession.count({ where: { revokedAt: null } }),
-        prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
-        prisma.ssoAuditEvent.count({
-          where: { createdAt: { gte: monthStart }, success: true },
-        }),
-        prisma.ssoAuditEvent.count({
-          where: { createdAt: { gte: monthStart } },
-        }),
-      ]);
-
+    // 与 SSO 统计页共用同一函数，避免同名字段口径（是否含过期/成功率分母/时区）不一致
+    const overview = await getSsoOverview();
     return {
-      activeClients,
-      activeSessions,
-      todayEvents,
-      successRate: totalEvents > 0 ? Math.round((successfulEvents / totalEvents) * 100) : 100,
+      activeClients: overview.activeClients,
+      activeSessions: overview.activeSessions,
+      todayEvents: overview.events.today,
+      successRate: overview.successRate,
     };
   },
   ["admin-dashboard-sso-stats"],

@@ -82,6 +82,70 @@ async function resolveSafeCallback(cb: string | undefined): Promise<string> {
 export const dynamic = "force-dynamic";
 
 /**
+ * 子站 exchange token 传输方式：
+ * - query（默认，兼容现有子站）：`?wechat_exchange_token=...`（会进入浏览器历史/日志）；
+ * - fragment（推荐，需子站改造）：`#wechat_exchange_token=...`（不随请求发送、不进服务器日志）。
+ * 通过 WECHAT_EXCHANGE_TOKEN_TRANSPORT=fragment 切换；子站需从 location.hash 读取。
+ */
+function isFragmentTransport(): boolean {
+  return (process.env.WECHAT_EXCHANGE_TOKEN_TRANSPORT || "query").toLowerCase() === "fragment";
+}
+
+/**
+ * 解析时间字符串（如 "2m"/"120s"）为受限秒数格式；非法/超范围回退 fallback 并告警。
+ * 防止 WECHAT_EXCHANGE_SUCCESS_TTL 误配（"abc"/"0"/"-5m"/"10y"）导致
+ * jose 抛错使整个微信登录不可用，或 TTL 过长失去短时效意义。
+ */
+function parseTtlEnv(raw: string | undefined, fallback: string, minSec = 30, maxSec = 600): string {
+  if (!raw) return fallback;
+  const match = /^(\d+)(s|m)$/.exec(raw.trim());
+  if (!match) {
+    apiConsole.warn(`[WechatCallback] 非法 TTL 配置 "${raw}"，回退默认 ${fallback}`);
+    return fallback;
+  }
+  const seconds = match[2] === "m" ? Number(match[1]) * 60 : Number(match[1]);
+  if (!Number.isFinite(seconds) || seconds < minSec || seconds > maxSec) {
+    apiConsole.warn(
+      `[WechatCallback] TTL 配置 ${raw} 超出 ${minSec}-${maxSec}s 范围，回退默认 ${fallback}`
+    );
+    return fallback;
+  }
+  return `${seconds}s`;
+}
+
+/** 自动登录场景 exchange token 的短 TTL（token 会在子站落地页立即被兑换） */
+function getSuccessExchangeTtl(): string {
+  return parseTtlEnv(process.env.WECHAT_EXCHANGE_SUCCESS_TTL, "2m");
+}
+
+/**
+ * 构造子站重定向响应：按配置把一次性 exchange token 放入 query 或 fragment，
+ * 并统一加 Referrer-Policy: no-referrer、清除微信 CSRF nonce Cookie。
+ */
+function buildSubsiteExchangeRedirect(
+  baseRedirectUrl: string,
+  wechatAuth: "success" | "binding_required",
+  exchangeToken: string
+): NextResponse {
+  const url = new URL(baseRedirectUrl);
+  url.searchParams.set("wechat_auth", wechatAuth);
+  if (isFragmentTransport()) {
+    url.hash = new URLSearchParams({ wechat_exchange_token: exchangeToken }).toString();
+  } else {
+    url.searchParams.set("wechat_exchange_token", exchangeToken);
+  }
+
+  const response = NextResponse.redirect(url, 302);
+  // query 模式下禁止 Referer 泄露完整 URL（含 token）；fragment 模式本就不出站
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
+    ...WECHAT_NONCE_COOKIE_OPTIONS,
+    maxAge: 0,
+  });
+  return response;
+}
+
+/**
  * 构造最终重定向 URL。
  * 优先使用 state 中指定的 callback base，未指定则回退到官网默认域名。
  */
@@ -173,7 +237,7 @@ export async function GET(request: NextRequest) {
       const targetUrl = new URL(buildRedirectUrl(safeCallback, redirectUrl));
       targetUrl.searchParams.set("wechat_auth", "error");
       targetUrl.searchParams.set("code", "INVALID_STATE");
-      targetUrl.searchParams.set("message", encodeURIComponent("授权状态验证失败，请重试"));
+      targetUrl.searchParams.set("message", "授权状态验证失败，请重试");
       const response = NextResponse.redirect(targetUrl, 302);
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
         ...WECHAT_NONCE_COOKIE_OPTIONS,
@@ -195,7 +259,7 @@ export async function GET(request: NextRequest) {
       const deniedUrl = new URL(baseRedirectUrl);
       deniedUrl.searchParams.set("wechat_auth", "error");
       deniedUrl.searchParams.set("code", "WECHAT_DENIED");
-      deniedUrl.searchParams.set("message", encodeURIComponent("您取消了微信授权"));
+      deniedUrl.searchParams.set("message", "您取消了微信授权");
       const response = NextResponse.redirect(deniedUrl, 302);
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
         ...WECHAT_NONCE_COOKIE_OPTIONS,
@@ -208,7 +272,7 @@ export async function GET(request: NextRequest) {
       const missingCodeUrl = new URL(baseRedirectUrl);
       missingCodeUrl.searchParams.set("wechat_auth", "error");
       missingCodeUrl.searchParams.set("code", "MISSING_CODE");
-      missingCodeUrl.searchParams.set("message", encodeURIComponent("缺少授权码"));
+      missingCodeUrl.searchParams.set("message", "缺少授权码");
       const response = NextResponse.redirect(missingCodeUrl, 302);
       response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
         ...WECHAT_NONCE_COOKIE_OPTIONS,
@@ -253,7 +317,7 @@ export async function GET(request: NextRequest) {
         disabledUrl.searchParams.set("code", "WECHAT_AUTH_FAILED");
         disabledUrl.searchParams.set(
           "message",
-          encodeURIComponent("您的账户暂时无法使用微信登录，请使用手机号登录或联系客服")
+          "您的账户暂时无法使用微信登录，请使用手机号登录或联系客服"
         );
         const response = NextResponse.redirect(disabledUrl, 302);
         response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
@@ -287,27 +351,18 @@ export async function GET(request: NextRequest) {
 
       // 子站场景：通过 URL 传递一次性 exchange token，由子站完成本地 Cookie/session 写入
       if (safeCallback && isSubsiteCallback(safeCallback)) {
-        const exchangeToken = await signWechatExchangeToken({
-          openid: wechatUser.openid,
-          unionid: wechatUser.unionid,
-          nickname: wechatUser.nickname,
-          avatar: wechatUser.headimgurl,
-        });
+        const exchangeToken = await signWechatExchangeToken(
+          {
+            openid: wechatUser.openid,
+            unionid: wechatUser.unionid,
+            nickname: wechatUser.nickname,
+            avatar: wechatUser.headimgurl,
+          },
+          // 自动登录路径 token 会在子站落地页立即被兑换：使用短 TTL 降低泄漏窗口
+          { expiresIn: getSuccessExchangeTtl() }
+        );
 
-        const subsiteRedirect = new URL(baseRedirectUrl);
-        subsiteRedirect.searchParams.set("wechat_auth", "success");
-        subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
-
-        const response = NextResponse.redirect(subsiteRedirect, 302);
-        // exchange token 位于 URL query：禁止浏览器在跳转向子站第三方资源时
-        // 通过 Referer 泄露完整 URL（含 token）。改为 fragment 传递涉及子站协议变更，暂不动
-        response.headers.set("Referrer-Policy", "no-referrer");
-        // 清除 CSRF nonce Cookie
-        response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
-          ...WECHAT_NONCE_COOKIE_OPTIONS,
-          maxAge: 0,
-        });
-        return response;
+        return buildSubsiteExchangeRedirect(baseRedirectUrl, "success", exchangeToken);
       }
 
       // 官网场景：直接设置 Cookie 登录
@@ -369,20 +424,8 @@ export async function GET(request: NextRequest) {
         avatar: wechatUser.headimgurl,
       });
 
-      const subsiteRedirect = new URL(baseRedirectUrl);
-      subsiteRedirect.searchParams.set("wechat_auth", "binding_required");
-      subsiteRedirect.searchParams.set("wechat_exchange_token", exchangeToken);
-
-      const response = NextResponse.redirect(subsiteRedirect, 302);
-      // exchange token 位于 URL query：禁止浏览器在跳转向子站第三方资源时
-      // 通过 Referer 泄露完整 URL（含 token）。改为 fragment 传递涉及子站协议变更，暂不动
-      response.headers.set("Referrer-Policy", "no-referrer");
-      // 清除 CSRF nonce Cookie
-      response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
-        ...WECHAT_NONCE_COOKIE_OPTIONS,
-        maxAge: 0,
-      });
-      return response;
+      // 绑定流程需要用户在子站表单填写手机号/验证码：保留默认 TTL（10 分钟）
+      return buildSubsiteExchangeRedirect(baseRedirectUrl, "binding_required", exchangeToken);
     }
 
     // 官网场景：保持 Cookie 方式（provider 随载荷携带，bind 端点据此写入 ExternalIdentity）
@@ -416,7 +459,7 @@ export async function GET(request: NextRequest) {
     const fallbackUrl = new URL(buildRedirectUrl(safeCallback, redirectUrl));
     fallbackUrl.searchParams.set("wechat_auth", "error");
     fallbackUrl.searchParams.set("code", "INTERNAL_ERROR");
-    fallbackUrl.searchParams.set("message", encodeURIComponent(message));
+    fallbackUrl.searchParams.set("message", message);
     const response = NextResponse.redirect(fallbackUrl, 302);
     response.cookies.set(WECHAT_NONCE_COOKIE_NAME, "", {
       ...WECHAT_NONCE_COOKIE_OPTIONS,

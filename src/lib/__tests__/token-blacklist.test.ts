@@ -48,7 +48,7 @@ describe("token-blacklist", () => {
   it("revokeAccessToken 应调用 store.revokeAccessToken", async () => {
     mockStore.revokeAccessToken.mockResolvedValue(undefined);
     await revokeAccessToken("jti-1");
-    expect(mockStore.revokeAccessToken).toHaveBeenCalledWith("jti-1");
+    expect(mockStore.revokeAccessToken).toHaveBeenCalledWith("jti-1", undefined);
   });
 
   it("isAccessTokenRevoked 应返回 store 的结果", async () => {

@@ -44,6 +44,25 @@ describe("token-blacklist-store", () => {
       await store.removeUserBlacklist("user-1");
       expect(await store.isUserBlacklisted("user-1")).toBeNull();
     });
+
+    it("遵循传入的过期时间：已过期 exp 不落黑名单（而非回退默认 2h）", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "memory";
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      await store.revokeAccessToken("jti-expired", Date.now() - 1);
+      expect(await store.isAccessTokenRevoked("jti-expired")).toBe(false);
+
+      await store.blacklistUser("user-expired", "x", Date.now() - 1);
+      expect(await store.isUserBlacklisted("user-expired")).toBeNull();
+    });
+
+    it("支持长 TTL（管理端 24h 不被内存实现压缩）", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "memory";
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      await store.blacklistUser("user-long", "admin", Date.now() + 24 * 60 * 60 * 1000);
+      expect(await store.isUserBlacklisted("user-long")).toEqual({ reason: "admin" });
+    });
   });
 
   describe("DatabaseTokenBlacklistStore", () => {

@@ -8,16 +8,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { getSsoOverview } from "@/lib/sso-overview";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
-    if (rateLimitResponse) return rateLimitResponse;
-
+    // 先鉴权后限流：未认证请求不消耗已登录管理员共用的限流桶
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -25,6 +23,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
     if (!hasAdminPermission(admin, "sso:read")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 统计查看" } },
@@ -32,62 +33,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(todayStart.getTime() - todayStart.getDay() * 24 * 60 * 60 * 1000);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const [
-      activeClients,
-      activeSessions,
-      activeRefreshTokens,
-      todayEvents,
-      weekEvents,
-      monthEvents,
-      successfulEvents,
-      totalEvents,
-    ] = await Promise.all([
-      prisma.oAuthClient.count({ where: { isActive: true } }),
-      // 与会话管理页口径一致：已过期但未标记撤销的不计为活跃
-      prisma.oAuthSession.count({
-        where: { revokedAt: null, expiresAt: { gt: new Date() } },
-      }),
-      prisma.refreshToken.count({
-        where: { revokedAt: null, expiresAt: { gt: new Date() } },
-      }),
-      prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
-      prisma.ssoAuditEvent.count({ where: { createdAt: { gte: weekStart } } }),
-      prisma.ssoAuditEvent.count({ where: { createdAt: { gte: monthStart } } }),
-      prisma.ssoAuditEvent.count({
-        where: { createdAt: { gte: monthStart }, success: true },
-      }),
-      prisma.ssoAuditEvent.count({
-        where: { createdAt: { gte: monthStart } },
-      }),
-    ]);
-
-    // 按事件类型统计本月事件
-    const eventsByType = await prisma.ssoAuditEvent.groupBy({
-      by: ["event"],
-      where: { createdAt: { gte: monthStart } },
-      _count: { event: true },
-      orderBy: { _count: { event: "desc" } },
-    });
+    // 与仪表盘共用同一统计函数：UTC+8 日界、周一为周首、成功率仅统计 authorize
+    const overview = await getSsoOverview();
 
     return NextResponse.json({
       success: true,
       data: {
-        activeClients,
-        activeSessions,
-        activeRefreshTokens,
-        events: {
-          today: todayEvents,
-          thisWeek: weekEvents,
-          thisMonth: monthEvents,
-        },
+        activeClients: overview.activeClients,
+        activeSessions: overview.activeSessions,
+        activeRefreshTokens: overview.activeRefreshTokens,
+        events: overview.events,
         // 无数据时返回 null，由前端展示"暂无数据"，避免误导性的 100%
-        successRate: totalEvents > 0 ? Math.round((successfulEvents / totalEvents) * 100) : null,
-        eventsByType: Object.fromEntries(eventsByType.map((e) => [e.event, e._count.event])),
+        successRate: overview.successRate,
+        eventsByType: overview.eventsByType,
       },
     });
   } catch (error) {

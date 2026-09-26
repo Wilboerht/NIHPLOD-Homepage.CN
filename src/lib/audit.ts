@@ -54,6 +54,7 @@ export type AuditAction =
   | "user_wechat_bind"
   | "user_oauth_revoke"
   | "user_phone_changed"
+  | "device_force_logout"
   | "user_status_change"
   | "user_deleted"
   | "user_detail_view"
@@ -188,9 +189,11 @@ export const AUDIT_ACTIONS = [
   "webhook_failure_retry",
   "webhook_failure_delete",
   "user_set_password",
+  "user_phone_changed",
   "admin_login",
   "admin_logout",
   "refresh_token_reuse_detected",
+  "sso_audit_export",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
@@ -318,4 +321,25 @@ export async function listAuditLogs(options: {
       totalPages: Math.ceil(total / pageSize),
     },
   };
+}
+
+/** 审计日志保留天数（默认 365 天；最小 30，最大 3650，防止误配把审计清空/永久堆积） */
+export function getAuditLogRetentionDays(): number {
+  const raw = Number(process.env.AUDIT_LOG_RETENTION_DAYS ?? 365);
+  if (!Number.isFinite(raw)) return 365;
+  return Math.min(Math.max(Math.floor(raw), 30), 3650);
+}
+
+/**
+ * 清理超过保留期的 AuditLog 记录（合规留存到期后物理删除）。
+ * 失败时抛出，由 cron 运行记录（CronTaskRun）标记失败，避免"假成功"。
+ */
+export async function cleanupOldAuditLogs(): Promise<number> {
+  const retentionDays = getAuditLogRetentionDays();
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+  const result = await prisma.auditLog.deleteMany({
+    where: { createdAt: { lt: cutoff } },
+  });
+  apiConsole.info(`[CleanupAuditLogs] 清理了 ${result.count} 条超过 ${retentionDays} 天的审计日志`);
+  return result.count;
 }

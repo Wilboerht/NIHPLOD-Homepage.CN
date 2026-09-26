@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { updateAddressResponse, deleteAddressResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
 
@@ -24,7 +25,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     });
     if (!auth.ok) return auth.response;
     const { id } = await context.params;
-    return await updateAddressResponse(auth.payload.id, id, request);
+    return decorateOAuthResponse(
+      await updateAddressResponse(auth.payload.id, id, request),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth Addresses] 编辑异常:", error);
     return NextResponse.json(
@@ -42,7 +46,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     });
     if (!auth.ok) return auth.response;
     const { id } = await context.params;
-    return await deleteAddressResponse(auth.payload.id, id);
+    return decorateOAuthResponse(
+      await deleteAddressResponse(auth.payload.id, id),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth Addresses] 删除异常:", error);
     return NextResponse.json(

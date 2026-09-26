@@ -135,6 +135,9 @@ function createMemoryStorageAdapter() {
     },
     remove(key) {
       store.delete(key);
+    },
+    keys() {
+      return [...store.keys()];
     }
   };
 }
@@ -143,26 +146,44 @@ function createSessionStorageAdapter() {
   const fallback = /* @__PURE__ */ new Map();
   return {
     get(key) {
-      if (typeof sessionStorage !== "undefined") {
-        return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+        }
+      } catch {
       }
       return fallback.get(key) ?? null;
     },
     set(key, value) {
-      if (typeof sessionStorage === "undefined") {
-        fallback.set(key, value);
-        return;
-      }
       try {
-        sessionStorage.setItem(STORAGE_PREFIX + key, value);
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(STORAGE_PREFIX + key, value);
+          return;
+        }
       } catch {
-        fallback.set(key, value);
       }
+      fallback.set(key, value);
     },
     remove(key) {
       fallback.delete(key);
-      if (typeof sessionStorage === "undefined") return;
-      sessionStorage.removeItem(STORAGE_PREFIX + key);
+      try {
+        if (typeof sessionStorage === "undefined") return;
+        sessionStorage.removeItem(STORAGE_PREFIX + key);
+      } catch {
+      }
+    },
+    keys() {
+      const result = new Set(fallback.keys());
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key?.startsWith(STORAGE_PREFIX)) result.add(key.slice(STORAGE_PREFIX.length));
+          }
+        }
+      } catch {
+      }
+      return [...result];
     }
   };
 }
@@ -255,32 +276,58 @@ function clearAllSsoData(clientId) {
   removeReturnUrl();
   removeLogoutState();
   removeSilentProbe();
-  const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-  const stores = [
-    typeof sessionStorage !== "undefined" ? sessionStorage : null,
-    typeof localStorage !== "undefined" ? localStorage : null
-  ];
+  const stores = [];
+  try {
+    if (typeof sessionStorage !== "undefined") stores.push(sessionStorage);
+  } catch {
+  }
+  try {
+    if (typeof localStorage !== "undefined") stores.push(localStorage);
+  } catch {
+  }
+  const abstractKeys = /* @__PURE__ */ new Set();
   for (const store of stores) {
-    if (!store) continue;
     const keys = [];
-    for (let i = 0; i < store.length; i++) {
-      const key = store.key(i);
-      if (key?.startsWith(prefix)) keys.push(key);
+    try {
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key?.startsWith(STORAGE_PREFIX)) keys.push(key);
+      }
+    } catch {
+      continue;
     }
     for (const key of keys) {
-      _transient.remove(key.slice(STORAGE_PREFIX.length));
-      store.removeItem(key);
+      abstractKeys.add(key.slice(STORAGE_PREFIX.length));
+      try {
+        store.removeItem(key);
+      } catch {
+      }
     }
+  }
+  for (const store of [_transient, _storage]) {
+    try {
+      for (const key of store.keys?.() ?? []) abstractKeys.add(key);
+    } catch {
+    }
+  }
+  for (const key of abstractKeys) {
+    _transient.remove(key);
+    _storage.remove(key);
   }
 }
 
 // src/core/security.ts
+var UNSAFE_URL_CHAR_PATTERN = /[\\\u0000-\u001F\u007F]/;
 function isTrustedReturnUrl(url, currentOrigin) {
   if (!url) return false;
-  if (url.includes("\\")) return false;
-  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  if (UNSAFE_URL_CHAR_PATTERN.test(url)) return false;
+  if (url.startsWith("//")) return false;
+  if (url.startsWith("/")) return true;
   try {
-    return new URL(url).origin === currentOrigin;
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    return parsed.origin === currentOrigin;
   } catch {
     return false;
   }
@@ -514,6 +561,17 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
 }
 
 // src/core/SsoClient.ts
+var REQUEST_TIMEOUT_MS = 1e4;
+var REVOKE_TIMEOUT_MS = 3e3;
+async function fetchWithTimeout(input, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 var SILENT_PROBE_ERRORS = /* @__PURE__ */ new Set([
   "login_required",
   "consent_required",
@@ -530,6 +588,19 @@ var _SsoClient = class _SsoClient {
     const base = config.ssoBaseUrl.replace(/\/+$/, "");
     this.config = { ...config, ssoBaseUrl: base };
     this._serverBase = (config.serverBaseUrl ?? base).replace(/\/+$/, "");
+  }
+  // ============================================
+  // 调试日志
+  // ============================================
+  /**
+   * 调试日志（config.debug=true 时输出，前缀 [SSO SDK]）：
+   * 覆盖登录发起 / 回调结果 / 刷新失败 / 登出等关键节点，便于接入方定位问题。
+   * 不会输出 token/授权码等敏感值。
+   */
+  debugLog(...args) {
+    if (this.config.debug) {
+      console.warn("[SSO SDK]", ...args);
+    }
   }
   // ============================================
   // 内部方法
@@ -911,7 +982,7 @@ var _SsoClient = class _SsoClient {
     }
     let res;
     try {
-      res = await fetch(tokenEndpoint, {
+      res = await fetchWithTimeout(tokenEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString()
@@ -932,6 +1003,14 @@ var _SsoClient = class _SsoClient {
       );
     }
     const data = await res.json();
+    const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
+    if (requestedScopes.includes("openid") && !data.id_token) {
+      removeTokenData(this.config.clientId);
+      throw new SsoError(
+        "id_token_invalid",
+        "Token \u54CD\u5E94\u7F3A\u5C11 id_token\uFF08scope \u542B openid \u65F6\u5FC5\u9700\uFF09"
+      );
+    }
     if (data.id_token) {
       try {
         await validateIdToken(
@@ -961,6 +1040,7 @@ var _SsoClient = class _SsoClient {
       expires_at: now + data.expires_in * 1e3
     };
     saveTokenData(tokenData, this.config.clientId);
+    this.debugLog("handleCallback: token \u4EA4\u6362\u6210\u529F", { clientId: this.config.clientId });
     return tokenData;
   }
   /**
@@ -996,7 +1076,7 @@ var _SsoClient = class _SsoClient {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        res = await fetch(tokenEndpoint, {
+        res = await fetchWithTimeout(tokenEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: body.toString()
@@ -1018,8 +1098,12 @@ var _SsoClient = class _SsoClient {
       } catch {
       }
       const errorCode = errData.error || "";
-      if (errorCode === "invalid_grant" || res.status === 401) {
+      if (errorCode === "invalid_grant") {
         removeTokenData(this.config.clientId);
+      }
+      this.debugLog("refreshToken: \u5237\u65B0\u5931\u8D25", { status: res.status, error: errorCode });
+      if (!errorCode && res.status === 401) {
+        throw new SsoError("sso_server_error", "\u5237\u65B0 Token \u5931\u8D25\uFF08\u7F51\u5173\u5F02\u5E38\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
       }
       throw new SsoError(
         mapOAuthErrorToSsoCode(errorCode, "refresh"),
@@ -1070,7 +1154,7 @@ var _SsoClient = class _SsoClient {
     const userinfoEndpoint = await this._getUserinfoEndpoint();
     let res;
     try {
-      res = await fetch(userinfoEndpoint, {
+      res = await fetchWithTimeout(userinfoEndpoint, {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`
         }
@@ -1127,6 +1211,10 @@ var _SsoClient = class _SsoClient {
     const refreshToken = tokenData?.refresh_token;
     const idTokenHint = tokenData?.id_token;
     clearAllSsoData(this.config.clientId);
+    this.debugLog("logout: \u672C\u5730\u6570\u636E\u5DF2\u6E05\u9664", {
+      clientId: this.config.clientId,
+      redirectToSso
+    });
     if (refreshToken && this.config.clientId) {
       try {
         const discovery = this.config.serverBaseUrl ? null : await this._getDiscovery();
@@ -1139,11 +1227,15 @@ var _SsoClient = class _SsoClient {
         if (this.config.clientSecret) {
           revokeBody.set("client_secret", this.config.clientSecret);
         }
-        await fetch(revokeUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: revokeBody.toString()
-        });
+        await fetchWithTimeout(
+          revokeUrl,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: revokeBody.toString()
+          },
+          REVOKE_TIMEOUT_MS
+        );
       } catch {
       }
     }
@@ -1213,6 +1305,17 @@ var SsoClient = _SsoClient;
 var SsoContext = (0, import_react.createContext)(null);
 var REFRESH_LOCK_PREFIX = "nihplod_sso_refresh_lock:";
 var LOCK_TTL_MS = 5e3;
+var CHANNEL_PREFIX = "nihplod_sso_events:";
+var TAB_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+function broadcastSsoEvent(clientId, type) {
+  if (typeof BroadcastChannel === "undefined") return;
+  try {
+    const channel = new BroadcastChannel(CHANNEL_PREFIX + clientId);
+    channel.postMessage({ type, sourceTabId: TAB_ID });
+    channel.close();
+  } catch {
+  }
+}
 var ownedLocks = /* @__PURE__ */ new Map();
 function lockKey(clientId) {
   return REFRESH_LOCK_PREFIX + clientId;
@@ -1271,21 +1374,37 @@ function SsoProvider({
   config,
   children,
   refreshThreshold = 60,
-  onTokenRefreshed
+  onTokenRefreshed,
+  onSessionExpired
 }) {
   const [user, setUser] = (0, import_react.useState)(null);
   const [isLoading, setIsLoading] = (0, import_react.useState)(true);
   const [isAuthenticated, setIsAuthenticated] = (0, import_react.useState)(false);
   const [error, setError] = (0, import_react.useState)(null);
+  const [sessionExpired, setSessionExpired] = (0, import_react.useState)(false);
   const [client] = (0, import_react.useState)(() => new SsoClient(config));
   const refreshTimerRef = (0, import_react.useRef)(null);
   const loadedRef = (0, import_react.useRef)(false);
+  const onSessionExpiredRef = (0, import_react.useRef)(onSessionExpired);
+  (0, import_react.useEffect)(() => {
+    onSessionExpiredRef.current = onSessionExpired;
+  });
+  const sessionExpiredNotifiedRef = (0, import_react.useRef)(false);
+  const refreshFailureCountRef = (0, import_react.useRef)(0);
+  const MAX_REFRESH_FAILURES = 3;
+  const markSessionExpired = (0, import_react.useCallback)((error2) => {
+    setError(error2);
+    setSessionExpired(true);
+    if (!sessionExpiredNotifiedRef.current) {
+      sessionExpiredNotifiedRef.current = true;
+      onSessionExpiredRef.current?.(error2);
+    }
+  }, []);
   const loadUser = (0, import_react.useCallback)(async () => {
     const tokenData = getTokenData(client.config.clientId);
     if (!tokenData) {
       setUser(null);
       setIsAuthenticated(false);
-      setError(null);
       setIsLoading(false);
       return;
     }
@@ -1294,19 +1413,22 @@ function SsoProvider({
       setUser(u);
       setIsAuthenticated(true);
       setError(null);
+      setSessionExpired(false);
+      sessionExpiredNotifiedRef.current = false;
+      refreshFailureCountRef.current = 0;
     } catch (err) {
       setUser(null);
       setIsAuthenticated(false);
-      setError(
-        err instanceof SsoError ? err : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err))
-      );
-      if (err instanceof SsoError && (err.code === "not_authenticated" || err.code === "session_expired")) {
+      const errorObj = err instanceof SsoError ? err : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err));
+      setError(errorObj);
+      if (errorObj.code === "not_authenticated" || errorObj.code === "session_expired") {
         removeTokenData(client.config.clientId);
+        markSessionExpired(errorObj);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, markSessionExpired]);
   (0, import_react.useEffect)(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
@@ -1323,13 +1445,28 @@ function SsoProvider({
     const attemptRefresh = () => withRefreshLock(client.config.clientId, async () => {
       try {
         const td = await client.refreshToken();
+        refreshFailureCountRef.current = 0;
         onTokenRefreshed?.(td.access_token);
+        broadcastSsoEvent(client.config.clientId, "token");
         loadUser();
-      } catch {
+      } catch (err) {
+        if (err instanceof SsoError && (err.code === "session_expired" || err.code === "no_refresh_token" || err.code === "not_authenticated")) {
+          removeTokenData(client.config.clientId);
+          markSessionExpired(err);
+        } else {
+          refreshFailureCountRef.current += 1;
+          if (refreshFailureCountRef.current >= MAX_REFRESH_FAILURES) {
+            markSessionExpired(
+              err instanceof SsoError ? err : new SsoError("session_expired", "\u591A\u6B21\u5237\u65B0\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55")
+            );
+          }
+        }
         setTimeout(() => loadUser(), 500);
       }
+    }).finally(() => {
+      if (active) scheduleNextRefresh(5e3);
     });
-    const scheduleNextRefresh = () => {
+    const scheduleNextRefresh = (minDelayMs = 0) => {
       if (!active) return;
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
@@ -1338,26 +1475,27 @@ function SsoProvider({
       const tokenData = getTokenData(client.config.clientId);
       if (!tokenData) return;
       const remainingSec = (tokenData.expires_at - Date.now()) / 1e3;
-      if (remainingSec <= 0) {
-        void attemptRefresh();
+      if (remainingSec <= 0 || remainingSec <= refreshThreshold) {
+        refreshTimerRef.current = setTimeout(
+          () => {
+            if (active) void attemptRefresh();
+          },
+          Math.max(minDelayMs, 1e3)
+        );
         return;
       }
-      if (remainingSec <= refreshThreshold) {
-        void attemptRefresh();
-        return;
-      }
-      const delayMs = (remainingSec - refreshThreshold) * 1e3;
+      const delayMs = Math.max((remainingSec - refreshThreshold) * 1e3, minDelayMs, 1e3);
       refreshTimerRef.current = setTimeout(() => {
         if (!active) return;
         const td = getTokenData(client.config.clientId);
         if (!td) return;
         const secLeft = (td.expires_at - Date.now()) / 1e3;
         if (secLeft <= refreshThreshold) {
-          void attemptRefresh().then((didRefresh) => {
-            if (didRefresh) scheduleNextRefresh();
-          });
+          void attemptRefresh();
+        } else {
+          scheduleNextRefresh();
         }
-      }, Math.max(delayMs, 1e3));
+      }, delayMs);
     };
     scheduleNextRefresh();
     return () => {
@@ -1377,6 +1515,26 @@ function SsoProvider({
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [loadUser]);
+  (0, import_react.useEffect)(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel(CHANNEL_PREFIX + client.config.clientId);
+    channel.onmessage = (event) => {
+      const data = event.data;
+      if (!data || data.sourceTabId === TAB_ID) return;
+      if (data.type === "logout") {
+        removeTokenData(client.config.clientId);
+        setUser(null);
+        setIsAuthenticated(false);
+        setError(null);
+        setSessionExpired(false);
+        sessionExpiredNotifiedRef.current = false;
+        refreshFailureCountRef.current = 0;
+      } else if (data.type === "token") {
+        loadUser();
+      }
+    };
+    return () => channel.close();
+  }, [client, loadUser]);
   const login = (0, import_react.useCallback)(
     async (returnUrl) => {
       await client.login(returnUrl);
@@ -1393,10 +1551,17 @@ function SsoProvider({
   );
   const logout = (0, import_react.useCallback)(
     async (redirectToSso = false) => {
-      await client.logout(redirectToSso);
       setUser(null);
       setIsAuthenticated(false);
       setError(null);
+      setSessionExpired(false);
+      sessionExpiredNotifiedRef.current = false;
+      refreshFailureCountRef.current = 0;
+      broadcastSsoEvent(client.config.clientId, "logout");
+      try {
+        await client.logout(redirectToSso);
+      } catch {
+      }
     },
     [client]
   );
@@ -1416,6 +1581,7 @@ function SsoProvider({
     logout,
     refreshUser,
     getAccessToken,
+    sessionExpired,
     client
   };
   return import_react.default.createElement(SsoContext.Provider, { value }, children);
@@ -1510,6 +1676,36 @@ function withAuth(Component) {
 
 // src/react/CallbackPage.tsx
 var import_react3 = __toESM(require("react"));
+var CALLBACK_ERROR_HINTS = {
+  state_mismatch: "\u767B\u5F55\u4F1A\u8BDD\u6821\u9A8C\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  pkce_required: "\u767B\u5F55\u4F1A\u8BDD\u4E0D\u5B8C\u6574\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  user_denied_authorization: "\u4F60\u5DF2\u53D6\u6D88\u767B\u5F55",
+  session_expired: "\u767B\u5F55\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  authorization_code_expired: "\u767B\u5F55\u4FE1\u606F\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  authorization_code_used: "\u767B\u5F55\u4FE1\u606F\u5DF2\u88AB\u4F7F\u7528\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  token_request_failed: "\u767B\u5F55\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  userinfo_failed: "\u767B\u5F55\u4FE1\u606F\u83B7\u53D6\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5",
+  not_authenticated: "\u8BF7\u5148\u767B\u5F55\u540E\u518D\u8BBF\u95EE",
+  network_error: "\u7F51\u7EDC\u5F02\u5E38\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5",
+  rate_limited: "\u64CD\u4F5C\u8FC7\u4E8E\u9891\u7E41\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
+  popup_blocked: "\u767B\u5F55\u7A97\u53E3\u88AB\u6D4F\u89C8\u5668\u62E6\u622A\uFF0C\u8BF7\u5141\u8BB8\u5F39\u7A97\u540E\u91CD\u8BD5",
+  popup_closed: "\u767B\u5F55\u7A97\u53E3\u5DF2\u5173\u95ED\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55",
+  client_disabled: "\u8BE5\u5E94\u7528\u5DF2\u505C\u7528\uFF0C\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458",
+  account_disabled: "\u8D26\u53F7\u6682\u65F6\u65E0\u6CD5\u4F7F\u7528\uFF0C\u8BF7\u8054\u7CFB\u5BA2\u670D",
+  sso_server_error: "\u767B\u5F55\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
+  invalid_config: "\u5E94\u7528\u914D\u7F6E\u6709\u8BEF\uFF0C\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458",
+  no_refresh_token: "\u767B\u5F55\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55"
+};
+function getCallbackErrorMessage(err) {
+  if (err instanceof SsoError) {
+    const hint = CALLBACK_ERROR_HINTS[err.code];
+    if (hint) return hint;
+    if (err.code.startsWith("id_token")) return "\u767B\u5F55\u6821\u9A8C\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55";
+    if (/[\u4e00-\u9fff]/.test(err.description)) return err.description;
+    return "\u767B\u5F55\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55";
+  }
+  return "\u767B\u5F55\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5";
+}
 function DefaultCallbackError({ error }) {
   return import_react3.default.createElement(
     "div",
@@ -1520,18 +1716,54 @@ function DefaultCallbackError({ error }) {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        fontFamily: "system-ui, sans-serif"
+        fontFamily: "system-ui, sans-serif",
+        padding: "2rem",
+        textAlign: "center"
       }
     },
     import_react3.default.createElement(
       "p",
-      { style: { color: "#dc2626", marginBottom: "1rem" } },
+      { style: { color: "#dc2626", marginBottom: "1.5rem" } },
       error
     ),
     import_react3.default.createElement(
-      "a",
-      { href: "/", style: { color: "#2563eb", textDecoration: "underline" } },
-      "\u8FD4\u56DE\u9996\u9875"
+      "div",
+      { style: { display: "flex", gap: "0.75rem" } },
+      import_react3.default.createElement(
+        "a",
+        {
+          href: "/",
+          style: {
+            display: "inline-block",
+            padding: "0.6rem 1.4rem",
+            background: "#2c2c2c",
+            color: "#fff",
+            fontSize: "0.8125rem",
+            textDecoration: "none"
+          }
+        },
+        "\u91CD\u65B0\u767B\u5F55"
+      ),
+      import_react3.default.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => {
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = "/";
+          },
+          style: {
+            display: "inline-block",
+            padding: "0.6rem 1.4rem",
+            border: "1px solid rgba(44, 44, 44, 0.25)",
+            background: "transparent",
+            color: "#2c2c2c",
+            fontSize: "0.8125rem",
+            cursor: "pointer"
+          }
+        },
+        "\u8FD4\u56DE\u4E0A\u4E00\u9875"
+      )
     )
   );
 }
@@ -1546,9 +1778,13 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
     onSuccessRef.current = onSuccess;
     onErrorRef.current = onError;
   });
+  const callbackPromiseRef = (0, import_react3.useRef)(null);
+  const postProcessedRef = (0, import_react3.useRef)(false);
+  const errorHandledRef = (0, import_react3.useRef)(false);
   (0, import_react3.useEffect)(() => {
-    if (window.opener && !window.opener.closed) {
-      const nonce = new URL(window.location.href).searchParams.get("popup_nonce");
+    const popupNonce = new URL(window.location.href).searchParams.get("popup_nonce");
+    if (window.opener && !window.opener.closed && popupNonce) {
+      const nonce = popupNonce;
       let targetOrigin = window.location.origin;
       try {
         targetOrigin = window.opener.location.origin;
@@ -1557,7 +1793,7 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
       const message = {
         type: "nihplod_sso_popup_callback",
         callbackUrl: window.location.href,
-        nonce: nonce || void 0
+        nonce
       };
       let acked = false;
       const send = () => {
@@ -1572,9 +1808,10 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
         setAwaitingManualClose(true);
       }, 1e4);
       const handleAck = (event) => {
+        if (event.source !== window.opener) return;
         if (event.origin !== targetOrigin) return;
         if (!event.data || event.data.type !== "nihplod_sso_popup_ack") return;
-        if (nonce && event.data.nonce !== nonce) return;
+        if (event.data.nonce !== nonce) return;
         acked = true;
         clearInterval(resendTimer);
         clearTimeout(ackTimeout);
@@ -1590,8 +1827,12 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
     let cancelled = false;
     async function handleCallback() {
       try {
-        const tokenData = await client.handleCallback(window.location.href);
-        if (cancelled) return;
+        if (!callbackPromiseRef.current) {
+          callbackPromiseRef.current = client.handleCallback(window.location.href);
+        }
+        const tokenData = await callbackPromiseRef.current;
+        if (cancelled || postProcessedRef.current) return;
+        postProcessedRef.current = true;
         if (tokenData === null) {
           const clientId2 = client.config.clientId;
           const probeReturnUrl = getReturnUrl(clientId2);
@@ -1612,14 +1853,12 @@ function CallbackPage({ onSuccess, onError, renderError } = {}) {
         }
         window.location.href = returnUrl && isTrustedReturnUrl(returnUrl, window.location.origin) ? returnUrl : "/";
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled || errorHandledRef.current) return;
+        errorHandledRef.current = true;
+        callbackPromiseRef.current = null;
         const errorObj = err instanceof Error ? err : new Error(String(err));
         onErrorRef.current?.(errorObj);
-        if (errorObj instanceof SsoError) {
-          setError(errorObj.description || `SSO \u9519\u8BEF (${errorObj.code})`);
-        } else {
-          setError(`\u767B\u5F55\u56DE\u8C03\u5904\u7406\u5931\u8D25: ${errorObj.message}`);
-        }
+        setError(getCallbackErrorMessage(errorObj));
         setProcessing(false);
       }
     }

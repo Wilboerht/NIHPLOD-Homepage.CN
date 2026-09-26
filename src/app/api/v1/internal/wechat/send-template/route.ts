@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  canonicalizeQuery,
   isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
       path,
       timestamp,
       nonce,
-      bodyHash
+      bodyHash,
+      { query: canonicalizeQuery(new URL(request.url).search) }
     );
 
     if (!config) {

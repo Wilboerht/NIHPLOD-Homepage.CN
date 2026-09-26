@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { formatRelativeTime } from "@/lib/format";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 
 interface Message {
   id: string;
@@ -39,7 +43,7 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
   other: "其他问题",
 };
 
-export default function AdminMessagesPage() {
+function AdminMessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
@@ -52,14 +56,22 @@ export default function AdminMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(parseInt(searchParams.get("pageSize") || "20"));
+  const [pageSize, setPageSize] = useState(() => {
+    const size = Number(searchParams.get("pageSize"));
+    return Number.isFinite(size) && size >= 1 ? Math.floor(size) : 20;
+  });
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 勾选状态：翻页/搜索/筛选变化时自动清空
+  const selection = useRowSelection<Message>(
+    (m) => m.id,
+    `${page}|${pageSize}|${debouncedSearch}|${statusFilter}|${typeFilter}`
+  );
+  const [batchActionLoading, setBatchActionLoading] = useState<string | null>(null);
 
   // 详情弹窗
   const [detailMessage, setDetailMessage] = useState<Message | null>(null);
@@ -74,7 +86,9 @@ export default function AdminMessagesPage() {
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
 
   // 获取留言列表
+  const takeLatestMessages = useLatestRequest();
   const fetchMessages = useCallback(async () => {
+    const isLatest = takeLatestMessages();
     setLoading(true);
     try {
       const data = await apiGet<{
@@ -88,17 +102,18 @@ export default function AdminMessagesPage() {
         status: statusFilter === "all" ? undefined : statusFilter,
         type: typeFilter || undefined,
       });
+      if (!isLatest()) return;
       setMessages(data.items);
       setTotal(data.pagination.total);
       setUnreadCount(data.unreadCount);
       setLoadError(false);
-    } catch (error) {
-      console.error("获取留言列表失败:", error);
+    } catch {
+      if (!isLatest()) return;
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, statusFilter, typeFilter]);
+  }, [page, pageSize, debouncedSearch, statusFilter, typeFilter, takeLatestMessages]);
 
   useEffect(() => {
     deferInEffect(fetchMessages);
@@ -163,11 +178,15 @@ export default function AdminMessagesPage() {
     }
   };
 
-  // 切换已读状态
+  // 切换已读状态（同步更新详情弹窗，避免弹窗与列表状态不一致）
   const toggleRead = async (message: Message) => {
+    const nextRead = !message.read;
     try {
-      await apiPatch(`/api/admin/messages/${message.id}`, { read: !message.read });
-      success(message.read ? "已标记为未读" : "已标记为已读");
+      await apiPatch(`/api/admin/messages/${message.id}`, { read: nextRead });
+      success(nextRead ? "已标记为已读" : "已标记为未读");
+      setDetailMessage((prev) =>
+        prev && prev.id === message.id ? { ...prev, read: nextRead } : prev
+      );
       fetchMessages();
     } catch {
       showError("操作失败");
@@ -196,53 +215,47 @@ export default function AdminMessagesPage() {
     }
   };
 
-  // 批量操作
-  const handleBatchAction = async (action: "read" | "unread" | "delete") => {
-    if (selectedIds.size === 0) return;
+  // 批量操作（返回是否成功，供确认弹窗决定是否关闭）
+  const handleBatchAction = async (
+    action: "read" | "unread" | "delete"
+  ): Promise<boolean> => {
+    if (selection.selectedCount === 0) return false;
+    setBatchActionLoading(action);
 
     try {
       const data = await apiPost<{ message: string }>("/api/admin/messages/batch", {
-        ids: Array.from(selectedIds),
+        ids: Array.from(selection.selectedIds),
         action,
       });
 
       success(data.message);
-      setSelectedIds(new Set());
       // 批量删光当前页时回退一页
-      if (action === "delete" && selectedIds.size >= messages.length && page > 1) {
+      const deletesWholePage =
+        action === "delete" &&
+        messages.length > 0 &&
+        messages.every((m) => selection.selectedIds.has(m.id));
+      selection.clear();
+      if (deletesWholePage && page > 1) {
         setPage(page - 1);
       } else {
-        fetchMessages();
+        await fetchMessages();
       }
+      return true;
     } catch (error) {
       showError(error instanceof Error ? error.message : "操作失败");
+      return false;
+    } finally {
+      setBatchActionLoading(null);
     }
-  };
-
-  // 格式化日期
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffHours < 1) return "刚刚";
-    if (diffHours < 24) return `${diffHours} 小时前`;
-    if (diffDays < 7) return `${diffDays} 天前`;
-    return date.toLocaleDateString("zh-CN");
   };
 
   // 全选
   const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(messages.map((m) => m.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
+    selection.toggleAll(messages, checked);
   };
 
-  const isAllSelected = messages.length > 0 && selectedIds.size === messages.length;
+  const isAllSelected = selection.isAllSelected(messages);
+  const isSelectionIndeterminate = selection.isIndeterminate(messages);
 
   return (
     <div className="space-y-6">
@@ -303,21 +316,40 @@ export default function AdminMessagesPage() {
           />
         </div>
 
-        {selectedIds.size > 0 && (
+        {selection.selectedCount > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
-            <Button size="sm" variant="outline" onClick={() => handleBatchAction("read")}>
-              标记已读
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => handleBatchAction("unread")}>
-              标记未读
-            </Button>
+            <span className="text-sm text-brand-charcoal/50">
+              已选 {selection.selectedCount} 项
+            </span>
+            {canWriteMessages && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("read")}
+                  loading={batchActionLoading === "read"}
+                  disabled={batchActionLoading !== null && batchActionLoading !== "read"}
+                >
+                  标记已读
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("unread")}
+                  loading={batchActionLoading === "unread"}
+                  disabled={batchActionLoading !== null && batchActionLoading !== "unread"}
+                >
+                  标记未读
+                </Button>
+              </>
+            )}
             {canDeleteMessages && (
               <Button
                 size="sm"
                 variant="outline"
                 className="text-red-600 hover:bg-red-50"
                 onClick={() => setShowBatchDeleteConfirm(true)}
+                disabled={batchActionLoading !== null}
               >
                 批量删除
               </Button>
@@ -355,12 +387,18 @@ export default function AdminMessagesPage() {
           <>
             {/* 表头 */}
             <div className="border-brand-charcoal/8 flex items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-                className="h-4 w-4 rounded border-brand-charcoal/20"
-              />
+              {(canWriteMessages || canDeleteMessages) && (
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = isSelectionIndeterminate;
+                  }}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  aria-label="全选本页留言"
+                  className="h-4 w-4 rounded border-brand-charcoal/20"
+                />
+              )}
               <span className="flex-1">留言内容</span>
               <span className="hidden w-32 sm:block">联系方式</span>
               <span className="hidden w-32 md:block">时间</span>
@@ -378,20 +416,15 @@ export default function AdminMessagesPage() {
                   )}
                 >
                   {/* 选择框 */}
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(message.id)}
-                    onChange={(e) => {
-                      const newSelected = new Set(selectedIds);
-                      if (e.target.checked) {
-                        newSelected.add(message.id);
-                      } else {
-                        newSelected.delete(message.id);
-                      }
-                      setSelectedIds(newSelected);
-                    }}
-                    className="mt-1 h-4 w-4 rounded border-brand-charcoal/20"
-                  />
+                  {(canWriteMessages || canDeleteMessages) && (
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(message)}
+                      onChange={() => selection.toggle(message)}
+                      aria-label={`选择 ${message.name} 的留言`}
+                      className="mt-1 h-4 w-4 rounded border-brand-charcoal/20"
+                    />
+                  )}
 
                   {/* 留言内容 */}
                   <div
@@ -451,7 +484,7 @@ export default function AdminMessagesPage() {
                   {/* 时间 */}
                   <div className="hidden w-32 items-center gap-1 text-sm text-brand-charcoal/50 md:flex">
                     <Clock className="h-3.5 w-3.5" />
-                    {formatDate(message.createdAt)}
+                    {formatRelativeTime(message.createdAt)}
                   </div>
 
                   {/* 操作按钮 */}
@@ -488,8 +521,8 @@ export default function AdminMessagesPage() {
         )}
       </div>
 
-      {/* 分页 */}
-      {total > pageSize && (
+      {/* 分页（始终展示总数与每页条数） */}
+      {total > 0 && (
         <div className="flex justify-center">
           <Pagination
             page={page}
@@ -612,14 +645,23 @@ export default function AdminMessagesPage() {
         open={showBatchDeleteConfirm}
         onClose={() => setShowBatchDeleteConfirm(false)}
         onConfirm={async () => {
-          await handleBatchAction("delete");
-          setShowBatchDeleteConfirm(false);
+          const ok = await handleBatchAction("delete");
+          if (ok) setShowBatchDeleteConfirm(false);
         }}
         title="批量删除"
-        description={`确定要删除选中的 ${selectedIds.size} 项？此操作不可恢复。`}
+        description={`确定要删除选中的 ${selection.selectedCount} 项？此操作不可恢复。`}
         confirmText="确定删除"
+        loading={batchActionLoading === "delete"}
         type="danger"
       />
     </div>
+  );
+}
+
+export default function AdminMessagesPage() {
+  return (
+    <RequirePermission permission="messages:read">
+      <AdminMessagesContent />
+    </RequirePermission>
   );
 }

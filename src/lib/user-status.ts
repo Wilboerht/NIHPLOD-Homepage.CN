@@ -28,7 +28,7 @@ export async function cascadeUserStatusChange(params: {
     // 撤销所有 Refresh Token + 加入 access token 黑名单，消除剩余 2 小时窗口期
     await prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
     });
     const reason = newStatus === "SUSPENDED" ? "账号已被临时冻结" : "账号已被永久封禁";
     await blacklistUserTokens(userId, reason);

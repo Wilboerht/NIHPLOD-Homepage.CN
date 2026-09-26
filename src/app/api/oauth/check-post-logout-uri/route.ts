@@ -10,6 +10,8 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
+const NO_STORE = { "Cache-Control": "no-store" };
+
 export async function GET(request: NextRequest) {
   const ip = getClientIP(request);
   // 使用专用限流 key，降低信息泄漏风险（此端点可被用于探测合法 redirect URI）
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
     windowMs: 60 * 1000,
   });
   if (!limitResult.success) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: NO_STORE });
   }
 
   const { searchParams } = request.nextUrl;
@@ -27,5 +29,5 @@ export async function GET(request: NextRequest) {
 
   const trusted = await isTrustedPostLogoutRedirectUri(uri, clientId);
 
-  return NextResponse.json({ trusted });
+  return NextResponse.json({ trusted }, { headers: NO_STORE });
 }

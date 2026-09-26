@@ -12,12 +12,31 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import {
+  buildNeedsAttentionCsv,
+  pickNeedsAttentionRows,
+  type SpentImportRowResult,
+} from "@/lib/spent-import-rows";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
+/** 浏览器端下载文本 CSV（BOM 由内容携带） */
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 interface PreviewRowItem {
   rowIndex: number;
-  phone: string | null;
+  /** 服务端签发的行令牌（预览不回传明文手机号） */
+  phoneToken: string | null;
   maskedPhone: string | null;
   amount: number | null;
   channel: string | null;
@@ -45,6 +64,8 @@ interface ExecuteData {
   duplicateRows: number;
   errorRows: number;
   totalAmount: number;
+  /** 逐行结果（服务端已脱敏手机号）；旧版接口可能不返回 */
+  rows?: SpentImportRowResult[];
 }
 
 interface ImportBatchItem {
@@ -86,8 +107,11 @@ export function SpentImportModal({
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [result, setResult] = useState<ExecuteData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 弹窗关闭后忽略在途响应，避免下次打开时旧预览/结果“复活”
+  const generationRef = useRef(0);
 
   const handleClose = () => {
+    generationRef.current += 1;
     setStep("upload");
     setPreview(null);
     setResult(null);
@@ -96,23 +120,38 @@ export function SpentImportModal({
 
   const handleFileSelected = async (file: File | null) => {
     if (!file) return;
+    // 本地预校验，避免上传后才被服务端拒绝
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!ext || !["xlsx", "xls", "csv"].includes(ext)) {
+      showError("仅支持 .xlsx / .xls / .csv 文件");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError("文件大小不能超过 5MB");
+      return;
+    }
+
+    const generation = generationRef.current;
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const data = await apiPost<PreviewData>("/api/admin/spent-import/upload", formData);
+      if (generation !== generationRef.current) return;
       setPreview(data);
       setStep("preview");
     } catch (e) {
+      if (generation !== generationRef.current) return;
       showError(e instanceof ApiError ? e.message : "文件解析失败");
     } finally {
-      setUploading(false);
+      if (generation === generationRef.current) setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleExecute = async () => {
     if (!preview) return;
+    const generation = generationRef.current;
     setImporting(true);
     try {
       const okRows = preview.rows.filter((r) => r.status === "ok");
@@ -122,7 +161,7 @@ export function SpentImportModal({
           fileHash: preview.fileHash,
           totpCode,
           rows: okRows.map((r) => ({
-            phone: r.phone,
+            phoneToken: r.phoneToken,
             amount: r.amount,
             channel: r.channel,
             orderNo: r.orderNo,
@@ -141,15 +180,20 @@ export function SpentImportModal({
         data = await submit(code);
       }
 
+      if (generation !== generationRef.current) return;
       setResult(data);
       setStep("result");
       success("导入完成");
     } catch (e) {
+      if (generation !== generationRef.current) return;
       showError(e instanceof ApiError ? e.message : "导入失败，请稍后重试");
     } finally {
-      setImporting(false);
+      if (generation === generationRef.current) setImporting(false);
     }
   };
+
+  // 需人工修正的行（重复/失败）：用于结果页逐行回看与 CSV 导出
+  const needsAttentionRows = result?.rows ? pickNeedsAttentionRows(result.rows) : [];
 
   return (
     <>
@@ -289,11 +333,73 @@ export function SpentImportModal({
               <p className="mt-1 text-xs text-gray-500">净入账金额</p>
             </div>
           </div>
-          {result.errorRows > 0 && (
+          {(needsAttentionRows.length > 0 || result.errorRows > 0) && (
             <p className="mt-3 text-xs text-gray-500">
-              失败行未入账：请修正 Excel 中对应行后重新导入（已成功行因幂等不会重复入账）。
+              重复/失败行未入账：请按下方行号修正或删除 Excel 中对应行后重新导入（已成功行因幂等不会重复入账）。
             </p>
           )}
+
+          {needsAttentionRows.length > 0 && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-gray-700">
+                  需修正的行（{needsAttentionRows.length}）
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Download className="h-3.5 w-3.5" />}
+                  onClick={() =>
+                    downloadCsv(
+                      `导入需修正行-${preview?.fileName ?? "result"}.csv`,
+                      buildNeedsAttentionCsv(needsAttentionRows)
+                    )
+                  }
+                >
+                  导出失败行 CSV
+                </Button>
+              </div>
+              <div className="max-h-64 overflow-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Excel 行号</th>
+                      <th className="px-3 py-2 font-medium">手机号</th>
+                      <th className="px-3 py-2 font-medium">金额（元）</th>
+                      <th className="px-3 py-2 font-medium">结果</th>
+                      <th className="px-3 py-2 font-medium">原因</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {needsAttentionRows.map((row) => (
+                      <tr key={row.rowIndex}>
+                        <td className="whitespace-nowrap px-3 py-2 text-gray-600">
+                          第 {row.rowIndex} 行
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-gray-600">
+                          {row.phone || "-"}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">{row.amount}</td>
+                        <td className="px-3 py-2">
+                          {row.status === "DUPLICATE" ? (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                              重复跳过
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                              失败
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-gray-500">{row.error || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 flex justify-end">
             <Button onClick={handleClose}>完成</Button>
           </div>
@@ -317,6 +423,7 @@ export function ImportHistoryModal({
   const { requireTotp, totpModal } = useTotpConfirm();
   const [batches, setBatches] = useState<ImportBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [undoTarget, setUndoTarget] = useState<ImportBatchItem | null>(null);
@@ -331,8 +438,10 @@ export function ImportHistoryModal({
       }>("/api/admin/spent-import", { page, pageSize: 10 });
       setBatches(data.batches);
       setTotalPages(data.pagination.totalPages);
-    } catch {
-      showError("加载导入历史失败");
+      setLoadError(false);
+    } catch (e) {
+      setLoadError(true);
+      showError(e instanceof ApiError ? e.message : "加载导入历史失败");
     } finally {
       setLoading(false);
     }
@@ -377,6 +486,13 @@ export function ImportHistoryModal({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+            </div>
+          ) : loadError ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-12">
+              <p className="text-sm text-red-500">加载导入历史失败</p>
+              <Button variant="outline" size="sm" onClick={fetchBatches}>
+                重试
+              </Button>
             </div>
           ) : batches.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-400">暂无导入记录</p>

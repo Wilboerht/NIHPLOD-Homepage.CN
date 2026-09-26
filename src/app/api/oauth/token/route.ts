@@ -33,7 +33,6 @@ import {
   atomicallyRotateRefreshToken,
   extractDeviceInfo,
   saveRefreshToken,
-  revokeRefreshToken,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
@@ -356,13 +355,17 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // OAuthSession 通过 authorizationCodeId 关联授权码，可直接撤销
+          // RFC 9700 §4.5：仅撤销该 code 对应的 OAuthSession（授权码通过
+          // authorizationCodeId 与会话一一关联）：
+          // - access token 携带 sid，会话撤销后 verifyOAuthAccessToken 即时拒绝；
+          // - refresh token 刷新时按 sid 做会话 fail-closed 校验，同样立即失效。
+          // 不再按 userId+clientId 全量吊销 refresh token：否则任何曾泄露/被记录的
+          // 旧 code 可被反复重放，持续踢掉用户在该 client 下的所有会话（持久 DoS，
+          // 且波及后续新登录的会话）。
           await prisma.oAuthSession.updateMany({
             where: { authorizationCodeId: usedCode.id, revokedAt: null },
             data: { revokedAt: new Date() },
           });
-          // 授权码与 refresh token 无直接关联，按 userId+clientId 撤销整个会话族
-          await revokeRefreshToken(usedCode.userId, undefined, usedCode.clientId);
           scheduleSsoEvent({
             event: "token",
             userId: usedCode.userId,
@@ -370,7 +373,7 @@ export async function POST(request: NextRequest) {
             clientName: client.name,
             ip,
             success: false,
-            detail: { grant_type, reason: "code_replay_all_tokens_revoked" },
+            detail: { grant_type, reason: "code_replay_session_revoked" },
           });
         } else {
           scheduleSsoEvent({
@@ -418,6 +421,8 @@ export async function POST(request: NextRequest) {
       }
 
       const scopeStr = codeData.scopes.join(" ");
+      // 精确 scope 集合：避免 includes("profile") 把 profile:write 误判为 profile
+      const scopeSet = new Set(codeData.scopes);
 
       // 二次校验 scope：用户 consent 未被撤销且仍覆盖所有请求 scope
       // （防止授权码签发后 consent 被撤销，token 仍被签发的窗口）
@@ -480,7 +485,10 @@ export async function POST(request: NextRequest) {
           }
           return NextResponse.json(
             { error: dpopResult.error, error_description: dpopResult.errorDescription },
-            { status: 400, headers: { ...corsHeaders, ...errorHeaders } }
+            {
+              status: 400,
+              headers: { "Cache-Control": "no-store", ...corsHeaders, ...errorHeaders },
+            }
           );
         }
         dpopJkt = dpopResult.jkt;
@@ -554,20 +562,23 @@ export async function POST(request: NextRequest) {
       const deviceInfo = extractDeviceInfo(request);
       await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, deviceInfo, client_id);
 
-      // 签发 ID Token（含 at_hash）
+      // 签发 ID Token（含 at_hash / sid / auth_time）
       const idTokenClaims: IdTokenClaims = {
         sub: user.id,
         aud: client_id,
         scope: scopeStr,
         at_hash: computeAtHash(accessToken),
+        // sid 与 access token 的 sid claim 一致，使 RP 能用 backchannel logout 的 sid 定位会话
+        sid: sessionId,
       };
+      if (codeData.authTime) idTokenClaims.auth_time = codeData.authTime;
       if (codeData.nonce) idTokenClaims.nonce = codeData.nonce;
-      if (scopeStr.includes("phone")) idTokenClaims.phone = maskPhone(user.phone);
-      if (scopeStr.includes("profile")) {
+      if (scopeSet.has("phone")) idTokenClaims.phone = maskPhone(user.phone);
+      if (scopeSet.has("profile")) {
         if (user.nickname) idTokenClaims.nickname = user.nickname;
         if (user.avatar) idTokenClaims.avatar = user.avatar;
       }
-      if (scopeStr.includes("membership") && user) {
+      if (scopeSet.has("membership") && user) {
         if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
       }
 
@@ -735,6 +746,9 @@ export async function POST(request: NextRequest) {
         scopeStr = requestedScopes.join(" ");
       }
 
+      // 精确 scope 集合：避免 includes("profile") 把 profile:write 误判为 profile
+      const scopeSet = new Set(scopeStr.split(" ").filter(Boolean));
+
       // 检查用户是否仍授权了该 client（consent 撤销后拒绝刷新）
       const consent = await prisma.userConsent.findUnique({
         where: { userId_clientId: { userId: refreshPayload.id, clientId: client_id } },
@@ -788,7 +802,10 @@ export async function POST(request: NextRequest) {
           }
           return NextResponse.json(
             { error: dpopResult.error, error_description: dpopResult.errorDescription },
-            { status: 400, headers: { ...corsHeaders, ...errorHeaders } }
+            {
+              status: 400,
+              headers: { "Cache-Control": "no-store", ...corsHeaders, ...errorHeaders },
+            }
           );
         }
         if (dpopResult.jkt !== boundJkt) {
@@ -816,6 +833,8 @@ export async function POST(request: NextRequest) {
           avatar: true,
           membershipLevel: true,
           status: true,
+          // 改密即时失效：签发时间早于最近一次密码变更的 refresh token 一律拒绝
+          passwordChangedAt: true,
         },
       });
 
@@ -830,6 +849,28 @@ export async function POST(request: NextRequest) {
           detail: { grant_type: "refresh_token", reason: "user_inactive" },
         });
         return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
+      }
+
+      // 3.1 改密即时失效（纵深防御，与主站内部刷新口径一致）：
+      // 授权码/刷新流程撤销会话后仍可能残留（如撤销失败），此处按签发时间兜底拒绝
+      if (
+        user.passwordChangedAt &&
+        typeof refreshPayload.iat === "number" &&
+        refreshPayload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)
+      ) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "password_changed" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "密码已变更，请重新授权" },
+          400
+        );
       }
 
       const newAccessToken = await signOAuthAccessToken({
@@ -880,21 +921,25 @@ export async function POST(request: NextRequest) {
 
       // 用户信息已在上方查询并校验状态（签发 access/refresh token 前置），此处直接复用
 
-      // 签发新的 ID Token（含 at_hash）
+      // 签发新的 ID Token（含 at_hash / sid / auth_time）
       const idTokenClaims: IdTokenClaims = {
         sub: refreshPayload.id,
         aud: client_id,
         scope: scopeStr,
         at_hash: computeAtHash(newAccessToken),
+        // 刷新场景会话不变：sid 沿用原会话，auth_time 沿用原始认证时间
+        sid: refreshPayload.sid ?? session.sessionId,
       };
-      if (scopeStr.includes("phone") && user) {
+      const authTime = refreshPayload.auth_time ?? refreshPayload.iat;
+      if (authTime) idTokenClaims.auth_time = authTime;
+      if (scopeSet.has("phone") && user) {
         idTokenClaims.phone = maskPhone(user.phone);
       }
-      if (scopeStr.includes("profile") && user) {
+      if (scopeSet.has("profile") && user) {
         if (user.nickname) idTokenClaims.nickname = user.nickname;
         if (user.avatar) idTokenClaims.avatar = user.avatar;
       }
-      if (scopeStr.includes("membership") && user) {
+      if (scopeSet.has("membership") && user) {
         if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
       }
 

@@ -43,6 +43,30 @@ import { validateIdToken } from "./id-token";
 import { isTrustedReturnUrl, timingSafeEqualString } from "./security";
 
 // ============================================
+// 网络请求超时
+// ============================================
+
+/** token / userinfo 请求默认超时（毫秒）：避免回调页/登录流程无限挂起 */
+const REQUEST_TIMEOUT_MS = 10_000;
+/** revoke 为 best-effort，短超时避免登出等待过久 */
+const REVOKE_TIMEOUT_MS = 3_000;
+
+/** 带超时的 fetch（AbortController）；超时抛 AbortError（调用方按网络错误处理） */
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ============================================
 // 类型定义
 // ============================================
 
@@ -71,6 +95,12 @@ export interface SsoClientConfig {
 
   /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
   postLogoutRedirectUri?: string;
+
+  /**
+   * 调试日志开关（默认 false）。开启后输出登录/回调/刷新/登出等关键流程日志，
+   * 便于接入方定位问题（生产默认关闭，避免日志噪音）。
+   */
+  debug?: boolean;
 
   /**
    * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
@@ -173,6 +203,21 @@ export class SsoClient {
     const base = config.ssoBaseUrl.replace(/\/+$/, "");
     this.config = { ...config, ssoBaseUrl: base };
     this._serverBase = (config.serverBaseUrl ?? base).replace(/\/+$/, "");
+  }
+
+  // ============================================
+  // 调试日志
+  // ============================================
+
+  /**
+   * 调试日志（config.debug=true 时输出，前缀 [SSO SDK]）：
+   * 覆盖登录发起 / 回调结果 / 刷新失败 / 登出等关键节点，便于接入方定位问题。
+   * 不会输出 token/授权码等敏感值。
+   */
+  debugLog(...args: unknown[]): void {
+    if (this.config.debug) {
+      console.warn("[SSO SDK]", ...args);
+    }
   }
 
   // ============================================
@@ -657,7 +702,7 @@ export class SsoClient {
 
     let res: Response;
     try {
-      res = await fetch(tokenEndpoint, {
+      res = await fetchWithTimeout(tokenEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
@@ -679,6 +724,17 @@ export class SsoClient {
     // 先解析响应体，成功后再清除 state 和 verifier：
     // 若 JSON 畸形导致解析抛错，保留 state/verifier 允许用户重试回调
     const data: TokenResponse = await res.json();
+
+    // OIDC：请求 scope 含 openid 时，token 响应必须包含 id_token。
+    // 缺失时 nonce/at_hash/签名均无从校验，直接 fail-closed 拒绝而不是静默降级。
+    const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
+    if (requestedScopes.includes("openid") && !data.id_token) {
+      removeTokenData(this.config.clientId);
+      throw new SsoError(
+        "id_token_invalid",
+        "Token 响应缺少 id_token（scope 含 openid 时必需）"
+      );
+    }
 
     // OIDC：验证 ID Token 签名、基本声明及 at_hash
     if (data.id_token) {
@@ -717,6 +773,7 @@ export class SsoClient {
     };
 
     saveTokenData(tokenData, this.config.clientId);
+    this.debugLog("handleCallback: token 交换成功", { clientId: this.config.clientId });
     return tokenData;
   }
 
@@ -758,7 +815,7 @@ export class SsoClient {
     let lastErr: unknown;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        res = await fetch(tokenEndpoint, {
+        res = await fetchWithTimeout(tokenEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: body.toString(),
@@ -778,9 +835,15 @@ export class SsoClient {
       let errData: Record<string, unknown> = {};
       try { errData = await res.json(); } catch { /* ignore */ }
       const errorCode = (errData.error as string) || "";
-      // invalid_grant 表示 refresh_token 已被撤销或过期，应清除本地登录态
-      if (errorCode === "invalid_grant" || res.status === 401) {
+      // 仅明确的 invalid_grant（refresh_token 已被撤销/过期）才清除本地登录态；
+      // 网关/WAF 返回的 401（响应体无 OAuth error 字段）保留 token 按可重试处理，
+      // 避免一次网络抖动把用户静默登出（重试上限由上层 SsoProvider 计数控制）
+      if (errorCode === "invalid_grant") {
         removeTokenData(this.config.clientId);
+      }
+      this.debugLog("refreshToken: 刷新失败", { status: res.status, error: errorCode });
+      if (!errorCode && res.status === 401) {
+        throw new SsoError("sso_server_error", "刷新 Token 失败（网关异常），请稍后重试");
       }
       throw new SsoError(
         mapOAuthErrorToSsoCode(errorCode, "refresh"),
@@ -841,7 +904,7 @@ export class SsoClient {
 
     let res: Response;
     try {
-      res = await fetch(userinfoEndpoint, {
+      res = await fetchWithTimeout(userinfoEndpoint, {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`,
         },
@@ -907,6 +970,10 @@ export class SsoClient {
     const idTokenHint = tokenData?.id_token;
 
     clearAllSsoData(this.config.clientId);
+    this.debugLog("logout: 本地数据已清除", {
+      clientId: this.config.clientId,
+      redirectToSso,
+    });
 
     // 尝试调用服务端 token revocation 端点（best-effort）
     // 仅 Confidential Client 携带 client_secret；Public Client 不传 secret。
@@ -927,11 +994,15 @@ export class SsoClient {
         if (this.config.clientSecret) {
           revokeBody.set("client_secret", this.config.clientSecret);
         }
-        await fetch(revokeUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: revokeBody.toString(),
-        });
+        await fetchWithTimeout(
+          revokeUrl,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: revokeBody.toString(),
+          },
+          REVOKE_TIMEOUT_MS
+        );
       } catch {
         // 撤销失败不影响本地登出（best-effort）
       }

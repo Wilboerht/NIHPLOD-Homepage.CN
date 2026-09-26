@@ -244,8 +244,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return;
             }
             refreshAccessToken()
-              .then((ok) => {
-                if (ok) {
+              .then((result) => {
+                if (result.ok) {
                   localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
                 } else {
                   const count =
@@ -270,27 +270,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
     }
 
-    const intervalId = setInterval(
-      () => {
-        refreshAccessToken()
-          .then((ok) => {
-            if (ok) {
-              localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
-            } else {
-              // 静默刷新最终失败（refresh token 已过期/被吊销）：
-              // 走统一的会话终结处理（清态 + 跳登录页），
-              // 避免 UI 仍显示已登录而各面板 401 假空态
-              handleSessionExpired();
-            }
-          })
-          .catch(() => {
-            handleSessionExpired();
-          });
-      },
-      14 * 60 * 1000
-    );
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    return () => clearInterval(intervalId);
+    /** 记录一次可恢复失败；连续失败达上限才判定会话终结（防网络抖动误登出） */
+    const handleRetryableFailure = () => {
+      const count = parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10) + 1;
+      if (count >= MAX_REFRESH_FAILURES) {
+        handleSessionExpired();
+        return;
+      }
+      localStorage.setItem(REFRESH_FAIL_COUNT_KEY, String(count));
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => void attemptRefresh(), 60 * 1000);
+    };
+
+    const attemptRefresh = () => {
+      refreshAccessToken()
+        .then((result) => {
+          if (result.ok) {
+            localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
+            return;
+          }
+          if (result.kind === "fatal") {
+            // 服务端明确判定会话终结（令牌被吊销/设备超限等）
+            handleSessionExpired();
+            return;
+          }
+          handleRetryableFailure();
+        })
+        .catch(() => {
+          handleRetryableFailure();
+        });
+    };
+
+    const intervalId = setInterval(() => void attemptRefresh(), 14 * 60 * 1000);
+
+    return () => {
+      clearInterval(intervalId);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [user, handleSessionExpired]);
 
   const value = useMemo(

@@ -1,6 +1,6 @@
 "use client";
 
-import { SelectHTMLAttributes, forwardRef } from "react";
+import { SelectHTMLAttributes, forwardRef, useId } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,11 +22,14 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "chi
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, options, placeholder, id, required, ...props }, ref) => {
-    const errorId = id ? `${id}-error` : undefined;
+    // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
+    const generatedId = useId();
+    const selectId = id ?? generatedId;
+    const errorId = `${selectId}-error`;
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={id} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          <label htmlFor={selectId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
             {label}
             {required && (
               <span className="ml-0.5 text-red-500" aria-hidden="true">
@@ -38,7 +41,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <div className="relative">
           <select
             ref={ref}
-            id={id}
+            id={selectId}
             required={required}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}

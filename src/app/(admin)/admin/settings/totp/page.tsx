@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export default function TOTPSettingsPage() {
   const [disablePassword, setDisablePassword] = useState("");
   const [disableCode, setDisableCode] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
 
@@ -52,6 +54,8 @@ export default function TOTPSettingsPage() {
   }, [toast]);
 
   const startSetup = async () => {
+    // 幂等守卫：连按 Enter 不能重复创建密钥（后一次会覆盖前一次，导致二维码与库内不一致）
+    if (processing) return;
     if (!setupPassword) {
       toast.error("请输入当前密码以验证身份");
       return;
@@ -89,7 +93,8 @@ export default function TOTPSettingsPage() {
     }
   };
 
-  const disableTOTP = async () => {
+  /** 校验输入后打开确认弹窗（关闭二次验证属高风险动作） */
+  const requestDisable = () => {
     if (!disablePassword) {
       toast.error("请输入密码");
       return;
@@ -98,6 +103,10 @@ export default function TOTPSettingsPage() {
       toast.error("请输入 6 位动态验证码或备用码");
       return;
     }
+    setShowDisableConfirm(true);
+  };
+
+  const disableTOTP = async (): Promise<boolean> => {
     setProcessing(true);
     try {
       await apiPost("/api/admin/totp/disable", {
@@ -108,8 +117,10 @@ export default function TOTPSettingsPage() {
       setTotpEnabled(false);
       setDisablePassword("");
       setDisableCode("");
+      return true;
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "关闭失败");
+      return false;
     } finally {
       setProcessing(false);
     }
@@ -316,7 +327,7 @@ export default function TOTPSettingsPage() {
               />
             </div>
             <button
-              onClick={disableTOTP}
+              onClick={requestDisable}
               disabled={processing || !disablePassword || disableCode.trim().length < 6}
               className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
@@ -326,6 +337,21 @@ export default function TOTPSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* 关闭二次验证确认 */}
+      <ConfirmDialog
+        open={showDisableConfirm}
+        onClose={() => setShowDisableConfirm(false)}
+        onConfirm={async () => {
+          const ok = await disableTOTP();
+          if (ok) setShowDisableConfirm(false);
+        }}
+        title="关闭二次验证"
+        description="关闭后登录不再需要动态验证码，账号安全性将降低。确定要关闭吗？"
+        type="danger"
+        confirmText="确认关闭"
+        loading={processing}
+      />
     </div>
   );
 }

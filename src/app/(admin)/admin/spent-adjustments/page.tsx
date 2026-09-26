@@ -3,7 +3,7 @@
 /**
  * 消费补录审核后台页面
  * 审核用户提交的全渠道消费凭证，通过后以核实金额累加历史消费（自动重算会员等级）。
- * 权限：所有管理员均可审核；操作写入审计日志。
+ * 权限：查看需 spent:read，审核/撤销需 spent:review，Excel 导入需 spent:import；操作写入审计日志。
  */
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -26,6 +26,12 @@ import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { RequirePermission } from "@/components/admin/RequirePermission";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import {
+  formatDateNumeric as formatDate,
+  formatDateTimeNumeric as formatDateTime,
+} from "@/lib/format";
 import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
 import { levelDisplay } from "@/lib/membership";
 import { SpentImportModal, ImportHistoryModal } from "./SpentImport";
@@ -76,30 +82,10 @@ const TABS: { key: StatusFilter; label: string }[] = [
   { key: "ALL", label: "全部" },
 ];
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(
-    2,
-    "0"
-  )}`;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
-}
-
-export default function AdminSpentAdjustmentsPage() {
+function AdminSpentAdjustmentsContent() {
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<StatusFilter>("PENDING");
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<ApplicationItem | null>(null);
@@ -119,7 +105,9 @@ export default function AdminSpentAdjustmentsPage() {
   const canReview = canAdmin("spent:review");
   const { requireTotp, totpModal } = useTotpConfirm();
 
+  const takeLatestSpent = useLatestRequest();
   const fetchData = useCallback(async () => {
+    const isLatest = takeLatestSpent();
     setLoading(true);
     try {
       const result = await apiGet<ListData>("/api/admin/spent-adjustments", {
@@ -127,13 +115,17 @@ export default function AdminSpentAdjustmentsPage() {
         pageSize: 20,
         status: tab === "ALL" ? undefined : tab,
       });
+      if (!isLatest()) return;
       setData(result);
-    } catch {
-      showError("加载失败");
+      setLoadError(false);
+    } catch (err) {
+      if (!isLatest()) return;
+      setLoadError(true);
+      showError(err instanceof Error ? err.message : "加载失败");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, tab, showError]);
+  }, [page, tab, showError, takeLatestSpent]);
 
   useEffect(() => {
     deferInEffect(fetchData);
@@ -253,8 +245,11 @@ export default function AdminSpentAdjustmentsPage() {
       {/* 状态筛选 */}
       <div className="flex gap-2">
         {TABS.map((t) => {
+          // “全部”为各状态计数之和；不能用当前筛选的 total（会随 tab 变化）
           const count =
-            t.key === "ALL" ? (data?.pagination.total ?? 0) : (data?.counts[t.key] ?? 0);
+            t.key === "ALL"
+              ? Object.values(data?.counts ?? {}).reduce((sum, n) => sum + n, 0)
+              : (data?.counts[t.key] ?? 0);
           return (
             <button
               key={t.key}
@@ -304,6 +299,21 @@ export default function AdminSpentAdjustmentsPage() {
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center">
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
+                  </td>
+                </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center">
+                    <p className="text-sm text-red-500">加载失败，请重试</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={fetchData}
+                      leftIcon={<RefreshCw className="h-4 w-4" />}
+                    >
+                      重试
+                    </Button>
                   </td>
                 </tr>
               ) : data && data.applications.length > 0 ? (
@@ -636,5 +646,13 @@ export default function AdminSpentAdjustmentsPage() {
       {/* 资金类操作二次验证 */}
       {totpModal}
     </div>
+  );
+}
+
+export default function AdminSpentAdjustmentsPage() {
+  return (
+    <RequirePermission permission="spent:read">
+      <AdminSpentAdjustmentsContent />
+    </RequirePermission>
   );
 }

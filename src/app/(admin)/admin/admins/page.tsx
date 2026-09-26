@@ -13,11 +13,12 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import {
   ADMIN_ROLES,
   PERMISSION_GROUPS,
@@ -83,12 +84,17 @@ export default function AdminAdminsPage() {
   const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const pageParam = Number(searchParams.get("page"));
+  const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
+  const search = searchParams.get("search") || "";
+  // 勾选状态：翻页/搜索变化时自动清空
+  const selection = useRowSelection<AdminItem>(
+    (admin) => admin.id,
+    `${page}|${search}`
+  );
+  const { selectedIds } = selection;
   const [showBatchDelete, setShowBatchDelete] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
-
-  const page = parseInt(searchParams.get("page") || "1");
-  const search = searchParams.get("search") || "";
 
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
@@ -99,13 +105,16 @@ export default function AdminAdminsPage() {
       );
       setAdmins(data.admins);
       setPagination(data.pagination);
-    } catch {
-      console.error("获取管理员失败");
-      error("加载失败，请刷新重试");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        router.push("/admin-login");
+        return;
+      }
+      error(err instanceof Error ? err.message : "加载失败，请刷新重试");
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, error, router]);
 
   useEffect(() => {
     deferInEffect(fetchAdmins);
@@ -122,9 +131,13 @@ export default function AdminAdminsPage() {
   };
 
   const openCreate = () => {
+    // 默认选中第一个「可委派」角色并按自身权限取交集，避免预填必然被服务端拒绝的权限组合
+    const role = (assignableRoles[0] ?? "admin") as AdminRoleValue;
     setEditing(null);
-    setForm({ email: "", name: "", password: "", role: "admin" });
-    setSelectedPermissions(new Set(resolveAdminPermissions("admin")));
+    setForm({ email: "", name: "", password: "", role });
+    setSelectedPermissions(
+      new Set(resolveAdminPermissions(role).filter((p) => canGrantPermission(p)))
+    );
     setShowModal(true);
   };
 
@@ -183,6 +196,10 @@ export default function AdminAdminsPage() {
           delete body.role;
           delete body.permissions;
           delete body.password;
+        } else if (!isOwnerActor) {
+          // 非 owner 不能修改他人邮箱/密码（服务端强制），提交时省略避免误报 403
+          delete body.email;
+          delete body.password;
         }
       } else {
         body = { ...base, password: form.password };
@@ -208,28 +225,39 @@ export default function AdminAdminsPage() {
     setDeleting(true);
     try {
       await apiDelete(`/api/admin/admins/${deleteTarget.id}`);
-      fetchAdmins();
       success("删除成功");
+      setDeleteTarget(null);
+      // 删除本页最后一条时回退一页
+      if (admins.length === 1 && page > 1) {
+        updateParams({ page: String(page - 1) });
+      } else {
+        await fetchAdmins();
+      }
     } catch (err) {
       error(err instanceof Error ? err.message : "删除失败");
     } finally {
       setDeleting(false);
-      setDeleteTarget(null);
     }
   };
 
   const handleBatchDelete = async () => {
-    if (selectedIds.size === 0) return;
+    if (selection.selectedCount === 0) return;
+    const ids = Array.from(selection.selectedIds);
     setBatchDeleting(true);
     try {
       const res = await apiPost<{ message: string }>("/api/admin/admins", {
-        ids: Array.from(selectedIds),
+        ids,
         action: "delete",
       });
-      success(res.message || `已删除 ${selectedIds.size} 名管理员`);
-      setSelectedIds(new Set());
+      success(res.message || `已删除 ${ids.length} 名管理员`);
+      const deletesWholePage = admins.length > 0 && admins.every((a) => ids.includes(a.id));
+      selection.clear();
       setShowBatchDelete(false);
-      fetchAdmins();
+      if (deletesWholePage && page > 1) {
+        updateParams({ page: String(page - 1) });
+      } else {
+        await fetchAdmins();
+      }
     } catch (err) {
       error(err instanceof Error ? err.message : "批量删除失败");
     } finally {
@@ -237,7 +265,8 @@ export default function AdminAdminsPage() {
     }
   };
 
-  const isAllSelected = admins.length > 0 && selectedIds.size === admins.length;
+  const isAllSelected = selection.isAllSelected(admins);
+  const isSelectionIndeterminate = selection.isIndeterminate(admins);
 
   return (
     <RequirePermission permission="admins:read">
@@ -276,9 +305,11 @@ export default function AdminAdminsPage() {
               className="pl-10"
             />
           </div>
-          {canManage && selectedIds.size > 0 && (
+          {canManage && selection.selectedCount > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
+              <span className="text-sm text-brand-charcoal/50">
+                已选 {selection.selectedCount} 项
+              </span>
               <Button
                 size="sm"
                 variant="outline"
@@ -289,7 +320,8 @@ export default function AdminAdminsPage() {
                 批量删除
               </Button>
               <button
-                onClick={() => setSelectedIds(new Set())}
+                onClick={selection.clear}
+                aria-label="取消选择"
                 className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-brand-charcoal/80"
               >
                 <X className="h-4 w-4" />
@@ -308,10 +340,10 @@ export default function AdminAdminsPage() {
                     <input
                       type="checkbox"
                       checked={isAllSelected}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedIds(new Set(admins.map((a) => a.id)));
-                        else setSelectedIds(new Set());
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSelectionIndeterminate;
                       }}
+                      onChange={(e) => selection.toggleAll(admins, e.target.checked)}
                       className="h-4 w-4 rounded border-brand-charcoal/20"
                       aria-label="全选"
                     />
@@ -366,13 +398,8 @@ export default function AdminAdminsPage() {
                       <td className="px-4 py-3.5">
                         <input
                           type="checkbox"
-                          checked={selectedIds.has(admin.id)}
-                          onChange={() => {
-                            const next = new Set(selectedIds);
-                            if (next.has(admin.id)) next.delete(admin.id);
-                            else next.add(admin.id);
-                            setSelectedIds(next);
-                          }}
+                          checked={selection.isSelected(admin)}
+                          onChange={() => selection.toggle(admin)}
                           className="h-4 w-4 rounded border-brand-charcoal/20"
                           aria-label={`选择 ${admin.name}`}
                         />
@@ -398,12 +425,25 @@ export default function AdminAdminsPage() {
                     <td className="px-5 py-3.5">
                       {canManage && (admin.role !== "owner" || isOwnerActor) ? (
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(admin)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`编辑 ${admin.name}`}
+                            onClick={() => openEdit(admin)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(admin)}>
-                            <Trash2 className="h-4 w-4 text-red-400" />
-                          </Button>
+                          {/* 不能删除自己（服务端禁止，前端不展示避免必然失败） */}
+                          {admin.id !== currentAdminId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`删除 ${admin.name}`}
+                              onClick={() => setDeleteTarget(admin)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-400" />
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-brand-charcoal/40">只读</span>
@@ -444,8 +484,9 @@ export default function AdminAdminsPage() {
               <Input
                 label="邮箱"
                 type="email"
-                required
+                required={isOwnerActor || !editing}
                 value={form.email}
+                disabled={!!editing && !isEditingSelf && !isOwnerActor}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
               <Input
@@ -453,7 +494,7 @@ export default function AdminAdminsPage() {
                 type="password"
                 required={!editing}
                 minLength={8}
-                disabled={isEditingSelf}
+                disabled={isEditingSelf || (!!editing && !isOwnerActor)}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
@@ -476,6 +517,11 @@ export default function AdminAdminsPage() {
             {isEditingSelf && (
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 不能修改自己的角色、权限或密码（防自锁），请由其他超级管理员操作。
+              </p>
+            )}
+            {!isEditingSelf && !!editing && !isOwnerActor && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                仅超级管理员可修改其他管理员的邮箱或密码。
               </p>
             )}
 

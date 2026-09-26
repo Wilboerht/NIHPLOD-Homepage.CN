@@ -12,7 +12,11 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import {
+  sendBackchannelLogout,
+  enqueueBackchannelLogoutForActiveSessions,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
@@ -23,9 +27,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
-    if (rateLimitResponse) return rateLimitResponse;
-
+    // 先鉴权后限流：避免未认证流量消耗管理员共享配额
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -39,6 +41,8 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = request.nextUrl;
     // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
@@ -95,10 +99,19 @@ export async function GET(request: NextRequest) {
       if (clientIds.length > 0) searchOr.push({ clientId: { in: clientIds } });
 
       if (searchOr.length === 0) {
+        const nowEmpty = new Date();
+        const [globalActiveSessions, activeRefreshTokens] = await Promise.all([
+          prisma.oAuthSession.count({
+            where: { revokedAt: null, expiresAt: { gt: nowEmpty } },
+          }),
+          prisma.refreshToken.count({
+            where: { revokedAt: null, expiresAt: { gt: nowEmpty } },
+          }),
+        ]);
         return NextResponse.json({
           success: true,
           data: {
-            stats: { activeSessions: 0, activeRefreshTokens: 0 },
+            stats: { activeSessions: 0, activeRefreshTokens, globalActiveSessions },
             items: [],
             pagination: { page, pageSize, total: 0 },
             searchTruncated,
@@ -108,12 +121,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 活跃 OAuthSession（排除已过期但未标记撤销的记录）
-    const sessionWhere: Record<string, unknown> = { revokedAt: null, expiresAt: { gt: new Date() } };
+    const now = new Date();
+    const sessionWhere: Record<string, unknown> = { revokedAt: null, expiresAt: { gt: now } };
     if (userId) sessionWhere.userId = userId;
     if (clientId) sessionWhere.clientId = clientId;
     if (searchOr) sessionWhere.OR = searchOr;
 
-    const [sessions, total] = await Promise.all([
+    const [sessions, total, globalActiveSessions] = await Promise.all([
       prisma.oAuthSession.findMany({
         where: sessionWhere,
         orderBy: { createdAt: "desc" },
@@ -121,11 +135,13 @@ export async function GET(request: NextRequest) {
         take: pageSize,
       }),
       prisma.oAuthSession.count({ where: sessionWhere }),
+      // 全局活跃会话数（不受筛选影响）：批量终止是全局操作，确认弹窗必须展示真实总量
+      prisma.oAuthSession.count({ where: { revokedAt: null, expiresAt: { gt: now } } }),
     ]);
 
     // 活跃 RefreshToken 数量（同样排除已过期记录）
     const refreshTokenCount = await prisma.refreshToken.count({
-      where: { revokedAt: null, expiresAt: { gt: new Date() } },
+      where: { revokedAt: null, expiresAt: { gt: now } },
     });
 
     // 批量获取用户信息
@@ -156,6 +172,7 @@ export async function GET(request: NextRequest) {
         stats: {
           activeSessions: total,
           activeRefreshTokens: refreshTokenCount,
+          globalActiveSessions,
         },
         items: sessions.map((s) => {
           const u = userMap.get(s.userId);
@@ -209,9 +226,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-sessions");
-    if (rateLimitResponse) return rateLimitResponse;
-
+    // 先鉴权后限流：未认证请求不消耗已登录管理员共用的限流桶
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -219,6 +234,9 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-sessions");
+    if (rateLimitResponse) return rateLimitResponse;
     if (!hasAdminPermission(admin, "sso:write")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 会话操作" } },
@@ -274,7 +292,7 @@ export async function POST(request: NextRequest) {
       });
 
       // 同步撤销该用户+client 下的活跃 RefreshToken
-      await revokeRefreshToken(session.userId, undefined, session.clientId);
+      await revokeRefreshToken(session.userId, undefined, session.clientId, "admin_revoke");
 
       // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
       // sid 查到本 session 的 revokedAt 即拒绝），不再拉黑用户全部 token，
@@ -350,7 +368,7 @@ export async function POST(request: NextRequest) {
       data: { revokedAt: new Date() },
     });
 
-    await revokeRefreshToken(userId, undefined, clientId);
+    await revokeRefreshToken(userId, undefined, clientId, "admin_revoke");
 
     // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
     // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
@@ -433,12 +451,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 查询所有活跃会话用于 backchannel logout（撤销前查询，sid 供 logout_token 携带）
-    const activeSessions = await prisma.oAuthSession.findMany({
-      where: { revokedAt: null, expiresAt: { gt: new Date() } },
-      select: { userId: true, clientId: true, sessionId: true },
-      orderBy: { createdAt: "desc" },
-    });
+    // 分页扫描活跃会话并写入 backchannel 补偿队列（撤销前扫描；由 cron 异步批量投递，
+    // 避免全量会话读入内存 + 逐用户串行 HTTP 导致请求超时）
+    const enqueued = await enqueueBackchannelLogoutForActiveSessions({});
 
     // 批量撤销
     const [sessionResult, refreshResult] = await Promise.all([
@@ -448,37 +463,39 @@ export async function DELETE(request: NextRequest) {
       }),
       prisma.refreshToken.updateMany({
         where: { revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
       }),
     ]);
 
-    // Backchannel Logout：按用户聚合通知；已签发 access token 的即时失效由
-    // sid 会话校验承担（verifyOAuthAccessToken 按 sid 查到 revokedAt 即拒绝），
+    // Backchannel Logout：通知已批量入队，由 cron 重投任务投递；已签发 access token 的
+    // 即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按 sid 查到 revokedAt 即拒绝），
     // 不再逐用户拉黑 token，避免误登出主站会话。
-    const userClients = new Map<string, { clientIds: Set<string>; sids: Record<string, string> }>();
-    for (const s of activeSessions) {
-      if (!userClients.has(s.userId)) userClients.set(s.userId, { clientIds: new Set(), sids: {} });
-      const entry = userClients.get(s.userId)!;
-      entry.clientIds.add(s.clientId);
-      // 各 client 取撤销前最新活跃会话的 sid
-      if (!entry.sids[s.clientId]) entry.sids[s.clientId] = s.sessionId;
-    }
-    // 并发通知，分批限流（每批 10 个用户），单用户失败不影响其他用户
-    const entries = [...userClients];
-    for (let i = 0; i < entries.length; i += 10) {
-      const batch = entries.slice(i, i + 10);
-      await Promise.allSettled(
-        batch.map(([userId, { clientIds, sids }]) =>
-          sendBackchannelLogout(userId, [...clientIds], { sids })
-        )
-      );
-    }
+    // 响应后立即补投小批量，避免等待 cron 周期
+    scheduleBackchannelRedelivery();
+
+    // SSO 审计事件（合规）：批量强制下线属于安全敏感操作，不能只写管理端审计日志
+    await recordSsoEvent({
+      event: "status_change",
+      ip: getClientIP(request),
+      success: true,
+      detail: {
+        action: "sessions_terminated_all",
+        sessionsRevoked: sessionResult.count,
+        refreshTokensRevoked: refreshResult.count,
+        notificationsEnqueued: enqueued.userClientCount,
+        adminId: admin.id,
+      },
+    });
 
     await createAuditLog({
       action: "oauth_session_terminate",
       targetType: "oauth_session",
       targetId: "all",
-      detail: { sessionsRevoked: sessionResult.count, refreshTokensRevoked: refreshResult.count },
+      detail: {
+        sessionsRevoked: sessionResult.count,
+        refreshTokensRevoked: refreshResult.count,
+        notificationsEnqueued: enqueued.userClientCount,
+      },
       adminId: admin.id,
       request,
     });

@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
@@ -24,7 +25,7 @@ interface JobData {
   latitude: number | null;
 }
 
-export default function EditJobPage() {
+function EditJobContent() {
   const router = useRouter();
   const params = useParams();
   const jobId = params.id as string;
@@ -117,5 +118,13 @@ export default function EditJobPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function EditJobPage() {
+  return (
+    <RequirePermission permission="jobs:write">
+      <EditJobContent />
+    </RequirePermission>
   );
 }

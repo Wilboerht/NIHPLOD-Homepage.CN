@@ -9,6 +9,7 @@
  * - 用户撤销授权（POST /api/user/oauth/revoke）：通知被撤销的单个 client
  */
 import { signLogoutToken } from "@/lib/jwt";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
@@ -127,6 +128,8 @@ export async function sendBackchannelLogout(
               method: "POST",
               headers: { "Content-Type": "application/x-www-form-urlencoded" },
               body: new URLSearchParams({ logout_token: logoutToken }),
+              // 禁止跟随重定向：防止注册的 https 地址 302 到内网（SSRF 绕过主机黑名单）
+              redirect: "manual",
               signal: AbortSignal.timeout(5000),
             });
             if (res.ok) {
@@ -184,6 +187,148 @@ export async function sendBackchannelLogout(
 }
 
 // ============================================
+// 批量入队（异步投递，供级联撤销场景）
+// ============================================
+
+/**
+ * 将一批 Backchannel Logout 通知写入补偿队列（不同步投递），由 cron 重投任务处理。
+ *
+ * 用于批量级联场景（client 停用/删除、批量终止会话）：避免在单次请求内对无界
+ * 用户集合逐个发起同步 HTTP（每个 2 次 × 5s 超时）导致请求超时与进程占用。
+ *
+ * @returns 实际入队的通知条数（按 user+client 去重后）
+ */
+export async function enqueueBackchannelLogoutNotifications(
+  entries: {
+    userId: string;
+    clientId: string;
+    sid?: string | null;
+    /** 入队时 client 的 backchannelLogoutUri 快照：client 被删除后仍可投递 */
+    logoutUri?: string | null;
+  }[]
+): Promise<number> {
+  if (entries.length === 0) return 0;
+
+  // 同一 user+client 只保留一条（sid 用于 RP 定位会话；重复投递幂等，无需逐 session 通知）
+  const unique = new Map<
+    string,
+    { userId: string; clientId: string; sid?: string | null; logoutUri?: string | null }
+  >();
+  for (const e of entries) {
+    const key = `${e.userId}:${e.clientId}`;
+    if (!unique.has(key)) unique.set(key, e);
+  }
+  const rows = [...unique.values()];
+
+  const CHUNK_SIZE = 500;
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    await prisma.backchannelLogoutFailure.createMany({
+      data: rows.slice(i, i + CHUNK_SIZE).map((e) => ({
+        userId: e.userId,
+        clientId: e.clientId,
+        payload: { sid: e.sid ?? null, logoutUri: e.logoutUri ?? null },
+        // 立即到期；实际投递由 cron 在下次运行时批量处理（带指数退避与上限）
+        nextRetryAt: new Date(),
+      })),
+    });
+  }
+  return rows.length;
+}
+
+/**
+ * 分页扫描活跃 OAuthSession 并写入 Backchannel Logout 补偿队列。
+ *
+ * 必须在撤销会话之前调用（查询条件含 revokedAt: null）。分页 + 批量 createMany，
+ * 避免一次性把全部会话/用户读入内存，也避免逐用户同步等待 HTTP。
+ * 仅对配置了 backchannelLogoutUri 的 client 入队（并把 URI 快照写入 payload，
+ * 保证 client 删除后仍能投递到目标 RP）。
+ *
+ * ⚠️ sessionCount 只统计"匹配到已配置 URI 的 client"的会话，仅供观测；
+ * 撤销会话/refresh token 必须由调用方无条件执行，不得以本返回值为门槛。
+ *
+ * @returns sessionCount 匹配会话数；userClientCount 入队通知数（user+client 去重）
+ */
+export async function enqueueBackchannelLogoutForActiveSessions(params: {
+  clientId?: string;
+  userId?: string;
+  pageSize?: number;
+}): Promise<{ sessionCount: number; userClientCount: number }> {
+  // 先取目标 client 的 backchannelLogoutUri（含已停用 client；删除场景下调用方仍在删除前）
+  const clients = await prisma.oAuthClient.findMany({
+    where: {
+      ...(params.clientId ? { clientId: params.clientId } : {}),
+      backchannelLogoutUri: { not: null },
+    },
+    select: { clientId: true, backchannelLogoutUri: true },
+  });
+  const uriByClient = new Map(
+    clients.map((c) => [c.clientId, c.backchannelLogoutUri as string])
+  );
+  if (uriByClient.size === 0) {
+    return { sessionCount: 0, userClientCount: 0 };
+  }
+
+  const pageSize = Math.min(Math.max(params.pageSize ?? 1000, 1), 5000);
+  let cursor: string | undefined;
+  let sessionCount = 0;
+  let userClientCount = 0;
+
+  for (;;) {
+    const page = await prisma.oAuthSession.findMany({
+      where: {
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        clientId: params.clientId
+          ? params.clientId
+          : { in: [...uriByClient.keys()] },
+        ...(params.userId ? { userId: params.userId } : {}),
+      },
+      select: { id: true, userId: true, clientId: true, sessionId: true },
+      orderBy: { id: "asc" },
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: pageSize,
+    });
+
+    if (page.length === 0) break;
+
+    sessionCount += page.length;
+    userClientCount += await enqueueBackchannelLogoutNotifications(
+      page.map((s) => ({
+        userId: s.userId,
+        clientId: s.clientId,
+        sid: s.sessionId,
+        logoutUri: uriByClient.get(s.clientId),
+      }))
+    );
+
+    cursor = page[page.length - 1].id;
+    if (page.length < pageSize) break;
+  }
+
+  return { sessionCount, userClientCount };
+}
+
+/**
+ * 在响应返回后立即触发一次有界补偿投递（Next `after()`）。
+ *
+ * 批量级联场景把通知写入队列后调用：小规模级联（≤ limit 条）几乎即时送达，
+ * 大规模积压则继续由 cron 周期排空。非请求上下文自动降级为 fire-and-forget。
+ */
+export function scheduleBackchannelRedelivery(limit: number = 20): void {
+  const run = () =>
+    retryFailedBackchannelLogouts(limit)
+      .then(() => undefined)
+      .catch((err) => {
+        apiConsole.warn("[SLO] 入队后即时补投失败（将由 cron 重试）:", err);
+      });
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
+}
+
+// ============================================
 // 投递失败补偿（cron 周期重投）
 // ============================================
 
@@ -200,7 +345,7 @@ const REDELIVERY_MAX_DELAY_MS = 60 * 60 * 1000; // 退避上限 1 小时
  * - 超过重投上限：删除记录并写审计
  */
 export async function retryFailedBackchannelLogouts(
-  limit: number = 50
+  limit: number = 200
 ): Promise<{ delivered: number; failed: number; dropped: number }> {
   const failures = await prisma.backchannelLogoutFailure.findMany({
     where: { nextRetryAt: { lte: new Date() }, attempts: { lt: REDELIVERY_MAX_ATTEMPTS } },
@@ -212,7 +357,7 @@ export async function retryFailedBackchannelLogouts(
   let failed = 0;
   let dropped = 0;
 
-  for (const failure of failures) {
+  const processFailure = async (failure: (typeof failures)[number]) => {
     try {
       // 多实例部署时的乐观锁认领：先把 nextRetryAt 后移，
       // 认领失败（count=0）说明其他实例已接管该记录，直接跳过。
@@ -221,22 +366,29 @@ export async function retryFailedBackchannelLogouts(
         where: { id: failure.id, nextRetryAt: failure.nextRetryAt },
         data: { nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS) },
       });
-      if (claim.count === 0) continue;
+      if (claim.count === 0) return;
 
+      const payload = (failure.payload ?? {}) as {
+        sid?: string | null;
+        logoutUri?: string | null;
+      };
+
+      // 优先使用当前 client 配置的 URI；client 已删除时回退到入队时的 URI 快照
+      // （否则删除 client 的批量登出通知会永远无法投递）。
+      // 注意：client 仍存在但 URI 被清空 = 管理员主动停止投递，此时直接丢弃（不再回退快照）。
       const client = await prisma.oAuthClient.findUnique({
         where: { clientId: failure.clientId },
         select: { clientId: true, backchannelLogoutUri: true },
       });
-      const uri = client?.backchannelLogoutUri;
+      const uri = client ? client.backchannelLogoutUri : payload.logoutUri ?? null;
 
-      // client 已删除或未配置 backchannelLogoutUri：补偿无意义，直接丢弃
+      // client 已删除且无 URI 快照 / 未配置 / 不安全：补偿无意义，直接丢弃
       if (!uri || !isSafeBackchannelUrl(uri)) {
         await prisma.backchannelLogoutFailure.delete({ where: { id: failure.id } });
         dropped++;
-        continue;
+        return;
       }
 
-      const payload = (failure.payload ?? {}) as { sid?: string | null };
       // 重新签发 logout_token（原 token 已过期），jti 重新生成
       const logoutToken = await signLogoutToken({
         sub: failure.userId,
@@ -250,6 +402,8 @@ export async function retryFailedBackchannelLogouts(
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ logout_token: logoutToken }),
+        // 禁止跟随重定向（SSRF 防护）
+        redirect: "manual",
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
@@ -294,7 +448,23 @@ export async function retryFailedBackchannelLogouts(
         );
       }
     }
-  }
+  };
+
+  // 批量级联场景队列可能积压较多：有界并发（每批 10 个）提升吞吐，
+  // 同时避免对 RP 造成瞬时压力；计数与认领均在单线程事件循环内安全累加。
+  const CONCURRENCY = 10;
+  let nextIndex = 0;
+  const workers = Array.from(
+    { length: Math.min(CONCURRENCY, failures.length) },
+    async () => {
+      for (;;) {
+        const index = nextIndex++;
+        if (index >= failures.length) return;
+        await processFailure(failures[index]);
+      }
+    }
+  );
+  await Promise.all(workers);
 
   return { delivered, failed, dropped };
 }
@@ -314,13 +484,20 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   const failure = await prisma.backchannelLogoutFailure.findUnique({ where: { id } });
   if (!failure) return { ok: false, status: "not_found" };
 
+  // 原子认领：删除成功（count=1）才继续，防止手动重投与 cron 重投并发导致重复投递
+  const claimed = await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
+  if (claimed.count === 0) return { ok: false, status: "not_found" };
+
+  const payload = (failure.payload ?? {}) as { sid?: string | null; logoutUri?: string | null };
+
   const client = await prisma.oAuthClient.findUnique({
     where: { clientId: failure.clientId },
     select: { clientId: true, backchannelLogoutUri: true },
   });
-  const uri = client?.backchannelLogoutUri;
+  // 与自动重投一致：client 存在时以当前配置为准，URI 为空禁止投递
+  // （client 已被删除时，用创建时的 URI 兜底）
+  const uri = client ? client.backchannelLogoutUri : payload.logoutUri ?? null;
   if (!uri || !isSafeBackchannelUrl(uri)) {
-    await prisma.backchannelLogoutFailure.delete({ where: { id } });
     recordSsoEvent({
       event: "backchannel_logout",
       userId: failure.userId,
@@ -332,7 +509,6 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   }
 
   try {
-    const payload = (failure.payload ?? {}) as { sid?: string | null };
     const logoutToken = await signLogoutToken({
       sub: failure.userId,
       aud: failure.clientId,
@@ -345,11 +521,12 @@ export async function retryBackchannelFailureById(id: string): Promise<{
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ logout_token: logoutToken }),
+      // 禁止跟随重定向（SSRF 防护）
+      redirect: "manual",
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`http_${res.status}`);
 
-    await prisma.backchannelLogoutFailure.delete({ where: { id } });
     recordSsoEvent({
       event: "backchannel_logout",
       userId: failure.userId,
@@ -361,9 +538,6 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   } catch (err) {
     const attempts = failure.attempts + 1;
     if (attempts >= REDELIVERY_MAX_ATTEMPTS) {
-      await prisma.backchannelLogoutFailure
-        .delete({ where: { id } })
-        .catch((e) => apiConsole.warn("[SLO] 删除超限失败记录出错:", e));
       recordSsoEvent({
         event: "backchannel_logout",
         userId: failure.userId,
@@ -374,10 +548,18 @@ export async function retryBackchannelFailureById(id: string): Promise<{
       return { ok: false, status: "dropped", error: "已达到最大重试次数，记录已丢弃" };
     }
     const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
-    await prisma.backchannelLogoutFailure.update({
-      where: { id },
-      data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
-    });
+    // 已认领（记录已删除）：失败时重建记录并递增 attempts / 退避
+    await prisma.backchannelLogoutFailure
+      .create({
+        data: {
+          userId: failure.userId,
+          clientId: failure.clientId,
+          payload: failure.payload ?? {},
+          attempts,
+          nextRetryAt: new Date(Date.now() + backoff),
+        },
+      })
+      .catch((e) => apiConsole.warn("[SLO] 重建失败记录出错:", e));
     return {
       ok: false,
       status: "failed",

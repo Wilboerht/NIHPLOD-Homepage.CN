@@ -23,6 +23,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
+  canonicalizeQuery,
   isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
@@ -93,7 +94,8 @@ export async function POST(request: NextRequest) {
       path,
       timestamp,
       nonce,
-      bodyHash
+      bodyHash,
+      { query: canonicalizeQuery(new URL(request.url).search) }
     );
 
     if (!config) {
@@ -145,16 +147,51 @@ export async function POST(request: NextRequest) {
 
     const { userId, points, reference, note } = parsed.data;
 
+    // 幂等键格式强约束：checkin:{userId}:{YYYY-MM-DD}
+    // 使"每用户每日最多一次"由幂等键本身保证；否则子站可用任意 reference
+    // 无限次调用本端点铸积分（密钥泄漏/内部滥用即资损）
+    const referenceMatch = /^checkin:([^:]{1,64}):(\d{4}-\d{2}-\d{2})$/.exec(reference);
+    if (!referenceMatch || referenceMatch[1] !== userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_REFERENCE",
+            message: "幂等键格式必须为 checkin:{userId}:{YYYY-MM-DD}",
+          },
+        },
+        { status: 400 }
+      );
+    }
+    const occurredAt = new Date(`${referenceMatch[2]}T00:00:00.000Z`);
+    if (
+      Number.isNaN(occurredAt.getTime()) ||
+      occurredAt.getTime() > Date.now() + 24 * 60 * 60 * 1000
+    ) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_REFERENCE", message: "幂等键日期无效" } },
+        { status: 400 }
+      );
+    }
+
     // 5. 按 userId 定位用户（子站本地 user.id 即 SSO sub，与官网 User.id 同源）
+    // 同时校验账户状态：封禁/冻结用户不得再被发放积分
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!user) {
       return NextResponse.json(
         { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
+      );
+    }
+
+    if (user.status !== "ACTIVE") {
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DISABLED", message: "账户不可用" } },
+        { status: 403 }
       );
     }
 

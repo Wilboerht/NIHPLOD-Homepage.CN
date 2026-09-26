@@ -258,6 +258,28 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       });
     }
 
+    // POST 登出 CSRF 防护：必须是同源发起（Origin 优先，Sec-Fetch-Site 兜底）。
+    // 跨站表单 POST 会携带 Origin/Sec-Fetch-Site: cross-site，直接拒绝。
+    const requestOrigin = request.headers.get("origin");
+    if (requestOrigin && requestOrigin !== callbackOrigin) {
+      return NextResponse.json(
+        { error: "forbidden", error_description: "跨站请求被拒绝" },
+        { status: 403 }
+      );
+    }
+    const secFetchSite = request.headers.get("sec-fetch-site");
+    if (
+      !requestOrigin &&
+      secFetchSite &&
+      secFetchSite !== "same-origin" &&
+      secFetchSite !== "none"
+    ) {
+      return NextResponse.json(
+        { error: "forbidden", error_description: "跨站请求被拒绝" },
+        { status: 403 }
+      );
+    }
+
     // 解析表单中的 global 字段（确认页勾选"同时退出所有 NIHPLOD 平台"后提交 global=1）；
     // 表单未携带 global 字段时回落到配置的 defaultScope
     let formGlobal: string | null = null;
@@ -317,6 +339,24 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
+
+      // 清理带 state 后缀的瞬态 cookie 残留（middleware 的多标签页隔离格式：
+      // `${name}_${state}`）。过期时间为 10 分钟，这里主动清理避免残留。
+      const suffixedPrefixes = [
+        `${stateCookieName}_`,
+        `${nonceCookieName}_`,
+        `${returnUrlCookieName}_`,
+        `${verifierCookieName}_`,
+      ];
+      for (const cookie of request.cookies.getAll()) {
+        if (!suffixedPrefixes.some((prefix) => cookie.name.startsWith(prefix))) continue;
+        if (cookie.name.startsWith(`${verifierCookieName}_`)) {
+          res.cookies.set(cookie.name, "", getSecureCookieOptions(0, "/", secureCookies));
+          res.cookies.set(cookie.name, "", getSecureCookieOptions(0, callbackPath, secureCookies));
+        } else {
+          res.cookies.set(cookie.name, "", getHostCookieOptions(0, secureCookies));
+        }
+      }
       return res;
     };
 

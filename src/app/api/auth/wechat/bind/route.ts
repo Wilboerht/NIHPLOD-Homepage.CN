@@ -9,7 +9,7 @@ import {
 } from "@/types/auth";
 import { z } from "zod";
 import { passwordSchema } from "@/lib/password";
-import { verifyWechatBindToken } from "@/lib/jwt";
+import { verifyWechatBindToken, consumeWechatBindToken, releaseWechatBindToken } from "@/lib/jwt";
 import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { getMiniprogramPhone } from "@/lib/wechat";
 import { apiConsole } from "@/lib/logger";
@@ -111,6 +111,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 一次性 jti 原子占用（防并发重放）：占用失败视为已使用，直接拒绝。
+    // 绑定业务失败（验证码错误等）时释放占用，允许用户用同一 token 重试。
+    const bindJti = wechatInfo.jti ?? null;
+    if (bindJti && !(await consumeWechatBindToken(bindJti))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "BIND_TOKEN_USED",
+            message: "该微信授权已使用，请重新扫码",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    /** 绑定业务失败：释放 jti 占用后返回错误（允许重试） */
+    const failAndRelease = async (body: unknown, status: number): Promise<NextResponse> => {
+      if (bindJti) {
+        try {
+          await releaseWechatBindToken(bindJti);
+        } catch {
+          // 释放失败仅告警：最坏情况要求用户重新扫码
+        }
+      }
+      return NextResponse.json(body, { status });
+    };
+
     // 通道解析：
     // - phoneCode 通道：微信手机号快速验证组件已证明手机号归属，免短信验证码；
     //   仅限 bindToken（body）通道，浏览器 Cookie 通道不支持（保持短信验证）
@@ -121,33 +149,33 @@ export async function POST(request: NextRequest) {
 
     if (phoneCode) {
       if (!result.data.bindToken) {
-        return NextResponse.json(
+        return await failAndRelease(
           {
             success: false,
             error: { code: "INVALID_PARAMS", message: "微信手机号授权仅限 bindToken 通道使用" },
           },
-          { status: 400 }
+          400
         );
       }
       try {
         wxVerifiedPhone = await getMiniprogramPhone(phoneCode);
       } catch (error) {
         apiConsole.error("[WechatBind] getPhoneNumber 换取失败:", error);
-        return NextResponse.json(
+        return await failAndRelease(
           {
             success: false,
             error: { code: "PHONE_CODE_FAILED", message: "获取微信手机号失败，请重试或使用验证码" },
           },
-          { status: 400 }
+          400
         );
       }
       if (!/^1[3-9]\d{9}$/.test(wxVerifiedPhone)) {
-        return NextResponse.json(
+        return await failAndRelease(
           {
             success: false,
             error: { code: "PHONE_INVALID", message: "微信手机号格式异常，请使用验证码绑定" },
           },
-          { status: 400 }
+          400
         );
       }
       phone = wxVerifiedPhone;
@@ -155,12 +183,12 @@ export async function POST(request: NextRequest) {
       phone = result.data.phone;
       smsCode = result.data.code;
       if (!phone || !smsCode) {
-        return NextResponse.json(
+        return await failAndRelease(
           {
             success: false,
             error: { code: "INVALID_PARAMS", message: "请输入手机号和验证码，或使用微信手机号授权" },
           },
-          { status: 400 }
+          400
         );
       }
     }
@@ -178,9 +206,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!bindingResult.success) {
-      return NextResponse.json(
+      return await failAndRelease(
         { success: false, error: { code: bindingResult.code, message: bindingResult.message } },
-        { status: bindingResult.code === "ACCOUNT_DISABLED" ? 403 : 400 }
+        bindingResult.code === "ACCOUNT_DISABLED" ? 403 : 400
       );
     }
 

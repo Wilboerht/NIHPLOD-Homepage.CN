@@ -10,7 +10,8 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createHash } from "crypto";
+import { hashIdentifier } from "@/lib/auth-security";
+import { revokeAccessToken, isAccessTokenRevoked } from "@/lib/token-blacklist";
 
 // 管理员账户级防爆破配置
 const ADMIN_MAX_ATTEMPTS = 5;
@@ -28,7 +29,8 @@ function getDummyHash(): string {
 }
 
 function hashEmail(email: string): string {
-  return createHash("sha256").update(email, "utf8").digest("hex");
+  // HMAC（LOGIN_ATTEMPT_HMAC_KEY）：与用户侧一致，避免拖库后邮箱被枚举还原
+  return hashIdentifier(email);
 }
 
 async function checkAdminLockout(
@@ -210,9 +212,26 @@ export async function POST(request: NextRequest) {
     }
 
     // 3.5 TOTP 二次验证
-    if (admin.totpEnabled && admin.totpSecret) {
-      if (!totpCode || totpCode.length < 6) {
+    if (admin.totpEnabled) {
+      // fail-closed：已启用 TOTP 但密钥缺失（迁移/人工清理异常）时禁止登录，
+      // 绝不能静默跳过二次验证（与资金操作 requireMoneyOperationTotp 口径一致）
+      if (!admin.totpSecret) {
+        apiConsole.error(`[AdminLogin] 管理员 ${admin.id} 已启用 TOTP 但密钥缺失，拒绝登录`);
         await recordAdminAttempt(email, false, request);
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "TOTP_MISCONFIGURED",
+              message: "二次验证配置异常，请联系超级管理员重置二次验证",
+            },
+          },
+          { status: 500 }
+        );
+      }
+      if (!totpCode || totpCode.length < 6) {
+        // 不计入密码锁定计数器：验证器时钟漂移/备用码丢失不应导致账号被锁，
+        // TOTP 暴力破解由上方 admin-totp 专用桶限流承担。
         return NextResponse.json(
           {
             success: false,
@@ -240,6 +259,18 @@ export async function POST(request: NextRequest) {
       try {
         const secret = decryptTOTPSecret(admin.totpSecret);
         totpValid = verifyTOTP(totpCode, secret);
+        if (totpValid) {
+          // 一次性：同一验证码在有效窗口内跨实例防重放
+          const replayKey = `totp:${admin.id}:${totpCode}`;
+          if (await isAccessTokenRevoked(replayKey)) {
+            apiConsole.warn("[AdminLogin] 检测到 TOTP 重放:", admin.id);
+            totpValid = false;
+          } else {
+            await revokeAccessToken(replayKey).catch((err) =>
+              apiConsole.warn("[AdminLogin] 标记验证码已用失败:", err)
+            );
+          }
+        }
       } catch (err) {
         apiConsole.error("[AdminLogin] TOTP解密失败:", err);
         totpValid = false;
@@ -259,7 +290,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!totpValid) {
-        await recordAdminAttempt(email, false, request);
+        // 同上：TOTP/备用码错误不占用密码锁定配额，仅由 admin-totp 桶限流
         return NextResponse.json(
           {
             success: false,

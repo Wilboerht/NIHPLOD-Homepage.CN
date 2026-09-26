@@ -19,7 +19,6 @@ import {
   saveRefreshToken,
   extractDeviceInfo,
   recordLoginAttempt,
-  checkAccountLockout,
   clearLoginAttempts,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
@@ -90,20 +89,8 @@ export async function POST(request: NextRequest) {
 
     const { name, phone, code, password } = result.data;
 
-    // 账户级防爆破：与 login/reset-password 保持一致（验证码闸门之外的补充防线）
-    const { locked, remainingMinutes } = await checkAccountLockout(phone);
-    if (locked) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "ACCOUNT_LOCKED",
-            message: `操作过于频繁，请在 ${remainingMinutes} 分钟后重试`,
-          },
-        },
-        { status: 429 }
-      );
-    }
+    // 注意：不再使用「登录失败锁定」作为注册前置门禁——登录锁定不应阻塞注册/账号恢复。
+    // 注册自身的防爆破由：IP 限流（form 预设）+ 单验证码 5 次尝试上限 + 短信发送间隔承担。
 
     // 查找验证码
     // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）

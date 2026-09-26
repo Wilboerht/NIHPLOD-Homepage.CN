@@ -17,14 +17,36 @@ export class ApiError extends Error {
   public readonly code: string;
   public readonly status: number;
   public readonly details?: unknown;
+  /**
+   * 响应体顶层 `data`（部分接口在失败时用它携带可操作状态，
+   * 如登录接口的 `{ totpRequired: true }`）。调用方需要读取该字段。
+   */
+  public readonly data?: unknown;
 
-  constructor(code: string, message: string, status: number, details?: unknown) {
+  constructor(code: string, message: string, status: number, details?: unknown, data?: unknown) {
     super(message);
     this.name = "ApiError";
     this.code = code;
     this.status = status;
     this.details = details;
+    this.data = data;
   }
+}
+
+/** 安全读取 ApiError.data.totpRequired 等布尔标记 */
+export function getErrorDataFlag(error: unknown, key: string): boolean {
+  if (!(error instanceof ApiError)) return false;
+  const data = error.data;
+  if (!data || typeof data !== "object") return false;
+  return (data as Record<string, unknown>)[key] === true;
+}
+
+/** 统一提取错误文案（优先服务端 message，其次 Error.message，最后 fallback） */
+export function getApiErrorMessage(error: unknown, fallback = "操作失败"): string {
+  if (error instanceof ApiError || error instanceof Error) {
+    return error.message || fallback;
+  }
+  return fallback;
 }
 
 interface RequestOptions {
@@ -162,7 +184,8 @@ export async function apiRequest<T = unknown>(
         data.error?.code || "UNKNOWN_ERROR",
         data.error?.message || `请求失败 (${response.status})`,
         response.status,
-        data.error?.details
+        data.error?.details,
+        data.data
       );
     }
 

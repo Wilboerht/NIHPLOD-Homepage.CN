@@ -28,6 +28,9 @@ const SSO_CONFIG = {
   redirectUri: "http://localhost:3001/callback", // ← 替换为实际回调 URL
   ssoBaseUrl: "https://nihplod.cn",
   scopes: "openid profile phone",
+  // 全局登出回跳地址：不配置时会回退到 redirectUri（/callback），
+  // 该页面无 code 会显示"缺少 authorization code"错误页
+  postLogoutRedirectUri: "http://localhost:3001/",
 };
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

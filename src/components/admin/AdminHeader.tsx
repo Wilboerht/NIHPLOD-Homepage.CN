@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Menu, ChevronRight, ChevronDown, LogOut, User, Loader2 } from "lucide-react";
 import { getBreadcrumbs } from "@/config/admin-nav";
 import { apiPost } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
 
@@ -33,7 +34,7 @@ export function AdminHeader({ onMenuClick, isMobile, userName, userRole }: Admin
       router.push("/admin-login");
       router.refresh();
     } catch (error) {
-      console.error("登出失败:", error);
+      apiConsole.error("登出失败:", error);
     } finally {
       setLoggingOut(false);
     }

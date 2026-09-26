@@ -11,6 +11,8 @@ interface StatsCardProps {
   trend?: {
     value: number;
     isPositive: boolean;
+    /** 对比周期文案，默认「较上月」 */
+    label?: string;
   };
   className?: string;
   loading?: boolean;
@@ -52,7 +54,7 @@ export function StatsCard({
               )}
             >
               {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
-              <span className="ml-1 text-brand-charcoal/50">较上月</span>
+              <span className="ml-1 text-brand-charcoal/50">{trend.label ?? "较上月"}</span>
             </p>
           )}
         </div>

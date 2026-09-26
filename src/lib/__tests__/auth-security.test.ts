@@ -6,6 +6,7 @@ import {
   DEFAULT_BRUTE_FORCE_CONFIG,
   saveRefreshToken,
   atomicallyRotateRefreshToken,
+  revokeRefreshToken,
   extractDeviceInfo,
   cleanupRevokedSessionsAndTokens,
   cleanupRevokedUserConsents,
@@ -365,7 +366,7 @@ describe("auth-security", () => {
       // RFC 6819 §5.2.2.3：吊销该用户该 client 下全部活跃 refresh token
       expect(mockRt.updateMany).toHaveBeenNthCalledWith(2, {
         where: { userId: "user-1", clientId: "client-1", revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+        data: { revokedAt: expect.any(Date), revokedReason: "reuse" },
       });
 
       // 不应继续签发新 token
@@ -424,7 +425,7 @@ describe("auth-security", () => {
       // RFC 6819 §5.2.2.3：吊销该用户该 client 下全部活跃 refresh token
       expect(mockRt.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", clientId: "client-1", revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+        data: { revokedAt: expect.any(Date), revokedReason: "reuse" },
       });
 
       // 同步撤销对应 OAuthSession（携带 sid 的 access token 即时失效）
@@ -450,6 +451,92 @@ describe("auth-security", () => {
           }),
         })
       );
+    });
+
+    it("device_limit（设备数超限被淘汰）应返回专属原因且不吊销家族", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+
+      mockRt.findFirst.mockResolvedValueOnce({
+        id: "rt-evicted",
+        userId: "user-1",
+        clientId: null,
+        revokedAt: new Date(Date.now() - 60_000),
+        revokedReason: "device_limit",
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      const result = await atomicallyRotateRefreshToken(
+        "user-1",
+        "old-token",
+        "new-token",
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      );
+
+      expect(result).toEqual({
+        valid: false,
+        reason: "device_limit",
+        familyRevokedCount: 0,
+      });
+      // 非泄漏信号：不吊销家族、不签发新 token
+      expect(mockRt.updateMany).not.toHaveBeenCalled();
+      expect(mockRt.create).not.toHaveBeenCalled();
+    });
+
+    it("force_logout/credential_change/logout 等非泄漏撤销：重放仅拒绝，不吊销家族", async () => {
+      const { prisma } = await import("../prisma");
+      const mockRt = await getMockRefreshToken();
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
+        return callback(prisma as unknown as never);
+      });
+
+      for (const revokedReason of [
+        "force_logout",
+        "credential_change",
+        "logout",
+        "admin_revoke",
+        "user_revoke",
+      ]) {
+        mockRt.findFirst.mockResolvedValueOnce({
+          id: "rt-revoked",
+          userId: "user-1",
+          clientId: null,
+          revokedAt: new Date(Date.now() - 60_000), // 远超 3 秒良性窗口
+          revokedReason,
+        });
+
+        const result = await atomicallyRotateRefreshToken(
+          "user-1",
+          "old-token",
+          "new-token",
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        );
+
+        // 非泄漏：专属 reason、不吊销家族；若旧实现会误判顺序重用吊销全部内部 token
+        expect(result).toEqual({
+          valid: false,
+          reason: "session_revoked",
+          familyRevokedCount: 0,
+        });
+      }
+
+      expect(mockRt.updateMany).not.toHaveBeenCalled();
+      expect(mockRt.create).not.toHaveBeenCalled();
+    });
+
+    it("revokeRefreshToken 按传入原因写入 revokedReason", async () => {
+      const mockRt = await getMockRefreshToken();
+      mockRt.updateMany.mockResolvedValueOnce({ count: 1 });
+
+      const count = await revokeRefreshToken("user-1", undefined, null, "logout");
+
+      expect(count).toBe(1);
+      expect(mockRt.updateMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", revokedAt: null, clientId: null },
+        data: { revokedAt: expect.any(Date), revokedReason: "logout" },
+      });
     });
 
     it("missing（token 不存在/已过期）应吊销整个 token 家族、撤销 OAuthSession 并记录审计", async () => {
@@ -482,7 +569,7 @@ describe("auth-security", () => {
 
       expect(mockRt.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", clientId: "client-1", revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+        data: { revokedAt: expect.any(Date), revokedReason: "reuse" },
       });
       expect(mockSession.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", clientId: "client-1", revokedAt: null },
@@ -647,12 +734,11 @@ describe("auth-security", () => {
       });
     });
 
-    it("清理失败应返回零计数而不抛错", async () => {
+    it("清理失败应抛出异常（由 cron 运行记录标记失败，避免假成功）", async () => {
       const mockSession = await getMockOAuthSession();
       mockSession.deleteMany.mockRejectedValue(new Error("db down"));
 
-      const result = await cleanupRevokedSessionsAndTokens();
-      expect(result).toEqual({ sessions: 0, tokens: 0 });
+      await expect(cleanupRevokedSessionsAndTokens()).rejects.toThrow("db down");
     });
   });
 
@@ -669,12 +755,11 @@ describe("auth-security", () => {
       });
     });
 
-    it("清理失败应返回 0 而不抛错", async () => {
+    it("清理失败应抛出异常", async () => {
       const mockConsent = await getMockUserConsent();
       mockConsent.deleteMany.mockRejectedValue(new Error("db down"));
 
-      const result = await cleanupRevokedUserConsents();
-      expect(result).toBe(0);
+      await expect(cleanupRevokedUserConsents()).rejects.toThrow("db down");
     });
   });
 });

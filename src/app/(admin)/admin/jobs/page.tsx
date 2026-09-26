@@ -14,8 +14,12 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
+import { formatDate } from "@/lib/format";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 interface Job {
   id: string;
@@ -44,24 +48,36 @@ export default function AdminJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(parseInt(searchParams.get("pageSize") || "10"));
+  const [pageSize, setPageSize] = useState(() => {
+    const size = Number(searchParams.get("pageSize"));
+    return Number.isFinite(size) && size >= 1 ? Math.floor(size) : 10;
+  });
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
+  // 勾选状态：翻页/搜索/筛选变化时自动清空
+  const selection = useRowSelection<Job>(
+    (job) => job.id,
+    `${page}|${pageSize}|${debouncedSearch}|${statusFilter}`
+  );
   // 删除确认
+  const [loadError, setLoadError] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [batchActionLoading, setBatchActionLoading] = useState<string | null>(null);
 
-  // 权限：批量删除需要 jobs:batch-delete（与 API 层一致）
+  // 权限：发布需要 jobs:write，删除需要 jobs:delete，批量删除需要 jobs:batch-delete
   const { can: canAdmin } = useAdminPermissions();
+  const canWriteJobs = canAdmin("jobs:write");
+  const canDeleteJobs = canAdmin("jobs:delete");
   const canBatchDelete = canAdmin("jobs:batch-delete");
 
   // 获取职位列表
+  const takeLatestJobs = useLatestRequest();
   const fetchJobs = useCallback(async () => {
+    const isLatest = takeLatestJobs();
     setLoading(true);
     try {
       const data = await apiGet<{ items: Job[]; pagination: { total: number } }>(
@@ -73,15 +89,22 @@ export default function AdminJobsPage() {
           status: statusFilter === "all" ? undefined : statusFilter,
         }
       );
+      if (!isLatest()) return;
       setJobs(data.items);
       setTotal(data.pagination.total);
+      setLoadError(false);
     } catch (error) {
-      console.error("获取职位列表失败:", error);
-      showError("加载失败，请刷新重试");
+      if (!isLatest()) return;
+      if (error instanceof ApiError && error.status === 401) {
+        router.push("/admin-login");
+        return;
+      }
+      setLoadError(true);
+      showError(error instanceof Error ? error.message : "加载失败，请刷新重试");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, statusFilter]);
+  }, [page, pageSize, debouncedSearch, statusFilter, router, showError, takeLatestJobs]);
 
   useEffect(() => {
     deferInEffect(fetchJobs);
@@ -129,35 +152,42 @@ export default function AdminJobsPage() {
     }
   };
 
-  // 批量操作
-  const handleBatchAction = async (action: "publish" | "unpublish" | "delete") => {
-    if (selectedIds.size === 0) return;
+  // 批量操作（返回是否成功，供确认弹窗决定是否关闭）
+  const handleBatchAction = async (
+    action: "publish" | "unpublish" | "delete"
+  ): Promise<boolean> => {
+    if (selection.selectedCount === 0) return false;
+    setBatchActionLoading(action);
 
     try {
       const data = await apiPost<{ message: string }>("/api/admin/jobs/batch", {
-        ids: Array.from(selectedIds),
+        ids: Array.from(selection.selectedIds),
         action,
       });
 
       success(data.message);
-      setSelectedIds(new Set());
       // 批量删光当前页时回退一页
-      if (action === "delete" && selectedIds.size >= jobs.length && page > 1) {
+      const deletesWholePage =
+        action === "delete" &&
+        jobs.length > 0 &&
+        jobs.every((job) => selection.selectedIds.has(job.id));
+      selection.clear();
+      if (deletesWholePage && page > 1) {
         setPage(page - 1);
       } else {
-        fetchJobs();
+        await fetchJobs();
       }
+      return true;
     } catch (error) {
       showError(error instanceof Error ? error.message : "操作失败");
+      return false;
+    } finally {
+      setBatchActionLoading(null);
     }
   };
 
-  // 格式化日期
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("zh-CN");
-  };
-
   return (
+    <RequirePermission permission="jobs:read">
     <div className="space-y-6">
       {/* 头部 */}
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -165,9 +195,11 @@ export default function AdminJobsPage() {
           <h1 className="text-2xl font-medium text-brand-charcoal">招聘管理</h1>
           <p className="mt-1 text-sm text-brand-charcoal/50">共 {total} 个职位</p>
         </div>
-        <Link href="/admin/jobs/new">
-          <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
-        </Link>
+        {canWriteJobs && (
+          <Link href="/admin/jobs/new">
+            <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
+          </Link>
+        )}
       </div>
 
       {/* 工具栏 */}
@@ -197,21 +229,40 @@ export default function AdminJobsPage() {
           />
         </div>
 
-        {selectedIds.size > 0 && (
+        {selection.selectedCount > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-brand-charcoal/50">已选 {selectedIds.size} 项</span>
-            <Button size="sm" variant="outline" onClick={() => handleBatchAction("publish")}>
-              批量发布
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => handleBatchAction("unpublish")}>
-              批量下架
-            </Button>
+            <span className="text-sm text-brand-charcoal/50">
+              已选 {selection.selectedCount} 项
+            </span>
+            {canWriteJobs && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("publish")}
+                  loading={batchActionLoading === "publish"}
+                  disabled={batchActionLoading !== null && batchActionLoading !== "publish"}
+                >
+                  批量发布
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("unpublish")}
+                  loading={batchActionLoading === "unpublish"}
+                  disabled={batchActionLoading !== null && batchActionLoading !== "unpublish"}
+                >
+                  批量下架
+                </Button>
+              </>
+            )}
             {canBatchDelete && (
               <Button
                 size="sm"
                 variant="outline"
                 className="text-red-600 hover:bg-red-50"
                 onClick={() => setShowBatchDeleteConfirm(true)}
+                disabled={batchActionLoading !== null}
               >
                 批量删除
               </Button>
@@ -226,6 +277,13 @@ export default function AdminJobsPage() {
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
+        ) : loadError ? (
+          <div className="flex h-64 flex-col items-center justify-center gap-3">
+            <p className="text-sm text-red-500">加载失败，请重试</p>
+            <Button variant="outline" size="sm" onClick={fetchJobs}>
+              重试
+            </Button>
+          </div>
         ) : jobs.length === 0 ? (
           <Empty className="h-64" title="暂无职位" />
         ) : (
@@ -235,21 +293,16 @@ export default function AdminJobsPage() {
                 key={job.id}
                 className="flex items-center gap-4 px-6 py-4 hover:bg-brand-charcoal/[0.03]"
               >
-                {/* 选择框 */}
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(job.id)}
-                  onChange={(e) => {
-                    const newSelected = new Set(selectedIds);
-                    if (e.target.checked) {
-                      newSelected.add(job.id);
-                    } else {
-                      newSelected.delete(job.id);
-                    }
-                    setSelectedIds(newSelected);
-                  }}
-                  className="h-4 w-4 rounded border-brand-charcoal/20"
-                />
+                {/* 选择框（无任何操作权限时不展示） */}
+                {(canWriteJobs || canDeleteJobs || canBatchDelete) && (
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(job)}
+                    onChange={() => selection.toggle(job)}
+                    aria-label={`选择 ${job.title}`}
+                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                  />
+                )}
 
                 {/* 职位信息 */}
                 <div className="min-w-0 flex-1">
@@ -281,25 +334,43 @@ export default function AdminJobsPage() {
 
                 {/* 操作按钮 */}
                 <div className="relative flex items-center gap-1">
-                  <Link href={`/admin/jobs/${job.id}/edit`}>
-                    <button className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal">
-                      <Edit className="h-4 w-4" />
-                    </button>
-                  </Link>
-                  <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
-                    <button
-                      onClick={() => togglePublish(job)}
-                      className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                    >
-                      {job.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </Tooltip>
-                  <button
-                    onClick={() => setDeleteTarget(job)}
-                    className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {canWriteJobs && (
+                    <Tooltip content="编辑" side="top">
+                      <Link
+                        href={`/admin/jobs/${job.id}/edit`}
+                        aria-label={`编辑 ${job.title}`}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Tooltip>
+                  )}
+                  {canWriteJobs && (
+                    <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
+                      <button
+                        onClick={() => togglePublish(job)}
+                        aria-label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                      >
+                        {job.published ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </Tooltip>
+                  )}
+                  {canDeleteJobs && (
+                    <Tooltip content="删除" side="top">
+                      <button
+                        onClick={() => setDeleteTarget(job)}
+                        aria-label={`删除 ${job.title}`}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
             ))}
@@ -307,8 +378,8 @@ export default function AdminJobsPage() {
         )}
       </div>
 
-      {/* 分页 */}
-      {total > pageSize && (
+      {/* 分页（始终展示总数与每页条数，便于小数据量时调整） */}
+      {total > 0 && (
         <div className="flex justify-center">
           <Pagination
             page={page}
@@ -338,19 +409,21 @@ export default function AdminJobsPage() {
         type="danger"
       />
 
-      {/* 批量删除确认 */}
+      {/* 批量删除确认（失败时保持弹窗打开） */}
       <ConfirmDialog
         open={showBatchDeleteConfirm}
         onClose={() => setShowBatchDeleteConfirm(false)}
         onConfirm={async () => {
-          await handleBatchAction("delete");
-          setShowBatchDeleteConfirm(false);
+          const ok = await handleBatchAction("delete");
+          if (ok) setShowBatchDeleteConfirm(false);
         }}
         title="批量删除"
-        description={`确定要删除选中的 ${selectedIds.size} 项？此操作不可恢复。`}
+        description={`确定要删除选中的 ${selection.selectedCount} 项？此操作不可恢复。`}
         confirmText="确定删除"
+        loading={batchActionLoading === "delete"}
         type="danger"
       />
     </div>
+    </RequirePermission>
   );
 }

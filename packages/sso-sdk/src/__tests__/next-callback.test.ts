@@ -14,6 +14,9 @@ const config = {
   clientSecret: "test-secret",
   ssoBaseUrl: "https://nihplod.cn",
   redirectUri: "https://myapp.com/api/auth/callback",
+  // 多数用例聚焦 cookie/错误路径：使用非 OIDC scope，token 响应无需 id_token。
+  // openid 场景（要求 id_token、nonce 校验）由专门用例单独覆盖。
+  scopes: "profile membership",
 };
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -26,14 +29,15 @@ function jsonResponse(data: unknown, status = 200): Response {
 
 function buildRequest(
   query: Record<string, string>,
-  cookies: Record<string, string> = {}
+  cookies: Record<string, string> = {},
+  headers: Record<string, string> = {}
 ): NextRequest {
   const qs = new URLSearchParams(query).toString();
   const cookieHeader = Object.entries(cookies)
     .map(([k, v]) => `${k}=${v}`)
     .join("; ");
   return new NextRequest(`https://myapp.com/api/auth/callback?${qs}`, {
-    headers: cookieHeader ? { cookie: cookieHeader } : {},
+    headers: { ...(cookieHeader ? { cookie: cookieHeader } : {}), ...headers },
   });
 }
 
@@ -143,7 +147,9 @@ describe("createCallbackRouteHandler", () => {
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error_description).toContain("State 参数不匹配");
+    expect(body.error).toBe("invalid_request");
+    expect(body.error_description).toContain("登录会话校验失败");
+    expect(body.error_description).not.toContain("CSRF");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -157,7 +163,77 @@ describe("createCallbackRouteHandler", () => {
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error_description).toContain("PKCE verifier 缺失");
+    expect(body.error_description).toContain("重新发起登录");
+  });
+
+  it("浏览器导航（Accept: text/html）错误时渲染 HTML 错误页而非裸 JSON", async () => {
+    const handler = createCallbackRouteHandler(config);
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "wrong-state" },
+        { [STATE_COOKIE]: "saved-state" },
+        { accept: "text/html,application/xhtml+xml" }
+      )
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain("登录失败");
+    expect(html).toContain("重新登录");
+    expect(html).toContain("返回首页");
+    // 不应把原始 JSON 暴露给用户
+    expect(html).not.toContain('"error":');
+  });
+
+  it("?format=json 时即使 Accept 为 text/html 也返回 JSON（API 调用方兼容）", async () => {
+    const handler = createCallbackRouteHandler(config);
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "wrong-state", format: "json" },
+        { [STATE_COOKIE]: "saved-state" },
+        { accept: "text/html" }
+      )
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("renderErrorPage 自定义渲染优先于默认错误页", async () => {
+    const handler = createCallbackRouteHandler({
+      ...config,
+      renderErrorPage: ({ status: s, error }) =>
+        new Response(`custom:${s}:${error}`, { status: s }),
+    });
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "wrong-state" },
+        { [STATE_COOKIE]: "saved-state" },
+        { accept: "text/html" }
+      )
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("custom:400:invalid_request");
+  });
+
+  it("Cookie 命名口径不一致（state 以去前缀名存在）：报 invalid_config 而非泛化 state 缺失", async () => {
+    const handler = createCallbackRouteHandler(config);
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "saved-state" },
+        // 安全命名应为 __Host-...；这里模拟 insecureLocalDev 口径写入的无前缀 Cookie
+        { nihplod_sso_state: "saved-state" }
+      )
+    );
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_config");
+    expect(body.error_description).toContain("insecureLocalDev");
   });
 
   it("token 响应缺少 refresh_token 时返回 502，不写入 cookie", async () => {
@@ -178,7 +254,8 @@ describe("createCallbackRouteHandler", () => {
     );
     expect(res.status).toBe(502);
     const body = await res.json();
-    expect(body.error_description).toContain("refresh_token");
+    expect(body.error).toBe("server_error");
+    expect(body.error_description).toContain("不完整");
     // 不应写入任何 token cookie
     expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
     expect(res.cookies.get("__Host-nihplod_sso_rt")).toBeUndefined();
@@ -234,6 +311,80 @@ describe("createCallbackRouteHandler", () => {
     // 临时 cookie 已清除（maxAge=0）
     expect(res.cookies.get(STATE_COOKIE)?.value).toBe("");
     expect(res.cookies.get(RETURN_COOKIE)?.value).toBe("");
+  });
+
+  it("按 state 后缀读取并清除瞬态 cookie（多标签页隔离格式）", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-suffixed",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-suffixed",
+      })
+    );
+    const handler = createCallbackRouteHandler(config);
+    const state = "state-suffixed-1234567890";
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state },
+        {
+          [`${STATE_COOKIE}_${state}`]: state,
+          [`${VERIFIER_COOKIE}_${state}`]: "v-suffixed",
+          [`${RETURN_COOKIE}_${state}`]: "/dashboard",
+        }
+      )
+    );
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://myapp.com/dashboard");
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-suffixed");
+    // 后缀名与旧固定名均被清除
+    expect(res.cookies.get(`${STATE_COOKIE}_${state}`)?.value).toBe("");
+    expect(res.cookies.get(STATE_COOKIE)?.value).toBe("");
+  });
+
+  it("scope 含 openid 但 token 响应缺少 id_token 时返回 400（fail-closed）", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-1",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-1",
+      })
+    );
+    const handler = createCallbackRouteHandler({ ...config, scopes: "openid profile" });
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "saved-state" },
+        { [STATE_COOKIE]: "saved-state", [VERIFIER_COOKIE]: "v" }
+      )
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("id_token_invalid");
+  });
+
+  it("未显式配置 scopes 时保持兼容：缺少 id_token 不拒绝（升级平滑）", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({
+        access_token: "at-compat",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "rt-compat",
+      })
+    );
+    // 模拟旧接入方：callback 未配置 scopes
+    const { scopes: _scopes, ...legacyConfig } = config;
+    const handler = createCallbackRouteHandler(legacyConfig);
+    const res = await handler(
+      buildRequest(
+        { code: "auth-code", state: "saved-state" },
+        { [STATE_COOKIE]: "saved-state", [VERIFIER_COOKIE]: "v" }
+      )
+    );
+
+    expect(res.status).toBe(307);
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-compat");
   });
 
   it("returnUrl cookie 为跨域地址时回退到 /", async () => {

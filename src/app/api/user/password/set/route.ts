@@ -9,7 +9,7 @@
  * 安全说明：
  * - 必须已登录 + 短信验证码验证
  * - 仅允许 password 为 null 的用户设置（已设密码用户请用 PUT /api/user/password 修改）
- * - 不撤销 Refresh Token
+ * - 设置成功后撤销其他设备会话（保留当前设备）；OAuth 授权会话一并撤销并通知子站
  * - 设置成功后发送安全通知短信
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -24,6 +24,8 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
+import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocation";
+import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 
 const setPasswordSchema = z
   .object({
@@ -156,6 +158,17 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
         },
         { status: 400 }
       );
+    }
+
+    // 撤销其他设备会话（保留当前设备）：设置密码属于账号加固动作，
+    // 必须让此前可能被盗的 refresh token 失效（与 PUT 改密口径一致）
+    try {
+      await revokeOtherSessionsAfterCredentialChange({
+        userId: user.id,
+        currentRefreshToken: request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value ?? null,
+      });
+    } catch (err) {
+      apiConsole.error("[SetPassword] 撤销其他设备会话失败:", err);
     }
 
     sendPasswordChangedNotification(user.phone).catch((err) => {

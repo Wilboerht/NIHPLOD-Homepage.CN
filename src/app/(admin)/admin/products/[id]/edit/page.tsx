@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 import { apiGet } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 
@@ -47,7 +48,7 @@ interface ProductData {
   geoFaqs: { question: string; answer: string }[] | null;
 }
 
-export default function EditProductPage() {
+function EditProductContent() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -134,5 +135,13 @@ export default function EditProductPage() {
       <h1 className="mb-6 text-2xl font-medium text-brand-charcoal">编辑产品</h1>
       <ProductForm mode="edit" initialData={product} categories={categories} />
     </div>
+  );
+}
+
+export default function EditProductPage() {
+  return (
+    <RequirePermission permission="products:write">
+      <EditProductContent />
+    </RequirePermission>
   );
 }

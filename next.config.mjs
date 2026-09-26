@@ -131,6 +131,33 @@ const nextConfig = {
 
     return [
       ...productionHeaders,
+      // 嵌入白名单页面：第三方嵌入由 middleware 的 CSP frame-ancestors 白名单控制。
+      // 置空 X-Frame-Options，避免不支持 frame-ancestors 的旧 UA 被全局
+      // X-Frame-Options: SAMEORIGIN 拦截（现代浏览器以 CSP 为准）。
+      {
+        source: '/account/embed/:path*',
+        headers: [{ key: 'X-Frame-Options', value: '' }],
+      },
+      {
+        source: '/privacy/embed/:path*',
+        headers: [{ key: 'X-Frame-Options', value: '' }],
+      },
+      {
+        source: '/terms/embed/:path*',
+        headers: [{ key: 'X-Frame-Options', value: '' }],
+      },
+      {
+        source: '/account/embed',
+        headers: [{ key: 'X-Frame-Options', value: '' }],
+      },
+      {
+        source: '/privacy/embed',
+        headers: [{ key: 'X-Frame-Options', value: '' }],
+      },
+      {
+        source: '/terms/embed',
+        headers: [{ key: 'X-Frame-Options', value: '' }],
+      },
       // 静态资源缓存
       {
         source: '/uploads/:path*',

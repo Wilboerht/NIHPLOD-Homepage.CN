@@ -182,14 +182,20 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        client: toSafeClientResponse(result.client),
-        // 明文 secret 仅在创建时返回一次
-        plainSecret: result.plainSecret,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          client: toSafeClientResponse(result.client),
+          // 明文 secret 仅在创建时返回一次
+          plainSecret: result.plainSecret,
+        },
       },
-    });
+      {
+        // 响应含一次性明文 secret，禁止任何缓存留存
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" },
+      }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

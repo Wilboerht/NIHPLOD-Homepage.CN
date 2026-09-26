@@ -53,8 +53,13 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "10", 10)));
+    // parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），先校验再钳制
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const page = Number.isFinite(rawPage) ? Math.min(Math.max(1, rawPage), 1000) : 1;
+    const rawPageSize = parseInt(searchParams.get("pageSize") || "10", 10);
+    const pageSize = Number.isFinite(rawPageSize)
+      ? Math.min(Math.max(1, rawPageSize), 100)
+      : 10;
     const status = searchParams.get("status"); // published, draft, all
     const search = searchParams.get("search");
 

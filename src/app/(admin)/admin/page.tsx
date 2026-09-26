@@ -37,10 +37,20 @@ function formatRelativeTime(dateString: string) {
   return date.toLocaleDateString("zh-CN");
 }
 
-// 快捷操作
+// 快捷操作（带权限点时按当前管理员权限过滤，避免点了才 403）
 const quickActions = [
-  { title: "新增产品", href: "/admin/products/new", icon: Plus },
-  { title: "发布职位", href: "/admin/jobs/new", icon: Briefcase },
+  {
+    title: "新增产品",
+    href: "/admin/products/new",
+    icon: Plus,
+    permission: "products:write" as const,
+  },
+  {
+    title: "发布职位",
+    href: "/admin/jobs/new",
+    icon: Briefcase,
+    permission: "jobs:write" as const,
+  },
   { title: "查看网站", href: "/", icon: Eye, external: true },
 ];
 
@@ -176,9 +186,9 @@ export default async function AdminDashboard() {
             />
             <StatsCard
               title="本月授权成功率"
-              value={`${ssoStats.successRate}%`}
+              value={ssoStats.successRate === null ? "—" : `${ssoStats.successRate}%`}
               icon={<MonitorStop className="h-6 w-6" />}
-              description="本月 SSO 事件成功占比"
+              description="本月 authorize 事件成功占比"
             />
           </div>
         </div>
@@ -247,7 +257,9 @@ export default async function AdminDashboard() {
         <div className="rounded-xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">快捷操作</h2>
           <div className="space-y-2">
-            {quickActions.map((action) => {
+            {quickActions
+              .filter((action) => !action.permission || hasAdminPermission(admin, action.permission))
+              .map((action) => {
               const Icon = action.icon;
               return (
                 <Link

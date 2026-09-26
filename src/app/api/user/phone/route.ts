@@ -18,6 +18,8 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { invalidateProfileCache } from "@/lib/points";
 import { logAuthEvent } from "@/lib/auth-logger";
+import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocation";
+import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
 
@@ -224,6 +226,17 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       success: true,
       detail: { newPhone },
     });
+
+    // 5. 账号标识变更 → 撤销其他设备会话（保留当前设备），OAuth 会话全撤并 backchannel 通知
+    try {
+      await revokeOtherSessionsAfterCredentialChange({
+        userId: user.id,
+        currentRefreshToken: request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value ?? null,
+      });
+    } catch (err) {
+      // 换绑已成功，会话撤销失败不阻断流程，记录错误由 token 自然过期兜底
+      apiConsole.error("[PhoneRebind] 撤销其他设备会话失败:", err);
+    }
 
     apiConsole.info(`[PhoneRebind] 用户 ${user.id} 换绑手机号成功`);
 

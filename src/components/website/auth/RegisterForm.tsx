@@ -9,7 +9,7 @@ import {
   mobileInputFlexClass,
   mobileBtnClass,
 } from "./auth-styles";
-import { PASSWORD_MIN_LENGTH } from "./auth-utils";
+import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from "./auth-utils";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 export interface RegisterFormProps {
@@ -144,6 +144,17 @@ export function RegisterForm({
               {regCountdown > 0 ? `${regCountdown}s` : "获取"}
             </button>
           </div>
+          <p className="pt-1 text-[11px] leading-relaxed text-brand-charcoal/50">
+            一直没收到验证码？该手机号可能已注册，可
+            <button
+              type="button"
+              onClick={onSwitchToLogin}
+              className="underline decoration-brand-charcoal/25 underline-offset-2 transition-colors hover:text-brand-charcoal/80"
+            >
+              直接登录
+            </button>
+            或使用登录页的「忘记密码」
+          </p>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
@@ -152,9 +163,9 @@ export function RegisterForm({
               value={regPassword}
               onChange={(e) => onRegPasswordChange(e.target.value)}
               className={`${pcInputClass} pr-10`}
-              maxLength={64}
+              maxLength={PASSWORD_MAX_LENGTH}
               autoComplete="new-password"
-              placeholder="密码（8位且含大写/小写/数字）"
+              placeholder="密码（8-32位，含大小写字母和数字）"
             />
             <button
               type="button"
@@ -173,7 +184,7 @@ export function RegisterForm({
               value={regConfirmPassword}
               onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
               className={`${pcInputClass} pr-10`}
-              maxLength={64}
+              maxLength={PASSWORD_MAX_LENGTH}
               autoComplete="new-password"
               placeholder="确认密码"
             />
@@ -255,12 +266,23 @@ export function RegisterForm({
           <button
             type="button"
             onClick={onSendRegCode}
-            disabled={regCodeSending || regCountdown > 0 || !regPhone}
+            disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
             className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
           >
             {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
           </button>
         </div>
+        <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
+          一直没收到验证码？该手机号可能已注册，可
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="underline decoration-brand-charcoal/25 underline-offset-2 transition-colors hover:text-brand-charcoal/80"
+          >
+            直接登录
+          </button>
+          或使用登录页的「忘记密码」
+        </p>
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -268,8 +290,8 @@ export function RegisterForm({
             minLength={PASSWORD_MIN_LENGTH}
             value={regPassword}
             onChange={(e) => onRegPasswordChange(e.target.value)}
-            placeholder="密码（8位且含大写/小写/数字）"
-            maxLength={64}
+            placeholder="密码（8-32位，含大小写字母和数字）"
+            maxLength={PASSWORD_MAX_LENGTH}
             className={`${mobileInputClass} pr-10`}
           />
           <button
@@ -289,7 +311,7 @@ export function RegisterForm({
             value={regConfirmPassword}
             onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
             placeholder="确认密码"
-            maxLength={64}
+            maxLength={PASSWORD_MAX_LENGTH}
             className={`${mobileInputClass} pr-10`}
           />
           <button

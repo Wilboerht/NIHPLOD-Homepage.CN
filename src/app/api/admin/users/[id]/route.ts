@@ -20,7 +20,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets } from "@/lib/webhook";
 import { cascadeUserStatusChange } from "@/lib/user-status";
-import { maskPhone } from "@/lib/mask-phone";
+import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -190,10 +190,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
         }),
       ]);
 
-    // 查看用户详情（含积分/地址等敏感档案）记审计——同一管理员 5 分钟内重复查看合并为一条
+    // 查看用户详情（含积分/地址等敏感档案）记审计——同一管理员 5 分钟内重复查看合并为一条。
+    // 拥有 users:sensitive:read 时返回完整联系方式，审计动作升级为 user_detail_sensitive_view。
+    const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
+    const auditAction = canReadSensitive ? "user_detail_sensitive_view" : "user_detail_view";
     const recentView = await prisma.auditLog.findFirst({
       where: {
-        action: "user_detail_view",
+        action: auditAction,
         targetType: "user",
         targetId: id,
         adminId: admin.id,
@@ -203,10 +206,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
     if (!recentView) {
       await createAuditLog({
-        action: "user_detail_view",
+        action: auditAction,
         targetType: "user",
         targetId: id,
-        detail: { phone: maskPhone(user.phone) },
+        detail: { phone: maskPhone(user.phone), sensitive: canReadSensitive },
         adminId: admin.id,
         request,
       });
@@ -217,7 +220,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       data: {
         user: {
           id: user.id,
-          phone: maskPhone(user.phone),
+          phone: canReadSensitive ? user.phone : maskPhone(user.phone),
           phoneVerified: user.phoneVerified,
           nickname: user.nickname,
           avatar: user.avatar,
@@ -227,12 +230,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
           silverActivatedAt: user.silverActivatedAt?.toISOString() ?? null,
           goldActivatedAt: user.goldActivatedAt?.toISOString() ?? null,
           diamondActivatedAt: user.diamondActivatedAt?.toISOString() ?? null,
-          wechatOpenId: user.wechatOpenId,
-          wechatUnionId: user.wechatUnionId,
+          wechatOpenId: canReadSensitive ? user.wechatOpenId : maskIdentifier(user.wechatOpenId),
+          wechatUnionId: canReadSensitive ? user.wechatUnionId : maskIdentifier(user.wechatUnionId),
           birthday: user.birthday?.toISOString() ?? null,
           birthdayLocked: user.birthdayLocked,
           externalIdentities: user.externalIdentities.map((i) => ({
             ...i,
+            subjectId: canReadSensitive ? i.subjectId : maskIdentifier(i.subjectId),
+            unionId: canReadSensitive ? i.unionId : maskIdentifier(i.unionId),
             createdAt: i.createdAt.toISOString(),
           })),
           createdAt: user.createdAt.toISOString(),
@@ -249,9 +254,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
             status: r.status,
             carrier: r.carrier,
             waybillNo: r.waybillNo,
-            recipient: r.recipient,
-            phone: r.phone,
-            address: r.address,
+            recipient: canReadSensitive ? r.recipient : maskIdentifier(r.recipient),
+            phone: canReadSensitive ? r.phone : r.phone ? maskPhone(r.phone) : r.phone,
+            address: canReadSensitive ? r.address : maskAddress(r.address),
             fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
             createdAt: r.createdAt.toISOString(),
           })),
@@ -259,10 +264,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
         },
         addresses: addresses.map((a) => ({
           id: a.id,
-          recipient: a.recipient,
-          phone: a.phone,
+          recipient: canReadSensitive ? a.recipient : maskIdentifier(a.recipient),
+          phone: canReadSensitive ? a.phone : maskPhone(a.phone),
           region: a.region,
-          detail: a.detail,
+          detail: canReadSensitive ? a.detail : maskAddress(a.detail),
           isDefault: a.isDefault,
           createdAt: a.createdAt.toISOString(),
         })),
@@ -498,7 +503,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         action: "user_birthday_update",
         targetType: "user",
         targetId: user.id,
-        detail: { ...birthdayAudit, phone: user.phone },
+        detail: { ...birthdayAudit, phone: maskPhone(user.phone) },
         adminId: admin.id,
         request,
       });
@@ -523,7 +528,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         action: "user_status_change",
         targetType: "user",
         targetId: user.id,
-        detail: { previousStatus: user.status, newStatus: status, phone: user.phone },
+        detail: { previousStatus: user.status, newStatus: status, phone: maskPhone(user.phone) },
         adminId: admin.id,
         request,
       });
@@ -620,7 +625,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     // 撤销所有 token + 加入黑名单
     await prisma.refreshToken.updateMany({
       where: { userId: id, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
     });
     await blacklistUserTokens(user.id, "用户数据已被删除");
 
@@ -649,6 +654,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         () => {}
       );
     }
+
+    // 清除资料变更失败队列：payload 含生日/性别/昵称/消费额等 PII 快照，
+    // 用户删除后不得继续留存或重投（backchannel 队列保留——登出通知仍需送达）
+    await prisma.webhookDeliveryFailure
+      .deleteMany({ where: { userId: id } })
+      .catch((err) => apiConsole.warn("[AdminUserDelete] 清理资料变更失败队列失败:", err));
 
     // Webhook 推送账户删除事件（best-effort，不阻断主流程）
     // oldStatus 发删除前的原始大写枚举；newStatus 固定 "deleted"，商城侧按此约定映射为禁用

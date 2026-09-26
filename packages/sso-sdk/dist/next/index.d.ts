@@ -138,6 +138,12 @@ interface CallbackRouteConfig {
     /** PKCE Verifier Cookie 名称，默认 __Secure-nihplod_sso_verifier */
     verifierCookieName?: string;
     /**
+     * 请求的 OAuth scope（空格分隔），建议与 createSsoMiddleware 的 scopes 保持一致。
+     * 仅当**显式配置**且包含 openid 时回调才强制要求 token 响应携带 id_token（fail-closed）；
+     * 未配置时保持兼容行为（id_token 存在则校验，缺失不拒绝），避免升级后旧接入方登录失败。
+     */
+    scopes?: string;
+    /**
      * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
      * __Host-/__Secure- 前缀；必须与 createSsoMiddleware 的配置保持一致，
      * 否则读不到 middleware 写入的 state/verifier Cookie。生产严禁启用——
@@ -150,6 +156,20 @@ interface CallbackRouteConfig {
      * 仅用于 token 交换等服务器间请求；浏览器跳转仍使用 ssoBaseUrl 公网地址。
      */
     serverBaseUrl?: string;
+    /**
+     * 自定义回调错误响应（可选）。
+     * 传入后优先生效；返回 undefined 时回退默认行为。
+     * 默认行为：浏览器导航（Accept 含 text/html 且未带 ?format=json）渲染内置中文错误页
+     * （含"重新登录"入口）；其他请求（fetch/自动化）返回 JSON，保持 API 兼容。
+     */
+    renderErrorPage?: (ctx: {
+        error: string;
+        errorDescription: string;
+        status: number;
+        request: NextRequest;
+    }) => Response | undefined | Promise<Response | undefined>;
+    /** 调试日志开关（默认 false）：回调失败时输出服务端告警日志，便于定位配置/流程问题 */
+    debug?: boolean;
 }
 declare function createCallbackRouteHandler(config: CallbackRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 

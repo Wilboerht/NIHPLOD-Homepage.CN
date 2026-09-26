@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 
-export default function NewJobPage() {
+function NewJobContent() {
   return (
     <div className="space-y-6">
       {/* 顶部导航 */}
@@ -24,5 +25,13 @@ export default function NewJobPage() {
       {/* 职位表单 */}
       <JobForm />
     </div>
+  );
+}
+
+export default function NewJobPage() {
+  return (
+    <RequirePermission permission="jobs:write">
+      <NewJobContent />
+    </RequirePermission>
   );
 }

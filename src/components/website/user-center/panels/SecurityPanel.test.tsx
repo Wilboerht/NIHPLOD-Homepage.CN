@@ -36,8 +36,8 @@ function jsonResponse(body: unknown) {
   return { status: 200, json: async () => body } as unknown as Response;
 }
 
-/** 填写修改密码表单（change 模式） */
-function fillChangeForm(newPwd = "Abcdefg1") {
+/** 填写修改密码表单（change 模式）；密码需通过弱密码校验（无连续字母/数字） */
+function fillChangeForm(newPwd = "Nihplod2026X") {
   fireEvent.change(screen.getByLabelText("旧密码"), { target: { value: "OldPass123" } });
   fireEvent.change(screen.getByLabelText("新密码"), { target: { value: newPwd } });
   fireEvent.change(screen.getByLabelText("确认新密码"), { target: { value: newPwd } });
@@ -86,7 +86,7 @@ describe("SecurityPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "修改密码" }));
 
     await waitFor(() => {
-      expect(mockShowSuccess).toHaveBeenCalledWith("密码修改成功");
+      expect(mockShowSuccess).toHaveBeenCalledWith("密码修改成功，其他设备已退出登录");
     });
     expect(mockFetchWithAuth).toHaveBeenCalledWith(
       "/api/user/password",
@@ -141,7 +141,7 @@ describe("SecurityPanel", () => {
       );
     });
     await waitFor(() => {
-      expect(mockShowSuccess).toHaveBeenCalledWith("密码设置成功");
+      expect(mockShowSuccess).toHaveBeenCalledWith("密码设置成功，其他设备已退出登录");
     });
   });
 });

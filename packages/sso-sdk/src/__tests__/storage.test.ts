@@ -12,6 +12,8 @@ import {
   saveOAuthState,
   getOAuthState,
   removeOAuthState,
+  saveOAuthNonce,
+  getOAuthNonce,
   saveReturnUrl,
   getReturnUrl,
   removeReturnUrl,
@@ -169,6 +171,49 @@ describe("Token Storage", () => {
       expect(getTokenData()).toBeNull();
       expect(getOAuthState()).toBeNull();
       expect(getReturnUrl()).toBeNull();
+    });
+
+    it("无参调用清除 client 级 token/state/nonce/returnUrl/verifier（此前仅清 verifier）", () => {
+      // 使用 sessionStorage 存储：验证能枚举原生存储中带前缀的 client 级 key
+      setTokenStorage(createSecureStorage());
+      saveTokenData(sampleToken, "client-1");
+      saveOAuthState("state-1", "client-1");
+      saveReturnUrl("/dash", "client-1");
+      savePkceVerifier("client-1", "v1");
+
+      clearAllSsoData();
+
+      expect(getTokenData("client-1")).toBeNull();
+      expect(getOAuthState("client-1")).toBeNull();
+      expect(getReturnUrl("client-1")).toBeNull();
+      expect(getPkceVerifier("client-1")).toBeNull();
+      expect(sessionStorage.getItem("nihplod_sso_token:client-1")).toBeNull();
+      expect(sessionStorage.getItem("nihplod_sso_oauth_state:client-1")).toBeNull();
+    });
+
+    it("自定义存储实现 keys() 时也能清理 client 级残留", () => {
+      const store = new Map<string, string>();
+      const custom = {
+        get: (k: string) => store.get(k) ?? null,
+        set: (k: string, v: string) => {
+          store.set(k, v);
+        },
+        remove: (k: string) => {
+          store.delete(k);
+        },
+        keys: () => [...store.keys()],
+      };
+      setTokenStorage(custom);
+      saveTokenData(sampleToken, "client-1");
+      saveOAuthState("state-1", "client-1");
+      saveOAuthNonce("nonce-1", "client-1");
+
+      clearAllSsoData();
+
+      expect(getTokenData("client-1")).toBeNull();
+      expect(getOAuthState("client-1")).toBeNull();
+      expect(getOAuthNonce("client-1")).toBeNull();
+      expect(store.size).toBe(0);
     });
   });
 });

@@ -14,6 +14,7 @@ import {
 import { cleanupExpiredCodes } from "./oauth-code";
 import { cleanupInternalApiNonces } from "./internal-api";
 import { cleanupOldSsoAuditEvents } from "./sso-audit";
+import { cleanupOldAuditLogs } from "./audit";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
@@ -222,12 +223,29 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Cleanup Old Audit Logs",
+    cronExpression: "30 5 * * *", // 每天凌晨 5:30 执行（保留期由 AUDIT_LOG_RETENTION_DAYS 控制，默认 365 天）
+    isCleanup: true,
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理超过保留期的审计日志...");
+        const count = await cleanupOldAuditLogs();
+        apiConsole.info(`[Cron] 审计日志清理完成: ${count} 条`);
+        markCleanupOk("审计日志");
+      } catch (error) {
+        apiConsole.error("[Cron] 审计日志清理失败:", error);
+        markCleanupFailed("审计日志");
+        throw error;
+      }
+    },
+  },
+  {
     name: "Retry Failed Backchannel Logout Notifications",
     cronExpression: "*/15 * * * *", // 每 15 分钟重投一次
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始重投失败的 Backchannel Logout 通知...");
-        const result = await retryFailedBackchannelLogouts();
+        const result = await retryFailedBackchannelLogouts(200);
         apiConsole.info(
           `[Cron] Backchannel Logout 重投完成: 成功 ${result.delivered} 条, 待下次重试 ${result.failed} 条, 丢弃 ${result.dropped} 条`
         );
@@ -406,7 +424,12 @@ export function initializeCronTasks(): void {
       const job = cron.schedule(
         task.cronExpression,
         () => {
-          void runCronTask(task.name, "cron");
+          // 失败不能静默：runCronTask 已落库 CronTaskRun，这里补一条错误日志便于告警采集
+          void runCronTask(task.name, "cron").then((result) => {
+            if (!result.ok) {
+              apiConsole.error(`[Cron] 任务执行失败: ${task.name}`, result.error);
+            }
+          });
         },
         {
           runOnInit: false,

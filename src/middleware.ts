@@ -25,6 +25,12 @@ const PUBLIC_ADMIN_PATHS = ["/admin-login", "/admin-login/"];
 
 const SENSITIVE_API_PREFIXES = ["/api/admin/"];
 
+/**
+ * 由路由自身以专用密钥鉴权的服务端点（如 CRON_SECRET）：
+ * middleware 直通，避免被 2.3「未知 API 需管理员 Cookie」误拦。
+ */
+const SECRET_API_PREFIXES = ["/api/cron/", "/api/baidu/"];
+
 const PUBLIC_API_PREFIXES = [
   "/api/admin/login",
   "/api/contact",
@@ -38,8 +44,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/v1/internal/",
   "/api/oauth/",
   "/api/account/",
-  "/login",
-  "/logout",
 ];
 
 async function verifyToken(token: string): Promise<boolean> {
@@ -163,6 +167,15 @@ function applyCspNonce(request: NextRequest, response: NextResponse): NextRespon
   }
 
   const nonce = generateNonce();
+
+  // 重定向等非 next() 响应：直接附加安全头，保留状态码与 Location
+  // （此前实现无条件返回 NextResponse.next()，导致未登录访问 /admin/** 的重定向被丢弃）
+  if (response.headers.get("x-middleware-next") !== "1") {
+    response.headers.set("x-nonce", nonce);
+    response.headers.set("Content-Security-Policy", buildCspHeader(nonce, pathname));
+    return response;
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
 
@@ -225,6 +238,11 @@ export async function middleware(request: NextRequest) {
   // 2.1 显式公开的 API → 放行
   if (matchesPath(pathname, PUBLIC_API_PREFIXES)) {
     // OAuth 路径的 CORS 由各 route handler 自行处理（getOAuthCorsHeaders 白名单校验）
+    return NextResponse.next();
+  }
+
+  // 2.1b 专用密钥自鉴权端点（CRON_SECRET 等）→ 直通，由路由校验
+  if (matchesPath(pathname, SECRET_API_PREFIXES)) {
     return NextResponse.next();
   }
 

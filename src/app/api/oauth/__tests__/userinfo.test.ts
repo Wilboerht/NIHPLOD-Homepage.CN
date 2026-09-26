@@ -417,12 +417,12 @@ describe("PATCH /api/oauth/userinfo", () => {
     const res = await PATCH(patchRequest({ nickname: "新昵称", gender: "female" }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    // 形状同 GET 的 profile scope 分支
+    // 按 token scope 裁剪：有 profile 无 birthday → 返回 profile 字段、不含 birthday
     expect(body.sub).toBe("user-1");
     expect(body.nickname).toBe("新昵称");
     expect(body.avatar).toBeNull();
     expect(body.gender).toBe("female");
-    expect(body.birthday).toBeNull();
+    expect(body.birthday).toBeUndefined();
 
     // 昵称实际变更 → 触发 profile_update webhook（快照为变更后的公开资料，含性别）
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith("user-1", {
@@ -431,6 +431,34 @@ describe("PATCH /api/oauth/userinfo", () => {
       birthday: null,
       gender: "female",
     });
+  });
+
+  it("仅 profile:write（无 profile/birthday 读权限）：响应不回显任何资料字段", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile:write",
+    });
+    mockUserFindUnique.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: null,
+      birthday: null,
+      birthdayLocked: false,
+      status: "ACTIVE",
+    });
+    mockUserUpdate.mockResolvedValue({
+      id: "user-1",
+      nickname: "新昵称",
+      avatar: null,
+      birthday: null,
+      gender: "female",
+    });
+
+    const res = await PATCH(patchRequest({ nickname: "新昵称" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body).toEqual({ sub: "user-1" });
   });
 
   it("首次设置生日成功：写入锁定标记并触发 webhook", async () => {

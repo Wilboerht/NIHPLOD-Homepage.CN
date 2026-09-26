@@ -168,6 +168,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
+    // 记录不存在（含并发删除）映射为 404，而非 500
+    if ((error as { code?: string }).code === "P2025") {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "申请不存在" } },
+        { status: 404 }
+      );
+    }
     apiConsole.error("更新申请失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "更新失败" } },
@@ -232,6 +239,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       select: { resumePath: true },
     });
 
+    if (!application) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "申请不存在" } },
+        { status: 404 }
+      );
+    }
+
     await prisma.jobApplication.delete({ where: { id } });
 
     if (application?.resumePath) {
@@ -242,6 +256,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, message: "删除成功" });
   } catch (error) {
+    // 并发删除竞争：delete 抛 P2025 时返回 404
+    if ((error as { code?: string }).code === "P2025") {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "申请不存在" } },
+        { status: 404 }
+      );
+    }
     apiConsole.error("删除申请失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "删除失败" } },

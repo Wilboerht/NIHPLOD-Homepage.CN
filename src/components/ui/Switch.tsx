@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, InputHTMLAttributes } from "react";
+import { forwardRef, InputHTMLAttributes, useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
@@ -15,6 +15,9 @@ interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"
  */
 export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
   ({ className, label, description, checked = false, onChange, disabled, id, ...props }, ref) => {
+    // 未显式传 id 时自动生成，使 label 点击可切换开关
+    const generatedId = useId();
+    const switchId = id ?? generatedId;
     const handleChange = () => {
       if (!disabled && onChange) {
         onChange(!checked);
@@ -49,7 +52,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
         <input
           ref={ref}
           type="checkbox"
-          id={id}
+          id={switchId}
           checked={checked}
           onChange={() => onChange?.(!checked)}
           disabled={disabled}
@@ -63,7 +66,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           <div className="flex-1">
             {label && (
               <label
-                htmlFor={id}
+                htmlFor={switchId}
                 className={cn(
                   "text-sm font-medium text-brand-charcoal",
                   disabled && "cursor-not-allowed opacity-50"

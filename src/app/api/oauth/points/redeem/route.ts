@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { redeemPointsResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
 
@@ -20,7 +21,10 @@ export async function POST(request: NextRequest) {
       action: "points_redeem",
     });
     if (!auth.ok) return auth.response;
-    return await redeemPointsResponse(auth.payload.id, request);
+    return decorateOAuthResponse(
+      await redeemPointsResponse(auth.payload.id, request),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth PointRedeem] 异常:", error);
     return NextResponse.json(

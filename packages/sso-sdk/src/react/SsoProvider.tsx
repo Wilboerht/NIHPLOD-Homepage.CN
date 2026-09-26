@@ -62,6 +62,13 @@ export interface SsoContextValue {
   /** 获取 access_token（自动刷新过期 token） */
   getAccessToken: () => Promise<string | null>;
 
+  /**
+   * 会话已失效（refresh_token 被撤销/过期），需要用户重新登录。
+   * 与 `error` 不同：该标志在 loadUser 拿到"无 token"时不会被清空，
+   * 登录成功后才复位，便于子站稳定展示"登录已过期"提示。
+   */
+  sessionExpired: boolean;
+
   /** SsoClient 实例（高级用法） */
   client: SsoClient;
 }
@@ -92,11 +99,39 @@ export interface SsoProviderProps {
    * SDK 不会据此自动重试先前失败的 API 请求，重试需由调用方自行实现。
    */
   onTokenRefreshed?: (token: string) => void;
+
+  /**
+   * 会话失效回调（可选）。refresh_token 被撤销/过期时触发一次，
+   * 子站可据此展示"登录已过期，请重新登录"或埋点上报。
+   */
+  onSessionExpired?: (error: SsoError) => void;
 }
 
 // 跨 Tab 刷新锁（基于 localStorage + 时间戳，避免多 Tab 同时刷新导致旧 RT 被撤销）
 const REFRESH_LOCK_PREFIX = "nihplod_sso_refresh_lock:";
 const LOCK_TTL_MS = 5000;
+
+// 跨 Tab 登录态事件（BroadcastChannel）：默认 token 存 sessionStorage，
+// storage 事件不会触发，需显式广播让其他 Tab 感知登出/token 轮换
+const CHANNEL_PREFIX = "nihplod_sso_events:";
+
+/** 当前 Tab 标识：用于忽略自己发出的广播（同 Tab 的监听对象也会收到消息） */
+const TAB_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+/**
+ * 广播跨 Tab 登录态事件（logout / token）。
+ * BroadcastChannel 不可用（旧浏览器/隐私模式）时静默跳过，行为退化为原有方式。
+ */
+export function broadcastSsoEvent(clientId: string, type: "logout" | "token"): void {
+  if (typeof BroadcastChannel === "undefined") return;
+  try {
+    const channel = new BroadcastChannel(CHANNEL_PREFIX + clientId);
+    channel.postMessage({ type, sourceTabId: TAB_ID });
+    channel.close();
+  } catch {
+    // 忽略：广播失败不影响主流程
+  }
+}
 
 // 本 Tab 持有的锁 token（用于释放时校验所有权，避免误删其他 Tab 的锁）
 const ownedLocks = new Map<string, string>();
@@ -195,15 +230,37 @@ export function SsoProvider({
   children,
   refreshThreshold = 60,
   onTokenRefreshed,
+  onSessionExpired,
 }: SsoProviderProps) {
   const [user, setUser] = useState<SsoUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<SsoError | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   // 实例用 useState 懒初始化保持稳定引用（避免渲染期读取 ref）
   const [client] = useState(() => new SsoClient(config));
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
+  // 回调 ref：调用方传内联函数时不触发 loadUser/refresh 依赖变化
+  const onSessionExpiredRef = useRef(onSessionExpired);
+  useEffect(() => {
+    onSessionExpiredRef.current = onSessionExpired;
+  });
+  // 每次"会话失效"仅通知一次（登录成功/显式登出后复位），避免重复回调
+  const sessionExpiredNotifiedRef = useRef(false);
+  // 连续可恢复刷新失败计数（网络抖动/网关异常）：达上限才判定会话终结
+  const refreshFailureCountRef = useRef(0);
+  const MAX_REFRESH_FAILURES = 3;
+
+  /** 标记会话失效：保留 error/sessionExpired 供调用方展示，并（仅一次）触发回调 */
+  const markSessionExpired = useCallback((error: SsoError) => {
+    setError(error);
+    setSessionExpired(true);
+    if (!sessionExpiredNotifiedRef.current) {
+      sessionExpiredNotifiedRef.current = true;
+      onSessionExpiredRef.current?.(error);
+    }
+  }, []);
 
   // 加载用户信息
   const loadUser = useCallback(async () => {
@@ -214,7 +271,8 @@ export function SsoProvider({
     if (!tokenData) {
       setUser(null);
       setIsAuthenticated(false);
-      setError(null);
+      // 不在此处清空 error/sessionExpired：会话过期提示需保留给调用方，
+      // 显式登出路径会主动复位（见 logout）
       setIsLoading(false);
       return;
     }
@@ -224,27 +282,28 @@ export function SsoProvider({
       setUser(u);
       setIsAuthenticated(true);
       setError(null);
+      setSessionExpired(false);
+      sessionExpiredNotifiedRef.current = false;
+      refreshFailureCountRef.current = 0;
     } catch (err) {
       setUser(null);
       setIsAuthenticated(false);
-      // 写入 error 状态，调用方可据此展示"会话失效，请重新登录"等提示
-      setError(
+      const errorObj =
         err instanceof SsoError
           ? err
-          : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err))
-      );
+          : new SsoError("userinfo_failed", err instanceof Error ? err.message : String(err));
+      // 写入 error 状态，调用方可据此展示"会话失效，请重新登录"等提示
+      setError(errorObj);
       // 仅鉴权类错误（会话失效/未认证）清除本地 token；网络瞬断等可恢复错误
       // 保留 token，避免一次抖动就强制重新登录，下次加载/刷新会自动重试
-      if (
-        err instanceof SsoError &&
-        (err.code === "not_authenticated" || err.code === "session_expired")
-      ) {
+      if (errorObj.code === "not_authenticated" || errorObj.code === "session_expired") {
         removeTokenData(client.config.clientId);
+        markSessionExpired(errorObj);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, markSessionExpired]);
 
   // 初始化（微任务延迟，避免 effect 内同步 setState）
   useEffect(() => {
@@ -271,14 +330,44 @@ export function SsoProvider({
       withRefreshLock(client.config.clientId, async () => {
         try {
           const td = await client.refreshToken();
+          refreshFailureCountRef.current = 0;
           onTokenRefreshed?.(td.access_token);
+          broadcastSsoEvent(client.config.clientId, "token");
           loadUser();
-        } catch {
+        } catch (err) {
+          // refresh_token 被撤销/过期：立即保留"会话已过期"信号（否则 loadUser 走
+          // 无 token 分支会静默掉线，调用方拿不到任何提示）
+          if (
+            err instanceof SsoError &&
+            (err.code === "session_expired" ||
+              err.code === "no_refresh_token" ||
+              err.code === "not_authenticated")
+          ) {
+            removeTokenData(client.config.clientId);
+            markSessionExpired(err);
+          } else {
+            // 网络抖动/网关异常等可恢复失败：计数，连续失败达上限才判定会话终结
+            // （避免一次断网就强制登出丢状态）
+            refreshFailureCountRef.current += 1;
+            if (refreshFailureCountRef.current >= MAX_REFRESH_FAILURES) {
+              markSessionExpired(
+                err instanceof SsoError
+                  ? err
+                  : new SsoError("session_expired", "多次刷新失败，请重新登录")
+              );
+            }
+          }
           setTimeout(() => loadUser(), 500);
         }
+      }).finally(() => {
+        // 无论是否抢到锁/刷新成功都重新排程：
+        // - 成功：按新 token 的过期时间排程
+        // - 失败/未抢到锁：minDelayMs（5s）后重试，避免紧密循环；
+        //   token 也可能已被其他 Tab 刷新，重新排程会自然按新过期时间走
+        if (active) scheduleNextRefresh(5_000);
       });
 
-    const scheduleNextRefresh = () => {
+    const scheduleNextRefresh = (minDelayMs = 0) => {
       if (!active) return;
 
       // 清除已有定时器
@@ -293,20 +382,19 @@ export function SsoProvider({
       // 计算距离过期还有多少秒
       const remainingSec = (tokenData.expires_at - Date.now()) / 1000;
 
-      if (remainingSec <= 0) {
-        // 已过期，立即刷新（带锁，避免多 Tab 并发）
-        void attemptRefresh();
-        return;
-      }
-
-      if (remainingSec <= refreshThreshold) {
-        // 即将过期，立即刷新（带锁）
-        void attemptRefresh();
+      // 已过期或即将过期：短延迟后带锁刷新（统一经定时器，保证失败后仍会重新排程）
+      if (remainingSec <= 0 || remainingSec <= refreshThreshold) {
+        refreshTimerRef.current = setTimeout(
+          () => {
+            if (active) void attemptRefresh();
+          },
+          Math.max(minDelayMs, 1000)
+        );
         return;
       }
 
       // 在过期前 refreshThreshold 秒触发刷新
-      const delayMs = (remainingSec - refreshThreshold) * 1000;
+      const delayMs = Math.max((remainingSec - refreshThreshold) * 1000, minDelayMs, 1000);
 
       refreshTimerRef.current = setTimeout(() => {
         if (!active) return;
@@ -315,12 +403,12 @@ export function SsoProvider({
 
         const secLeft = (td.expires_at - Date.now()) / 1000;
         if (secLeft <= refreshThreshold) {
-          void attemptRefresh().then((didRefresh) => {
-            // 未抢到锁（其他 Tab 正在刷新）时不重新调度，等待 storage 事件同步
-            if (didRefresh) scheduleNextRefresh();
-          });
+          void attemptRefresh();
+        } else {
+          // token 已被其他 Tab 刷新（storage 事件同步），按新过期时间重新排程
+          scheduleNextRefresh();
         }
-      }, Math.max(delayMs, 1000));
+      }, delayMs);
     };
 
     scheduleNextRefresh();
@@ -334,7 +422,7 @@ export function SsoProvider({
     };
   }, [client, loadUser, refreshThreshold, onTokenRefreshed]);
 
-  // 监听 storage 事件实现跨 Tab 同步
+  // 监听 storage 事件实现跨 Tab 同步（仅 persist 存储生效）
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (
@@ -349,6 +437,30 @@ export function SsoProvider({
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [loadUser]);
+
+  // 跨 Tab 事件同步（BroadcastChannel）：补足 sessionStorage 默认存储下 storage 事件不触发的缺口。
+  // 忽略自己发出的消息（同 Tab 监听对象也会收到）：token 事件由发起方自行 loadUser，
+  // logout 事件按"全局登出"处理——清除本地 token 并同步 UI，避免其他 Tab 定时刷新把用户"登回来"
+  useEffect(() => {
+    if (typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel(CHANNEL_PREFIX + client.config.clientId);
+    channel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; sourceTabId?: string } | null;
+      if (!data || data.sourceTabId === TAB_ID) return;
+      if (data.type === "logout") {
+        removeTokenData(client.config.clientId);
+        setUser(null);
+        setIsAuthenticated(false);
+        setError(null);
+        setSessionExpired(false);
+        sessionExpiredNotifiedRef.current = false;
+        refreshFailureCountRef.current = 0;
+      } else if (data.type === "token") {
+        loadUser();
+      }
+    };
+    return () => channel.close();
+  }, [client, loadUser]);
 
   // 登录
   const login = useCallback(
@@ -368,13 +480,22 @@ export function SsoProvider({
     [client, loadUser]
   );
 
-  // 登出
+  // 登出（本地优先：先同步 UI 状态，再等待服务端撤销/跳转，避免按钮"没反应"）
   const logout = useCallback(
     async (redirectToSso: boolean = false) => {
-      await client.logout(redirectToSso);
       setUser(null);
       setIsAuthenticated(false);
       setError(null);
+      setSessionExpired(false);
+      sessionExpiredNotifiedRef.current = false;
+      refreshFailureCountRef.current = 0;
+      // 通知其他 Tab 同步登出（sessionStorage 默认存储下 storage 事件不触发）
+      broadcastSsoEvent(client.config.clientId, "logout");
+      try {
+        await client.logout(redirectToSso);
+      } catch {
+        // 本地已登出；撤销/跳转失败不阻塞调用方
+      }
     },
     [client]
   );
@@ -399,6 +520,7 @@ export function SsoProvider({
     logout,
     refreshUser,
     getAccessToken,
+    sessionExpired,
     client,
   };
 

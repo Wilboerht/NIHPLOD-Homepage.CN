@@ -55,8 +55,26 @@ function createTokenVerifier(options) {
     introspectRetries = 1,
     clockToleranceSeconds = 60,
     logoutJtiStore,
-    strictAudience = false
+    strictAudience = true
   } = options;
+  const assertHttpsEndpoint = (value, name) => {
+    if (!value || process.env.NODE_ENV !== "production") return;
+    let url;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error(`[sso-verify] ${name} \u4E0D\u662F\u5408\u6CD5 URL: ${value}`);
+    }
+    if (url.protocol === "https:") return;
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (url.protocol === "http:" && isLoopback) return;
+    throw new Error(
+      `[sso-verify] \u751F\u4EA7\u73AF\u5883 ${name} \u5FC5\u987B\u4E3A https://\uFF08\u5F53\u524D ${url.protocol}//${url.host}\uFF09\uFF0C\u907F\u514D\u51ED\u8BC1/\u4EE4\u724C\u7ECF\u660E\u6587\u4F20\u8F93`
+    );
+  };
+  assertHttpsEndpoint(introspectionEndpoint, "introspectionEndpoint");
+  assertHttpsEndpoint(jwksUri, "jwksUri");
   const introspectCache = createIntrospectCache(introspectCacheTtl);
   let _jwksKeySet = null;
   function getJwksKeySet() {
@@ -155,11 +173,24 @@ function createTokenVerifier(options) {
         if (response.status >= 500 && attempt < introspectRetries) continue;
         return null;
       }
-      data = await response.json();
+      try {
+        data = await response.json();
+      } catch {
+        if (attempt < introspectRetries) continue;
+        return null;
+      }
       break;
     }
     if (!data) return null;
-    if (data.active && !matchesAudience(data)) {
+    if (data.active !== true) {
+      if (introspectNegativeCacheTtl > 0) {
+        introspectCache.set(token, { active: false, payload: null }, {
+          ttl: introspectNegativeCacheTtl
+        });
+      }
+      return { active: false };
+    }
+    if (!matchesAudience(data)) {
       if (introspectNegativeCacheTtl > 0) {
         introspectCache.set(token, { active: false, payload: null }, {
           ttl: introspectNegativeCacheTtl
@@ -168,7 +199,7 @@ function createTokenVerifier(options) {
       return { active: false };
     }
     let payload = null;
-    if (data.active && data.sub) {
+    if (data.sub) {
       payload = {
         sub: data.sub,
         aud: audience,
@@ -178,12 +209,12 @@ function createTokenVerifier(options) {
         exp: data.exp
       };
     }
-    if (data.active) {
-      introspectCache.set(token, { active: true, payload });
-    } else if (introspectNegativeCacheTtl > 0) {
-      introspectCache.set(token, { active: false, payload: null }, {
-        ttl: introspectNegativeCacheTtl
-      });
+    let ttl = introspectCacheTtl;
+    if (typeof data.exp === "number") {
+      ttl = Math.min(ttl, data.exp * 1e3 - Date.now());
+    }
+    if (ttl > 0) {
+      introspectCache.set(token, { active: true, payload }, { ttl });
     }
     return data;
   }
@@ -263,7 +294,7 @@ function createTokenVerifier(options) {
       const rs256Result = await verifyWithRS256(token);
       if (rs256Result) return rs256Result;
       const result = await introspect(token);
-      if (!result?.active || !result.sub) return null;
+      if (result?.active !== true || !result.sub) return null;
       return {
         sub: result.sub,
         aud: audience,
@@ -324,10 +355,15 @@ function createTokenVerifier(options) {
         const iss = payload.iss || issuer;
         const jtiKey = `${iss}:${jti}`;
         if (logoutJtiStore) {
-          if (await logoutJtiStore.has(jtiKey)) {
-            return null;
+          if (typeof logoutJtiStore.addIfAbsent === "function") {
+            const firstUse = await logoutJtiStore.addIfAbsent(jtiKey, 10 * 60);
+            if (!firstUse) return null;
+          } else {
+            if (await logoutJtiStore.has(jtiKey)) {
+              return null;
+            }
+            await logoutJtiStore.add(jtiKey, 10 * 60);
           }
-          await logoutJtiStore.add(jtiKey, 10 * 60);
         } else {
           if (processedLogoutJtis.has(jtiKey)) {
             return null;
@@ -357,7 +393,12 @@ function createTokenVerifier(options) {
             return null;
           }
         }
-        const jwks = getJwksKeySet();
+        let jwks = null;
+        try {
+          jwks = getJwksKeySet();
+        } catch {
+          return null;
+        }
         if (jwks) {
           try {
             const { payload } = await (0, import_jose.jwtVerify)(token, jwks, {

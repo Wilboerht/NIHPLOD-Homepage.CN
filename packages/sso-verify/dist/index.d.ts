@@ -112,26 +112,28 @@ interface SsoVerifierOptions {
      */
     logoutJtiStore?: LogoutJtiStore;
     /**
-     * Introspection audience 严格模式（默认 false，保持向后兼容）。
+     * Introspection audience 严格模式（默认 true，fail-closed）。
      *
-     * 默认模式下，introspection 响应既无 aud 又无 client_id 时保持信任
-     * （兼容不返回归属字段的端点）。设为 true 后：响应缺少归属字段即拒绝
-     * （fail-closed），防止被 confused deputy 攻击利用。
-     *
-     * ⚠️ 生产环境强烈建议开启。主站 introspection 端点始终返回 client_id，
-     * 开启后行为不变；仅在对接不返回归属字段的第三方端点时才需要保持 false。
+     * 严格模式下，introspection 响应既无 aud 又无 client_id 时拒绝
+     * （防止 confused deputy：把发给其他 client 的 token 当成自己的）。
+     * 主站 introspection 端点始终返回 client_id，默认开启不影响主站接入；
+     * 仅在对接不返回归属字段的第三方端点时才需要显式设为 false（不推荐）。
      */
     strictAudience?: boolean;
 }
 /**
  * Logout Token jti 防重放存储接口（可注入 Redis 等共享存储实现）。
- * has/add 均支持同步或异步返回。
+ *
+ * 多实例部署应实现 addIfAbsent（原子 SET NX EX 语义）以保证并发/跨实例下
+ * 同一 jti 只会被接受一次。未实现时回退 has + add（非原子，仅建议单实例使用）。
  */
 interface LogoutJtiStore {
     /** 判断 jti 是否已处理过 */
     has(key: string): boolean | Promise<boolean>;
     /** 记录已处理的 jti，ttlSeconds 后过期 */
     add(key: string, ttlSeconds: number): void | Promise<void>;
+    /** 原子地"不存在则记录"：返回 true 表示本次成功占用（首次使用），false 表示已存在 */
+    addIfAbsent?(key: string, ttlSeconds: number): boolean | Promise<boolean>;
 }
 interface VerifiedTokenPayload extends JWTPayload {
     sub: string;

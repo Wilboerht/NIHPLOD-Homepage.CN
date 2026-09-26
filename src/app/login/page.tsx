@@ -19,6 +19,8 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, ApiError } from "@/lib/api-client";
+import { SESSION_EXPIRED_HINT_KEY } from "@/lib/fetch-with-auth";
+import { isSafeSameOriginUrlOrPath } from "@/lib/url-safety";
 import { maskPhone } from "@/lib/mask-phone";
 import { validatePasswordStrength, getErrorMessage } from "@/components/website/auth/auth-utils";
 import { LoginForm } from "@/components/website/auth/LoginForm";
@@ -85,6 +87,19 @@ const MIN_AUTH_SUCCESS_MS = 800;
  * 随登录表单一起淡入（替代浮动 toast），说明被强制退出登录的原因。
  */
 function SessionExpiredNotice() {
+  // 一次性读取专属原因（如"设备数已达上限"），读取后清除避免下次误显示；
+  // 仅展示 10 分钟内的 hint，防止历史残留提示在无关过期场景误报
+  const [hint] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = sessionStorage.getItem(SESSION_EXPIRED_HINT_KEY);
+    if (raw) sessionStorage.removeItem(SESSION_EXPIRED_HINT_KEY);
+    if (!raw) return null;
+    const separator = raw.indexOf("|");
+    if (separator <= 0) return null;
+    const timestamp = Number(raw.slice(0, separator));
+    if (!Number.isFinite(timestamp) || Date.now() - timestamp > 10 * 60 * 1000) return null;
+    return raw.slice(separator + 1) || null;
+  });
   return (
     <m.div
       initial={{ opacity: 0, y: -4 }}
@@ -97,7 +112,7 @@ function SessionExpiredNotice() {
       <div>
         <p className="text-sm text-brand-charcoal/80">登录已过期，请重新登录</p>
         <p className="mt-0.5 text-xs text-brand-charcoal/50">
-          为保障账号安全，请重新验证身份后继续
+          {hint || "为保障账号安全，请重新验证身份后继续"}
         </p>
       </div>
     </m.div>
@@ -174,19 +189,29 @@ function LoginPageContent() {
 
   const mounted = useMounted();
   const [oauthParams, setOauthParams] = useState(oauthParamsFromUrl);
-  const [oauthParamsError, setOauthParamsError] = useState(false);
+  // 授权参数拉取失败原因：session=登录态已过期（401，可重新登录继续）；expired=参数过期（需回应用重新发起）
+  const [oauthParamsError, setOauthParamsError] = useState<"session" | "expired" | null>(null);
 
   // 新格式（oauth_id）：从服务端取回 OAuth 参数；旧格式（oauth_params）：直接使用 URL 值
   useEffect(() => {
     if (oauthParams) return;
     if (!oauthId) return;
     fetch(`/api/oauth/authorize?oauth_id=${encodeURIComponent(oauthId)}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success && d.data?.params) setOauthParams(d.data.params as string);
-        else setOauthParamsError(true);
+      .then(async (r) => {
+        let d: { success?: boolean; data?: { params?: string } } = {};
+        try {
+          d = await r.json();
+        } catch {
+          // 响应非 JSON（网关错误等）
+        }
+        if (d.success && d.data?.params) {
+          setOauthParams(d.data.params as string);
+          return;
+        }
+        // 401：登录会话已失效（authorize GET 要求登录态）；其余：参数过期/无效
+        setOauthParamsError(r.status === 401 ? "session" : "expired");
       })
-      .catch(() => setOauthParamsError(true));
+      .catch(() => setOauthParamsError("expired"));
   }, [oauthId, oauthParams]);
   // 确保 CSRF Cookie 已设置（首次访问 consent 页时可能缺失）
   useEffect(() => {
@@ -256,19 +281,9 @@ function LoginPageContent() {
   const [consentError, setConsentError] = useState("");
 
   const isSafeReturnTo = useCallback((url: string): boolean => {
-    if (!url) return false;
-    // 相对路径
-    if (url.startsWith("/") && !url.startsWith("//")) return true;
-
-    try {
-      const parsed = new URL(url, window.location.href);
-      // 拒绝危险 scheme
-      if (!["http:", "https:"].includes(parsed.protocol)) return false;
-      // 只允许同 origin
-      return parsed.origin === window.location.origin;
-    } catch {
-      return false;
-    }
+    // 统一走 src/lib/url-safety：拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站）
+    // 与危险 scheme，仅放行站内相对路径或同源 http(s) 绝对地址
+    return isSafeSameOriginUrlOrPath(url, window.location.origin);
   }, []);
 
   const navigateToReturnTo = useCallback(
@@ -543,23 +558,30 @@ function LoginPageContent() {
 
   const handleWechatBind = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regPassword || regPassword.length === 0) {
-      toast.error("请设置登录密码");
-      return;
+    // 密码可选：留空由服务端自动生成（用户之后可通过短信验证码登录/重置密码）
+    if (regPassword.length > 0) {
+      const passwordCheck = validatePasswordStrength(regPassword);
+      if (!passwordCheck.valid) {
+        toast.error(passwordCheck.message || "密码不符合要求");
+        return;
+      }
     }
-    const passwordCheck = validatePasswordStrength(regPassword);
-    if (!passwordCheck.valid) {
-      toast.error(passwordCheck.message || "密码不符合要求");
+    if (!mobileAgreed) {
+      setAgreementShake((n) => n + 1);
+      toast.error("请先阅读并同意《用户协议》和《隐私政策》");
       return;
     }
     setLoading(true);
     try {
-      await apiPost("/api/auth/wechat/bind", {
+      const bindResult = await apiPost<{ passwordGenerated?: boolean }>("/api/auth/wechat/bind", {
         phone: regPhone,
         code: regCode,
-        password: regPassword,
+        ...(regPassword ? { password: regPassword } : {}),
+        allowAutoPassword: !regPassword,
       });
-      await handleAuthSuccess("绑定成功");
+      await handleAuthSuccess(
+        bindResult?.passwordGenerated ? "绑定成功，已自动生成登录密码" : "绑定成功"
+      );
     } catch (error) {
       toast.error(getErrorMessage(error, "绑定失败，请稍后重试"));
     } finally {
@@ -579,6 +601,31 @@ function LoginPageContent() {
       setRegCountdown(60);
     } catch (error) {
       // SMS_UNAVAILABLE：生产环境 mock 短信，未真实发送，不能提示"已发送"也不进倒计时
+      toast.error(
+        isSmsUnavailable(error)
+          ? SMS_UNAVAILABLE_MESSAGE
+          : getErrorMessage(error, "发送失败，请稍后重试")
+      );
+    } finally {
+      setRegCodeSending(false);
+    }
+  };
+
+  /**
+   * 微信绑定页专用发码：type=bind 对已注册/未注册号码都真实发送
+   * （绑定必须验证手机号归属；服务端以 bindToken/登录态做防枚举准入）。
+   */
+  const handleSendBindCode = async () => {
+    if (!/^1[3-9]\d{9}$/.test(regPhone)) {
+      toast.error("请输入正确的手机号");
+      return;
+    }
+    setRegCodeSending(true);
+    try {
+      await apiPost("/api/auth/send-code", { phone: regPhone, type: "bind" });
+      toast.success("验证码已发送");
+      setRegCountdown(60);
+    } catch (error) {
       toast.error(
         isSmsUnavailable(error)
           ? SMS_UNAVAILABLE_MESSAGE
@@ -908,12 +955,15 @@ function LoginPageContent() {
             regCodeSending={regCodeSending}
             regCountdown={regCountdown}
             loading={loading}
+            mobileAgreed={mobileAgreed}
+            agreementShake={agreementShake}
             onRegPhoneChange={setRegPhone}
             onRegCodeChange={setRegCode}
             onRegPasswordChange={setRegPassword}
             onShowPasswordToggle={() => setShowPassword(!showPassword)}
+            onMobileAgreedChange={setMobileAgreed}
             onSubmit={handleWechatBind}
-            onSendRegCode={handleSendRegCode}
+            onSendRegCode={handleSendBindCode}
           />
         );
       case "consent":
@@ -923,11 +973,11 @@ function LoginPageContent() {
   };
 
   const scopeDescriptions: Record<string, string> = {
-    openid: "唯一用户标识（sub）",
-    profile: "昵称、头像",
-    phone: "手机号（脱敏后）",
-    membership: "会员等级、累计消费",
-    birthday: "生日",
+    openid: "识别您的账号（用于登录）",
+    profile: "读取昵称、头像",
+    phone: "读取脱敏手机号",
+    membership: "读取会员等级、累计消费；读取和管理积分兑换与收货地址",
+    birthday: "读取生日信息",
     "profile:write": "修改昵称、头像、生日、性别",
   };
 
@@ -950,13 +1000,34 @@ function LoginPageContent() {
     // oauth_id 参数仍在加载中或已失效
     if (oauthId && !oauthParams) {
       if (oauthParamsError) {
+        const isSessionExpired = oauthParamsError === "session";
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-20">
-            <p className="text-sm text-red-500">授权参数已过期或不存在，请返回应用重新发起授权</p>
+            <p className="text-sm text-red-500">
+              {isSessionExpired
+                ? "登录状态已过期，请重新登录后继续授权"
+                : "授权参数已过期或不存在，请返回应用重新发起授权"}
+            </p>
             <div className="flex w-full max-w-[280px] flex-col gap-3">
+              {isSessionExpired && (
+                <button
+                  onClick={() => {
+                    // 重新登录后回到本授权页（oauth_id 仍在有效期内时可直接继续授权）
+                    const consentPath = window.location.pathname + window.location.search;
+                    router.push(`/login?return_to=${encodeURIComponent(consentPath)}`);
+                  }}
+                  className="bg-brand-charcoal py-3 text-sm font-light tracking-[0.12em] text-white transition-all hover:bg-brand-charcoal/90"
+                >
+                  重新登录
+                </button>
+              )}
               <button
                 onClick={handleCancelExpired}
-                className="bg-brand-charcoal py-3 text-sm font-light tracking-[0.12em] text-white transition-all hover:bg-brand-charcoal/90"
+                className={
+                  isSessionExpired
+                    ? "border border-brand-charcoal/25 py-3 text-sm font-light tracking-[0.12em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03]"
+                    : "bg-brand-charcoal py-3 text-sm font-light tracking-[0.12em] text-white transition-all hover:bg-brand-charcoal/90"
+                }
               >
                 取消并返回应用
               </button>
@@ -1031,27 +1102,35 @@ function LoginPageContent() {
             <p className="text-sm text-brand-charcoal/80">
               <strong>{clientName}</strong> 请求访问您的账户信息
             </p>
-            {params.get("client_id") && (
-              <details className="mt-1">
+            <ul className="mt-2 space-y-1">
+              {requestedScopes
+                .filter((scope) => scope !== "openid" && scopeDescriptions[scope])
+                .map((scope) => (
+                  <li key={scope} className="flex items-start gap-2 text-xs text-brand-charcoal/70">
+                    <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
+                    <span>{scopeDescriptions[scope]}</span>
+                  </li>
+                ))}
+            </ul>
+            <p className="mt-2 text-[11px] leading-relaxed text-brand-charcoal/40">
+              授权后此应用会记住您的选择，后续登录不再重复询问；可在用户中心「安全中心 → 授权管理」撤销。
+            </p>
+            {(params.get("client_id") || requestedScopes.length > 0) && (
+              <details className="mt-2">
                 <summary className="cursor-pointer text-xs text-brand-charcoal/40">
-                  查看应用 ID
+                  开发者信息
                 </summary>
+                {params.get("client_id") && (
+                  <p className="mt-1 text-xs text-brand-charcoal/40">
+                    应用 ID: <code className="text-brand-charcoal/50">{params.get("client_id")}</code>
+                  </p>
+                )}
                 <p className="mt-1 text-xs text-brand-charcoal/40">
-                  应用 ID: <code className="text-brand-charcoal/50">{params.get("client_id")}</code>
+                  请求权限:{" "}
+                  <code className="text-brand-charcoal/50">{requestedScopes.join(" ")}</code>
                 </p>
               </details>
             )}
-            <ul className="mt-2 space-y-1">
-              {requestedScopes.map((scope) => (
-                <li key={scope} className="flex items-start gap-2 text-xs text-brand-charcoal/70">
-                  <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
-                  <span>
-                    <code className="rounded bg-blue-100 px-1 py-0.5 text-blue-700">{scope}</code>
-                    {scopeDescriptions[scope] ? ` — ${scopeDescriptions[scope]}` : null}
-                  </span>
-                </li>
-              ))}
-            </ul>
           </div>
 
           {consentError && (

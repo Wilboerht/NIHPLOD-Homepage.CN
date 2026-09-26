@@ -8,6 +8,7 @@ import { LogOut, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { adminNavItems, type NavItem } from "@/config/admin-nav";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { apiConsole } from "@/lib/logger";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export function Sidebar({
       router.push("/admin-login");
       router.refresh();
     } catch (error) {
-      console.error("登出失败:", error);
+      apiConsole.error("登出失败:", error);
     } finally {
       setLoggingOut(false);
     }

@@ -24,7 +24,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SsoError } from "../core/errors";
-import { verifyLogoutToken, type LogoutTokenPayload } from "../core/logout-token";
+import {
+  verifyLogoutTokenDetailed,
+  releaseLogoutTokenJti,
+  type LogoutTokenPayload,
+  type VerifiedLogoutToken,
+} from "../core/logout-token";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
@@ -122,9 +127,9 @@ export function createBackchannelLogoutRouteHandler(
       );
     }
 
-    let payload: LogoutTokenPayload;
+    let verified: VerifiedLogoutToken;
     try {
-      payload = await verifyLogoutToken(logoutToken, ssoBaseUrl, clientId);
+      verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId);
     } catch (err) {
       // 验证失败一律 400（规范：RP 认为 token 无效时返回 400，IdP 不再以该 token 重试）
       const code = err instanceof SsoError ? err.code : "logout_token_invalid";
@@ -138,8 +143,12 @@ export function createBackchannelLogoutRouteHandler(
 
     // 先调用钩子清子站本地会话：失败返回 500，让 IdP 重投
     try {
-      await onLogout?.(payload, request);
+      await onLogout?.(verified.payload, request);
     } catch (err) {
+      // 钩子失败时释放 jti：否则 IdP 用同一 logout_token 重投会被重放检查
+      // 以 400 拒绝（IdP 视为 token 无效、不再重试），RP 本地会话永远清不掉。
+      // 成功路径不得释放。
+      releaseLogoutTokenJti(verified.jti);
       console.error(
         "[SSO SDK] backchannel logout onLogout 钩子执行失败:",
         err

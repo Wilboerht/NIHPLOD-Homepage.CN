@@ -73,7 +73,16 @@ export function ConfirmDialog({
   };
 
   return (
-    <Modal open={open} onClose={onClose} size="sm" showCloseButton={false}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      showCloseButton={false}
+      ariaLabel={title}
+      // 请求进行中禁止遮罩/Esc 关闭，避免操作结果丢失上下文
+      closeOnBackdrop={!loading}
+      closeOnEscape={!loading}
+    >
       <div className="flex gap-4">
         <div
           className={cn(

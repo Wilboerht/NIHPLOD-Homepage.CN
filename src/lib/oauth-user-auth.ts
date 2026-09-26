@@ -20,6 +20,8 @@ export interface OAuthUserAuthOk {
   payload: OAuthAccessTokenPayload;
   ip: string;
   resJson: OAuthResJson;
+  /** 当前请求命中的 CORS 白名单头（供 decorateOAuthResponse 使用） */
+  corsHeaders: Record<string, string>;
 }
 
 export type OAuthUserAuthResult = OAuthUserAuthOk | { ok: false; response: Response };
@@ -33,7 +35,6 @@ export async function authenticateOAuthUserRequest(
   if (!auth.ok) return { ok: false, response: auth.response };
 
   const { payload, ip, resJson } = auth;
-
   // M2M（client_credentials）无用户身份：拒绝访问用户数据
   if (isM2mPayload(payload)) {
     scheduleSsoEvent({
@@ -91,5 +92,5 @@ export async function authenticateOAuthUserRequest(
     };
   }
 
-  return { ok: true, payload, ip, resJson };
+  return { ok: true, payload, ip, resJson, corsHeaders: auth.corsHeaders };
 }

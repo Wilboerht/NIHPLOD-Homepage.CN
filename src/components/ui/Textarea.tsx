@@ -1,6 +1,6 @@
 "use client";
 
-import { TextareaHTMLAttributes, forwardRef } from "react";
+import { TextareaHTMLAttributes, forwardRef, useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -10,11 +10,14 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, id, disabled, required, ...props }, ref) => {
-    const errorId = id ? `${id}-error` : undefined;
+    // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
+    const generatedId = useId();
+    const textareaId = id ?? generatedId;
+    const errorId = `${textareaId}-error`;
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={id} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          <label htmlFor={textareaId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
             {label}
             {required && (
               <span className="ml-0.5 text-red-500" aria-hidden="true">
@@ -25,7 +28,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         )}
         <textarea
           ref={ref}
-          id={id}
+          id={textareaId}
           disabled={disabled}
           required={required}
           aria-invalid={error ? true : undefined}

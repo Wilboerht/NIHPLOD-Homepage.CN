@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import { formatPrice } from "@/lib/utils";
 
 // 产品类型
@@ -53,8 +54,12 @@ interface ProductsTableProps {
   onSort?: (key: string, order: "asc" | "desc") => void;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
-  /** 是否可批量删除（仅超级管理员；默认 false 以最小暴露） */
+  /** 是否可删除单个产品（需 products:delete） */
   canDelete?: boolean;
+  /** 是否可批量删除（需 products:batch-delete） */
+  canBatchDelete?: boolean;
+  /** 是否可发布/编辑（需 products:write） */
+  canWrite?: boolean;
 }
 
 export function ProductsTable({
@@ -68,8 +73,15 @@ export function ProductsTable({
   sortBy,
   sortOrder,
   canDelete = false,
+  canBatchDelete = false,
+  canWrite = false,
 }: ProductsTableProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // 勾选状态：当前页数据内容变化（翻页/筛选/刷新）时自动清空
+  const selection = useRowSelection<ProductItem>(
+    (p) => p.id,
+    `${pagination.page}|${pagination.pageSize}|${products.map((p) => p.id).join(",")}`
+  );
+  const selectedIds = useMemo(() => Array.from(selection.selectedIds), [selection.selectedIds]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { error: showError } = useToast();
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -79,28 +91,26 @@ export function ProductsTable({
     batch?: boolean;
   }>({ open: false });
 
-  // 选择/取消选择
-  const handleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
-  }, []);
-
   // 全选/取消全选
   const handleSelectAll = useCallback(() => {
-    setSelectedIds((prev) => (prev.length === products.length ? [] : products.map((p) => p.id)));
-  }, [products]);
+    selection.toggleAll(products, !selection.isAllSelected(products));
+  }, [products, selection]);
 
   // 切换发布状态
-  const handleTogglePublish = async (id: string, published: boolean) => {
-    setActionLoading(id);
-    try {
-      await apiPatch(`/api/admin/products/${id}`, { published: !published });
-      onRefresh();
-    } catch {
-      showError("操作失败，请重试");
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  const handleTogglePublish = useCallback(
+    async (id: string, published: boolean) => {
+      setActionLoading(id);
+      try {
+        await apiPatch(`/api/admin/products/${id}`, { published: !published });
+        onRefresh();
+      } catch {
+        showError("操作失败，请重试");
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [onRefresh, showError]
+  );
 
   // 删除产品
   const handleDelete = async () => {
@@ -109,12 +119,15 @@ export function ProductsTable({
     try {
       if (batch) {
         await apiPost("/api/admin/products/batch", { ids: selectedIds, action: "delete" });
-        setSelectedIds([]);
+        selection.clear();
       } else if (id) {
         await apiDelete(`/api/admin/products/${id}`);
       }
-      // 删光当前页所有数据时回退一页
-      if (products.length === 1 && pagination.page > 1) {
+      // 删光当前页所有数据（单删最后一条或批量选中全页）时回退一页
+      const deletesWholePage = batch
+        ? products.length > 0 && products.every((p) => selection.selectedIds.has(p.id))
+        : products.length === 1;
+      if (deletesWholePage && pagination.page > 1) {
         onPageChange(pagination.page - 1);
       } else {
         onRefresh();
@@ -132,7 +145,7 @@ export function ProductsTable({
     setActionLoading(action);
     try {
       await apiPost("/api/admin/products/batch", { ids: selectedIds, action });
-      setSelectedIds([]);
+      selection.clear();
       onRefresh();
     } catch {
       showError("批量操作失败，请重试");
@@ -141,29 +154,36 @@ export function ProductsTable({
     }
   };
 
-  // 表格列定义
-  const columns: Column<ProductItem>[] = useMemo(
-    () => [
-      {
-        key: "select",
-        title: (
-          <input
-            type="checkbox"
-            checked={selectedIds.length === products.length && products.length > 0}
-            onChange={handleSelectAll}
-            className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
-          />
-        ),
-        width: "50px",
-        render: (_, record) => (
-          <input
-            type="checkbox"
-            checked={selectedIds.includes(record.id)}
-            onChange={() => handleSelect(record.id)}
-            className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
-          />
-        ),
-      },
+  // 表格列定义（无任何写/删权限时不展示勾选列）
+  const canSelect = canWrite || canDelete || canBatchDelete;
+  const columns: Column<ProductItem>[] = useMemo(() => {
+    const selectColumn: Column<ProductItem> = {
+      key: "select",
+      title: (
+        <input
+          type="checkbox"
+          checked={selection.isAllSelected(products)}
+          ref={(el) => {
+            if (el) el.indeterminate = selection.isIndeterminate(products);
+          }}
+          onChange={handleSelectAll}
+          aria-label="全选本页产品"
+          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+        />
+      ),
+      width: "50px",
+      render: (_, record) => (
+        <input
+          type="checkbox"
+          checked={selection.isSelected(record)}
+          onChange={() => selection.toggle(record)}
+          aria-label={`选择 ${record.name}`}
+          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+        />
+      ),
+    };
+    return [
+      ...(canSelect ? [selectColumn] : []),
       {
         key: "image",
         title: "图片",
@@ -233,75 +253,100 @@ export function ProductsTable({
         align: "right",
         render: (_, record) => (
           <div className="flex items-center justify-end gap-1">
-            <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
-              <button
-                onClick={() => handleTogglePublish(record.id, record.published)}
-                disabled={actionLoading === record.id}
-                className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-              >
-                {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </Tooltip>
-            <Tooltip content="编辑" side="top">
-              <Link
-                href={`/admin/products/${record.id}/edit`}
-                className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-              >
-                <Pencil className="h-4 w-4" />
-              </Link>
-            </Tooltip>
-            <Tooltip content="删除" side="top">
-              <button
-                onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
-                className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </Tooltip>
+            {canWrite && (
+              <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
+                <button
+                  onClick={() => handleTogglePublish(record.id, record.published)}
+                  disabled={actionLoading !== null}
+                  aria-label={record.published ? `取消发布 ${record.name}` : `发布 ${record.name}`}
+                  className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal disabled:opacity-40"
+                >
+                  {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </Tooltip>
+            )}
+            {canWrite && (
+              <Tooltip content="编辑" side="top">
+                <Link
+                  href={`/admin/products/${record.id}/edit`}
+                  aria-label={`编辑 ${record.name}`}
+                  className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Link>
+              </Tooltip>
+            )}
+            {canDelete && (
+              <Tooltip content="删除" side="top">
+                <button
+                  onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
+                  disabled={actionLoading !== null}
+                  aria-label={`删除 ${record.name}`}
+                  className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </Tooltip>
+            )}
           </div>
         ),
       },
-    ],
-    [selectedIds, products, actionLoading, handleSelectAll]
-  );
+    ];
+  }, [
+    products,
+    actionLoading,
+    handleSelectAll,
+    selection,
+    canSelect,
+    canDelete,
+    canWrite,
+    handleTogglePublish,
+  ]);
 
   return (
     <div className="space-y-4">
       {/* 批量操作栏 */}
-      {selectedIds.length > 0 && (
+      {selection.selectedCount > 0 && (
         <div className="flex items-center gap-4 rounded-lg bg-brand-primary/5 px-4 py-3">
           <span className="text-sm text-brand-charcoal/80">
-            已选择 <strong>{selectedIds.length}</strong> 项
+            已选择 <strong>{selection.selectedCount}</strong> 项
           </span>
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBatchAction("publish")}
-              loading={actionLoading === "publish"}
-            >
-              发布
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleBatchAction("unpublish")}
-              loading={actionLoading === "unpublish"}
-            >
-              取消发布
-            </Button>
-            {canDelete && (
+            {canWrite && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("publish")}
+                  loading={actionLoading === "publish"}
+                  disabled={actionLoading !== null && actionLoading !== "publish"}
+                >
+                  发布
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("unpublish")}
+                  loading={actionLoading === "unpublish"}
+                  disabled={actionLoading !== null && actionLoading !== "unpublish"}
+                >
+                  取消发布
+                </Button>
+              </>
+            )}
+            {canBatchDelete && (
               <Button
                 size="sm"
                 variant="danger"
                 onClick={() => setDeleteConfirm({ open: true, batch: true })}
+                disabled={actionLoading !== null}
               >
                 删除
               </Button>
             )}
           </div>
           <button
-            onClick={() => setSelectedIds([])}
+            onClick={selection.clear}
             className="ml-auto text-sm text-brand-charcoal/50 hover:text-brand-charcoal/80"
           >
             取消选择
@@ -336,7 +381,7 @@ export function ProductsTable({
         title={deleteConfirm.batch ? "批量删除产品" : "删除产品"}
         description={
           deleteConfirm.batch
-            ? `确定要删除选中的 ${selectedIds.length} 个产品吗？此操作不可恢复。`
+            ? `确定要删除选中的 ${selection.selectedCount} 个产品吗？此操作不可恢复。`
             : `确定要删除产品"${deleteConfirm.name}"吗？此操作不可恢复。`
         }
         type="danger"

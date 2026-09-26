@@ -10,14 +10,17 @@ import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/rateli
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
-import { verifyUserToken } from "@/lib/jwt";
+import { verifyUserToken, verifyWechatBindToken } from "@/lib/jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { WECHAT_BIND_COOKIE_NAME } from "@/types/auth";
 
 // 请求参数验证
 const sendCodeSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  // bind：小程序「关联官网账户」专用发码通道（无 Cookie 环境）
+  // bind：微信绑定专用发码通道（官网绑定页读 Cookie，小程序等无 Cookie 环境传 bindToken）
   type: z.enum(["login", "register", "reset", "bind"]).default("login"),
+  /** 绑定通道凭证（可选）：小程序等无 Cookie 环境通过 body 传递，优先于 Cookie */
+  bindToken: z.string().max(4096).optional(),
 });
 
 // 验证码有效期（分钟）
@@ -126,6 +129,22 @@ export async function POST(request: NextRequest) {
 
     const { phone, type } = result.data;
 
+    // 绑定通道真实发码准入（防枚举）：
+    // 绑定必须验证手机号归属，故 bind 对已注册/未注册号码都需真实发码；
+    // 但为避免借用该通道探测号码是否注册/向任意号码发短信，要求具备以下凭证之一：
+    //   1) 有效 bindToken（官网绑定页 Cookie / 小程序 body）—— 已完成微信授权
+    //   2) Bearer 用户 token 且目标手机号即 token 所有者本人（子站 BFF/小程序代理发码）
+    // 两者都不满足时维持假发送（响应与真实发送一致）。
+    let bindHasAuthContext = false;
+    if (type === "bind") {
+      const bindToken =
+        result.data.bindToken || request.cookies.get(WECHAT_BIND_COOKIE_NAME)?.value;
+      if (bindToken) {
+        bindHasAuthContext = Boolean(await verifyWechatBindToken(bindToken));
+      }
+      if (!bindHasAuthContext) bindHasAuthContext = bearerOwnedPhone;
+    }
+
     // 生产环境短信通道必须为真实 provider：SMS_PROVIDER 为 mock/未设置/未知值时短信
     // 实际发不出去，若返回成功会让前端谎称"验证码已发送"，用户永远等不到验证码。
     // 统一在手机号存在性判断之前短路返回 503：已注册与未注册号码得到完全相同的响应，
@@ -222,9 +241,9 @@ export async function POST(request: NextRequest) {
       return fakeSendResponse();
     }
 
-    // 绑定场景（小程序「关联官网账户」）：仅手机号已存在官网账户才真实发码；
-    // 未注册手机号假发送（返回成功但不发码），防枚举口径与 register/login/reset 一致
-    if (type === "bind" && !userExists) {
+    // 绑定场景：有授权凭证时真实发码（含未注册号码，绑定流程需验证号码归属）；
+    // 无凭证且号码未注册时假发送，保持防枚举口径；无凭证且已注册维持历史行为
+    if (type === "bind" && !bindHasAuthContext && !userExists) {
       await simulateSmsSendLatency();
       return fakeSendResponse();
     }

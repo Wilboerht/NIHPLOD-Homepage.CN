@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockConsentFindMany = vi.fn();
+const mockConsentFindUnique = vi.fn();
+const mockUserFindUnique = vi.fn();
 const mockClientFindMany = vi.fn();
 const mockClientFindUnique = vi.fn();
 const mockFailureCreate = vi.fn();
@@ -16,8 +18,12 @@ global.fetch = globalFetch as unknown as typeof fetch;
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    user: {
+      findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+    },
     userConsent: {
       findMany: (...args: unknown[]) => mockConsentFindMany(...args),
+      findUnique: (...args: unknown[]) => mockConsentFindUnique(...args),
     },
     oAuthClient: {
       findMany: (...args: unknown[]) => mockClientFindMany(...args),
@@ -69,6 +75,9 @@ describe("profile-webhook", () => {
     mockFailureUpdate.mockResolvedValue({});
     // 乐观锁认领默认成功（单实例语义），多实例竞争场景单独覆盖
     mockFailureUpdateMany.mockResolvedValue({ count: 1 });
+    // 重投前置检查默认通过：用户 ACTIVE、consent 未撤销
+    mockUserFindUnique.mockResolvedValue({ status: "ACTIVE" });
+    mockConsentFindUnique.mockResolvedValue({ revokedAt: null });
   });
 
   it("用户无任何有效授权时不查询 client、不投递", async () => {
@@ -82,7 +91,10 @@ describe("profile-webhook", () => {
 
   it("仅投递给该用户已授权且配置了 webhookUri 的活跃 client", async () => {
     // user-1 授权过 client-a（配 webhook）、client-b（未配 webhook，由 DB where 过滤）
-    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }, { clientId: "client-b" }]);
+    mockConsentFindMany.mockResolvedValue([
+      { clientId: "client-a", scopes: ["profile", "birthday"] },
+      { clientId: "client-b", scopes: ["profile"] },
+    ]);
     mockClientFindMany.mockResolvedValue([
       { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
     ]);
@@ -127,8 +139,81 @@ describe("profile-webhook", () => {
     );
   });
 
+  it("仅授权 openid 的 client：不投递任何资料字段、不落失败队列", async () => {
+    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a", scopes: ["openid"] }]);
+    mockClientFindMany.mockResolvedValue([
+      { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
+    ]);
+
+    await sendProfileUpdateWebhook("user-1", PROFILE);
+
+    expect(mockSignProfileEventToken).not.toHaveBeenCalled();
+    expect(globalFetch).not.toHaveBeenCalled();
+    expect(mockFailureCreate).not.toHaveBeenCalled();
+  });
+
+  it("仅 birthday scope：只投递 birthday，昵称/头像/性别置 null", async () => {
+    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a", scopes: ["birthday"] }]);
+    mockClientFindMany.mockResolvedValue([
+      { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
+    ]);
+    mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
+
+    const profileWithBirthday = { ...PROFILE, birthday: "1990-01-01T00:00:00.000Z" };
+    await sendProfileUpdateWebhook("user-1", profileWithBirthday);
+
+    expect(mockSignProfileEventToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: {
+          nickname: null,
+          avatar: null,
+          gender: null,
+          birthday: "1990-01-01T00:00:00.000Z",
+        },
+      })
+    );
+  });
+
+  it("仅 membership scope：投递 membership，profile 为全 null 占位", async () => {
+    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a", scopes: ["membership"] }]);
+    mockClientFindMany.mockResolvedValue([
+      { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
+    ]);
+    mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
+
+    await sendProfileUpdateWebhook("user-1", PROFILE, { level: "GOLD", totalSpent: 1000 });
+
+    expect(mockSignProfileEventToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: { nickname: null, avatar: null, gender: null, birthday: null },
+        membership: { level: "GOLD", totalSpent: 1000 },
+      })
+    );
+  });
+
+  it("有 profile 但未授权 membership：membership 不随事件投递", async () => {
+    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a", scopes: ["profile"] }]);
+    mockClientFindMany.mockResolvedValue([
+      { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
+    ]);
+    mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
+
+    await sendProfileUpdateWebhook("user-1", PROFILE, { level: "GOLD", totalSpent: 1000 });
+
+    const callArg = mockSignProfileEventToken.mock.calls[0][0] as Record<string, unknown>;
+    expect(callArg.membership).toBeUndefined();
+    expect(callArg.profile).toMatchObject({
+      nickname: PROFILE.nickname,
+      avatar: PROFILE.avatar,
+      gender: PROFILE.gender,
+      birthday: null,
+    });
+  });
+
   it("RP 返回非 2xx 时应重试、记录失败审计并落库补偿队列", async () => {
-    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockConsentFindMany.mockResolvedValue([
+      { clientId: "client-a", scopes: ["profile", "birthday", "membership"] },
+    ]);
     mockClientFindMany.mockResolvedValue([
       { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
     ]);
@@ -162,7 +247,9 @@ describe("profile-webhook", () => {
   });
 
   it("投递成功时应记录成功审计事件且不落库", async () => {
-    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockConsentFindMany.mockResolvedValue([
+      { clientId: "client-a", scopes: ["profile", "birthday", "membership"] },
+    ]);
     mockClientFindMany.mockResolvedValue([
       { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
     ]);
@@ -184,7 +271,9 @@ describe("profile-webhook", () => {
   });
 
   it("webhookUri 为私网地址时不投递", async () => {
-    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockConsentFindMany.mockResolvedValue([
+      { clientId: "client-a", scopes: ["profile", "birthday", "membership"] },
+    ]);
     mockClientFindMany.mockResolvedValue([
       { clientId: "client-a", webhookUri: "https://192.168.1.10/webhook" },
     ]);
@@ -196,7 +285,9 @@ describe("profile-webhook", () => {
   });
 
   it("携带 membership 时透传进事件 token 与失败落库 payload", async () => {
-    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockConsentFindMany.mockResolvedValue([
+      { clientId: "client-a", scopes: ["profile", "birthday", "membership"] },
+    ]);
     mockClientFindMany.mockResolvedValue([
       { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
     ]);
@@ -221,7 +312,9 @@ describe("profile-webhook", () => {
   });
 
   it("不传 membership 时事件 token 与落库 payload 均不含该字段", async () => {
-    mockConsentFindMany.mockResolvedValue([{ clientId: "client-a" }]);
+    mockConsentFindMany.mockResolvedValue([
+      { clientId: "client-a", scopes: ["profile", "birthday", "membership"] },
+    ]);
     mockClientFindMany.mockResolvedValue([
       { clientId: "client-a", webhookUri: "https://a.example.com/webhook" },
     ]);

@@ -19,7 +19,21 @@ import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiGet } from "@/lib/api-client";
 import { RequirePermission } from "@/components/admin/RequirePermission";
-import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
+import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, RefreshCw, Eye, EyeOff } from "lucide-react";
+
+/** 校验回调 URL（https、无 hash）；通过返回 null，否则返回错误文案 */
+function validateRedirectUri(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "请输入回调 URL";
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:") return "回调 URL 必须使用 https:// 协议";
+    if (url.hash) return "回调 URL 不能包含 hash 片段";
+  } catch {
+    return "回调 URL 格式不正确";
+  }
+  return null;
+}
 
 interface ScopeDef {
   value: string;
@@ -90,10 +104,22 @@ function OAuthWizardContent() {
 
   // Step 4: Secret saved confirmation
   const [secretSaved, setSecretSaved] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   // Step 5: Test
   const [testResult, setTestResult] = useState<TestResultData | null>(null);
   const [testLoading, setTestLoading] = useState(false);
+
+  // 已生成 Secret 但未确认保存时，阻止意外关闭/刷新导致密钥丢失
+  useEffect(() => {
+    if (!result.plainSecret || secretSaved) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [result.plainSecret, secretSaved]);
 
   const toggleScope = (scope: string) => {
     if (scope === "openid") return; // openid 必选
@@ -107,22 +133,9 @@ function OAuthWizardContent() {
       toast.error("请输入应用名称");
       return;
     }
-    if (!redirectUri.trim()) {
-      toast.error("请输入回调 URL");
-      return;
-    }
-    try {
-      const url = new URL(redirectUri.trim());
-      if (url.protocol !== "https:") {
-        toast.error("回调 URL 必须使用 https:// 协议");
-        return;
-      }
-      if (url.hash) {
-        toast.error("回调 URL 不能包含 hash 片段");
-        return;
-      }
-    } catch {
-      toast.error("回调 URL 格式不正确");
+    const uriError = validateRedirectUri(redirectUri);
+    if (uriError) {
+      toast.error(uriError);
       return;
     }
 
@@ -140,6 +153,7 @@ function OAuthWizardContent() {
         plainSecret: data.plainSecret,
         client: data.client,
       });
+      setShowSecret(false);
       setStep(4);
       toast.success("Client 创建成功");
     } catch (err) {
@@ -175,8 +189,14 @@ function OAuthWizardContent() {
     }
   };
 
-  const copyCode = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => toast.success("已复制"));
+  const copyCode = async (text: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(text);
+      toast.success("已复制");
+    } catch {
+      toast.error("复制失败，请手动选择复制");
+    }
   };
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://nihplod.cn";
@@ -218,6 +238,8 @@ authUrl.searchParams.set("code_challenge_method", "S256");
 window.location.href = authUrl.toString();
 
 // 3. 在回调页面中，用授权码换取 token
+// ⚠️ 浏览器端仅适用于 Public Client：不要携带 client_secret；
+//    Confidential Client 的 token 交换必须放在服务端（带 client_secret）
 const tokenRes = await fetch("${baseUrl}/api/oauth/token", {
   method: "POST",
   headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -225,7 +247,6 @@ const tokenRes = await fetch("${baseUrl}/api/oauth/token", {
     grant_type: "authorization_code",
     code: urlParams.get("code"),
     client_id: "${result.clientId || "YOUR_CLIENT_ID"}",
-    client_secret: "YOUR_CLIENT_SECRET",
     code_verifier: codeVerifier,
   }),
 });
@@ -321,7 +342,19 @@ const user = await userRes.json();`;
             </div>
             <div className="flex justify-end">
               <Button
-                onClick={() => setStep(2)}
+                onClick={() => {
+                  // 第①步即校验回调 URL，避免走到确认页才发现格式错误
+                  if (!appName.trim()) {
+                    toast.error("请输入应用名称");
+                    return;
+                  }
+                  const uriError = validateRedirectUri(redirectUri);
+                  if (uriError) {
+                    toast.error(uriError);
+                    return;
+                  }
+                  setStep(2);
+                }}
                 disabled={!appName.trim() || !redirectUri.trim()}
                 leftIcon={<ArrowRight className="h-4 w-4" />}
               >
@@ -466,11 +499,19 @@ const user = await userRes.json();`;
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Client Secret：</span>
                 <div className="flex items-center gap-2">
-                  <code className="max-w-[200px] truncate rounded bg-green-100 px-2 py-1 font-mono text-xs">
-                    {result.plainSecret}
+                  <code className="max-w-[280px] break-all rounded bg-green-100 px-2 py-1 font-mono text-xs">
+                    {showSecret ? result.plainSecret : "••••••••••••••••••••"}
                   </code>
                   <button
+                    onClick={() => setShowSecret((v) => !v)}
+                    aria-label={showSecret ? "隐藏密钥" : "显示密钥"}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  <button
                     onClick={() => copyCode(result.plainSecret || "")}
+                    aria-label="复制密钥"
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <Copy className="h-4 w-4" />
@@ -596,6 +637,7 @@ const user = await userRes.json();`;
             >
               返回上一步
             </Button>
+            <Button onClick={() => router.push("/admin/oauth-clients")}>完成，前往管理</Button>
           </div>
         </div>
       )}

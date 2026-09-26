@@ -71,6 +71,11 @@ vi.mock("@/lib/prisma", () => {
     membershipLevelChange: mockPrismaModel(),
     // 外部平台身份（多平台聚合）：删除用户时 removeIdentities 调 deleteMany 需返回 count
     externalIdentity: { ...mockPrismaModel(), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    // 删除用户时清理资料变更失败队列（含 PII 快照）
+    webhookDeliveryFailure: {
+      ...mockPrismaModel(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   };
   return { prisma, default: prisma };
 });
@@ -81,6 +86,10 @@ vi.mock("@/lib/jwt", () => ({
   verifyToken: (...args: unknown[]) => mockVerifyToken(...args),
   verifyUserToken: vi.fn().mockResolvedValue(null),
   signLogoutToken: vi.fn().mockResolvedValue("mock-logout-token"),
+  validateSecret: (name: string, value: string | undefined) => {
+    if (!value) throw new Error(`缺少环境变量 ${name}`);
+    return value;
+  },
 }));
 
 // Mock password — mockVerifyPassword/mockHashPassword are already declared via vi.hoisted
@@ -498,6 +507,34 @@ describe("管理端 API 集成测试", () => {
       expect(res.status).toBe(401);
       expect(data.error.code).toBe("TOTP_REQUIRED");
     });
+
+    it("TOTP 已启用但密钥缺失必须拒绝登录（fail-closed）", async () => {
+      mockValidateCSRFToken.mockReturnValue(true);
+      mockPrisma.admin.findUnique.mockResolvedValue({
+        id: "admin-1",
+        email: "admin@test.com",
+        password: "$2a$12$hash",
+        name: "Admin",
+        role: "admin",
+        status: "ACTIVE",
+        deletedAt: null,
+        totpEnabled: true,
+        totpSecret: null,
+        totpBackupCodes: null,
+      });
+
+      const { POST } = await import("@/app/api/admin/login/route");
+      const req = createRequest("/api/admin/login", {
+        method: "POST",
+        body: { email: "admin@test.com", password: "Admin123", totpCode: "123456" },
+        headers: { origin: "https://nihplod.cn" },
+      });
+      const res = await POST(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(500);
+      expect(data.error.code).toBe("TOTP_MISCONFIGURED");
+    });
   });
 
   describe("GET /api/admin/me", () => {
@@ -615,8 +652,8 @@ describe("管理端 API 集成测试", () => {
         subjectId: "dy-openid",
         unionId: "dy-union",
       });
-      // 手机号仍应脱敏（平台身份字段不受影响）
-      expect(data.data.user.phone).not.toBe("13800138000");
+      // owner 拥有 users:sensitive:read，详情返回完整手机号（脱敏场景见下一个用例）
+      expect(data.data.user.phone).toBe("13800138000");
       // 聚合分区：积分/地址/消费记录
       expect(data.data.points).toEqual({
         available: 123,
@@ -629,6 +666,88 @@ describe("管理端 API 集成测试", () => {
       // 等级成长字段
       expect(data.data.user.goldActivatedAt).toBe("2026-08-10T00:00:00.000Z");
       expect(data.data.user.diamondActivatedAt).toBeNull();
+    });
+
+    it("无 users:sensitive:read 时手机号/收货地址/外部身份标识应脱敏", async () => {
+      const req = createRequest("/api/admin/users/user-1");
+      // finance 角色无 users:sensitive:read
+      mockAdminAuth(
+        { id: "admin-1", email: "admin@test.com", name: "Admin", role: "finance" },
+        req
+      );
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        phoneVerified: true,
+        nickname: "测试用户",
+        avatar: null,
+        status: "ACTIVE",
+        membershipLevel: "GOLD",
+        totalSpent: 5000,
+        silverActivatedAt: null,
+        goldActivatedAt: null,
+        diamondActivatedAt: null,
+        wechatOpenId: "wx-openid-123456",
+        wechatUnionId: "wx-union-123456",
+        externalIdentities: [
+          {
+            id: "ei-1",
+            provider: "douyin",
+            subjectId: "dy-openid",
+            unionId: "dy-union",
+            metadata: null,
+            createdAt: new Date("2026-08-21T00:00:00.000Z"),
+          },
+        ],
+        createdAt: new Date("2026-08-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-08-21T00:00:00.000Z"),
+      });
+      mockPrisma.pointBalance.findUnique.mockResolvedValue(null);
+      mockPrisma.pointRedemption.findMany.mockResolvedValue([
+        {
+          id: "r-1",
+          productName: "礼品",
+          priceYuan: 10,
+          points: 100,
+          status: "PENDING",
+          carrier: null,
+          waybillNo: null,
+          recipient: "张三",
+          phone: "13800138000",
+          address: "上海市普陀区某路1号",
+          fulfilledAt: null,
+          createdAt: new Date("2026-08-21T00:00:00.000Z"),
+        },
+      ]);
+      mockPrisma.pointRedemption.count.mockResolvedValue(1);
+      mockPrisma.userAddress.findMany.mockResolvedValue([
+        {
+          id: "a-1",
+          recipient: "张三",
+          phone: "13800138000",
+          region: "上海市",
+          detail: "普陀区某路1号",
+          isDefault: true,
+          createdAt: new Date("2026-08-21T00:00:00.000Z"),
+        },
+      ]);
+      mockPrisma.spentAdjustmentApplication.findMany.mockResolvedValue([]);
+      mockPrisma.spentAdjustmentApplication.count.mockResolvedValue(0);
+      mockPrisma.membershipLevelChange.findMany.mockResolvedValue([]);
+      mockPrisma.loginAttempt.findMany.mockResolvedValue([]);
+
+      const { GET } = await import("@/app/api/admin/users/[id]/route");
+      const res = await GET(req, { params: Promise.resolve({ id: "user-1" }) });
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.data.user.phone).toBe("138****8000");
+      expect(data.data.user.wechatOpenId).not.toBe("wx-openid-123456");
+      expect(data.data.user.externalIdentities[0].subjectId).not.toBe("dy-openid");
+      expect(data.data.points.redemptions[0].phone).toBe("138****8000");
+      expect(data.data.points.redemptions[0].address).not.toBe("上海市普陀区某路1号");
+      expect(data.data.addresses[0].phone).toBe("138****8000");
+      expect(data.data.addresses[0].detail).not.toBe("普陀区某路1号");
     });
 
     it("显示完整手机号：POST 返回明文并写入敏感操作审计", async () => {

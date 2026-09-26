@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -18,7 +18,12 @@ import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
 import { generateSlug } from "@/lib/utils";
-import { usePurchaseLinks, type PurchaseLinkItem } from "@/hooks/usePurchaseLinks";
+import {
+  usePurchaseLinks,
+  createPurchaseLinkKey,
+  type PurchaseLinkItem,
+} from "@/hooks/usePurchaseLinks";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 
 // 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
 const RichTextEditor = dynamic(
@@ -116,16 +121,20 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       return {
         ...defaultFormData,
         ...initialData,
-        purchaseLinks: initialData.purchaseLinks || [],
+        purchaseLinks: (initialData.purchaseLinks || []).map((link) => ({
+          ...link,
+          clientKey: link.clientKey ?? createPurchaseLinkKey(),
+        })),
       };
     }
     return defaultFormData;
   });
-  const initialFormRef = useRef<FormData>(structuredClone(formData));
+  // 初始快照用 state 保存：渲染期比较脏值时不触发 react-hooks/refs 限制
+  const [initialFormSnapshot] = useState<FormData>(() => structuredClone(formData));
   const slugManuallySetRef = useRef(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  // null=空闲；"draft"/"publish"=正在执行对应动作（双按钮互斥，防并发提交）
+  const [submitting, setSubmitting] = useState<null | "draft" | "publish">(null);
 
   // 分类列表（本地状态：支持表单内快速新建分类后即建即选）
   const [categoryList, setCategoryList] = useState<Category[]>(categories);
@@ -187,8 +196,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     }
   }, [formData.nameEn, mode, formData.slug]);
 
-  // 未保存更改离开确认
-  useEffect(() => {
+  // 未保存更改离开确认（beforeunload + 站内返回按钮）
+  const isDirty = useMemo(() => {
     const stripBlobUrls = (data: FormData) => ({
       ...data,
       images: data.images.map((img) => ({
@@ -197,17 +206,12 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         file: undefined,
       })),
     });
-    const isDirty =
+    return (
       JSON.stringify(stripBlobUrls(formData)) !==
-      JSON.stringify(stripBlobUrls(initialFormRef.current));
-    if (!isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [formData]);
+      JSON.stringify(stripBlobUrls(initialFormSnapshot))
+    );
+  }, [formData, initialFormSnapshot]);
+  const { guard: guardNavigation } = useUnsavedChanges(isDirty);
 
   // 更新表单字段
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -285,25 +289,28 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     return uploaded;
   };
 
-  // 保存产品
-  const handleSave = async (publish: boolean = false) => {
+  // 保存产品（publish=false 明确保存为草稿；=true 发布，两者互斥防并发提交）
+  const handleSave = async (publish: boolean) => {
+    if (submitting) return;
     if (!validateForm()) {
       showError("请检查表单错误");
       return;
     }
 
-    if (publish) {
-      setPublishing(true);
-    } else {
-      setSaving(true);
-    }
+    setSubmitting(publish ? "publish" : "draft");
 
     try {
       // 上传新图片
       const uploadedImages = await uploadImages(formData.images);
 
-      // 过滤掉没有填写完整的购买链接
-      const validPurchaseLinks = formData.purchaseLinks.filter((link) => link.platform && link.url);
+      // 过滤掉没有填写完整的购买链接，并剥离仅前端使用的行 key
+      const validPurchaseLinks = formData.purchaseLinks
+        .filter((link) => link.platform && link.url)
+        .map((link) => {
+          const item = { ...link };
+          delete item.clientKey;
+          return item;
+        });
 
       const payload = {
         ...formData,
@@ -313,7 +320,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         origin: formData.origin || null,
         ingredients: formData.ingredients || null,
         usage: formData.usage || null,
-        published: publish ? true : formData.published,
+        published: publish,
       };
 
       if (mode === "create") {
@@ -322,13 +329,12 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         await apiPut(`/api/admin/products/${initialData?.id}`, payload);
       }
 
-      success(publish ? "产品已发布" : "产品已保存");
+      success(publish ? "产品已发布" : "产品已保存为草稿");
       router.push("/admin/products");
     } catch (err) {
       showError(err instanceof Error ? err.message : "保存失败");
     } finally {
-      setSaving(false);
-      setPublishing(false);
+      setSubmitting(null);
     }
   };
 
@@ -337,7 +343,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       {/* 顶部操作栏 */}
       <div className="mb-6 flex items-center justify-between">
         <button
-          onClick={() => router.back()}
+          onClick={() => guardNavigation(() => router.back())}
           className="flex items-center gap-2 text-brand-charcoal/60 hover:text-brand-charcoal"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -347,14 +353,16 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           <Button
             variant="outline"
             onClick={() => handleSave(false)}
-            loading={saving}
+            loading={submitting === "draft"}
+            disabled={submitting !== null}
             leftIcon={<Save className="h-4 w-4" />}
           >
             保存草稿
           </Button>
           <Button
             onClick={() => handleSave(true)}
-            loading={publishing}
+            loading={submitting === "publish"}
+            disabled={submitting !== null}
             leftIcon={<Send className="h-4 w-4" />}
           >
             保存并发布
@@ -524,7 +532,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
               <div className="space-y-3">
                 {formData.purchaseLinks.map((link, index) => (
                   <div
-                    key={`${link.platform}-${link.url}-${index}`}
+                    key={link.clientKey ?? `purchase-link-${index}`}
                     className="flex items-center gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
                   >
                     <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-brand-charcoal/50" />
@@ -671,12 +679,12 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 checked={formData.featured}
                 onChange={(checked) => updateField("featured", checked)}
               />
-              <Switch
-                label="立即发布"
-                description="发布后前台可见"
-                checked={formData.published}
-                onChange={(checked) => updateField("published", checked)}
-              />
+              {/* 发布状态由底部“保存草稿 / 保存并发布”按钮显式决定，避免开关与按钮语义冲突 */}
+              {initialData?.published && (
+                <p className="self-center text-xs text-brand-charcoal/50">
+                  当前状态：已发布（点击“保存草稿”将转为未发布）
+                </p>
+              )}
             </div>
           </div>
         </section>

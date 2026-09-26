@@ -40,7 +40,19 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
     ttl: ACCESS_TOKEN_BLACKLIST_TTL_MS,
   });
 
-  async revokeAccessToken(jti: string): Promise<void> {
+  async revokeAccessToken(jti: string, expiresAtMs?: number): Promise<void> {
+    // 遵循调用方给出的真实过期时间（OAuth client 可配置 access token 最长 24h，
+    // 固定 2h 会导致 TTL > 2h 的 token 在黑名单过期后重新生效）；未给出时用默认 2h
+    if (expiresAtMs !== undefined) {
+      const ttl = expiresAtMs - Date.now();
+      if (ttl <= 0) {
+        // 已过期的 token 无需拉黑（也不得回退成默认 TTL）
+        this.tokenCache.delete(jti);
+        return;
+      }
+      this.tokenCache.set(jti, { revokedAt: Date.now() }, { ttl });
+      return;
+    }
     this.tokenCache.set(jti, { revokedAt: Date.now() });
   }
 
@@ -49,7 +61,17 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
     return this.tokenCache.get(jti) !== undefined;
   }
 
-  async blacklistUser(userId: string, reason: string): Promise<void> {
+  async blacklistUser(userId: string, reason: string, expiresAtMs?: number): Promise<void> {
+    // 与数据库实现同口径：管理端黑名单 TTL（默认 24h）不应被内存实现压缩成 2h
+    if (expiresAtMs !== undefined) {
+      const ttl = expiresAtMs - Date.now();
+      if (ttl <= 0) {
+        this.userCache.delete(userId);
+        return;
+      }
+      this.userCache.set(userId, { reason, timestamp: Date.now() }, { ttl });
+      return;
+    }
     this.userCache.set(userId, { reason, timestamp: Date.now() });
   }
 

@@ -73,5 +73,8 @@ export function respondOAuthError(
       },
     });
   }
-  return NextResponse.json({ error, error_description: errorDescription }, { status });
+  return NextResponse.json(
+    { error, error_description: errorDescription },
+    { status, headers: { "Cache-Control": "no-store" } }
+  );
 }

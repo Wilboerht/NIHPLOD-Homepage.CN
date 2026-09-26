@@ -286,4 +286,30 @@ describe("createBackchannelLogoutRouteHandler", () => {
     expect(res.status).toBe(500);
     expect(errorSpy).toHaveBeenCalled();
   });
+
+  it("onLogout 失败后 IdP 重投同一 token 可成功（jti 已释放，非 fail-open）", async () => {
+    installFetchRouter();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failing = createBackchannelLogoutRouteHandler({
+      ...config,
+      onLogout: () => {
+        throw new Error("db down");
+      },
+    });
+
+    const token = await buildLogoutToken(validLogoutPayload());
+    const first = await failing(postWithToken(token));
+    expect(first.status).toBe(500);
+
+    // 重投（同一 logout_token）应重新执行验证与钩子，而不是被重放检查 400 拒绝
+    const onRetry = vi.fn();
+    const succeeding = createBackchannelLogoutRouteHandler({
+      ...config,
+      onLogout: onRetry,
+    });
+    const second = await succeeding(postWithToken(token));
+    expect(second.status).toBe(200);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
+  });
 });

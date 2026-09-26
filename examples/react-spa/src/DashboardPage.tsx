@@ -18,14 +18,23 @@ function DashboardContent() {
   const { user, logout, getAccessToken } = useSso();
 
   const callApi = async () => {
-    const token = await getAccessToken();
-    if (!token) return;
-    // 示例：用 access_token 调用子项目后端 API
-    const res = await fetch("/api/protected", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    console.log("API response:", data);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        // 会话已失效（refresh 失败时 SDK 已清理本地 token）
+        alert("登录已过期，请重新登录");
+        return;
+      }
+      // 示例：用 access_token 调用子项目后端 API
+      const res = await fetch("/api/protected", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      console.log("API response:", data);
+    } catch (err) {
+      console.error("调用 API 失败:", err);
+      alert("请求失败，请稍后重试");
+    }
   };
 
   return (

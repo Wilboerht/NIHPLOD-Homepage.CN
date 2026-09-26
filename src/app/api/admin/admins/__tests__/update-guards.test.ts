@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 vi.mock("@/lib/prisma", () => {
-  const prisma = {
+  const prisma: Record<string, unknown> = {
     admin: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -26,6 +26,9 @@ vi.mock("@/lib/prisma", () => {
       create: vi.fn(),
     },
   };
+  // 删除安全策略使用交互式事务 + advisory lock
+  prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
+  prisma.$executeRaw = vi.fn().mockResolvedValue([]);
   return { prisma, default: prisma };
 });
 
@@ -285,6 +288,85 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
 
     expect(res.status).toBe(200);
     expect(prisma.admin.updateMany).toHaveBeenCalled();
+  });
+
+  it("委派管理员删除权限更高的非 owner 管理员被拒（防二级提权）", async () => {
+    (prisma.admin.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: TARGET_ID, role: "admin", permissions: [] },
+    ]);
+
+    const res = await POST(
+      createPostRequest({ ids: [TARGET_ID], action: "delete" }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("委派管理员删除同权限范围的管理员允许", async () => {
+    (prisma.admin.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: TARGET_ID, role: "ops", permissions: [] },
+    ]);
+
+    const res = await POST(
+      createPostRequest({ ids: [TARGET_ID], action: "delete" }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(200);
+    expect(prisma.admin.updateMany).toHaveBeenCalled();
+  });
+});
+
+describe("凭证类变更收归 owner", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "admin",
+      permissions: [],
+    });
+    (prisma.admin.count as ReturnType<typeof vi.fn>).mockResolvedValue(2);
+    (prisma.admin.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.admin.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      email: "target@test.com",
+      name: "Target",
+      role: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  it("委派管理员修改他人密码被拒", async () => {
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, password: "NewPassw0rd!" }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派管理员修改他人邮箱被拒", async () => {
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, email: "hijack@test.com" }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("owner 修改他人密码允许（并吊销会话）", async () => {
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, password: "NewPassw0rd!" }),
+      OWNER as never
+    );
+
+    expect(res.status).toBe(200);
+    expect(blacklistAdminTokens).toHaveBeenCalledWith(TARGET_ID, "admin_password_changed");
   });
 });
 

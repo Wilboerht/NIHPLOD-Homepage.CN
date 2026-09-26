@@ -117,7 +117,12 @@ describe("POST /api/auth/logout access token 失效场景", () => {
       where: { userId: "user-1", token: tokenHash, revokedAt: null },
       select: { clientId: true },
     });
-    expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", REFRESH_TOKEN);
+    expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      "user-1",
+      REFRESH_TOKEN,
+      undefined,
+      "logout"
+    );
     // 关联 OAuthSession 一并撤销（含 Backchannel Logout 通知）
     expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["oauth-client-1"]);
     expect(mockOAuthUpdateMany).toHaveBeenCalledWith({
@@ -133,7 +138,12 @@ describe("POST /api/auth/logout access token 失效场景", () => {
     const res = await POST(createRequest());
 
     expect(res.status).toBe(200);
-    expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", REFRESH_TOKEN);
+    expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      "user-1",
+      REFRESH_TOKEN,
+      undefined,
+      "logout"
+    );
     expect(mockSendBackchannel).not.toHaveBeenCalled();
     expect(mockOAuthUpdateMany).not.toHaveBeenCalled();
     expectCookiesCleared(res);

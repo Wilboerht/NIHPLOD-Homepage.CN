@@ -392,7 +392,12 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
     expect(await revokeRefreshRes.json()).toEqual({});
 
     // 验证 refresh token 已触发撤销逻辑
-    expect(mockRevokeRefreshToken).toHaveBeenCalledWith(userId, refresh_token);
+    expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      userId,
+      refresh_token,
+      undefined,
+      "user_revoke"
+    );
 
     // refresh token 携带 sid，仅撤销该会话（不波及同 user+client 的其它设备会话）
     expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({

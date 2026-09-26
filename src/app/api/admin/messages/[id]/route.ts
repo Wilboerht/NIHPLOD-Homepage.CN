@@ -116,12 +116,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    // 更新留言
+    // 更新留言：空字符串视为清空回复（同步清空 repliedAt），避免出现「空回复但已回复」的矛盾状态
     const updateData: Record<string, unknown> = {};
     if (validated.read !== undefined) updateData.read = validated.read;
     if (validated.reply !== undefined) {
-      updateData.reply = validated.reply;
-      updateData.repliedAt = new Date();
+      const reply = validated.reply.trim();
+      updateData.reply = reply || null;
+      updateData.repliedAt = reply ? new Date() : null;
     }
 
     const message = await prisma.contactMessage.update({
@@ -135,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       action: "update_message",
       targetType: "message",
       targetId: id,
-      detail: { read: validated.read, replied: !!validated.reply },
+      detail: { read: validated.read, replied: !!validated.reply?.trim() },
       adminId: admin.id,
       request,
     }).catch(() => {});

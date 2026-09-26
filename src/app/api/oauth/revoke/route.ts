@@ -73,12 +73,9 @@ export async function POST(request: NextRequest) {
       return resJson({ error: "invalid_client", error_description: "缺少 client_id" }, 401);
     }
 
-    if (!token) {
-      // RFC 7009: 即使 token 不存在也返回 200（防止信息泄漏）
-      return resJson({});
-    }
-
     // 验证 client：Public Client 允许不传 secret；Confidential Client 必须验证 secret
+    // 注意顺序：先完成 client 认证再处理 token（RFC 7009 要求客户端认证；
+    // 未认证调用不应获得代表"成功"的 200 响应）
     const verifyResult = await verifyOAuthClientSecret(client_id, client_secret, {
       allowPublic: true,
     });
@@ -93,6 +90,11 @@ export async function POST(request: NextRequest) {
       return resJson({ error: "invalid_client", error_description: "Client 认证失败" }, 401);
     }
     const client = verifyResult.client;
+
+    if (!token) {
+      // RFC 7009: 即使 token 不存在也返回 200（防止信息泄漏），但仅在 client 认证通过后
+      return resJson({});
+    }
 
     // RFC 7009 §2.1：token_type_hint 仅为提示。先尝试 hint 指定的类型，
     // 与实际类型不符（验签失败）时交叉尝试另一类型。
@@ -122,7 +124,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 使用 auth-security 的 revokeRefreshToken 撤销（自动处理 SHA-256 哈希比对）
-      const revokedCount = await revokeRefreshToken(refreshPayload.id, token);
+      const revokedCount = await revokeRefreshToken(refreshPayload.id, token, undefined, "user_revoke");
 
       // 同步撤销关联的 OAuthSession（登出后会话一并失效）。
       // refresh token 携带 sid 时仅撤销该会话：多设备同 client 场景下，
@@ -170,7 +172,11 @@ export async function POST(request: NextRequest) {
         return true;
       }
       if (accessPayload.jti) {
-        await revokeAccessToken(accessPayload.jti);
+        // 按 token 的真实 exp 写入黑名单 TTL（client 可配置 access token 最长 24h）
+        await revokeAccessToken(
+          accessPayload.jti,
+          accessPayload.exp ? accessPayload.exp * 1000 : undefined
+        );
       }
       scheduleSsoEvent({
         event: "logout",

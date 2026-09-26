@@ -37,6 +37,7 @@ const EVENT_LABELS: Record<string, string> = {
   backchannel_logout: "回登通知",
   consent: "授权确认",
   status_change: "状态变更",
+  profile_webhook: "资料变更推送",
 };
 
 export default function OAuthStatsPage() {

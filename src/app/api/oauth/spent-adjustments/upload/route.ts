@@ -11,7 +11,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
-import { uploadSpentProofFile } from "@/lib/spent-adjustment-files";
+import { uploadSpentProofFile, isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 import { rateLimit } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -64,13 +64,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 解析 multipart 前先按 Content-Length 粗筛，避免超大请求体完整缓冲进内存
+    if (isSpentProofMultipartTooLarge(request.headers.get("content-length"))) {
+      return resJson({ success: false, error: { code: "FILE_TOO_LARGE", message: "文件过大" } }, 413);
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     if (!file) {
       return resJson({ success: false, error: { code: "NO_FILE", message: "请选择要上传的图片" } }, 400);
     }
 
-    const result = await uploadSpentProofFile(file);
+    const result = await uploadSpentProofFile(file, payload.id);
     if (!result.ok) {
       return resJson(
         { success: false, error: { code: result.code, message: result.message } },

@@ -13,6 +13,25 @@ export function maskPhone(phone: string): string {
 }
 
 /**
+ * 地址脱敏：保留前 6 个字符（大致为省市区），其余以 **** 代替。
+ * 用于仅具备查看权限的管理端列表展示。
+ */
+export function maskAddress(address: string | null): string | null {
+  if (!address) return address;
+  return address.length <= 6 ? address : `${address.slice(0, 6)}****`;
+}
+
+/**
+ * 通用标识脱敏（OpenID / UnionID / 外部身份 subject 等）
+ * 保留前 3 与后 3 位，长度不足 6 位整体替换。
+ */
+export function maskIdentifier(value: string | null | undefined): string | null {
+  if (!value) return value ?? null;
+  if (value.length <= 6) return "****";
+  return `${value.slice(0, 3)}****${value.slice(-3)}`;
+}
+
+/**
  * IP 地址末段脱敏
  *
  * 用户端设备列表/登录历史展示用：保留前缀便于辨识大致网络，

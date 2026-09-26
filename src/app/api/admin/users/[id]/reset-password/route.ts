@@ -20,6 +20,7 @@ import { randomInt } from "@/lib/random";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { maskPhone } from "@/lib/mask-phone";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try {
       await prisma.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: new Date(), revokedReason: "credential_change" },
       });
       await blacklistUserTokens(user.id, "密码已被管理员重置");
 
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       action: "user_password_reset",
       targetType: "user",
       targetId: user.id,
-      detail: { phone: user.phone, revokedOAuthSessions },
+      detail: { phone: maskPhone(user.phone), revokedOAuthSessions },
       adminId: admin.id,
       request,
     });

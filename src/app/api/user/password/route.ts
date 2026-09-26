@@ -19,12 +19,11 @@ import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocation";
 import {
   checkAccountLockout,
   recordLoginAttempt,
   clearLoginAttempts,
-  hashRefreshToken,
 } from "@/lib/auth-security";
 import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 
@@ -80,8 +79,10 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    // 账户级防爆破：持有会话者也限制旧密码试错次数
-    const { locked, remainingMinutes } = await checkAccountLockout(user.phone);
+    // 账户级防爆破：持有会话者也限制旧密码试错次数。
+    // 使用独立 scope（password:），避免与登录失败共享锁定桶：
+    // 既防止"改密试错连带锁死登录"，也防止"登录爆破连带锁死改密"。
+    const { locked, remainingMinutes } = await checkAccountLockout(`password:${user.phone}`);
     if (locked) {
       return NextResponse.json(
         {
@@ -110,7 +111,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
     const isValidOld = await verifyPassword(oldPassword, user.password);
     if (!isValidOld) {
-      await recordLoginAttempt(user.phone, false, request, "password_incorrect", "password");
+      await recordLoginAttempt(`password:${user.phone}`, false, request, "password_incorrect", "password");
       return NextResponse.json(
         {
           success: false,
@@ -137,52 +138,16 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    // 清除密码类型的失败记录
-    await clearLoginAttempts(user.phone, "password");
+    // 清除密码类型的失败记录（与 checkAccountLockout 使用同一 scope 前缀）
+    await clearLoginAttempts(`password:${user.phone}`, "password");
 
-    // 撤销其他设备会话，保留当前设备：
-    // 当前设备的 refresh token 通过 Cookie 哈希比对识别；无 Cookie（Bearer 调用）时撤销全部。
-    // OAuth 会话与 OAuth 作用域的 refresh token 一并撤销，与 reset-password 口径一致。
+    // 撤销其他设备会话（保留当前设备）：
+    // 内部 token 按 Cookie 哈希保留当前设备；OAuth token/会话全撤并 backchannel 通知
     try {
-      const currentRefresh = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
-      const currentHash = currentRefresh ? hashRefreshToken(currentRefresh) : null;
-
-      // 内部（非 OAuth）refresh token：保留当前设备，撤销其余
-      await prisma.refreshToken.updateMany({
-        where: {
-          userId: user.id,
-          clientId: null,
-          revokedAt: null,
-          ...(currentHash ? { token: { not: currentHash } } : {}),
-        },
-        data: { revokedAt: new Date() },
+      await revokeOtherSessionsAfterCredentialChange({
+        userId: user.id,
+        currentRefreshToken: request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value ?? null,
       });
-
-      // OAuth 作用域的 refresh token 全部撤销（属于第三方应用授权，改密后应重新授权）
-      await prisma.refreshToken.updateMany({
-        where: { userId: user.id, clientId: { not: null }, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-
-      // 同步撤销 OAuth 会话，使携带 sid 的 access token 即时失效；
-      // 撤销前查出活跃会话的 clientId/sid，撤销后通过 backchannel logout 通知子站即时踢人
-      // （否则子站最长要等到 access token 自然过期才发现会话已撤销）
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
-        select: { clientId: true, sessionId: true },
-      });
-      await prisma.oAuthSession.updateMany({
-        where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      if (activeSessions.length > 0) {
-        const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-        const sids: Record<string, string> = {};
-        for (const s of activeSessions) {
-          if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-        }
-        await sendBackchannelLogout(user.id, clientIds, { sids });
-      }
     } catch (err) {
       // 密码已修改成功，会话撤销失败不阻断主流程，仅记录（风险窗口由 token 自然过期兜底）
       apiConsole.error("[ChangePassword] 撤销其他设备会话失败:", err);

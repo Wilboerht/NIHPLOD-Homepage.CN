@@ -29,7 +29,7 @@ interface FailureItem {
   attempts: number;
   nextRetryAt: string;
   createdAt: string;
-  payload: unknown;
+  hasPayload: boolean;
 }
 
 const KIND_TABS: { key: Kind; label: string }[] = [
@@ -217,32 +217,30 @@ function AdminWebhookFailuresContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-charcoal/8">
-              {items.map((item) => {
-                const payloadText = JSON.stringify(item.payload ?? {});
-                return (
-                  <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-brand-charcoal">{item.clientName || "—"}</p>
-                      <p className="font-mono text-xs text-brand-charcoal/40">{item.clientId}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
-                      <p className="font-mono text-xs text-brand-charcoal/40">
-                        {item.userPhone || item.userId}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
-                    <td className="px-4 py-3 text-brand-charcoal/70">
-                      {formatDateTime(item.nextRetryAt)}
-                    </td>
-                    <td className="px-4 py-3 text-brand-charcoal/70">
-                      {formatDateTime(item.createdAt)}
-                    </td>
-                    <td className="max-w-[16rem] px-4 py-3">
-                      <p className="truncate font-mono text-xs text-brand-charcoal/50" title={payloadText}>
-                        {payloadText}
-                      </p>
-                    </td>
+              {items.map((item) => (
+                <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-brand-charcoal">{item.clientName || "—"}</p>
+                    <p className="font-mono text-xs text-brand-charcoal/40">{item.clientId}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
+                    <p className="font-mono text-xs text-brand-charcoal/40">
+                      {item.userPhone || item.userId}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
+                  <td className="px-4 py-3 text-brand-charcoal/70">
+                    {formatDateTime(item.nextRetryAt)}
+                  </td>
+                  <td className="px-4 py-3 text-brand-charcoal/70">
+                    {formatDateTime(item.createdAt)}
+                  </td>
+                  <td className="max-w-[16rem] px-4 py-3">
+                    <p className="truncate text-xs text-brand-charcoal/50">
+                      {item.hasPayload ? "已隐藏（含用户资料）" : "—"}
+                    </p>
+                  </td>
                     <td className="px-4 py-3">
                       {canWrite ? (
                         <div className="flex gap-2">
@@ -250,6 +248,7 @@ function AdminWebhookFailuresContent() {
                             variant="outline"
                             size="sm"
                             loading={actioningId === item.id}
+                            disabled={actioningId !== null && actioningId !== item.id}
                             leftIcon={<RotateCw className="h-3.5 w-3.5" />}
                             onClick={() => setRetryTarget(item)}
                           >
@@ -259,6 +258,7 @@ function AdminWebhookFailuresContent() {
                             variant="outline"
                             size="sm"
                             className="text-red-600 hover:bg-red-50"
+                            disabled={actioningId !== null}
                             leftIcon={<Trash2 className="h-3.5 w-3.5" />}
                             onClick={() => setDropTarget(item)}
                           >
@@ -270,9 +270,8 @@ function AdminWebhookFailuresContent() {
                       )}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
+                ))}
+              </tbody>
           </table>
         )}
       </div>

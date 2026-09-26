@@ -101,14 +101,48 @@ export function getInternalApiKeys(): ParsedKeys {
 }
 
 /**
+ * 规范化查询串（签名用）：按 key/value 做**码点排序**（不依赖 ICU/locale），
+ * 再对 key/value 分别 `encodeURIComponent` 后以 `k=v&...` 拼接。
+ *
+ * 编码的目的：消除 `?a=b%26c%3D` 与 `?a=b&c=` 这类"解析后不同、朴素拼接相同"的
+ * 歧义（值中的 & / = 会破坏 canonical 串结构），保证签名严格绑定原始参数集合。
+ */
+export function canonicalizeQuery(search: string): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const pairs: [string, string][] = [];
+  for (const [key, value] of params.entries()) {
+    pairs.push([key, value]);
+  }
+  // 码点比较：跨语言/跨实现可复现（禁止 localeCompare，避免 ICU 差异导致签名不一致）
+  pairs.sort((a, b) => {
+    if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+    if (a[1] !== b[1]) return a[1] < b[1] ? -1 : 1;
+    return 0;
+  });
+  return pairs
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
+}
+
+/** 旧版签名（不绑定 query）的过渡期开关；子站全部升级后可设为 false 强制新格式 */
+function isLegacySignatureAllowed(): boolean {
+  return process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE !== "false";
+}
+
+let legacySignatureWarned = false;
+
+/**
  * 生成请求签名
  *
  * @param secret - 项目密钥
  * @param method - HTTP 方法，如 POST
- * @param path - 请求路径，如 /api/v1/internal/wechat/send-template
+ * @param path - 请求路径（不含 query），如 /api/v1/internal/points/balance
  * @param timestamp - Unix 时间戳（秒）
  * @param nonce - 随机字符串
  * @param bodyHash - 请求体 SHA-256 哈希（hex）
+ * @param query - 规范化查询串（canonicalizeQuery）。传入时使用新格式
+ *   `METHOD|path|query|timestamp|nonce|bodyHash`（绑定 query，防篡改）；
+ *   不传时保持旧格式 `METHOD|path|timestamp|nonce|bodyHash`（仅过渡期使用）
  */
 export function generateInternalApiSignature(
   secret: string,
@@ -116,16 +150,23 @@ export function generateInternalApiSignature(
   path: string,
   timestamp: number,
   nonce: string,
-  bodyHash: string
+  bodyHash: string,
+  query?: string
 ): string {
-  const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`;
+  const payload =
+    query === undefined
+      ? `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`
+      : `${method.toUpperCase()}|${path}|${query}|${timestamp}|${nonce}|${bodyHash}`;
   return createHmac("sha256", secret).update(payload).digest("hex");
 }
 
 /**
  * 出站方向：官网调用子站内部接口（如 advisor 的 /api/internal/*）时生成 HMAC 签名请求头。
- * 签名算法与子站入站校验一致：HMAC-SHA256(secret, "METHOD|path|timestamp|nonce|bodySha256")，
- * path 仅含 pathname（不含 query）。
+ *
+ * 签名算法（新格式，推荐）：HMAC-SHA256(secret, "METHOD|path|query|timestamp|nonce|bodySha256")，
+ * query 为 canonicalizeQuery 结果（无 query 时为空串）。
+ * 默认仍使用旧格式（不绑定 query）以兼容未升级的子站；先让子站支持双验签，
+ * 再将 `INTERNAL_API_SIGN_QUERY=true` 打开切换到新格式。
  *
  * @returns 签名请求头；INTERNAL_API_KEYS 中未配置该项目密钥时返回 null（调用方决定回退策略）
  */
@@ -133,7 +174,8 @@ export function createSignedInternalRequestHeaders(
   project: string,
   method: string,
   path: string,
-  bodyText = ""
+  bodyText = "",
+  options?: { query?: string }
 ): Record<string, string> | null {
   const { keys } = getInternalApiKeys();
   const config = [...keys.values()].find((item) => item.project === project);
@@ -142,13 +184,15 @@ export function createSignedInternalRequestHeaders(
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = randomBytes(16).toString("hex");
   const bodyHash = createHash("sha256").update(bodyText).digest("hex");
+  const useQueryBinding = process.env.INTERNAL_API_SIGN_QUERY === "true";
   const signature = generateInternalApiSignature(
     config.secret,
     method,
     path,
     timestamp,
     nonce,
-    bodyHash
+    bodyHash,
+    useQueryBinding ? options?.query ?? "" : undefined
   );
 
   return {
@@ -162,6 +206,12 @@ export function createSignedInternalRequestHeaders(
 /**
  * 验证内部 API 请求签名
  *
+ * 支持双验签过渡：优先校验新格式（绑定 canonical query，含空 query 的路径）；
+ * 当 `INTERNAL_API_ALLOW_LEGACY_SIGNATURE !== "false"`（默认）时，同时接受旧格式，
+ * 以保证未升级的子站在过渡期内可用（接受旧格式时会输出一次告警）。
+ *
+ * @param options.query - canonicalizeQuery 结果；路由应始终传入（无 query 传 ""），
+ *   否则新格式按空 query 校验、仍会回退旧格式。
  * @returns 验证通过时返回项目配置，否则返回 null
  */
 export function verifyInternalApiSignature(
@@ -171,7 +221,8 @@ export function verifyInternalApiSignature(
   path: string,
   timestamp: number,
   nonce: string,
-  bodyHash: string
+  bodyHash: string,
+  options?: { query?: string }
 ): InternalApiKeyConfig | null {
   const { keys } = getInternalApiKeys();
   const config = keys.get(key);
@@ -180,27 +231,53 @@ export function verifyInternalApiSignature(
     return null;
   }
 
-  const expected = generateInternalApiSignature(
-    config.secret,
-    method,
-    path,
-    timestamp,
-    nonce,
-    bodyHash
-  );
+  const candidates: { signature: string; legacy: boolean }[] = [
+    {
+      signature: generateInternalApiSignature(
+        config.secret,
+        method,
+        path,
+        timestamp,
+        nonce,
+        bodyHash,
+        options?.query ?? ""
+      ),
+      legacy: false,
+    },
+  ];
+  if (isLegacySignatureAllowed()) {
+    candidates.push({
+      signature: generateInternalApiSignature(config.secret, method, path, timestamp, nonce, bodyHash),
+      legacy: true,
+    });
+  }
 
+  let signatureBuf: Buffer;
   try {
-    const signatureBuf = Buffer.from(signature, "hex");
-    const expectedBuf = Buffer.from(expected, "hex");
-
-    if (signatureBuf.length !== expectedBuf.length || !timingSafeEqual(signatureBuf, expectedBuf)) {
-      return null;
-    }
+    signatureBuf = Buffer.from(signature, "hex");
   } catch {
     return null;
   }
 
-  return config;
+  for (const candidate of candidates) {
+    try {
+      const expectedBuf = Buffer.from(candidate.signature, "hex");
+      if (signatureBuf.length === expectedBuf.length && timingSafeEqual(signatureBuf, expectedBuf)) {
+        if (candidate.legacy && !legacySignatureWarned) {
+          legacySignatureWarned = true;
+          apiConsole.warn(
+            "[InternalApi] 检测到旧格式签名（未绑定 query）：为兼容未升级子站暂时放行。" +
+              "全部子站升级后请设置 INTERNAL_API_ALLOW_LEGACY_SIGNATURE=false 强制新格式。"
+          );
+        }
+        return config;
+      }
+    } catch {
+      /* 尝试下一候选 */
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -282,7 +359,7 @@ export async function cleanupInternalApiNonces(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[CleanupInternalApiNonces] 清理失败:", error);
-    return 0;
+    throw error;
   }
 }
 

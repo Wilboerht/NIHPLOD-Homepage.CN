@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { RequirePermission } from "@/components/admin/RequirePermission";
 
 // 分类类型
 interface Category {
@@ -38,8 +40,11 @@ interface Category {
   createdAt: string;
 }
 
-export default function AdminCategoriesPage() {
+function AdminCategoriesContent() {
   const { success, error: showError } = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  const canWrite = canAdmin("categories:write");
+  const canDelete = canAdmin("categories:delete");
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -53,6 +58,10 @@ export default function AdminCategoriesPage() {
   // 拖拽状态
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  // 排序请求串行化：进行中禁止再次拖拽/移动，避免中间态覆盖
+  const [savingOrder, setSavingOrder] = useState(false);
+  // 可见性切换中的行 id
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // 获取分类列表
   const fetchCategories = useCallback(async () => {
@@ -92,27 +101,32 @@ export default function AdminCategoriesPage() {
     try {
       await apiDelete(`/api/admin/categories/${category.id}`);
       success("分类已删除");
+      setDeleteConfirm({ open: false });
       fetchCategories();
     } catch (err) {
       showError(err instanceof Error ? err.message : "删除失败");
     } finally {
       setDeleting(false);
-      setDeleteConfirm({ open: false });
     }
   };
 
-  // 切换前台可见性
+  // 切换前台可见性（带行级 pending，防重复点击）
   const handleToggleVisible = async (category: Category) => {
+    if (togglingId) return;
+    setTogglingId(category.id);
+    const nextVisible = !category.visible;
     try {
-      await apiPut(`/api/admin/categories/${category.id}`, { visible: !category.visible });
+      await apiPut(`/api/admin/categories/${category.id}`, { visible: nextVisible });
 
       // 更新本地状态
       setCategories((prev) =>
-        prev.map((cat) => (cat.id === category.id ? { ...cat, visible: !category.visible } : cat))
+        prev.map((cat) => (cat.id === category.id ? { ...cat, visible: nextVisible } : cat))
       );
-      success(category.visible ? "分类已隐藏" : "分类已显示");
+      success(nextVisible ? "分类已显示" : "分类已隐藏");
     } catch (err) {
       showError(err instanceof Error ? err.message : "更新失败");
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -129,6 +143,11 @@ export default function AdminCategoriesPage() {
 
   // 拖拽结束
   const handleDragEnd = async () => {
+    if (savingOrder || !canWrite) {
+      setDragItem(null);
+      setDragOverItem(null);
+      return;
+    }
     if (dragItem === null || dragOverItem === null || dragItem === dragOverItem) {
       setDragItem(null);
       setDragOverItem(null);
@@ -147,6 +166,7 @@ export default function AdminCategoriesPage() {
     setDragOverItem(null);
 
     // 保存到服务器
+    setSavingOrder(true);
     try {
       await apiPut("/api/admin/categories/order", {
         items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
@@ -156,11 +176,14 @@ export default function AdminCategoriesPage() {
     } catch {
       showError("保存排序失败");
       fetchCategories(); // 恢复原数据
+    } finally {
+      setSavingOrder(false);
     }
   };
 
   // 上移/下移（移动端/键盘替代拖拽）
   const moveCategory = async (index: number, direction: -1 | 1) => {
+    if (savingOrder || !canWrite) return;
     const target = index + direction;
     if (target < 0 || target >= categories.length) return;
 
@@ -171,6 +194,7 @@ export default function AdminCategoriesPage() {
     const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
     setCategories(updated);
 
+    setSavingOrder(true);
     try {
       await apiPut("/api/admin/categories/order", {
         items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
@@ -179,6 +203,8 @@ export default function AdminCategoriesPage() {
     } catch {
       showError("保存排序失败");
       fetchCategories(); // 恢复原数据
+    } finally {
+      setSavingOrder(false);
     }
   };
 
@@ -200,17 +226,19 @@ export default function AdminCategoriesPage() {
             管理产品分类，拖拽调整排序，共 {categories.length} 个分类
           </p>
         </div>
-        <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAdd}>
-          新增分类
-        </Button>
+        {canWrite && (
+          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAdd}>
+            新增分类
+          </Button>
+        )}
       </div>
 
-      {/* 分类列表 */}
-      <div className="rounded-xl bg-white shadow-sm">
+      {/* 分类列表（窄屏横向滚动，避免网格挤压错位） */}
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         {categories.length === 0 ? (
           <Empty className="h-48" title="暂无分类" description="点击上方按钮创建第一个分类" />
         ) : (
-          <div className="divide-brand-charcoal/8 divide-y">
+          <div className="divide-brand-charcoal/8 min-w-[880px] divide-y">
             {/* 表头 */}
             <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <div className="col-span-1"></div>
@@ -225,8 +253,8 @@ export default function AdminCategoriesPage() {
             {categories.map((category, index) => (
               <div
                 key={category.id}
-                draggable
-                onDragStart={() => handleDragStart(index)}
+                draggable={canWrite}
+                onDragStart={() => canWrite && handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
                 className={cn(
@@ -237,17 +265,23 @@ export default function AdminCategoriesPage() {
               >
                 {/* 拖拽手柄 + 移动端排序按钮 */}
                 <div className="col-span-1 flex items-center gap-1">
-                  <button
-                    className="hidden cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal md:block"
-                    title="拖拽排序"
-                  >
-                    <GripVertical className="h-5 w-5" />
-                  </button>
+                  {canWrite && (
+                    <button
+                      className="hidden cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-30 md:block"
+                      title="拖拽排序"
+                      disabled={savingOrder}
+                      aria-label={`拖拽排序 ${category.name}`}
+                    >
+                      <GripVertical className="h-5 w-5" />
+                    </button>
+                  )}
+                  {canWrite && (
                   <div className="flex md:hidden">
                     <Tooltip content="上移" side="top">
                       <button
                         onClick={() => moveCategory(index, -1)}
-                        disabled={index === 0}
+                        disabled={index === 0 || savingOrder}
+                        aria-label={`上移 ${category.name}`}
                         className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-30"
                       >
                         <ChevronUp className="h-4 w-4" />
@@ -256,13 +290,15 @@ export default function AdminCategoriesPage() {
                     <Tooltip content="下移" side="top">
                       <button
                         onClick={() => moveCategory(index, 1)}
-                        disabled={index === categories.length - 1}
+                        disabled={index === categories.length - 1 || savingOrder}
+                        aria-label={`下移 ${category.name}`}
                         className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-30"
                       >
                         <ChevronDown className="h-4 w-4" />
                       </button>
                     </Tooltip>
                   </div>
+                  )}
                 </div>
 
                 {/* 名称（点击跳转产品页并按该分类筛选） */}
@@ -297,6 +333,8 @@ export default function AdminCategoriesPage() {
                   <Tooltip content={category.visible ? "点击隐藏" : "点击显示"} side="top">
                     <button
                       onClick={() => handleToggleVisible(category)}
+                      disabled={!canWrite || togglingId === category.id}
+                      aria-label={`${category.visible ? "隐藏" : "显示"}分类 ${category.name}`}
                       className={cn(
                         "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
                         category.visible
@@ -319,22 +357,28 @@ export default function AdminCategoriesPage() {
 
                 {/* 操作 */}
                 <div className="col-span-3 flex items-center justify-end gap-2">
-                  <Tooltip content="编辑" side="top">
-                    <button
-                      onClick={() => handleEdit(category)}
-                      className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="删除" side="top">
-                    <button
-                      onClick={() => setDeleteConfirm({ open: true, category })}
-                      className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </Tooltip>
+                  {canWrite && (
+                    <Tooltip content="编辑" side="top">
+                      <button
+                        onClick={() => handleEdit(category)}
+                        aria-label={`编辑 ${category.name}`}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  {canDelete && (
+                    <Tooltip content="删除" side="top">
+                      <button
+                        onClick={() => setDeleteConfirm({ open: true, category })}
+                        aria-label={`删除 ${category.name}`}
+                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
             ))}
@@ -367,5 +411,13 @@ export default function AdminCategoriesPage() {
         confirmDisabled={!!deleteConfirm.category?.productCount}
       />
     </div>
+  );
+}
+
+export default function AdminCategoriesPage() {
+  return (
+    <RequirePermission permission="categories:read">
+      <AdminCategoriesContent />
+    </RequirePermission>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { apiPost, apiPatch } from "@/lib/api-client";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -76,6 +77,13 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     latitude: null,
     ...initialData,
   });
+  // 初始快照（state 而非 ref，便于渲染期计算脏值）
+  const [initialSnapshot] = useState(() => JSON.stringify(formData));
+  const isDirty = useMemo(() => JSON.stringify(formData) !== initialSnapshot, [
+    formData,
+    initialSnapshot,
+  ]);
+  const { guard: guardNavigation } = useUnsavedChanges(isDirty);
 
   const updateField = <K extends keyof Job>(field: K, value: Job[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -174,17 +182,25 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         published: publishedState !== undefined ? publishedState : formData.published,
       };
 
-      // 如果没有坐标，尝试强制解析一次（带 10 秒超时）
-      if (!finalData.longitude || !finalData.latitude) {
-        const coords = await Promise.race([
-          ensureCoordinates(finalData.location || ""),
-          new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error("坐标获取超时")), 10000)
-          ),
-        ]);
-        if (coords) {
-          finalData.longitude = coords.lng;
-          finalData.latitude = coords.lat;
+      // 如果没有坐标，尝试自动解析一次（带 10 秒超时）。
+      // 坐标为选填：解析失败/超时只跳过，不阻断保存。
+      let coordsTimer: ReturnType<typeof setTimeout> | undefined;
+      if (finalData.longitude == null || finalData.latitude == null) {
+        try {
+          const coords = await Promise.race([
+            ensureCoordinates(finalData.location || ""),
+            new Promise<null>((_, reject) => {
+              coordsTimer = setTimeout(() => reject(new Error("坐标获取超时")), 10000);
+            }),
+          ]);
+          if (coords) {
+            finalData.longitude = coords.lng;
+            finalData.latitude = coords.lat;
+          }
+        } catch {
+          // 高德不可用或超时：保留空坐标继续保存
+        } finally {
+          if (coordsTimer) clearTimeout(coordsTimer);
         }
       }
 
@@ -239,7 +255,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           <AmapLocationPicker
             value={formData.location || ""}
             onChange={(val: string) => updateField("location", val)}
-            onCoordsChange={(lng: number, lat: number) => {
+            onCoordsChange={(lng: number | null, lat: number | null) => {
               updateField("longitude", lng);
               updateField("latitude", lat);
             }}
@@ -273,9 +289,13 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             type="number"
             step="0.000001"
             value={formData.longitude ?? ""}
-            onChange={(e) =>
-              updateField("longitude", e.target.value === "" ? null : Number(e.target.value))
-            }
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              updateField(
+                "longitude",
+                e.target.value === "" || !Number.isFinite(value) ? null : value
+              );
+            }}
             placeholder="如：121.472000"
           />
           <Input
@@ -283,9 +303,13 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             type="number"
             step="0.000001"
             value={formData.latitude ?? ""}
-            onChange={(e) =>
-              updateField("latitude", e.target.value === "" ? null : Number(e.target.value))
-            }
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              updateField(
+                "latitude",
+                e.target.value === "" || !Number.isFinite(value) ? null : value
+              );
+            }}
             placeholder="如：31.232000"
           />
         </div>
@@ -333,7 +357,12 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           />
         </div>
         <div className="flex gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => guardNavigation(() => router.back())}
+            disabled={loading}
+          >
             取消
           </Button>
           <Button type="submit" loading={loading}>

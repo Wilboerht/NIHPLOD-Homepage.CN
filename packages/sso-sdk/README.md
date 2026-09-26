@@ -84,7 +84,7 @@ if (params.get("sso_probe") === "no_session") {
 
 ### `sso.handleCallback(callbackUrl)`
 
-Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens. When an `id_token` is present, the SDK verifies its signature, issuer, audience, expiry and `at_hash`, and — when the login was initiated via `login()` / `getLoginUrl()` / `loginPopup()` — also validates the OIDC `nonce` claim against the value generated at login time (constant-time comparison, fail-closed, protecting against ID Token replay).
+Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens. When the requested scope includes `openid`, the token response **must** contain an `id_token` (fail-closed: a missing `id_token` is rejected instead of silently skipping validation). The SDK verifies the ID Token's signature, issuer, audience, expiry and `at_hash`, and — when the login was initiated via `login()` / `getLoginUrl()` / `loginPopup()` — also validates the OIDC `nonce` claim against the value generated at login time (constant-time comparison, protecting against ID Token replay; the check is skipped if no nonce is stored, e.g. when the Next.js nonce cookie has expired).
 
 | Parameter | Type | Description |
 |------|------|------|
@@ -225,8 +225,11 @@ import { SsoProvider } from "@nihplod/sso-sdk/react";
     redirectUri: "...",
     ssoBaseUrl: "...",
     scopes: "openid profile",
+    debug: false,            // Optional: verbose SDK logs ([SSO SDK] prefix)
   }}
-  refreshThreshold={60}  // Auto-refresh 60s before expiry
+  refreshThreshold={60}      // Auto-refresh 60s before expiry
+  onTokenRefreshed={(token) => { /* sync token elsewhere */ }}
+  onSessionExpired={(err) => { /* show "session expired, please sign in again" */ }}
 >
   <App />
 </SsoProvider>
@@ -242,7 +245,9 @@ const {
   isAuthenticated,   // boolean
   isLoading,         // boolean
   error,             // SsoError | null — set when loading user info fails (e.g. session revoked)
+  sessionExpired,    // boolean — refresh_token revoked/expired; survives "no local token" reloads
   login,             // (returnUrl?: string) => Promise<void>
+  loginPopup,        // (options?: { returnUrl?; width?; height? }) => Promise<TokenData>
   logout,            // (redirectToSso?: boolean) => Promise<void>
   refreshUser,       // () => Promise<void>
   getAccessToken,    // () => Promise<string | null>
@@ -251,6 +256,12 @@ const {
 ```
 
 Authentication state is three-valued: `isLoading` (initializing/refreshing) → `error` (load failed, e.g. session expired) → `user` (authenticated). Render your UI accordingly.
+
+`sessionExpired` turns `true` when refresh fails because the token was revoked/expired; unlike `error` it is **not** cleared when the local token has already been removed, so you can reliably show a "登录已过期，请重新登录" banner. It resets on successful login or explicit `logout()`.
+
+`loginPopup` keeps the current page state (no full-page redirect) and returns the exchanged token data; the callback tab notifies the opener via `postMessage` with a one-time nonce. If the browser blocks the popup, catch the `popup_blocked` error and fall back to `login()`.
+
+Cross-tab sync: `logout()` and silent token rotation broadcast over `BroadcastChannel`, so other tabs update immediately even though the default token storage is `sessionStorage` (a raw `storage` event does not fire for `sessionStorage`; the listener only helps when you opt into `createSecureStorage({ persist: true })`).
 
 ### `<RequireAuth>`
 
@@ -375,6 +386,12 @@ export const GET = createCallbackRouteHandler({
   ssoBaseUrl: "https://nihplod.cn",
   redirectUri: "https://yourapp.com/api/auth/callback",
   defaultReturnPath: "/dashboard",
+  // Optional but recommended: keep in sync with createSsoMiddleware's `scopes`.
+  // Only when explicitly set AND it includes `openid` does the callback require an
+  // id_token (fail-closed). If omitted, legacy-compatible behavior applies: the ID
+  // token is validated when present but its absence is not rejected, so upgrading
+  // apps that didn't configure scopes keep working.
+  scopes: "openid profile",
   // Same as middleware; Confidential Client can pass clientSecret
 });
 ```
@@ -440,9 +457,13 @@ Default cookie names:
 | access_token | `__Host-nihplod_sso_at` | Requires Secure + Path=/ + no Domain |
 | refresh_token | `__Host-nihplod_sso_rt` | Requires Secure + Path=/ + no Domain |
 | state | `__Host-nihplod_sso_state` | Requires Secure + Path=/ + no Domain |
-| nonce | `__Host-nihplod_sso_nonce` | OIDC nonce for ID Token replay protection (validated fail-closed in the callback); Requires Secure + Path=/ + no Domain |
+| nonce | `__Host-nihplod_sso_nonce` | OIDC nonce for ID Token replay protection. Validated when the nonce cookie is present (cookie TTL 10 minutes); if the cookie has expired, the nonce check is skipped. Requires Secure + Path=/ + no Domain |
+| id_token | `__Host-nihplod_sso_id` | ID token cookie used as `id_token_hint` for RP-Initiated Logout. Requires Secure + Path=/ + no Domain |
+| logout_state | `__Host-nihplod_sso_logout_state` | One-time logout state for CSRF protection on the RP-Initiated Logout callback. Requires Secure + Path=/ + no Domain |
 | return_url | `__Host-nihplod_sso_return` | Requires Secure + Path=/ + no Domain |
 | verifier | `__Secure-nihplod_sso_verifier` | Requires Secure + no Domain; Path is the callback path, therefore uses `__Secure-` prefix |
+
+> In the Next.js BFF flow, the transient cookies above (`state`, `nonce`, `return_url`, `verifier`) are written with the per-login `state` as a name suffix (e.g. `__Host-nihplod_sso_state_<state>`) and looked up by the `state` returned from the IdP. This keeps concurrent tabs from overwriting each other's login attempt. The legacy unsuffixed names are still accepted as a fallback during rolling upgrades.
 
 > For local development with `http://localhost`, browsers reject `Secure` cookies — and cookies named with `__Host-`/`__Secure-` prefixes are refused outright when `Secure` is missing (Chrome, Edge and Firefox all enforce this; behavior on `localhost` varies by browser, some treat it as a secure context for `Secure` cookies, none accept prefixed names without `Secure`). The visible symptom: the login callback appears to succeed but the cookies are never written, so the middleware keeps judging you as logged out and redirects to the SSO authorize page in an infinite loop. Fix: set `insecureLocalDev: true` on `createSsoMiddleware`, `createCallbackRouteHandler` and `createLogoutRouteHandler` (it disables `Secure` and strips the prefixes, with a startup warning), or serve local dev over HTTPS. HTTPS is mandatory in production — and as a production guard, all three helpers force-ignore `insecureLocalDev` (keeping `Secure` and the `__Host-`/`__Secure-` prefixes, with a warning) when `NODE_ENV=production` and `ssoBaseUrl` uses HTTPS.
 
@@ -465,6 +486,33 @@ setTokenStorage(createSecureStorage({ persist: true }));
 ```
 
 In production, it is more secure to keep the refresh token in a Service Worker or HTTP-only cookie, exposing only the short-lived access token to the frontend.
+
+---
+
+## Error Codes
+
+All SDK failures are thrown as `SsoError` (`error.code` / `error.description`; `error.message` is `[SSO SDK] <code>: <description>`).
+
+| Code | Meaning | Typical handling |
+| --- | --- | --- |
+| `invalid_config` | Missing/invalid config (clientId, redirectUri, ssoBaseUrl), or middleware/callback config mismatch | Fix configuration; check `insecureLocalDev` and cookie names are identical everywhere |
+| `state_mismatch` | OAuth `state` mismatch (CSRF protection) | Restart login; never ignore |
+| `pkce_required` | PKCE verifier missing (expired tab / different tab) | Restart login |
+| `authorization_code_expired` / `authorization_code_used` | Code expired or already redeemed | Restart login |
+| `user_denied_authorization` | User cancelled on the SSO page | Show a neutral "login cancelled" message |
+| `client_disabled` | Client disabled in admin console | Contact administrator |
+| `account_disabled` | User account disabled | Show reason, contact support |
+| `session_expired` / `no_refresh_token` | Refresh token revoked/expired | Clear local state and ask the user to sign in again (`sessionExpired` is set on `SsoProvider`) |
+| `network_error` | Network failure or request timeout (10s; revoke 3s) | Show retry; keep local tokens for retryable cases |
+| `rate_limited` | Server rate limit | Back off and retry later |
+| `sso_server_error` | SSO server error | Retry later |
+| `popup_blocked` | `window.open` blocked | Fall back to full-page `login()` |
+| `popup_closed` | User closed the login popup | Offer retry |
+| `id_token_*` (`id_token_invalid`, `..._signature`, `..._nonce_mismatch`, `..._at_hash_mismatch`, …) | ID token missing or failed validation (fail-closed) | Restart login; if persistent, check `scopes` parity between middleware and callback |
+| `logout_token_*` | Back-channel logout token validation failed | Return 400/500 so the IdP retries; check clock skew/JWKS |
+| `not_authenticated` | No local token when calling user APIs | Trigger login |
+
+Next.js callback errors are rendered as a branded HTML page for browser navigations (with a "重新登录" action). Programmatic callers can force JSON with `?format=json` or an `Accept` header that excludes `text/html`. Customize the page with the `renderErrorPage` option; enable `debug: true` for server-side error logs.
 
 ---
 

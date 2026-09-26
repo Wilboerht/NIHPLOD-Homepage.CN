@@ -44,15 +44,15 @@ export async function POST(request: NextRequest) {
 
       if (!allDevices && refreshToken) {
         // 仅撤销当前设备的 Refresh Token
-        await revokeRefreshToken(user.id, refreshToken);
+        await revokeRefreshToken(user.id, refreshToken, undefined, "logout");
       } else {
         // 撤销所有 Refresh Token
-        await revokeRefreshToken(user.id);
+        await revokeRefreshToken(user.id, undefined, undefined, "logout");
       }
 
       // 撤销当前 access token 的 jti（防止登出后仍被使用）
       if (user.jti) {
-        await revokeAccessToken(user.jti);
+        await revokeAccessToken(user.jti, user.exp ? user.exp * 1000 : undefined);
       }
 
       // access token 已不再携带明文手机号，审计日志的 identifier 按 id 查库获取
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
               select: { clientId: true },
             });
             if (refreshRecord) {
-              await revokeRefreshToken(refreshPayload.id, refreshToken);
+              await revokeRefreshToken(refreshPayload.id, refreshToken, undefined, "logout");
               // 关联 OAuthSession 一并撤销（与已认证路径的单设备登出口径一致）
               if (refreshRecord.clientId) {
                 await sendBackchannelLogout(refreshPayload.id, [refreshRecord.clientId]);

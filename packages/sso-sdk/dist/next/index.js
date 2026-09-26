@@ -281,11 +281,28 @@ function createSsoMiddleware(config) {
     const loginUrl = new URL("/api/oauth/authorize", normalizedBase);
     loginUrl.search = authorizeParams.toString();
     const response = import_server.NextResponse.redirect(loginUrl);
-    response.cookies.set(stateCookieName, state, getHostCookieOptions(600, secureCookies));
-    response.cookies.set(nonceCookieName, nonce, getHostCookieOptions(600, secureCookies));
-    response.cookies.set(verifierCookieName, verifier, getSecureCookieOptions(600, callbackPath, secureCookies));
+    const attemptSuffix = `_${state}`;
+    response.cookies.set(
+      `${stateCookieName}${attemptSuffix}`,
+      state,
+      getHostCookieOptions(600, secureCookies)
+    );
+    response.cookies.set(
+      `${nonceCookieName}${attemptSuffix}`,
+      nonce,
+      getHostCookieOptions(600, secureCookies)
+    );
+    response.cookies.set(
+      `${verifierCookieName}${attemptSuffix}`,
+      verifier,
+      getSecureCookieOptions(600, callbackPath, secureCookies)
+    );
     const safeReturnUrl = (request.nextUrl.pathname + request.nextUrl.search).slice(0, 2048);
-    response.cookies.set(returnUrlCookieName, safeReturnUrl, getHostCookieOptions(600, secureCookies));
+    response.cookies.set(
+      `${returnUrlCookieName}${attemptSuffix}`,
+      safeReturnUrl,
+      getHostCookieOptions(600, secureCookies)
+    );
     if (accessTokenCookie?.value) {
       response.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
     }
@@ -308,12 +325,17 @@ var SsoError = class extends Error {
 };
 
 // src/core/security.ts
+var UNSAFE_URL_CHAR_PATTERN = /[\\\u0000-\u001F\u007F]/;
 function isTrustedReturnUrl(url, currentOrigin) {
   if (!url) return false;
-  if (url.includes("\\")) return false;
-  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  if (UNSAFE_URL_CHAR_PATTERN.test(url)) return false;
+  if (url.startsWith("//")) return false;
+  if (url.startsWith("/")) return true;
   try {
-    return new URL(url).origin === currentOrigin;
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    return parsed.origin === currentOrigin;
   } catch {
     return false;
   }
@@ -547,6 +569,92 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
 }
 
 // src/next/callback.ts
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
+}
+function buildErrorPage(status, error, errorDescription) {
+  const safeDescription = escapeHtml(errorDescription);
+  const safeError = escapeHtml(error);
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>\u767B\u5F55\u5931\u8D25</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #fafafa; color: #2c2c2c; }
+  main { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+  h1 { font-size: 1.25rem; font-weight: 500; letter-spacing: 0.08em; margin: 0 0 0.75rem; }
+  p { margin: 0 0 1.5rem; color: #6b7280; font-size: 0.875rem; line-height: 1.6; max-width: 28rem; }
+  .actions { display: flex; gap: 0.75rem; }
+  a { display: inline-block; padding: 0.6rem 1.4rem; font-size: 0.8125rem; letter-spacing: 0.08em; text-decoration: none; }
+  a.primary { background: #2c2c2c; color: #fff; }
+  a.secondary { border: 1px solid rgba(44, 44, 44, 0.25); color: #2c2c2c; }
+  .code { margin-top: 2rem; font-size: 0.6875rem; color: #9ca3af; }
+</style>
+</head>
+<body>
+<main>
+  <h1>\u767B\u5F55\u5931\u8D25</h1>
+  <p>${safeDescription}</p>
+  <div class="actions">
+    <a class="primary" href="/">\u91CD\u65B0\u767B\u5F55</a>
+    <a class="secondary" href="/">\u8FD4\u56DE\u9996\u9875</a>
+  </div>
+  <p class="code">\u9519\u8BEF\u7801\uFF1A${safeError}\uFF08\u53CD\u9988\u95EE\u9898\u65F6\u8BF7\u9644\u4E0A\uFF09</p>
+</main>
+</body>
+</html>`;
+}
+function buildErrorResponse(request, status, error, errorDescription, custom) {
+  if (custom) {
+    const handled = custom({ error, errorDescription, status, request });
+    if (handled instanceof Promise) {
+      return handled.then(
+        (res) => res ? toNextResponse(res) : defaultErrorResponse(request, status, error, errorDescription)
+      );
+    }
+    if (handled) return toNextResponse(handled);
+  }
+  return defaultErrorResponse(request, status, error, errorDescription);
+}
+function toNextResponse(res) {
+  if (res instanceof import_server2.NextResponse) return res;
+  return new import_server2.NextResponse(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers
+  });
+}
+function defaultErrorResponse(request, status, error, errorDescription) {
+  const accept = request.headers.get("accept") ?? "";
+  const wantsHtml = accept.includes("text/html") && request.nextUrl.searchParams.get("format") !== "json";
+  if (wantsHtml) {
+    return new import_server2.NextResponse(buildErrorPage(status, error, errorDescription), {
+      status,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store"
+      }
+    });
+  }
+  return import_server2.NextResponse.json({ error, error_description: errorDescription }, { status });
+}
 function createCallbackRouteHandler(config) {
   const {
     clientId,
@@ -554,6 +662,7 @@ function createCallbackRouteHandler(config) {
     redirectUri,
     clientSecret,
     defaultReturnPath = "/",
+    scopes,
     insecureLocalDev: insecureLocalDevOpt = false
   } = config;
   const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
@@ -571,7 +680,21 @@ function createCallbackRouteHandler(config) {
   return async function GET(request) {
     const response = await handleCallback(request);
     if (response.status >= 400) {
+      if (config.debug) {
+        console.warn(
+          `[SSO SDK] \u56DE\u8C03\u5931\u8D25 status=${response.status}`,
+          request.nextUrl.searchParams.get("error") ?? ""
+        );
+      }
       response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
+      const returnedState = request.nextUrl.searchParams.get("state");
+      if (returnedState && /^[A-Za-z0-9\-._~]{8,512}$/.test(returnedState)) {
+        response.cookies.set(
+          `${nonceCookieName}_${returnedState}`,
+          "",
+          getHostCookieOptions(0, secureCookies)
+        );
+      }
     }
     return response;
   };
@@ -580,50 +703,75 @@ function createCallbackRouteHandler(config) {
     const error = searchParams.get("error");
     if (error) {
       const desc = searchParams.get("error_description") || error;
-      return import_server2.NextResponse.json(
-        { error: "authorization_failed", error_description: desc },
-        { status: 400 }
+      return buildErrorResponse(
+        request,
+        400,
+        "authorization_failed",
+        desc,
+        config.renderErrorPage
       );
     }
     const code = searchParams.get("code");
     const returnedState = searchParams.get("state");
     if (!code) {
-      return import_server2.NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "\u7F3A\u5C11 authorization code"
-        },
-        { status: 400 }
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "\u767B\u5F55\u4FE1\u606F\u4E0D\u5B8C\u6574\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u767B\u5F55",
+        config.renderErrorPage
       );
     }
-    const savedState = request.cookies.get(stateCookieName)?.value;
+    if (!returnedState || !/^[A-Za-z0-9\-._~]{8,512}$/.test(returnedState)) {
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "State \u53C2\u6570\u7F3A\u5931\u6216\u683C\u5F0F\u975E\u6CD5\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u6388\u6743\u8BF7\u6C42",
+        config.renderErrorPage
+      );
+    }
+    const attemptSuffix = `_${returnedState}`;
+    const readTransientCookie = (name) => request.cookies.get(`${name}${attemptSuffix}`)?.value ?? request.cookies.get(name)?.value;
+    const savedState = readTransientCookie(stateCookieName);
     if (!savedState) {
-      return import_server2.NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "State \u53C2\u6570\u7F3A\u5931\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u6388\u6743\u8BF7\u6C42"
-        },
-        { status: 400 }
+      const alternateName = secureCookies ? toInsecureCookieName(stateCookieName) : DEFAULT_STATE_COOKIE_NAME;
+      const alternateValue = request.cookies.get(`${alternateName}${attemptSuffix}`)?.value ?? request.cookies.get(alternateName)?.value;
+      if (alternateValue) {
+        return buildErrorResponse(
+          request,
+          500,
+          "invalid_config",
+          "\u68C0\u6D4B\u5230 SSO SDK \u914D\u7F6E\u4E0D\u4E00\u81F4\uFF1Amiddleware \u4E0E callback \u7684 insecureLocalDev \u6216 Cookie \u540D\u79F0\u4E0D\u5339\u914D\uFF0C\u8BF7\u7EDF\u4E00\u914D\u7F6E",
+          config.renderErrorPage
+        );
+      }
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "\u767B\u5F55\u4F1A\u8BDD\u5DF2\u5931\u6548\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u6388\u6743\u8BF7\u6C42",
+        config.renderErrorPage
       );
     }
-    if (!timingSafeEqualString(returnedState ?? "", savedState)) {
-      return import_server2.NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB"
-        },
-        { status: 400 }
+    if (!timingSafeEqualString(returnedState, savedState)) {
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "\u767B\u5F55\u4F1A\u8BDD\u6821\u9A8C\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u6388\u6743\u8BF7\u6C42",
+        config.renderErrorPage
       );
     }
-    const expectedNonce = request.cookies.get(nonceCookieName)?.value;
-    const verifier = request.cookies.get(verifierCookieName)?.value;
+    const expectedNonce = readTransientCookie(nonceCookieName);
+    const verifier = readTransientCookie(verifierCookieName);
     if (!verifier) {
-      return import_server2.NextResponse.json(
-        {
-          error: "invalid_request",
-          error_description: "PKCE verifier \u7F3A\u5931\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u6388\u6743\u8BF7\u6C42"
-        },
-        { status: 400 }
+      return buildErrorResponse(
+        request,
+        400,
+        "invalid_request",
+        "\u767B\u5F55\u4F1A\u8BDD\u5DF2\u8FC7\u671F\uFF08\u53EF\u80FD\u5207\u6362\u4E86\u6807\u7B7E\u9875\uFF09\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u767B\u5F55",
+        config.renderErrorPage
       );
     }
     const tokenEndpoint = `${normalizedServerBase}/api/oauth/token`;
@@ -654,17 +802,23 @@ function createCallbackRouteHandler(config) {
       } catch (err) {
         lastError = err;
         if (attempt >= maxRetries) {
-          return import_server2.NextResponse.json(
-            { error: "server_error", error_description: "Token \u8BF7\u6C42\u5931\u8D25\uFF0C\u5DF2\u91CD\u8BD5\u4ECD\u4E0D\u53EF\u8FBE" },
-            { status: 502 }
+          return buildErrorResponse(
+            request,
+            502,
+            "server_error",
+            "\u767B\u5F55\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF08Token \u8BF7\u6C42\u5931\u8D25\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
+            config.renderErrorPage
           );
         }
       }
     }
     if (lastError || !res) {
-      return import_server2.NextResponse.json(
-        { error: "server_error", error_description: "Token \u8BF7\u6C42\u5931\u8D25" },
-        { status: 502 }
+      return buildErrorResponse(
+        request,
+        502,
+        "server_error",
+        "\u767B\u5F55\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF08Token \u8BF7\u6C42\u5931\u8D25\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
+        config.renderErrorPage
       );
     }
     if (!res.ok) {
@@ -673,22 +827,32 @@ function createCallbackRouteHandler(config) {
         errData = await res.json();
       } catch {
       }
-      return import_server2.NextResponse.json(
-        {
-          error: "token_request_failed",
-          error_description: errData.error_description || `Token \u8BF7\u6C42\u5931\u8D25: HTTP ${res.status}`
-        },
-        { status: 502 }
+      return buildErrorResponse(
+        request,
+        502,
+        "token_request_failed",
+        errData.error_description || `\u767B\u5F55\u5931\u8D25\uFF08Token \u8BF7\u6C42\u5931\u8D25: HTTP ${res.status}\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5`,
+        config.renderErrorPage
       );
     }
     const tokenData = await res.json();
     if (!tokenData.access_token || !tokenData.refresh_token) {
-      return import_server2.NextResponse.json(
-        {
-          error: "server_error",
-          error_description: "Token \u54CD\u5E94\u7F3A\u5C11 access_token \u6216 refresh_token"
-        },
-        { status: 502 }
+      return buildErrorResponse(
+        request,
+        502,
+        "server_error",
+        "\u767B\u5F55\u670D\u52A1\u8FD4\u56DE\u5F02\u5E38\uFF08Token \u54CD\u5E94\u4E0D\u5B8C\u6574\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
+        config.renderErrorPage
+      );
+    }
+    const requiresIdToken = scopes !== void 0 && scopes.split(" ").filter(Boolean).includes("openid");
+    if (requiresIdToken && !tokenData.id_token) {
+      return buildErrorResponse(
+        request,
+        400,
+        "id_token_invalid",
+        "\u767B\u5F55\u6821\u9A8C\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u767B\u5F55",
+        config.renderErrorPage
       );
     }
     if (tokenData.id_token) {
@@ -701,17 +865,17 @@ function createCallbackRouteHandler(config) {
           { expectedNonce }
         );
       } catch (err) {
-        return import_server2.NextResponse.json(
-          {
-            error: "id_token_invalid",
-            error_description: err instanceof Error ? err.message : "ID Token \u9A8C\u8BC1\u5931\u8D25"
-          },
-          { status: 400 }
+        return buildErrorResponse(
+          request,
+          400,
+          "id_token_invalid",
+          err instanceof Error && /[\u4e00-\u9fff]/.test(err.message) ? err.message : "\u767B\u5F55\u6821\u9A8C\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u767B\u5F55",
+          config.renderErrorPage
         );
       }
     }
     const callbackOrigin = new URL(redirectUri).origin;
-    const rawReturnUrl = request.cookies.get(returnUrlCookieName)?.value || defaultReturnPath;
+    const rawReturnUrl = readTransientCookie(returnUrlCookieName) || defaultReturnPath;
     const returnUrl = isTrustedReturnUrl(rawReturnUrl, callbackOrigin) ? rawReturnUrl : "/";
     const response = import_server2.NextResponse.redirect(new URL(returnUrl, callbackOrigin));
     response.cookies.set(accessTokenCookieName, tokenData.access_token, {
@@ -741,11 +905,18 @@ function createCallbackRouteHandler(config) {
         });
       }
     }
-    response.cookies.set(stateCookieName, "", getHostCookieOptions(0, secureCookies));
-    response.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
-    response.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
-    response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, request.nextUrl.pathname, secureCookies));
+    for (const name of [stateCookieName, nonceCookieName, returnUrlCookieName]) {
+      response.cookies.set(name, "", getHostCookieOptions(0, secureCookies));
+      response.cookies.set(`${name}${attemptSuffix}`, "", getHostCookieOptions(0, secureCookies));
+    }
+    for (const path of ["/", request.nextUrl.pathname]) {
+      response.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, path, secureCookies));
+      response.cookies.set(
+        `${verifierCookieName}${attemptSuffix}`,
+        "",
+        getSecureCookieOptions(0, path, secureCookies)
+      );
+    }
     return response;
   }
 }
@@ -875,6 +1046,20 @@ function createLogoutRouteHandler(config) {
         headers: { "content-type": "text/html; charset=utf-8" }
       });
     }
+    const requestOrigin = request.headers.get("origin");
+    if (requestOrigin && requestOrigin !== callbackOrigin) {
+      return import_server3.NextResponse.json(
+        { error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" },
+        { status: 403 }
+      );
+    }
+    const secFetchSite = request.headers.get("sec-fetch-site");
+    if (!requestOrigin && secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "none") {
+      return import_server3.NextResponse.json(
+        { error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" },
+        { status: 403 }
+      );
+    }
     let formGlobal = null;
     try {
       formGlobal = new URLSearchParams(await request.text()).get("global");
@@ -913,6 +1098,21 @@ function createLogoutRouteHandler(config) {
       res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
+      const suffixedPrefixes = [
+        `${stateCookieName}_`,
+        `${nonceCookieName}_`,
+        `${returnUrlCookieName}_`,
+        `${verifierCookieName}_`
+      ];
+      for (const cookie of request.cookies.getAll()) {
+        if (!suffixedPrefixes.some((prefix) => cookie.name.startsWith(prefix))) continue;
+        if (cookie.name.startsWith(`${verifierCookieName}_`)) {
+          res.cookies.set(cookie.name, "", getSecureCookieOptions(0, "/", secureCookies));
+          res.cookies.set(cookie.name, "", getSecureCookieOptions(0, callbackPath, secureCookies));
+        } else {
+          res.cookies.set(cookie.name, "", getHostCookieOptions(0, secureCookies));
+        }
+      }
       return res;
     };
     if (effectiveScope === "global") {
@@ -946,6 +1146,9 @@ var import_server4 = require("next/server");
 var BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout";
 var JTI_CACHE_CAPACITY = 1e3;
 var seenJti = /* @__PURE__ */ new Map();
+function releaseLogoutTokenJti(jti) {
+  seenJti.delete(jti);
+}
 function recordJti(jti, expiresAtMs) {
   const now = Date.now();
   const existing = seenJti.get(jti);
@@ -961,7 +1164,7 @@ function recordJti(jti, expiresAtMs) {
   seenJti.set(jti, expiresAtMs);
   return true;
 }
-async function verifyLogoutToken(logoutToken, ssoBaseUrl, clientId) {
+async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId) {
   const baseUrl = ssoBaseUrl.replace(/\/+$/, "");
   const header = decodeJwtHeader(logoutToken);
   if (!header) {
@@ -1060,7 +1263,7 @@ async function verifyLogoutToken(logoutToken, ssoBaseUrl, clientId) {
   if (!recordJti(jti, payload.exp * 1e3 + 6e4)) {
     throw new SsoError("logout_token_replay", "Logout Token jti \u91CD\u653E");
   }
-  return { sub, sid };
+  return { payload: { sub, sid }, jti };
 }
 
 // src/next/backchannel-logout.ts
@@ -1100,9 +1303,9 @@ function createBackchannelLogoutRouteHandler(config) {
         { status: 400 }
       );
     }
-    let payload;
+    let verified;
     try {
-      payload = await verifyLogoutToken(logoutToken, ssoBaseUrl, clientId);
+      verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId);
     } catch (err) {
       const code = err instanceof SsoError ? err.code : "logout_token_invalid";
       const description = err instanceof SsoError ? err.description : "Logout Token \u9A8C\u8BC1\u5931\u8D25";
@@ -1112,8 +1315,9 @@ function createBackchannelLogoutRouteHandler(config) {
       );
     }
     try {
-      await onLogout?.(payload, request);
+      await onLogout?.(verified.payload, request);
     } catch (err) {
+      releaseLogoutTokenJti(verified.jti);
       console.error(
         "[SSO SDK] backchannel logout onLogout \u94A9\u5B50\u6267\u884C\u5931\u8D25:",
         err

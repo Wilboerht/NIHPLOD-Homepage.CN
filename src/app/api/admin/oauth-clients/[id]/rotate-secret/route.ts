@@ -3,7 +3,7 @@
  * POST /api/admin/oauth-clients/[id]/rotate-secret
  *
  * 安全特性：
- * - 仅 owner 角色可操作
+ * - 需 sso:clients:write 权限（角色模板中默认仅 owner 拥有，也可由 owner 以权限覆盖授予）
  * - CSRF 校验 + confirm 二次确认
  * - 旧 secret 缓存 5 分钟过渡期（允许使用旧 secret 完成进行中的授权）
  */
@@ -116,14 +116,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       request,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        // 明文 secret 仅在轮换时返回一次
-        plainSecret: newPlainSecret,
-        message: "密钥已轮换，旧密钥将在 5 分钟内失效",
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          // 明文 secret 仅在轮换时返回一次
+          plainSecret: newPlainSecret,
+          message: "密钥已轮换，旧密钥将在 5 分钟内失效",
+        },
       },
-    });
+      {
+        // 响应含一次性明文 secret，禁止任何缓存留存
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" },
+      }
+    );
   } catch (error) {
     apiConsole.error("[OAuthRotateSecret] 异常:", error);
     return NextResponse.json(

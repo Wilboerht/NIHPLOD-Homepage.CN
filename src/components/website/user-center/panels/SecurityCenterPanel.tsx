@@ -12,11 +12,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SECURITY_SECTIONS, type SecuritySection } from "@/lib/user-center-tab";
 import { DevicesPanel } from "./DevicesPanel";
 import { AuthorizationsPanel } from "./AuthorizationsPanel";
+import { BindingsPanel } from "./BindingsPanel";
 import { LoginHistoryPanel } from "./LoginHistoryPanel";
 
 const SECTION_LABELS: Record<SecuritySection, string> = {
   devices: "设备管理",
   authorizations: "授权管理",
+  bindings: "账号绑定",
   history: "登录历史",
 };
 
@@ -60,6 +62,7 @@ export function SecurityCenterPanel() {
       <div className="min-h-0 flex-1">
         {securitySection === "devices" && <DevicesPanel embedded />}
         {securitySection === "authorizations" && <AuthorizationsPanel embedded />}
+        {securitySection === "bindings" && <BindingsPanel embedded />}
         {securitySection === "history" && <LoginHistoryPanel embedded />}
       </div>
     </div>

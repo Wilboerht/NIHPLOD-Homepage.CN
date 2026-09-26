@@ -7,7 +7,7 @@ import { Eye, EyeOff, AlertCircle, Loader2, ChevronDown, ExternalLink } from "lu
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { apiPost, ApiError } from "@/lib/api-client";
+import { apiPost, ApiError, getErrorDataFlag } from "@/lib/api-client";
 
 interface FormErrors {
   email?: string;
@@ -40,12 +40,16 @@ export default function LoginPage() {
   const mounted = useMounted();
   const [breadcrumbOpen, setBreadcrumbOpen] = useState(false);
   const breadcrumbRef = useRef<HTMLDivElement>(null);
+  const totpInputRef = useRef<HTMLInputElement>(null);
+  // 登录成功跳转时不再触发离开确认
+  const submittedRef = useRef(false);
   const formTouched = email || password || (totpRequired && totpCode);
 
   // 防止意外离开导致表单数据丢失
   useEffect(() => {
     if (!formTouched) return;
     const handler = (e: BeforeUnloadEvent) => {
+      if (submittedRef.current) return;
       e.preventDefault();
       e.returnValue = "";
     };
@@ -91,8 +95,8 @@ export default function LoginPage() {
       errors.password = "请输入密码";
     }
 
-    if (totpRequired && totpCode.length !== 6) {
-      errors.totpCode = "请输入6位二次验证码";
+    if (totpRequired && totpCode.trim().length < 6) {
+      errors.totpCode = "请输入 6 位动态验证码或备用码";
     }
 
     setFieldErrors(errors);
@@ -117,13 +121,24 @@ export default function LoginPage() {
           password,
           ...(totpCode ? { totpCode } : {}),
         });
+        submittedRef.current = true;
         // 使用 window.location.href 而不是 router.push，确保是 top-level 导航，
         // 浏览器会带上 SameSite=Strict 的 admin_token Cookie，避免 middleware 拦截。
         window.location.href = redirectTo;
       } catch (err) {
-        if (err instanceof ApiError && err.code === "TOTP_REQUIRED") {
+        // TOTP_REQUIRED / TOTP_INVALID / TOTP_RATE_LIMITED 均保持验证码输入框展开，
+        // 否则用户输错一次就要重填邮箱密码；清空输入并聚焦便于重试。
+        const needsTotp =
+          err instanceof ApiError &&
+          (err.code === "TOTP_REQUIRED" ||
+            err.code === "TOTP_INVALID" ||
+            err.code === "TOTP_RATE_LIMITED" ||
+            getErrorDataFlag(err, "totpRequired"));
+        if (needsTotp) {
           setTotpRequired(true);
-          setError("请输入二次验证码");
+          setTotpCode("");
+          setError(err instanceof Error ? err.message : "请输入二次验证码");
+          requestAnimationFrame(() => totpInputRef.current?.focus());
           return;
         }
         setTotpRequired(false);
@@ -157,7 +172,8 @@ export default function LoginPage() {
 
   const handleTOTPChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+      // 允许字母数字：TOTP 为 6 位数字，备用码为 16 位 hex
+      const value = e.target.value.replace(/[^0-9A-Za-z]/g, "").slice(0, 20);
       setTotpCode(value);
       if (fieldErrors.totpCode) {
         setFieldErrors((prev) => ({ ...prev, totpCode: undefined }));
@@ -350,7 +366,6 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-brand-charcoal/30 transition-colors hover:text-brand-charcoal/60 focus:outline-none"
-                    tabIndex={-1}
                     aria-label={showPassword ? "隐藏密码" : "显示密码"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -381,15 +396,16 @@ export default function LoginPage() {
                   </label>
                   <input
                     id="totpCode"
+                    ref={totpInputRef}
                     type="text"
-                    inputMode="numeric"
+                    inputMode="text"
                     value={totpCode}
                     onChange={handleTOTPChange}
                     required
                     autoComplete="one-time-code"
                     disabled={isLoading}
-                    maxLength={6}
-                    placeholder="6 位数字验证码"
+                    maxLength={20}
+                    placeholder="6 位动态验证码或备用码"
                     aria-invalid={!!fieldErrors.totpCode}
                     aria-describedby={fieldErrors.totpCode ? "totp-error" : undefined}
                     className={cn(

@@ -86,7 +86,7 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
     process.env.INTERNAL_API_KEYS = JSON.stringify([{ project: "mall", key: KEY, secret: SECRET }]);
     mockRateLimit.mockResolvedValue({ success: true });
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
-    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "GOLD" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "GOLD", status: "ACTIVE" });
     txClient.pointLedger.findUnique.mockResolvedValue(null);
     txClient.pointLedger.findMany.mockResolvedValue([]);
     txClient.pointLedger.create.mockResolvedValue({});
@@ -132,7 +132,7 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
   });
 
   it("普通档不可兑礼应返回 403 NOT_ELIGIBLE", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "REGULAR" });
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "REGULAR", status: "ACTIVE" });
 
     const res = await POST(createSignedRequest(VALID_BODY));
 

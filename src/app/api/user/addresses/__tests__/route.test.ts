@@ -25,8 +25,12 @@ const { tx } = vi.hoisted(() => {
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     userAddress: tx,
-    $transaction: vi.fn(async (fn: (t: { userAddress: typeof tx }) => Promise<unknown>) =>
-      fn({ userAddress: tx })
+    $transaction: vi.fn(
+      async (
+        fn: (t: { userAddress: typeof tx; $queryRaw: ReturnType<typeof vi.fn> }) => Promise<unknown>
+      ) =>
+        // $queryRaw：地址写事务开头的 SELECT ... FOR UPDATE 用户行锁
+        fn({ userAddress: tx, $queryRaw: vi.fn().mockResolvedValue([]) })
     ),
   },
 }));

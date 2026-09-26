@@ -33,6 +33,12 @@ export interface LogoutTokenPayload {
   sid?: string;
 }
 
+/** 验证结果：负载 + jti（供调用方在本地处理失败时释放重放标记，允许 IdP 重投） */
+export interface VerifiedLogoutToken {
+  payload: LogoutTokenPayload;
+  jti: string;
+}
+
 /** jti 防重放缓存：jti → 过期时间（epoch ms），容量上限 1000 */
 const JTI_CACHE_CAPACITY = 1000;
 const seenJti = new Map<string, number>();
@@ -40,6 +46,17 @@ const seenJti = new Map<string, number>();
 /** 清空 jti 防重放缓存（测试用） */
 export function clearLogoutTokenReplayCache(): void {
   seenJti.clear();
+}
+
+/**
+ * 释放已记录的 jti。
+ *
+ * 仅当 logout_token 验证通过、但调用方的本地会话清理（onLogout 钩子）失败、
+ * 需要允许 IdP 用同一 logout_token 重投时调用。成功后调用会使重放保护失效，
+ * 因此正常成功路径不得调用。
+ */
+export function releaseLogoutTokenJti(jti: string): void {
+  seenJti.delete(jti);
 }
 
 /**
@@ -66,19 +83,19 @@ function recordJti(jti: string, expiresAtMs: number): boolean {
 }
 
 /**
- * 验证 Backchannel Logout Token
+ * 验证 Backchannel Logout Token 并返回负载 + jti
  *
  * @param logoutToken IdP POST 到 backchannelLogoutUri 的 logout_token（JWT）
  * @param ssoBaseUrl SSO 中心地址（Discovery / JWKS 基准）
  * @param clientId 本应用 Client ID（aud 必须等于它）
- * @returns 验证通过的 sub / sid
+ * @returns 验证通过的负载与 jti
  * @throws SsoError 任一校验失败
  */
-export async function verifyLogoutToken(
+export async function verifyLogoutTokenDetailed(
   logoutToken: string,
   ssoBaseUrl: string,
   clientId: string
-): Promise<LogoutTokenPayload> {
+): Promise<VerifiedLogoutToken> {
   const baseUrl = ssoBaseUrl.replace(/\/+$/, "");
 
   const header = decodeJwtHeader(logoutToken);
@@ -211,5 +228,21 @@ export async function verifyLogoutToken(
     throw new SsoError("logout_token_replay", "Logout Token jti 重放");
   }
 
-  return { sub, sid };
+  return { payload: { sub, sid }, jti };
+}
+
+/**
+ * 验证 Backchannel Logout Token（仅返回负载，向后兼容入口）
+ *
+ * 注意：除验证外还会记录 jti 防重放。调用方若在验证通过后本地处理失败，
+ * 需改用 verifyLogoutTokenDetailed 获取 jti 并调用 releaseLogoutTokenJti 释放，
+ * 以便 IdP 重投。
+ */
+export async function verifyLogoutToken(
+  logoutToken: string,
+  ssoBaseUrl: string,
+  clientId: string
+): Promise<LogoutTokenPayload> {
+  const verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId);
+  return verified.payload;
 }

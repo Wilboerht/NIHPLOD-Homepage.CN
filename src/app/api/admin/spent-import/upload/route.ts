@@ -11,6 +11,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import {
   parseImportWorkbook,
   previewImportRows,
+  signImportPhoneToken,
   IMPORT_MAX_FILE_SIZE,
 } from "@/lib/spent-import";
 
@@ -92,7 +93,11 @@ export async function POST(request: NextRequest) {
         fileHash: parsed.fileHash,
         rows: preview.rows.map((r) => ({
           rowIndex: r.rowIndex,
-          phone: r.phone,
+          // PII 最小化：预览不回传明文手机号，返回签名令牌供执行接口还原
+          phoneToken:
+            r.phone && r.error === null
+              ? signImportPhoneToken(parsed.fileHash, r.rowIndex, r.phone)
+              : null,
           maskedPhone: r.maskedPhone,
           amount: r.amount,
           channel: r.channel,

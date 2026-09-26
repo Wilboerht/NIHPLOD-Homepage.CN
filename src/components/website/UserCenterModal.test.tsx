@@ -2,7 +2,7 @@
 
 /**
  * 用户中心弹窗测试
- * 覆盖：四个一级菜单（个人信息/会员中心/积分商城/安全中心），
+ * 覆盖：五个一级菜单（个人信息/护肤档案/会员中心/积分商城/安全中心），
  * 设备管理/授权管理/登录历史已合并进安全中心（内部分段标签切换）。
  * 安全设置（密码管理）已合并进个人信息面板。
  */
@@ -83,9 +83,9 @@ describe("UserCenterModal", () => {
     stubMatchMedia(false);
   });
 
-  it("菜单包含四个一级入口，安全类子项不再作为一级菜单", () => {
+  it("菜单包含五个一级入口，安全类子项不再作为一级菜单", () => {
     render(<UserCenterModal />);
-    for (const label of ["个人信息", "会员中心", "积分商城", "安全中心"]) {
+    for (const label of ["个人信息", "护肤档案", "会员中心", "积分商城", "安全中心"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
     for (const label of ["设备管理", "授权管理", "登录历史"]) {
@@ -148,7 +148,7 @@ describe("UserCenterModal", () => {
     render(<UserCenterModal />);
 
     const nav = screen.getByRole("navigation", { name: "用户中心导航" });
-    expect(within(nav).getAllByRole("button")).toHaveLength(4);
+    expect(within(nav).getAllByRole("button")).toHaveLength(5);
     expect(screen.getAllByRole("heading", { name: "个人信息" }).length).toBeGreaterThan(0);
   });
 

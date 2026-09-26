@@ -307,14 +307,18 @@ export async function PATCH(request: NextRequest) {
       detail: { action: "profile_update" },
     });
 
-    // 返回更新后的 profile claims（形状同 GET 的 profile scope 分支）
-    return resJson({
-      sub: user.id,
-      nickname: user.nickname,
-      avatar: user.avatar,
-      gender: user.gender ?? null,
-      birthday: user.birthday ? user.birthday.toISOString() : null,
-    });
+    // 返回更新后的 profile claims：与 GET 口径一致，按 scope 裁剪——
+    // profile:write 仅是写权限，不自动获得 profile/birthday 读权限
+    const response: Record<string, unknown> = { sub: user.id };
+    if (scopes.includes("profile")) {
+      response.nickname = user.nickname;
+      response.avatar = user.avatar;
+      response.gender = user.gender ?? null;
+    }
+    if (scopes.includes("birthday")) {
+      response.birthday = user.birthday ? user.birthday.toISOString() : null;
+    }
+    return resJson(response);
   } catch (error) {
     apiConsole.error("[OAuth UserInfo PATCH] 异常:", error);
     return NextResponse.json(

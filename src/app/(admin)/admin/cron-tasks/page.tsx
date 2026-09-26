@@ -69,6 +69,7 @@ function AdminCronTasksContent() {
   const [recentRuns, setRecentRuns] = useState<CronRun[]>([]);
   const [cronEnabled, setCronEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [triggerTarget, setTriggerTarget] = useState<CronTask | null>(null);
   const [triggering, setTriggering] = useState(false);
 
@@ -83,8 +84,10 @@ function AdminCronTasksContent() {
       setTasks(data.tasks);
       setRecentRuns(data.recentRuns);
       setCronEnabled(data.cronEnabled);
-    } catch {
-      showError("加载定时任务失败");
+      setLoadError(false);
+    } catch (err) {
+      setLoadError(true);
+      showError(err instanceof Error ? err.message : "加载定时任务失败");
     } finally {
       setLoading(false);
     }
@@ -150,6 +153,13 @@ function AdminCronTasksContent() {
       {loading ? (
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+        </div>
+      ) : loadError ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-3">
+          <p className="text-sm text-red-500">加载定时任务失败</p>
+          <Button variant="outline" size="sm" onClick={fetchTasks}>
+            重试
+          </Button>
         </div>
       ) : tasks.length === 0 ? (
         <Empty className="h-64" title="暂无定时任务" />

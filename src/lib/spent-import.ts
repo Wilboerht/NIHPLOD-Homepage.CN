@@ -11,7 +11,7 @@
  * 同一文件重复上传、仅修改部分行后重新导入，未变化行均命中幂等跳过。
  * 支持整批撤销（undoImportBatch）：对每行成功入账反向冲正，撤销本身幂等。
  */
-import { createHash } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -102,6 +102,49 @@ export type ImportParseError = {
 export type ImportParseResult =
   | { ok: true; fileHash: string; rows: ParsedImportRow[] }
   | ImportParseError;
+
+/**
+ * 行级手机号令牌（PII 最小化）：
+ * 预览接口不再回传明文手机号，改为返回 HMAC 签名令牌；
+ * 执行接口用令牌在服务端还原手机号，管理端页面无需接触明文。
+ * 密钥从 JWT_ADMIN_SECRET 派生，令牌与 (fileHash, rowIndex, phone) 绑定，无法跨行/跨文件重用。
+ */
+function getImportPhoneTokenKey(): Buffer {
+  const secret = process.env.JWT_ADMIN_SECRET;
+  if (!secret) throw new Error("缺少 JWT_ADMIN_SECRET，无法签发导入行令牌");
+  return createHash("sha256").update(`spent_import_phone:${secret}`).digest();
+}
+
+export function signImportPhoneToken(fileHash: string, rowIndex: number, phone: string): string {
+  const payload = Buffer.from(`${fileHash}:${rowIndex}:${phone}`, "utf8").toString("base64url");
+  const signature = createHmac("sha256", getImportPhoneTokenKey())
+    .update(payload)
+    .digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+export function verifyImportPhoneToken(token: string): string | null {
+  const dotIndex = token.indexOf(".");
+  if (dotIndex <= 0 || dotIndex === token.length - 1) return null;
+  const payload = token.slice(0, dotIndex);
+  const signature = token.slice(dotIndex + 1);
+  const expected = createHmac("sha256", getImportPhoneTokenKey())
+    .update(payload)
+    .digest("base64url");
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) return null;
+  try {
+    const decoded = Buffer.from(payload, "base64url").toString("utf8");
+    const firstColon = decoded.indexOf(":");
+    const secondColon = decoded.indexOf(":", firstColon + 1);
+    if (firstColon <= 0 || secondColon <= firstColon) return null;
+    const phone = decoded.slice(secondColon + 1);
+    return phone || null;
+  } catch {
+    return null;
+  }
+}
 
 const CHANNEL_BY_LABEL: Record<string, SpentAdjustmentChannel> = {};
 for (const channel of ALL_SPENT_CHANNELS) {

@@ -31,6 +31,7 @@ const mockResolveSpentProofImage = vi.fn();
 vi.mock("@/lib/spent-adjustment-files", () => ({
   uploadSpentProofFile: (...args: unknown[]) => mockUploadSpentProofFile(...args),
   resolveSpentProofImage: (...args: unknown[]) => mockResolveSpentProofImage(...args),
+  isSpentProofMultipartTooLarge: vi.fn().mockReturnValue(false),
 }));
 
 import { POST as uploadPOST } from "../upload/route";

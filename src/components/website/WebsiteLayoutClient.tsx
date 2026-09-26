@@ -56,6 +56,13 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
     const wechatAuth = params.get("wechat_auth");
     if (!wechatAuth) return;
 
+    // 服务端 reason（具体中文原因）与错误码：在清理 URL 前先取出
+    const wechatErrorCode = params.get("code");
+    const rawWechatMessage = params.get("message");
+    const wechatErrorMessage = rawWechatMessage
+      ? rawWechatMessage.replace(/[\r\n\t]/g, " ").slice(0, 120)
+      : null;
+
     // 清理 URL 参数
     const cleanUrl = window.location.pathname + window.location.hash;
     window.history.replaceState({}, document.title, cleanUrl);
@@ -67,7 +74,19 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
     } else if (wechatAuth === "binding_required") {
       redirectToWechatBind();
     } else if (wechatAuth === "error") {
-      toast.error("微信授权失败，请重试");
+      // 优先展示服务端具体原因（如"您取消了微信授权"），只保留兜底文案给未知情况
+      const fallbackByCode: Record<string, string> = {
+        WECHAT_DENIED: "您取消了微信授权",
+        INVALID_STATE: "授权状态校验失败，请重试",
+        MISSING_CODE: "微信授权信息不完整，请重试",
+        WECHAT_AUTH_FAILED: "账户暂时无法使用微信登录，请使用手机号登录或联系客服",
+        INTERNAL_ERROR: "微信授权失败，请稍后重试",
+      };
+      toast.error(
+        wechatErrorMessage ||
+          (wechatErrorCode ? fallbackByCode[wechatErrorCode] : undefined) ||
+          "微信授权失败，请重试"
+      );
     }
   }, [refreshUser, openUserCenter, redirectToWechatBind, toast]);
 

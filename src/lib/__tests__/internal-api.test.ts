@@ -17,6 +17,8 @@ vi.mock("@/lib/prisma", () => ({
 import {
   generateInternalApiSignature,
   verifyInternalApiSignature,
+  createSignedInternalRequestHeaders,
+  canonicalizeQuery,
   isProjectAllowed,
   isTimestampValid,
   checkAndRecordNonce,
@@ -117,6 +119,115 @@ describe("internal-api", () => {
       );
 
       expect(config).toBeNull();
+    });
+  });
+
+  describe("query 绑定签名（防篡改）", () => {
+    const PATH = "/api/v1/internal/points/balance";
+
+    it("canonicalizeQuery 编码化 + 码点排序（跨实现可复现）", () => {
+      // 码点排序：大写 Z(0x5A) 在小写 a(0x61) 之前（与 JS 默认 sort 一致，非 localeCompare）
+      expect(canonicalizeQuery("?b=2&a=1&a=0")).toBe("a=0&a=1&b=2");
+      expect(canonicalizeQuery("?Z=1&a=2")).toBe("Z=1&a=2");
+      // 组件编码：值中的 & / = 被转义，消除结构歧义
+      expect(canonicalizeQuery("?a=b%26c%3D")).toBe("a=b%26c%3D");
+      expect(canonicalizeQuery("?a=b&c=")).toBe("a=b&c=");
+      expect(canonicalizeQuery("?a=b%26c%3D")).not.toBe(canonicalizeQuery("?a=b&c="));
+      // 中文等非 ASCII 统一百分号编码（双方一致）
+      expect(canonicalizeQuery("?q=%E4%B8%AD")).toBe("q=%E4%B8%AD");
+      expect(canonicalizeQuery("")).toBe("");
+    });
+
+    it("新格式签名在 query 一致时通过", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-query-1";
+      const bodyHash = await hashRequestBody("");
+      const query = canonicalizeQuery("?phone=13800000000");
+
+      const signature = generateInternalApiSignature(
+        VALID_SECRET,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash,
+        query
+      );
+
+      expect(
+        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query,
+        })
+      ).not.toBeNull();
+    });
+
+    it("query 被篡改时新格式签名验证失败", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-query-2";
+      const bodyHash = await hashRequestBody("");
+      const signature = generateInternalApiSignature(
+        VALID_SECRET,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash,
+        canonicalizeQuery("?phone=13800000000")
+      );
+
+      expect(
+        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query: canonicalizeQuery("?phone=13900000000"),
+        })
+      ).toBeNull();
+    });
+
+    it("默认放行旧格式（过渡期兼容），设置 INTERNAL_API_ALLOW_LEGACY_SIGNATURE=false 后拒绝", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-query-3";
+      const bodyHash = await hashRequestBody("");
+      const legacySignature = generateInternalApiSignature(
+        VALID_SECRET,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash
+      );
+
+      // 默认（未显式关闭）接受旧格式，保证未升级子站可用
+      expect(
+        verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query: "",
+        })
+      ).not.toBeNull();
+
+      process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE = "false";
+      expect(
+        verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query: "",
+        })
+      ).toBeNull();
+    });
+
+    it("INTERNAL_API_SIGN_QUERY=true 时出站签名绑定 query，可被新格式校验通过", async () => {
+      process.env.INTERNAL_API_SIGN_QUERY = "true";
+      const headers = createSignedInternalRequestHeaders("advisor", "GET", PATH, "", {
+        query: "phone=13800000000",
+      });
+      expect(headers).not.toBeNull();
+
+      const config = verifyInternalApiSignature(
+        "advisor-key",
+        headers!["X-Internal-API-Signature"],
+        "GET",
+        PATH,
+        Number(headers!["X-Internal-API-Timestamp"]),
+        headers!["X-Internal-API-Nonce"],
+        await hashRequestBody(""),
+        { query: "phone=13800000000" }
+      );
+      expect(config?.project).toBe("advisor");
     });
   });
 
@@ -228,9 +339,9 @@ describe("internal-api", () => {
       expect(Math.abs(Date.now() - threshold.getTime() - tenMinutesMs)).toBeLessThan(60 * 1000);
     });
 
-    it("清理失败应返回 0 而不抛出异常", async () => {
+    it("清理失败应抛出异常（cron 捕获后标记任务失败）", async () => {
       mockTokenBlacklistDeleteMany.mockRejectedValue(new Error("connection refused"));
-      expect(await cleanupInternalApiNonces()).toBe(0);
+      await expect(cleanupInternalApiNonces()).rejects.toThrow("connection refused");
     });
   });
 

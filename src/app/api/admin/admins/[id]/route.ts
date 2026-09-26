@@ -3,12 +3,12 @@
  * DELETE /api/admin/admins/:id
  */
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { blacklistAdminTokens } from "@/lib/token-blacklist";
+import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
@@ -36,46 +36,26 @@ export const DELETE = withAuth(
         return invalidIdResponse();
       }
 
-      // 不能删除自己
-      if (id === admin.id) {
+      // 委派边界 + owner 保护 + 最后 owner 原子保护统一在 deleteAdminsSafely 内完成
+      const result = await deleteAdminsSafely({
+        actorId: admin.id,
+        actorRole: admin.role,
+        actorOverrides: admin.permissionOverrides ?? [],
+        targetIds: [id],
+      });
+      if (!result.ok) {
         return NextResponse.json(
-          { success: false, error: { code: "FORBIDDEN", message: "不能删除当前登录账号" } },
-          { status: 403 }
+          { success: false, error: { code: result.code, message: result.message } },
+          { status: result.status }
         );
       }
 
-      // 不能删除最后一个 owner（事务内检查）
-      const [target, ownerCount] = await prisma.$transaction([
-        prisma.admin.findUnique({ where: { id, deletedAt: null }, select: { role: true } }),
-        prisma.admin.count({ where: { role: "owner", deletedAt: null } }),
-      ]);
-      // owner 账号保护：仅 owner 可删除 owner；且不得删除最后一个 owner
-      if (target?.role === "owner") {
-        if (admin.role !== "owner") {
-          return NextResponse.json(
-            { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可删除 owner 账号" } },
-            { status: 403 }
-          );
-        }
-        if (ownerCount <= 1) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: { code: "LAST_OWNER", message: "不能删除最后一个 owner 账号" },
-            },
-            { status: 403 }
-          );
-        }
-      }
+      const deletedAdmin = result.deleted[0];
 
-      const deletedAdmin = await prisma.admin.update({
-        where: { id },
-        data: { deletedAt: new Date(), status: "DISABLED" },
-        select: { id: true, email: true, name: true, role: true },
-      });
-
-      // 立即吊销该管理员的 token
-      blacklistAdminTokens(deletedAdmin.id, "admin_deleted");
+      // 立即吊销该管理员的 token（await + 捕获，避免未处理 rejection）
+      await blacklistAdminTokens(deletedAdmin.id, "admin_deleted").catch((err) =>
+        apiConsole.warn(`[AdminAdmins] 吊销管理员 ${deletedAdmin.id} token 失败:`, err)
+      );
 
       // 记录审计日志
       await createAuditLog({

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, LogOut, Trash2, Key, ShieldCheck, Eye, X, ExternalLink } from "lucide-react";
+import { Search, LogOut, Trash2, Key, ShieldCheck, Eye, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -10,13 +10,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import {
+  formatDateTime as formatDate,
+  formatDateTimeSeconds as formatFullDateTime,
+} from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 function maskForList(phone: string | null): string {
   if (!phone || phone.length < 7) return phone || "";
@@ -39,9 +45,12 @@ interface SessionsResponse {
   stats: {
     activeSessions: number;
     activeRefreshTokens: number;
+    /** 全局活跃会话数（不受筛选影响，仅批量终止确认弹窗使用） */
+    globalActiveSessions?: number;
   };
   items: Session[];
   pagination: { page: number; pageSize: number; total: number };
+  searchTruncated?: boolean;
 }
 
 interface ClientOption {
@@ -49,21 +58,7 @@ interface ClientOption {
   name: string;
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
 
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleString("zh-CN");
-};
 
 function OAuthSessionsPage() {
   const searchParams = useSearchParams();
@@ -72,11 +67,16 @@ function OAuthSessionsPage() {
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("sso:write");
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [stats, setStats] = useState({ activeSessions: 0, activeRefreshTokens: 0 });
+  const [stats, setStats] = useState({
+    activeSessions: 0,
+    activeRefreshTokens: 0,
+    globalActiveSessions: 0,
+  });
+  const [searchTruncated, setSearchTruncated] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
-    const p = searchParams.get("page");
-    return p ? Math.max(1, parseInt(p, 10)) : 1;
+    const p = Number(searchParams.get("page"));
+    return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
   const pageSize = 20;
@@ -106,7 +106,9 @@ function OAuthSessionsPage() {
   const [batchTerminating, setBatchTerminating] = useState(false);
   const [batchConfirmText, setBatchConfirmText] = useState("");
 
+  const takeLatestSessions = useLatestRequest();
   const fetchSessions = useCallback(async () => {
+    const isLatest = takeLatestSessions();
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -118,15 +120,22 @@ function OAuthSessionsPage() {
       const qs = params.toString();
       router.replace(`/admin/oauth/sessions${qs ? `?${qs}` : ""}`, { scroll: false });
       const data = await apiGet<SessionsResponse>(`/api/admin/oauth/sessions?${params.toString()}`);
+      if (!isLatest()) return;
       setSessions(data.items);
-      setStats(data.stats);
+      setStats({
+        activeSessions: data.stats.activeSessions,
+        activeRefreshTokens: data.stats.activeRefreshTokens,
+        globalActiveSessions: data.stats.globalActiveSessions ?? data.stats.activeSessions,
+      });
+      setSearchTruncated(data.searchTruncated ?? false);
       setTotal(data.pagination.total);
-    } catch {
-      toast.error("获取会话列表失败");
+    } catch (err) {
+      if (!isLatest()) return;
+      toast.error(err instanceof Error ? err.message : "获取会话列表失败");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, debouncedSearch, searchClientId, toast, router]);
+  }, [page, debouncedSearch, searchClientId, toast, router, takeLatestSessions]);
 
   useEffect(() => {
     deferInEffect(fetchSessions);
@@ -139,8 +148,14 @@ function OAuthSessionsPage() {
       .catch(() => setClientOptions([]));
   }, []);
 
-  // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchSessions 统一发起请求
+  // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchSessions 统一发起请求。
+  // 跳过首次执行，避免 ?page=N 深链在挂载 400ms 后被重置回第 1 页。
+  const searchDebounceMountedRef = useRef(false);
   useEffect(() => {
+    if (!searchDebounceMountedRef.current) {
+      searchDebounceMountedRef.current = true;
+      return;
+    }
     const handler = setTimeout(() => {
       setPage(1);
       setDebouncedSearch(search);
@@ -269,6 +284,12 @@ function OAuthSessionsPage() {
         </div>
       </div>
 
+      {searchTruncated && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+          匹配结果过多，仅统计前 500 个用户/客户端，请使用更精确的搜索关键词。
+        </p>
+      )}
+
       {/* Table */}
       <div className="overflow-hidden rounded-xl bg-white shadow-sm">
         <table className="w-full">
@@ -386,7 +407,7 @@ function OAuthSessionsPage() {
         onConfirm={handleTerminate}
         type="danger"
         title="终止会话"
-        description={`确定要终止用户 ${terminateTarget?.phone || terminateTarget?.userId}${terminateTarget?.nickname ? `（${terminateTarget.nickname}）` : ""} 在 ${terminateTarget?.clientId} 的这条会话吗？该操作将立即注销该会话的 Token。`}
+        description={`确定要终止用户 ${terminateTarget?.phone || terminateTarget?.userId}${terminateTarget?.nickname ? `（${terminateTarget.nickname}）` : ""} 在 ${terminateTarget?.clientId} 的会话吗？该操作会级联注销该用户在此客户端的全部会话与 Refresh Token，无法撤销。`}
         confirmText="确定终止"
         loading={terminating}
       />
@@ -401,7 +422,7 @@ function OAuthSessionsPage() {
         onConfirm={handleBatchTerminate}
         type="danger"
         title="批量终止全部会话"
-        description={`此操作将终止当前 ${stats.activeSessions} 个活跃会话，使所有已登录用户强制注销，且不可撤销。请在下方输入 TERMINATE ALL 以确认。`}
+        description={`此操作会终止全站 ${stats.globalActiveSessions ?? stats.activeSessions} 个活跃会话（忽略当前筛选条件），使所有已登录用户强制注销，且不可撤销。请在下方输入 TERMINATE ALL 以确认。`}
         confirmText="确定全部终止"
         loading={batchTerminating}
         confirmDisabled={batchConfirmText !== "TERMINATE ALL"}
@@ -414,27 +435,17 @@ function OAuthSessionsPage() {
         />
       </ConfirmDialog>
 
-      {/* Detail Drawer */}
-      {detailSession && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setDetailSession(null)} />
-          <div className="relative h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
-            <div className="space-y-6 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-medium text-brand-charcoal">会话详情</h2>
-                  <p className="mt-1 text-sm text-brand-charcoal/50">
-                    Session ID: {detailSession.id}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setDetailSession(null)}
-                  className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal/80"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
+      {/* Detail Drawer（复用 Modal 的焦点陷阱/Esc/滚动锁/aria 语义） */}
+      <Modal
+        open={!!detailSession}
+        onClose={() => setDetailSession(null)}
+        title="会话详情"
+        description={detailSession ? `Session ID: ${detailSession.id}` : undefined}
+        variant="drawer"
+        size="md"
+      >
+        {detailSession && (
+          <div className="space-y-6">
               <div className="space-y-4">
                 <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
                   <h3 className="mb-3 text-sm font-medium text-brand-charcoal">用户信息</h3>
@@ -491,11 +502,11 @@ function OAuthSessionsPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-brand-charcoal/50">创建时间</span>
-                      <span>{formatDateTime(detailSession.createdAt)}</span>
+                      <span>{formatFullDateTime(detailSession.createdAt)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-brand-charcoal/50">过期时间</span>
-                      <span>{formatDateTime(detailSession.expiresAt)}</span>
+                      <span>{formatFullDateTime(detailSession.expiresAt)}</span>
                     </div>
                   </div>
                 </div>
@@ -533,10 +544,9 @@ function OAuthSessionsPage() {
                   <span className="text-xs text-brand-charcoal/40">只读查看（无操作权限）</span>
                 )}
               </div>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

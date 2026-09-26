@@ -90,7 +90,7 @@ export function SecurityPanel({ initialMode = "change" }: SecurityPanelProps) {
           setOldPassword("");
           setNewPassword("");
           setConfirmPassword("");
-          showSuccess("密码修改成功");
+          showSuccess("密码修改成功，其他设备已退出登录");
           // 同步最新资料（hasPassword 等）
           void refreshUser?.();
         } else if (data.error?.code === "PASSWORD_NOT_SET") {
@@ -116,7 +116,7 @@ export function SecurityPanel({ initialMode = "change" }: SecurityPanelProps) {
           setSetCode("");
           setNewPassword("");
           setConfirmPassword("");
-          showSuccess("密码设置成功");
+          showSuccess("密码设置成功，其他设备已退出登录");
           // 同步最新资料（hasPassword 等）
           void refreshUser?.();
         } else {

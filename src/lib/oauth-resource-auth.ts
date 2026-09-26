@@ -29,6 +29,30 @@ export interface OAuthResourceAuthOk {
   payload: OAuthAccessTokenPayload;
   ip: string;
   resJson: OAuthResJson;
+  /** 当前请求命中的 CORS 白名单头（无 Origin/未命中时为空对象） */
+  corsHeaders: Record<string, string>;
+}
+
+/**
+ * 给共享业务核心（与主站会话路由共用，返回裸 NextResponse）补充 OAuth 响应头：
+ * CORS 白名单头 + `Cache-Control: no-store`（积分/地址等响应含 PII，不得缓存）。
+ * 保留原响应 status/body/content-type。
+ */
+export async function decorateOAuthResponse(
+  response: Response,
+  corsHeaders: Record<string, string>
+): Promise<NextResponse> {
+  const body = await response.arrayBuffer();
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  headers.set("Pragma", "no-cache");
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    headers.set(key, value);
+  }
+  return new NextResponse(body.byteLength > 0 ? body : null, {
+    status: response.status,
+    headers,
+  });
 }
 
 export type OAuthResourceAuthResult =
@@ -168,7 +192,7 @@ export async function authenticateOAuthResourceRequest(
     }
   }
 
-  return { ok: true, payload, ip, resJson };
+  return { ok: true, payload, ip, resJson, corsHeaders };
 }
 
 /**

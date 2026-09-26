@@ -590,14 +590,31 @@ describe("Introspection aud 归属校验", () => {
     expect(await verifier.verify("token-aud-array-hit")).not.toBeNull();
   });
 
-  it("aud 与 client_id 都缺失时保持信任", async () => {
+  it("strictAudience=false（显式兼容模式）且 aud/client_id 都缺失时保持信任", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: true, sub: "user-1" }),
+    } as Response);
+
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+      clientId: audience,
+      clientSecret: "test-secret",
+      strictAudience: false,
+    });
+    expect(await verifier.verify("token-no-aud-fields")).not.toBeNull();
+  });
+
+  it("默认（strictAudience 未设置）且 aud/client_id 都缺失时拒绝（fail-closed）", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
       json: async () => ({ active: true, sub: "user-1" }),
     } as Response);
 
     const verifier = createIntrospectVerifier();
-    expect(await verifier.verify("token-no-aud-fields")).not.toBeNull();
+    expect(await verifier.verify("token-no-aud-fields-default-strict")).toBeNull();
   });
 
   it("strictAudience=true 且 aud/client_id 都缺失时拒绝（fail-closed）", async () => {
@@ -709,6 +726,30 @@ describe("Introspection 重试与并发去重", () => {
 
     expect(results.every((p) => p?.sub === "user-concurrent")).toBe(true);
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("响应体非法 JSON 时按端点不可用处理（fail-closed，不抛异常）", async () => {
+    const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError("Unexpected token < in JSON");
+      },
+    } as unknown as Response);
+
+    const verifier = createIntrospectVerifier();
+    await expect(verifier.verify("invalid-json-token")).resolves.toBeNull();
+    // 默认 introspectRetries=1：首次 JSON 解析失败后重试一次
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("active 非严格布尔 true（字符串/数字）时拒绝", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ active: "true", sub: "user-1", client_id: audience }),
+    } as unknown as Response);
+
+    const verifier = createIntrospectVerifier();
+    expect(await verifier.verify("token-active-string")).toBeNull();
   });
 });
 
@@ -934,6 +975,29 @@ describe("verifyLogoutToken 补充校验", () => {
 
     // 外部存储报告 jti 已处理时拒绝
     store.has.mockResolvedValueOnce(true);
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("logoutJtiStore 实现 addIfAbsent 时优先原子接口（避免 has+add 竞态）", async () => {
+    const store = {
+      has: vi.fn().mockResolvedValue(false),
+      add: vi.fn().mockResolvedValue(undefined),
+      addIfAbsent: vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false),
+    };
+    const token = await createLogoutToken({ jti: "logout-ext-atomic-1" });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      logoutTokenSecret: logoutSecretString,
+      logoutJtiStore: store,
+    });
+
+    expect(await verifier.verifyLogoutToken(token)).not.toBeNull();
+    expect(store.addIfAbsent).toHaveBeenCalledWith(`${issuer}:logout-ext-atomic-1`, 600);
+    expect(store.has).not.toHaveBeenCalled();
+    expect(store.add).not.toHaveBeenCalled();
+
+    // 第二次同 jti：原子接口返回 false（已被占用）→ 拒绝
     expect(await verifier.verifyLogoutToken(token)).toBeNull();
   });
 });

@@ -16,6 +16,8 @@ vi.mock("@/lib/wechat", () => ({
 
 vi.mock("@/lib/jwt", () => ({
   verifyWechatBindToken: vi.fn(),
+  consumeWechatBindToken: vi.fn(),
+  releaseWechatBindToken: vi.fn(),
 }));
 
 vi.mock("@/lib/csrf", () => ({
@@ -41,7 +43,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { getMiniprogramPhone } from "@/lib/wechat";
-import { verifyWechatBindToken } from "@/lib/jwt";
+import { verifyWechatBindToken, consumeWechatBindToken, releaseWechatBindToken } from "@/lib/jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit } from "@/lib/ratelimit";
 import { getClientIP } from "@/lib/client-ip";
@@ -203,3 +205,68 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
 
 // NextResponse 需在 mock 之后导入仍可用（next/server 未被 mock）
 import { NextResponse } from "next/server";
+
+describe("bind token 一次性占用（防重放/并发）", () => {
+  const JTI = "jti-1";
+  const mockConsume = consumeWechatBindToken as ReturnType<typeof vi.fn>;
+  const mockRelease = releaseWechatBindToken as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRateLimit.mockResolvedValue({ success: true });
+    (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
+    mockValidateCSRF.mockReturnValue(true);
+    mockVerifyBindToken.mockResolvedValue({
+      type: "wechat_bind",
+      openid: "openid-1",
+      provider: "wechat_miniprogram",
+      jti: JTI,
+    });
+    mockConsume.mockResolvedValue(true);
+    mockRelease.mockResolvedValue(undefined);
+  });
+
+  it("jti 占用失败（已使用/并发）时返回 400 且不执行绑定", async () => {
+    mockConsume.mockResolvedValue(false);
+
+    const res = await POST(createRequest({ ...validBody, bindToken: "t" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("BIND_TOKEN_USED");
+    expect(mockResolve).not.toHaveBeenCalled();
+  });
+
+  it("绑定业务失败时释放 jti 占用（允许重试）", async () => {
+    mockResolve.mockResolvedValue({
+      success: false,
+      code: "CODE_INVALID",
+      message: "验证码错误",
+    });
+
+    const res = await POST(createRequest({ ...validBody, bindToken: "t" }));
+
+    expect(res.status).toBe(400);
+    expect(mockConsume).toHaveBeenCalledWith(JTI);
+    expect(mockRelease).toHaveBeenCalledWith(JTI);
+  });
+
+  it("绑定成功不释放 jti（保持一次性）", async () => {
+    mockResolve.mockResolvedValue({
+      success: true,
+      data: {
+        user: { id: "user-1", phone: "13800138000", nickname: null, avatar: null },
+        accessToken: "at",
+        refreshToken: "rt",
+        passwordGenerated: false,
+        message: "ok",
+      },
+    });
+
+    const res = await POST(createRequest({ ...validBody, bindToken: "t" }));
+
+    expect(res.status).toBe(200);
+    expect(mockConsume).toHaveBeenCalledWith(JTI);
+    expect(mockRelease).not.toHaveBeenCalled();
+  });
+});

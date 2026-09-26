@@ -17,16 +17,14 @@ const SCOPE_LABELS: Record<string, { label: string; desc: string }> = {
   openid: { label: "OpenID", desc: "基础身份标识（必选）" },
   profile: { label: "个人信息", desc: "昵称、头像" },
   phone: { label: "手机号", desc: "脱敏手机号（138****1234）" },
-  membership: { label: "会员信息", desc: "会员等级、累计消费" },
+  membership: { label: "会员信息", desc: "会员等级、累计消费、积分与兑换、收货地址（读/写）" },
   birthday: { label: "生日", desc: "生日日期（ISO 8601 格式）" },
   "profile:write": { label: "资料修改", desc: "允许修改你的昵称、头像、生日、性别" },
 };
 
 export async function GET(request: NextRequest) {
   try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-scopes");
-    if (rateLimitResponse) return rateLimitResponse;
-
+    // 先鉴权后限流：未认证请求不消耗已登录管理员共用的限流桶
     const admin = await verifyAuth(request);
     if (!admin) {
       return NextResponse.json(
@@ -34,6 +32,9 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-scopes");
+    if (rateLimitResponse) return rateLimitResponse;
 
     if (!hasAdminPermission(admin, "sso:clients:read")) {
       return NextResponse.json(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,7 +15,6 @@ import {
   Search,
   Eye,
   EyeOff,
-  X,
   Shield,
   Smartphone,
   Trash2,
@@ -31,8 +30,10 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { formatDate, formatDateTimeSeconds as formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RequirePermission } from "@/components/admin";
 
@@ -74,16 +75,6 @@ interface ClientActionResponse {
 }
 
 type ClientType = "public" | "confidential";
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("zh-CN");
-};
-
-const formatDateTime = (dateStr: string) => {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleString("zh-CN");
-};
 
 const validateRedirectUris = (
   uris: string
@@ -143,16 +134,6 @@ const validatePostLogoutUris = (
   return { valid: true, parsed };
 };
 
-const generatePkcePair = async () => {
-  const verifier = crypto.randomUUID() + crypto.randomUUID();
-  const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return { verifier, challenge };
-};
-
 function OAuthClientsPage() {
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -161,8 +142,8 @@ function OAuthClientsPage() {
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
-    const p = searchParams.get("page");
-    return p ? Math.max(1, parseInt(p, 10)) : 1;
+    const p = Number(searchParams.get("page"));
+    return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
@@ -222,7 +203,9 @@ function OAuthClientsPage() {
   const [sdkConfigCode, setSdkConfigCode] = useState("");
   const [sdkClientType, setSdkClientType] = useState<ClientType>("confidential");
 
+  const takeLatestClients = useLatestRequest();
   const fetchClients = useCallback(async () => {
+    const isLatest = takeLatestClients();
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -230,14 +213,16 @@ function OAuthClientsPage() {
       params.set("pageSize", String(pageSize));
       if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       const data = await apiGet<ClientsResponse>(`/api/admin/oauth-clients?${params.toString()}`);
+      if (!isLatest()) return;
       setClients(data.clients);
       setTotal(data.pagination.total);
-    } catch {
-      toast.error("获取 Client 列表失败");
+    } catch (err) {
+      if (!isLatest()) return;
+      toast.error(err instanceof Error ? err.message : "获取 Client 列表失败");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, debouncedSearch, toast]);
+  }, [page, debouncedSearch, toast, takeLatestClients]);
 
   useEffect(() => {
     deferInEffect(fetchClients);
@@ -254,8 +239,14 @@ function OAuthClientsPage() {
     window.history.replaceState(null, "", newUrl);
   }, [debouncedSearch, page]);
 
-  // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchClients 统一发起请求
+  // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchClients 统一发起请求。
+  // 跳过首次执行，避免 ?page=N 深链在挂载 400ms 后被重置回第 1 页。
+  const searchDebounceMountedRef = useRef(false);
   useEffect(() => {
+    if (!searchDebounceMountedRef.current) {
+      searchDebounceMountedRef.current = true;
+      return;
+    }
     const handler = setTimeout(() => {
       setPage(1);
       setDebouncedSearch(search);
@@ -307,6 +298,7 @@ function OAuthClientsPage() {
         webhookUri: formWebhookUri.trim() || undefined,
       });
       setNewSecret(data.plainSecret);
+      setShowNewSecret(false);
       setNewSecretSaved(false);
       toast.success("Client 创建成功");
       fetchClients();
@@ -370,13 +362,14 @@ function OAuthClientsPage() {
     try {
       await apiDelete(`/api/admin/oauth-clients/${deleteClient.id}`);
       toast.success("Client 已删除");
+      setDeleteClient(null);
+      setDeleteConfirmText("");
       fetchClients();
     } catch (err) {
+      // 失败时保留弹窗与已输入的确认名称，便于重试
       toast.error(err instanceof Error ? err.message : "删除 Client 失败");
     } finally {
       setSaving(false);
-      setDeleteClient(null);
-      setDeleteConfirmText("");
     }
   };
 
@@ -390,6 +383,7 @@ function OAuthClientsPage() {
       );
       setRotatedSecret(data.plainSecret);
       setRotatedSecretSaved(false);
+      setShowRotatedSecretValue(false);
       setShowRotatedSecret(true);
       toast.success("密钥轮换成功");
     } catch (err) {
@@ -407,12 +401,13 @@ function OAuthClientsPage() {
         isActive: !client.isActive,
       });
       toast.success(client.isActive ? "Client 已禁用" : "Client 已启用");
+      setDisableClient(null);
       fetchClients();
     } catch (err) {
+      // 失败时保留弹窗便于重试
       toast.error(err instanceof Error ? err.message : "操作失败");
     } finally {
       setSaving(false);
-      setDisableClient(null);
     }
   };
 
@@ -468,16 +463,22 @@ function OAuthClientsPage() {
     setFormError(null);
     resetForm();
     setNewSecret(null);
+    setShowNewSecret(false);
+    setNewSecretSaved(false);
     setShowCreate(true);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard_unavailable");
+      await navigator.clipboard.writeText(text);
       toast.success("已复制到剪贴板");
-    });
+    } catch {
+      toast.error("复制失败，请手动选择复制");
+    }
   };
 
-  const getSdkConfigCode = (client: OAuthClient, type: ClientType, pkceChallenge?: string) => {
+  const getSdkConfigCode = (client: OAuthClient, type: ClientType) => {
     const ssoBaseUrl =
       typeof window !== "undefined"
         ? window.location.origin
@@ -506,7 +507,15 @@ const ssoClient = new SsoClient({
 // 通用 HTTP 示例（手动 PKCE）：
 const state = crypto.randomUUID();
 const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
-const codeChallenge = "${pkceChallenge || "YOUR_CODE_CHALLENGE"}";
+// code_challenge 必须由同一个 codeVerifier 计算（S256）
+const codeChallenge = await crypto.subtle
+  .digest("SHA-256", new TextEncoder().encode(codeVerifier))
+  .then((buf) =>
+    btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\\+/g, "-")
+      .replace(/\\//g, "_")
+      .replace(/=+$/, "")
+  );
 const authUrl = new URL("${ssoBaseUrl}/api/oauth/authorize");
 authUrl.searchParams.set("response_type", "code");
 authUrl.searchParams.set("client_id", "${client.clientId}");
@@ -539,18 +548,18 @@ if (!payload) {
   };
 
   const openSdkConfig = async (client: OAuthClient) => {
+    // Public Client 无 secret，默认展示 public 片段，避免复制到含 clientSecret 的错误示例
+    const type: ClientType = client.isPublic ? "public" : "confidential";
     setSdkConfigClient(client);
-    setSdkClientType("confidential");
-    const pkce = await generatePkcePair();
-    setSdkConfigCode(getSdkConfigCode(client, "confidential", pkce.challenge));
+    setSdkClientType(type);
+    setSdkConfigCode(getSdkConfigCode(client, type));
     setShowSdkConfig(true);
   };
 
   const handleSdkTypeChange = async (type: ClientType) => {
     setSdkClientType(type);
     if (sdkConfigClient) {
-      const pkce = type === "public" ? await generatePkcePair() : undefined;
-      setSdkConfigCode(getSdkConfigCode(sdkConfigClient, type, pkce?.challenge));
+      setSdkConfigCode(getSdkConfigCode(sdkConfigClient, type));
     }
   };
 
@@ -593,7 +602,7 @@ if (!payload) {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">类型</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">回调 URL</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Scopes</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">活跃用户</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">活跃会话</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">最近活跃</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
@@ -714,15 +723,18 @@ if (!payload) {
                               <Pencil className="h-4 w-4" />
                             </button>
                           </Tooltip>
-                          <Tooltip content="轮换密钥" side="top">
-                            <button
-                              aria-label="轮换密钥"
-                              onClick={() => setRotateClient(c)}
-                              className="inline-flex rounded p-1.5 text-gray-400 hover:text-purple-600"
-                            >
-                              <RotateCw className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
+                          {/* Public Client 无 client_secret，无需轮换 */}
+                          {!c.isPublic && (
+                            <Tooltip content="轮换密钥" side="top">
+                              <button
+                                aria-label="轮换密钥"
+                                onClick={() => setRotateClient(c)}
+                                className="inline-flex rounded p-1.5 text-gray-400 hover:text-purple-600"
+                              >
+                                <RotateCw className="h-4 w-4" />
+                              </button>
+                            </Tooltip>
+                          )}
                           <Tooltip content={c.isActive ? "禁用" : "启用"} side="top">
                             <button
                               aria-label={c.isActive ? "禁用" : "启用"}
@@ -1154,7 +1166,11 @@ if (!payload) {
       {/* Online Test Modal */}
       <Modal
         open={!!testClient}
-        onClose={() => setTestClient(null)}
+        onClose={() => {
+          setTestClient(null);
+          // 清除内存中残留的明文 secret（只在本次测试中需要）
+          setTestSecret("");
+        }}
         title={`在线测试：${testClient?.name || ""}`}
       >
         <div className="space-y-4">
@@ -1219,7 +1235,13 @@ if (!payload) {
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setTestClient(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTestClient(null);
+                setTestSecret("");
+              }}
+            >
               关闭
             </Button>
             <Button
@@ -1286,12 +1308,12 @@ if (!payload) {
           <p className="text-xs text-gray-500">
             将代码复制到子项目中即可快速接入。详情请参考{" "}
             <a
-              href={`${process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn"}/docs/sso-integration`}
+              href={`${process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn"}/api/oauth/docs`}
               target="_blank"
               className="text-blue-600 underline"
               rel="noreferrer"
             >
-              接入文档
+              OAuth API 文档
             </a>
             。
           </p>
@@ -1303,25 +1325,17 @@ if (!payload) {
         </div>
       </Modal>
 
-      {/* Detail Drawer */}
-      {detailClient && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setDetailClient(null)} />
-          <div className="relative h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
-            <div className="space-y-6 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{detailClient.name}</h2>
-                  <p className="mt-1 text-sm text-gray-500">Client ID: {detailClient.clientId}</p>
-                </div>
-                <button
-                  onClick={() => setDetailClient(null)}
-                  className="rounded p-1 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
+      {/* Detail Drawer（复用 Modal 的焦点陷阱/Esc/滚动锁/aria 语义） */}
+      <Modal
+        open={!!detailClient}
+        onClose={() => setDetailClient(null)}
+        title={detailClient?.name}
+        description={detailClient ? `Client ID: ${detailClient.clientId}` : undefined}
+        variant="drawer"
+        size="md"
+      >
+        {detailClient && (
+          <div className="space-y-6">
               <div className="space-y-4">
                 <div className="rounded-lg bg-gray-50 p-4">
                   <h3 className="mb-3 text-sm font-medium text-gray-700">基本信息</h3>
@@ -1339,7 +1353,7 @@ if (!payload) {
                       </Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">活跃用户</span>
+                      <span className="text-gray-500">活跃会话</span>
                       <span>{detailClient.activeUserCount ?? 0}</span>
                     </div>
                     <div className="flex justify-between">
@@ -1442,10 +1456,9 @@ if (!payload) {
                   接入配置
                 </Button>
               </div>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

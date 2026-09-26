@@ -6,6 +6,7 @@ NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文�
 
 ## 目录
 
+0. [历史凭证泄露应急轮换（优先执行）](#0-历史凭证泄露应急轮换优先执行)
 1. [数据库迁移](#1-数据库迁移)
 2. [环境变量清单](#2-环境变量清单)
 3. [上线后冒烟清单](#3-上线后冒烟清单)
@@ -14,7 +15,69 @@ NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文�
 
 ---
 
+## 0. 历史凭证泄露应急轮换（优先执行）
+
+仓库历史提交（`9d25b71d`、`c88bf598`、`53428f49`、`8ae9c479`）曾包含 `.env.production` 与 `.env.production.payment-template`（文件已删除，但内容仍在 git 历史中）。其中包含 `DATABASE_URL`、`JWT_SECRET`、`ADMIN_PASSWORD`、`WECOM_*`、`OPENAI/DEEPSEEK_API_KEY`、`NEXT_PUBLIC_AMAP_SECRET`、微信支付 API v3 key/商户私钥、支付宝配置等。凡曾克隆过仓库者均可读取，**必须按已泄露处理并全部轮换**：
+
+1. **数据库密码**：在数据库控制台轮换 PostgreSQL 密码，更新部署环境中的 `DATABASE_URL`。
+2. **应用密钥**（逐个重新生成 ≥32 字符强随机串，更新部署环境变量）：
+   - `JWT_ADMIN_SECRET`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`JWT_WECHAT_BIND_SECRET`、`JWT_WECHAT_EXCHANGE_SECRET`、`JWT_ID_TOKEN_SECRET`、`JWT_LOGOUT_SECRET`
+   - `LOGIN_ATTEMPT_HMAC_KEY`、`SMS_CODE_HMAC_KEY`
+   - `INTERNAL_API_KEYS`（重新签发并同步所有子项目）
+   - 影响：轮换 `JWT_*_SECRET` 会使存量令牌/会话失效（用户需重新登录），选择低峰期执行。
+3. **RS256 密钥对**：若生产使用 RS256，用 `npx tsx scripts/generate-oauth-rs256-keys.ts` 重新生成
+   `JWT_ACCESS_*` / `JWT_ID_TOKEN_*` 密钥对。轮换时把旧公钥写入 `JWT_OAUTH_*_PREV_PUBLIC_KEY`
+   过渡一代，并相应调整 `JWT_OAUTH_*_KID`，待存量 token 过期后移除。
+4. **第三方凭证**：阿里云 OSS/SMS AccessKey、高德 Key 与安全密钥、企业微信机器人 webhook 与应用
+   secret、OpenAI/DeepSeek API Key、微信支付 API v3 key 与商户私钥、支付宝私钥——全部在各自控制台重置。
+5. **管理员密码**：重置 `ADMIN_PASSWORD` 与后台全部管理员账号密码；`JWT_ADMIN_SECRET` 轮换或重启即
+   使存量管理员会话失效。
+6. **清理 git 历史**（需与所有克隆者协调，强制推送后旧克隆必须废弃）：
+   ```bash
+   git filter-repo --path .env.production --path .env.production.payment-template --invert-paths
+   git push --force --all
+   git push --force --tags
+   ```
+   随后检查 GitHub 仓库可见性，开启 secret scanning / push protection。
+7. **防复发**：`.gitignore` 已含 `.env.*`；CI 增加 gitleaks 等密钥扫描；禁止把真实密钥写入仓库内任何
+   文件（含文档、示例、脚本、测试 fixture）。
+
+> 轮换完成前，不要把该仓库的任何副本分发到仓库外（打包、网盘、CI 缓存等）。
+
+---
+
 ## 1. 数据库迁移
+
+### 1.0 迁移历史已压缩为基线（0_init）— 先读这一节
+
+历史上基线表由 `prisma db push` 创建，没有对应的 `CREATE TABLE` 迁移，导致全新数据库/灾备
+库执行 `migrate deploy` 会在第一条迁移（`ALTER TABLE "LoginAttempt" ...`）就失败。现已把全部
+历史迁移**压缩为单一基线**：
+
+- `prisma/migrations/0_init/migration.sql`：当前 schema 的完整建库脚本（含全部表、枚举、索引，
+  以及 schema 无法表达的三个部分唯一索引：`SmsCode_phone_type_used_false_key`、
+  `SpentAdjustmentApplication_userId_orderNo_active_key`（按用户隔离，防跨用户订单号枚举/抢占）、
+  `UserAddress_userId_default_key`（每用户最多一条默认地址））。
+- `prisma/migrations/20260925000000_restore_oauth_unique_indexes/migration.sql`：恢复历史上被
+  误删的 `OAuthAuthorizationCode_code_key` / `OAuthSession_sessionId_key` 唯一索引。
+- `prisma/migrations/20260925000001_spent_order_unique_per_user/migration.sql`：把补录订单号的
+  全局部分唯一索引替换为 `(userId, orderNo)` 部分唯一（存量库生效；全新库由 0_init 覆盖）。
+- `prisma/migrations/20260925000002_user_address_single_default/migration.sql`：默认地址部分唯一
+  索引（先对存量数据去重，只保留每用户最早的一条默认）。
+- `prisma/migrations/20260925000003_refresh_token_revoked_reason/migration.sql`：`RefreshToken.revokedReason`
+  可空列（区分"设备数超限淘汰/登出/改密/强制下线"等非泄漏撤销，避免正常重放被误判为 token 泄漏而反向吊销操作端）。
+- `prisma/migrations/20260925000004_oauth_code_auth_time/migration.sql`：`OAuthAuthorizationCode.authTime`
+  可空列（ID Token 的 `auth_time` claim，供 RP 校验 `max_age`）。
+
+**两条路径，按环境选择：**
+
+| 环境 | 操作 |
+| --- | --- |
+| **已有数据库（生产/预发）** | 先 `npx prisma migrate resolve --applied 0_init`（只标记基线已应用，**不执行建表**），再 `npx prisma migrate deploy`（执行 restore-unique-indexes / spent-order / address-default / revoked-reason / auth-time 五个增量迁移）。`_prisma_migrations` 中的旧迁移记录会被 `migrate deploy` 忽略，无需清理。 |
+| **全新数据库（灾备/本地）** | 直接 `npx prisma migrate deploy`，按 `0_init` → 五个增量迁移顺序建库（增量迁移均为幂等空操作）。 |
+
+> ⚠️ 已有库若跳过 `resolve --applied 0_init` 直接 `migrate deploy`，会因表已存在而报错（不会丢数据，
+> 但部署中断）。执行 `resolve` 前请确认库中数据与当前 schema 一致（即此前已跑完旧迁移）。
 
 ### 1.1 正常流程
 
@@ -24,49 +87,26 @@ npx prisma migrate deploy
 
 该命令按目录名顺序应用 `prisma/migrations/` 下所有未执行的迁移，生产环境**只使用此命令**，禁止使用 `prisma db push`。
 
-### 1.2 特别注意：wechat_exchange_nonce_types 迁移重命名
-
-`prisma/migrations/20260728000003_add_wechat_exchange_nonce_types` 是由旧目录 `_add_wechat_exchange_nonce_types` **重命名修复**而来（原目录以下划线开头导致排序错误，且 SQL 文件带 BOM，全新部署会失败；现已修复）。
-
-该迁移内容为向 `TokenBlacklistType` 枚举新增 `wechat_exchange_token` 与 `internal_api_nonce` 两个值。
-
-**判断是否需要处理**：如果生产库此前通过 `prisma db push` 或手工 SQL 已应用过该变更（即上述枚举值已存在），直接 `migrate deploy` 会报 "migration failed / enum value already exists"。此时先标记该迁移为已应用，再正常部署：
-
-```bash
-npx prisma migrate resolve --applied 20260728000003_add_wechat_exchange_nonce_types
-npx prisma migrate deploy
-```
-
-如果生产库从未应用过（全新库或确定无此枚举值），跳过 `resolve`，直接 `migrate deploy` 即可。
-
-可用以下 SQL 确认枚举值是否已存在：
-
-```sql
-SELECT enumlabel FROM pg_enum
-JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
-WHERE pg_type.typname = 'TokenBlacklistType';
--- 已存在 wechat_exchange_token / internal_api_nonce 时，需先 resolve --applied
-```
-
-### 1.3 本次新增迁移（向后兼容，可随 `migrate deploy` 直接应用）
-
-| 迁移 | 内容 | 兼容性 |
-| --- | --- | --- |
-| `20260811161200_oauth_client_secret_rotation` | `OAuthClient` 表新增 `previousSecretHash`（TEXT，可空）与 `secretRotatedAt`（TIMESTAMP，可空），用于 Client 密钥轮换过渡期跨实例共享旧 secret hash | 纯增量加列，旧代码可继续读写该表 |
-| `20260811161300_token_blacklist_dpop_jti` | `TokenBlacklistType` 枚举新增 `dpop_jti`，用于 DPoP proof jti 防重放记录 | 枚举新增值不影响存量数据 |
-| `20260826000000_add_oauth_client_webhook_uri` | `OAuthClient` 表新增 `webhookUri`（TEXT，可空，用户资料变更 webhook 推送地址）；新增 `WebhookDeliveryFailure` 表（webhook 投递失败补偿队列） | 纯增量加列加表，旧代码可继续读写 |
-| `20260903000000_spent_import` | 新增 `SpentImportBatch`（导入批次）与 `SpentImportRow`（逐行明细）表、`SpentImportRowStatus` 枚举，支撑管理端 Excel 批量导入消费记录及整批撤销审计 | 纯增量加表，旧代码可继续读写 |
-| `20260903010000_membership_four_tiers` | 会员等级四档化（普通/银卡 ¥1,000/金卡 ¥5,000/钻石 ¥10,000），存量 ADVANCED 按累计消费拆档；积分体系重新上线（`PointLedger`/`PointBalance` 表、`PointLedgerType` 枚举，稳定期 7 天、6 个月过期）；User 新增各档激活日、生日锁定、生日积分年度幂等字段 | 枚举切换 + 加表加列；存量 ADVANCED <¥1,000 的用户归普通档，其余按消费额升档，无数据丢失 |
-| `20260903020000_point_redemption` | 积分兑换上线：`Product` 新增 `pointRedeemable`（积分可兑标记）与索引；新增 `PointRedemption`（兑换记录/履约状态）表与 `PointRedemptionStatus` 枚举，兑换产品复用产品库数据 | 纯增量加列加表，旧代码可继续读写 |
-
-六份迁移均为向后兼容的增量变更，**无需停机**，在应用滚动发布前执行即可。
-
-### 1.4 迁移后验证
+### 1.2 迁移后验证
 
 ```bash
 npx prisma migrate status
 # 期望输出：Database schema is up to date!
 ```
+
+建议额外确认唯一索引已恢复（应返回 2 行）：
+
+```sql
+SELECT indexname FROM pg_indexes
+WHERE schemaname = 'public'
+  AND indexname IN ('OAuthAuthorizationCode_code_key', 'OAuthSession_sessionId_key');
+```
+
+### 1.3 历史迁移引用（已压缩，仅排障参考）
+
+- 旧迁移目录已删除（内容在 git 历史中可查）。此前文档提到的
+  `20260728000003_add_wechat_exchange_nonce_types` 人工 `resolve` 处理方式**不再需要**。
+- 迁移恢复：如需在本地临时复现旧迁移，可从 git 历史检出对应目录，但不要与压缩后的基线混用。
 
 ---
 
@@ -103,19 +143,22 @@ openssl rand -hex 32
 | 变量 | 要求 |
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | 必须为正式域名（如 `https://nihplod.cn`），**不允许 localhost**，OAuth 回调地址拼接依赖它 |
-| `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY` | RS256 密钥对，生产必须配置。SDK 一律拒绝 HS256 签名的 id_token，未配置时子项目回调会全部失败 |
+| `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY` | RS256 密钥对，生产**必须**配置。SDK 一律拒绝 HS256 签名的 id_token，未配置时子项目回调会全部失败 |
+| `JWT_ACCESS_PRIVATE_KEY` / `JWT_ACCESS_PUBLIC_KEY` | RS256 密钥对，生产**必须**配置（`src/lib/jwt.ts` / `server-init.ts` 启动强校验）；否则启动直接报错，除非显式设置 `ALLOW_HS256_FALLBACK=true`（不推荐） |
 | `TOKEN_BLACKLIST_STORAGE` | 必须显式设为 `database`。多实例部署时 memory 模式各实例黑名单不互通，撤销无法即时生效 |
 | `RATE_LIMIT_STORAGE` | 必须显式设置（生产多实例用 `database`），防止限流被多实例绕过 |
 | `LOGIN_ATTEMPT_HMAC_KEY` | 必须配置且不少于 32 字符。LoginAttempt 表以 HMAC-SHA256 存储登录标识符，缺失时应用启动直接报错；生成方式同 2.1（`openssl rand -hex 32`） |
+| `SMS_CODE_HMAC_KEY` | 必须配置且不少于 32 字符（`src/lib/server-init.ts` 启动强校验），用于验证码 HMAC |
+| `TRUST_PROXY` / `TRUST_PROXY_HOPS` | 生产必须 `TRUST_PROXY=true`，并按实际反向代理层数配置 `TRUST_PROXY_HOPS`（取 XFF 从右往左第 N 个条目；缺失时运行时抛错、IP 限流失效） |
+| `ALI_OSS_PRIVATE_BUCKET` | 消费补录凭证（含个人信息）的生产存储；未配置时生产环境上传 fail-closed（503）。仅本地开发或显式 `ALLOW_PUBLIC_SPENT_PROOF_STORAGE=true` 才回退公开存储 |
 
 可使用 `npm run check:sso-config` 逐项核对本节全部强制项（输出 PASS/FAIL 清单，任一 FAIL 退出码为 1）。
 
-### 2.3 推荐项：RS256 密钥对
+### 2.3 其余推荐项：Logout Token 密钥对
 
-推荐同时配置以下两套密钥对（与 `JWT_ID_TOKEN_*` 一起一次生成）：
+推荐配置（与 `JWT_ID_TOKEN_*` 一起一次生成）：
 
-- `JWT_ACCESS_PRIVATE_KEY` / `JWT_ACCESS_PUBLIC_KEY` — OAuth access_token RS256 签名，子项目可通过 `/api/oauth/jwks` 本地验签
-- `JWT_LOGOUT_TOKEN_PRIVATE_KEY` / `JWT_LOGOUT_TOKEN_PUBLIC_KEY` — backchannel logout token 签名
+- `JWT_LOGOUT_TOKEN_PRIVATE_KEY` / `JWT_LOGOUT_TOKEN_PUBLIC_KEY` — backchannel logout / profile 事件 token 签名
 
 生成命令（输出即为单行 `.env` 格式，PEM 换行已转义为字面 `\n`，直接复制即可）：
 
@@ -146,6 +189,8 @@ NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS=https://advisor.nihplod.cn,https://mall.nihplo
 ```
 
 - 不启用 `/account/embed` 嵌入时**两个都不配置**，此时 `frame-ancestors` 默认仅 `'self'`（仅允许同源嵌入）。
+- ⚠️ `NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS` 在**构建期内联**进前端 bundle：修改后必须重新执行 `npm run build` 并重新发布，仅重启进程不会生效（服务端 `EMBED_ALLOWED_ORIGINS` 为运行时读取，重启即可生效）。
+- `/account/embed`、`/privacy/embed`、`/terms/embed` 的 `X-Frame-Options` 已在 `next.config.mjs` 中置空（由 CSP `frame-ancestors` 白名单控制），现代浏览器以 CSP 为准。
 
 ### 2.6 迁移期临时开关
 
@@ -172,6 +217,23 @@ curl -X POST "https://nihplod.cn/api/cron/run" \
 
 `POST /api/cron/run` 依次触发全部清理类任务（运行记录落库 `CronTaskRun`，`trigger=external`，可在管理端「定时任务」页面查看）；请求体传 `{"taskName": "<任务名>"}` 可单独触发指定任务。建议调度频率不低于每小时一次（过期 nonce / Token 黑名单记录按小时清理）。
 
+补充：失败队列（Backchannel / 资料 Webhook）支持管理端手动重投，重投采用**原子认领**（先删除记录再投递，失败按退避重建），与 cron 重投并发时不会重复投递；失败队列接口不回传 `payload`（含用户资料快照 PII）。进程内 cron 任务失败会写 `CronTaskRun`（`success=false`）并输出错误日志，外部调度器端点整体失败时返回 500（便于调度平台告警）。
+
+`POST /api/cron/run` 使用数据库事务级 advisory lock 做**跨实例互斥**：已有调度在执行时返回 409 `ALREADY_RUNNING`（调度器可按普通失败重试，不会并发执行大批 `deleteMany`）；整次调度超时（默认 280s）时事务回滚并自动释放锁，返回 500 `CRON_RUN_FAILED`。审计日志（`AuditLog`）保留期由 `AUDIT_LOG_RETENTION_DAYS` 控制（默认 365 天，允许 30–3650），由每日任务「Cleanup Old Audit Logs」物理删除到期记录。
+
+### 2.9 凭证变更与会话撤销口径
+
+以下操作会触发服务端集中撤销（`src/lib/session-revocation.ts`，对失败不阻断主流程）：
+
+| 操作 | 内部 refresh token（保留当前设备） | OAuth 作用域 refresh token | OAuthSession + backchannel |
+| --- | --- | --- | --- |
+| 修改密码（`/api/user/password`） | 撤销其余设备，保留当前 Cookie 设备 | 全部撤销 | 全部撤销并通知子站 |
+| 首次设密（`/api/user/password/set`） | 全部撤销（无当前 refresh token 时） | 全部撤销 | 全部撤销并通知子站 |
+| 重置密码（`/api/auth/reset-password`） | 全部撤销 | 全部撤销 | 全部撤销并通知子站 |
+| 换绑手机号（`/api/user/phone`） | 撤销其余设备，保留当前设备 | 全部撤销 | 全部撤销并通知子站 |
+
+管理员安全约定：**只有 `owner` 角色可修改其他管理员的密码/邮箱，且 owner 不可删除自己或最后一个 owner**（`src/lib/admin-safety.ts`，含数据库 advisory lock 防并发绕过）；管理员登录 TOTP 与资金类操作 TOTP 均按一次性使用处理（同码在有效窗口内跨实例重放会被拒绝）。
+
 ---
 
 ## 3. 上线后冒烟清单
@@ -194,9 +256,9 @@ curl -X POST "https://nihplod.cn/api/cron/run" \
 # userinfo 应返回用户 JSON
 curl -i -H "Authorization: Bearer <access_token>" https://nihplod.cn/api/oauth/userinfo
 
-# 撤销
+# 撤销（Confidential Client 必须提供 client_secret；Public Client 可省略）
 curl -i -X POST https://nihplod.cn/api/oauth/revoke \
-  -d "token=<refresh_token>&client_id=<client_id>"
+  -d "token=<refresh_token>&client_id=<client_id>&client_secret=<client_secret>"
 
 # 撤销后 userinfo 应立即 401
 curl -i -H "Authorization: Bearer <access_token>" https://nihplod.cn/api/oauth/userinfo
@@ -242,12 +304,16 @@ curl -sI https://nihplod.cn/account/embed | grep -i content-security-policy
 
 ### 4.1 代码回滚
 
-直接回滚到上一个版本镜像/构建产物并重启即可，**无需回退数据库**：
+直接回滚到上一个版本镜像/构建产物并重启即可，**无需回退数据库**（基线后均为可空新增列/幂等索引）：
 
-- `20260811161200_oauth_client_secret_rotation` 只新增了两个可空字段，旧代码读写 `OAuthClient` 不受影响；
-- `20260811161300_token_blacklist_dpop_jti` 只是枚举新增值，对存量数据无害。
+- `20260925000000_restore_oauth_unique_indexes` / `20260925000001_spent_order_unique_per_user` /
+  `20260925000002_user_address_single_default`：仅恢复/替换索引，旧代码读取不受影响；
+- `20260925000003_refresh_token_revoked_reason` / `20260925000004_oauth_code_auth_time`：
+  仅新增可空列，旧代码忽略未知列；
+- 更早的 `20260811161200_oauth_client_secret_rotation`、`20260811161300_token_blacklist_dpop_jti`
+  已被压缩进 `0_init` 基线（目录已删除），其字段/枚举值仍存在于基线中。
 
-PostgreSQL 枚举值无法安全删除，因此**不要**尝试回退这两份迁移。
+PostgreSQL 枚举值无法安全删除，因此**不要**尝试手工回退枚举相关变更。
 
 ### 4.2 sid 会话机制的向后兼容
 
@@ -278,7 +344,7 @@ PostgreSQL 枚举值无法安全删除，因此**不要**尝试回退这两份�
 
 所有 SSO 审计事件（登录、授权、token 签发/刷新/撤销、backchannel logout 投递等）落库 `SsoAuditEvent` 表，可通过以下入口查询：
 
-- **管理后台页面**：`/admin/sso-audit` — 按事件类型、用户、Client、时间范围筛选；
+- **管理后台页面**：`/admin/oauth/audit`（旧路径 `/admin/sso-audit` 会 301 重定向）— 按事件类型、用户、Client、时间范围筛选；
 - **API**：`GET /api/admin/oauth/audit` — JSON 查询；追加 `?export=csv` 参数导出 CSV（字段：`id,event,userId,clientId,clientName,ip,success,createdAt`）。
 
 ```bash
@@ -294,8 +360,9 @@ curl -b "<admin_cookie>" \
 ## 附：部署顺序速查
 
 ```bash
-# 1. 迁移数据库（如适用先 resolve 历史迁移，见 1.2）
-npx prisma migrate resolve --applied 20260728000003_add_wechat_exchange_nonce_types  # 仅生产库已手工应用过时
+# 1. 迁移数据库
+#    已有库（含生产）：首次升级需先把压缩基线标记为已应用（见 1.0），仅一次
+npx prisma migrate resolve --applied 0_init   # 仅既有库需要；全新库跳过
 npx prisma migrate deploy
 npx prisma migrate status
 

@@ -29,6 +29,17 @@ import {
 import { prisma } from "@/lib/prisma";
 import { createHmac, timingSafeEqual, createHash, randomBytes } from "crypto";
 
+/** JSON 响应统一禁止缓存（授权参数/错误信息含敏感上下文） */
+function noStoreJson(
+  body: unknown,
+  init?: { status?: number; headers?: Record<string, string> }
+): NextResponse {
+  return NextResponse.json(body, {
+    ...init,
+    headers: { ...(init?.headers ?? {}), "Cache-Control": "no-store" },
+  });
+}
+
 /**
  * 生成 cuid 兼容 ID（与 Prisma @default(cuid()) 生成的格式一致：
  * 24 位小写字母数字、首字符为字母）。用于 raw SQL INSERT 时应用层生成主键，
@@ -64,15 +75,17 @@ function getOAuthParamsHmacKey(): Buffer {
   return createHash("sha256").update(`oauth_params_hmac_key:${secret}`).digest();
 }
 
-function storeOAuthParams(params: string): string {
+function storeOAuthParams(params: string, sessionUserId: string): string {
   const expiresAt = Date.now() + PARAMS_STORE_TTL_MS;
-  const payload = `${expiresAt}:${params}`;
+  // 载荷格式：expiresAt:sessionUserId:params —— 绑定创建者会话，
+  // 取回时校验当前登录用户一致，防止 oauth_id 被他人读取授权参数
+  const payload = `${expiresAt}:${sessionUserId}:${params}`;
   const encoded = Buffer.from(payload, "utf8").toString("base64url");
   const sig = createHmac("sha256", getOAuthParamsHmacKey()).update(encoded).digest("base64url");
   return `${encoded}.${sig}`;
 }
 
-function getOAuthParams(id: string): string | null {
+function getOAuthParams(id: string): { params: string; userId: string } | null {
   const dotIdx = id.indexOf(".");
   if (dotIdx === -1) return null;
   const encoded = id.slice(0, dotIdx);
@@ -96,11 +109,15 @@ function getOAuthParams(id: string): string | null {
   } catch {
     return null;
   }
-  const colonIdx = payload.indexOf(":");
-  if (colonIdx === -1) return null;
-  const expiresAt = parseInt(payload.slice(0, colonIdx), 10);
+  const firstColon = payload.indexOf(":");
+  const secondColon = payload.indexOf(":", firstColon + 1);
+  if (firstColon === -1 || secondColon === -1) return null;
+  const expiresAt = parseInt(payload.slice(0, firstColon), 10);
   if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return null;
-  return payload.slice(colonIdx + 1);
+  const userId = payload.slice(firstColon + 1, secondColon);
+  const params = payload.slice(secondColon + 1);
+  if (!userId || !params) return null;
+  return { params, userId };
 }
 
 export const dynamic = "force-dynamic";
@@ -205,19 +222,26 @@ export async function GET(request: NextRequest) {
       const sessionToken = request.cookies.get(USER_COOKIE_NAME)?.value;
       const sessionPayload = sessionToken ? await verifyUserToken(sessionToken) : null;
       if (!sessionPayload) {
-        return NextResponse.json(
+        return noStoreJson(
           { error: "unauthorized", error_description: "请先登录" },
           { status: 401 }
         );
       }
-      const params = getOAuthParams(oauthId);
-      if (!params) {
-        return NextResponse.json(
+      const stored = getOAuthParams(oauthId);
+      if (!stored) {
+        return noStoreJson(
           { error: "invalid_request", error_description: "参数已过期或不存在" },
           { status: 400 }
         );
       }
-      return NextResponse.json({ success: true, data: { params } });
+      // oauth_id 绑定创建者会话：非创建者即便拿到 id 也不能读取授权参数
+      if (stored.userId !== sessionPayload.id) {
+        return noStoreJson(
+          { error: "forbidden", error_description: "无权读取该授权参数" },
+          { status: 403 }
+        );
+      }
+      return noStoreJson({ success: true, data: { params: stored.params } });
     }
 
     // 先提取关键参数，用于判断是否可以安全地重定向错误
@@ -406,7 +430,13 @@ export async function GET(request: NextRequest) {
         }
         if (refreshResult?.success) {
           isLoggedIn = true;
-          userPayload = { id: refreshResult.userId, type: "user" };
+          // 透明刷新路径：认证时间取用户原认证时间（refreshUserSession 透传），
+          // 供授权码记录/ID Token 的 auth_time claim 使用
+          userPayload = {
+            id: refreshResult.userId,
+            type: "user",
+            auth_time: refreshResult.authTime,
+          };
           refreshedSessionCookies = {
             accessToken: refreshResult.accessToken,
             refreshToken: refreshResult.refreshToken,
@@ -449,7 +479,11 @@ export async function GET(request: NextRequest) {
 
     // 10. prompt=login: 强制重新认证
     if (prompt === "login") {
-      const returnTo = `/api/oauth/authorize?${searchParams.toString()}`;
+      // 重认证是一次性的：回跳的 return_to 必须剥离 prompt，否则登录成功后会再次
+      // 命中本分支形成 authorize ⇄ login 死循环（用户已重新认证，继续按正常流程处理即可）
+      const reauthParams = new URLSearchParams(searchParams);
+      reauthParams.delete("prompt");
+      const returnTo = `/api/oauth/authorize?${reauthParams.toString()}`;
       const loginUrl = new URL("/login", getPublicOrigin(request));
       loginUrl.searchParams.set("return_to", returnTo);
       loginUrl.searchParams.set("client_name", client.name);
@@ -479,6 +513,8 @@ export async function GET(request: NextRequest) {
           codeChallenge: code_challenge,
           codeChallengeMethod: code_challenge_method,
           nonce: nonce || undefined,
+          authTime:
+            userPayload!.auth_time ?? userPayload!.iat ?? Math.floor(Date.now() / 1000),
           ttlMs: client.codeTtlSeconds * 1000,
         });
       } catch (codeErr) {
@@ -522,7 +558,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 否则展示 consent 页：OAuth 参数服务端存储，URL 仅传递随机 ID
-    const storedId = storeOAuthParams(searchParams.toString());
+    const storedId = storeOAuthParams(searchParams.toString(), sessionUserId);
     const consentUrl = new URL("/login", getPublicOrigin(request));
     consentUrl.searchParams.set("mode", "consent");
     consentUrl.searchParams.set("client_name", client.name);
@@ -550,7 +586,7 @@ export async function POST(request: NextRequest) {
     // 多租户：限流 key 应为 {tenantId}:oauth-authorize:{ip}，当前使用 "" 作为默认 tenantId
     const limitResult = await rateLimit(ip, "oauth-authorize");
     if (!limitResult.success) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "rate_limited", error_description: "请求过于频繁" },
         { status: 429 }
       );
@@ -564,7 +600,7 @@ export async function POST(request: NextRequest) {
     // 验证用户登录
     const userToken = request.cookies.get(USER_COOKIE_NAME)?.value;
     if (!userToken) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "unauthorized", error_description: "请先登录" },
         { status: 401 }
       );
@@ -572,7 +608,7 @@ export async function POST(request: NextRequest) {
 
     const userPayload = await verifyUserToken(userToken);
     if (!userPayload) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "unauthorized", error_description: "登录状态已过期" },
         { status: 401 }
       );
@@ -581,7 +617,7 @@ export async function POST(request: NextRequest) {
     // 检查用户账号状态
     const statusCheck = await checkUserStatus(userPayload.id);
     if (!statusCheck.valid) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "account_disabled", error_description: statusCheck.reason || "账户不可用" },
         { status: 403 }
       );
@@ -589,7 +625,7 @@ export async function POST(request: NextRequest) {
 
     // 检查 access token 黑名单
     if (await isTokenBlacklisted(userPayload.id)) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "account_disabled", error_description: "账户已被限制" },
         { status: 403 }
       );
@@ -600,7 +636,7 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
         { status: 400 }
       );
@@ -613,14 +649,14 @@ export async function POST(request: NextRequest) {
     const action = body.action;
 
     if (!state || state.length < 32 || state.length > 512) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "state 参数无效或长度不足" },
         { status: 400 }
       );
     }
 
     if (!client_id || !redirect_uri) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "缺少 client_id 或 redirect_uri" },
         { status: 400 }
       );
@@ -628,7 +664,7 @@ export async function POST(request: NextRequest) {
     try {
       new URL(redirect_uri);
     } catch {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "redirect_uri 不是合法 URL" },
         { status: 400 }
       );
@@ -637,7 +673,7 @@ export async function POST(request: NextRequest) {
     // 校验 client
     const client = await getOAuthClientByClientId(client_id);
     if (!client) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "client_id 或 redirect_uri 无效" },
         { status: 400 }
       );
@@ -645,7 +681,7 @@ export async function POST(request: NextRequest) {
 
     // redirect_uri 精确匹配
     if (!client.redirectUris.includes(redirect_uri)) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "client_id 或 redirect_uri 无效" },
         { status: 400 }
       );
@@ -693,14 +729,21 @@ export async function POST(request: NextRequest) {
     // （action=approve 时 oauth_id 为必填，见下方 approve 分支校验）
     const oauthId = typeof body.oauth_id === "string" ? body.oauth_id : "";
     if (oauthId) {
-      const storedParams = getOAuthParams(oauthId);
-      if (!storedParams) {
-        return NextResponse.json(
+      const storedResult = getOAuthParams(oauthId);
+      if (!storedResult) {
+        return noStoreJson(
           { error: "invalid_request", error_description: "oauth_id 已过期或无效" },
           { status: 400 }
         );
       }
-      const stored = new URLSearchParams(storedParams);
+      // 纵深防御：oauth_id 必须由当前登录用户创建（与取回端点同口径）
+      if (storedResult.userId !== userPayload.id) {
+        return noStoreJson(
+          { error: "forbidden", error_description: "无权使用该授权参数" },
+          { status: 403 }
+        );
+      }
+      const stored = new URLSearchParams(storedResult.params);
       const mismatch =
         stored.get("client_id") !== client_id ||
         stored.get("redirect_uri") !== redirect_uri ||
@@ -710,7 +753,7 @@ export async function POST(request: NextRequest) {
         (stored.get("code_challenge_method") || "") !== code_challenge_method ||
         (stored.get("nonce") || "") !== (nonce || "");
       if (mismatch) {
-        return NextResponse.json(
+        return noStoreJson(
           { error: "invalid_request", error_description: "授权参数与服务端存储不一致" },
           { status: 400 }
         );
@@ -807,7 +850,7 @@ export async function POST(request: NextRequest) {
     // approve 必须携带有效 oauth_id：防篡改比对依赖 GET 阶段 storeOAuthParams 的
     // 服务端存储，缺失时无法确认回传参数未被篡改，拒绝并提示重新发起授权
     if (!oauthId) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "invalid_request", error_description: "缺少 oauth_id，请重新发起授权" },
         { status: 400 }
       );
@@ -827,6 +870,7 @@ export async function POST(request: NextRequest) {
         codeChallenge: code_challenge,
         codeChallengeMethod: code_challenge_method,
         nonce,
+        authTime: userPayload.auth_time ?? userPayload.iat ?? Math.floor(Date.now() / 1000),
         ttlMs: client.codeTtlSeconds * 1000,
       });
     } catch (codeErr) {
@@ -851,7 +895,7 @@ export async function POST(request: NextRequest) {
     return respondWithRedirect(redirectUrl);
   } catch (error) {
     apiConsole.error("[OAuth Authorize POST] 异常:", error);
-    return NextResponse.json(
+    return noStoreJson(
       { error: "server_error", error_description: "服务器内部错误" },
       { status: 500 }
     );

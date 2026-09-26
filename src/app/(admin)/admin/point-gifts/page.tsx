@@ -17,6 +17,9 @@ import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
+import { RequirePermission } from "@/components/admin/RequirePermission";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 interface RedeemableProductItem {
   id: string;
@@ -57,21 +60,11 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "已取消",
 };
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes()
-  ).padStart(2, "0")}`;
-}
-
-export default function AdminPointGiftsPage() {
+function AdminPointGiftsContent() {
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canGiftWrite = canAdmin("gifts:write");
+  const canGiftRead = canAdmin("gifts:read");
   const canFulfill = canAdmin("redemptions:fulfill");
   const canCancelRedemption = canAdmin("redemptions:cancel");
   const { requireTotp, totpModal } = useTotpConfirm();
@@ -82,12 +75,14 @@ export default function AdminPointGiftsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [redeemableFilter, setRedeemableFilter] = useState<"all" | "true" | "false">("all");
   const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [pointsTotal, setPointsTotal] = useState(0);
   const [redemptionLoading, setRedemptionLoading] = useState(false);
+  const [redemptionsError, setRedemptionsError] = useState(false);
   const [tab, setTab] = useState<StatusTab>("PENDING");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -100,7 +95,14 @@ export default function AdminPointGiftsPage() {
   const [cancelTarget, setCancelTarget] = useState<RedemptionItem | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
+  const takeLatestProducts = useLatestRequest();
   const fetchProducts = useCallback(async () => {
+    // 无 gifts:read 时产品面板不展示，也避免必然 403 的请求
+    if (!canGiftRead) {
+      setProductsLoading(false);
+      return;
+    }
+    const isLatest = takeLatestProducts();
     setProductsLoading(true);
     try {
       const data = await apiGet<{
@@ -112,16 +114,22 @@ export default function AdminPointGiftsPage() {
         search: search || undefined,
         redeemable: redeemableFilter === "all" ? undefined : redeemableFilter,
       });
+      if (!isLatest()) return;
       setProducts(data.products);
       setProductTotalPages(data.pagination.totalPages);
+      setProductsError(false);
     } catch {
+      if (!isLatest()) return;
+      setProductsError(true);
       showError("加载产品失败");
     } finally {
-      setProductsLoading(false);
+      if (isLatest()) setProductsLoading(false);
     }
-  }, [productPage, search, redeemableFilter, showError]);
+  }, [productPage, search, redeemableFilter, showError, canGiftRead, takeLatestProducts]);
 
+  const takeLatestRedemptions = useLatestRequest();
   const fetchRedemptions = useCallback(async () => {
+    const isLatest = takeLatestRedemptions();
     setRedemptionLoading(true);
     try {
       const data = await apiGet<{
@@ -134,21 +142,29 @@ export default function AdminPointGiftsPage() {
         pageSize: 10,
         status: tab === "ALL" ? undefined : tab,
       });
+      if (!isLatest()) return;
       setRedemptions(data.redemptions);
       setCounts(data.counts);
       setPointsTotal(data.pointsTotal);
       setTotalPages(data.pagination.totalPages);
+      setRedemptionsError(false);
     } catch {
+      if (!isLatest()) return;
+      setRedemptionsError(true);
       showError("加载兑换记录失败");
     } finally {
-      setRedemptionLoading(false);
+      if (isLatest()) setRedemptionLoading(false);
     }
-  }, [page, tab, showError]);
+  }, [page, tab, showError, takeLatestRedemptions]);
 
+  // 两个数据集独立请求，避免任一筛选变化重复拉取全部数据
   useEffect(() => {
     deferInEffect(fetchProducts);
+  }, [fetchProducts]);
+
+  useEffect(() => {
     deferInEffect(fetchRedemptions);
-  }, [fetchProducts, fetchRedemptions]);
+  }, [fetchRedemptions]);
 
   const handleToggle = async (p: RedeemableProductItem) => {
     setTogglingId(p.id);
@@ -275,7 +291,8 @@ export default function AdminPointGiftsPage() {
         </div>
       </div>
 
-      {/* 可兑换产品 */}
+      {/* 可兑换产品（无 gifts:read 权限时不展示，避免必然 403） */}
+      {canGiftRead && (
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
@@ -331,6 +348,20 @@ export default function AdminPointGiftsPage() {
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
                   </td>
                 </tr>
+              ) : productsError ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <p className="text-sm text-red-500">加载产品失败</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={fetchProducts}
+                    >
+                      重试
+                    </Button>
+                  </td>
+                </tr>
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
@@ -364,7 +395,11 @@ export default function AdminPointGiftsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={togglingId === p.id || !p.published}
+                          disabled={
+                            togglingId === p.id ||
+                            // 仅"设为可兑"要求已发布；未发布但已可兑的产品必须允许取消
+                            (!p.pointRedeemable && !p.published)
+                          }
                           onClick={() => handleToggle(p)}
                         >
                           {togglingId === p.id
@@ -409,6 +444,7 @@ export default function AdminPointGiftsPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* 兑换记录 */}
       <div className="rounded-xl border bg-white shadow-sm">
@@ -471,6 +507,20 @@ export default function AdminPointGiftsPage() {
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
+                  </td>
+                </tr>
+              ) : redemptionsError ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <p className="text-sm text-red-500">加载兑换记录失败</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={fetchRedemptions}
+                    >
+                      重试
+                    </Button>
                   </td>
                 </tr>
               ) : redemptions.length === 0 ? (
@@ -640,5 +690,13 @@ export default function AdminPointGiftsPage() {
       {/* 资金类操作二次验证 */}
       {totpModal}
     </div>
+  );
+}
+
+export default function AdminPointGiftsPage() {
+  return (
+    <RequirePermission permission="redemptions:read">
+      <AdminPointGiftsContent />
+    </RequirePermission>
   );
 }

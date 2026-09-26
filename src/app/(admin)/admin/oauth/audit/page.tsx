@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, Suspense } from "react";
+import React, { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Download, RotateCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -12,8 +12,10 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
+import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 interface AuditEntry {
   id: string;
@@ -44,6 +46,7 @@ const EVENT_TYPE_OPTIONS = [
   { value: "status_change", label: "状态变更" },
   { value: "logout", label: "登出" },
   { value: "backchannel_logout", label: "Backchannel 登出" },
+  { value: "profile_webhook", label: "资料变更推送" },
 ];
 
 const SUCCESS_OPTIONS = [
@@ -52,17 +55,7 @@ const SUCCESS_OPTIONS = [
   { value: "false", label: "失败" },
 ];
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-};
+
 
 const formatEventType = (type: string): string => {
   const map: Record<string, string> = {
@@ -74,6 +67,7 @@ const formatEventType = (type: string): string => {
     status_change: "状态变更",
     logout: "登出",
     backchannel_logout: "Backchannel 登出",
+    profile_webhook: "资料变更推送",
   };
   return map[type] || type;
 };
@@ -93,6 +87,7 @@ const getEventBadgeVariant = (
     status_change: "warning",
     logout: "outline",
     backchannel_logout: "outline",
+    profile_webhook: "outline",
   };
   return map[type] || "secondary";
 };
@@ -104,8 +99,8 @@ function OAuthAuditPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
-    const p = searchParams.get("page");
-    return p ? Math.max(1, parseInt(p, 10)) : 1;
+    const p = Number(searchParams.get("page"));
+    return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -126,7 +121,9 @@ function OAuthAuditPage() {
   // Expand detail
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const takeLatestAudit = useLatestRequest();
   const fetchAudit = useCallback(async () => {
+    const isLatest = takeLatestAudit();
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -142,12 +139,14 @@ function OAuthAuditPage() {
       const qs = params.toString();
       router.replace(`/admin/oauth/audit${qs ? `?${qs}` : ""}`, { scroll: false });
       const data = await apiGet<AuditResponse>(`/api/admin/oauth/audit?${params.toString()}`);
+      if (!isLatest()) return;
       setEntries(data.items);
       setTotal(data.pagination.total);
-    } catch {
-      toast.error("获取审计日志失败");
+    } catch (err) {
+      if (!isLatest()) return;
+      toast.error(err instanceof Error ? err.message : "获取审计日志失败");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
   }, [
     page,
@@ -159,14 +158,21 @@ function OAuthAuditPage() {
     successFilter,
     toast,
     router,
+    takeLatestAudit,
   ]);
 
   useEffect(() => {
     deferInEffect(fetchAudit);
   }, [fetchAudit]);
 
-  // 文本筛选防抖：输入停止 400ms 后才更新生效查询值，由 fetchAudit 统一发起请求
+  // 文本筛选防抖：输入停止 400ms 后才更新生效查询值，由 fetchAudit 统一发起请求。
+  // 跳过首次执行，避免 ?page=N 深链在挂载后被重置回第 1 页。
+  const filterDebounceMountedRef = useRef(false);
   useEffect(() => {
+    if (!filterDebounceMountedRef.current) {
+      filterDebounceMountedRef.current = true;
+      return;
+    }
     const handler = setTimeout(() => {
       setPage(1);
       setDebouncedClientId(searchClientId);
@@ -195,26 +201,22 @@ function OAuthAuditPage() {
   };
 
   const handleExportCsv = () => {
-    setExporting(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("export", "csv");
-      if (eventType) params.set("event", eventType);
-      if (debouncedClientId.trim()) params.set("clientId", debouncedClientId.trim());
-      if (debouncedUserId.trim()) params.set("userId", debouncedUserId.trim());
-      if (dateFrom) params.set("startDate", dateFrom);
-      if (dateTo) params.set("endDate", dateTo);
-      if (successFilter) params.set("success", successFilter);
-      const w = window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
-      if (!w) {
-        toast.error("导出被浏览器拦截，请允许弹出窗口");
-        return;
-      }
-    } catch {
-      toast.error("导出失败");
-    } finally {
-      setExporting(false);
+    const params = new URLSearchParams();
+    params.set("export", "csv");
+    if (eventType) params.set("event", eventType);
+    if (debouncedClientId.trim()) params.set("clientId", debouncedClientId.trim());
+    if (debouncedUserId.trim()) params.set("userId", debouncedUserId.trim());
+    if (dateFrom) params.set("startDate", dateFrom);
+    if (dateTo) params.set("endDate", dateTo);
+    if (successFilter) params.set("success", successFilter);
+    const w = window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
+    if (!w) {
+      toast.error("导出被浏览器拦截，请允许弹出窗口");
+      return;
     }
+    // 下载在新标签页进行，短暂展示按钮反馈（无法感知实际完成时间）
+    setExporting(true);
+    setTimeout(() => setExporting(false), 1500);
   };
 
   return (

@@ -196,6 +196,6 @@ describe("POST /api/auth/wechat/miniprogram-refresh", () => {
 
     expect(res.status).toBe(401);
     expect(data.error.code).toBe("TOKEN_REVOKED");
-    expect(mockRevoke).toHaveBeenCalledWith("user-1");
+    expect(mockRevoke).toHaveBeenCalledWith("user-1", undefined, undefined, "reuse");
   });
 });

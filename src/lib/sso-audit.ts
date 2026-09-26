@@ -97,8 +97,10 @@ export function scheduleSsoEvent(context: SsoEventContext): void {
  * 若先包裹引号再判断开头字符，"=..."开头且含逗号的单元格会以引号开头而绕过防护。
  */
 export function escapeCSV(val: string): string {
-  // 1. 防公式注入：以 = + - @ 或制表符开头的单元格先加单引号前缀
-  let escaped = /^[=+\-@\t]/.test(val) ? `'${val}` : val;
+  // 1. 防公式注入：以 = + - @ 开头（允许前导空白）或以 tab/CR/LF 开头的单元格先加单引号前缀。
+  //    注意也要覆盖前导空白与 \r/\n：部分表格软件会忽略前导空白后仍按公式解析。
+  const formulaPrefix = /^[\s]*[=+\-@]|^[\t\r\n]/;
+  let escaped = formulaPrefix.test(val) ? `'${val}` : val;
   // 2. 转义双引号（CSV 标准：用两个双引号表示一个引号字符）
   escaped = escaped.replace(/"/g, '""');
   // 3. 包含逗号、双引号、换行或制表符时用双引号包裹
@@ -120,6 +122,6 @@ export async function cleanupOldSsoAuditEvents(): Promise<number> {
     return result.count;
   } catch (error) {
     apiConsole.error("[SsoAudit] 清理旧记录失败:", error);
-    return 0;
+    throw error;
   }
 }

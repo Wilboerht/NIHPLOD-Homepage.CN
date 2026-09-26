@@ -20,7 +20,9 @@ const logoutHandler = createLogoutRouteHandler({
   ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
   redirectUri: process.env.SSO_REDIRECT_URI || "http://localhost:3002/api/auth/callback",
   postLogoutRedirectUri: process.env.SSO_POST_LOGOUT_REDIRECT_URI || "http://localhost:3002/",
-  redirectToSso: true,
+  // 全局登出：调用 SSO end-session 并回跳 postLogoutRedirectUri
+  // （redirectToSso 已废弃，请使用 defaultScope）
+  defaultScope: "global",
   insecureLocalDev: isHttpLocalDev,
 });
 

@@ -7,6 +7,19 @@ export interface PurchaseLinkItem {
   platform: string;
   url: string;
   order: number;
+  /**
+   * 仅前端使用的稳定行 key（新增/编辑时用于 React key，提交前剥离）。
+   * 缺少它会导致以 url 作为 key 时每次击键都重挂载输入框而失焦。
+   */
+  clientKey?: string;
+}
+
+/** 生成购买链接行 key */
+export function createPurchaseLinkKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `pl-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /**
@@ -22,6 +35,7 @@ export function usePurchaseLinks(
       platform: "小红书",
       url: "",
       order: purchaseLinks.length,
+      clientKey: createPurchaseLinkKey(),
     };
     setPurchaseLinks([...purchaseLinks, newLink]);
   }, [purchaseLinks, setPurchaseLinks]);

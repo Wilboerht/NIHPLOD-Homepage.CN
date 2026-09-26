@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 同步撤销该 client 对应的所有 Refresh Token，防止旧 refresh_token 继续换发 access_token
-    await revokeRefreshToken(user.id, undefined, clientId);
+    await revokeRefreshToken(user.id, undefined, clientId, "user_revoke");
 
     // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
     // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，

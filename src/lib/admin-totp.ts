@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
+import { revokeAccessToken, isAccessTokenRevoked } from "@/lib/token-blacklist";
 import { apiConsole } from "@/lib/logger";
 
 export type AdminTotpErrorCode = "TOTP_NOT_ENABLED" | "TOTP_REQUIRED" | "TOTP_INVALID";
@@ -45,10 +46,20 @@ export async function requireMoneyOperationTotp(
     return totpError("TOTP_REQUIRED", "请输入二次验证码以确认该操作");
   }
 
-  // 1) 动态验证码
+  // 1) 动态验证码（一次性：同一验证码在有效窗口内跨实例防重放）
   try {
     const secret = decryptTOTPSecret(admin.totpSecret);
-    if (verifyTOTP(trimmed, secret)) return null;
+    if (verifyTOTP(trimmed, secret)) {
+      const replayKey = `totp:${adminId}:${trimmed}`;
+      if (await isAccessTokenRevoked(replayKey)) {
+        apiConsole.warn("[AdminTotp] 检测到 TOTP 重放:", adminId);
+        return totpError("TOTP_INVALID", "验证码已被使用，请等待下一次刷新");
+      }
+      await revokeAccessToken(replayKey).catch((err) =>
+        apiConsole.warn("[AdminTotp] 标记验证码已用失败:", err)
+      );
+      return null;
+    }
   } catch (err) {
     apiConsole.warn("[AdminTotp] 密钥解密失败:", err);
   }

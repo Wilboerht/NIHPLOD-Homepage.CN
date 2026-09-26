@@ -34,6 +34,32 @@ export function normalizeGender(gender: string | null | undefined): "male" | "fe
   return gender === "male" || gender === "female" ? gender : null;
 }
 
+/** consent.scopes 解析为集合（空串/空白项忽略） */
+function toScopeSet(scopes: string[] | null | undefined): Set<string> {
+  return new Set((scopes ?? []).map((s) => s.trim()).filter(Boolean));
+}
+
+/**
+ * 按 consent scope 裁剪资料快照（口径与 /api/oauth/userinfo 一致）：
+ * - `profile`：nickname / avatar / gender
+ * - `birthday`：birthday
+ * 两个 scope 都没有时返回 null（任何资料字段都不得投递）。
+ */
+export function trimProfileSnapshotByScopes(
+  profile: ProfileSnapshot,
+  scopes: Set<string>
+): ProfileSnapshot | null {
+  const hasProfile = scopes.has("profile");
+  const hasBirthday = scopes.has("birthday");
+  if (!hasProfile && !hasBirthday) return null;
+  return {
+    nickname: hasProfile ? profile.nickname : null,
+    avatar: hasProfile ? profile.avatar : null,
+    gender: hasProfile ? profile.gender : null,
+    birthday: hasBirthday ? profile.birthday : null,
+  };
+}
+
 /**
  * 向已授权且配置了 webhookUri 的 OAuth Client 投递 profile_update 事件
  *
@@ -46,13 +72,14 @@ export async function sendProfileUpdateWebhook(
   profile: ProfileSnapshot,
   membership?: { level: string; totalSpent: number } | null
 ): Promise<void> {
-  // 该用户已授权（未撤销）的 client
+  // 该用户已授权（未撤销）的 client 及其 scope（按 scope 裁剪快照，防越权外泄）
   const consents = await prisma.userConsent.findMany({
     where: { userId, revokedAt: null },
-    select: { clientId: true },
+    select: { clientId: true, scopes: true },
   });
-  const clientIds = [...new Set(consents.map((c) => c.clientId))];
-  if (clientIds.length === 0) return;
+  if (consents.length === 0) return;
+  const scopeByClient = new Map(consents.map((c) => [c.clientId, toScopeSet(c.scopes)]));
+  const clientIds = [...scopeByClient.keys()];
 
   // 仅通知配置了 webhookUri 的活跃 client
   const clients = await prisma.oAuthClient.findMany({
@@ -70,14 +97,28 @@ export async function sendProfileUpdateWebhook(
     .map(async (client) => {
       if (!client.webhookUri) return;
 
+      // PII 最小化：只投递该 client consent scope 覆盖的字段；
+      // profile/birthday 都未授权且无 membership 时整条跳过
+      const scopeSet = scopeByClient.get(client.clientId) ?? new Set<string>();
+      const trimmedProfile = trimProfileSnapshotByScopes(profile, scopeSet);
+      const includeMembership = membership !== undefined && scopeSet.has("membership");
+      if (!trimmedProfile && !includeMembership) return;
+      // profile claim 为事件结构必需字段；无 profile/birthday scope 时传全 null 占位（不含任何资料）
+      const profileForEvent: ProfileSnapshot = trimmedProfile ?? {
+        nickname: null,
+        avatar: null,
+        birthday: null,
+        gender: null,
+      };
+
       try {
         const eventToken = await signProfileEventToken({
           sub: userId,
           aud: client.clientId,
           events: { [PROFILE_UPDATE_EVENT_URI]: {} },
           jti: crypto.randomUUID(),
-          profile,
-          ...(membership !== undefined && { membership }),
+          profile: profileForEvent,
+          ...(includeMembership && { membership }),
         });
 
         let delivered = false;
@@ -88,6 +129,8 @@ export async function sendProfileUpdateWebhook(
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ event_token: eventToken }),
+              // 禁止跟随重定向：防注册的 https 地址 302 到内网（SSRF 绕过主机校验）
+              redirect: "manual",
               signal: AbortSignal.timeout(5000),
             });
             if (res.ok) {
@@ -121,14 +164,14 @@ export async function sendProfileUpdateWebhook(
                 clientId: client.clientId,
                 payload: {
                   event: "profile_update",
+                  // 仅落库该 client scope 覆盖后的快照（重投时按原裁剪快照重新签发）
                   profile: {
-                    nickname: profile.nickname,
-                    avatar: profile.avatar,
-                    birthday: profile.birthday,
-                    gender: profile.gender,
+                    nickname: profileForEvent.nickname,
+                    avatar: profileForEvent.avatar,
+                    birthday: profileForEvent.birthday,
+                    gender: profileForEvent.gender,
                   },
-                  // 会员信息快照一并落库，cron 重投时按原快照重新签发
-                  ...(membership !== undefined && { membership }),
+                  ...(includeMembership && { membership }),
                 },
                 nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS),
               },
@@ -161,6 +204,24 @@ export async function sendProfileUpdateWebhook(
 const REDELIVERY_MAX_ATTEMPTS = 10;
 const REDELIVERY_BASE_DELAY_MS = 60 * 1000; // 退避基数 1 分钟
 const REDELIVERY_MAX_DELAY_MS = 60 * 60 * 1000; // 退避上限 1 小时
+
+/**
+ * 重投前复核投递资格：用户仍存在且 ACTIVE，且对目标 client 的 consent 未撤销。
+ * 覆盖"用户撤销授权/被注销后，失败队列仍继续投递资料快照"的合规缺口。
+ */
+async function isProfileDeliveryStillAllowed(
+  userId: string,
+  clientId: string
+): Promise<boolean> {
+  const [user, consent] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { status: true } }),
+    prisma.userConsent.findUnique({
+      where: { userId_clientId: { userId, clientId } },
+      select: { revokedAt: true },
+    }),
+  ]);
+  return !!user && user.status === "ACTIVE" && !!consent && !consent.revokedAt;
+}
 
 /**
  * 重投失败的资料变更 Webhook（由 cron 任务周期调用）
@@ -208,6 +269,20 @@ export async function retryFailedWebhookDeliveries(
         continue;
       }
 
+      // consent 已撤销 / 用户已注销：不得继续投递资料快照，直接丢弃并审计
+      if (!(await isProfileDeliveryStillAllowed(failure.userId, failure.clientId))) {
+        await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
+        dropped++;
+        recordSsoEvent({
+          event: "profile_webhook",
+          userId: failure.userId,
+          clientId: failure.clientId,
+          success: false,
+          detail: { reason: "consent_revoked_or_user_inactive" },
+        });
+        continue;
+      }
+
       const payload = (failure.payload ?? {}) as {
         profile?: ProfileSnapshot;
         membership?: { level: string; totalSpent: number } | null;
@@ -227,6 +302,7 @@ export async function retryFailedWebhookDeliveries(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event_token: eventToken }),
+        redirect: "manual",
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
@@ -293,19 +369,34 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
   const failure = await prisma.webhookDeliveryFailure.findUnique({ where: { id } });
   if (!failure) return { ok: false, status: "not_found" };
 
+  // 原子认领：删除成功（count=1）才继续，防止手动重投与 cron 重投并发导致重复投递
+  const claimed = await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
+  if (claimed.count === 0) return { ok: false, status: "not_found" };
+
   const client = await prisma.oAuthClient.findUnique({
     where: { clientId: failure.clientId },
     select: { clientId: true, webhookUri: true },
   });
   const uri = client?.webhookUri;
   if (!uri || !isSafeBackchannelUrl(uri)) {
-    await prisma.webhookDeliveryFailure.delete({ where: { id } });
     recordSsoEvent({
       event: "profile_webhook",
       userId: failure.userId,
       clientId: failure.clientId,
       success: false,
       detail: { reason: "target_unavailable", manual: true },
+    });
+    return { ok: true, status: "dropped" };
+  }
+
+  // consent 已撤销 / 用户已注销：不得继续投递资料快照
+  if (!(await isProfileDeliveryStillAllowed(failure.userId, failure.clientId))) {
+    recordSsoEvent({
+      event: "profile_webhook",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      success: false,
+      detail: { reason: "consent_revoked_or_user_inactive", manual: true },
     });
     return { ok: true, status: "dropped" };
   }
@@ -328,11 +419,11 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_token: eventToken }),
+      redirect: "manual",
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`http_${res.status}`);
 
-    await prisma.webhookDeliveryFailure.delete({ where: { id } });
     recordSsoEvent({
       event: "profile_webhook",
       userId: failure.userId,
@@ -344,9 +435,6 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
   } catch (err) {
     const attempts = failure.attempts + 1;
     if (attempts >= REDELIVERY_MAX_ATTEMPTS) {
-      await prisma.webhookDeliveryFailure
-        .delete({ where: { id } })
-        .catch((e) => apiConsole.warn("[ProfileWebhook] 删除超限失败记录出错:", e));
       recordSsoEvent({
         event: "profile_webhook",
         userId: failure.userId,
@@ -357,10 +445,18 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       return { ok: false, status: "dropped", error: "已达到最大重试次数，记录已丢弃" };
     }
     const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
-    await prisma.webhookDeliveryFailure.update({
-      where: { id },
-      data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
-    });
+    // 已认领（记录已删除）：失败时重建记录并递增 attempts / 退避
+    await prisma.webhookDeliveryFailure
+      .create({
+        data: {
+          userId: failure.userId,
+          clientId: failure.clientId,
+          payload: failure.payload ?? {},
+          attempts,
+          nextRetryAt: new Date(Date.now() + backoff),
+        },
+      })
+      .catch((e) => apiConsole.warn("[ProfileWebhook] 重建失败记录出错:", e));
     return {
       ok: false,
       status: "failed",

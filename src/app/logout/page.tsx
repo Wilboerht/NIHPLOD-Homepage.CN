@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { hasUnsafeUrlChars, isSafeRelativePath } from "@/lib/url-safety";
 
 function getCsrfTokenFromCookie(): string | null {
   if (typeof document === "undefined") return null;
@@ -36,7 +37,9 @@ async function ensureCsrfToken(): Promise<string | null> {
 
 async function checkTrustedLogoutUri(uri: string, clientId: string | null): Promise<boolean> {
   if (!uri) return true;
-  if (uri.startsWith("/") && !uri.startsWith("//")) return true;
+  // 站内相对路径：必须拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站）
+  if (isSafeRelativePath(uri)) return true;
+  if (hasUnsafeUrlChars(uri)) return false;
   try {
     const url = new URL("/api/oauth/check-post-logout-uri", window.location.origin);
     if (clientId) url.searchParams.set("client_id", clientId);

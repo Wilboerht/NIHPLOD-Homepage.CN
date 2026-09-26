@@ -102,6 +102,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 防误配外发凭据：token/introspect 步骤会把 client_secret POST 到该地址，
+    // 仅允许 https（本地回环 http 放行），否则拒绝执行
+    try {
+      const parsedBase = new URL(baseUrl);
+      const isLoopback =
+        parsedBase.hostname === "localhost" ||
+        parsedBase.hostname === "127.0.0.1" ||
+        parsedBase.hostname === "[::1]" ||
+        parsedBase.hostname === "::1";
+      if (parsedBase.protocol !== "https:" && !(parsedBase.protocol === "http:" && isLoopback)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "SERVER_ERROR",
+              message: "NEXT_PUBLIC_APP_URL 必须为 https 地址（本地回环 http 除外）",
+            },
+          },
+          { status: 500 }
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { success: false, error: { code: "SERVER_ERROR", message: "NEXT_PUBLIC_APP_URL 不是合法 URL" } },
+        { status: 500 }
+      );
+    }
+
     // Step 1: 验证 Client 凭据
     const t1 = performance.now();
     const client = await getOAuthClientByClientId(clientId);
@@ -112,7 +140,12 @@ export async function POST(request: NextRequest) {
         durationMs: Math.round(performance.now() - t1),
         detail: `未找到 clientId "${clientId}" 对应的 OAuth Client`,
       });
-      return NextResponse.json({ success: false, data: { steps, summary: "客户端不存在" } });
+      // 测试结果是业务结论而非请求失败：返回 success:true + allPassed:false，
+      // 让前端能展示完整诊断步骤（api-client 在 success:false 时会丢弃 data）
+      return NextResponse.json({
+        success: true,
+        data: { steps, summary: "客户端不存在", allPassed: false },
+      });
     }
 
     const verifyResult = await verifyOAuthClientSecret(clientId, clientSecret);
@@ -126,13 +159,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verifyResult.client) {
-      return NextResponse.json({ success: false, data: { steps, summary: "客户端凭据无效" } });
+      return NextResponse.json({
+        success: true,
+        data: { steps, summary: "客户端凭据无效", allPassed: false },
+      });
     }
 
     // Step 2: JWKS 端点可达性
     const t2 = performance.now();
     try {
-      const jwksRes = await fetch(`${baseUrl}/api/oauth/jwks`, {
+      const jwksRes = await fetchWithTimeout(`${baseUrl}/api/oauth/jwks`, {
         method: "GET",
         headers: { Accept: "application/json" },
       });
@@ -181,7 +217,7 @@ export async function POST(request: NextRequest) {
       authUrl.searchParams.set("code_challenge", pkce.challenge);
       authUrl.searchParams.set("code_challenge_method", "S256");
 
-      const authRes = await fetch(authUrl.toString(), {
+      const authRes = await fetchWithTimeout(authUrl.toString(), {
         method: "GET",
         redirect: "manual", // 不跟随重定向
       });
@@ -278,7 +314,7 @@ export async function POST(request: NextRequest) {
     // Step 5: UserInfo 端点连通性（无 token 应返回 401）
     const t5 = performance.now();
     try {
-      const userinfoRes = await fetch(`${baseUrl}/api/oauth/userinfo`, {
+      const userinfoRes = await fetchWithTimeout(`${baseUrl}/api/oauth/userinfo`, {
         method: "GET",
         headers: { Accept: "application/json" },
       });
@@ -316,7 +352,7 @@ export async function POST(request: NextRequest) {
         client_secret: clientSecret,
       });
 
-      const introRes = await fetch(`${baseUrl}/api/oauth/introspect`, {
+      const introRes = await fetchWithTimeout(`${baseUrl}/api/oauth/introspect`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: introBody.toString(),

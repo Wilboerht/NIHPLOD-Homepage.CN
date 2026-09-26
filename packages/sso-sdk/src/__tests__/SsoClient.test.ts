@@ -476,7 +476,8 @@ describe("SsoClient", () => {
         clientId: "public-client-id",
         redirectUri: "https://test-app.com/callback",
         ssoBaseUrl: "https://nihplod.cn",
-        scopes: "openid profile",
+        // 非 OIDC scope（不含 openid）：token 响应无需 id_token，聚焦断言 client_secret
+        scopes: "profile membership",
       });
       saveOAuthState("public-state", "public-client-id");
       savePkceVerifier("public-client-id", "public-verifier");
@@ -490,6 +491,29 @@ describe("SsoClient", () => {
       expect(requestBody).toContain("client_id=public-client-id");
       expect(requestBody).toContain("code_verifier=public-verifier");
       expect(requestBody).not.toContain("client_secret");
+    });
+
+    it("scope 含 openid 但 token 响应缺少 id_token 时拒绝（fail-closed，不静默降级）", async () => {
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "new-access-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+            // 故意不返回 id_token
+          }),
+      });
+
+      const client = new SsoClient({ ...defaultConfig, scopes: "openid profile" });
+      saveOAuthState("no-id-token-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      await expect(
+        client.handleCallback("https://test-app.com/callback?code=c&state=no-id-token-state")
+      ).rejects.toThrow("缺少 id_token");
+      // 拒绝时不保存任何 token
+      expect(getTokenData(CLIENT_ID)).toBeNull();
     });
 
     it("缺少 code_verifier 时抛出错误", async () => {
@@ -868,6 +892,30 @@ describe("SsoClient", () => {
       expect(getTokenData(CLIENT_ID)).toBeNull();
     });
 
+    it("网关类 401（无 OAuth error 字段）保留本地 token 并抛 sso_server_error（可重试）", async () => {
+      const now = Date.now();
+      saveTokenData({
+        access_token: "expired-token",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "still-valid-refresh",
+        issued_at: now - 1000000,
+        expires_at: now - 1000,
+      }, CLIENT_ID);
+
+      installFetchRouter({
+        token: () => jsonResponse({ message: "gateway auth required" }, 401),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      const error = await client.refreshToken().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(SsoError);
+      expect((error as SsoError).code).toBe("sso_server_error");
+      // 非 invalid_grant：不得清除本地 token（避免一次网关抖动静默登出）
+      expect(getTokenData(CLIENT_ID)).not.toBeNull();
+    });
+
     it("无 refresh_token 时抛出错误", async () => {
       const client = new SsoClient(defaultConfig);
       // 不保存任何 token 数据
@@ -1033,6 +1081,70 @@ describe("SsoClient", () => {
           `https://test-app.com/callback?state=${saved}`
         )
       ).toBe(false);
+    });
+  });
+
+  describe("网络请求超时（避免登出/回调永久挂起）", () => {
+    function pendingFetch(): void {
+      vi.spyOn(globalThis, "fetch").mockImplementation(
+        (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            (init as RequestInit | undefined)?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError"))
+            );
+          })
+      );
+    }
+
+    function saveValidToken(): void {
+      const now = Date.now();
+      saveTokenData(
+        {
+          access_token: "at-timeout",
+          token_type: "Bearer",
+          expires_in: 900,
+          refresh_token: "rt-timeout",
+          issued_at: now,
+          expires_at: now + 900_000,
+        },
+        CLIENT_ID
+      );
+    }
+
+    it("logout 在 Discovery/revoke 不可达时仍会在超时后返回，且本地已清空", async () => {
+      vi.useFakeTimers();
+      try {
+        saveValidToken();
+        pendingFetch();
+        const client = new SsoClient(defaultConfig);
+
+        const p = client.logout(false);
+        await vi.advanceTimersByTimeAsync(15_000);
+        await expect(p).resolves.toBeUndefined();
+        // 本地登出优先：token 已清除
+        expect(getTokenData(CLIENT_ID)).toBeFalsy();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("refreshToken 超时转为 network_error，而不是永久 pending", async () => {
+      vi.useFakeTimers();
+      try {
+        saveValidToken();
+        pendingFetch();
+        const client = new SsoClient(defaultConfig);
+
+        const p = client.refreshToken();
+        const settled = p.catch((err: unknown) => err);
+        // discovery(10s) + 第 1 次 token 请求(10s) + 退避 1s + 第 2 次(10s) ≈ 31s
+        await vi.advanceTimersByTimeAsync(35_000);
+        const result = await settled;
+        expect(result).toBeInstanceOf(SsoError);
+        expect((result as SsoError).code).toBe("network_error");
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

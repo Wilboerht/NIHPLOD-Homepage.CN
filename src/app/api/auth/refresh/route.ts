@@ -101,6 +101,18 @@ export async function POST(request: NextRequest) {
             },
             { status: 403 }
           );
+        case "device_limit":
+          // 设备数超限自动淘汰：给被下线设备明确原因，避免误以为账号异常
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "DEVICE_LIMIT_EXCEEDED",
+                message: "登录设备数量已达上限，本设备已被自动下线，请重新登录",
+              },
+            },
+            { status: 401 }
+          );
         default:
           // 轮换失败（revoked / missing / expired / concurrent_rotation / error 等）
           return NextResponse.json(

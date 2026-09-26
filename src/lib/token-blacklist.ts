@@ -48,9 +48,13 @@ export async function removeFromBlacklist(userId: string): Promise<void> {
 /**
  * 撤销单条 access_token（RFC 7009）
  * key 为 token 的 jti claim
+ *
+ * @param expiresAtMs - token 的真实过期时间（毫秒时间戳）。OAuth client 可配置
+ *   access token 最长 24h，必须传入 exp 生成的黑名单 TTL，否则固定 2h 会在
+ *   黑名单过期后让仍有效的 token 重新可用；省略时回退默认 2h。
  */
-export async function revokeAccessToken(jti: string): Promise<void> {
-  await tokenBlacklistStore.revokeAccessToken(jti);
+export async function revokeAccessToken(jti: string, expiresAtMs?: number): Promise<void> {
+  await tokenBlacklistStore.revokeAccessToken(jti, expiresAtMs);
 }
 
 /**

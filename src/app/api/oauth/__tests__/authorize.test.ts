@@ -348,12 +348,53 @@ describe("GET /api/oauth/authorize", () => {
     expect(location).toContain("error=consent_required");
   });
 
+  it("prompt=login：已登录仍 302 到登录页，return_to 剥离 prompt（防 authorize⇄login 死循环）", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = new NextRequest(buildAuthorizeUrl({ prompt: "login" }), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const res = await GET(req);
+
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("reauth")).toBe("1");
+    const returnTo = location.searchParams.get("return_to")!;
+    expect(returnTo).toContain("client_id=test-client");
+    // 关键：剥离 prompt，登录成功回跳后不再命中 prompt=login 分支
+    expect(returnTo).not.toContain("prompt=");
+  });
+
   it("oauth_id 参数检索：未携带有效登录会话应返回 401（防匿名读取授权参数）", async () => {
     const req = new NextRequest("http://localhost/api/oauth/authorize?oauth_id=whatever.sig");
     const res = await GET(req);
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBe("unauthorized");
+  });
+
+  it("oauth_id 绑定创建者会话：其他登录用户读取返回 403", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    // 用户 A 生成 oauth_id（已登录未授权 → 302 consent 页）
+    const getReq = new NextRequest(buildAuthorizeUrl(), {
+      headers: { Cookie: "__Host-user_token=dummy-token" },
+    });
+    const getRes = await GET(getReq);
+    expect(getRes.status).toBe(302);
+    const oauthId = new URL(getRes.headers.get("location")!).searchParams.get("oauth_id")!;
+
+    // 用户 B（另一登录会话）拿到该 oauth_id 尝试读取 → 403
+    vi.mocked(verifyUserToken).mockResolvedValueOnce({
+      id: "user-2",
+      phone: "13900139000",
+      type: "user",
+    });
+    const req = new NextRequest(
+      `http://localhost/api/oauth/authorize?oauth_id=${encodeURIComponent(oauthId)}`,
+      { headers: { Cookie: "__Host-user_token=other-session" } }
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(403);
   });
 
   it("oauth_id 参数检索：已登录时可取回服务端存储的授权参数", async () => {

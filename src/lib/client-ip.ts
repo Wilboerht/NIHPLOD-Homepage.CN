@@ -6,12 +6,15 @@
  * 在反向代理架构中（Nginx/ALB），X-Forwarded-For 格式为：
  *   client, proxy1, proxy2, ..., lastProxy
  *
- * 通过 TRUST_PROXY_HOPS 环境变量控制取第 N 个 IP（从客户端开始计数）。
- * 例如：经过 2 层反向代理，则设置 TRUST_PROXY_HOPS=2，取第 2 个 IP。
+ * 通过 TRUST_PROXY_HOPS 环境变量控制取第几个 IP：
+ * - 0（默认）或负值：从最近端倒数（0 = 最后一段，通常是最靠近应用的代理写入项）
+ * - 正值 N：应用前面有 N 层可信代理，取从右往左第 N 个条目（idx = len - N）。
+ *   该位置由可信代理写入，客户端伪造的前置 XFF 条目无法影响。
+ *   例如：经过 2 层反向代理（XFF = "client, proxy1"），设置 TRUST_PROXY_HOPS=2 取 client。
  *
  * 默认行为：
- * - 信任代理头（TRUST_PROXY=true / development）时，按 TRUST_PROXY_HOPS 取 IP
- * - 否则返回 "unknown"
+ * - 信任代理头（TRUST_PROXY=true）时，按 TRUST_PROXY_HOPS 取 IP
+ * - 否则生产环境直接抛错（防止全局限流桶共享），非生产返回 socket 地址或 "unknown"
  */
 
 export interface ClientIPOptions {
@@ -52,13 +55,13 @@ export function getClientIP(
 
     if (ips.length === 0) return "unknown";
 
-    // 默认取最后一段（最靠近应用），而非第一段（最容易被伪造）
-    // TRUST_PROXY_HOPS 可从后往前数（负值）或从前往后（正值）
+    // 默认取最后一段（最靠近应用），而非第一段（最容易被伪造）。
+    // hops > 0 表示"应用前面有 N 层可信代理"：取从右往左第 N 个条目
+    // （idx = len - N），该位置由可信代理写入，不受客户端前置伪造的 XFF 条目影响。
+    // 旧实现取从头部第 N 个（idx = N-1），可被客户端伪造的 XFF 前缀控制，已废弃。
     const hopsRaw = options.hops ?? parseInt(process.env.TRUST_PROXY_HOPS || "0", 10);
-    const idx =
-      hopsRaw <= 0
-        ? ips.length - 1 + hopsRaw // 负值/0：从尾部倒数
-        : Math.min(hopsRaw - 1, ips.length - 1); // 正值：从头部往后
+    const hops = Number.isFinite(hopsRaw) ? hopsRaw : 0;
+    const idx = hops > 0 ? ips.length - hops : ips.length - 1 + hops;
     return ips[Math.max(0, Math.min(idx, ips.length - 1))] || "unknown";
   }
 

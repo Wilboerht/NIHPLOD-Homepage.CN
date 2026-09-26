@@ -214,7 +214,12 @@ describe("POST /api/user/oauth/revoke", () => {
       data: { revokedAt: expect.any(Date) },
     });
     // 撤销 refresh token，防止旧 refresh_token 继续换发 access_token
-    expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-abc");
+      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        "client-abc",
+        "user_revoke"
+      );
     // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
     // access token 即时失效由 sid 会话校验承担
     expect(mockBlacklistUserTokens).not.toHaveBeenCalled();

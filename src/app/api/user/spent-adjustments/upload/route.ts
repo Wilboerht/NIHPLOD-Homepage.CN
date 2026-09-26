@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withUserAuth } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { rateLimit } from "@/lib/ratelimit";
-import { uploadSpentProofFile } from "@/lib/spent-adjustment-files";
+import { uploadSpentProofFile, isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,14 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
+    // 解析 multipart 前先按 Content-Length 粗筛，避免超大请求体完整缓冲进内存
+    if (isSpentProofMultipartTooLarge(request.headers.get("content-length"))) {
+      return NextResponse.json(
+        { success: false, error: { code: "FILE_TOO_LARGE", message: "文件过大" } },
+        { status: 413 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -40,7 +48,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const result = await uploadSpentProofFile(file);
+    const result = await uploadSpentProofFile(file, payload.id);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: { code: result.code, message: result.message } },

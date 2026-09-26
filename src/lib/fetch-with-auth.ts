@@ -15,12 +15,32 @@ export class UnauthorizedError extends Error {
 }
 
 /**
- * 会话终结事件：401 且静默刷新最终失败时广播（如全局退出/令牌被吊销）。
+ * 会话终结事件：401 且静默刷新最终失败（确认为会话终结）时广播。
  * 由 AuthContext 统一监听并执行"清态 + 跳登录页"，本库保持 UI 无关。
  */
 export const SESSION_EXPIRED_EVENT = "nihplod:session-expired";
 
-let refreshPromise: Promise<boolean> | null = null;
+/** 会话过期原因提示的 sessionStorage key（登录页读取后清除，10 分钟内有效） */
+export const SESSION_EXPIRED_HINT_KEY = "nihplod_session_expired_hint";
+
+/** 明确的"会话已终结"错误码（仅这些才允许直接判定需要重新登录） */
+const FATAL_REFRESH_ERROR_CODES = new Set([
+  "TOKEN_REVOKED",
+  "DEVICE_LIMIT_EXCEEDED",
+  "MISSING_REFRESH_TOKEN",
+  "INVALID_TOKEN",
+  "ACCOUNT_DISABLED",
+]);
+
+/**
+ * 静默刷新结果：
+ * - ok：刷新成功
+ * - fatal：服务端明确判定会话已终结（广播登出事件）
+ * - retryable：网络异常/5xx/429/无法识别的 401 等可恢复失败（保留登录态并退避重试）
+ */
+export type RefreshResult = { ok: true } | { ok: false; kind: "fatal" | "retryable" };
+
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 /**
  * 从 Cookie 中读取 CSRF Token
@@ -56,7 +76,7 @@ async function ensureCSRFToken(): Promise<string | null> {
   return null;
 }
 
-async function doRefresh(): Promise<boolean> {
+async function doRefresh(): Promise<RefreshResult> {
   try {
     // 刷新 Token 时也需附带 CSRF Token
     const csrfToken = await ensureCSRFToken();
@@ -69,16 +89,52 @@ async function doRefresh(): Promise<boolean> {
       credentials: "include",
       headers,
     });
-    return res.ok;
+    if (res.ok) return { ok: true };
+
+    // 解析错误码：用于区分"会话终结"与"可恢复失败"
+    let errorCode: string | undefined;
+    if (typeof window !== "undefined") {
+      try {
+        const data = (await res.json()) as {
+          error?: { code?: string; message?: string };
+        };
+        errorCode = data?.error?.code;
+        if (
+          errorCode === "DEVICE_LIMIT_EXCEEDED" &&
+          typeof data.error?.message === "string"
+        ) {
+          // 带时间戳：登录页只展示 10 分钟内的原因，避免历史提示误报
+          sessionStorage.setItem(
+            SESSION_EXPIRED_HINT_KEY,
+            `${Date.now()}|${data.error.message.slice(0, 120)}`
+          );
+        }
+      } catch {
+        // 响应体非 JSON：errorCode 保持 undefined
+      }
+    }
+
+    // 网络/限流/服务端故障：保留登录态，退避重试
+    if (res.status >= 500 || res.status === 429 || res.status === 408) {
+      return { ok: false, kind: "retryable" };
+    }
+
+    // 401/403：仅服务端明确给出会话终结错误码时判定 fatal；
+    // 无法识别（如网关/WAF 返回的 401）按可恢复处理，避免一次抖动即强制登出
+    if (errorCode && FATAL_REFRESH_ERROR_CODES.has(errorCode)) {
+      return { ok: false, kind: "fatal" };
+    }
+    return { ok: false, kind: "retryable" };
   } catch {
-    return false;
+    // 网络异常
+    return { ok: false, kind: "retryable" };
   }
 }
 
 /**
  * 刷新 Access Token，使用锁防止并发刷新
  */
-export async function refreshAccessToken(): Promise<boolean> {
+export async function refreshAccessToken(): Promise<RefreshResult> {
   if (refreshPromise) {
     return refreshPromise;
   }
@@ -125,12 +181,16 @@ export async function fetchWithAuth(
   // 如果未授权，尝试刷新 Token 后重试一次
   if (response.status === 401) {
     const refreshed = await refreshAccessToken();
-    if (!refreshed) {
-      // 刷新最终失败 = 会话已终结（全局退出/吊销），广播事件由 AuthContext 统一处理
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    if (!refreshed.ok) {
+      if (refreshed.kind === "fatal") {
+        // 服务端明确判定会话终结（全局退出/吊销/设备超限）：广播事件由 AuthContext 统一处理
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+        }
+        throw new UnauthorizedError();
       }
-      throw new UnauthorizedError();
+      // 可恢复失败（网络/5xx/429）：不广播、不强制登出，由上层提示重试
+      throw new UnauthorizedError("网络异常，登录状态暂时无法确认，请稍后重试");
     }
     response = await fetch(input, mergedInit);
   }

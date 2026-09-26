@@ -154,18 +154,25 @@ function createMemoryStorageAdapter() {
     },
     remove(key) {
       store.delete(key);
+    },
+    keys() {
+      return [...store.keys()];
     }
   };
 }
 var memoryStorageAdapter = createMemoryStorageAdapter();
 var localStorageAdapter = {
   get(key) {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage.getItem(STORAGE_PREFIX + key);
+    try {
+      if (typeof localStorage === "undefined") return null;
+      return localStorage.getItem(STORAGE_PREFIX + key);
+    } catch {
+      return null;
+    }
   },
   set(key, value) {
-    if (typeof localStorage === "undefined") return;
     try {
+      if (typeof localStorage === "undefined") return;
       localStorage.setItem(STORAGE_PREFIX + key, value);
     } catch (err) {
       console.warn(
@@ -174,34 +181,68 @@ var localStorageAdapter = {
     }
   },
   remove(key) {
-    if (typeof localStorage === "undefined") return;
-    localStorage.removeItem(STORAGE_PREFIX + key);
+    try {
+      if (typeof localStorage === "undefined") return;
+      localStorage.removeItem(STORAGE_PREFIX + key);
+    } catch {
+    }
+  },
+  keys() {
+    try {
+      if (typeof localStorage === "undefined") return [];
+      const result = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(STORAGE_PREFIX)) result.push(key.slice(STORAGE_PREFIX.length));
+      }
+      return result;
+    } catch {
+      return [];
+    }
   }
 };
 function createSessionStorageAdapter() {
   const fallback = /* @__PURE__ */ new Map();
   return {
     get(key) {
-      if (typeof sessionStorage !== "undefined") {
-        return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          return sessionStorage.getItem(STORAGE_PREFIX + key) ?? fallback.get(key) ?? null;
+        }
+      } catch {
       }
       return fallback.get(key) ?? null;
     },
     set(key, value) {
-      if (typeof sessionStorage === "undefined") {
-        fallback.set(key, value);
-        return;
-      }
       try {
-        sessionStorage.setItem(STORAGE_PREFIX + key, value);
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(STORAGE_PREFIX + key, value);
+          return;
+        }
       } catch {
-        fallback.set(key, value);
       }
+      fallback.set(key, value);
     },
     remove(key) {
       fallback.delete(key);
-      if (typeof sessionStorage === "undefined") return;
-      sessionStorage.removeItem(STORAGE_PREFIX + key);
+      try {
+        if (typeof sessionStorage === "undefined") return;
+        sessionStorage.removeItem(STORAGE_PREFIX + key);
+      } catch {
+      }
+    },
+    keys() {
+      const result = new Set(fallback.keys());
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key?.startsWith(STORAGE_PREFIX)) result.add(key.slice(STORAGE_PREFIX.length));
+          }
+        }
+      } catch {
+      }
+      return [...result];
     }
   };
 }
@@ -303,22 +344,43 @@ function clearAllSsoData(clientId) {
   removeReturnUrl();
   removeLogoutState();
   removeSilentProbe();
-  const prefix = STORAGE_PREFIX + VERIFIER_KEY_PREFIX;
-  const stores = [
-    typeof sessionStorage !== "undefined" ? sessionStorage : null,
-    typeof localStorage !== "undefined" ? localStorage : null
-  ];
+  const stores = [];
+  try {
+    if (typeof sessionStorage !== "undefined") stores.push(sessionStorage);
+  } catch {
+  }
+  try {
+    if (typeof localStorage !== "undefined") stores.push(localStorage);
+  } catch {
+  }
+  const abstractKeys = /* @__PURE__ */ new Set();
   for (const store of stores) {
-    if (!store) continue;
     const keys = [];
-    for (let i = 0; i < store.length; i++) {
-      const key = store.key(i);
-      if (key?.startsWith(prefix)) keys.push(key);
+    try {
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key?.startsWith(STORAGE_PREFIX)) keys.push(key);
+      }
+    } catch {
+      continue;
     }
     for (const key of keys) {
-      _transient.remove(key.slice(STORAGE_PREFIX.length));
-      store.removeItem(key);
+      abstractKeys.add(key.slice(STORAGE_PREFIX.length));
+      try {
+        store.removeItem(key);
+      } catch {
+      }
     }
+  }
+  for (const store of [_transient, _storage]) {
+    try {
+      for (const key of store.keys?.() ?? []) abstractKeys.add(key);
+    } catch {
+    }
+  }
+  for (const key of abstractKeys) {
+    _transient.remove(key);
+    _storage.remove(key);
   }
 }
 function clearVerifiersForClients(clientIds) {
@@ -328,12 +390,17 @@ function clearVerifiersForClients(clientIds) {
 }
 
 // src/core/security.ts
+var UNSAFE_URL_CHAR_PATTERN = /[\\\u0000-\u001F\u007F]/;
 function isTrustedReturnUrl(url, currentOrigin) {
   if (!url) return false;
-  if (url.includes("\\")) return false;
-  if (url.startsWith("/") && !url.startsWith("//")) return true;
+  if (UNSAFE_URL_CHAR_PATTERN.test(url)) return false;
+  if (url.startsWith("//")) return false;
+  if (url.startsWith("/")) return true;
   try {
-    return new URL(url).origin === currentOrigin;
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    return parsed.origin === currentOrigin;
   } catch {
     return false;
   }
@@ -567,6 +634,17 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
 }
 
 // src/core/SsoClient.ts
+var REQUEST_TIMEOUT_MS = 1e4;
+var REVOKE_TIMEOUT_MS = 3e3;
+async function fetchWithTimeout(input, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 var SILENT_PROBE_ERRORS = /* @__PURE__ */ new Set([
   "login_required",
   "consent_required",
@@ -583,6 +661,19 @@ var _SsoClient = class _SsoClient {
     const base = config.ssoBaseUrl.replace(/\/+$/, "");
     this.config = { ...config, ssoBaseUrl: base };
     this._serverBase = (config.serverBaseUrl ?? base).replace(/\/+$/, "");
+  }
+  // ============================================
+  // 调试日志
+  // ============================================
+  /**
+   * 调试日志（config.debug=true 时输出，前缀 [SSO SDK]）：
+   * 覆盖登录发起 / 回调结果 / 刷新失败 / 登出等关键节点，便于接入方定位问题。
+   * 不会输出 token/授权码等敏感值。
+   */
+  debugLog(...args) {
+    if (this.config.debug) {
+      console.warn("[SSO SDK]", ...args);
+    }
   }
   // ============================================
   // 内部方法
@@ -964,7 +1055,7 @@ var _SsoClient = class _SsoClient {
     }
     let res;
     try {
-      res = await fetch(tokenEndpoint, {
+      res = await fetchWithTimeout(tokenEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString()
@@ -985,6 +1076,14 @@ var _SsoClient = class _SsoClient {
       );
     }
     const data = await res.json();
+    const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
+    if (requestedScopes.includes("openid") && !data.id_token) {
+      removeTokenData(this.config.clientId);
+      throw new SsoError(
+        "id_token_invalid",
+        "Token \u54CD\u5E94\u7F3A\u5C11 id_token\uFF08scope \u542B openid \u65F6\u5FC5\u9700\uFF09"
+      );
+    }
     if (data.id_token) {
       try {
         await validateIdToken(
@@ -1014,6 +1113,7 @@ var _SsoClient = class _SsoClient {
       expires_at: now + data.expires_in * 1e3
     };
     saveTokenData(tokenData, this.config.clientId);
+    this.debugLog("handleCallback: token \u4EA4\u6362\u6210\u529F", { clientId: this.config.clientId });
     return tokenData;
   }
   /**
@@ -1049,7 +1149,7 @@ var _SsoClient = class _SsoClient {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        res = await fetch(tokenEndpoint, {
+        res = await fetchWithTimeout(tokenEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: body.toString()
@@ -1071,8 +1171,12 @@ var _SsoClient = class _SsoClient {
       } catch {
       }
       const errorCode = errData.error || "";
-      if (errorCode === "invalid_grant" || res.status === 401) {
+      if (errorCode === "invalid_grant") {
         removeTokenData(this.config.clientId);
+      }
+      this.debugLog("refreshToken: \u5237\u65B0\u5931\u8D25", { status: res.status, error: errorCode });
+      if (!errorCode && res.status === 401) {
+        throw new SsoError("sso_server_error", "\u5237\u65B0 Token \u5931\u8D25\uFF08\u7F51\u5173\u5F02\u5E38\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
       }
       throw new SsoError(
         mapOAuthErrorToSsoCode(errorCode, "refresh"),
@@ -1123,7 +1227,7 @@ var _SsoClient = class _SsoClient {
     const userinfoEndpoint = await this._getUserinfoEndpoint();
     let res;
     try {
-      res = await fetch(userinfoEndpoint, {
+      res = await fetchWithTimeout(userinfoEndpoint, {
         headers: {
           Authorization: `Bearer ${tokenData.access_token}`
         }
@@ -1180,6 +1284,10 @@ var _SsoClient = class _SsoClient {
     const refreshToken = tokenData?.refresh_token;
     const idTokenHint = tokenData?.id_token;
     clearAllSsoData(this.config.clientId);
+    this.debugLog("logout: \u672C\u5730\u6570\u636E\u5DF2\u6E05\u9664", {
+      clientId: this.config.clientId,
+      redirectToSso
+    });
     if (refreshToken && this.config.clientId) {
       try {
         const discovery = this.config.serverBaseUrl ? null : await this._getDiscovery();
@@ -1192,11 +1300,15 @@ var _SsoClient = class _SsoClient {
         if (this.config.clientSecret) {
           revokeBody.set("client_secret", this.config.clientSecret);
         }
-        await fetch(revokeUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: revokeBody.toString()
-        });
+        await fetchWithTimeout(
+          revokeUrl,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: revokeBody.toString()
+          },
+          REVOKE_TIMEOUT_MS
+        );
       } catch {
       }
     }

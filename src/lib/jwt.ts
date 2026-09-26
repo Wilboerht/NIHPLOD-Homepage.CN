@@ -259,6 +259,7 @@ export async function signToken(payload: {
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience("admin")
+    .setJti(crypto.randomUUID())
     .setExpirationTime(adminExpiresIn)
     .sign(adminSecret);
 
@@ -277,6 +278,12 @@ export async function verifyToken(token: string): Promise<AdminJWTPayload | null
     });
     // 确保是管理员 token，防止用户 token 被用于访问 admin API
     if ((payload as AdminJWTPayload & { type?: string }).type !== "admin") {
+      return null;
+    }
+    // jti 级撤销：管理员登出时写入黑名单，使被复制的 token 立即失效
+    // （无 jti 的旧 token 跳过，自然过期兼容）
+    const jti = (payload as { jti?: string }).jti;
+    if (jti && (await isAccessTokenRevoked(jti))) {
       return null;
     }
     return payload as AdminJWTPayload;
@@ -540,10 +547,87 @@ export interface WechatBindPayload {
   avatar?: string;
   /** 外部身份归属平台（签发入口已知时携带，bind 端点据此写入 ExternalIdentity） */
   provider?: "wechat_open" | "wechat_mp" | "wechat_miniprogram" | "douyin";
+  /** 一次性消费标识：绑定成功后写入黑名单，防同 token 重放 */
+  jti?: string;
 }
 
 /**
- * 签发微信绑定临时 Token（1小时）
+ * 微信绑定 token 的已使用记录（进程内快速路径；跨实例由 TokenBlacklist 唯一约束保证）。
+ * TTL 2 小时 > token 自身 1 小时有效期。
+ */
+const usedWechatBindTokens = new LRUCache<string, number>({
+  max: 5000,
+  ttl: 2 * 60 * 60 * 1000,
+});
+
+const WECHAT_BIND_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+
+/** 绑定 token（按 jti）是否已被消费。DB 不可用时 fail-closed 返回 true（拒绝重放） */
+export async function isWechatBindTokenUsed(jti: string): Promise<boolean> {
+  const key = `wb:${jti}`;
+  if (usedWechatBindTokens.has(key)) return true;
+  try {
+    const entry = await prisma.tokenBlacklist.findUnique({ where: { key } });
+    if (entry && entry.expiresAt > new Date()) {
+      usedWechatBindTokens.set(key, Date.now());
+      return true;
+    }
+    return false;
+  } catch {
+    // DB 不可用：无法确认是否已消费，按已使用处理（fail-closed）
+    return true;
+  }
+}
+
+/**
+ * 原子化消费微信绑定 token 的 jti（绑定成功后调用）。
+ * 通过 TokenBlacklist 唯一约束实现跨实例原子性；DB 不可用时返回 false（调用方仅记录告警）。
+ */
+export async function consumeWechatBindToken(jti: string): Promise<boolean> {
+  const key = `wb:${jti}`;
+  if (usedWechatBindTokens.has(key)) return false;
+
+  try {
+    await prisma.tokenBlacklist.create({
+      data: {
+        type: "wechat_exchange_token",
+        key,
+        expiresAt: new Date(Date.now() + WECHAT_BIND_TOKEN_TTL_MS),
+      },
+    });
+    usedWechatBindTokens.set(key, Date.now());
+    return true;
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
+      usedWechatBindTokens.set(key, Date.now());
+      return false;
+    }
+    return false;
+  }
+}
+
+/**
+ * 释放已占用的微信绑定 token jti（绑定业务失败时调用，允许用户用同一 token 重试）。
+ *
+ * 仅用于"占用成功但绑定未完成"的失败路径；绑定成功不得释放。
+ */
+export async function releaseWechatBindToken(jti: string): Promise<void> {
+  const key = `wb:${jti}`;
+  usedWechatBindTokens.delete(key);
+  try {
+    await prisma.tokenBlacklist.deleteMany({ where: { key } });
+  } catch {
+    // 释放失败仅告警（最坏情况要求用户重新扫码）
+  }
+}
+
+/**
+ * 签发微信绑定临时 Token（1小时，含一次性 jti）
  */
 export async function signWechatBindToken(
   payload: Omit<WechatBindPayload, "type">
@@ -553,6 +637,7 @@ export async function signWechatBindToken(
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience("wechat-bind")
+    .setJti(crypto.randomUUID())
     .setExpirationTime(wechatBindExpiresIn)
     .sign(wechatBindSecret);
 
@@ -664,16 +749,20 @@ export interface WechatExchangePayload {
 
 /**
  * 签发微信授权 exchange token（短期，用于跨子站传递微信授权信息）
+ *
+ * @param options.expiresIn - 有效期覆盖（如 "2m"）。自动登录场景（token 立即被兑换）
+ *   应传入较短 TTL；需要用户继续填写绑定表单的场景保留默认 10 分钟。
  */
 export async function signWechatExchangeToken(
-  payload: Omit<WechatExchangePayload, "type">
+  payload: Omit<WechatExchangePayload, "type">,
+  options?: { expiresIn?: string }
 ): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "wechat_exchange" as const })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience("wechat-exchange")
-    .setExpirationTime(wechatExchangeExpiresIn)
+    .setExpirationTime(options?.expiresIn || wechatExchangeExpiresIn)
     .sign(wechatExchangeSecret);
 
   return token;
@@ -707,7 +796,7 @@ export async function verifyWechatExchangeToken(
 }
 
 /**
- * 验证微信绑定临时 Token
+ * 验证微信绑定临时 Token（返回载荷含 jti，供绑定成功后一次性消费）
  */
 export async function verifyWechatBindToken(token: string): Promise<WechatBindPayload | null> {
   try {
@@ -719,7 +808,9 @@ export async function verifyWechatBindToken(token: string): Promise<WechatBindPa
     if ((payload as { type?: string }).type !== "wechat_bind") {
       return null;
     }
-    return payload as unknown as WechatBindPayload;
+    const bindPayload = payload as unknown as WechatBindPayload;
+    if (typeof payload.jti === "string") bindPayload.jti = payload.jti;
+    return bindPayload;
   } catch (error) {
     warnVerifyError("verifyWechatBindToken", error);
     return null;
@@ -742,6 +833,10 @@ export interface IdTokenClaims {
   nonce?: string;
   /** OIDC Core 3.3.2.11: Access Token 的 SHA-256 左半 base64url */
   at_hash?: string;
+  /** OIDC Core 2: 用户认证时间（Unix 秒）；请求包含 max_age 时必须返回 */
+  auth_time?: number;
+  /** OIDC Back-Channel Logout: SSO 会话 ID（与 access token 的 sid claim 一致） */
+  sid?: string;
 }
 
 /**

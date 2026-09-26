@@ -26,13 +26,19 @@ export async function GET(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        key: process.env.AMAP_KEY || "",
-        secret: process.env.AMAP_SECRET || "",
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          key: process.env.AMAP_KEY || "",
+          secret: process.env.AMAP_SECRET || "",
+        },
       },
-    });
+      {
+        // 含安全密钥，禁止浏览器/代理缓存
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" },
+      }
+    );
   } catch (error) {
     apiConsole.error("[AmapConfig] GET 异常:", error);
     return NextResponse.json(

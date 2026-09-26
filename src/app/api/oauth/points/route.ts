@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getPointsOverviewResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
 
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest) {
       action: "points_overview",
     });
     if (!auth.ok) return auth.response;
-    return await getPointsOverviewResponse(auth.payload.id);
+    // 共享核心返回裸 JSON 响应：补 CORS 白名单头与 no-store（响应含积分/流水）
+    return decorateOAuthResponse(await getPointsOverviewResponse(auth.payload.id), auth.corsHeaders);
   } catch (error) {
     apiConsole.error("[OAuth Points] 异常:", error);
     return NextResponse.json(
