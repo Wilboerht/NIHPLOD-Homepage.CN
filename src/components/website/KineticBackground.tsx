@@ -151,46 +151,7 @@ export function KineticBackground() {
             </div>
           </div>
 
-          {/* Row 1, Col 2: 文字卡 */}
-          <div className="kinetic-cell kinetic-text-cell kinetic-cell-yellow kinetic-cell-steps text-center">
-            <div className="kinetic-title-sm">
-              更少步骤
-              <br />
-              更多呵护
-            </div>
-            <div className="kinetic-body-sm">
-              美丽不该复杂
-              <br />
-              专注美好生活
-            </div>
-          </div>
-
-          {/* Row 1, Col 3-4: 官方指南宽图片卡 */}
-          <div
-            className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
-            style={{ gridColumn: "span 2", aspectRatio: "auto" }}
-          >
-            <Link
-              href="/guide"
-              onClick={handleCardClick("/guide")}
-              className="absolute inset-0 z-20"
-              aria-label="官方指南"
-            />
-            <Image
-              src="/images/kinetic-guide.webp"
-              alt="NIHPLOD 官方护肤指南"
-              fill
-              className="kinetic-cell-image"
-              style={{ objectPosition: "center 40%" }}
-              sizes="(max-width: 819px) 82vw, (max-width: 1024px) 80vw, 36vw"
-            />
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
-              <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
-                官方指南
-              </span>
-            </div>
-          </div>
-
+          {/* Row 1, Col 2: 品牌故事图卡（PC 单格；≤1024 由 order 重排，位置不受影响） */}
           <div className="kinetic-cell kinetic-image-cell kinetic-cell-skin group relative cursor-pointer">
             <Link
               href="/about"
@@ -220,6 +181,69 @@ export function KineticBackground() {
               <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
                 品牌故事
               </span>
+            </div>
+          </div>
+
+          {/* Row 1, Col 3-4: 肌智派推广卡（仅 PC 端显示，外链测肤子站） */}
+          <div
+            className="kinetic-cell kinetic-image-cell kinetic-cell-advisor group relative cursor-pointer"
+            style={{ gridColumn: "span 2", aspectRatio: "auto" }}
+          >
+            <a
+              href="https://advisor.nihplod.cn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0 z-20"
+              aria-label="肌智派在线测肤"
+            />
+            <Image
+              src="/images/kinetic-advisor.webp"
+              alt="肌智派 - 在线测肤，专属顾问"
+              fill
+              className="kinetic-cell-image"
+              sizes="(max-width: 1024px) 0px, 36vw"
+            />
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
+              <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
+                开始测肤
+              </span>
+            </div>
+          </div>
+
+          {/* Row 2, Col 2-3: 官方指南宽图片卡 */}
+          <div
+            className="kinetic-cell kinetic-image-cell kinetic-cell-less group relative cursor-pointer"
+            style={{ gridColumn: "span 2", aspectRatio: "auto" }}
+          >
+            <Link
+              href="/guide"
+              onClick={handleCardClick("/guide")}
+              className="absolute inset-0 z-20"
+              aria-label="官方指南"
+            />
+            <Image
+              src="/images/kinetic-guide.webp"
+              alt="NIHPLOD 官方护肤指南"
+              fill
+              className="kinetic-cell-image"
+              style={{ objectPosition: "center 40%" }}
+              sizes="(max-width: 819px) 82vw, (max-width: 1024px) 80vw, 36vw"
+            />
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
+              <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
+                官方指南
+              </span>
+            </div>
+          </div>
+
+          {/* 文字卡（PC 端隐藏；平板端显示，手机端隐藏，类名勿删） */}
+          <div className="kinetic-cell kinetic-text-cell kinetic-cell-cream kinetic-cell-steps text-center">
+            <div className="kinetic-title-sm kinetic-serif">
+              LESS
+              <br />
+              BUT
+              <br />
+              BETTER
             </div>
           </div>
 
