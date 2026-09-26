@@ -8,9 +8,9 @@
  * - 生日回显：birthday
  *
  * 运行方式：
- *   npx tsx scripts/add-oauth-client-scopes.ts <clientId> <scope> [scope...]
+ *   npm run oauth:add-client-scopes -- <clientId> <scope> [scope...]
  * 示例（advisor 子站）：
- *   npx tsx scripts/add-oauth-client-scopes.ts q6n4aitms0wgn2sz1nj96au5 \
+ *   npm run oauth:add-client-scopes -- q6n4aitms0wgn2sz1nj96au5 \
  *     membership birthday profile:write
  *
  * 环境变量加载顺序（dotenv 默认不覆盖已存在值，先加载者优先）：
@@ -29,7 +29,7 @@ const SCOPE_RE = /^[a-z][a-z0-9]*(?::[a-z][a-z0-9]*)?$/;
 async function main() {
   const [, , clientId, ...scopes] = process.argv;
   if (!clientId || scopes.length === 0) {
-    console.error("用法: npx tsx scripts/add-oauth-client-scopes.ts <clientId> <scope> [scope...]");
+    console.error("用法: npm run oauth:add-client-scopes -- <clientId> <scope> [scope...]");
     process.exit(1);
   }
 

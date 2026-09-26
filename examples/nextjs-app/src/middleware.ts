@@ -5,6 +5,9 @@
  * 本地开发若使用 HTTP，浏览器会拒绝 Secure Cookie（导致登录后 cookie 写不进去、
  * middleware 永远判定未登录而反复跳 SSO）；此时可设置 insecureLocalDev: true
  * （middleware/callback/logout 三处需同时开启），生产必须使用 HTTPS 且移除该配置。
+ *
+ * ⚠️ middleware 只是 UX 层：敏感接口必须在 Route Handler / Server Component 中
+ * 用 @nihplod/sso-verify 对 access_token 二次校验。
  */
 import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
 
@@ -33,6 +36,10 @@ const SSO_CONFIG = {
   redirectUri: redirectUri || "http://localhost:3002/api/auth/callback",
   scopes: "openid profile phone",
   publicPaths: ["/", "/api/auth/logout"],
+  // SSO introspection 不可达（网络异常/超时/5xx）时，对持有 access_token Cookie
+  // 的请求默认 fail-open 放行（middleware 只是 UX 层，Route Handler 仍二次校验）。
+  // 如宁可拒绝也不放行，可开启 fail-closed（返回 502）：
+  // failClosedOnIntrospectionError: true,
   insecureLocalDev: isHttpLocalDev,
 };
 

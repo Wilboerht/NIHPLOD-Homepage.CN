@@ -476,8 +476,16 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       id_token?: string;
     } = await res.json();
 
-    // 服务端异常可能省略必要字段；不校验会把字符串 "undefined" 写进 cookie
-    if (!tokenData.access_token || !tokenData.refresh_token) {
+    // 服务端异常可能省略必要字段；不校验会把字符串 "undefined" 写进 cookie。
+    // expires_in 必须为有限正数，否则 access_token cookie 的 maxAge 为 NaN
+    // （退化为会话 cookie 甚至立即失效）。
+    if (
+      !tokenData.access_token ||
+      !tokenData.refresh_token ||
+      typeof tokenData.expires_in !== "number" ||
+      !Number.isFinite(tokenData.expires_in) ||
+      tokenData.expires_in <= 0
+    ) {
       return buildErrorResponse(
         request,
         502,

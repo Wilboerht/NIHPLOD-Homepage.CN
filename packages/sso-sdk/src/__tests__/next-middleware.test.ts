@@ -5,7 +5,7 @@
  * introspection 缓存命中（同一 token 第二次请求不再调用 SSO 中心）。
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createSsoMiddleware } from "../next/middleware";
 
 const config = {
@@ -90,13 +90,30 @@ describe("createSsoMiddleware", () => {
     expect(res.cookies.get("__Secure-nihplod_sso_verifier")).toBeUndefined();
   });
 
-  it("主站 SSO cookie 有效（introspection active）时放行", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+  it("主站会话 Cookie（__Host-user_token）不再参与判定：不发起 introspection，直接重定向登录", async () => {
+    // __Host-user_token 是主站内部 token（type="user"），introspect 恒返回 inactive；
+    // 且 __Host- Cookie 不下发到子域。该快速通道已移除，会话检测只认本站
+    // access_token Cookie（__Host-nihplod_sso_at）。
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       jsonResponse({ active: true })
     );
     const middleware = createSsoMiddleware(config);
     const req = new NextRequest("https://myapp.com/dashboard", {
       headers: { cookie: "__Host-user_token=token-active-1" },
+    });
+    const res = await middleware(req);
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("本站 access_token Cookie 有效（introspection active）时放行", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({ active: true })
+    );
+    const middleware = createSsoMiddleware(config);
+    const req = new NextRequest("https://myapp.com/dashboard", {
+      headers: { cookie: "__Host-nihplod_sso_at=token-active-1" },
     });
     const res = await middleware(req);
     expect(res.headers.get("location")).toBeNull();
@@ -110,7 +127,7 @@ describe("createSsoMiddleware", () => {
 
     const makeReq = () =>
       new NextRequest("https://myapp.com/dashboard", {
-        headers: { cookie: "__Host-user_token=token-cache-hit" },
+        headers: { cookie: "__Host-nihplod_sso_at=token-cache-hit" },
       });
 
     await middleware(makeReq());
@@ -119,19 +136,6 @@ describe("createSsoMiddleware", () => {
     // 缓存命中：不再发起 introspection 请求
     await middleware(makeReq());
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it("introspection 判定 token 无效时重定向到 SSO", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
-      jsonResponse({ active: false })
-    );
-    const middleware = createSsoMiddleware(config);
-    const req = new NextRequest("https://myapp.com/dashboard", {
-      headers: { cookie: "__Host-user_token=token-inactive" },
-    });
-    const res = await middleware(req);
-    expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
   });
 
   it("introspect 请求携带超时 AbortSignal", async () => {
@@ -209,6 +213,61 @@ describe("createSsoMiddleware", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("failClosedOnIntrospectionError=true：introspect 不可达且持有 access token cookie 时返回 502", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware({
+      ...config,
+      failClosedOnIntrospectionError: true,
+    });
+    const req = new NextRequest("https://myapp.com/dashboard", {
+      headers: { cookie: "__Host-nihplod_sso_at=token-net-down-fc" },
+    });
+    const res = await middleware(req);
+    // fail-closed：不放行、不重定向登录，返回 502
+    expect(res.status).toBe(502);
+    expect(res.headers.get("location")).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("fail-closed"));
+  });
+
+  it("failClosedOnIntrospectionError=true：introspect 确证 token 无效（active:false）仍清除 cookie 并重定向", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      jsonResponse({ active: false })
+    );
+    const middleware = createSsoMiddleware({
+      ...config,
+      failClosedOnIntrospectionError: true,
+    });
+    const req = new NextRequest("https://myapp.com/dashboard", {
+      headers: { cookie: "__Host-nihplod_sso_at=token-fc-inactive" },
+    });
+    const res = await middleware(req);
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
+  });
+
+  it("failClosedOnIntrospectionError=true：无 cookie 的请求不受影响，仍重定向登录", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    const middleware = createSsoMiddleware({
+      ...config,
+      failClosedOnIntrospectionError: true,
+    });
+    const res = await middleware(new NextRequest("https://myapp.com/dashboard"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("已废弃的 validateSsoCookie / ssoCookieName 配置触发废弃告警", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    createSsoMiddleware({ ...config, validateSsoCookie: false });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("已废弃"));
+    warnSpy.mockClear();
+    createSsoMiddleware({ ...config, ssoCookieName: "custom_session" });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("已废弃"));
+  });
+
   it("insecureLocalDev=true：Cookie 去除 __Host-/__Secure- 前缀且不设置 Secure", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const middleware = createSsoMiddleware({ ...config, insecureLocalDev: true });
@@ -264,13 +323,13 @@ describe("createSsoMiddleware", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     createSsoMiddleware({
       clientId: "test-client",
-      // 无 clientSecret + validateSsoCookie=false：两个告警都应在生产环境输出
+      // 无 clientSecret + 显式传入已废弃的 validateSsoCookie：两个告警都应在生产环境输出
       ssoBaseUrl: "https://nihplod.cn",
       redirectUri: "https://myapp.com/api/auth/callback",
       validateSsoCookie: false,
     });
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("validateSsoCookie=false")
+      expect.stringContaining("validateSsoCookie / ssoCookieName 已废弃")
     );
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("未配置 clientSecret")

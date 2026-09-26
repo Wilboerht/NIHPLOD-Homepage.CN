@@ -25,7 +25,7 @@ NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文�
    - `LOGIN_ATTEMPT_HMAC_KEY`、`SMS_CODE_HMAC_KEY`
    - `INTERNAL_API_KEYS`（重新签发并同步所有子项目）
    - 影响：轮换 `JWT_*_SECRET` 会使存量令牌/会话失效（用户需重新登录），选择低峰期执行。
-3. **RS256 密钥对**：若生产使用 RS256，用 `npx tsx scripts/generate-oauth-rs256-keys.ts` 重新生成
+3. **RS256 密钥对**：若生产使用 RS256，用 `npm run generate:oauth-rs256-keys` 重新生成
    `JWT_ACCESS_*` / `JWT_ID_TOKEN_*` 密钥对。轮换时把旧公钥写入 `JWT_OAUTH_*_PREV_PUBLIC_KEY`
    过渡一代，并相应调整 `JWT_OAUTH_*_KID`，待存量 token 过期后移除。
 4. **第三方凭证**：阿里云 OSS/SMS AccessKey、高德 Key 与安全密钥、企业微信机器人 webhook 与应用
@@ -163,7 +163,7 @@ openssl rand -hex 32
 生成命令（输出即为单行 `.env` 格式，PEM 换行已转义为字面 `\n`，直接复制即可）：
 
 ```bash
-npx tsx scripts/generate-oauth-rs256-keys.ts
+npm run generate:oauth-rs256-keys
 ```
 
 ⚠️ `*_PRIVATE_KEY` 是最高机密，严禁提交 Git、发到聊天工具或写入日志；请通过密钥管理系统分发，用完清除终端滚动缓冲。
@@ -178,6 +178,14 @@ JWKS 端点支持同时暴露当前与上一代公钥，实现无感轮换：
    - kid 默认值：当前 `access-token-rs256-v1` / `id-token-rs256-v1` / `logout-token-rs256-v1`，上一代默认 `-v0`
 3. 再将新密钥对配置为当前密钥（`*_PRIVATE_KEY` / `*_PUBLIC_KEY`），发布上线。过渡期内验证侧按 kid 匹配，旧 token 仍可验签；
 4. 待旧密钥签发的 token 全部过期后，移除 `*_PREV_*` 配置。access token 有效期默认为 15 分钟（按 Client 可通过 `accessTokenTtlSeconds` 配置，范围 60–86400 秒），id_token 固定为 1 小时（`src/lib/jwt.ts` 硬编码），按实际配置的最大值等待即可。
+
+**`INTERNAL_API_KEYS` 轮换（零停机）**：官网条目支持可选 `previousSecrets` 字段（上一代 secret 数组），宽限期内官网同时接受新旧 secret 签名的请求，子站无需感知：
+
+1. 生成新 key/secret（`npm run generate:internal-api-keys -- <project>`），将官网条目更新为 `{"project":"...","key":"<新key>","secret":"<新secret>","previousSecrets":["<旧secret>"]}`，重启官网；
+2. 子站切换为新 key/secret 并部署（子站侧只保存当前值，无需 `previousSecrets`）；
+3. 全部子站切换完成后，从官网条目移除 `previousSecrets`，重启官网。
+
+历史 secret 同样要求 ≥32 字符且不得为 `.env.example` 示例值，非法条目在启动解析时丢弃并告警。
 
 ### 2.5 Embed 嵌入配置
 

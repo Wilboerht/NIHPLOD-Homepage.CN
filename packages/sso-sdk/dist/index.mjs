@@ -591,6 +591,23 @@ async function fetchWithTimeout(input, init = {}, timeoutMs = REQUEST_TIMEOUT_MS
     clearTimeout(timer);
   }
 }
+function assertValidTokenResponse(data, requireRefreshToken) {
+  if (typeof data.access_token !== "string" || !data.access_token) {
+    throw new SsoError("token_request_failed", "Token \u54CD\u5E94\u7F3A\u5C11 access_token");
+  }
+  if (typeof data.expires_in !== "number" || !Number.isFinite(data.expires_in) || data.expires_in <= 0) {
+    throw new SsoError(
+      "token_request_failed",
+      `Token \u54CD\u5E94 expires_in \u975E\u6CD5: ${String(data.expires_in)}`
+    );
+  }
+  if (requireRefreshToken && (typeof data.refresh_token !== "string" || !data.refresh_token)) {
+    throw new SsoError(
+      "token_request_failed",
+      "Token \u54CD\u5E94\u7F3A\u5C11 refresh_token\uFF08authorization_code \u4EA4\u6362\u5FC5\u987B\u8FD4\u56DE\uFF09"
+    );
+  }
+}
 var SILENT_PROBE_ERRORS = /* @__PURE__ */ new Set([
   "login_required",
   "consent_required",
@@ -1022,6 +1039,7 @@ var _SsoClient = class _SsoClient {
       );
     }
     const data = await res.json();
+    assertValidTokenResponse(data, true);
     const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
     if (requestedScopes.includes("openid") && !data.id_token) {
       removeTokenData(this.config.clientId);
@@ -1130,6 +1148,7 @@ var _SsoClient = class _SsoClient {
       );
     }
     const data = await res.json();
+    assertValidTokenResponse(data, false);
     if (data.id_token) {
       try {
         await validateIdToken(

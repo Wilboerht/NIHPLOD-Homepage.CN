@@ -29,6 +29,12 @@ export interface InternalApiKeyConfig {
   project: string;
   key: string;
   secret: string;
+  /**
+   * 轮换宽限：上一代 secret 列表（可选）。验签时同时接受当前与历史 secret，
+   * 保证「先更新官网、后更新子站」的轮换窗口期内旧 secret 签名的请求不被拒绝。
+   * 子站全部切换到新 secret 后应移除，缩小攻击面。出站签名始终使用当前 secret。
+   */
+  previousSecrets?: string[];
 }
 
 interface ParsedKeys {
@@ -53,6 +59,9 @@ const KNOWN_EXAMPLE_SECRETS = new Set([
  *
  * 格式：JSON 数组
  * [ {"project":"advisor","key":"advisor-key","secret":"advisor-secret"} ]
+ *
+ * 轮换宽限：条目可带可选的 previousSecrets（上一代 secret 数组），
+ * 验签时接受当前 secret 与全部历史 secret；子站切换完成后移除历史值。
  */
 export function getInternalApiKeys(): ParsedKeys {
   const envValue = process.env.INTERNAL_API_KEYS;
@@ -75,7 +84,7 @@ export function getInternalApiKeys(): ParsedKeys {
           if (KNOWN_EXAMPLE_KEYS.has(item.key) || KNOWN_EXAMPLE_SECRETS.has(item.secret)) {
             apiConsole.error(
               `[InternalApi] 拒绝加载 .env.example 中的示例密钥（key: ${item.key}）：` +
-                "示例值已公开，请使用 npx tsx scripts/generate-internal-api-keys.ts 生成真实密钥"
+                "示例值已公开，请使用 npm run generate:internal-api-keys 生成真实密钥"
             );
             continue;
           }
@@ -85,6 +94,30 @@ export function getInternalApiKeys(): ParsedKeys {
                 `要求 ≥ ${MIN_INTERNAL_API_SECRET_LENGTH}）`
             );
             continue;
+          }
+          // 轮换宽限的历史 secret 逐个校验：非法条目仅丢弃该历史 secret，不影响条目本身加载
+          if (item.previousSecrets !== undefined) {
+            if (!Array.isArray(item.previousSecrets)) {
+              apiConsole.error(
+                `[InternalApi] 忽略非法 previousSecrets（key: ${item.key}）：必须是字符串数组`
+              );
+              item.previousSecrets = undefined;
+            } else {
+              item.previousSecrets = item.previousSecrets.filter((prev) => {
+                if (
+                  typeof prev !== "string" ||
+                  prev.length < MIN_INTERNAL_API_SECRET_LENGTH ||
+                  KNOWN_EXAMPLE_SECRETS.has(prev)
+                ) {
+                  apiConsole.error(
+                    `[InternalApi] 忽略非法历史 secret（key: ${item.key}）：` +
+                      "历史 secret 同样要求 ≥ 32 字符且不得为示例值"
+                  );
+                  return false;
+                }
+                return true;
+              });
+            }
           }
           keys.set(item.key, item);
           secrets.set(item.secret, item);
@@ -210,6 +243,9 @@ export function createSignedInternalRequestHeaders(
  * 当 `INTERNAL_API_ALLOW_LEGACY_SIGNATURE !== "false"`（默认）时，同时接受旧格式，
  * 以保证未升级的子站在过渡期内可用（接受旧格式时会输出一次告警）。
  *
+ * 支持 secret 轮换宽限：命中条目的 previousSecrets 中任一历史 secret 的签名同样视为通过，
+ * 便于「先更新官网、后更新子站」的滚动轮换；两种签名格式对全部候选 secret 都会尝试。
+ *
  * @param options.query - canonicalizeQuery 结果；路由应始终传入（无 query 传 ""），
  *   否则新格式按空 query 校验、仍会回退旧格式。
  * @returns 验证通过时返回项目配置，否则返回 null
@@ -231,10 +267,13 @@ export function verifyInternalApiSignature(
     return null;
   }
 
-  const candidates: { signature: string; legacy: boolean }[] = [
-    {
+  // 候选签名 = 签名格式（新/旧）× secret（当前 + 轮换宽限的历史 secret）
+  const secretsToTry = [config.secret, ...(config.previousSecrets ?? [])];
+  const candidates: { signature: string; legacy: boolean }[] = [];
+  for (const secret of secretsToTry) {
+    candidates.push({
       signature: generateInternalApiSignature(
-        config.secret,
+        secret,
         method,
         path,
         timestamp,
@@ -243,13 +282,15 @@ export function verifyInternalApiSignature(
         options?.query ?? ""
       ),
       legacy: false,
-    },
-  ];
-  if (isLegacySignatureAllowed()) {
-    candidates.push({
-      signature: generateInternalApiSignature(config.secret, method, path, timestamp, nonce, bodyHash),
-      legacy: true,
     });
+  }
+  if (isLegacySignatureAllowed()) {
+    for (const secret of secretsToTry) {
+      candidates.push({
+        signature: generateInternalApiSignature(secret, method, path, timestamp, nonce, bodyHash),
+        legacy: true,
+      });
+    }
   }
 
   let signatureBuf: Buffer;

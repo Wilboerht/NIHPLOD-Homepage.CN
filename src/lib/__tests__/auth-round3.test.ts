@@ -6,7 +6,7 @@
  * - logout：单设备登出无 clientId 不广播 OAuth、allDevices 才全量广播
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => {
   const prisma = {
@@ -81,10 +81,15 @@ vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/oauth-session-revoke", () => ({
+  revokeOAuthClientSessions: vi.fn().mockResolvedValue({ sessionCount: 1, latestSid: "sid-1" }),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { verifyUserAuth } from "@/lib/auth";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 import { POST as registerPost } from "@/app/api/auth/register/route";
 import { POST as logoutPost } from "@/app/api/auth/logout/route";
@@ -97,6 +102,7 @@ const mockSessionUpdateMany = prisma.oAuthSession.updateMany as ReturnType<typeo
 const mockRtFindFirst = prisma.refreshToken.findFirst as ReturnType<typeof vi.fn>;
 const mockVerifyUserAuth = verifyUserAuth as ReturnType<typeof vi.fn>;
 const mockBackchannel = sendBackchannelLogout as ReturnType<typeof vi.fn>;
+const mockRevokeOAuthClientSessions = revokeOAuthClientSessions as ReturnType<typeof vi.fn>;
 
 function createJsonRequest(url: string, body: unknown, headers: Record<string, string> = {}) {
   return new NextRequest(new URL(url, "http://localhost:3000"), {
@@ -178,7 +184,6 @@ describe("POST /api/auth/logout（第三轮修复）", () => {
   });
 
   it("单设备登出且当前会话无 clientId 时，不应广播/撤销其他 OAuth 会话", async () => {
-    mockSessionFindMany.mockResolvedValueOnce([{ clientId: "client-1" }]);
     // 当前 refresh token 记录无 OAuth client（普通浏览器登录）
     mockRtFindFirst.mockResolvedValueOnce({ clientId: null });
 
@@ -187,6 +192,7 @@ describe("POST /api/auth/logout（第三轮修复）", () => {
     expect(res.status).toBe(200);
     // 不触碰其他客户端的第三方授权会话
     expect(mockBackchannel).not.toHaveBeenCalled();
+    expect(mockRevokeOAuthClientSessions).not.toHaveBeenCalled();
     expect(mockSessionUpdateMany).not.toHaveBeenCalled();
   });
 
@@ -209,20 +215,16 @@ describe("POST /api/auth/logout（第三轮修复）", () => {
     });
   });
 
-  it("单设备登出且当前会话关联 OAuth client 时，仅撤销该 client 会话", async () => {
-    mockSessionFindMany.mockResolvedValueOnce([
-      { clientId: "client-1" },
-      { clientId: "client-2" },
-    ]);
+  it("单设备登出且当前会话关联 OAuth client 时，仅级联撤销该 client 会话", async () => {
     mockRtFindFirst.mockResolvedValueOnce({ clientId: "client-1" });
 
     const res = await logoutPost(createJsonRequest("/api/auth/logout", {}, cookieHeader));
 
     expect(res.status).toBe(200);
-    expect(mockBackchannel).toHaveBeenCalledWith("user-1", ["client-1"]);
-    expect(mockSessionUpdateMany).toHaveBeenCalledWith({
-      where: { userId: "user-1", clientId: "client-1", revokedAt: null },
-      data: { revokedAt: expect.any(Date) },
+    // 级联撤销该 client 的 OAuthSession/refresh token 并广播 backchannel logout
+    expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-1", {
+      reason: "logout",
     });
+    expect(mockBackchannel).not.toHaveBeenCalled();
   });
 });

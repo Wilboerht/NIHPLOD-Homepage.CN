@@ -38,6 +38,11 @@ export interface ValidateIdTokenOptions {
   /**
    * 发现 SSO 中心已启用 RS256 时，是否拒绝 HS256 ID Token。
    * 默认 true：只要 JWKS 中存在 RS256 签名密钥，就拒绝 HS256（安全推荐）。
+   *
+   * @deprecated 无实际作用：HS256 ID Token 一律被拒绝（对称密钥无法安全分发给
+   * Public Client / BFF），该选项只影响走哪条抛错路径
+   * （id_token_unsupported_alg 或 id_token_hs256_unsupported），
+   * 不影响最终结果。保留仅为避免破坏 API，请勿依赖；将于未来大版本移除。
    */
   rejectHs256WhenRs256Available?: boolean;
   /**

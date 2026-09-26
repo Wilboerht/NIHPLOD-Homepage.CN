@@ -17,6 +17,10 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/logger", () => ({
+  apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
+}));
+
 import { getDpopNonce, isDpopNonceIssued, getDPoPHtu, validateDPoPProof } from "../dpop";
 import { prisma } from "@/lib/prisma";
 
@@ -78,6 +82,29 @@ async function makeProof(jti: string, nonce?: string): Promise<string> {
     .setIssuedAt()
     .sign(privateKey);
 }
+
+describe("DPoP 错误信息", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.tokenBlacklist.create).mockResolvedValue({} as never);
+  });
+
+  it("proof 验签失败时对外返回通用错误，不泄漏内部异常细节", async () => {
+    const result = await validateDPoPProof("not-a-valid-jwt", "POST", TEST_HTU);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("invalid_dpop_proof");
+    expect(result.errorDescription).toBe("DPoP proof 验证失败");
+  });
+
+  it("签名无效的 proof 同样不泄漏内部异常细节", async () => {
+    const proof = await makeProof("jti-tampered");
+    const tampered = `${proof.slice(0, -2)}xx`;
+    const result = await validateDPoPProof(tampered, "POST", TEST_HTU);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("invalid_dpop_proof");
+    expect(result.errorDescription).toBe("DPoP proof 验证失败");
+  });
+});
 
 describe("DPoP jti 防重放（DB 共享）", () => {
   beforeEach(() => {

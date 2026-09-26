@@ -165,6 +165,11 @@ interface TokenResponse {
     access_token: string;
     token_type: string;
     expires_in: number;
+    /**
+     * authorization_code 交换主站必然返回（缺失时 handleCallback 抛
+     * token_request_failed）；refresh 响应按 RFC 6749 §6 可省略，
+     * 此时 SDK 沿用旧 refresh_token。
+     */
     refresh_token: string;
     id_token?: string;
 }

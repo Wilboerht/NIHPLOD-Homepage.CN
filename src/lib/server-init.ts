@@ -35,7 +35,7 @@ function validateRS256Keys(): void {
 
   if (missing.length > 0) {
     throw new Error(
-      `[Server] 生产环境默认使用 RS256，但未配置以下 RS256 密钥：${missing.join(", ")}。请运行 \`npx tsx scripts/generate-oauth-rs256-keys.ts\` 生成并写入环境变量，或在过渡期设置 ALLOW_HS256_FALLBACK=true。`
+      `[Server] 生产环境默认使用 RS256，但未配置以下 RS256 密钥：${missing.join(", ")}。请运行 \`npm run generate:oauth-rs256-keys\` 生成并写入环境变量，或在过渡期设置 ALLOW_HS256_FALLBACK=true。`
     );
   }
 }

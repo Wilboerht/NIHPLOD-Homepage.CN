@@ -18,7 +18,10 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "geo:docs": "tsx scripts/generate-llms-docs.ts",
-    "check:sso-config": "tsx scripts/check-sso-production-config.ts"
+    "check:sso-config": "tsx scripts/check-sso-production-config.ts",
+    "generate:oauth-rs256-keys": "tsx scripts/generate-oauth-rs256-keys.ts",
+    "generate:internal-api-keys": "tsx scripts/generate-internal-api-keys.ts",
+    "oauth:add-client-scopes": "tsx scripts/add-oauth-client-scopes.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

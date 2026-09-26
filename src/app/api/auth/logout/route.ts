@@ -23,6 +23,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse, CSRF_COOKIE_NAME } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -39,6 +40,12 @@ export async function POST(request: NextRequest) {
     if (user) {
       const body = await request.json().catch(() => ({}));
       const allDevices = body.allDevices === true;
+      // RP-Initiated Logout 由 /logout 页携带发起方 clientId：主站会话多为内部登录
+      // （refresh token 无 clientId），以其兜底闭环撤销该 client 的 OAuth 会话。
+      // 仅用于收窄撤销范围：本端点有 CSRF 校验，且用户本就能撤销自己任一 client 的授权
+      // （/api/user/oauth/revoke），伪造 clientId 无法越权影响其他用户。
+      const requestedClientId =
+        typeof body.clientId === "string" && body.clientId ? body.clientId : null;
 
       const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
@@ -71,31 +78,27 @@ export async function POST(request: NextRequest) {
 
       // 查询活跃 OAuthSession 并触发 Backchannel Logout
       // 单设备登出：仅通知当前设备关联的 OAuth client；全设备登出：通知所有活跃 client
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: { userId: user.id, revokedAt: null },
-        select: { clientId: true },
-      });
-
-      if (activeSessions.length > 0) {
-        if (!allDevices && refreshToken) {
-          const { createHash } = await import("crypto");
-          const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
-          const refreshRecord = await prisma.refreshToken.findFirst({
-            where: { userId: user.id, token: tokenHash },
-            select: { clientId: true },
-          });
-          const targetClientId = refreshRecord?.clientId;
-          if (targetClientId) {
-            // 先发送 Backchannel Logout（需要活跃 session 的 sid），再撤销 session
-            await sendBackchannelLogout(user.id, [targetClientId]);
-            await prisma.oAuthSession.updateMany({
-              where: { userId: user.id, clientId: targetClientId, revokedAt: null },
-              data: { revokedAt: new Date() },
-            });
-          }
-          // 当前会话无关联 OAuth client（普通浏览器登录，clientId=null）：
-          // 单设备登出不触碰其他客户端的第三方授权会话；仅 allDevices 时才全量广播
-        } else {
+      if (!allDevices && refreshToken) {
+        const { createHash } = await import("crypto");
+        const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+        const refreshRecord = await prisma.refreshToken.findFirst({
+          where: { userId: user.id, token: tokenHash },
+          select: { clientId: true },
+        });
+        // 主站内部登录会话（refresh token clientId=null）以发起方 clientId 兜底，
+        // 闭环撤销该 client 的 OAuthSession 与 refresh token 并广播 backchannel logout
+        const targetClientId = refreshRecord?.clientId ?? requestedClientId;
+        if (targetClientId) {
+          await revokeOAuthClientSessions(user.id, targetClientId, { reason: "logout" });
+        }
+        // 当前会话无关联 OAuth client 且未指定 clientId（普通浏览器登录）：
+        // 单设备登出不触碰其他客户端的第三方授权会话；仅 allDevices 时才全量广播
+      } else {
+        const activeSessions = await prisma.oAuthSession.findMany({
+          where: { userId: user.id, revokedAt: null },
+          select: { clientId: true },
+        });
+        if (activeSessions.length > 0) {
           const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
           await sendBackchannelLogout(user.id, clientIds);
           await prisma.oAuthSession.updateMany({
@@ -123,16 +126,15 @@ export async function POST(request: NextRequest) {
             });
             if (refreshRecord) {
               await revokeRefreshToken(refreshPayload.id, refreshToken, undefined, "logout");
-              // 关联 OAuthSession 一并撤销（与已认证路径的单设备登出口径一致）
-              if (refreshRecord.clientId) {
-                await sendBackchannelLogout(refreshPayload.id, [refreshRecord.clientId]);
-                await prisma.oAuthSession.updateMany({
-                  where: {
-                    userId: refreshPayload.id,
-                    clientId: refreshRecord.clientId,
-                    revokedAt: null,
-                  },
-                  data: { revokedAt: new Date() },
+              // 关联 OAuthSession 一并撤销（与已认证路径的单设备登出口径一致）；
+              // 主站内部登录会话（clientId=null）以发起方 clientId 兜底，保证登出闭环
+              const body = await request.json().catch(() => ({}));
+              const requestedClientId =
+                typeof body.clientId === "string" && body.clientId ? body.clientId : null;
+              const targetClientId = refreshRecord.clientId ?? requestedClientId;
+              if (targetClientId) {
+                await revokeOAuthClientSessions(refreshPayload.id, targetClientId, {
+                  reason: "logout",
                 });
               }
             }

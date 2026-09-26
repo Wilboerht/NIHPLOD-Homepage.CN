@@ -8,6 +8,10 @@
  * - PKCE code_challenge 使用 Web Crypto API 的 crypto.subtle.digest(SHA-256)
  *   （Edge Runtime 18+ 完全支持此 API）
  *
+ * ⚠️ 安全须知：middleware 只是 UX 层（未认证重定向的入口优化），
+ * 不能作为安全边界。敏感接口必须在 Route Handler / Server Component 中
+ * 用 @nihplod/sso-verify 对 access_token 做二次校验。
+ *
  * 用法 (src/middleware.ts):
  * ```ts
  * import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
@@ -60,6 +64,13 @@ export interface SsoMiddlewareConfig {
   /**
    * 主站用户会话 Cookie 名称，用于检测是否已有 SSO 会话。
    * 默认 "__Host-user_token"（与主站 C 端登录 Cookie 一致）。
+   *
+   * @deprecated 该「主站会话 Cookie 快速通道」已移除，此选项不再生效：
+   * 1. `__Host-user_token` 存的是主站内部 token（type="user", aud="user"），
+   *    introspect 端点只接受 type="access_token"，校验必然返回 inactive；
+   * 2. `__Host-` Cookie 不会下发到子域/其他域名，跨域子项目根本收不到。
+   * 该分支永不命中，却让每个请求白付一次 introspection 往返并被负缓存 30s。
+   * 保留字段仅为兼容旧配置，请勿使用；会话检测以本站 access_token Cookie 为准。
    */
   ssoCookieName?: string;
 
@@ -74,8 +85,28 @@ export interface SsoMiddlewareConfig {
    * 默认 true（推荐）。设为 false 时仅检查 Cookie 存在性，延迟最低但可能放行
    * 已失效/被撤销的会话 —— 中间件本质上只是 UX 层，敏感数据必须在
    * Route Handler / Server Component 中二次校验。
+   *
+   * @deprecated 随「主站会话 Cookie 快速通道」一并移除（见 ssoCookieName），
+   * 此选项不再生效。保留字段仅为兼容旧配置，请勿使用。
    */
   validateSsoCookie?: boolean;
+
+  /**
+   * Introspection 不可达（网络异常/超时/5xx，token 有效性未确证）时的策略。
+   *
+   * 默认 false（fail-open）：对已持有 access_token Cookie 的请求放行——
+   * middleware 只是 UX 层，敏感接口的鉴权由 Route Handler / Server Component
+   * 兜底，此时重定向到一个同样不可达的 SSO 中心没有意义。
+   *
+   * 设为 true（fail-closed）时：对持有 access_token Cookie 的请求返回
+   * 502 错误页而不是放行。适用于对可用性敏感、宁可拒绝也不放行的场景。
+   * 注意 fail-closed 只影响「不可达」这一种结果；token 确证无效（inactive）
+   * 无论该选项如何都会清除 Cookie 并重定向到 SSO 登录。
+   *
+   * ⚠️ 无论取何值，middleware 都只是 UX 层：敏感接口必须在
+   * Route Handler / Server Component 中用 @nihplod/sso-verify 二次校验。
+   */
+  failClosedOnIntrospectionError?: boolean;
 
   /** Access Token Cookie 名称，默认 __Host-nihplod_sso_at */
   accessTokenCookieName?: string;
@@ -287,8 +318,7 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
     scopes = "openid profile",
     publicPaths = [],
     callbackPath = "/api/auth/callback",
-    ssoCookieName = "__Host-user_token",
-    validateSsoCookie = true,
+    failClosedOnIntrospectionError = false,
     insecureLocalDev: insecureLocalDevOpt = false,
   } = config;
 
@@ -319,11 +349,13 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   // authorize 等浏览器跳转仍用 normalizedBase（公网）
   const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
 
-  // 弱配置告警不区分环境：生产环境风险最高，同样输出（不应静默）
-  if (!validateSsoCookie) {
+  // 已废弃选项告警（不区分环境，配置错误不应静默）：主站会话 Cookie 快速通道已移除
+  if (config.validateSsoCookie !== undefined || config.ssoCookieName !== undefined) {
     console.warn(
-      "[SSO SDK] validateSsoCookie=false：中间件仅检查 Cookie 存在性，可能放行已失效的会话。" +
-      "中间件只是 UX 层，敏感数据的鉴权必须在 Route Handler / Server Component 中完成。"
+      "[SSO SDK] validateSsoCookie / ssoCookieName 已废弃：主站会话 Cookie（__Host-user_token）" +
+      "是主站内部 token（type=\"user\"），introspect 端点只接受 access_token，校验必然失败；" +
+      "且 __Host- Cookie 不会下发到子域。该快速通道从未生效，已移除。" +
+      "请删除这两个配置项；会话检测以本站 access_token Cookie 为准。"
     );
   }
   if (!clientSecret) {
@@ -356,28 +388,13 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
       return NextResponse.next();
     }
 
-    // Check for existing SSO session
-    const ssoSession = request.cookies.get(ssoCookieName);
-    if (ssoSession?.value) {
-      // 可选：对主站 Cookie 进行 Introspection 二次验证
-      if (validateSsoCookie) {
-        const introspectResult = await introspectAccessToken(
-          ssoSession.value,
-          normalizedServerBase,
-          clientId,
-          clientSecret
-        );
-        if (introspectResult === "active") {
-          return NextResponse.next();
-        }
-        // Token 无效（inactive）或 introspect 不可达（unreachable）：
-        // 继续到 access_token cookie 检查或重定向
-      } else {
-        return NextResponse.next();
-      }
-    }
-
     // Check for access_token in cookie (set by callback handler)
+    //
+    // 注意：这里曾有「主站会话 Cookie（__Host-user_token）快速通道」，已移除：
+    // 该 Cookie 存的是主站内部 token（type="user", aud="user"），introspect 端点
+    // 只接受 type="access_token"，校验必然返回 inactive；且 __Host- Cookie 不会
+    // 下发到子域，跨域子项目根本收不到。该分支永不命中，却让每个请求白付一次
+    // introspection 往返并被负缓存 30s。会话检测以本站 access_token Cookie 为准。
     const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
       // 调用 Introspection 精确校验 token 是否仍有效。
@@ -393,10 +410,22 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
         return NextResponse.next();
       }
       if (introspectResult === "unreachable") {
-        // introspect 不可达（网络异常/超时/5xx）：对已持有 SSO access token
-        // Cookie 的请求 fail-open 放行——middleware 只是 UX 层，Route Handler /
-        // Server Component 仍会强制鉴权；此时重定向到 SSO 也只会得到同样的故障。
+        // introspect 不可达（网络异常/超时/5xx）：token 有效性未确证。
+        // 默认 fail-open：对已持有 SSO access token Cookie 的请求放行——
+        // middleware 只是 UX 层，Route Handler / Server Component 仍会强制鉴权；
+        // 此时重定向到 SSO 也只会得到同样的故障。
+        // failClosedOnIntrospectionError=true 时改为 fail-closed：返回 502，
+        // 宁可拒绝也不放行（无 Cookie 的请求不受影响，仍走下方登录重定向）。
         // token 确证无效（inactive）不在此列，仍走下方重定向。
+        if (failClosedOnIntrospectionError) {
+          console.warn(
+            "[SSO SDK] introspection 不可达（网络异常/超时/5xx），failClosedOnIntrospectionError=true，对持有 SSO access token Cookie 的请求 fail-closed 返回 502。"
+          );
+          return new NextResponse(
+            "SSO 认证服务暂时不可用（introspection unreachable），请稍后重试",
+            { status: 502 }
+          );
+        }
         console.warn(
           "[SSO SDK] introspection 不可达（网络异常/超时/5xx），对持有 SSO access token Cookie 的请求 fail-open 放行；敏感数据的鉴权由 Route Handler 兜底。"
         );

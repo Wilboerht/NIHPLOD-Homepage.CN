@@ -516,6 +516,82 @@ describe("SsoClient", () => {
       expect(getTokenData(CLIENT_ID)).toBeNull();
     });
 
+    it("token 响应缺少 refresh_token 时拒绝（fail-closed，authorization_code 交换必须返回）", async () => {
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "new-access-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            // 故意不返回 refresh_token
+          }),
+      });
+
+      const client = new SsoClient({ ...defaultConfig, scopes: "profile" });
+      saveOAuthState("no-rt-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      const err = await client
+        .handleCallback("https://test-app.com/callback?code=c&state=no-rt-state")
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(SsoError);
+      expect(err.code).toBe("token_request_failed");
+      expect(err.message).toContain("refresh_token");
+      // 拒绝时不保存任何 token
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+    });
+
+    it("token 响应 expires_in 非法（非有限正数）时拒绝，避免 expires_at=NaN 永久判过期", async () => {
+      for (const badExpiresIn of ["900", 0, -10, null]) {
+        installFetchRouter({
+          token: () =>
+            jsonResponse({
+              access_token: "new-access-token",
+              token_type: "Bearer",
+              expires_in: badExpiresIn,
+              refresh_token: "new-refresh-token",
+            }),
+        });
+
+        const client = new SsoClient({ ...defaultConfig, scopes: "profile" });
+        saveOAuthState("bad-exp-state", CLIENT_ID);
+        savePkceVerifier(CLIENT_ID, "test-verifier");
+
+        const err = await client
+          .handleCallback("https://test-app.com/callback?code=c&state=bad-exp-state")
+          .catch((e) => e);
+        expect(err).toBeInstanceOf(SsoError);
+        expect(err.code).toBe("token_request_failed");
+        expect(err.message).toContain("expires_in");
+        expect(getTokenData(CLIENT_ID)).toBeNull();
+
+        vi.restoreAllMocks();
+      }
+    });
+
+    it("token 响应缺少 access_token 时拒绝（fail-closed）", async () => {
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+          }),
+      });
+
+      const client = new SsoClient({ ...defaultConfig, scopes: "profile" });
+      saveOAuthState("no-at-state", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+
+      const err = await client
+        .handleCallback("https://test-app.com/callback?code=c&state=no-at-state")
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(SsoError);
+      expect(err.code).toBe("token_request_failed");
+      expect(err.message).toContain("access_token");
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+    });
+
     it("缺少 code_verifier 时抛出错误", async () => {
       const client = new SsoClient(defaultConfig);
       saveOAuthState("test-state-123", CLIENT_ID);
@@ -914,6 +990,35 @@ describe("SsoClient", () => {
       expect((error as SsoError).code).toBe("sso_server_error");
       // 非 invalid_grant：不得清除本地 token（避免一次网关抖动静默登出）
       expect(getTokenData(CLIENT_ID)).not.toBeNull();
+    });
+
+    it("刷新响应 expires_in 非法时拒绝，且保留本地 token（不落盘 NaN expires_at）", async () => {
+      const now = Date.now();
+      saveTokenData({
+        access_token: "expired-token",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "refresh-token-1",
+        issued_at: now - 1000000,
+        expires_at: now - 1000,
+      }, CLIENT_ID);
+
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "refreshed-token",
+            token_type: "Bearer",
+            expires_in: "not-a-number",
+          }),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      const error = await client.refreshToken().catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(SsoError);
+      expect((error as SsoError).code).toBe("token_request_failed");
+      // 校验失败不覆盖本地 token（刷新可重试）
+      expect(getTokenData(CLIENT_ID)?.refresh_token).toBe("refresh-token-1");
     });
 
     it("无 refresh_token 时抛出错误", async () => {

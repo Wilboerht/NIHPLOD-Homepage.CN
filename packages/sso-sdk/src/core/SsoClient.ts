@@ -70,6 +70,44 @@ async function fetchWithTimeout(
 // 类型定义
 // ============================================
 
+/**
+ * Token 响应基本字段的防御性校验（fail-closed）。
+ *
+ * - access_token 必须为非空字符串；
+ * - expires_in 必须为有限正数——否则 expires_at = NaN，本地会永久判定过期
+ *   （每次 getAccessToken/getUserInfo 都触发刷新），且刷新后仍写回 NaN；
+ * - requireRefreshToken=true 时 refresh_token 必须为非空字符串：
+ *   主站 authorization_code 交换必然签发 refresh_token（refresh 场景按
+ *   RFC 6749 §6 允许省略，调用方已做沿用旧值的回退），缺失即响应异常。
+ */
+function assertValidTokenResponse(
+  data: TokenResponse,
+  requireRefreshToken: boolean
+): void {
+  if (typeof data.access_token !== "string" || !data.access_token) {
+    throw new SsoError("token_request_failed", "Token 响应缺少 access_token");
+  }
+  if (
+    typeof data.expires_in !== "number" ||
+    !Number.isFinite(data.expires_in) ||
+    data.expires_in <= 0
+  ) {
+    throw new SsoError(
+      "token_request_failed",
+      `Token 响应 expires_in 非法: ${String(data.expires_in)}`
+    );
+  }
+  if (
+    requireRefreshToken &&
+    (typeof data.refresh_token !== "string" || !data.refresh_token)
+  ) {
+    throw new SsoError(
+      "token_request_failed",
+      "Token 响应缺少 refresh_token（authorization_code 交换必须返回）"
+    );
+  }
+}
+
 /** SSO 客户端配置 */
 export interface SsoClientConfig {
   /** OAuth Client ID（从管理后台获取） */
@@ -156,6 +194,11 @@ export interface TokenResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  /**
+   * authorization_code 交换主站必然返回（缺失时 handleCallback 抛
+   * token_request_failed）；refresh 响应按 RFC 6749 §6 可省略，
+   * 此时 SDK 沿用旧 refresh_token。
+   */
   refresh_token: string;
   id_token?: string;
 }
@@ -725,6 +768,10 @@ export class SsoClient {
     // 若 JSON 畸形导致解析抛错，保留 state/verifier 允许用户重试回调
     const data: TokenResponse = await res.json();
 
+    // 防御性校验：refresh_token 缺失或 expires_in 非法时 fail-closed 抛错，
+    // 不保存半截 token 数据（authorization_code 交换主站必然签发 refresh_token）
+    assertValidTokenResponse(data, true);
+
     // OIDC：请求 scope 含 openid 时，token 响应必须包含 id_token。
     // 缺失时 nonce/at_hash/签名均无从校验，直接 fail-closed 拒绝而不是静默降级。
     const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
@@ -852,6 +899,10 @@ export class SsoClient {
     }
 
     const data: TokenResponse = await res.json();
+
+    // 防御性校验：refresh 响应可省略 refresh_token（沿用旧值），
+    // 但 access_token / expires_in 必须合法，否则 expires_at 为 NaN 永久判过期
+    assertValidTokenResponse(data, false);
 
     if (data.id_token) {
       try {

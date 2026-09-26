@@ -92,7 +92,7 @@ for (const { name, usage } of RS256_PRIVATE_KEYS) {
       status: "FAIL",
       name,
       message: `未配置（${usage}）`,
-      fix: "生成密钥对：npx tsx scripts/generate-oauth-rs256-keys.ts，将输出的单行 .env 值写入环境变量",
+      fix: "生成密钥对：npm run generate:oauth-rs256-keys，将输出的单行 .env 值写入环境变量",
     });
   }
 }
@@ -301,7 +301,7 @@ for (const name of ["JWT_ACCESS_PUBLIC_KEY", "JWT_ID_TOKEN_PUBLIC_KEY"] as const
       status: "FAIL",
       name,
       message: "未配置，生产启动会直接报错（RS256 密钥对必须同时配置私钥与公钥）",
-      fix: "运行 npx tsx scripts/generate-oauth-rs256-keys.ts 生成完整密钥对",
+      fix: "运行 npm run generate:oauth-rs256-keys 生成完整密钥对",
     });
   }
 }
@@ -429,6 +429,36 @@ if (exchangeTtl) {
 // 9. 其他运行期关键配置（嵌入白名单/2FA/内部 API 密钥/渠道凭证/审计保留期）
 // ============================================
 
+// 管理后台登录 CSRF 来源白名单：与 src/app/api/admin/login/route.ts 的 parsed.hostname 比对，
+// 含协议/端口/路径的条目永远不会匹配（等于白配置，且暴露配置者意图）
+const allowedHosts = (process.env.APP_ALLOWED_HOSTS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+if (allowedHosts.length === 0) {
+  check({
+    status: "SKIP",
+    name: "APP_ALLOWED_HOSTS",
+    message: "未配置（仅放行 NEXT_PUBLIC_APP_URL 的 hostname）",
+  });
+} else {
+  const malformed = allowedHosts.filter((h) => /[:/]/.test(h));
+  if (malformed.length > 0) {
+    check({
+      status: "FAIL",
+      name: "APP_ALLOWED_HOSTS",
+      message: `存在非法条目：${malformed.join(", ")}（只允许裸 hostname，不含协议/端口/路径，永远不会匹配）`,
+      fix: "改为逗号分隔的 hostname 列表，如 APP_ALLOWED_HOSTS=admin.nihplod.cn",
+    });
+  } else {
+    check({
+      status: "PASS",
+      name: "APP_ALLOWED_HOSTS",
+      message: `已配置 ${allowedHosts.length} 个额外 hostname：${allowedHosts.join(", ")}`,
+    });
+  }
+}
+
 // 嵌入白名单：middleware CSP（EMBED_ALLOWED_ORIGINS）与 embed 页面 postMessage 校验
 // （NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS）必须一致，否则 iframe 嵌入静默失效
 const embedServer = (process.env.EMBED_ALLOWED_ORIGINS || "")
@@ -489,13 +519,20 @@ if (internalKeysRaw) {
           typeof item === "object" &&
           typeof (item as { project?: unknown }).project === "string" &&
           typeof (item as { key?: unknown }).key === "string" &&
-          typeof (item as { secret?: unknown }).secret === "string"
+          typeof (item as { secret?: unknown }).secret === "string" &&
+          // previousSecrets 为可选的轮换宽限字段（上一代 secret 数组），存在时必须是字符串数组
+          ((item as { previousSecrets?: unknown }).previousSecrets === undefined ||
+            (Array.isArray((item as { previousSecrets?: unknown }).previousSecrets) &&
+              ((item as { previousSecrets: unknown[] }).previousSecrets.every(
+                (s) => typeof s === "string"
+              ))))
       );
     if (!valid) {
       check({
         status: "FAIL",
         name: "INTERNAL_API_KEYS",
-        message: "JSON 结构非法：需为非空数组，且每项含 project/key/secret 三个字符串字段",
+        message:
+          "JSON 结构非法：需为非空数组，且每项含 project/key/secret 三个字符串字段（previousSecrets 可选，须为字符串数组）",
         fix: "修正 INTERNAL_API_KEYS（参考 .env.example），错误格式会在运行时被静默忽略",
       });
     } else {

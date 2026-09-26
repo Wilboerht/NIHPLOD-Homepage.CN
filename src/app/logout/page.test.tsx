@@ -3,8 +3,9 @@
 /**
  * /logout 确认页分层退出测试
  * 覆盖：确认页主文案统一为"退出当前设备的登录"语义（含带 client_id 场景）、
- * 复选框默认不勾选时 body 为 { allDevices: false }、
- * 勾选"同时退出所有设备和已授权的平台"后 body 为 { allDevices: true }
+ * 复选框默认不勾选时 body 为 { allDevices: false, clientId }、
+ * 勾选"同时退出所有设备和已授权的平台"后 body 为 { allDevices: true, clientId }、
+ * 无 client_id 时 body 不携带 clientId
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -79,7 +80,7 @@ describe("LogoutPage 分层退出", () => {
     expect(checkbox).not.toBeChecked();
   });
 
-  it("默认不勾选：确认退出时 body 为 { allDevices: false }", async () => {
+  it("默认不勾选：确认退出时 body 为 { allDevices: false, clientId }", async () => {
     render(<LogoutPage />);
 
     await waitFor(() => {
@@ -88,11 +89,12 @@ describe("LogoutPage 分层退出", () => {
     fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
 
     await waitFor(() => {
-      expect(getLogoutRequestBody()).toEqual({ allDevices: false });
+      // clientId 透传给登出 API：主站会话无 clientId 时据此闭环撤销该子站的 OAuth 会话
+      expect(getLogoutRequestBody()).toEqual({ allDevices: false, clientId: "test-client" });
     });
   });
 
-  it("勾选复选框后确认退出：body 为 { allDevices: true }", async () => {
+  it("勾选复选框后确认退出：body 为 { allDevices: true, clientId }", async () => {
     render(<LogoutPage />);
 
     await waitFor(() => {
@@ -104,7 +106,21 @@ describe("LogoutPage 分层退出", () => {
     fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
 
     await waitFor(() => {
-      expect(getLogoutRequestBody()).toEqual({ allDevices: true });
+      expect(getLogoutRequestBody()).toEqual({ allDevices: true, clientId: "test-client" });
+    });
+  });
+
+  it("无 client_id 参数时 body 不携带 clientId", async () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams("post_logout_redirect_uri=/dashboard"));
+    render(<LogoutPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "确认退出" })).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
+
+    await waitFor(() => {
+      expect(getLogoutRequestBody()).toEqual({ allDevices: false });
     });
   });
 });

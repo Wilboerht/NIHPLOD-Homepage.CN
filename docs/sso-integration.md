@@ -214,12 +214,16 @@ export const middleware = createSsoMiddleware({
   redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
   publicPaths: ["/", "/public", "/api/auth/logout"], // 不需要登录的路径
   // ⚠️ 校验强度说明：
-  // - validateSsoCookie 默认为 true：对主站 SSO 会话 Cookie（__Host-user_token）会调用
-  //   Introspection 端点二次验证（每请求一次网络调用，有 30s 进程内缓存）。
-  // - 显式设置 validateSsoCookie: false 可降为仅检查 Cookie 存在性（低延迟），
-  //   但这只能防"未登录访问"，不能防伪造/已撤销的 Cookie。
-  // - 对子项目自身的 access_token Cookie（回调 handler 写入的）始终会做 Introspection 校验。
-  // validateSsoCookie: false,
+  // - middleware 对子项目自身的 access_token Cookie（回调 handler 写入的）始终做
+  //   Introspection 校验（每请求一次网络调用，有 30s 进程内缓存）。
+  // - ⚠️ middleware 只是 UX 层：敏感接口必须在 Route Handler / Server Component 中
+  //   用 @nihplod/sso-verify 二次校验。
+  // - failClosedOnIntrospectionError（默认 false）：Introspection 不可达
+  //   （网络异常/超时/5xx）时，对持有 access_token Cookie 的请求是放行（fail-open）
+  //   还是返回 502（fail-closed）。token 确证无效时不受此影响，仍清除 Cookie 并重定向。
+  // failClosedOnIntrospectionError: true,
+  // 注：validateSsoCookie / ssoCookieName 已废弃（主站会话 Cookie 快速通道从未生效，
+  // 已移除；保留配置仅作兼容，传入会输出废弃告警）。
   // 本地 HTTP 开发（http://localhost）需开启 insecureLocalDev（middleware/callback/logout
   // 三处同时设置），否则浏览器拒绝写入 Secure Cookie，middleware 会永远判定未登录而
   // 反复跳转 SSO（详见下方说明）。生产严禁启用。
@@ -294,7 +298,7 @@ SSO 中心区分两种退出语义，子项目应按场景选择：
 
 走 OIDC RP-Initiated Logout：重定向到 end_session_endpoint（SDK 的 `sso.logout(true)` / `createLogoutRouteHandler` 的 `redirectToSso: true`）。用户在官网 `/logout` 确认后，SSO 中心清除 IdP 会话、撤销 refresh token，并通过 Backchannel Logout 通知相关 RP。
 
-官网 `/logout` 确认页默认只退出**当前设备**（仅 backchannel 通知当前会话关联的 client）；用户可勾选"同时退出所有设备和已授权的平台"升级为全设备登出（撤销全部 refresh token 并通知**所有**已授权的活跃 client）。官网账户中心的"强制下线设备"也会对被踢设备关联的 client 发送 backchannel 通知。
+官网 `/logout` 确认页默认只退出**当前设备**（撤销发起方 client 的 OAuthSession/refresh_token 并 backchannel 通知该 client）；用户可勾选"同时退出所有设备和已授权的平台"升级为全设备登出（撤销全部 refresh token 并通知**所有**已授权的活跃 client）。官网账户中心的"强制下线设备"也会对被踢设备关联的 client 发送 backchannel 通知。
 
 ### 推荐 UI 模式
 
@@ -402,7 +406,7 @@ SDK 在 `handleCallback` 与 Next.js 回调 handler 中会自动验证 ID Token�
 主站生成 RS256 密钥：
 
 ```bash
-npx tsx scripts/generate-oauth-rs256-keys.ts
+npm run generate:oauth-rs256-keys
 ```
 
 脚本会直接输出 `\n` 转义的单行 `.env` 格式，将 `JWT_ID_TOKEN_PRIVATE_KEY` / `JWT_ID_TOKEN_PUBLIC_KEY`
@@ -581,6 +585,8 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 ## 消费额/等级/积分同步（商城对接）
 
 官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret）。
+
+**secret 轮换宽限（2026-09 新增）**：官网 `INTERNAL_API_KEYS` 条目可带可选 `previousSecrets`（上一代 secret 数组），轮换窗口期内新旧 secret 的签名均可通过验签；子站只保存当前 key/secret，无需配置该字段。轮换步骤见 `docs/sso-deployment.md` §2.4。
 
 **签名格式（query 绑定，2026-09 新增）**：
 
@@ -833,7 +839,7 @@ const payload = await verifier.verify(token);
 
 ### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
 
-A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；**默认只结束当前设备的 SSO 会话**（与子站单设备退出同口径），并触发对应会话的 backchannel logout；用户在主站登出页勾选"同时退出所有设备和已授权的平台"才会撤销该用户全部会话。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
+A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；**默认只结束当前设备的 SSO 会话**（与子站单设备退出同口径），同时撤销该 client 在 SSO 中心的 OAuthSession 与 refresh_token 并触发对应会话的 backchannel logout；用户在主站登出页勾选"同时退出所有设备和已授权的平台"才会撤销该用户全部会话。`id_token_hint` 未过期且与当前会话一致时走免确认快速通道直接登出；hint 已过期或缺失时回落主站 `/logout` 确认页，由用户显式确认后登出。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
 
 ### Q: Next.js middleware 是否支持 PKCE？
 

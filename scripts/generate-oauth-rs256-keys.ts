@@ -7,7 +7,7 @@
  * - JWT_LOGOUT_TOKEN_PRIVATE_KEY / JWT_LOGOUT_TOKEN_PUBLIC_KEY（用于 backchannel logout token）
  *
  * 用法：
- *   npx tsx scripts/generate-oauth-rs256-keys.ts
+ *   npm run generate:oauth-rs256-keys
  *
  * 生成后请将输出复制到 .env.local / 生产密钥管理系统。
  */

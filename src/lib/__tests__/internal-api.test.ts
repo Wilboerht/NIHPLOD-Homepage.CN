@@ -275,6 +275,119 @@ describe("internal-api", () => {
     });
   });
 
+  describe("previousSecrets 轮换宽限", () => {
+    const OLD_SECRET = "advisor-old-secret-0123456789abcdef01234";
+    const PATH = "/api/v1/internal/points/balance";
+
+    beforeEach(() => {
+      process.env.INTERNAL_API_KEYS = JSON.stringify([
+        { project: "advisor", key: "advisor-key", secret: VALID_SECRET, previousSecrets: [OLD_SECRET] },
+      ]);
+    });
+
+    it("历史 secret 签名的请求应通过（轮换窗口期）", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-rotation-1";
+      const bodyHash = await hashRequestBody("");
+      const signature = generateInternalApiSignature(OLD_SECRET, "GET", PATH, timestamp, nonce, bodyHash);
+
+      const config = verifyInternalApiSignature(
+        "advisor-key",
+        signature,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash,
+        { query: "" }
+      );
+      expect(config?.project).toBe("advisor");
+    });
+
+    it("历史 secret 的新格式（绑定 query）签名同样应通过", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-rotation-2";
+      const bodyHash = await hashRequestBody("");
+      const query = canonicalizeQuery("?phone=13800000000");
+      const signature = generateInternalApiSignature(
+        OLD_SECRET,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash,
+        query
+      );
+
+      expect(
+        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query,
+        })
+      ).not.toBeNull();
+    });
+
+    it("不在当前/历史列表中的 secret 仍应被拒绝", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-rotation-3";
+      const bodyHash = await hashRequestBody("");
+      const signature = generateInternalApiSignature(
+        "some-unknown-secret-0123456789abcdef01234",
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash
+      );
+
+      expect(
+        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query: "",
+        })
+      ).toBeNull();
+    });
+
+    it("非法历史 secret（过短/示例值）被丢弃，不参与验签", async () => {
+      const SHORT_PREV = "short-prev";
+      process.env.INTERNAL_API_KEYS = JSON.stringify([
+        {
+          project: "advisor",
+          key: "advisor-key",
+          secret: VALID_SECRET,
+          previousSecrets: [SHORT_PREV, "example-secret-replace-with-32-byte-random-value-from-script", 123],
+        },
+      ]);
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const nonce = "nonce-rotation-4";
+      const bodyHash = await hashRequestBody("");
+      const signature = generateInternalApiSignature(
+        SHORT_PREV,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash
+      );
+
+      expect(
+        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query: "",
+        })
+      ).toBeNull();
+      // 条目本身仍正常加载
+      expect(getInternalApiKeys().keys.get("advisor-key")?.secret).toBe(VALID_SECRET);
+    });
+
+    it("previousSecrets 非数组时忽略该字段，条目正常加载", () => {
+      process.env.INTERNAL_API_KEYS = JSON.stringify([
+        { project: "advisor", key: "advisor-key", secret: VALID_SECRET, previousSecrets: "not-an-array" },
+      ]);
+      const config = getInternalApiKeys().keys.get("advisor-key");
+      expect(config?.secret).toBe(VALID_SECRET);
+      expect(config?.previousSecrets).toBeUndefined();
+    });
+  });
+
   describe("isProjectAllowed（project 级端点隔离）", () => {
     it("白名单内的 project 应放行", () => {
       expect(

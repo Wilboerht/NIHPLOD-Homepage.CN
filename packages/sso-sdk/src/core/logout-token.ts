@@ -5,7 +5,8 @@
  * - alg 仅允许 RS256（logout_token 是服务器间凭证，不接受对称签名）
  * - issuer 以 Discovery 文档为准（防伪站伪造 iss 通过校验）
  * - aud 必须等于本 client、exp 必须有效
- * - events 必须包含 backchannel-logout 事件键
+ * - type 必须为 "logout_token"（防跨用途 token 混用，与 sso-verify 对齐）
+ * - events 必须包含 backchannel-logout 事件键，且事件值必须是对象
  * - sub / sid 至少居一；jti 必须存在且未重放（进程内 LRU）
  *
  * 与 ID Token 的差异：logout_token 不得要求 nonce（规范明确禁止携带），
@@ -196,12 +197,29 @@ export async function verifyLogoutTokenDetailed(
     throw new SsoError("logout_token_expired", "Logout Token 已过期");
   }
 
-  // events 必须包含 backchannel-logout 事件键
+  // type 必须为 logout_token：防止拿其他用途的 token（如 access_token /
+  // profile_event token）冒充 logout_token 触发登出（与 sso-verify 对齐）
+  if (payload.type !== "logout_token") {
+    throw new SsoError(
+      "logout_token_invalid",
+      "Logout Token type 必须为 logout_token"
+    );
+  }
+
+  // events 必须是对象，且必须包含 backchannel-logout 事件键、事件值必须是对象
+  // （通常为空对象 {}；数组/null/原始值视为畸形，与 sso-verify 对齐）
   const events = payload.events;
+  if (!events || typeof events !== "object" || Array.isArray(events)) {
+    throw new SsoError(
+      "logout_token_invalid",
+      "Logout Token 缺少 backchannel-logout events 声明"
+    );
+  }
+  const logoutEvent = (events as Record<string, unknown>)[BACKCHANNEL_LOGOUT_EVENT];
   if (
-    !events ||
-    typeof events !== "object" ||
-    !(BACKCHANNEL_LOGOUT_EVENT in (events as Record<string, unknown>))
+    !logoutEvent ||
+    typeof logoutEvent !== "object" ||
+    Array.isArray(logoutEvent)
   ) {
     throw new SsoError(
       "logout_token_invalid",

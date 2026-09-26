@@ -19,32 +19,7 @@ declare namespace NodeJS {
     ADMIN_EMAIL: string;
     ADMIN_PASSWORD: string;
 
-    // ----- AI 配置 -----
-    DEEPSEEK_API_KEY: string;
-    DEEPSEEK_API_URL: string;
-    DEEPSEEK_MODEL: string;
-
-    // ----- 邮件配置 -----
-    SMTP_HOST: string;
-    SMTP_PORT: string;
-    SMTP_USER: string;
-    SMTP_PASSWORD: string;
-    SMTP_FROM: string;
-    SMTP_FROM_NAME: string;
-    NOTIFICATION_EMAIL: string;
-
-    // ----- 文件上传配置 -----
-    UPLOAD_MAX_SIZE: string;
-    UPLOAD_ALLOWED_TYPES: string;
-
-    // ----- 速率限制配置 -----
-    RATE_LIMIT_MAX: string;
-    RATE_LIMIT_WINDOW: string;
-
     // ----- 可选配置 -----
-    CLOUDINARY_CLOUD_NAME?: string;
-    CLOUDINARY_API_KEY?: string;
-    CLOUDINARY_API_SECRET?: string;
     NEXT_PUBLIC_GA_ID?: string;
     NEXT_PUBLIC_BAIDU_TONGJI_ID?: string;
     BAIDU_PUSH_TOKEN?: string;

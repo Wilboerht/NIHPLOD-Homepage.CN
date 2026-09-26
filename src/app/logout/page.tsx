@@ -170,8 +170,10 @@ function LogoutContent() {
         credentials: "include",
         // 默认仅结束当前设备会话：RP-Initiated Logout 的最佳实践，避免在子站
         // 点一次退出就把用户手机/其他电脑的主站会话全部踢掉；
-        // 用户勾选"退出所有设备"时升级为全设备登出（通知全部已授权平台）
-        body: JSON.stringify({ allDevices }),
+        // 用户勾选"退出所有设备"时升级为全设备登出（通知全部已授权平台）。
+        // clientId 用于闭环撤销该子站的 OAuth 会话/refresh token（主站会话多为
+        // 内部登录，refresh token 无 clientId，需按发起方兜底撤销）
+        body: JSON.stringify({ allDevices, ...(clientId ? { clientId } : {}) }),
       });
 
       if (!res.ok) {

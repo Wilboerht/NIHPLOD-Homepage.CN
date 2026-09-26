@@ -33,8 +33,10 @@ vi.mock("@/lib/oauth-client", () => ({
 vi.mock("@/lib/token-blacklist", () => ({
   revokeAccessToken: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock("@/lib/backchannel-logout", () => ({
-  sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
+// 登出闭环：级联撤销 OAuth 会话/refresh token + backchannel 广播
+const mockRevokeOAuthClientSessions = vi.fn();
+vi.mock("@/lib/oauth-session-revoke", () => ({
+  revokeOAuthClientSessions: (...args: unknown[]) => mockRevokeOAuthClientSessions(...args),
 }));
 vi.mock("@/lib/auth-logger", () => ({
   logAuthEvent: vi.fn(),
@@ -68,10 +70,18 @@ vi.mock("@/lib/logger", () => ({
 
 import { GET } from "../end-session/route";
 
-function createRequest(params: Record<string, string>): NextRequest {
+function createRequest(
+  params: Record<string, string>,
+  cookies: Record<string, string> = {}
+): NextRequest {
   const url = new URL("http://localhost/api/oauth/end-session");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return new NextRequest(url.toString());
+  const headers = new Headers();
+  const cookieStr = Object.entries(cookies)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("; ");
+  if (cookieStr) headers.set("cookie", cookieStr);
+  return new NextRequest(url.toString(), { headers });
 }
 
 describe("GET /api/oauth/end-session", () => {
@@ -82,6 +92,7 @@ describe("GET /api/oauth/end-session", () => {
     mockVerifyIdToken.mockResolvedValue(null);
     // 默认无会话：快速通道跳过，走 /logout 确认页回落路径
     mockVerifyUserAuth.mockResolvedValue(null);
+    mockRevokeOAuthClientSessions.mockResolvedValue({ sessionCount: 0, latestSid: null });
   });
 
   it("id_token_hint 经 fragment 透传到 /logout，不进入 query", async () => {
@@ -173,9 +184,13 @@ describe("GET /api/oauth/end-session", () => {
       })
     );
     expect(res.status).toBe(302);
-    // 快速通道不允许过期 hint：仅保留 5 分钟时钟偏移宽限（过期则回落确认页）
+    // 快速通道不允许过期 hint：仅保留 30s 时钟偏移宽限（过期则回落确认页）
     expect(mockVerifyIdToken).toHaveBeenCalledWith("valid-hint", "client-1", {
-      clockToleranceSeconds: 5 * 60,
+      clockToleranceSeconds: 30,
+    });
+    // 登出闭环：撤销该 client 的 OAuth 会话/refresh token 并广播 backchannel logout
+    expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-1", {
+      reason: "logout",
     });
     const location = new URL(res.headers.get("location")!);
     // 直跳可信回跳地址（不再经过 /logout 确认页），state 透传
@@ -215,5 +230,44 @@ describe("GET /api/oauth/end-session", () => {
     expect(res.status).toBe(302);
     const location = new URL(res.headers.get("location")!);
     expect(location.pathname).toBe("/logout");
+    expect(mockRevokeOAuthClientSessions).not.toHaveBeenCalled();
+  });
+
+  it("快速通道：hint 已过期（验签不通过）时回落确认页，不执行免确认登出", async () => {
+    // 已过期 hint：验签返回 null（快速通道仅容忍 30s 时钟偏移）
+    mockVerifyIdToken.mockResolvedValue(null);
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1" });
+    const res = await GET(
+      createRequest({
+        client_id: "client-1",
+        id_token_hint: "expired-hint",
+        post_logout_redirect_uri: "https://a.com/done",
+      })
+    );
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location")!);
+    // 回落确认页，由用户显式确认后登出
+    expect(location.pathname).toBe("/logout");
+    // 未执行服务端直登出：不撤销会话、不清 Cookie
+    expect(mockRevokeOAuthClientSessions).not.toHaveBeenCalled();
+    const setCookies = res.headers.getSetCookie();
+    expect(setCookies.some((c) => c.startsWith("__Host-user_token="))).toBe(false);
+    expect(setCookies.some((c) => c.startsWith("__Host-user_refresh="))).toBe(false);
+  });
+
+  it("登出闭环：主站 refresh token 无关联 client 时按可信 clientId 兜底撤销 OAuth 会话", async () => {
+    mockVerifyIdToken.mockResolvedValue({ sub: "user-1", aud: "client-1" });
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1" });
+    // refresh token 记录不存在/无 clientId（主站内部登录）：由 hint aud 兜底定位 client
+    const res = await GET(
+      createRequest(
+        { client_id: "client-1", id_token_hint: "valid-hint" },
+        { "__Host-user_refresh": "rt-1" }
+      )
+    );
+    expect(res.status).toBe(302);
+    expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-1", {
+      reason: "logout",
+    });
   });
 });

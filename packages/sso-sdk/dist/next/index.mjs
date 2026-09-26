@@ -156,8 +156,7 @@ function createSsoMiddleware(config) {
     scopes = "openid profile",
     publicPaths = [],
     callbackPath = "/api/auth/callback",
-    ssoCookieName = "__Host-user_token",
-    validateSsoCookie = true,
+    failClosedOnIntrospectionError = false,
     insecureLocalDev: insecureLocalDevOpt = false
   } = config;
   const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
@@ -169,9 +168,9 @@ function createSsoMiddleware(config) {
   const verifierCookieName = insecureLocalDev ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME) : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
-  if (!validateSsoCookie) {
+  if (config.validateSsoCookie !== void 0 || config.ssoCookieName !== void 0) {
     console.warn(
-      "[SSO SDK] validateSsoCookie=false\uFF1A\u4E2D\u95F4\u4EF6\u4EC5\u68C0\u67E5 Cookie \u5B58\u5728\u6027\uFF0C\u53EF\u80FD\u653E\u884C\u5DF2\u5931\u6548\u7684\u4F1A\u8BDD\u3002\u4E2D\u95F4\u4EF6\u53EA\u662F UX \u5C42\uFF0C\u654F\u611F\u6570\u636E\u7684\u9274\u6743\u5FC5\u987B\u5728 Route Handler / Server Component \u4E2D\u5B8C\u6210\u3002"
+      '[SSO SDK] validateSsoCookie / ssoCookieName \u5DF2\u5E9F\u5F03\uFF1A\u4E3B\u7AD9\u4F1A\u8BDD Cookie\uFF08__Host-user_token\uFF09\u662F\u4E3B\u7AD9\u5185\u90E8 token\uFF08type="user"\uFF09\uFF0Cintrospect \u7AEF\u70B9\u53EA\u63A5\u53D7 access_token\uFF0C\u6821\u9A8C\u5FC5\u7136\u5931\u8D25\uFF1B\u4E14 __Host- Cookie \u4E0D\u4F1A\u4E0B\u53D1\u5230\u5B50\u57DF\u3002\u8BE5\u5FEB\u901F\u901A\u9053\u4ECE\u672A\u751F\u6548\uFF0C\u5DF2\u79FB\u9664\u3002\u8BF7\u5220\u9664\u8FD9\u4E24\u4E2A\u914D\u7F6E\u9879\uFF1B\u4F1A\u8BDD\u68C0\u6D4B\u4EE5\u672C\u7AD9 access_token Cookie \u4E3A\u51C6\u3002'
     );
   }
   if (!clientSecret) {
@@ -191,22 +190,6 @@ function createSsoMiddleware(config) {
     if (matchesPath(pathname, allPublicPaths)) {
       return NextResponse.next();
     }
-    const ssoSession = request.cookies.get(ssoCookieName);
-    if (ssoSession?.value) {
-      if (validateSsoCookie) {
-        const introspectResult = await introspectAccessToken(
-          ssoSession.value,
-          normalizedServerBase,
-          clientId,
-          clientSecret
-        );
-        if (introspectResult === "active") {
-          return NextResponse.next();
-        }
-      } else {
-        return NextResponse.next();
-      }
-    }
     const accessTokenCookie = request.cookies.get(accessTokenCookieName);
     if (accessTokenCookie?.value) {
       const introspectResult = await introspectAccessToken(
@@ -219,6 +202,15 @@ function createSsoMiddleware(config) {
         return NextResponse.next();
       }
       if (introspectResult === "unreachable") {
+        if (failClosedOnIntrospectionError) {
+          console.warn(
+            "[SSO SDK] introspection \u4E0D\u53EF\u8FBE\uFF08\u7F51\u7EDC\u5F02\u5E38/\u8D85\u65F6/5xx\uFF09\uFF0CfailClosedOnIntrospectionError=true\uFF0C\u5BF9\u6301\u6709 SSO access token Cookie \u7684\u8BF7\u6C42 fail-closed \u8FD4\u56DE 502\u3002"
+          );
+          return new NextResponse(
+            "SSO \u8BA4\u8BC1\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF08introspection unreachable\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
+            { status: 502 }
+          );
+        }
         console.warn(
           "[SSO SDK] introspection \u4E0D\u53EF\u8FBE\uFF08\u7F51\u7EDC\u5F02\u5E38/\u8D85\u65F6/5xx\uFF09\uFF0C\u5BF9\u6301\u6709 SSO access token Cookie \u7684\u8BF7\u6C42 fail-open \u653E\u884C\uFF1B\u654F\u611F\u6570\u636E\u7684\u9274\u6743\u7531 Route Handler \u515C\u5E95\u3002"
         );
@@ -796,7 +788,7 @@ function createCallbackRouteHandler(config) {
       );
     }
     const tokenData = await res.json();
-    if (!tokenData.access_token || !tokenData.refresh_token) {
+    if (!tokenData.access_token || !tokenData.refresh_token || typeof tokenData.expires_in !== "number" || !Number.isFinite(tokenData.expires_in) || tokenData.expires_in <= 0) {
       return buildErrorResponse(
         request,
         502,
@@ -1201,8 +1193,21 @@ async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId) {
   if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("logout_token_expired", "Logout Token \u5DF2\u8FC7\u671F");
   }
+  if (payload.type !== "logout_token") {
+    throw new SsoError(
+      "logout_token_invalid",
+      "Logout Token type \u5FC5\u987B\u4E3A logout_token"
+    );
+  }
   const events = payload.events;
-  if (!events || typeof events !== "object" || !(BACKCHANNEL_LOGOUT_EVENT in events)) {
+  if (!events || typeof events !== "object" || Array.isArray(events)) {
+    throw new SsoError(
+      "logout_token_invalid",
+      "Logout Token \u7F3A\u5C11 backchannel-logout events \u58F0\u660E"
+    );
+  }
+  const logoutEvent = events[BACKCHANNEL_LOGOUT_EVENT];
+  if (!logoutEvent || typeof logoutEvent !== "object" || Array.isArray(logoutEvent)) {
     throw new SsoError(
       "logout_token_invalid",
       "Logout Token \u7F3A\u5C11 backchannel-logout events \u58F0\u660E"

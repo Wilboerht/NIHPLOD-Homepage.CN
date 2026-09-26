@@ -14,6 +14,7 @@ import { LRUCache } from "lru-cache";
 import { randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
 import type { NextRequest } from "next/server";
 import { prisma } from "./prisma";
+import { apiConsole } from "./logger";
 
 const DPOP_PROOF_MAX_AGE_MS = 60_000; // 1 分钟
 const DPOP_NONCE_TTL_MS = 5 * 60_000; // 5 分钟
@@ -299,10 +300,12 @@ export async function validateDPoPProof(
 
     payload = rawPayload as unknown as DPoPProofPayload;
   } catch (err) {
+    // 内部异常细节（jose 错误、密钥/配置问题）不回传客户端，仅落服务端日志
+    apiConsole.warn("[DPoP] proof 验证失败:", err);
     return {
       valid: false,
       error: "invalid_dpop_proof",
-      errorDescription: `DPoP proof 验证失败: ${err instanceof Error ? err.message : String(err)}`,
+      errorDescription: "DPoP proof 验证失败",
     };
   }
 

@@ -15,7 +15,7 @@ import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { verifyUserAuth } from "@/lib/auth";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { revokeAccessToken } from "@/lib/token-blacklist";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { prisma } from "@/lib/prisma";
 import { CSRF_COOKIE_NAME } from "@/lib/csrf";
@@ -69,14 +69,15 @@ export async function GET(request: NextRequest) {
     if (idTokenHint) {
       try {
         // 快速通道是无确认的敏感操作（GET + SameSite=Lax cookie，跨站顶级导航可触发），
-        // hint 不允许过期：仅保留 5 分钟时钟偏移宽限。过期 hint 回落到下方确认页流程，
+        // hint 必须未过期：仅保留 30s 时钟偏移宽限。过期 hint 回落到下方确认页流程，
         // 由用户显式确认后登出（确认页路径允许过期 hint，仅作身份提示展示用）。
         const hintClaims = await verifyIdToken(idTokenHint, clientId ?? undefined, {
-          clockToleranceSeconds: 5 * 60,
+          clockToleranceSeconds: 30,
         });
         const user = await verifyUserAuth(request);
         if (hintClaims?.sub && user && hintClaims.sub === user.id) {
-          // clientId 可能因上方无宽限的验签失败而为 null（hint 已过期），用 hint 的 aud 兜底
+          // clientId 可能因上方无宽限的验签失败而为 null（hint 已过期但在 30s 宽限内），
+          // 用已验签 hint 的 aud 兜底
           const effectiveClientId =
             clientId ?? (typeof hintClaims.aud === "string" ? hintClaims.aud : null);
           const trusted = postLogoutRedirectUri
@@ -85,27 +86,28 @@ export async function GET(request: NextRequest) {
 
           // 单设备登出，与 POST /api/auth/logout 的 allDevices=false 同口径
           const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
+          let sessionClientId: string | null = null;
           if (refreshToken) {
             await revokeRefreshToken(user.id, refreshToken, undefined, "logout");
-            // refresh token 关联 OAuth client 时（经子站 SSO 授权建立的会话），
-            // 同步撤销其 OAuthSession 并广播 backchannel logout
+            // refresh token 关联 OAuth client 时（经子站 SSO 授权建立的会话），按记录定位
             const { createHash } = await import("crypto");
             const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
             const refreshRecord = await prisma.refreshToken.findFirst({
               where: { userId: user.id, token: tokenHash },
               select: { clientId: true },
             });
-            if (refreshRecord?.clientId) {
-              await sendBackchannelLogout(user.id, [refreshRecord.clientId]);
-              await prisma.oAuthSession.updateMany({
-                where: { userId: user.id, clientId: refreshRecord.clientId, revokedAt: null },
-                data: { revokedAt: new Date() },
-              });
-            }
+            sessionClientId = refreshRecord?.clientId ?? null;
           }
-      if (user.jti) {
-        await revokeAccessToken(user.jti, user.exp ? user.exp * 1000 : undefined);
-      }
+          // 登出闭环：主站会话多为内部登录（refresh token clientId=null），以可信
+          // clientId（显式 client_id 已经 aud 校验，或已验签 hint 的 aud）兜底撤销
+          // 该 client 下的 OAuthSession 与 refresh token，并广播 backchannel logout
+          const revokeClientId = sessionClientId ?? effectiveClientId;
+          if (revokeClientId) {
+            await revokeOAuthClientSessions(user.id, revokeClientId, { reason: "logout" });
+          }
+          if (user.jti) {
+            await revokeAccessToken(user.jti, user.exp ? user.exp * 1000 : undefined);
+          }
           logAuthEvent("user_logout", {
             userId: user.id,
             success: true,

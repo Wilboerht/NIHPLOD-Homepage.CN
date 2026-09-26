@@ -5,7 +5,8 @@
  * Discovery / JWKS（参照 next-callback.test.ts 的写法）。
  *
  * 覆盖：合法 token 200 且 onLogout 被调用、签名错误 400、aud 不匹配 400、
- * 缺 events 400、sub/sid 都缺 400、jti 重放 400、GET 405。
+ * 缺 events 400、type 非 logout_token 400、events 事件值非对象 400、
+ * sub/sid 都缺 400、jti 重放 400、GET 405。
  */
 import { describe, it, expect, beforeEach, beforeAll, vi, afterEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -88,6 +89,7 @@ function validLogoutPayload(
     exp: nowSec + 120,
     jti: `jti-${++jtiCounter}`,
     sub: "user-123",
+    type: "logout_token",
     events: { [BACKCHANNEL_LOGOUT_EVENT]: {} },
     ...extra,
   };
@@ -223,6 +225,55 @@ describe("createBackchannelLogoutRouteHandler", () => {
     const body = await res.json();
     expect(body.error).toBe("logout_token_invalid");
     expect(body.error_description).toContain("events");
+  });
+
+  it("缺少 type 声明（或 type 不是 logout_token）时返回 400", async () => {
+    installFetchRouter();
+    const handler = createBackchannelLogoutRouteHandler(config);
+
+    // 缺 type
+    const payloadNoType = validLogoutPayload();
+    delete payloadNoType.type;
+    let token = await buildLogoutToken(payloadNoType);
+    let res = await handler(postWithToken(token));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("logout_token_invalid");
+
+    // type 错误（其他用途 token 不得冒充 logout_token）
+    token = await buildLogoutToken(validLogoutPayload({ type: "access_token" }));
+    res = await handler(postWithToken(token));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("logout_token_invalid");
+    expect(body.error_description).toContain("type");
+  });
+
+  it("events 事件值不是对象时返回 400", async () => {
+    installFetchRouter();
+    const handler = createBackchannelLogoutRouteHandler(config);
+
+    for (const badEvent of ["yes", 1, null, []]) {
+      const token = await buildLogoutToken(
+        validLogoutPayload({ events: { [BACKCHANNEL_LOGOUT_EVENT]: badEvent } })
+      );
+      const res = await handler(postWithToken(token));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("logout_token_invalid");
+      expect(body.error_description).toContain("events");
+    }
+  });
+
+  it("events 本身是数组时返回 400", async () => {
+    installFetchRouter();
+    const handler = createBackchannelLogoutRouteHandler(config);
+
+    const token = await buildLogoutToken(
+      validLogoutPayload({ events: [BACKCHANNEL_LOGOUT_EVENT] })
+    );
+    const res = await handler(postWithToken(token));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("logout_token_invalid");
   });
 
   it("sub 与 sid 都缺失时返回 400", async () => {

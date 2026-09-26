@@ -36,6 +36,10 @@ vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/oauth-session-revoke", () => ({
+  revokeOAuthClientSessions: vi.fn().mockResolvedValue({ sessionCount: 1, latestSid: "sid-1" }),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
@@ -58,7 +62,7 @@ import { verifyUserAuth } from "@/lib/auth";
 import { verifyRefreshToken } from "@/lib/jwt";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { prisma } from "@/lib/prisma";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { USER_COOKIE_NAME, USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 import { POST } from "@/app/api/auth/logout/route";
 
@@ -66,12 +70,11 @@ const mockVerifyUserAuth = verifyUserAuth as ReturnType<typeof vi.fn>;
 const mockVerifyRefreshToken = verifyRefreshToken as ReturnType<typeof vi.fn>;
 const mockRevokeRefreshToken = revokeRefreshToken as ReturnType<typeof vi.fn>;
 const mockRefreshFindFirst = prisma.refreshToken.findFirst as ReturnType<typeof vi.fn>;
-const mockOAuthUpdateMany = prisma.oAuthSession.updateMany as ReturnType<typeof vi.fn>;
-const mockSendBackchannel = sendBackchannelLogout as ReturnType<typeof vi.fn>;
+const mockRevokeOAuthClientSessions = revokeOAuthClientSessions as ReturnType<typeof vi.fn>;
 
 const REFRESH_TOKEN = "rt-value";
 
-function createRequest(withRefreshCookie = true): NextRequest {
+function createRequest(withRefreshCookie = true, body: unknown = {}): NextRequest {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (withRefreshCookie) {
     headers["cookie"] = `${USER_REFRESH_COOKIE_NAME}=${REFRESH_TOKEN}`;
@@ -79,7 +82,7 @@ function createRequest(withRefreshCookie = true): NextRequest {
   return new NextRequest(new URL("/api/auth/logout", "http://localhost:3000"), {
     method: "POST",
     headers,
-    body: JSON.stringify({}),
+    body: JSON.stringify(body),
   } as never);
 }
 
@@ -100,10 +103,9 @@ describe("POST /api/auth/logout access token 失效场景", () => {
     mockVerifyUserAuth.mockResolvedValue(null);
     mockVerifyRefreshToken.mockResolvedValue({ id: "user-1", type: "refresh" });
     mockRefreshFindFirst.mockResolvedValue({ clientId: "oauth-client-1" });
-    mockOAuthUpdateMany.mockResolvedValue({ count: 1 });
   });
 
-  it("refresh cookie 有效：撤销该 refresh token 并撤销关联 OAuthSession，仍返回成功", async () => {
+  it("refresh cookie 有效：撤销该 refresh token 并级联撤销关联 OAuth 会话，仍返回成功", async () => {
     const res = await POST(createRequest());
     const data = await res.json();
 
@@ -123,16 +125,14 @@ describe("POST /api/auth/logout access token 失效场景", () => {
       undefined,
       "logout"
     );
-    // 关联 OAuthSession 一并撤销（含 Backchannel Logout 通知）
-    expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["oauth-client-1"]);
-    expect(mockOAuthUpdateMany).toHaveBeenCalledWith({
-      where: { userId: "user-1", clientId: "oauth-client-1", revokedAt: null },
-      data: { revokedAt: expect.any(Date) },
+    // 关联 OAuth 会话级联撤销（OAuthSession + 该 client refresh token + Backchannel Logout）
+    expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "oauth-client-1", {
+      reason: "logout",
     });
     expectCookiesCleared(res);
   });
 
-  it("refresh token 无关联 OAuth client：仅撤销 refresh token，不触碰 OAuthSession", async () => {
+  it("refresh token 无关联 OAuth client：仅撤销 refresh token，不触碰 OAuth 会话", async () => {
     mockRefreshFindFirst.mockResolvedValue({ clientId: null });
 
     const res = await POST(createRequest());
@@ -144,8 +144,19 @@ describe("POST /api/auth/logout access token 失效场景", () => {
       undefined,
       "logout"
     );
-    expect(mockSendBackchannel).not.toHaveBeenCalled();
-    expect(mockOAuthUpdateMany).not.toHaveBeenCalled();
+    expect(mockRevokeOAuthClientSessions).not.toHaveBeenCalled();
+    expectCookiesCleared(res);
+  });
+
+  it("refresh token 无关联 client 但请求携带 clientId：兜底级联撤销该 client 的 OAuth 会话", async () => {
+    mockRefreshFindFirst.mockResolvedValue({ clientId: null });
+
+    const res = await POST(createRequest(true, { clientId: "oauth-client-1" }));
+
+    expect(res.status).toBe(200);
+    expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "oauth-client-1", {
+      reason: "logout",
+    });
     expectCookiesCleared(res);
   });
 

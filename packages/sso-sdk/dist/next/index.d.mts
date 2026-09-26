@@ -10,6 +10,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * - PKCE code_challenge 使用 Web Crypto API 的 crypto.subtle.digest(SHA-256)
  *   （Edge Runtime 18+ 完全支持此 API）
  *
+ * ⚠️ 安全须知：middleware 只是 UX 层（未认证重定向的入口优化），
+ * 不能作为安全边界。敏感接口必须在 Route Handler / Server Component 中
+ * 用 @nihplod/sso-verify 对 access_token 做二次校验。
+ *
  * 用法 (src/middleware.ts):
  * ```ts
  * import { createSsoMiddleware } from "@nihplod/sso-sdk/next";
@@ -39,6 +43,13 @@ interface SsoMiddlewareConfig {
     /**
      * 主站用户会话 Cookie 名称，用于检测是否已有 SSO 会话。
      * 默认 "__Host-user_token"（与主站 C 端登录 Cookie 一致）。
+     *
+     * @deprecated 该「主站会话 Cookie 快速通道」已移除，此选项不再生效：
+     * 1. `__Host-user_token` 存的是主站内部 token（type="user", aud="user"），
+     *    introspect 端点只接受 type="access_token"，校验必然返回 inactive；
+     * 2. `__Host-` Cookie 不会下发到子域/其他域名，跨域子项目根本收不到。
+     * 该分支永不命中，却让每个请求白付一次 introspection 往返并被负缓存 30s。
+     * 保留字段仅为兼容旧配置，请勿使用；会话检测以本站 access_token Cookie 为准。
      */
     ssoCookieName?: string;
     /**
@@ -51,8 +62,27 @@ interface SsoMiddlewareConfig {
      * 默认 true（推荐）。设为 false 时仅检查 Cookie 存在性，延迟最低但可能放行
      * 已失效/被撤销的会话 —— 中间件本质上只是 UX 层，敏感数据必须在
      * Route Handler / Server Component 中二次校验。
+     *
+     * @deprecated 随「主站会话 Cookie 快速通道」一并移除（见 ssoCookieName），
+     * 此选项不再生效。保留字段仅为兼容旧配置，请勿使用。
      */
     validateSsoCookie?: boolean;
+    /**
+     * Introspection 不可达（网络异常/超时/5xx，token 有效性未确证）时的策略。
+     *
+     * 默认 false（fail-open）：对已持有 access_token Cookie 的请求放行——
+     * middleware 只是 UX 层，敏感接口的鉴权由 Route Handler / Server Component
+     * 兜底，此时重定向到一个同样不可达的 SSO 中心没有意义。
+     *
+     * 设为 true（fail-closed）时：对持有 access_token Cookie 的请求返回
+     * 502 错误页而不是放行。适用于对可用性敏感、宁可拒绝也不放行的场景。
+     * 注意 fail-closed 只影响「不可达」这一种结果；token 确证无效（inactive）
+     * 无论该选项如何都会清除 Cookie 并重定向到 SSO 登录。
+     *
+     * ⚠️ 无论取何值，middleware 都只是 UX 层：敏感接口必须在
+     * Route Handler / Server Component 中用 @nihplod/sso-verify 二次校验。
+     */
+    failClosedOnIntrospectionError?: boolean;
     /** Access Token Cookie 名称，默认 __Host-nihplod_sso_at */
     accessTokenCookieName?: string;
     /** State Cookie 名称，默认 __Host-nihplod_sso_state */

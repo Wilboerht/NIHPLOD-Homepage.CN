@@ -477,3 +477,4 @@ function createLogoutTokenVerifier(options) {
   createTokenVerifier,
   ssoMiddleware
 });
+//# sourceMappingURL=index.js.map

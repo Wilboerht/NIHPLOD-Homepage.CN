@@ -343,11 +343,15 @@ export const middleware = createSsoMiddleware({
   publicPaths: ["/", "/public", "/api/auth/logout"],
   // Confidential Client (BFF) can pass clientSecret
   // clientSecret: process.env.SSO_CLIENT_SECRET,
-  // validateSsoCookie defaults to true: the middleware calls the introspection
-  // endpoint to verify the SSO session cookie. Set to false only if you accept
-  // "cookie exists = logged in" semantics (lowest latency, but may pass revoked
-  // sessions). Either way, the middleware is only a UX gate — always re-verify
-  // tokens in Route Handlers / Server Components before serving sensitive data.
+  // ⚠️ The middleware is only a UX gate — always re-verify tokens in
+  // Route Handlers / Server Components (e.g. with @nihplod/sso-verify)
+  // before serving sensitive data.
+  // failClosedOnIntrospectionError: false by default. When introspection is
+  // *unreachable* (network error / timeout / 5xx — as opposed to a
+  // confirmed-invalid token), requests carrying an SSO access_token cookie are
+  // let through (fail-open), because redirecting to an SSO center that is down
+  // helps no one. Set to true to return 502 instead (fail-closed) if your app
+  // prefers rejecting over passing during an SSO outage.
   // insecureLocalDev: false by default; set true ONLY for http://localhost
   // development (disables the Secure cookie attribute and strips __Host-/__Secure-
   // prefixes, which browsers refuse to write over HTTP). Must be set consistently
@@ -375,7 +379,15 @@ export const config = {
 > of redirecting to an SSO center that is likely down. This is safe because the middleware
 > is only a UX gate — Route Handlers / Server Components must still re-verify the token.
 > Confirmed-invalid tokens (401/403 or `active:false`) still trigger the redirect, and
-> requests without any SSO cookie still redirect as before.
+> requests without any SSO cookie still redirect as before. Set
+> `failClosedOnIntrospectionError: true` to return **502** instead of failing open.
+>
+> **Removed fast path:** the former "main-site session cookie" (`__Host-user_token` /
+> `ssoCookieName` / `validateSsoCookie`) shortcut has been removed — it was dead code
+> (`__Host-user_token` holds the main site's *internal* token, which introspection
+> always rejects, and `__Host-` cookies are never sent to subdomains), yet cost every
+> request a wasted introspection round-trip. Both options are now deprecated no-ops
+> (kept for config compatibility; setting either logs a warning).
 
 ```typescript
 // src/app/api/auth/callback/route.ts
@@ -470,6 +482,19 @@ Default cookie names:
 ---
 
 ## Security Recommendations and Token Storage
+
+> ⚠️ **The Next.js middleware is only a UX gate.** It decides whether to redirect
+> unauthenticated visitors to the SSO login page; it is NOT a security boundary.
+> Any route serving sensitive data MUST re-verify the token in the Route Handler /
+> Server Component itself (e.g. with `@nihplod/sso-verify`, or the `getSessionUser`
+> pattern in `examples/nextjs-app`). This applies regardless of
+> `failClosedOnIntrospectionError` — that option only changes how the middleware
+> behaves when the SSO introspection endpoint is unreachable.
+
+> ℹ️ HS256 ID Tokens are **always rejected** (symmetric secrets cannot be safely
+> distributed to public clients). The `rejectHs256WhenRs256Available` option of
+> `validateIdToken` is deprecated and has no effect — it only chooses which error
+> code is thrown. The SSO center must be configured with an RS256 key pair.
 
 By default, the SDK stores tokens in **sessionStorage** (tab-scoped persistence). This keeps the login state across page reloads and the full-page redirect that `CallbackPage` performs after the token exchange, while the data is cleared automatically when the tab closes and is never shared with other tabs. In SSR environments or privacy modes where `sessionStorage` is unavailable/unwritable, it falls back to an in-memory map (login state is lost on reload in that case).
 
