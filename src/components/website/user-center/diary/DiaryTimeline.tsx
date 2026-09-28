@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Angry,
+  CalendarCheck,
   ChevronRight,
   Frown,
   Laugh,
@@ -182,8 +183,9 @@ export function DiaryTimeline({
               <button
                 type="button"
                 onClick={() => onCheckIn(null, todayStr)}
-                className="inline-flex items-center justify-center px-5 h-9 rounded-full bg-brand-primary text-white text-[12px] tracking-[0.08em] font-medium transition-colors hover:bg-brand-primary-dark cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-5 h-9 rounded-full bg-brand-primary text-white text-[12px] tracking-[0.05em] font-medium transition-colors hover:bg-brand-primary-dark active:opacity-80 cursor-pointer"
               >
+                <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.8} />
                 今日打卡
               </button>
             )}
@@ -246,7 +248,7 @@ export function DiaryTimeline({
               </div>
 
               {/* 右侧事件列：细竖线串联，事件直接平铺（无卡片） */}
-              <div className="relative flex-1 border-l border-stone-200/60 pl-5 pb-6 space-y-4">
+              <div className="relative flex-1 border-l border-stone-300/80 pl-5 pb-6 space-y-4">
                 {/* 今日打卡引导：今天没有任何事件时展示完整引导盒；有测肤等事件但无日记时补一条打卡入口 */}
                 {isToday && !visibleEvents.some((e) => e.kind === "diary") && (
                   visibleEvents.length === 0 ? (
@@ -260,8 +262,9 @@ export function DiaryTimeline({
                           <button
                             type="button"
                             onClick={() => onCheckIn(null, todayStr)}
-                            className="shrink-0 inline-flex items-center justify-center h-8 px-3.5 rounded-full bg-brand-primary text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-primary-dark cursor-pointer"
+                            className="shrink-0 inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-primary text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-primary-dark active:opacity-80 cursor-pointer"
                           >
+                            <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.8} />
                             今日打卡
                           </button>
                         )}
@@ -283,9 +286,19 @@ export function DiaryTimeline({
                         <button
                           type="button"
                           onClick={() => onCheckIn(manualDiaryEntry, todayStr)}
-                          className="inline-flex items-center justify-center h-8 px-3.5 rounded-full bg-brand-primary text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-primary-dark cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-primary text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-primary-dark active:opacity-80 cursor-pointer"
                         >
-                          {manualDiaryEntry ? "编辑今日记录 →" : "今日打卡"}
+                          {manualDiaryEntry ? (
+                            <>
+                              <Pencil className="w-3 h-3" strokeWidth={1.8} />
+                              编辑今日记录
+                            </>
+                          ) : (
+                            <>
+                              <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.8} />
+                              今日打卡
+                            </>
+                          )}
                         </button>
                       </div>
                     )
@@ -458,7 +471,7 @@ export function DiaryTimeline({
             onLoadMoreEntries?.();
           }}
           disabled={testsLoadingMore || entriesLoadingMore}
-          className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-full border border-stone-200/60 text-[12px] text-brand-charcoal/60 font-light tracking-[0.08em] hover:border-brand-charcoal/40 hover:text-brand-charcoal transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+          className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 font-light tracking-[0.08em] hover:border-brand-charcoal/50 hover:text-brand-charcoal transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
         >
           {(testsLoadingMore || entriesLoadingMore) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {hiddenCount > 0 ? `加载更早的记录（还有 ${hiddenCount} 天）` : "加载更早的记录"}
