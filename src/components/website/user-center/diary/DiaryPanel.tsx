@@ -133,6 +133,9 @@ export function DiaryPanel() {
   // 请求时序守卫：打开/切号/重开时自增；所有异步回调写回 state 前比对，
   // 防止旧账号/旧请求的晚到响应串入当前界面（bootstrap/趋势/日历由 effect cancelled 覆盖）
   const requestSeqRef = useRef(0);
+  // 同步防抖锁：同帧双击「加载更早」时 state 守卫尚未生效，用 ref 保证只发一次请求
+  const entriesLoadingMoreRef = useRef(false);
+  const testsLoadingMoreRef = useRef(false);
 
   // 打卡弹层：existing 为 null 表示新建；dateStr 为目标日历日（补打卡为过去日期）
   const [checkIn, setCheckIn] = useState<{ open: boolean; existing: DiaryEntry | null; dateStr: string | null }>({
@@ -274,7 +277,8 @@ export function DiaryPanel() {
   const loadMoreEntries = useCallback(async () => {
     const seq = requestSeqRef.current;
     const cursor = entriesCursorRef.current;
-    if (entriesLoadingMore || !cursor) return;
+    if (entriesLoadingMoreRef.current || entriesLoadingMore || !cursor) return;
+    entriesLoadingMoreRef.current = true;
     setEntriesLoadingMore(true);
     try {
       const res = await diaryFetch(`/api/user/skincare-archive?limit=${ENTRIES_PAGE_SIZE}&before=${cursor}`);
@@ -293,6 +297,7 @@ export function DiaryPanel() {
       console.error("Load more entries error:", e);
       toast.error("加载失败，请稍后再试");
     } finally {
+      entriesLoadingMoreRef.current = false;
       if (seq === requestSeqRef.current) setEntriesLoadingMore(false);
     }
   }, [entriesLoadingMore, toast]);
@@ -447,12 +452,13 @@ export function DiaryPanel() {
   const loadMoreTests = useCallback(async () => {
     const seq = requestSeqRef.current;
     const cursor = testsCursorRef.current;
-    if (testsLoadingMore) return;
+    if (testsLoadingMoreRef.current || testsLoadingMore) return;
     // 游标为空说明首屏为空（或数据不一致：total>0 但首页无记录）——无法定位"更早"，直接封底避免死按钮
     if (!cursor) {
       setTestsExhausted(true);
       return;
     }
+    testsLoadingMoreRef.current = true;
     setTestsLoadingMore(true);
     try {
       const res = await diaryFetch(`/api/user/skincare-tests?limit=${TESTS_PAGE_SIZE}&lite=1&before=${encodeURIComponent(cursor)}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Clock, ScanFace } from "lucide-react";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -67,8 +67,14 @@ export function TestHistoryList({
   const [page, setPage] = useState(initialPage ?? 1);
   const [totalPages, setTotalPages] = useState(initialTotal > 0 ? Math.ceil(initialTotal / pageSize) : 0);
   const [total, setTotal] = useState(initialTotal);
+  // 请求时序守卫：快速翻页/重试时丢弃晚到的旧响应，避免旧页数据覆盖新页
+  const requestSeqRef = useRef(0);
+  // 同步防抖锁：双击（同一帧内两次 click，state 尚未来得及禁用按钮）只放行一次翻页
+  const busyRef = useRef(false);
 
   const fetchHistory = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
+    busyRef.current = true;
     setLoading(true);
     setError(false);
     try {
@@ -78,19 +84,32 @@ export function TestHistoryList({
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (seq !== requestSeqRef.current) return; // 已被更新的请求取代，丢弃本次结果
       const sessions: HistorySession[] = data.history ?? [];
       const totalCount: number = data.pagination?.total || 0;
+      const pages: number = data.pagination?.totalPages || 0;
       setHistory(sessions);
-      setTotalPages(data.pagination?.totalPages || 0);
+      setTotalPages(pages);
       setTotal(totalCount);
       onDataChange?.(sessions, totalCount);
+      // 页码越界自愈（如末页记录被删后停留在空页）：回退到最后一页
+      if (sessions.length === 0 && pages > 0 && page > pages) {
+        setPage(pages);
+      }
     } catch (e) {
+      if (seq !== requestSeqRef.current) return;
       console.error("History fetch error:", e);
       setError(true);
     } finally {
-      setLoading(false);
+      if (seq === requestSeqRef.current) {
+        busyRef.current = false;
+        setLoading(false);
+      }
     }
   }, [page, pageSize, onDataChange]);
+
+  // 卸载时作废在途请求，避免晚到响应写回已卸载组件
+  useEffect(() => () => { requestSeqRef.current += 1; }, []);
 
   useEffect(() => {
     // 已提供首屏数据：跳过初始拉取，避免与父级（DiaryPanel 时间线）重复请求
@@ -126,7 +145,9 @@ export function TestHistoryList({
           <p className="text-[13px] text-brand-charcoal/60">测肤记录加载失败，请检查网络后重试</p>
           <button
             type="button"
-            onClick={fetchHistory}
+            onClick={() => {
+              if (!busyRef.current) fetchHistory();
+            }}
             className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-cocoa border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
           >
             重新加载
@@ -221,7 +242,10 @@ export function TestHistoryList({
         <div className="flex items-center justify-between mt-6">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => {
+              if (busyRef.current) return;
+              setPage((p) => Math.max(1, p - 1));
+            }}
             disabled={page <= 1 || loading}
             className="inline-flex items-center gap-1 h-8 px-3.5 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
@@ -235,7 +259,10 @@ export function TestHistoryList({
 
           <button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => {
+              if (busyRef.current) return;
+              setPage((p) => Math.min(totalPages, p + 1));
+            }}
             disabled={page >= totalPages || loading}
             className="inline-flex items-center gap-1 h-8 px-3.5 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
