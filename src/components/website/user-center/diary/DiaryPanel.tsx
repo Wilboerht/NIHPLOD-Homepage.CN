@@ -497,8 +497,8 @@ export function DiaryPanel() {
     <LazyMotion features={domAnimation}>
       <div className="flex h-full flex-col">
         {/* 桌面端标题栏（移动端标题由账户弹层头部显示）：视图切换时标题随视图变化；
-            全部测肤记录为整面板级视图切换，入口固定在标题栏（不再埋在左列中部） */}
-        <div className="hidden shrink-0 items-center justify-between border-b border-stone-200/60 px-6 pb-6 pt-10 md:flex md:px-16">
+            全部测肤记录为整面板级视图切换，入口紧随标题（靠右会被弹层关闭按钮压住） */}
+        <div className="hidden shrink-0 items-center gap-4 border-b border-stone-200/60 px-6 pb-6 pt-10 md:flex md:px-16">
           <h2 className="text-xl font-medium tracking-wide text-stone-800">
             {historyView ? "测肤记录" : "护肤档案"}
           </h2>
@@ -506,7 +506,7 @@ export function DiaryPanel() {
             <button
               type="button"
               onClick={() => setHistoryView(true)}
-              className="shrink-0 h-9 inline-flex items-center px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
+              className="shrink-0 h-8 inline-flex items-center px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
             >
               全部测肤记录 →
             </button>
