@@ -130,6 +130,23 @@ if (
   );
 }
 
+// RS256 Logout/Profile Event Token 密钥对：backchannel logout 与资料变更 webhook
+// 共用。缺失时 signLogoutToken / signProfileEventToken 会静默回退 HS256，对称密钥
+// 需分发给所有子站且与 access token 信任边界混淆；verifyLogoutToken 也会在无公钥时
+// 无条件接受 HS256。生产环境与 ID/Access 密钥同口径强制要求。
+if (
+  process.env.NODE_ENV === "production" &&
+  !process.env.NEXT_PHASE &&
+  process.env.ALLOW_HS256_FALLBACK !== "true" &&
+  (!process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY || !process.env.JWT_LOGOUT_TOKEN_PUBLIC_KEY)
+) {
+  throw new Error(
+    "[JWT] 生产环境必须配置 JWT_LOGOUT_TOKEN_PRIVATE_KEY 和 JWT_LOGOUT_TOKEN_PUBLIC_KEY。" +
+      "缺少 RS256 密钥对时 Logout Token / Profile Event Token 将静默回退 HS256 签名。" +
+      "如确需 HS256（紧急回滚），请显式设置 ALLOW_HS256_FALLBACK=true。"
+  );
+}
+
 // ============================================
 // OAuth Access Token RS256 迁移支持
 // （生产环境强制配置，见上方启动校验；非生产缺省时回退 HS256）
@@ -883,13 +900,20 @@ export async function signIdToken(claims: IdTokenClaims): Promise<string> {
  *
  * @param token - ID Token 字符串
  * @param expectedAudience - 可选，预期 aud（通常为发起方的 client_id）
+ * @param options.requireAudience - 为 true 时 expectedAudience 必填，缺失直接验签失败。
+ *   用于 RP-Initiated Logout 的免确认快速通道等场景：不校验 aud 时，任意 client
+ *   签发给同一用户的 id_token 都可充当 hint，必须由调用方明确要求 aud 绑定。
  */
 export async function verifyIdToken(
   token: string,
   expectedAudience?: string,
-  options?: { clockToleranceSeconds?: number }
+  options?: { clockToleranceSeconds?: number; requireAudience?: boolean }
 ): Promise<IdTokenClaims | null> {
   try {
+    // 免确认场景强制要求 aud：缺失 expectedAudience 时不做"跳过 aud 校验"的宽松验签
+    if (options?.requireAudience && !expectedAudience) {
+      return null;
+    }
     // 基础校验项；algorithms 在各分支显式指定（公钥分支 RS256，对称密钥分支 HS256）
     const verifyOptions: { issuer: string; audience?: string; clockTolerance?: number } = {
       issuer: ISSUER,
@@ -1114,6 +1138,15 @@ export async function verifyLogoutToken(
         }
       }
     } else {
+      // 未配置 RS256 公钥：仅非生产或显式逃生门允许 HS256（与签名侧守卫同口径）。
+      // 旧实现在此分支无条件接受 HS256，导致生产环境缺少密钥对时（守卫被
+      // ALLOW_HS256_FALLBACK/NEXT_PHASE 跳过）仍可被对称密钥伪造 logout token。
+      if (
+        process.env.NODE_ENV === "production" &&
+        process.env.ALLOW_HS256_FALLBACK !== "true"
+      ) {
+        return null;
+      }
       const result = await jwtVerify(token, logoutSecret, {
         ...verifyOptions,
         algorithms: ["HS256"],

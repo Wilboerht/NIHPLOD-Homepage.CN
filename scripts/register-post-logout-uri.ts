@@ -48,15 +48,16 @@ async function main() {
 
   logDatabaseTarget();
 
-  // 基础格式校验：必须是 http(s) 绝对 URL 或站内相对路径
-  // （相对路径拒绝反斜杠/控制字符："/\evil.com" 会被浏览器解析为跨站地址）
+  // 基础格式校验：必须是 https 绝对 URL 或站内相对路径（与管理后台校验口径一致；
+  // 拒绝 http 避免登出后明文回跳）。相对路径拒绝反斜杠/控制字符：
+  // "/\evil.com" 会被浏览器解析为跨站地址
   for (const uri of uris) {
     const isRelative = isSafeRelativePath(uri);
     if (!isRelative) {
       try {
         const parsed = new URL(uri);
-        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-          throw new Error("仅支持 http/https");
+        if (parsed.protocol !== "https:") {
+          throw new Error("仅支持 https 绝对 URL 或站内相对路径");
         }
       } catch (err) {
         console.error(`无效 URI: ${uri} (${err instanceof Error ? err.message : err})`);

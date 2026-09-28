@@ -184,9 +184,11 @@ describe("GET /api/oauth/end-session", () => {
       })
     );
     expect(res.status).toBe(302);
-    // 快速通道不允许过期 hint：仅保留 30s 时钟偏移宽限（过期则回落确认页）
+    // 快速通道不允许过期 hint：仅保留 30s 时钟偏移宽限（过期则回落确认页）；
+    // 且强制 aud 绑定发起方 client_id（requireAudience）
     expect(mockVerifyIdToken).toHaveBeenCalledWith("valid-hint", "client-1", {
       clockToleranceSeconds: 30,
+      requireAudience: true,
     });
     // 登出闭环：撤销该 client 的 OAuth 会话/refresh token 并广播 backchannel logout
     expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-1", {
@@ -253,6 +255,19 @@ describe("GET /api/oauth/end-session", () => {
     const setCookies = res.headers.getSetCookie();
     expect(setCookies.some((c) => c.startsWith("__Host-user_token="))).toBe(false);
     expect(setCookies.some((c) => c.startsWith("__Host-user_refresh="))).toBe(false);
+  });
+
+  it("快速通道：无 client_id 且 hint 无 aud 时不执行免确认登出（aud 必须绑定）", async () => {
+    // hint 验签通过但 aud 不是字符串 / client 无法解析：clientId 保持 null，
+    // 免确认快速通道必须跳过（回落确认页），防止任意 client 的 hint 触发直登出
+    mockVerifyIdToken.mockResolvedValue({ sub: "user-1" });
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1" });
+    const res = await GET(createRequest({ id_token_hint: "valid-hint" }));
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/logout");
+    expect(mockRevokeOAuthClientSessions).not.toHaveBeenCalled();
+    const setCookies = res.headers.getSetCookie();
+    expect(setCookies.some((c) => c.startsWith("__Host-user_token="))).toBe(false);
   });
 
   it("登出闭环：主站 refresh token 无关联 client 时按可信 clientId 兜底撤销 OAuth 会话", async () => {

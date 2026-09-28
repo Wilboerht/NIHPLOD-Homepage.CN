@@ -271,14 +271,25 @@ if (!smsCodeKey) {
 const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy === "true") {
   const hops = process.env.TRUST_PROXY_HOPS;
-  const hopsNum = hops ? parseInt(hops, 10) : 0;
-  check({
-    status: "PASS",
-    name: "TRUST_PROXY",
-    message:
-      `已启用（TRUST_PROXY_HOPS=${hops ?? "0"}：取 XFF 从右往左第 ${hopsNum > 0 ? hopsNum : "1（最近端）"} 个条目）` +
-      "。请按实际反向代理层数核对，配置错误会导致限流 key 取到代理 IP 或被伪造。",
-  });
+  const hopsRaw = hops === undefined || hops === "" ? 0 : Number(hops);
+  // hops 必须为非负整数：非法值会让 client-ip 在 XFF 条目不足时 fail-closed
+  // 返回 unknown（全局限流桶），且历史实现会把越界 hops 钳制到可伪造的最左条目
+  if (!Number.isInteger(hopsRaw) || hopsRaw < 0) {
+    check({
+      status: "FAIL",
+      name: "TRUST_PROXY_HOPS",
+      message: `非法值：${hops ?? "(未设置)"}，必须为非负整数`,
+      fix: "按实际反向代理层数设置 TRUST_PROXY_HOPS（例如单层 Nginx 为 1；仅本机直连为 0）",
+    });
+  } else {
+    check({
+      status: "PASS",
+      name: "TRUST_PROXY",
+      message:
+        `已启用（TRUST_PROXY_HOPS=${hops ?? "0"}：取 XFF 从右往左第 ${hopsRaw > 0 ? hopsRaw : "1（最近端）"} 个条目）` +
+        "。请按实际反向代理层数核对；XFF 条目少于配置层数时取 IP 将 fail-closed 为 unknown（全局限流桶）。",
+    });
+  }
 } else {
   check({
     status: "FAIL",

@@ -380,6 +380,36 @@ describe("verifyLogoutToken", () => {
     expect(payload!.type).toBe("logout_token");
   });
 
+  it("仅配置 accessTokenSecret 时，HS256 logout token 默认拒绝（不再隐式回退）", async () => {
+    const token = await createLogoutTokenHS256({ jti: "logout-legacy-default-off" });
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+    });
+
+    expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("显式 allowLegacyAccessTokenSecretFallback=true 时兼容旧行为并输出废弃告警", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const token = await createLogoutTokenHS256(
+      { jti: "logout-legacy-opt-in" },
+      accessSecret
+    );
+    const verifier = createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+      allowLegacyAccessTokenSecretFallback: true,
+    });
+
+    const payload = await verifier.verifyLogoutToken(token);
+    expect(payload?.sub).toBe("user-123");
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
   it("type 不是 logout_token 时拒绝", async () => {
     const token = await createLogoutTokenHS256({
       type: "access_token",

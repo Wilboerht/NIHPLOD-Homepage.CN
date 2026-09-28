@@ -55,6 +55,24 @@ describe("createSsoMiddleware", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("publicPaths 通配符按路径段边界匹配：/docs/:path* 不得放行 /docs-private", async () => {
+    const middleware = createSsoMiddleware({
+      ...config,
+      publicPaths: ["/docs/:path*"],
+    });
+
+    // 通配符本身命中：/docs 与 /docs/... 放行
+    const allowed = await middleware(new NextRequest("https://myapp.com/docs/guide"));
+    expect(allowed.headers.get("location")).toBeNull();
+
+    // 兄弟路径不得被误公开：应重定向登录（无 access token）
+    const denied = await middleware(
+      new NextRequest("https://myapp.com/docs-private/admin")
+    );
+    expect(denied.status).toBe(307);
+    expect(denied.headers.get("location")).toContain("/api/oauth/authorize");
+  });
+
   it("未认证请求重定向到 authorize 并写入 state/verifier/return cookie", async () => {
     const middleware = createSsoMiddleware(config);
     const res = await middleware(
@@ -184,6 +202,29 @@ describe("createSsoMiddleware", () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("fail-open"));
 
     // 5xx 结论不缓存：第二次请求重新调用 introspection
+    await middleware(makeReq());
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("introspect 返回 401（客户端认证失败，如 clientSecret 配错）：按不可达处理并告警，不缓存为 token 失效", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => jsonResponse({ error: "invalid_client" }, 401));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const middleware = createSsoMiddleware(config);
+    const makeReq = () =>
+      new NextRequest("https://myapp.com/dashboard", {
+        headers: { cookie: "__Host-nihplod_sso_at=token-auth-fail" },
+      });
+
+    const res = await middleware(makeReq());
+    // 不得清 cookie 并重定向（否则 authorize 回调写回后再次 401，形成静默重登录死循环）；
+    // 默认 fail-open 放行，敏感路由由 Route Handler 强制鉴权兜底
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("客户端认证失败"));
+
+    // 401 结论不缓存：第二次请求会重新 introspection（若被误写负缓存则不会 fetch）
     await middleware(makeReq());
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });

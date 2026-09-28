@@ -14,8 +14,10 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 
-const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
+const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "::"]);
 const PRIVATE_IP_PATTERNS = [
+  // 整个回环段 127.0.0.0/8（127.0.0.2、127.1.2.3 等同样指向本机）
+  /^127\./,
   /^10\./,
   /^172\.(1[6-9]|2\d|3[01])\./,
   /^192\.168\./,
@@ -32,8 +34,12 @@ const PRIVATE_IP_PATTERNS = [
  * 当前实现覆盖字面 IP、IPv6 ULA/link-local、IPv4 映射地址与已知保留名。
  */
 export function isBlockedHostname(rawHostname: string): boolean {
-  // WHATWG URL 的 IPv6 hostname 带方括号（如 "[::1]"），先归一化再匹配
-  const hostname = rawHostname.replace(/^\[|\]$/g, "").toLowerCase();
+  // WHATWG URL 的 IPv6 hostname 带方括号（如 "[::1]"），先归一化再匹配；
+  // 末尾点（"localhost."）与大小写需归一化，否则可绕过字面黑名单
+  const hostname = rawHostname
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+    .replace(/\.+$/, "");
   if (BLOCKED_HOSTS.has(hostname)) return true;
   if (PRIVATE_IP_PATTERNS.some((p) => p.test(hostname))) return true;
   if (hostname.startsWith("::ffff:")) return true; // IPv4 映射地址（绕过 IPv4 段检查）

@@ -103,6 +103,7 @@ After successful verification, the token payload is attached to `req.user`.
 | `jwksUri` | — | JWKS endpoint URL; public keys are matched by `kid` |
 | `logoutTokenPublicKey` | — | RS256 public key (PEM) for back-channel `logout_token` verification |
 | `logoutTokenSecret` | — | HS256 secret for local `logout_token` verification |
+| `allowLegacyAccessTokenSecretFallback` | `false` | Allow HS256 `logout_token`s to fall back to `accessTokenSecret` when `logoutTokenSecret` is unset (deprecated; see "Logout token verification") |
 | `logoutJtiStore` | — | External store for processed `logout_token` jtis (see "Multi-instance deployments" below) |
 | `strictAudience` | `true` | Reject introspection responses that carry neither `aud` nor `client_id` (fail-closed). Set `false` only for legacy third-party endpoints that return no audience fields |
 
@@ -124,7 +125,9 @@ When verifying via introspection, the response's audience binding is checked aga
 
 ### Logout token verification
 
-Back-channel `logout_token`s are signed with a dedicated key pair (`kid: logout-token-rs256-v1`), which is **different** from the access token key — do not use `accessTokenPublicKey` for them. Configure `logoutTokenPublicKey` (PEM) or `jwksUri` (keys matched by `kid`). Verification is dispatched by the JWT header `alg`: an RS256 logout token without any matching public key fails closed (returns `null`) instead of silently falling back to HS256; HS256 is only used when `logoutTokenSecret` (or the legacy `accessTokenSecret` fallback) is explicitly configured.
+Back-channel `logout_token`s are signed with a dedicated key pair (`kid: logout-token-rs256-v1`), which is **different** from the access token key — do not use `accessTokenPublicKey` for them. Configure `logoutTokenPublicKey` (PEM) or `jwksUri` (keys matched by `kid`). Verification is dispatched by the JWT header `alg`: an RS256 logout token without any matching public key fails closed (returns `null`) instead of silently falling back to HS256; HS256 is only used when `logoutTokenSecret` is explicitly configured.
+
+> ⚠️ **Breaking change (since the version introducing `allowLegacyAccessTokenSecretFallback`):** the legacy behavior of falling back to `accessTokenSecret` for HS256 `logout_token`s is now **disabled by default**. Any service that legitimately shares `JWT_ACCESS_SECRET` could otherwise mint logout tokens for arbitrary `sub`/`sid` (mass forced logout), and an access-secret leak would compromise both trust boundaries. If you cannot migrate immediately, set `allowLegacyAccessTokenSecretFallback: true` (a one-time deprecation warning is logged), and plan to move to `logoutTokenSecret` or the RS256 public key.
 
 Per OIDC Back-Channel Logout 1.0, a `logout_token` must carry an `exp` claim, an `events` claim whose `http://schemas.openid.net/event/backchannel-logout` member is an object (typically `{}`), and at least one of `sub` / `sid` (§2.4); tokens failing any of these checks are rejected. Verified `jti`s are replay-guarded per issuer for 10 minutes.
 

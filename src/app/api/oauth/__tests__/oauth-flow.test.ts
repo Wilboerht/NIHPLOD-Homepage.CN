@@ -485,4 +485,27 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
       data: { revokedAt: expect.any(Date) },
     });
   });
+
+  it("revoke：服务端未预期异常返回 503，不伪装成撤销成功（fail-closed）", async () => {
+    // 让客户端认证抛异常，模拟 DB/内部故障
+    vi.mocked(verifyOAuthClientSecret).mockRejectedValueOnce(new Error("db down"));
+
+    const res = await revokePost(
+      new NextRequest("http://localhost/api/oauth/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: "some-token",
+          token_type_hint: "refresh_token",
+          client_id: "test-client",
+          client_secret: "test-secret",
+        }),
+      })
+    );
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const body = await res.json();
+    expect(body.error).toBe("server_error");
+  });
 });

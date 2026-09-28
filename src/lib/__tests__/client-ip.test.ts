@@ -72,7 +72,7 @@ describe("getClientIP", () => {
     expect(getClientIP(request)).toBe("1.2.3.4");
   });
 
-  it("HOPS 超过 IP 数量时收敛到第一个可用 IP", () => {
+  it("HOPS 超过 XFF 条目数时 fail-closed 返回 unknown（不得回落到可伪造的最左条目）", () => {
     process.env.TRUST_PROXY = "true";
     process.env.TRUST_PROXY_HOPS = "10";
 
@@ -80,7 +80,20 @@ describe("getClientIP", () => {
       "x-forwarded-for": "1.2.3.4, 5.6.7.8",
     });
 
-    expect(getClientIP(request)).toBe("1.2.3.4");
+    expect(getClientIP(request)).toBe("unknown");
+  });
+
+  it("HOPS 为非法值（负数/非数字）时 fail-closed 返回 unknown", () => {
+    process.env.TRUST_PROXY = "true";
+    process.env.TRUST_PROXY_HOPS = "-1";
+
+    const request = createRequest({
+      "x-forwarded-for": "1.2.3.4, 5.6.7.8",
+    });
+    expect(getClientIP(request)).toBe("unknown");
+
+    process.env.TRUST_PROXY_HOPS = "abc";
+    expect(getClientIP(request)).toBe("unknown");
   });
 
   it("优先使用 X-Real-Ip", () => {

@@ -52,7 +52,53 @@ import {
   retryFailedBackchannelLogouts,
   enqueueBackchannelLogoutNotifications,
   enqueueBackchannelLogoutForActiveSessions,
+  isBlockedHostname,
+  isSafeBackchannelUrl,
 } from "@/lib/backchannel-logout";
+
+describe("SSRF 主机名黑名单", () => {
+  it.each([
+    "localhost",
+    "localhost.",
+    "LOCALHOST",
+    "127.0.0.1",
+    "127.0.0.2",
+    "127.1.2.3",
+    "0.0.0.0",
+    "::1",
+    "::",
+    "::ffff:127.0.0.1",
+    "10.0.0.1",
+    "172.16.0.1",
+    "192.168.1.1",
+    "169.254.169.254",
+    "100.64.0.1",
+    "fd00::1",
+    "fe80::1",
+  ])("应拦截保留/回环主机名：%s", (host) => {
+    expect(isBlockedHostname(host)).toBe(true);
+  });
+
+  it.each(["example.com", "api.example.com", "8.8.8.8", "2606:4700::1111"])(
+    "不应误伤公网主机名：%s",
+    (host) => {
+      expect(isBlockedHostname(host)).toBe(false);
+    }
+  );
+
+  it.each([
+    "https://127.0.0.2/hook",
+    "https://localhost./hook",
+    "https://[::]/hook",
+    "http://example.com/hook",
+  ])("回环/非 https 回调地址应被拒绝：%s", (uri) => {
+    expect(isSafeBackchannelUrl(uri)).toBe(false);
+  });
+
+  it("公网 https 回调地址应被接受", () => {
+    expect(isSafeBackchannelUrl("https://rp.example.com/backchannel-logout")).toBe(true);
+  });
+});
 
 describe("backchannel-logout", () => {
   beforeEach(() => {

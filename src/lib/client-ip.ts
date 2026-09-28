@@ -59,9 +59,14 @@ export function getClientIP(
     // hops > 0 表示"应用前面有 N 层可信代理"：取从右往左第 N 个条目
     // （idx = len - N），该位置由可信代理写入，不受客户端前置伪造的 XFF 条目影响。
     // 旧实现取从头部第 N 个（idx = N-1），可被客户端伪造的 XFF 前缀控制，已废弃。
-    const hopsRaw = options.hops ?? parseInt(process.env.TRUST_PROXY_HOPS || "0", 10);
-    const hops = Number.isFinite(hopsRaw) ? hopsRaw : 0;
-    const idx = hops > 0 ? ips.length - hops : ips.length - 1 + hops;
+    const rawHops = options.hops ?? process.env.TRUST_PROXY_HOPS;
+    const hopsRaw = rawHops === undefined || rawHops === "" ? 0 : Number(rawHops);
+    // 非法/越界的 hops 绝不能钳制到最左条目（客户端可伪造）：fail-closed 返回 unknown，
+    // 限流按全局桶处理，等待配置修复
+    if (!Number.isInteger(hopsRaw) || hopsRaw < 0 || hopsRaw > ips.length) {
+      return "unknown";
+    }
+    const idx = hopsRaw > 0 ? ips.length - hopsRaw : ips.length - 1;
     return ips[Math.max(0, Math.min(idx, ips.length - 1))] || "unknown";
   }
 

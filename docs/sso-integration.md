@@ -119,10 +119,10 @@ const sso = new SsoClient({
 
 ### 类型选错怎么办？
 
-可在 [管理后台](/admin/oauth-clients) 编辑 Client 切换类型。切换后：
+可在 [管理后台](/admin/oauth-clients) 编辑 Client 切换类型。注意：**当前切换类型只更新类型标记，不会自动生成或作废 clientSecret**（创建 Client 时无论类型都会生成一个仅展示一次的 secret）。切换后：
 
-- Confidential → Public：停止使用 clientSecret，前端/后端配置同步移除 secret
-- Public → Confidential：需要立即轮换密钥并安全保存新生成的 clientSecret，旧 Public 配置不再能刷新 token
+- Confidential → Public：停止使用 clientSecret（token 端点只传 `client_id`），前后端配置同步移除 secret；建议随后轮换一次密钥，避免旧 secret 继续有效
+- Public → Confidential：必须先使用"轮换密钥"生成并安全保存新的 clientSecret 再启用；创建时生成、可能已外泄的旧 secret 不会自动失效
 
 ---
 

@@ -204,8 +204,12 @@ export async function POST(request: NextRequest) {
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack?.split("\n").slice(0, 3).join("\n") : undefined,
     });
-    // RFC 7009: 即使出错也返回 200，但记录详细日志用于排查
-    return resJson({});
+    // RFC 7009 仅对"token 未知/无效"允许返回 200；服务端故障必须显式失败，
+    // 否则子站收到成功响应会停止重试，被泄 token 继续可用（fail-open）
+    return resJson(
+      { error: "server_error", error_description: "服务器内部错误，请稍后重试" },
+      503
+    );
   }
 }
 

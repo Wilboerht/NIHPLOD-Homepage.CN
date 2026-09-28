@@ -29,6 +29,8 @@ import {
   verifyOAuthAccessToken,
   signLogoutToken,
   verifyLogoutToken,
+  signIdToken,
+  verifyIdToken,
   invalidateM2mClientCache,
   _clearVerifyCache,
 } from "@/lib/jwt";
@@ -401,6 +403,31 @@ describe("JWT 工具", () => {
 
   // Logout Token 验证仅做验签与 claims 校验，不消费 jti：
   // 同一 logout_token 可能被 RP 重试验证，防重放由 RP 侧（sso-verify）负责
+  describe("ID Token（id_token_hint）aud 强制", () => {
+    it("requireAudience=true 且未提供 expectedAudience 时应返回 null（不跳过 aud 校验）", async () => {
+      const token = await signIdToken({ sub: "user-1", aud: "client-1" });
+      expect(await verifyIdToken(token, undefined, { requireAudience: true })).toBeNull();
+    });
+
+    it("requireAudience=true 且 aud 匹配时验证通过", async () => {
+      const token = await signIdToken({ sub: "user-1", aud: "client-1" });
+      const claims = await verifyIdToken(token, "client-1", { requireAudience: true });
+      expect(claims?.sub).toBe("user-1");
+      expect(claims?.aud).toBe("client-1");
+    });
+
+    it("requireAudience=true 且 aud 不匹配时应返回 null（跨 client hint 拒绝）", async () => {
+      const token = await signIdToken({ sub: "user-1", aud: "client-1" });
+      expect(await verifyIdToken(token, "client-2", { requireAudience: true })).toBeNull();
+    });
+
+    it("未要求 requireAudience 时保持既有宽松行为（身份展示场景）", async () => {
+      const token = await signIdToken({ sub: "user-1", aud: "client-1" });
+      const claims = await verifyIdToken(token);
+      expect(claims?.sub).toBe("user-1");
+    });
+  });
+
   describe("Logout Token 验证（不消费 jti）", () => {
     async function signTestLogoutToken(jti = "jti-1") {
       return signLogoutToken({

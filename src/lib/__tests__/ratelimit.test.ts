@@ -111,3 +111,35 @@ describe("dualRateLimit", () => {
     expect(first.limitedBy).toBeNull();
   });
 });
+
+describe("生产环境限流存储守卫（fail-closed）", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("RATE_LIMIT_STORAGE 未显式配置时每次调用都抛错，不会静默降级为内存限流", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RATE_LIMIT_STORAGE", "");
+    vi.resetModules();
+    const { rateLimit: freshRateLimit } = await import("@/lib/ratelimit");
+
+    await expect(freshRateLimit("guard-1", "default")).rejects.toThrow(/RATE_LIMIT_STORAGE/);
+    // 旧实现第二次调用会跳过守卫并回落到内存限流（resolve 成功），此处必须仍抛错
+    await expect(freshRateLimit("guard-2", "default")).rejects.toThrow(/RATE_LIMIT_STORAGE/);
+  });
+
+  it("显式配置 database 时守卫通过", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RATE_LIMIT_STORAGE", "database");
+    vi.resetModules();
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ count: 1 }] as never);
+    const { rateLimit: freshRateLimit } = await import("@/lib/ratelimit");
+
+    const result = await freshRateLimit("guard-3", "default", {
+      maxRequests: 3,
+      windowMs: 60000,
+    });
+    expect(result.success).toBe(true);
+  });
+});

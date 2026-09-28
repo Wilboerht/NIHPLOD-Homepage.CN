@@ -190,13 +190,18 @@ async function computeCodeChallenge(verifier: string): Promise<string> {
 
 /**
  * 路径匹配（支持 /:path* 通配符）
+ *
+ * 通配符必须按路径段边界匹配："/docs/:path*" 只应命中 /docs 与 /docs/...，
+ * 不能命中 /docs-private（否则 publicPaths 会意外公开兄弟路径，造成鉴权绕过）
  */
 function matchesPath(pathname: string, paths: string[]): boolean {
   return paths.some((path) => {
     if (pathname === path) return true;
-    if (path.endsWith("/:path*") && pathname.startsWith(path.replace("/:path*", ""))) return true;
-    if (pathname.startsWith(path + "/")) return true;
-    return false;
+    if (path.endsWith("/:path*")) {
+      const base = path.slice(0, -"/:path*".length);
+      return pathname === base || pathname.startsWith(base + "/");
+    }
+    return pathname.startsWith(path + "/");
   });
 }
 
@@ -209,14 +214,17 @@ function matchesPath(pathname: string, paths: string[]): boolean {
  * 缓存带 TTL（30s）与容量上限（LRU 淘汰），避免无界增长。
  *
  * 返回三态以区分两类失败：
- * - "inactive"：token 确证无效（401/403 或 active:false），调用方应重定向登录
- * - "unreachable"：introspect 不可达（网络异常/超时/5xx），结果不确定，
- *   由调用方决定 fail-open 或 fail-closed；此结果不缓存，下次请求重试
+ * - "inactive"：token 确证无效（introspect 返回 200 且 active:false），调用方应重定向登录
+ * - "unreachable"：introspect 不可达（网络异常/超时/5xx/客户端认证失败 401/403），
+ *   结果不确定，由调用方决定 fail-open 或 fail-closed；此结果不缓存，下次请求重试
  */
 const introspectionCache = new Map<string, { active: boolean; until: number }>();
 const INTROSPECT_CACHE_TTL_MS = 30_000; // 30 秒
 const INTROSPECT_CACHE_MAX_ENTRIES = 500;
 const INTROSPECT_TIMEOUT_MS = 5_000; // introspect 请求超时，避免 SSO 中心 hang 住 middleware
+
+// 客户端认证失败（clientSecret/clientId 配置错误）只告警一次，避免日志刷屏
+let warnedIntrospectClientAuthFailure = false;
 
 /** 计算 token 的 SHA-256 hex（Edge Runtime Web Crypto），用作缓存 key 避免跨用户碰撞 */
 async function introspectCacheKey(token: string, clientId: string): Promise<string> {
@@ -291,9 +299,20 @@ async function introspectAccessToken(
         // 非认证错误（如 500）：introspect 不可达，不缓存，让下次请求重试
         return "unreachable";
       }
-      // 401/403：token 确证无效，缓存该确定性结论
-      introspectCacheSet(cacheKey, false);
-      return "inactive";
+      // 401/403 只可能来自客户端认证失败：introspect 对无效/过期 token 返回
+      // 200 {active:false}，仅 invalid_client（clientSecret/clientId 配置错误）才 401/403。
+      // 若误判为 token 失效并写负缓存，会形成"清 Cookie -> authorize -> 回调写回 ->
+      // 再次 401"的静默重定向死循环。按不可达处理：不缓存，默认 fail-open，
+      // 敏感路由仍由 Route Handler / Server Component 强制鉴权兜底。
+      if (!warnedIntrospectClientAuthFailure) {
+        warnedIntrospectClientAuthFailure = true;
+        console.warn(
+          `[SSO SDK] introspection 客户端认证失败（HTTP ${res.status}）：` +
+            "请检查 clientId/clientSecret 与主站注册信息是否一致。" +
+            "该故障不会被缓存为 token 失效，也不会触发静默重登录循环。"
+        );
+      }
+      return "unreachable";
     }
     const data = (await res.json()) as { active?: boolean };
     const active = data.active === true;

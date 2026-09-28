@@ -123,4 +123,74 @@ describe("LogoutPage 分层退出", () => {
       expect(getLogoutRequestBody()).toEqual({ allDevices: false });
     });
   });
+
+  it("access token 过期但 refresh 会话仍有效：不跳过登出，进入确认页", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/user/profile")) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ success: false }),
+        });
+      }
+      if (url.includes("/api/auth/refresh")) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true }) });
+      }
+      if (url.includes("/api/oauth/check-post-logout-uri")) {
+        return Promise.resolve({ ok: true, json: async () => ({ trusted: true }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<LogoutPage />);
+
+    // 关键：access 失效不能当作"无会话"，否则会直接回跳而不撤销 refresh/OAuth 会话
+    await waitFor(() => {
+      expect(screen.getByText("确定要退出当前设备的登录吗？")).toBeInTheDocument();
+    });
+    const refreshCalled = fetchMock.mock.calls.some(([input]) =>
+      String(input).includes("/api/auth/refresh")
+    );
+    expect(refreshCalled).toBe(true);
+    // 未点击确认前不得自动登出
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
+    ).toBe(false);
+  });
+
+  it("access 与 refresh 均失效：判定无会话，不调用登出接口", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/user/profile")) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ success: false }),
+        });
+      }
+      if (url.includes("/api/auth/refresh")) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => ({ success: false }),
+        });
+      }
+      if (url.includes("/api/oauth/check-post-logout-uri")) {
+        return Promise.resolve({ ok: true, json: async () => ({ trusted: true }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<LogoutPage />);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/refresh"))
+      ).toBe(true);
+    });
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
+    ).toBe(false);
+  });
 });

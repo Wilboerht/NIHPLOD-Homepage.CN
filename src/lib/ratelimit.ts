@@ -41,11 +41,13 @@ const rateLimitCache = new LRUCache<string, RequestRecord>({
 /** 每个 key 的互斥锁，防止 TOCTOU 竞态 */
 const mutexMap = new Map<string, Promise<void>>();
 
-let _warnedMemoryMode = false;
+let _rateLimitStorageValidated = false;
 
 function checkProductionRateLimitStorage(): void {
-  if (_warnedMemoryMode) return;
-  _warnedMemoryMode = true;
+  // 只有校验通过才缓存：配置错误时每次调用都必须抛错（fail-closed）。
+  // 旧实现在校验前设置标志，首次抛错后后续调用会跳过检查、静默回落到
+  // 单实例内存限流，多实例配额保护形同虚设。
+  if (_rateLimitStorageValidated) return;
   if (
     process.env.NODE_ENV === "production" &&
     process.env.RATE_LIMIT_STORAGE !== "database" &&
@@ -57,6 +59,7 @@ function checkProductionRateLimitStorage(): void {
         "若仅单实例部署，请设置 RATE_LIMIT_STORAGE=memory 以显式允许。"
     );
   }
+  _rateLimitStorageValidated = true;
 }
 
 async function withMutex<T>(key: string, fn: () => T | Promise<T>): Promise<T> {

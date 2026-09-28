@@ -54,10 +54,12 @@ NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文�
 库执行 `migrate deploy` 会在第一条迁移（`ALTER TABLE "LoginAttempt" ...`）就失败。现已把全部
 历史迁移**压缩为单一基线**：
 
-- `prisma/migrations/0_init/migration.sql`：当前 schema 的完整建库脚本（含全部表、枚举、索引，
-  以及 schema 无法表达的三个部分唯一索引：`SmsCode_phone_type_used_false_key`、
+- `prisma/migrations/0_init/migration.sql`：基线建库脚本（含全部表、枚举、索引，以及 schema 无法
+  表达的三个部分唯一索引：`SmsCode_phone_type_used_false_key`、
   `SpentAdjustmentApplication_userId_orderNo_active_key`（按用户隔离，防跨用户订单号枚举/抢占）、
-  `UserAddress_userId_default_key`（每用户最多一条默认地址））。
+  `UserAddress_userId_default_key`（每用户最多一条默认地址））。注意：`0_init` **不是**最终
+  schema 的完整快照，`RefreshToken.revokedReason` 与 `OAuthAuthorizationCode.authTime` 由下方新增
+  的增量迁移补齐（全新库也依赖这两条增量迁移，它们并非空操作）。
 - `prisma/migrations/20260925000000_restore_oauth_unique_indexes/migration.sql`：恢复历史上被
   误删的 `OAuthAuthorizationCode_code_key` / `OAuthSession_sessionId_key` 唯一索引。
 - `prisma/migrations/20260925000001_spent_order_unique_per_user/migration.sql`：把补录订单号的
@@ -73,8 +75,8 @@ NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文�
 
 | 环境 | 操作 |
 | --- | --- |
-| **已有数据库（生产/预发）** | 先 `npx prisma migrate resolve --applied 0_init`（只标记基线已应用，**不执行建表**），再 `npx prisma migrate deploy`（执行 restore-unique-indexes / spent-order / address-default / revoked-reason / auth-time 五个增量迁移）。`_prisma_migrations` 中的旧迁移记录会被 `migrate deploy` 忽略，无需清理。 |
-| **全新数据库（灾备/本地）** | 直接 `npx prisma migrate deploy`，按 `0_init` → 五个增量迁移顺序建库（增量迁移均为幂等空操作）。 |
+| **已有数据库（生产/预发）** | 先 `npx prisma migrate resolve --applied 0_init`（只标记基线已应用，**不执行建表**），再 `npx prisma migrate deploy`（执行 restore-unique-indexes / spent-order / address-default / revoked-reason / auth-time 五个增量迁移）。`migrate deploy` 不会回看 `_prisma_migrations` 中的旧记录，但 `migrate status` 会（见 §1.2）。 |
+| **全新数据库（灾备/本地）** | 直接 `npx prisma migrate deploy`，按 `0_init` → 五个增量迁移顺序建库（其中 `revoked-reason` 与 `auth-time` 为必要的 `ADD COLUMN`，并非空操作）。 |
 
 > ⚠️ 已有库若跳过 `resolve --applied 0_init` 直接 `migrate deploy`，会因表已存在而报错（不会丢数据，
 > 但部署中断）。执行 `resolve` 前请确认库中数据与当前 schema 一致（即此前已跑完旧迁移）。
@@ -93,6 +95,24 @@ npx prisma migrate deploy
 npx prisma migrate status
 # 期望输出：Database schema is up to date!
 ```
+
+> ⚠️ 走过 §1.0 "已有数据库"（squash + resolve）路径的库，`_prisma_migrations` 里会残留已从
+> 仓库删除的旧迁移目录记录。`migrate deploy` 不受影响（不检查历史一致性），但 `migrate status`
+> 会因 `historiesDiverge` 报 "The migration(s) from the database are not found locally" 并以
+> 非零退出码结束。确认 `deploy` 已成功且 schema 正确后，可删除这些残留记录（**仅限已被 0_init
+> 覆盖的旧迁移名**）后再以 `migrate status` 作为验收项：
+>
+> ```sql
+> DELETE FROM _prisma_migrations
+> WHERE migration_name NOT IN (
+>   '0_init',
+>   '20260925000000_restore_oauth_unique_indexes',
+>   '20260925000001_spent_order_unique_per_user',
+>   '20260925000002_user_address_single_default',
+>   '20260925000003_refresh_token_revoked_reason',
+>   '20260925000004_oauth_code_auth_time'
+> );
+> ```
 
 建议额外确认唯一索引已恢复（应返回 2 行）：
 
@@ -154,11 +174,15 @@ openssl rand -hex 32
 
 可使用 `npm run check:sso-config` 逐项核对本节全部强制项（输出 PASS/FAIL 清单，任一 FAIL 退出码为 1）。
 
-### 2.3 其余推荐项：Logout Token 密钥对
+### 2.3 Logout Token 密钥对（生产必须）
 
-推荐配置（与 `JWT_ID_TOKEN_*` 一起一次生成）：
+生产**必须**配置（`src/lib/jwt.ts` 启动强校验，缺失且未显式设置 `ALLOW_HS256_FALLBACK=true` 时启动直接报错；
+`npm run check:sso-config` 也按 FAIL 处理）。与 `JWT_ID_TOKEN_*` 一起一次生成：
 
 - `JWT_LOGOUT_TOKEN_PRIVATE_KEY` / `JWT_LOGOUT_TOKEN_PUBLIC_KEY` — backchannel logout / profile 事件 token 签名
+
+> 历史版本中该密钥对为"推荐项"且缺失时静默回退 HS256。该回退意味着对称密钥需分发给全部子站、
+> 且与 access token 信任边界混淆，现已改为生产强制 RS256（`ALLOW_HS256_FALLBACK=true` 仅作紧急回滚逃生门）。
 
 生成命令（输出即为单行 `.env` 格式，PEM 换行已转义为字面 `\n`，直接复制即可）：
 
@@ -296,7 +320,7 @@ curl -sI https://nihplod.cn/account/embed | grep -i content-security-policy
 
 ### 3.4 撤销即时性
 
-在管理后台撤销某用户的授权（或用户在账号设置中撤销）后，**立即**用该用户的 access_token 调 userinfo，应返回 401（sid 会话校验 fail-closed，撤销即失效）。若延迟超过数秒，检查 `TOKEN_BLACKLIST_STORAGE` 是否为 `database`、多实例是否共用同一数据库。
+在管理后台撤销某用户的授权（或用户在账号设置中撤销）后，**立即**用该用户的 access_token 调 userinfo，应返回 401（access_token 携带的 `sid` 指向 `OAuthSession`，验证时直接查库，`revokedAt` 非空即 fail-closed，与黑名单存储模式无关）。若延迟超过数秒，确认多实例共用同一数据库、各实例时钟正常；`TOKEN_BLACKLIST_STORAGE=database` 影响的是按 `jti`/用户级的主动黑名单写入与其他端点的即时撤销。
 
 ### 3.5 Backchannel Logout 投递
 
@@ -353,7 +377,7 @@ PostgreSQL 枚举值无法安全删除，因此**不要**尝试手工回退枚�
 所有 SSO 审计事件（登录、授权、token 签发/刷新/撤销、backchannel logout 投递等）落库 `SsoAuditEvent` 表，可通过以下入口查询：
 
 - **管理后台页面**：`/admin/oauth/audit`（旧路径 `/admin/sso-audit` 会 301 重定向）— 按事件类型、用户、Client、时间范围筛选；
-- **API**：`GET /api/admin/oauth/audit` — JSON 查询；追加 `?export=csv` 参数导出 CSV（字段：`id,event,userId,clientId,clientName,ip,success,createdAt`）。
+- **API**：`GET /api/admin/oauth/audit` — JSON 查询；追加 `?export=csv` 参数导出 CSV（字段：`id,event,userId,clientId,clientName,ip,success,createdAt`）。注意：CSV 导出**单次最多 5000 行**（`take: 5000`，响应不额外标记截断），全量取证请分时间窗口多次导出或直接查询 `SsoAuditEvent` 表。
 
 ```bash
 # 导出 CSV 示例（需管理员鉴权 Cookie / Token）

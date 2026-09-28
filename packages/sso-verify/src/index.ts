@@ -104,9 +104,20 @@ export interface SsoVerifierOptions {
   /**
    * Logout Token Secret（可选）。
    * 用于本地验证主站签发的 logout_token（HS256 签名）。
-   * 若未提供，将回退使用 accessTokenSecret 进行验证。
+   * 若未提供且未显式开启 allowLegacyAccessTokenSecretFallback，HS256 logout_token
+   * 验证将失败（返回 null）。
    */
   logoutTokenSecret?: string;
+
+  /**
+   * 允许 HS256 logout_token 回退使用 accessTokenSecret 验证（默认 false，废弃路径）。
+   *
+   * 历史行为：未配置 logoutTokenSecret 时回退使用 accessTokenSecret 验证。
+   * 风险：合法共享 access secret 的内部服务即可伪造任意用户的 logout_token（强制全站登出），
+   * access secret 泄漏会同时击穿 access token 与 logout token 两条信任边界。
+   * 仅当无法立即迁移旧部署时显式设为 true，并尽快改用 logoutTokenSecret 或 RS256 公钥。
+   */
+  allowLegacyAccessTokenSecretFallback?: boolean;
 
   /**
    * Logout Token RS256 公钥（PEM 格式，可选）。
@@ -261,6 +272,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     jwksUri,
     logoutTokenSecret,
     logoutTokenPublicKey,
+    allowLegacyAccessTokenSecretFallback = false,
     introspectCacheTtl = 30 * 1000,
     introspectTimeoutMs = 10 * 1000,
     introspectNegativeCacheTtl = 5 * 1000,
@@ -269,6 +281,9 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     logoutJtiStore,
     strictAudience = true,
   } = options;
+
+  // 一次性告警标志：使用废弃的 accessTokenSecret 回退验证 logout_token 时提示迁移
+  let warnedLegacyLogoutSecret = false;
 
   // 端点传输安全：生产环境禁止 http://（introspection 会携带 client_secret）
   // 允许 localhost/127.0.0.1/::1 方便本地联调。
@@ -731,10 +746,22 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         return null;
       }
 
-      // 2. HS256：使用 logoutTokenSecret（显式配置）或 accessTokenSecret 本地验证
+      // 2. HS256：使用 logoutTokenSecret（专用密钥）；回退 accessTokenSecret 默认关闭
       if (alg === "HS256") {
-        const secret = logoutTokenSecret || accessTokenSecret;
+        const secret =
+          logoutTokenSecret ||
+          (allowLegacyAccessTokenSecretFallback ? accessTokenSecret : undefined);
         if (!secret) return null;
+        if (!logoutTokenSecret && allowLegacyAccessTokenSecretFallback) {
+          if (!warnedLegacyLogoutSecret) {
+            warnedLegacyLogoutSecret = true;
+            console.warn(
+              "[sso-verify] 正在使用 accessTokenSecret 验证 HS256 logout_token（废弃路径）：" +
+                "共享 access secret 的服务可伪造任意用户登出。" +
+                "请改用 logoutTokenSecret，或配置 logoutTokenPublicKey/jwksUri 走 RS256。"
+            );
+          }
+        }
 
         try {
           const key = new TextEncoder().encode(secret);

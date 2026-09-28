@@ -39,6 +39,12 @@ async function handleVerifyHint(
       return NextResponse.json({ valid: false });
     }
 
+    // aud 必须绑定到发起方 client_id：缺少 client_id 时无法校验受众，
+    // 任意 client 签发给同一用户的 hint 都会被接受，直接判定无效（调用方回落确认流程）
+    if (!clientId) {
+      return NextResponse.json({ valid: false });
+    }
+
     // 验签 + iss/aud 校验；失败按规范忽略 hint（valid: false）
     // OIDC RP-Initiated Logout：id_token_hint 只是身份提示，规范允许其已过期
     // （用户可能在 id_token 过期后才发起登出）。这里仅保留 15 分钟时钟偏移宽限：
@@ -46,6 +52,7 @@ async function handleVerifyHint(
     // 避免长期留存/泄漏的旧 hint 被用于免确认登出。
     const claims = await verifyIdToken(idTokenHint, clientId, {
       clockToleranceSeconds: 15 * 60,
+      requireAudience: true,
     });
     if (!claims?.sub) {
       return NextResponse.json({ valid: false });

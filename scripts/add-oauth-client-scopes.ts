@@ -18,6 +18,7 @@
  * —— 本地开发用 .env.local 的库；服务器上真实环境变量/生产文件生效。
  */
 import dotenv from "dotenv";
+import { SUPPORTED_SCOPES } from "../src/lib/oauth-constants";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config({ path: ".env.production" });
@@ -34,9 +35,11 @@ async function main() {
   }
 
   for (const scope of scopes) {
-    if (!SCOPE_RE.test(scope)) {
+    // 除格式外必须属于系统白名单：authorize 会拒绝未支持的 scope，
+    // 写入库只会造成脏数据；admin API 同样按 SUPPORTED_SCOPES 校验
+    if (!SCOPE_RE.test(scope) || !SUPPORTED_SCOPES.includes(scope)) {
       console.error(
-        `无效 scope: ${scope}（仅允许小写字母/数字，可带一个 ":" 分段，如 profile:write）`
+        `无效 scope: ${scope}（系统支持的 scope：${SUPPORTED_SCOPES.join(", ")}）`
       );
       process.exit(1);
     }

@@ -101,12 +101,41 @@ function LogoutContent() {
     ensureCsrfToken().catch(() => {});
   }, []);
 
-  // 探测当前会话（复用现有用户资料接口）：未登录则跳过确认直接回跳
+  // 探测当前会话：优先 access token；access 过期（默认 2h）但 refresh（30 天）仍有效时
+  // 必须视为活跃会话——否则会把"实际有会话"误判为无会话而直接回跳，导致 refresh token
+  // 与 OAuthSession 未被撤销，用户下次访问子站被透明刷新自动登回。access 失效时改用
+  // refresh cookie 复核（/api/auth/logout 本身也支持仅凭 refresh cookie 登出）。
   useEffect(() => {
-    fetch("/api/user/profile", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setSessionState(d?.success ? "active" : "none"))
-      .catch(() => setSessionState("none"));
+    let cancelled = false;
+    const setIfActive = (state: "active" | "none") => {
+      if (!cancelled) setSessionState(state);
+    };
+    (async () => {
+      try {
+        const res = await fetch("/api/user/profile", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data?.success) return setIfActive("active");
+        }
+      } catch {
+        // access 探测失败：继续尝试 refresh 复核
+      }
+      try {
+        const csrfToken = await ensureCsrfToken();
+        if (!csrfToken) return setIfActive("none");
+        const refreshRes = await fetch("/api/auth/refresh", {
+          method: "POST",
+          headers: { "X-CSRF-Token": csrfToken },
+          credentials: "include",
+        });
+        setIfActive(refreshRes.ok ? "active" : "none");
+      } catch {
+        setIfActive("none");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

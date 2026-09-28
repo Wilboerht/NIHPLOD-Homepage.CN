@@ -62,24 +62,23 @@ export async function GET(request: NextRequest) {
     }
 
     // ===== 快速通道：免页面、免确认，服务端直接登出后 302 直跳 =====
-    // OIDC RP-Initiated Logout：id_token_hint 验签通过且 sub 与当前会话一致时，
-    // 规范允许以 hint 作为发起者身份的"其他确认手段"（OP 可不再询问用户）。
-    // 攻击者无法伪造"签名有效 + sub 匹配当前会话"的组合，无 hint/不匹配则回落确认页。
+    // OIDC RP-Initiated Logout：id_token_hint 验签通过、aud 绑定发起方 client_id，
+    // 且 sub 与当前会话一致时，规范允许以 hint 作为发起者身份的"其他确认手段"
+    //（OP 可不再询问用户）。攻击者无法伪造"签名有效 + aud 匹配 + sub 匹配当前会话"
+    // 的组合；无 client_id / hint 过期 / 不匹配则回落确认页。
     // 收益：跳过 /logout 确认页与 /logout/confirm 成功页的两次整页加载与全部客户端 fetch。
-    if (idTokenHint) {
+    if (idTokenHint && clientId) {
       try {
         // 快速通道是无确认的敏感操作（GET + SameSite=Lax cookie，跨站顶级导航可触发），
         // hint 必须未过期：仅保留 30s 时钟偏移宽限。过期 hint 回落到下方确认页流程，
         // 由用户显式确认后登出（确认页路径允许过期 hint，仅作身份提示展示用）。
-        const hintClaims = await verifyIdToken(idTokenHint, clientId ?? undefined, {
+        const hintClaims = await verifyIdToken(idTokenHint, clientId, {
           clockToleranceSeconds: 30,
+          requireAudience: true,
         });
         const user = await verifyUserAuth(request);
         if (hintClaims?.sub && user && hintClaims.sub === user.id) {
-          // clientId 可能因上方无宽限的验签失败而为 null（hint 已过期但在 30s 宽限内），
-          // 用已验签 hint 的 aud 兜底
-          const effectiveClientId =
-            clientId ?? (typeof hintClaims.aud === "string" ? hintClaims.aud : null);
+          const effectiveClientId = clientId;
           const trusted = postLogoutRedirectUri
             ? await isTrustedPostLogoutRedirectUri(postLogoutRedirectUri, effectiveClientId)
             : false;
