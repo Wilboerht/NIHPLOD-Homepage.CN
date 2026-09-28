@@ -181,7 +181,7 @@ export function CheckInModal({ isOpen, onClose, existing, dateStr, onSaved }: Ch
             <div className="no-scrollbar flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 md:px-8 pt-[calc(3rem+env(safe-area-inset-top,0px))] sm:pt-10 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] sm:pb-8">
               <h2
                 id="checkin-modal-title"
-                className="text-xl font-serif font-light text-brand-charcoal tracking-[0.08em] text-center mb-6"
+                className="text-xl font-serif-num font-light text-brand-charcoal tracking-[0.08em] text-center mb-6"
               >
                 {existing
                   ? isToday ? "编辑今日记录" : `编辑记录 · ${targetLabel}`
