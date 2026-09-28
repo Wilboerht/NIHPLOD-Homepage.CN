@@ -542,18 +542,16 @@ export function DiaryPanel() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.18 }}
                     >
-                      <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center mb-4">
+                        {/* 返回入口：与主视图「全部测肤记录」同款描边胶囊，全端可用 */}
                         <button
                           type="button"
                           onClick={() => setHistoryView(false)}
-                          aria-label="返回护肤档案"
-                          className="w-8 h-8 -ml-1 flex items-center justify-center rounded-full text-brand-charcoal/55 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.04] transition-colors cursor-pointer"
+                          className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
                         >
-                          <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />
-                        </button>
-                        <span className="text-[12px] text-brand-charcoal/60 font-light tracking-[0.05em]">
+                          <ChevronLeft className="w-3.5 h-3.5" strokeWidth={1.8} />
                           返回护肤档案
-                        </span>
+                        </button>
                         {testsTotal > 0 && (
                           <span className="ml-auto text-[12px] text-brand-charcoal/45 font-light font-num tabular-nums">
                             共 {testsTotal} 条
