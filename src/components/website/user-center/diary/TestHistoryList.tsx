@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Clock, ScanFace } from "lucide-react";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
+import { STATE_META } from "@/components/website/user-center/diary/DiaryTimeline";
+import { scoreToSkinState } from "@/lib/diary-utils";
 
 const ADVISOR_URL = (process.env.NEXT_PUBLIC_ADVISOR_URL || "https://advisor.nihplod.cn").replace(/\/+$/, "");
 const REQUEST_TIMEOUT_MS = 8000;
@@ -13,7 +15,7 @@ const REQUEST_TIMEOUT_MS = 8000;
  * TestHistoryList — 测肤记录列表（含数据拉取与分页）
  * 使用方：账户弹层「护肤档案」面板（DiaryPanel）的测肤记录视图
  * 数据源：/api/user/skincare-tests（分页、排除冷层归档）
- * 条目为一行紧凑式：日期 · 肤质 · 分数，点击进入报告详情
+ * 条目按天分组：日期分组头 + 时间 · 肤质 · 分数（颜色与时间线状态点同源），点击进入报告详情
  */
 
 export interface HistoryAnalysisResult {
@@ -164,15 +166,9 @@ export function TestHistoryList({
               minute: "2-digit",
               hour12: false,
             });
-            // 分数颜色分级：≥80 绿 / 60-79 品牌棕 / <60 红——扫读"哪次状态好"一眼可辨
-            const scoreTone =
-              typeof score === "number" && score > 0
-                ? score >= 80
-                  ? "text-[#4C8055]"
-                  : score < 60
-                    ? "text-red-500"
-                    : "text-brand-charcoal"
-                : "text-brand-charcoal";
+            // 分数颜色分级：与时间线状态点同一套语义色（great/good/normal/bad/terrible），扫读口径一致
+            const scoreState =
+              typeof score === "number" && score > 0 ? scoreToSkinState(score) : null;
 
             return (
               <div key={session.sessionId}>
@@ -196,7 +192,10 @@ export function TestHistoryList({
                   <span className="flex-1 min-w-0 truncate text-[13px] text-brand-charcoal/85">
                     {skinType || "肌肤分析"}
                   </span>
-                  <span className={`shrink-0 text-[13px] font-medium tabular-nums ${scoreTone}`}>
+                  <span
+                    className="shrink-0 text-[13px] font-medium tabular-nums"
+                    style={scoreState ? { color: STATE_META[scoreState].color } : undefined}
+                  >
                     {score != null && score > 0 ? `${score} 分` : "—"}
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 shrink-0 text-brand-charcoal/40 group-hover:text-brand-charcoal/60 group-hover:translate-x-0.5 transition-all" />
