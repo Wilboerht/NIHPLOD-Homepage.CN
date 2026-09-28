@@ -98,7 +98,7 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
           <p className="text-[12px] tracking-[0.15em] text-brand-charcoal/45 font-light mb-1">
             最新综合评分
           </p>
-          <p className="text-3xl md:text-4xl font-serif font-light text-brand-charcoal leading-none">
+          <p className="text-3xl md:text-4xl font-num font-light text-brand-charcoal leading-none">
             {latest}
             <span className="text-sm text-brand-charcoal/40 ml-1.5">分</span>
           </p>

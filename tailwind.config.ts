@@ -32,6 +32,16 @@ const config: Config = {
       },
       fontFamily: {
         serif: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
+        /* 护肤档案数字（评分/统计/日号）：苹方无衬线，避免 Mac 上落到 Futura */
+        num: [
+          '"PingFang SC"',
+          '"PingFang TC"',
+          '"Hiragino Sans GB"',
+          '"Source Han Sans SC"',
+          '"Microsoft YaHei"',
+          "system-ui",
+          "sans-serif",
+        ],
         sans: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
         playfair: ["var(--font-playfair)", "serif"],
         songti: [
