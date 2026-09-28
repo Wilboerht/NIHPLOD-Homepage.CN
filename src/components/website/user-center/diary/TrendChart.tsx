@@ -14,7 +14,7 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
   const W = 640;
   const H = 200;
   // 左内边距需容纳 Y 轴刻度"100 分"（最高刻度带单位，比两位数宽）
-  const PAD_L = 64;
+  const PAD_L = 92;
   const PAD_R = 20;
   const PAD_TOP = 24;
   const PAD_BOTTOM = 32;
@@ -136,7 +136,7 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
               strokeOpacity="0.08"
               strokeDasharray="3 5"
             />
-            <text x={PAD_L - 8} y={yOf(v) + 3.5} textAnchor="end" fill="#8c7a6b" className="text-[12px] max-sm:text-[18px]">
+            <text x={PAD_L - 8} y={yOf(v) + 9} textAnchor="end" fill="#8c7a6b" className="text-[26px]">
               {v}{idx === gridValues.length - 1 ? " 分" : ""}
             </text>
           </g>
@@ -197,7 +197,7 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
                   textAnchor="middle"
                   fontWeight={isLatest ? 600 : 400}
                   fill={isLatest ? "#5c4937" : "#8c7a6b"}
-                  className="text-[11px] max-sm:text-[15px]"
+                  className="text-[24px]"
                 >
                   {crossYear && isFirst ? `${firstYear}.${fmtDay(p.date)}` : fmtDay(p.date)}
                 </text>
