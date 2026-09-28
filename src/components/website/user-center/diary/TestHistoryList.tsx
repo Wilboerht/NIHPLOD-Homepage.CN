@@ -166,6 +166,9 @@ export function TestHistoryList({
               minute: "2-digit",
               hour12: false,
             });
+            const weekday = new Date(session.completedAt).toLocaleDateString("zh-CN", {
+              weekday: "short",
+            });
             // 分数颜色分级：与时间线状态点同一套语义色（great/good/normal/bad/terrible），扫读口径一致
             const scoreState =
               typeof score === "number" && score > 0 ? scoreToSkinState(score) : null;
@@ -174,8 +177,9 @@ export function TestHistoryList({
               <div key={session.sessionId}>
                 {isNewDay && (
                   <div className="pt-4 pb-1.5 first:pt-0 flex items-center gap-2.5">
-                    <span className="shrink-0 text-[11px] font-medium text-brand-charcoal/60 tabular-nums">
+                    <span className="shrink-0 text-[11px] font-medium text-brand-charcoal/60 font-num tabular-nums">
                       {showYear ? `${year}.${day}` : day}
+                      <span className="ml-1 font-normal text-brand-charcoal/45">{weekday}</span>
                     </span>
                     <span className="flex-1 h-px bg-stone-200/60" />
                   </div>
@@ -186,17 +190,24 @@ export function TestHistoryList({
                   rel="noopener noreferrer"
                   className="group flex items-center gap-3 pl-1 py-2.5 rounded-md hover:bg-brand-charcoal/[0.03] transition-colors"
                 >
-                  <span className="shrink-0 w-12 text-[12px] text-brand-charcoal/60 font-light tabular-nums">
+                  <span className="shrink-0 w-12 text-[12px] text-brand-charcoal/60 font-light font-num tabular-nums">
                     {time}
                   </span>
                   <span className="flex-1 min-w-0 truncate text-[13px] text-brand-charcoal/85">
                     {skinType || "肌肤分析"}
                   </span>
                   <span
-                    className="shrink-0 text-[13px] font-medium tabular-nums"
+                    className="shrink-0 inline-flex items-baseline text-[13px] font-medium font-num tabular-nums"
                     style={scoreState ? { color: STATE_META[scoreState].color } : undefined}
                   >
-                    {score != null && score > 0 ? `${score} 分` : "—"}
+                    {score != null && score > 0 ? (
+                      <>
+                        {score}
+                        <span className="ml-0.5 text-[11px] font-normal opacity-70">分</span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </span>
                   <ChevronRight className="w-3.5 h-3.5 shrink-0 text-brand-charcoal/40 group-hover:text-brand-charcoal/60 group-hover:translate-x-0.5 transition-all" />
                 </Link>
@@ -209,25 +220,27 @@ export function TestHistoryList({
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6">
           <button
+            type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1 || loading}
-            className="flex items-center gap-1.5 py-2 pr-2 text-[12px] text-brand-charcoal/60 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1 h-8 px-3.5 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
             上一页
           </button>
 
-          <span className="text-[12px] text-brand-charcoal/60">
+          <span className="text-[12px] text-brand-charcoal/55 font-num tabular-nums">
             {page} / {totalPages}
           </span>
 
           <button
+            type="button"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages || loading}
-            className="flex items-center gap-1.5 py-2 pl-2 text-[12px] text-brand-charcoal/60 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1 h-8 px-3.5 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             下一页
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       )}

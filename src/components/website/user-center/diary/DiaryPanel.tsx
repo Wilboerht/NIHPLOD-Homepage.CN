@@ -494,6 +494,12 @@ export function DiaryPanel() {
     }
   }, [deletingId, refreshEntries, toast]);
 
+  // 翻页回到面板顶部：换页后仍停在上一页的滚动位置会让人以为内容没变
+  const handleHistoryPageChange = useCallback((p: number) => {
+    setLastHistoryPage(p);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, []);
+
   return (
     <LazyMotion features={domAnimation}>
       <div className="flex h-full flex-col">
@@ -542,7 +548,7 @@ export function DiaryPanel() {
                           返回护肤档案
                         </span>
                         {testsTotal > 0 && (
-                          <span className="ml-auto text-[12px] text-brand-charcoal/45 font-light tabular-nums">
+                          <span className="ml-auto text-[12px] text-brand-charcoal/45 font-light font-num tabular-nums">
                             共 {testsTotal} 条
                           </span>
                         )}
@@ -552,7 +558,7 @@ export function DiaryPanel() {
                         initialPage={lastHistoryPage}
                         initialSessions={lastHistoryPage <= 1 ? tests.slice(0, TESTS_PAGE_SIZE) : undefined}
                         initialTotal={testsTotal}
-                        onPageChange={setLastHistoryPage}
+                        onPageChange={handleHistoryPageChange}
                       />
                     </m.div>
                   ) : (
