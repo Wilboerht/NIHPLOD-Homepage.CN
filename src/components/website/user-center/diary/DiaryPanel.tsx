@@ -476,6 +476,7 @@ export function DiaryPanel() {
       if (seq !== requestSeqRef.current) return;
       console.error("Load more tests error:", e);
     } finally {
+      testsLoadingMoreRef.current = false;
       if (seq === requestSeqRef.current) setTestsLoadingMore(false);
     }
   }, [testsLoadingMore]);
