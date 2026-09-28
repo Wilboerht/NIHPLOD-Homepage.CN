@@ -183,7 +183,7 @@ export function DiaryTimeline({
               <button
                 type="button"
                 onClick={() => onCheckIn(null, todayStr)}
-                className="inline-flex items-center justify-center gap-1.5 px-5 h-9 rounded-full bg-brand-primary text-white text-[12px] tracking-[0.05em] font-medium transition-colors hover:bg-brand-primary-dark active:opacity-80 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-5 h-9 rounded-full bg-brand-cocoa text-white text-[12px] tracking-[0.05em] font-medium transition-colors hover:bg-brand-cocoa-dark active:opacity-80 cursor-pointer"
               >
                 <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.8} />
                 今日打卡
@@ -262,7 +262,7 @@ export function DiaryTimeline({
                           <button
                             type="button"
                             onClick={() => onCheckIn(null, todayStr)}
-                            className="shrink-0 inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-primary text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-primary-dark active:opacity-80 cursor-pointer"
+                            className="shrink-0 inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-cocoa-dark active:opacity-80 cursor-pointer"
                           >
                             <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.8} />
                             今日打卡
@@ -286,7 +286,7 @@ export function DiaryTimeline({
                         <button
                           type="button"
                           onClick={() => onCheckIn(manualDiaryEntry, todayStr)}
-                          className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-primary text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-primary-dark active:opacity-80 cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-cocoa-dark active:opacity-80 cursor-pointer"
                         >
                           {manualDiaryEntry ? (
                             <>
@@ -437,7 +437,7 @@ export function DiaryTimeline({
                   const skinType = result?.skinProfile?.typeLabel || result?.skinType?.typeLabel;
                   return (
                     <div key={`t-${ev.test.sessionId}-${i}`} className="relative">
-                      <span className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-[#F7F4EE] bg-brand-primary" />
+                        <span className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-[#F7F4EE] bg-brand-cocoa" />
                       <Link
                         href={`${ADVISOR_URL}/reports/${ev.test.sessionId}?skipCover=1`}
                         target="_blank"

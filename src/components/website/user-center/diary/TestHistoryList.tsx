@@ -125,7 +125,7 @@ export function TestHistoryList({
           <button
             type="button"
             onClick={fetchHistory}
-            className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-primary border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
+            className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-cocoa border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
           >
             重新加载
           </button>
@@ -139,7 +139,7 @@ export function TestHistoryList({
             href={`${ADVISOR_URL}/?start=1`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-primary border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
+            className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-cocoa border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
           >
             <ScanFace className="w-3.5 h-3.5" />
             立即测肤

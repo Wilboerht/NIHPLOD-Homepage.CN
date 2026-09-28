@@ -18,6 +18,9 @@ const config: Config = {
           charcoal: "#00263E",
           "charcoal-light": "#4A6272",
           beige: "#E4DFD9",
+          /* 护肤档案（子站同源）暖色系：打卡/重试等实心按钮与选中态 */
+          cocoa: "#5c4937",
+          "cocoa-dark": "#4a3a2c",
           gold: "#B8860B",
           "gold-dark": "#A0750A",
           "warm-light": "#FCF9F2",

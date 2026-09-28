@@ -628,7 +628,7 @@ export function DiaryPanel() {
                           <button
                             type="button"
                             onClick={retryTrends}
-                            className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-primary text-white text-[12px] font-medium hover:bg-brand-primary-dark transition-colors cursor-pointer"
+                            className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium hover:bg-brand-cocoa-dark transition-colors cursor-pointer"
                           >
                             <RefreshCw className="w-3 h-3" strokeWidth={1.8} />
                             重试
@@ -751,7 +751,7 @@ export function DiaryPanel() {
                               <button
                                 type="button"
                                 onClick={() => setCalendarRefreshKey((k) => k + 1)}
-                                className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-primary text-white text-[12px] font-medium hover:bg-brand-primary-dark transition-colors cursor-pointer"
+                                className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium hover:bg-brand-cocoa-dark transition-colors cursor-pointer"
                               >
                                 <RefreshCw className="w-3 h-3" strokeWidth={1.8} />
                                 重试
@@ -786,7 +786,7 @@ export function DiaryPanel() {
                             <button
                               type="button"
                               onClick={() => loadTests(true)}
-                              className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-primary text-white text-[12px] font-medium hover:bg-brand-primary-dark transition-colors"
+                              className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium hover:bg-brand-cocoa-dark transition-colors"
                             >
                               <RefreshCw className="w-3 h-3" strokeWidth={1.8} />
                               重试
@@ -801,7 +801,7 @@ export function DiaryPanel() {
                             <button
                               type="button"
                               onClick={retryEntries}
-                              className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-primary text-white text-[12px] font-medium hover:bg-brand-primary-dark transition-colors"
+                              className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium hover:bg-brand-cocoa-dark transition-colors"
                             >
                               <RefreshCw className="w-3 h-3" strokeWidth={1.8} />
                               重试
