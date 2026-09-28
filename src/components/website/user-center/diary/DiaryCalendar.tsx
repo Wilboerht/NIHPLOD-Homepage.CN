@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { STATE_META, type DiaryEntry } from "@/components/website/user-center/diary/DiaryTimeline";
 import { isDiaryDateInRange, parseClientDate } from "@/lib/diary-utils";
@@ -16,15 +16,16 @@ interface DiaryCalendarProps {
   onMonthChange: (month: string) => void;
   /** 点击窗口内、无记录的日期（含今天）→ 打卡/补打卡；未来日期不可点 */
   onBackfill: (dateStr: string) => void;
-  /** 点按写入窗口内、已有记录的日期 → 查看/编辑该日记录（移动端无 hover 浮层，这是唯一详情入口） */
+  /** 点按写入窗口内、已有记录的日期 → 查看/编辑该日记录；窗口外记录走内置只读浮层 */
   onSelectEntry?: (entry: DiaryEntry) => void;
   loading?: boolean;
 }
 
 /**
  * DiaryCalendar — 护肤历程日历热力图（GitHub 贡献图风格）
- * 每日格子按当日肌肤状态着色，无记录为灰；今天描边；
- * 窗口内空日期可点击（今天=打卡，过去=补打卡），已记录日期可点按查看/编辑。
+ * 每日格子按当日肌肤状态着色，无记录为灰；今天描边加粗；
+ * 窗口内空日期可点（今天=打卡，过去=补打卡），窗口内记录点按编辑；
+ * 窗口外记录点按弹出只读浮层（移动端查看历史备注/标签的唯一入口）；PC 悬停仍可预览。
  */
 export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackfill, onSelectEntry, loading }: DiaryCalendarProps) {
   // 当前月份（"回到本月"目标）由 todayStr 快照推导
@@ -37,12 +38,28 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
     return map;
   }, [entries]);
 
+  // 窗口外记录的只读详情浮层：移动端无 hover，这是查看历史备注/标签的入口
+  const [openPopover, setOpenPopover] = useState<string | null>(null);
+
+  // 点击浮层/日期格以外区域关闭（格与浮层自身在 click 分支里处理，避免误关）
+  useEffect(() => {
+    if (!openPopover) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-cal-popover],[data-cal-cell]")) return;
+      setOpenPopover(null);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [openPopover]);
+
   const [y, m] = month.split("-").map(Number);
   const firstDay = new Date(`${month}-01T00:00:00.000Z`);
   const leadBlanks = (firstDay.getUTCDay() + 6) % 7; // 周一开头
   const daysInMonth = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 0)).getUTCDate();
 
   const shiftMonth = (delta: number) => {
+    setOpenPopover(null);
     const d = new Date(Date.UTC(y, m - 1 + delta, 1));
     onMonthChange(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
   };
@@ -74,10 +91,13 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
           {!isCurrentMonth && (
             <button
               type="button"
-              onClick={() => onMonthChange(currentMonth)}
+              onClick={() => {
+                setOpenPopover(null);
+                onMonthChange(currentMonth);
+              }}
               className="text-[11px] text-brand-charcoal/60 font-light tracking-[0.04em] hover:text-brand-charcoal transition-colors cursor-pointer rounded-full px-2 py-0.5 hover:bg-brand-charcoal/[0.04]"
             >
-              回到今日
+              回到本月
             </button>
           )}
         </div>
@@ -115,8 +135,11 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
           const clickable = !entry && (isToday || canBackfill(dateStr));
           // 写入窗口内的已记录日期可点按查看/编辑（移动端无 hover，这是详情的唯一入口）
           const editable = !!entry && !!onSelectEntry && inWriteWindow(dateStr);
+          // 窗口外记录：只读查看（移动端没有 PC hover 浮层，这是看历史备注/标签的入口）
+          const viewable = !!entry && !editable;
           // 列位置（0=周一）：周末日号淡化；hover 浮层的边缘对齐
           const colIndex = (leadBlanks + i) % 7;
+          const rowIndex = Math.floor((leadBlanks + i) / 7);
           const isWeekend = colIndex >= 5;
           const isFirstCol = colIndex === 0;
           const isLastCol = colIndex === 6;
@@ -125,23 +148,23 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
 
           const cell = (
             <div
-              className={`group/cell relative aspect-square rounded-lg flex items-center justify-center text-[11px] font-light transition-colors ${
-                isToday ? "ring-1 ring-inset ring-brand-charcoal/30" : ""
+              className={`group/cell relative aspect-square rounded-lg flex items-center justify-center text-[11px] transition-colors ${
+                isToday ? "font-medium ring-1 ring-inset ring-brand-charcoal/40" : "font-light"
               } ${
                 entry
-                  ? editable
+                  ? editable || viewable
                     ? "hover:ring-1 hover:ring-inset hover:ring-brand-charcoal/40"
                     : ""
                   : clickable
                     ? "text-brand-charcoal/60 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal/75"
                     : isWeekend
-                      ? "text-brand-charcoal/40"
-                      : "text-brand-charcoal/55"
+                      ? "text-brand-charcoal/25"
+                      : "text-brand-charcoal/30"
               }`}
-              style={entry && meta ? { backgroundColor: `${meta.color}1F`, color: meta.color } : undefined}
+              style={entry && meta ? { backgroundColor: `${meta.color}26`, color: meta.color } : undefined}
               title={
                 entry
-                  ? `${fmtShort(dateStr)} · ${meta?.label ?? ""}${editable ? "（点按编辑）" : ""}`
+                  ? `${fmtShort(dateStr)} · ${meta?.label ?? ""}${editable ? "（点按编辑）" : viewable ? "（点按查看）" : ""}`
                   : clickable
                     ? isToday ? `${dateStr} 打卡` : `${dateStr} 补打卡`
                     : undefined
@@ -149,11 +172,14 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
             >
               {i + 1}
 
-              {/* PC hover 详情浮层：状态 + 标签 + 备注（移动端无 hover 自动不出现） */}
+              {/* 详情浮层：PC 悬停预览；窗口外记录点按后常驻（移动端查看入口） */}
               {entry && meta && (
                 <div
-                  className={`pointer-events-none absolute bottom-full mb-1.5 z-20 hidden lg:group-hover/cell:block w-max max-w-[200px] rounded-lg bg-white/95 border border-stone-200/60 shadow-[0_8px_24px_rgba(61,47,37,0.14)] px-3 py-2 text-left ${
-                    isFirstCol ? "left-0" : isLastCol ? "right-0" : "left-1/2 -translate-x-1/2"
+                  data-cal-popover
+                  className={`pointer-events-none absolute z-20 w-max max-w-[200px] rounded-lg bg-white/95 border border-stone-200/60 shadow-[0_8px_24px_rgba(61,47,37,0.14)] px-3 py-2 text-left ${
+                    rowIndex === 0 ? "top-full mt-1.5" : "bottom-full mb-1.5"
+                  } ${isFirstCol ? "left-0" : isLastCol ? "right-0" : "left-1/2 -translate-x-1/2"} ${
+                    openPopover === dateStr ? "block" : "hidden lg:group-hover/cell:block"
                   }`}
                 >
                   <p className="text-[11px] font-medium" style={{ color: meta.color }}>
@@ -174,14 +200,28 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
             </div>
           );
 
-          return clickable || editable ? (
+          return clickable || editable || viewable ? (
             <button
               key={dateStr}
               type="button"
-              onClick={() => (entry && editable ? onSelectEntry(entry) : onBackfill(dateStr))}
+              data-cal-cell
+              onClick={() => {
+                if (!entry) {
+                  onBackfill(dateStr);
+                  return;
+                }
+                if (editable) {
+                  onSelectEntry?.(entry);
+                  return;
+                }
+                // 窗口外记录：点按切换只读浮层（再点关闭）
+                setOpenPopover((prev) => (prev === dateStr ? null : dateStr));
+              }}
               aria-label={
                 entry
-                  ? `${fmtShort(dateStr)} 查看/编辑记录`
+                  ? editable
+                    ? `${fmtShort(dateStr)} 查看/编辑记录`
+                    : `${fmtShort(dateStr)} 查看记录`
                   : isToday
                     ? "今日打卡"
                     : `${fmtShort(dateStr)} 补打卡`
@@ -196,15 +236,20 @@ export function DiaryCalendar({ entries, month, todayStr, onMonthChange, onBackf
         })}
       </div>
 
-      {/* 图例 */}
-      <div className="flex items-center justify-end gap-3 mt-4">
-        {(["great", "good", "normal", "bad", "terrible"] as const).map((key) => (
-          <span key={key} className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATE_META[key].color }} />
-            <span className="text-[11px] text-brand-charcoal/55 font-light">{STATE_META[key].label}</span>
-          </span>
-        ))}
-        {loading && <span className="text-[11px] text-brand-charcoal/55">加载中…</span>}
+      {/* 图例：与打卡色带同构（很好 → 5 色点 → 很差 | 未打卡）；左侧提示可点日期 */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mt-4">
+        <span className="text-[11px] text-brand-charcoal/45 font-light">点空白日期补打卡</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-brand-charcoal/55 font-light mr-0.5">很好</span>
+          {(["great", "good", "normal", "bad", "terrible"] as const).map((key) => (
+            <span key={key} className="w-2 h-2 rounded-full" style={{ backgroundColor: STATE_META[key].color }} />
+          ))}
+          <span className="text-[11px] text-brand-charcoal/55 font-light ml-0.5">很差</span>
+          <span className="w-px h-3 bg-stone-200 mx-1.5" />
+          <span className="w-2 h-2 rounded-full bg-brand-charcoal/10" />
+          <span className="text-[11px] text-brand-charcoal/55 font-light">未打卡</span>
+          {loading && <span className="ml-2 text-[11px] text-brand-charcoal/55">加载中…</span>}
+        </div>
       </div>
     </div>
   );
