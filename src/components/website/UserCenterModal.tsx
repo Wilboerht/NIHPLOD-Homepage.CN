@@ -330,7 +330,7 @@ export function UserCenterModal() {
                       })}
                     </nav>
 
-                    <div className="mt-auto px-10 py-8">
+                    <div className="mt-auto px-10 pt-8 pb-6">
                       <button
                         onClick={handleLogout}
                         className="group -mx-4 flex w-full items-center justify-start gap-5 rounded-2xl px-4 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"

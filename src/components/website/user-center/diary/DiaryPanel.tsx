@@ -516,7 +516,7 @@ export function DiaryPanel() {
         {/* 内容区（可滚动）：两视图淡出/淡入切换，同一面板内完成 */}
         <div
           ref={scrollRef}
-          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6 md:px-16"
+          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-6 pb-8 sm:px-6 md:px-16"
         >
                 <AnimatePresence mode="wait" initial={false}>
                   {historyView ? (
@@ -569,12 +569,12 @@ export function DiaryPanel() {
                 </div>
 
                 {/* ===== 登录：概览（肌肤变化 + 打卡）+ 时间线 ===== */}
-                {/* PC 端（lg+）非对称双列（6:4，左列概览更宽）；左列 sticky 且限高内部滚动，
+                {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；左列 sticky 且限高内部滚动，
                     避免左列高于视口时 pin 住后底部内容不可达；移动端单列堆叠 */}
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,4fr)] lg:gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
                     {/* 左列：肌肤变化（趋势）+ 打卡（色带/连续性统计），语义分组 */}
-                    <section className="mb-8 lg:mb-0 lg:self-start lg:sticky lg:top-0 lg:max-h-[min(576px,calc(100dvh_-_9.5rem))] lg:overflow-y-auto lg:scrollbar-hide lg:pr-1">
-                      <div className="flex items-center justify-between mb-4">
+                    <section className="mb-8 lg:mb-0 lg:self-start lg:sticky lg:top-0 lg:max-h-[min(520px,calc(100dvh_-_12rem))] lg:overflow-y-auto lg:scrollbar-hide lg:pr-1">
+                      <div className="flex items-center justify-between mb-3">
                         <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
                           肌肤变化
@@ -659,7 +659,7 @@ export function DiaryPanel() {
 
                       {/* 测肤次数并入「肌肤变化」语境，不再混进打卡统计 */}
                       {summary && summary.testCount > 0 && (
-                        <p className="mt-4 text-center text-[11px] text-brand-charcoal/60 font-light tracking-[0.06em]">
+                        <p className="mt-3 text-center text-[11px] text-brand-charcoal/60 font-light tracking-[0.06em]">
                           累计测肤 {summary.testCount} 次
                         </p>
                       )}
@@ -667,17 +667,17 @@ export function DiaryPanel() {
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列） */}
                       {summary && summary.totalCheckins > 0 && (
-                        <div className="mt-8 border-t border-stone-200/60 pt-6">
-                          <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-4">
+                        <div className="mt-5 border-t border-stone-200/60 pt-5">
+                          <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
                             <Flame className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
                             打卡
                           </h3>
                           {recentCheckInCount >= 2 && (
-                            <div className="mb-4">
+                            <div className="mb-3">
                               <CheckInTrend entries={entries} todayStr={todayStr} />
                             </div>
                           )}
-                          <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-4 border-t border-stone-200/60`}>
+                          <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-3 border-t border-stone-200/60`}>
                             <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
                               <p className="text-xl font-serif font-light text-brand-charcoal leading-none">
                                 {summary.currentStreak}
@@ -717,7 +717,7 @@ export function DiaryPanel() {
 
                     {/* 护肤历程 */}
                     <section>
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-3">
                         <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
                           <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
                           护肤历程

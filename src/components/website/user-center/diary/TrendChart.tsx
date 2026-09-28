@@ -92,7 +92,7 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
   return (
     <div>
       {/* 摘要：最新评分 + 测评日期 + 与上次差值 */}
-      <div className="flex items-end justify-between mb-4">
+      <div className="flex items-end justify-between mb-3">
         <div>
           <p className="text-[12px] tracking-[0.15em] text-brand-charcoal/45 font-light mb-1">
             最新综合评分
