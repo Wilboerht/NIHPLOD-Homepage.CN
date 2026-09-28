@@ -668,17 +668,17 @@ export function DiaryPanel() {
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列） */}
                       {summary && summary.totalCheckins > 0 && (
-                        <div className="mt-5 border-t border-stone-300/80 pt-5">
+                        <div className="mt-4 border-t border-stone-300/80 pt-4">
                           <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
                             <Flame className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
                             打卡
                           </h3>
                           {recentCheckInCount >= 2 && (
-                            <div className="mb-3">
+                            <div className="mb-4">
                               <CheckInTrend entries={entries} todayStr={todayStr} />
                             </div>
                           )}
-                          <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-3 border-t border-stone-200/60`}>
+                          <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-4 border-t border-stone-200/60`}>
                             <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
                               <p className="text-xl font-serif-num font-light text-brand-charcoal leading-none">
                                 {summary.currentStreak}
