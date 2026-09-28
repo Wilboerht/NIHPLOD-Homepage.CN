@@ -680,7 +680,7 @@ export function DiaryPanel() {
                           )}
                           <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-4 border-t border-stone-200/60`}>
                             <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
-                              <p className="text-xl font-serif-num font-light text-brand-charcoal leading-none">
+                              <p className="text-xl font-serif font-light text-brand-charcoal leading-none">
                                 {summary.currentStreak}
                                 <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">天</span>
                               </p>
@@ -690,7 +690,7 @@ export function DiaryPanel() {
                               </p>
                             </div>
                             <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
-                              <p className="text-xl font-serif-num font-light text-brand-charcoal leading-none">
+                              <p className="text-xl font-serif font-light text-brand-charcoal leading-none">
                                 {summary.totalCheckins}
                                 <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">次</span>
                               </p>
@@ -701,7 +701,7 @@ export function DiaryPanel() {
                             </div>
                             {summary.longestStreak > 0 && (
                               <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
-                                <p className="text-xl font-serif-num font-light text-brand-charcoal leading-none">
+                                <p className="text-xl font-serif font-light text-brand-charcoal leading-none">
                                   {summary.longestStreak}
                                   <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">天</span>
                                 </p>

@@ -32,8 +32,6 @@ const config: Config = {
       },
       fontFamily: {
         serif: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
-        /* 护肤档案数字/标题：与子站 font-serif（Tailwind 默认衬线栈）一致 */
-        "serif-num": ["ui-serif", "Georgia", "Cambria", '"Times New Roman"', "Times", "serif"],
         sans: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
         playfair: ["var(--font-playfair)", "serif"],
         songti: [

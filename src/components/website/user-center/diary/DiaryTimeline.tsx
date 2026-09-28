@@ -242,7 +242,7 @@ export function DiaryTimeline({
             <div className="flex gap-3 md:gap-4">
               {/* 左轴：日号（极简，无星期）；今天以「今日」字面标注 */}
               <div className="w-10 shrink-0 pt-0.5 text-center">
-                <div className={`text-base font-serif-num leading-tight ${isToday ? "text-brand-charcoal font-medium" : "text-brand-charcoal/75"}`}>
+                <div className={`text-base font-serif leading-tight ${isToday ? "text-brand-charcoal font-medium" : "text-brand-charcoal/75"}`}>
                   {isToday ? "今日" : `${dayOf(group.dateStr)}日`}
                 </div>
               </div>
