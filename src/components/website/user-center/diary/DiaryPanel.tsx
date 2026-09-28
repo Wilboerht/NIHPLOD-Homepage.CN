@@ -577,18 +577,6 @@ export function DiaryPanel() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.18 }}
                     >
-                {/* 移动端：整面板级入口（桌面端在标题栏），随主视图淡入淡出 */}
-                <div className="mb-4 flex justify-end md:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setHistoryView(true)}
-                    className="shrink-0 h-9 inline-flex items-center gap-1 px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
-                  >
-                    全部测肤记录
-                    <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
-                  </button>
-                </div>
-
                 {/* ===== 登录：概览（肌肤变化 + 打卡）+ 时间线 ===== */}
                 {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；左列 sticky 且限高内部滚动，
                     避免左列高于视口时 pin 住后底部内容不可达；移动端单列堆叠 */}
@@ -732,10 +720,21 @@ export function DiaryPanel() {
                     {/* 护肤历程 */}
                     <section>
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
-                          <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
-                          护肤历程
-                        </h3>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
+                            <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
+                            护肤历程
+                          </h3>
+                          {/* 移动端：整面板级视图切换入口（桌面端在标题栏右侧） */}
+                          <button
+                            type="button"
+                            onClick={() => setHistoryView(true)}
+                            className="md:hidden shrink-0 inline-flex items-center gap-0.5 text-[12px] font-light tracking-[0.05em] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal cursor-pointer"
+                          >
+                            查看全部
+                            <ChevronRight className="w-3 h-3" strokeWidth={1.8} />
+                          </button>
+                        </div>
                         {/* 视图切换：独立胶囊（风格对齐会员中心「录入消费」/渠道选择） */}
                         <div className="flex items-center gap-2" role="group" aria-label="历程视图切换">
                           {([
