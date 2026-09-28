@@ -5,6 +5,7 @@ import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import {
   CalendarCheck,
   ChevronLeft,
+  ChevronRight,
   Flame,
   NotebookPen,
   RefreshCw,
@@ -506,9 +507,10 @@ export function DiaryPanel() {
             <button
               type="button"
               onClick={() => setHistoryView(true)}
-              className="shrink-0 h-8 inline-flex items-center px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
+              className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
             >
-              全部测肤记录 →
+              全部测肤记录
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
             </button>
           )}
         </div>
@@ -562,9 +564,10 @@ export function DiaryPanel() {
                   <button
                     type="button"
                     onClick={() => setHistoryView(true)}
-                    className="shrink-0 h-9 inline-flex items-center px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
+                    className="shrink-0 h-9 inline-flex items-center gap-1 px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
                   >
-                    全部测肤记录 →
+                    全部测肤记录
+                    <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
                   </button>
                 </div>
 

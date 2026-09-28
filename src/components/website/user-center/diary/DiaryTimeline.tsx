@@ -191,9 +191,10 @@ export function DiaryTimeline({
               href={`${ADVISOR_URL}/?start=1`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center h-9 px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal"
+              className="inline-flex items-center justify-center gap-1 h-9 px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal"
             >
-              去测肤 →
+              去测肤
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
             </Link>
           </div>
         </div>
@@ -268,9 +269,10 @@ export function DiaryTimeline({
                           href={`${ADVISOR_URL}/?start=1`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="shrink-0 inline-flex items-center h-8 px-1 text-[12px] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal"
+                          className="shrink-0 inline-flex items-center gap-1 h-8 px-1 text-[12px] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal"
                         >
-                          去测肤 →
+                          去测肤
+                          <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
                         </Link>
                       </div>
                     </div>
