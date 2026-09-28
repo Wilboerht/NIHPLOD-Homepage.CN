@@ -667,9 +667,10 @@ export function DiaryPanel() {
                       )}
 
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
-                          列数跟随实际项数（最长连续为 0 时不占列） */}
+                          列数跟随实际项数（最长连续为 0 时不占列）。
+                          PC 端半卡片：极浅底托住彩色色带（无描边无阴影）；移动端平铺 + 分割线 */}
                       {summary && summary.totalCheckins > 0 && (
-                        <div className="mt-4 border-t border-stone-300/80 pt-4">
+                        <div className="mt-4 border-t border-stone-300/80 pt-4 lg:border-t-0 lg:rounded-2xl lg:bg-white/40 lg:p-4">
                           <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
                             <Flame className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
                             打卡
