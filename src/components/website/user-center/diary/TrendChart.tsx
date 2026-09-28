@@ -13,11 +13,11 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
   const gradientId = `trendArea-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const W = 640;
   const H = 200;
-  // 左内边距需容纳 Y 轴刻度"100 分"（最高刻度带单位，比两位数宽）
-  const PAD_L = 92;
-  const PAD_R = 20;
+  // 左内边距需容纳放大的 Y 轴刻度"100 分"；底部留出与 X 轴日期的行距（避免两行文字相撞）
+  const PAD_L = 104;
+  const PAD_R = 24;
   const PAD_TOP = 24;
-  const PAD_BOTTOM = 32;
+  const PAD_BOTTOM = 48;
 
   const scores = trends.scores;
   const n = scores.length;
@@ -136,7 +136,7 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
               strokeOpacity="0.08"
               strokeDasharray="3 5"
             />
-            <text x={PAD_L - 8} y={yOf(v) + 9} textAnchor="end" fill="#8c7a6b" className="text-[26px]">
+            <text x={PAD_L - 10} y={yOf(v) + 9} textAnchor="end" fill="#8c7a6b" className="text-[26px]">
               {v}{idx === gridValues.length - 1 ? " 分" : ""}
             </text>
           </g>
@@ -193,8 +193,8 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
               {(isFirst || isLatest) && (
                 <text
                   x={p.x}
-                  y={H - 6}
-                  textAnchor="middle"
+                  y={H - 8}
+                  textAnchor={isLatest ? "end" : "start"}
                   fontWeight={isLatest ? 600 : 400}
                   fill={isLatest ? "#5c4937" : "#8c7a6b"}
                   className="text-[24px]"
