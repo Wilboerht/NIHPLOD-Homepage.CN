@@ -8,11 +8,12 @@ export interface TrendsData {
 }
 
 /** 肌肤变化图（纯 SVG，无图表库依赖）：平滑曲线 + 渐变面积 + 网格刻度 + 最新评分摘要 */
-export function TrendChart({ trends }: { trends: TrendsData }) {
+export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTests?: number }) {
   // 实例级唯一 ID，避免同页多图表实例的渐变 defs 互相覆盖
   const gradientId = `trendArea-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const W = 640;
-  const H = 200;
+  // 高度含放大的轴字号：绘图区 = H - PAD_TOP - PAD_BOTTOM，需保持 144 左右不显扁
+  const H = 216;
   // 左内边距需容纳放大的 Y 轴刻度"100 分"；底部留出与 X 轴日期的行距（避免两行文字相撞）
   const PAD_L = 104;
   const PAD_R = 24;
@@ -105,15 +106,22 @@ export function TrendChart({ trends }: { trends: TrendsData }) {
             {latestDate} 测
           </p>
         </div>
-        {delta !== 0 && (
-          <span
-            className={`text-[12px] font-light px-2.5 py-1 rounded-full ${
-              delta > 0 ? "bg-[#4C8055]/10 text-[#4C8055]" : "bg-[#D44C47]/10 text-[#D44C47]"
-            }`}
-          >
-            较上次 {delta > 0 ? `+${delta}` : delta}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          {delta !== 0 && (
+            <span
+              className={`text-[12px] font-light px-2.5 py-1 rounded-full ${
+                delta > 0 ? "bg-[#4C8055]/10 text-[#4C8055]" : "bg-[#D44C47]/10 text-[#D44C47]"
+              }`}
+            >
+              较上次 {delta > 0 ? `+${delta}` : delta}
+            </span>
+          )}
+          {typeof totalTests === "number" && totalTests > 0 && (
+            <p className="text-[12px] text-brand-charcoal/45 font-light tracking-[0.08em]">
+              累计测肤 {totalTests} 次
+            </p>
+          )}
+        </div>
       </div>
 
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="近几次测肤综合评分趋势">

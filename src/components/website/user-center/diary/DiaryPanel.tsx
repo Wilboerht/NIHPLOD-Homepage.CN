@@ -636,7 +636,7 @@ export function DiaryPanel() {
                           {rangeCutoff === null ? (
                             <div className="h-32" />
                           ) : rangeTrends ? (
-                            <TrendChart trends={rangeTrends} />
+                            <TrendChart trends={rangeTrends} totalTests={summary?.testCount} />
                           ) : (
                             <div className="py-6 text-center">
                               <p className="text-[13px] text-brand-charcoal/60 font-light">
@@ -655,13 +655,6 @@ export function DiaryPanel() {
                             定期测肤，看见肌肤的真实变化
                           </p>
                         </div>
-                      )}
-
-                      {/* 测肤次数并入「肌肤变化」语境，不再混进打卡统计 */}
-                      {summary && summary.testCount > 0 && (
-                        <p className="mt-3 text-center text-[11px] text-brand-charcoal/60 font-light tracking-[0.06em]">
-                          累计测肤 {summary.testCount} 次
-                        </p>
                       )}
 
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
