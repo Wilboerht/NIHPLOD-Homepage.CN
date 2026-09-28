@@ -293,7 +293,7 @@ export function UserCenterModal() {
                           <button
                             key={item.id}
                             onClick={() => setUserCenterView(item.id)}
-                            className={`group relative -mx-4 flex w-[calc(100%_+_2rem)] items-center justify-start gap-5 rounded-2xl px-4 py-3.5 transition-all ${
+                            className={`group relative -mx-2 flex w-[calc(100%_+_1rem)] items-center justify-start gap-5 rounded-2xl px-2 py-3.5 transition-all ${
                               isActive
                                 ? "font-medium text-stone-800"
                                 : "font-light text-stone-400 hover:bg-white/30 hover:text-stone-800"
@@ -333,7 +333,7 @@ export function UserCenterModal() {
                     <div className="mt-auto px-12 pt-8 pb-6">
                       <button
                         onClick={handleLogout}
-                        className="group -mx-4 flex w-[calc(100%_+_2rem)] items-center justify-start gap-5 rounded-2xl px-4 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"
+                        className="group -mx-2 flex w-[calc(100%_+_1rem)] items-center justify-start gap-5 rounded-2xl px-2 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"
                       >
                         <LogOut className="h-[18px] w-[18px] transition-colors" strokeWidth={1.5} />
                         <span className="text-[13px] font-medium tracking-wide">退出登录</span>
