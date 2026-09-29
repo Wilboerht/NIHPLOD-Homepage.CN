@@ -189,6 +189,7 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   BANNED
+  DELETED // 已注销（匿名化保留 User 行，禁止物理删除；登录/鉴权侧一律拒绝）
 }
 
 enum MembershipLevel {
@@ -252,6 +253,7 @@ model User {
   oauthConsents UserConsent[]            @relation("UserConsentUser")
 
   externalIdentities ExternalIdentity[]
+  accountDeletionRequest AccountDeletionRequest?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
@@ -284,6 +286,29 @@ model ExternalIdentity {
   @@unique([provider, subjectId])
   @@index([userId])
   @@index([provider, unionId])
+}
+
+/**
+ * 账号自助注销申请（设计稿 docs/account-deletion-plan.md 第 5 节）
+ * 同一用户仅一条申请记录：撤回/完成后再次申请时原位重置为 PENDING。
+ * status 取值：PENDING（冷静期中）| CANCELLED（已撤回）| COMPLETED（已执行）| FAILED（执行失败待人工）
+ * userId 外键为 Restrict：注销走匿名化而非物理删除，DB 层禁止误删仍有申请记录的用户行
+ */
+model AccountDeletionRequest {
+  id           String    @id @default(cuid())
+  userId       String    @unique // 同一用户仅一条进行中的申请
+  status       String    @default("PENDING") // PENDING | CANCELLED | COMPLETED | FAILED
+  reason       String? // 用户选填
+  requestedAt  DateTime  @default(now())
+  scheduledAt  DateTime // 冷静期结束时间（执行窗口），由 ACCOUNT_DELETION_COOLING_DAYS 决定
+  cancelledAt  DateTime?
+  completedAt  DateTime?
+  attempts     Int       @default(0) // 执行失败重试次数
+  lastError    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([status, scheduledAt])
 }
 
 // ============================================
@@ -635,7 +660,7 @@ model SpentAdjustmentApplication {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now()) @updatedAt
 
-  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User  @relation(fields: [userId], references: [id], onDelete: Restrict)
   reviewedBy Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt(sort: Desc)])
@@ -651,7 +676,7 @@ model SpentSyncRecord {
   note       String?  @db.Text
   createdAt  DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, reference]) // 幂等防重：同一用户同一单据只入账一次
   @@index([userId, createdAt(sort: Desc)])
@@ -750,7 +775,7 @@ model PointLedger {
   expiresAt    DateTime?      // 过期时间（发放后 6 个月）
   createdAt   DateTime        @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, reference]) // 幂等防重
   @@index([userId, createdAt(sort: Desc)])
@@ -765,7 +790,7 @@ model PointBalance {
   frozen    Int      @default(0) // 冻结积分（已废弃：无冻结期，恒为 0）
   updatedAt DateTime @default(now()) @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 }
 
 // 收货地址簿（积分兑礼履约寄送用；多地址 + 默认地址；仅用于礼品寄送）
@@ -795,7 +820,7 @@ model MembershipLevelChange {
   note      String?
   createdAt DateTime        @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, reference]) // 幂等防重：同一单据只记一次等级变更
   @@index([userId, createdAt(sort: Desc)])
@@ -819,7 +844,7 @@ model PointRedemption {
   fulfilledAt DateTime?
   createdAt   DateTime                @default(now())
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录

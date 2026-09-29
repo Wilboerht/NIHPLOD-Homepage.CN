@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
+import { ProductFaq } from "@/components/website/ProductFaq";
+import { Breadcrumbs } from "@/components/website/Breadcrumbs";
 import { generateProductFaqs } from "@/config/geo-faq";
 import { mockCategories, mockProducts } from "../mock-data";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
@@ -299,24 +301,28 @@ export default async function ProductDetailPage({ params }: PageProps) {
     { name: product.name, url: `/products/${product.slug}` },
   ];
 
+  // 可见 FAQ 与 FAQPage 结构化数据共用同一份问答
+  const storedFaqs = product.geoFaqs as { question: string; answer: string }[] | null | undefined;
+  const productFaqs =
+    storedFaqs && storedFaqs.length > 0
+      ? storedFaqs
+      : generateProductFaqs({
+          name: product.name,
+          nameEn: product.nameEn,
+          categoryName: product.category.name,
+          benefits: product.benefits,
+          description: product.description,
+          ingredients: product.ingredients,
+        });
+
   return (
     <>
       {/* Schema.org 结构化数据 */}
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd items={breadcrumbs} />
-      <FAQJsonLd
-        items={
-          (product.geoFaqs as { question: string; answer: string }[]) ||
-          generateProductFaqs({
-            name: product.name,
-            nameEn: product.nameEn,
-            categoryName: product.category.name,
-            benefits: product.benefits,
-            description: product.description,
-            ingredients: product.ingredients,
-          })
-        }
-      />
+      <FAQJsonLd items={productFaqs} />
+
+      <Breadcrumbs items={breadcrumbs} className="mx-auto w-full max-w-7xl px-6 pt-6 lg:px-10" />
 
       <ProductDetailContent
         product={product}
@@ -324,6 +330,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
         categories={categories}
         navProducts={navProducts}
       />
+
+      <ProductFaq faqs={productFaqs} />
     </>
   );
 }

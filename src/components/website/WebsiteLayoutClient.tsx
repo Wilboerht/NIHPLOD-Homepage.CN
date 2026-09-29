@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutProvider } from "@/contexts/LayoutContext";
 import { BottomNavBar } from "@/components/website/BottomNavBar";
+import { AccountDeletionBanner } from "@/components/website/AccountDeletionBanner";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { isUserCenterTab } from "@/lib/user-center-tab";
@@ -124,6 +125,8 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
 
   return (
     <LayoutProvider>
+      {/* 注销冷静期全局横幅（存在 PENDING 注销申请时展示，fixed 定位不影响布局） */}
+      <AccountDeletionBanner />
       {children}
       <BottomNavBar />
     </LayoutProvider>

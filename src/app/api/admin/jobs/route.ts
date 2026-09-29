@@ -8,6 +8,7 @@ import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // 职位类型
 const JOB_TYPES = ["fulltime", "parttime", "intern"] as const;
@@ -180,8 +181,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 清除前端缓存
+    // 清除前端缓存并推送搜索引擎
     revalidatePath("/careers");
+    pushSearchEngines(["/careers"]);
 
     // 记录审计日志（非阻塞）
     createAuditLog({

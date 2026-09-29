@@ -177,6 +177,25 @@ const nextConfig = {
           },
         ],
       },
+      // AI/GEO 文档：低频变化，允许 CDN 与爬虫缓存，避免每次回源
+      {
+        source: '/llms.txt',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
+        source: '/llms-full.txt',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, stale-while-revalidate=86400',
+          },
+        ],
+      },
     ];
   },
   async redirects() {

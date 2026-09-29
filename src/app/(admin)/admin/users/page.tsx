@@ -45,7 +45,7 @@ import { RequirePermission } from "@/components/admin/RequirePermission";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 
-type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
+type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "DELETED";
 
 interface UserItem {
   id: string;
@@ -68,6 +68,7 @@ const userStatusMap: Record<
   ACTIVE: { label: "正常", variant: "success", description: "账号可正常登录和使用" },
   SUSPENDED: { label: "冻结", variant: "warning", description: "账号暂时无法登录，可解冻恢复" },
   BANNED: { label: "封禁", variant: "danger", description: "账号永久封禁，不可恢复" },
+  DELETED: { label: "已注销", variant: "secondary", description: "账号已注销并匿名化，不可恢复" },
 };
 
 const membershipLevelMap: Record<

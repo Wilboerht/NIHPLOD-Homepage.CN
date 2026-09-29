@@ -26,7 +26,10 @@ export type AuthEventType =
   | "internal_api_call"
   | "wechat_bind"
   | "user_oauth_revoke"
-  | "device_force_logout";
+  | "device_force_logout"
+  // 账号注销事件仅落 console 日志；AuditLog 持久化由路由层 createAuditLog 显式写入，避免双重落库
+  | "user_account_deletion_request"
+  | "user_account_deletion_cancel";
 
 interface AuthLogContext {
   identifier?: string;

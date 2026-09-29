@@ -14,12 +14,14 @@ import { DevicesPanel } from "./DevicesPanel";
 import { AuthorizationsPanel } from "./AuthorizationsPanel";
 import { BindingsPanel } from "./BindingsPanel";
 import { LoginHistoryPanel } from "./LoginHistoryPanel";
+import { AccountDeletionPanel } from "./AccountDeletionPanel";
 
 const SECTION_LABELS: Record<SecuritySection, string> = {
   devices: "设备管理",
   authorizations: "授权管理",
   bindings: "账号绑定",
   history: "登录历史",
+  deletion: "账号注销",
 };
 
 export function SecurityCenterPanel() {
@@ -64,6 +66,7 @@ export function SecurityCenterPanel() {
         {securitySection === "authorizations" && <AuthorizationsPanel embedded />}
         {securitySection === "bindings" && <BindingsPanel embedded />}
         {securitySection === "history" && <LoginHistoryPanel embedded />}
+        {securitySection === "deletion" && <AccountDeletionPanel embedded />}
       </div>
     </div>
   );

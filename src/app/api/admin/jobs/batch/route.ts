@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -90,9 +91,10 @@ export async function POST(request: NextRequest) {
       count = result.count;
     }
 
-    // 清除前端缓存
+    // 清除前端缓存并推送搜索引擎
     if (count > 0) {
       revalidatePath("/careers");
+      pushSearchEngines(["/careers"]);
     }
 
     const actionText = {

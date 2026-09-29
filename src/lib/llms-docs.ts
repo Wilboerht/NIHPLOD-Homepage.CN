@@ -38,8 +38,8 @@ function readGeoFaqs(value: unknown): LlmsFaq[] {
 
 function buildProductSections(products: LlmsProduct[], siteUrl: string): string {
   return products
-    .map(
-      (p) => `
+    .map((p) =>
+      `
 ### [${p.name} (${p.nameEn})](${siteUrl}/products/${p.slug})
 - **分类**: ${p.category.name}
 - **功效**: ${p.benefits.join("、")}

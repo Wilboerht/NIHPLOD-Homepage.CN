@@ -14,7 +14,7 @@ import type { UserStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
-import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets } from "@/lib/webhook";
+import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets, toWebhookStatus } from "@/lib/webhook";
 import { apiConsole } from "@/lib/logger";
 
 export async function cascadeUserStatusChange(params: {
@@ -30,7 +30,12 @@ export async function cascadeUserStatusChange(params: {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
     });
-    const reason = newStatus === "SUSPENDED" ? "账号已被临时冻结" : "账号已被永久封禁";
+    const reason =
+      newStatus === "SUSPENDED"
+        ? "账号已被临时冻结"
+        : newStatus === "DELETED"
+          ? "账号已注销"
+          : "账号已被永久封禁";
     await blacklistUserTokens(userId, reason);
 
     // 撤销 OAuth 会话 + backchannel logout 通知子项目（失败不阻断主流程）
@@ -65,13 +70,14 @@ export async function cascadeUserStatusChange(params: {
   }
 
   // Webhook 推送账户状态变更（best-effort，不阻断主流程）
-  // 状态发送 User.status 原始大写枚举（ACTIVE/SUSPENDED/BANNED），与商城侧 zod 校验对齐
+  // 状态发送 User.status 原始大写枚举（ACTIVE/SUSPENDED/BANNED），与商城侧 zod 校验对齐；
+  // DELETED 经 toWebhookStatus 归入小写 "deleted" 约定
   try {
     await dispatchStatusChangeWebhook(
       {
         userId,
-        oldStatus: previousStatus,
-        newStatus,
+        oldStatus: toWebhookStatus(previousStatus),
+        newStatus: toWebhookStatus(newStatus),
         source: "admin",
       },
       getStatusChangeWebhookTargets()

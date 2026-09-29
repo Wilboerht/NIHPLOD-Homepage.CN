@@ -88,7 +88,7 @@ import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 import { apiConsole } from "@/lib/logger";
 
-export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET" | "SPENT_REVIEW" | "ADMIN_PASSWORD_RESET" | "PHONE_CHANGED";
+export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET" | "SPENT_REVIEW" | "ADMIN_PASSWORD_RESET" | "PHONE_CHANGED" | "ACCOUNT_DELETED" | "ACCOUNT_DELETION_REMINDER";
 
 export interface SMSParams {
   phone: string;
@@ -275,6 +275,8 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
     SPENT_REVIEW: process.env.SMS_TEMPLATE_CODE_SPENT_REVIEW,
     ADMIN_PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_ADMIN_PASSWORD_RESET,
     PHONE_CHANGED: process.env.SMS_TEMPLATE_CODE_PHONE_CHANGED,
+    ACCOUNT_DELETED: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETED,
+    ACCOUNT_DELETION_REMINDER: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETION_REMINDER,
   };
   return templates[template] || null;
 }
@@ -288,6 +290,8 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
  * - PASSWORD_RESET：{1} 为密码变更时间（安全通知文案）
  * - ADMIN_PASSWORD_RESET：{1} 为密码被管理员重置的时间（安全通知文案）
  * - PHONE_CHANGED：{1} 为手机号变更时间（安全通知文案，发往旧手机号）
+ * - ACCOUNT_DELETED：{1} 为注销完成时间（注销回执，发往注销前留存号码）
+ * - ACCOUNT_DELETION_REMINDER：{1} 为注销生效时间（到期前 24 小时提醒）
  * 若未来模板改为多参数，在此按模板变量顺序追加键名即可。
  */
 const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
@@ -296,6 +300,8 @@ const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
   SPENT_REVIEW: ["result"],
   ADMIN_PASSWORD_RESET: ["time"],
   PHONE_CHANGED: ["time"],
+  ACCOUNT_DELETED: ["time"],
+  ACCOUNT_DELETION_REMINDER: ["time"],
 };
 
 /**
@@ -382,6 +388,8 @@ function getTencentTemplateId(template: SMSTemplate): string | null {
     SPENT_REVIEW: process.env.TENCENT_SMS_TEMPLATE_ID_SPENT_REVIEW,
     ADMIN_PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_ADMIN_PASSWORD_RESET,
     PHONE_CHANGED: process.env.TENCENT_SMS_TEMPLATE_ID_PHONE_CHANGED,
+    ACCOUNT_DELETED: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETED,
+    ACCOUNT_DELETION_REMINDER: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETION_REMINDER,
   };
   return templates[template] || null;
 }
@@ -470,6 +478,44 @@ export async function sendSpentReviewNotification(phone: string, result: string)
     }
   } catch (error) {
     apiConsole.error("[SpentReviewNotification] 发送异常:", error);
+  }
+}
+
+/**
+ * 发送账号注销完成回执（注销执行任务匿名化后，发往注销前留存的手机号）
+ * 模板未配置或发送失败仅记日志，不影响注销主流程（fail-soft）
+ */
+export async function sendAccountDeletedNotification(phone: string): Promise<void> {
+  try {
+    const result = await sendSMS({
+      phone,
+      template: "ACCOUNT_DELETED",
+      params: { time: new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) },
+    });
+    if (!result.success) {
+      apiConsole.error("[AccountDeletedNotification] 短信发送失败:", result.error);
+    }
+  } catch (error) {
+    apiConsole.error("[AccountDeletedNotification] 发送异常:", error);
+  }
+}
+
+/**
+ * 发送注销到期前 24 小时提醒（冷静期即将结束，引导需要保留账号的用户撤回）
+ * 模板未配置或发送失败仅记日志，不影响注销主流程（fail-soft）
+ */
+export async function sendAccountDeletionReminder(phone: string, scheduledAt: Date): Promise<void> {
+  try {
+    const result = await sendSMS({
+      phone,
+      template: "ACCOUNT_DELETION_REMINDER",
+      params: { time: scheduledAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) },
+    });
+    if (!result.success) {
+      apiConsole.error("[AccountDeletionReminder] 短信发送失败:", result.error);
+    }
+  } catch (error) {
+    apiConsole.error("[AccountDeletionReminder] 发送异常:", error);
   }
 }
 

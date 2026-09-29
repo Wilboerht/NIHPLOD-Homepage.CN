@@ -20,6 +20,16 @@ function toAbsoluteUrl(url: string): string {
 }
 
 /**
+ * 剥离富文本 HTML 标签，结构化数据的 description 需为纯文本
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * 通用 JSON-LD 脚本组件
  */
 async function JsonLdScript({ data }: { data: object }) {
@@ -59,9 +69,10 @@ export async function OrganizationJsonLd() {
     url: baseUrl,
     logo: {
       "@type": "ImageObject",
-      url: `${baseUrl}/images/NIHPLOD-logo.svg`,
-      width: 200,
-      height: 60,
+      // Google logo 富结果不支持 SVG，需使用位图（≥112px）
+      url: `${baseUrl}/images/NIHPLOD-logo.png`,
+      width: 512,
+      height: 144,
     },
     description:
       "NIHPLOD 旎柏官方网站，源自摩纳哥的高端护肤品牌。作为中国区唯一官方授权线上平台，为您提供真脂质体专利技术 (Dolphin-Skin) 驱动的奢华护肤体验。",
@@ -142,7 +153,7 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
     "@id": `${productUrl}#product`,
     name: product.name,
     alternateName: product.nameEn,
-    description: product.description,
+    description: stripHtml(product.description),
     url: productUrl,
     image: product.images.map((img) => toAbsoluteUrl(img.url)),
     sku: product.slug,

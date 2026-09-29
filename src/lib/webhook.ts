@@ -8,14 +8,23 @@ import { createHmac } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
+import type { UserStatus } from "@/generated/prisma/client";
 
 // 状态值约定（与商城侧 zod 校验对齐）：发送 User.status 原始大写枚举 ACTIVE/SUSPENDED/BANNED；
 // 删除事件 newStatus 固定为小写 "deleted"（商城侧按此约定映射为禁用账户）
 export type WebhookUserStatus = "ACTIVE" | "SUSPENDED" | "BANNED";
 
+/**
+ * User.status → webhook 状态值：DELETED 归入既有的小写 "deleted" 约定，
+ * 其余原始大写枚举透传（商城侧 zod 不接受 "DELETED" 大写值）
+ */
+export function toWebhookStatus(status: UserStatus): WebhookUserStatus | "deleted" {
+  return status === "DELETED" ? "deleted" : status;
+}
+
 export interface StatusChangeWebhook {
   userId: string;
-  oldStatus: WebhookUserStatus;
+  oldStatus: WebhookUserStatus | "deleted"; // 注销场景：删除前状态为 DELETED 时归入 "deleted"
   newStatus: WebhookUserStatus | "deleted";
   source?: string;
 }

@@ -206,7 +206,12 @@ export async function POST(request: NextRequest) {
 
     // 5.1 检查账号状态
     if (user.status !== "ACTIVE") {
-      const statusText = user.status === "SUSPENDED" ? "已被临时冻结" : "已被永久封禁";
+      const statusText =
+        user.status === "SUSPENDED"
+          ? "已被临时冻结"
+          : user.status === "DELETED"
+            ? "已注销"
+            : "已被永久封禁";
       await recordLoginAttempt(
         phone,
         false,

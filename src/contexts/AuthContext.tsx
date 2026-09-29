@@ -32,6 +32,14 @@ interface User {
   hasPassword?: boolean;
 }
 
+/** 进行中的账号注销申请（冷静期），供全局横幅与安全中心面板展示 */
+export interface AccountDeletionPending {
+  /** 冷静期结束时间（ISO 字符串，届时由定时任务执行匿名化） */
+  scheduledAt: string;
+  /** 剩余天数（服务端计算） */
+  remainingDays: number;
+}
+
 // 用户中心视图类型（弹窗菜单/三外壳共用的 tab 标识，见 @/lib/user-center-tab）
 export type UserCenterView = UserCenterTab | null;
 
@@ -44,9 +52,14 @@ interface AuthContextType {
   openUserCenter: (view?: UserCenterView) => void;
   closeUserCenter: () => void;
   setUserCenterView: (view: UserCenterView) => void;
-  // 安全中心内部分段（设备管理/授权管理/登录历史）
+  // 安全中心内部分段（设备管理/授权管理/登录历史/账号注销）
   securitySection: SecuritySection;
   setSecuritySection: (section: SecuritySection) => void;
+  // 账号注销冷静期：存在 PENDING 申请时非 null（全局横幅据此展示）
+  deletionRequest: AccountDeletionPending | null;
+  refreshDeletionRequest: () => Promise<void>;
+  /** 撤回注销申请（DELETE /api/user/account/deletion），成功返回 true */
+  cancelDeletionRequest: () => Promise<boolean>;
   // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
   redirectToLogin: (returnTo?: string | null) => void;
   redirectToRegister: (returnTo?: string | null) => void;
@@ -76,6 +89,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userCenterView, setUserCenterViewState] = useState<UserCenterView>("profile");
   // 安全中心内部分段（默认设备管理）
   const [securitySection, setSecuritySection] = useState<SecuritySection>("devices");
+  // 进行中的账号注销申请（冷静期横幅数据源）
+  const [deletionRequest, setDeletionRequest] = useState<AccountDeletionPending | null>(null);
+
+  /** 拉取当前进行中的注销申请；失败静默（横幅为增强提示，不阻断主流程） */
+  const refreshDeletionRequest = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth("/api/user/account/deletion");
+      const data = await res.json();
+      if (data.success && data.data?.request) {
+        setDeletionRequest({
+          scheduledAt: data.data.request.scheduledAt,
+          remainingDays: data.data.request.remainingDays,
+        });
+      } else if (data.success) {
+        setDeletionRequest(null);
+      }
+    } catch (error) {
+      if (error instanceof UnauthorizedError) return;
+      // 网络错误等：保持现状，下一轮 refreshUser 时再试
+    }
+  }, []);
+
+  /** 撤回注销申请；成功后清除冷静期状态（横幅消失） */
+  const cancelDeletionRequest = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth("/api/user/account/deletion", { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setDeletionRequest(null);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      if (error instanceof UnauthorizedError) return false;
+      return false;
+    }
+  }, []);
 
   // 统一登录页跳转（使用 window.location 确保在事件回调中也能立即触发）
   const redirectToLogin = useCallback((returnTo?: string | null) => {
@@ -142,18 +192,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.success) {
         setUser(data.data.user);
         localStorage.setItem("auth_hint", "1");
+        // 登录成功后检查冷静期注销申请（驱动全局撤回横幅）
+        void refreshDeletionRequest();
       } else {
         setUser(null);
+        setDeletionRequest(null);
       }
     } catch (error) {
       if (error instanceof UnauthorizedError) {
         localStorage.removeItem("auth_hint");
       }
       setUser(null);
+      setDeletionRequest(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshDeletionRequest]);
 
   const logout = useCallback(async (options?: { allDevices?: boolean }) => {
     try {
@@ -161,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 默认仅退出当前设备，其他设备与其他平台的会话不受影响
       await apiPost("/api/auth/logout", { allDevices: options?.allDevices === true });
       setUser(null);
+      setDeletionRequest(null);
       setUserCenterOpen(false);
       localStorage.removeItem("auth_hint");
     } catch (error) {
@@ -187,6 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // 其它标签页登出/登录态失效：同步清除本地 UI 状态
         setUser(null);
+        setDeletionRequest(null);
         setUserCenterOpen(false);
         localStorage.removeItem("__nihplod_refresh_fail_count");
         setIsLoading(false);
@@ -216,6 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("auth_hint");
     localStorage.removeItem("__nihplod_refresh_fail_count");
     setUser(null);
+    setDeletionRequest(null);
     setUserCenterOpen(false);
     const returnTo = window.location.pathname + window.location.search;
     window.location.href = `${buildAuthUrl("login", returnTo)}&expired=1`;
@@ -322,6 +379,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserCenterView,
       securitySection,
       setSecuritySection,
+      deletionRequest,
+      refreshDeletionRequest,
+      cancelDeletionRequest,
       // 登录/注册/找回/绑定入口（全部跳转到统一登录页）
       redirectToLogin,
       redirectToRegister,
@@ -339,6 +399,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeUserCenter,
       setUserCenterView,
       securitySection,
+      deletionRequest,
+      refreshDeletionRequest,
+      cancelDeletionRequest,
       redirectToLogin,
       redirectToRegister,
       redirectToForgotPassword,

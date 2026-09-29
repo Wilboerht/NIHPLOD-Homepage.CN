@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { pushUrlsToBaidu } from "@/lib/baidu-push";
+import { submitToIndexNow } from "@/lib/indexnow";
 
 export async function POST(request: NextRequest) {
   if (!process.env.BAIDU_PUSH_TOKEN) {
@@ -43,5 +44,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "推送失败" }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, ...result });
+  // 同一批 URL 同步提交 IndexNow（Bing/Yandex 等），key 未配置时静默跳过
+  const indexnowSubmitted = await submitToIndexNow(paths);
+
+  return NextResponse.json({ success: true, ...result, indexnowSubmitted });
 }

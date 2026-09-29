@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { CategorySchema } from "@/schemas/product";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // GET /api/admin/categories - 获取分类列表
 // 强制动态渲染，禁止静态预渲染
@@ -137,6 +138,8 @@ export async function POST(request: NextRequest) {
     });
 
     revalidateTag("admin-stats", "max");
+    revalidatePath("/products");
+    pushSearchEngines(["/products"]);
 
     return NextResponse.json({
       success: true,

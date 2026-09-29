@@ -9,6 +9,7 @@ import {
   UserCheck,
   MessageSquare,
   Users,
+  UserX,
   Shield,
   ShieldCheck,
   ScrollText,
@@ -40,6 +41,13 @@ export const adminNavItems: NavItem[] = [
   { title: "仪表盘", href: "/admin", icon: LayoutDashboard, permission: "dashboard:read" },
   // 商城管理
   { title: "用户管理", href: "/admin/users", icon: Users, permission: "users:read", group: "商城管理" },
+  {
+    title: "注销申请管理",
+    href: "/admin/account-deletions",
+    icon: UserX,
+    permission: "users:read",
+    group: "商城管理",
+  },
   {
     title: "产品管理",
     href: "/admin/products",

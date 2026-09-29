@@ -93,7 +93,11 @@ export type AuditAction =
   | "refresh_token_reuse_detected"
   | "sso_audit_export"
   | "user_export"
-  | "audit_log_export";
+  | "audit_log_export"
+  | "account_deletion_request"
+  | "account_deletion_cancel"
+  | "account_deletion_execute"
+  | "account_deletion_retry";
 
 export type AuditTargetType =
   | "order"
@@ -198,6 +202,10 @@ export const AUDIT_ACTIONS = [
   "sso_audit_export",
   "user_export",
   "audit_log_export",
+  "account_deletion_request",
+  "account_deletion_cancel",
+  "account_deletion_execute",
+  "account_deletion_retry",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [

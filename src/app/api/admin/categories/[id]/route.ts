@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -167,6 +168,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }).catch(() => {});
 
     revalidateTag("admin-stats", "max");
+    revalidatePath("/products");
+    pushSearchEngines(["/products"]);
 
     return NextResponse.json({
       success: true,
@@ -272,6 +275,8 @@ export async function DELETE(
     }
 
     revalidateTag("admin-stats", "max");
+    revalidatePath("/products");
+    pushSearchEngines(["/products"]);
 
     createAuditLog({
       action: "delete_category",

@@ -78,6 +78,7 @@ vi.mock("@/lib/backchannel-logout", () => ({
 vi.mock("@/lib/webhook", () => ({
   dispatchStatusChangeWebhook: vi.fn().mockResolvedValue(undefined),
   getStatusChangeWebhookTargets: vi.fn().mockReturnValue([]),
+  toWebhookStatus: (status: string) => (status === "DELETED" ? "deleted" : status),
 }));
 
 // === Mock logger ===

@@ -12,13 +12,14 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { removeIdentities } from "@/lib/external-identity";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
-import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets } from "@/lib/webhook";
+import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets, toWebhookStatus } from "@/lib/webhook";
 import { cascadeUserStatusChange } from "@/lib/user-status";
 import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -564,6 +565,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/admin/users/:id - 软删除用户（GDPR 合规）
+// 口径说明：本接口只做「封禁 + 匿名化」（user.update），不做物理删除——
+// 积分/消费等 6 张财务表已改 Restrict 外键，物理删除有业务记录的用户会被
+// DB 层拒绝；用户主渠道的物理删除诉求引导走账号自助注销流程（冷静期 + 匿名化）。
 export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
@@ -662,12 +666,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .catch((err) => apiConsole.warn("[AdminUserDelete] 清理资料变更失败队列失败:", err));
 
     // Webhook 推送账户删除事件（best-effort，不阻断主流程）
-    // oldStatus 发删除前的原始大写枚举；newStatus 固定 "deleted"，商城侧按此约定映射为禁用
+    // oldStatus 发删除前的状态（DELETED 经 toWebhookStatus 归入 "deleted"）；newStatus 固定 "deleted"，商城侧按此约定映射为禁用
     try {
       await dispatchStatusChangeWebhook(
         {
           userId: user.id,
-          oldStatus: user.status,
+          oldStatus: toWebhookStatus(user.status),
           newStatus: "deleted",
           source: "admin",
         },
@@ -702,6 +706,22 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: { message: "用户数据已删除" } });
   } catch (error) {
+    // 防御性兜底：匿名化流程只 update 不 delete，正常不会触发外键违例；
+    // 若未来改动引入物理删除，6 张财务表（Restrict）会抛 P2003，
+    // 此时必须引导走注销流程而非物理删除，返回 409 明确口径
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "USER_HAS_BUSINESS_RECORDS",
+            message:
+              "该用户存在积分/消费等业务记录，不可物理删除，请引导用户使用账号注销流程（匿名化）",
+          },
+        },
+        { status: 409 }
+      );
+    }
     apiConsole.error("[AdminUserDelete] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },

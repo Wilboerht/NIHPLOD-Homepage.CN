@@ -20,6 +20,7 @@ import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePointsCron } from "./points-ledger";
+import { executeDueAccountDeletions } from "./account-deletion";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
 
@@ -298,6 +299,26 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 积分过期任务失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Execute Account Deletions",
+    // 每小时执行一次（错峰避开整点清理任务）：扫描到期的注销申请逐个执行，
+    // 并向到期前 24 小时的申请发送撤回提醒短信；单条失败置 FAILED 下次重试，
+    // 达到重试上限转人工（详见 lib/account-deletion.ts）
+    cronExpression: "17 * * * *",
+    handler: async () => {
+      try {
+        const result = await executeDueAccountDeletions();
+        if (result.due > 0 || result.reminded > 0) {
+          apiConsole.info(
+            `[Cron] 账号注销执行完成: 到期 ${result.due} 条（成功 ${result.completed} / 失败 ${result.failed} / 跳过 ${result.skipped}），到期提醒 ${result.reminded} 条`
+          );
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 账号注销执行任务失败:", error);
         throw error;
       }
     },

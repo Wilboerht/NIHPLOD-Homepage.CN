@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -153,8 +154,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       },
     });
 
-    // 清除前端缓存
+    // 清除前端缓存并推送搜索引擎
     revalidatePath("/careers");
+    pushSearchEngines(["/careers"]);
 
     // 记录审计日志
     createAuditLog({
@@ -255,8 +257,9 @@ export async function DELETE(
     // 删除职位
     await prisma.job.delete({ where: { id } });
 
-    // 清除前端缓存
+    // 清除前端缓存并推送搜索引擎
     revalidatePath("/careers");
+    pushSearchEngines(["/careers"]);
 
     // 记录审计日志
     createAuditLog({

@@ -7,7 +7,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SESSION_EXPIRED_EVENT } from "@/lib/fetch-with-auth";
 
@@ -186,5 +186,104 @@ describe("AuthContext 会话终结处理（401 拦截）", () => {
 
     expect(screen.getByText("未登录")).toBeInTheDocument();
     expect(mockFetchWithAuth).not.toHaveBeenCalled();
+  });
+});
+
+describe("AuthContext 注销冷静期状态", () => {
+  const deletionPending = {
+    scheduledAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    remainingDays: 7,
+  };
+
+  function DeletionConsumer() {
+    const { user, isLoading, deletionRequest, cancelDeletionRequest } = useAuth();
+    if (isLoading) return <div>loading</div>;
+    return (
+      <div>
+        <div>{user ? "已登录" : "未登录"}</div>
+        <div>{deletionRequest ? `注销中:${deletionRequest.remainingDays}天` : "无注销申请"}</div>
+        <button onClick={() => void cancelDeletionRequest()}>撤回</button>
+      </div>
+    );
+  }
+
+  /** 按 URL 分发 mock：profile 正常登录，deletion 返回指定响应 */
+  function mockByUrl(deletionBody: unknown) {
+    mockFetchWithAuth.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url === "/api/user/account/deletion" && options?.method === "DELETE") {
+        return Promise.resolve({
+          status: 200,
+          json: async () => ({ success: true, data: { message: "注销申请已撤回" } }),
+        } as unknown as Response);
+      }
+      if (url === "/api/user/account/deletion") {
+        return Promise.resolve({
+          status: 200,
+          json: async () => deletionBody,
+        } as unknown as Response);
+      }
+      return Promise.resolve(profileResponse({ id: "user-1", nickname: "测试用户" }));
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem("auth_hint", "1");
+  });
+
+  it("登录成功后拉取注销申请：存在 PENDING 时暴露 deletionRequest", async () => {
+    mockByUrl({ success: true, data: { request: deletionPending } });
+
+    render(
+      <AuthProvider>
+        <DeletionConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("注销中:7天")).toBeInTheDocument();
+    });
+    expect(mockFetchWithAuth).toHaveBeenCalledWith("/api/user/account/deletion");
+  });
+
+  it("无进行中申请时 deletionRequest 为 null", async () => {
+    mockByUrl({ success: true, data: { request: null } });
+
+    render(
+      <AuthProvider>
+        <DeletionConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("已登录")).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText("无注销申请")).toBeInTheDocument();
+    });
+  });
+
+  it("cancelDeletionRequest：DELETE 撤回成功后清除冷静期状态", async () => {
+    mockByUrl({ success: true, data: { request: deletionPending } });
+
+    render(
+      <AuthProvider>
+        <DeletionConsumer />
+      </AuthProvider>
+    );
+    await waitFor(() => {
+      expect(screen.getByText("注销中:7天")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "撤回" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("无注销申请")).toBeInTheDocument();
+    });
+    expect(mockFetchWithAuth).toHaveBeenCalledWith(
+      "/api/user/account/deletion",
+      expect.objectContaining({ method: "DELETE" })
+    );
   });
 });

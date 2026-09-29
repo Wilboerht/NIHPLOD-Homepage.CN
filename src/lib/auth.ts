@@ -288,6 +288,10 @@ export async function checkUserStatus(
     return { valid: false, status: user.status, reason: "账号已被永久封禁" };
   }
 
+  if (user.status === "DELETED") {
+    return { valid: false, status: user.status, reason: "账号已注销" };
+  }
+
   return { valid: true, status: user.status };
 }
 
