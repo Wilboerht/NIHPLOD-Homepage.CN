@@ -26,16 +26,15 @@ import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 
 export const dynamic = "force-dynamic";
 
-/** AccountDeletionRequest.status 取值（Prisma 侧为 String，应用层常量约束，与 AuditLog.action 模式一致） */
-export const DELETION_REQUEST_STATUS = {
+/** AccountDeletionRequest.status 取值（Prisma 侧为 String，应用层常量约束，与 AuditLog.action 模式一致）。
+ *  注意：route 文件不允许导出非约定字段（Next 构建期路由类型校验），故不 export */
+const DELETION_REQUEST_STATUS = {
   PENDING: "PENDING",
   RUNNING: "RUNNING",
   CANCELLED: "CANCELLED",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
 } as const;
-export type DeletionRequestStatus =
-  (typeof DELETION_REQUEST_STATUS)[keyof typeof DELETION_REQUEST_STATUS];
 
 /** 冷静期天数：默认 7，非法值回退默认（读环境变量放在请求时，便于灰度调整与测试） */
 function getCoolingDays(): number {
