@@ -4,9 +4,7 @@
  */
 
 import { getNonce } from "@/lib/nonce";
-
-// 基础 URL
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
+import { SITE_URL as baseUrl } from "@/lib/site-url";
 
 /**
  * 获取 N 天后的 ISO 日期字符串（yyyy-MM-dd）
@@ -14,6 +12,11 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
  */
 function isoDateDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+}
+
+function toAbsoluteUrl(url: string): string {
+  if (url.startsWith("http")) return url;
+  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
 /**
@@ -68,13 +71,6 @@ export async function OrganizationJsonLd() {
       "@type": "Place",
       name: "摩纳哥",
     },
-    sameAs: [
-      "https://weibo.com/nihplod",
-      "https://www.xiaohongshu.com/user/nihplod",
-      "https://nihplod.cn",
-      "https://weixin.qq.com/",
-      "https://www.douyin.com/",
-    ],
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer service",
@@ -115,14 +111,6 @@ export async function WebSiteJsonLd() {
       "@id": `${baseUrl}/#organization`,
     },
     inLanguage: "zh-CN",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${baseUrl}/products?search={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
   };
 
   return <JsonLdScript data={data} />;
@@ -156,7 +144,7 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
     alternateName: product.nameEn,
     description: product.description,
     url: productUrl,
-    image: product.images.map((img) => img.url),
+    image: product.images.map((img) => toAbsoluteUrl(img.url)),
     sku: product.slug,
     brand: {
       "@type": "Brand",
@@ -165,6 +153,20 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
     category: product.category.name,
     // 产品功效作为关键词
     keywords: product.benefits.join(", "),
+    // 站内不直接成交（购买走第三方授权平台），仅声明官方定价与在售状态
+    ...(product.price > 0 && {
+      offers: {
+        "@type": "Offer",
+        url: productUrl,
+        price: product.price,
+        priceCurrency: "CNY",
+        availability: "https://schema.org/InStock",
+        seller: {
+          "@type": "Organization",
+          name: "NIHPLOD 旎柏",
+        },
+      },
+    }),
     // 产品规格
     ...(product.capacity && {
       additionalProperty: {
@@ -262,7 +264,7 @@ export async function LocalBusinessJsonLd({
     "@id": `${baseUrl}/#localbusiness`,
     name,
     url: baseUrl,
-    telephone,
+    ...(telephone && { telephone }),
     ...(address && {
       address: {
         "@type": "PostalAddress",
@@ -275,7 +277,6 @@ export async function LocalBusinessJsonLd({
     }),
     ...(openingHours && { openingHours }),
     priceRange: "$$$$",
-    image: `${baseUrl}/images/store.jpg`,
   };
 
   return <JsonLdScript data={data} />;

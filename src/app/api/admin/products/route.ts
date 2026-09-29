@@ -10,6 +10,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -256,6 +257,10 @@ export async function POST(request: NextRequest) {
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
     revalidateTag("admin-stats", "max");
+    if (product.published) {
+      revalidatePath(`/products/${product.slug}`);
+      pushSearchEngines(["/products", `/products/${product.slug}`]);
+    }
 
     // 记录审计日志
     createAuditLog({

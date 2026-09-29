@@ -12,6 +12,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -153,6 +154,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       data: updateData,
     });
+
+    // 刷新前台缓存；发布/排序变化时主动推送搜索引擎
+    revalidatePath("/products");
+    if (product.published) {
+      revalidatePath(`/products/${product.slug}`);
+      if (validated.published !== undefined || validated.order !== undefined) {
+        pushSearchEngines(["/products", `/products/${product.slug}`]);
+      }
+    }
 
     // 记录审计日志
     await createAuditLog({
@@ -356,10 +366,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       },
     });
 
-    // 重新验证前台页面缓存
+    // 重新验证前台页面缓存；已发布产品同步推送搜索引擎
     revalidatePath("/products");
     if (fullProduct?.slug) {
       revalidatePath(`/products/${fullProduct.slug}`);
+    }
+    if (fullProduct?.published) {
+      pushSearchEngines(["/products", `/products/${fullProduct.slug}`]);
     }
 
     // 记录审计日志
@@ -454,6 +467,8 @@ export async function DELETE(
     revalidatePath("/products");
     revalidatePath(`/products/${existing.slug}`);
     revalidateTag("admin-stats", "max");
+    // 已删除的 URL 不再推送，仅刷新并推送列表页
+    pushSearchEngines(["/products"]);
 
     // 记录审计日志
     createAuditLog({

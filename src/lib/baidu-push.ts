@@ -6,6 +6,7 @@
  * 配置环境变量 BAIDU_PUSH_TOKEN。token 未配置时静默跳过，不影响主流程。
  */
 import { apiConsole } from "@/lib/logger";
+import { SITE_URL } from "@/lib/site-url";
 
 const BAIDU_PUSH_API = "http://data.zz.baidu.com/urls";
 
@@ -23,7 +24,7 @@ export interface BaiduPushResult {
  */
 export async function pushUrlsToBaidu(paths: string[]): Promise<BaiduPushResult | null> {
   const token = process.env.BAIDU_PUSH_TOKEN;
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
+  const site = SITE_URL;
 
   if (!token || paths.length === 0) {
     return null;

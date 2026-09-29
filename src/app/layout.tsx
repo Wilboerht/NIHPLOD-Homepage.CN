@@ -9,6 +9,7 @@ import { BaiduAnalytics } from "@/components/seo/BaiduAnalytics";
 import { GoogleAnalytics } from "@/components/seo/GoogleAnalytics";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SITE_URL as baseUrl } from "@/lib/site-url";
 
 // Playfair Display 字体
 const playfair = Playfair_Display({
@@ -16,9 +17,6 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
   display: "swap",
 });
-
-// 基础 URL
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
 
 export const metadata: Metadata = {
   // 基本信息
@@ -130,11 +128,16 @@ export const metadata: Metadata = {
     },
   },
 
-  // 验证（接入 Google Search Console 时在此填入真实 code：google: "your-code"）
+  // 验证：Google / Bing 由环境变量注入，百度 meta 固定
   verification: {
-    // yandex: "your-yandex-verification-code",
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    }),
     other: {
       "baidu-site-verification": "codeva-Gp1L3OAokH",
+      ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION && {
+        "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION,
+      }),
     },
   },
 

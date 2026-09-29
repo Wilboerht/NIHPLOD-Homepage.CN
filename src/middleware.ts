@@ -83,6 +83,8 @@ const STATIC_PATH_PREFIXES = [
   "/manifest.json",
   "/robots.txt",
   "/sitemap.xml",
+  "/llms.txt",
+  "/llms-full.txt",
 ];
 
 function isStaticPath(pathname: string): boolean {

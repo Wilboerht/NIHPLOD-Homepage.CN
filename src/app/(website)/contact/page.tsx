@@ -53,7 +53,6 @@ export default function ContactPage() {
           postalCode: "200333",
           country: "CN",
         }}
-        telephone="+86-21-xxxx-xxxx"
       />
       <Suspense fallback={null}>
         <ContactContent content={undefined} />

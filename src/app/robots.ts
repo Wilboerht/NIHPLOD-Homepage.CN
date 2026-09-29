@@ -4,9 +4,9 @@
  * 文档: https://nextjs.org/docs/app/api-reference/file-conventions/metadata/robots
  */
 import { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/site-url";
 
-// 基础 URL
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
+const DISALLOW_PATHS = ["/admin", "/api/"];
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -14,13 +14,8 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: [
-          "/admin", // 管理后台
-          "/admin/*", // 管理后台所有子路径
-          "/api/", // API 接口
-          "/api/*", // API 所有子路径
-          "/_next/", // Next.js 内部资源
-        ],
+        // 不拦截 /_next/：Bing 等无专属分组的爬虫需要抓取 CSS/JS 才能正确渲染页面
+        disallow: DISALLOW_PATHS,
       },
       // ================= GEO / AI 优化配置 =================
       {
@@ -32,6 +27,7 @@ export default function robots(): MetadataRoute.Robots {
           "Google-Extended",
         ],
         allow: "/",
+        disallow: DISALLOW_PATHS,
       },
       {
         userAgent: "ClaudeBot",
@@ -42,24 +38,25 @@ export default function robots(): MetadataRoute.Robots {
         // 百度爬虫特殊规则
         userAgent: "Baiduspider",
         allow: "/",
-        disallow: ["/admin", "/admin/*", "/api/", "/api/*"],
+        disallow: DISALLOW_PATHS,
         crawlDelay: 1, // 爬取间隔 1 秒
       },
       {
         // 百度渲染爬虫（抓取 JS 渲染后的页面）
         userAgent: "Baiduspider-render",
         allow: "/",
-        disallow: ["/admin", "/admin/*", "/api/", "/api/*"],
+        disallow: DISALLOW_PATHS,
         crawlDelay: 2, // 渲染抓取较耗资源，间隔稍长
       },
       {
         // 谷歌爬虫特殊规则
         userAgent: "Googlebot",
         allow: "/",
-        disallow: ["/admin", "/admin/*", "/api/", "/api/*"],
+        disallow: DISALLOW_PATHS,
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    // Yandex 规范要求裸域名（不含协议）
+    host: new URL(SITE_URL).host,
   };
 }

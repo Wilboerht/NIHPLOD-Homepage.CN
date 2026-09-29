@@ -5,6 +5,7 @@ import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
 import { generateProductFaqs } from "@/config/geo-faq";
 import { mockCategories, mockProducts } from "../mock-data";
+import { SITE_URL as baseUrl } from "@/lib/site-url";
 
 // ISR: 产品详情页每60秒重新验证一次
 export const revalidate = 60;
@@ -12,13 +13,10 @@ export const revalidate = 60;
 // 允许动态生成未预渲染的路由参数
 export const dynamicParams = true;
 
-// 基础 URL
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
-
 const isDev = process.env.NODE_ENV === "development";
 
 /**
- * 从产品富文本描述生成 meta description：剥离 HTML 标签并截取前 80 字
+ * 从产品富文本描述生成 meta description：剥离 HTML 标签并截取前 150 字
  */
 function toMetaDescription(html: string | null | undefined, fallback: string): string {
   if (!html) return fallback;
@@ -27,7 +25,7 @@ function toMetaDescription(html: string | null | undefined, fallback: string): s
     .replace(/\s+/g, " ")
     .trim();
   if (!text) return fallback;
-  return text.length > 80 ? `${text.slice(0, 80).trimEnd()}…` : text;
+  return text.length > 150 ? `${text.slice(0, 150).trimEnd()}…` : text;
 }
 
 /**
@@ -315,6 +313,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             categoryName: product.category.name,
             benefits: product.benefits,
             description: product.description,
+            ingredients: product.ingredients,
           })
         }
       />

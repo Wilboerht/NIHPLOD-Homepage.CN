@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { deleteUploadedFile } from "@/lib/upload";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { pushSearchEngines } from "@/lib/search-push";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -66,6 +67,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 操作前记录受影响产品的 slug，用于精确刷新前台页面缓存
+    const affectedProducts = await prisma.product.findMany({
+      where: { id: { in: ids } },
+      select: { slug: true },
+    });
+
     let result: { count: number };
 
     switch (action) {
@@ -112,6 +119,16 @@ export async function POST(request: NextRequest) {
       delete: "删除",
     };
 
+    // 刷新前台缓存；批量发布时主动推送搜索引擎
+    revalidatePath("/products");
+    for (const p of affectedProducts) {
+      revalidatePath(`/products/${p.slug}`);
+    }
+    pushSearchEngines(
+      action === "publish"
+        ? ["/products", ...affectedProducts.map((p) => `/products/${p.slug}`)]
+        : ["/products"]
+    );
     revalidateTag("admin-stats", "max");
 
     // 记录审计日志

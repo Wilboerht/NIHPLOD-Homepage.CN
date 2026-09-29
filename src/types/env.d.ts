@@ -24,6 +24,10 @@ declare namespace NodeJS {
     NEXT_PUBLIC_BAIDU_TONGJI_ID?: string;
     BAIDU_PUSH_TOKEN?: string;
     NEXT_PUBLIC_SITE_URL?: string;
+    NEXT_PUBLIC_BASE_URL?: string;
+    NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?: string;
+    NEXT_PUBLIC_BING_SITE_VERIFICATION?: string;
+    INDEXNOW_KEY?: string;
 
     // ----- 系统配置 -----
     NODE_ENV: "development" | "production" | "test";

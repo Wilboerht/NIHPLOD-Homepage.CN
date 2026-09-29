@@ -9,10 +9,7 @@ export const revalidate = 86400; // 24小时
 export const metadata: Metadata = {
   title: "服务条款",
   description:
-    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
-  alternates: {
-    canonical: "/terms",
-  },
+      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
   openGraph: {
     title: "服务条款 | NIHPLOD 旎柏",
     description: "了解使用本网站的各项服务条款与用户协议。",

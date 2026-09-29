@@ -5,9 +5,10 @@
  */
 import { MetadataRoute } from "next";
 import prisma from "@/lib/prisma";
+import { SITE_URL as baseUrl } from "@/lib/site-url";
 
-// 基础 URL
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nihplod.cn";
+// 默认静态缓存，60s 重新验证保证新增产品进入站点地图
+export const revalidate = 60;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 静态页面（注意：services、terms、privacy 页面设置了 noindex，不放入 sitemap）

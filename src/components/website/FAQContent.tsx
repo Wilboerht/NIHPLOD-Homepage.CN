@@ -244,11 +244,11 @@ export function FAQContent() {
                       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                       className="flex min-h-full flex-col px-6"
                     >
-                      {/* Page Title */}
+                      {/* Page Title（h1 由 PC 布局输出，此处避免重复） */}
                       <div className="mb-8 flex flex-col items-center pt-3">
-                        <h1 className="text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
+                        <div className="text-[19px] font-normal tracking-[0.15em] text-brand-charcoal">
                           常见问题
-                        </h1>
+                        </div>
                         <div className="mt-2 w-[70px] border-b border-brand-charcoal" />
                       </div>
 
