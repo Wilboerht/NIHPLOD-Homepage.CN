@@ -27,6 +27,7 @@ interface RedeemableProductItem {
   priceYuan: number;
   published: boolean;
   pointRedeemable: boolean;
+  redeemStock: number | null;
   categoryName: string;
 }
 
@@ -77,6 +78,8 @@ function AdminPointGiftsContent() {
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [stockEdit, setStockEdit] = useState<{ id: string; value: string } | null>(null);
+  const [savingStock, setSavingStock] = useState(false);
 
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -179,6 +182,32 @@ function AdminPointGiftsContent() {
       showError(e instanceof ApiError ? e.message : "操作失败");
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  /** 内联编辑兑换库存（留空 = 不限量；与可兑开关共用同一 PATCH） */
+  const handleStockSave = async (p: RedeemableProductItem) => {
+    if (!stockEdit) return;
+    const trimmed = stockEdit.value.trim();
+    const stock = trimmed === "" ? null : Number(trimmed);
+    if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
+      showError("库存须为非负整数，留空表示不限量");
+      return;
+    }
+    setSavingStock(true);
+    try {
+      await apiPatch("/api/admin/point-gifts", {
+        productId: p.id,
+        pointRedeemable: p.pointRedeemable,
+        redeemStock: stock,
+      });
+      success("兑换库存已更新");
+      setStockEdit(null);
+      fetchProducts();
+    } catch (e) {
+      showError(e instanceof ApiError ? e.message : "操作失败");
+    } finally {
+      setSavingStock(false);
     }
   };
 
@@ -338,19 +367,20 @@ function AdminPointGiftsContent() {
                 <th className="px-6 py-3 font-medium">参考价格</th>
                 <th className="px-6 py-3 font-medium">发布状态</th>
                 <th className="px-6 py-3 font-medium">积分可兑</th>
+                <th className="px-6 py-3 font-medium">兑换库存</th>
                 <th className="px-6 py-3 font-medium">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {productsLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
                   </td>
                 </tr>
               ) : productsError ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <p className="text-sm text-red-500">加载产品失败</p>
                     <Button
                       variant="outline"
@@ -364,7 +394,7 @@ function AdminPointGiftsContent() {
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-400">
                     暂无匹配产品
                   </td>
                 </tr>
@@ -389,6 +419,49 @@ function AdminPointGiftsContent() {
                       >
                         {p.pointRedeemable ? "可兑换" : "未设置"}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {stockEdit?.id === p.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={stockEdit.value}
+                            onChange={(e) => setStockEdit({ id: p.id, value: e.target.value })}
+                            placeholder="留空=不限量"
+                            className="w-28"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            loading={savingStock}
+                            onClick={() => handleStockSave(p)}
+                          >
+                            保存
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
+                            取消
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>{p.redeemStock === null ? "不限量" : p.redeemStock}</span>
+                          {canGiftWrite && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setStockEdit({
+                                  id: p.id,
+                                  value: p.redeemStock === null ? "" : String(p.redeemStock),
+                                })
+                              }
+                            >
+                              编辑
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {canGiftWrite ? (

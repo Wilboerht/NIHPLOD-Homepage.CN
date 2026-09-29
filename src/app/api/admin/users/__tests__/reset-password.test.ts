@@ -4,8 +4,10 @@
  *
  * 覆盖：
  * - 未授权 401 / 非 owner 403
+ * - TOTP 二次验证（失败拦截、totpCode 透传）
  * - 用户不存在 404
- * - 成功：生成符合密码策略的临时密码、强制下线全部会话、写审计 user_password_reset
+ * - 成功：生成符合密码策略的临时密码、强制下线全部会话、写审计 user_password_reset、
+ *   向用户手机号发送安全提醒短信（fail-soft）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
@@ -59,20 +61,31 @@ vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock("@/lib/sms", () => ({
+  sendAdminPasswordResetNotification: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { POST } from "../[id]/reset-password/route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { updateUserPassword } from "@/lib/password-policy";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { sendAdminPasswordResetNotification } from "@/lib/sms";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 const ADMIN = { ...OWNER, role: "admin" };
 
-function createRequest() {
+function createRequest(body?: unknown) {
   return new NextRequest("http://localhost/api/admin/users/user-1/reset-password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   } as never);
 }
 
@@ -132,5 +145,38 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
         targetId: "user-1",
       })
     );
+  });
+
+  it("二次验证失败时直接返回 TOTP 错误响应，不执行重置", async () => {
+    vi.mocked(requireMoneyOperationTotp).mockResolvedValueOnce(
+      NextResponse.json(
+        { success: false, error: { code: "TOTP_REQUIRED", message: "请输入二次验证码" } },
+        { status: 400 }
+      )
+    );
+    const res = await POST(createRequest({ totpCode: "123456" }), context);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("TOTP_REQUIRED");
+    expect(updateUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("权限校验通过后携带 totpCode 调用二次验证", async () => {
+    const res = await POST(createRequest({ totpCode: "654321" }), context);
+    expect(res.status).toBe(200);
+    expect(requireMoneyOperationTotp).toHaveBeenCalledWith("admin-1", "654321");
+  });
+
+  it("重置成功后向被重置用户手机号发送安全提醒短信", async () => {
+    const res = await POST(createRequest(), context);
+    expect(res.status).toBe(200);
+    expect(sendAdminPasswordResetNotification).toHaveBeenCalledWith("13800000000");
+  });
+
+  it("安全提醒短信发送失败不影响重置结果", async () => {
+    vi.mocked(sendAdminPasswordResetNotification).mockRejectedValueOnce(new Error("sms down"));
+    const res = await POST(createRequest(), context);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
   });
 });

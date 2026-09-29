@@ -11,6 +11,10 @@ vi.mock("@/lib/auth", () => ({
   verifyUserAuth: vi.fn(() => Promise.resolve({ id: "user-1" })),
 }));
 
+vi.mock("@/lib/ratelimit", () => ({
+  rateLimit: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
@@ -29,6 +33,9 @@ vi.mock("@/lib/sf-express", () => ({
 }));
 
 import { GET } from "@/app/api/user/points/redemptions/[id]/tracking/route";
+import { rateLimit } from "@/lib/ratelimit";
+
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 function createRequest(): NextRequest {
   return new NextRequest(
@@ -49,6 +56,17 @@ describe("GET /api/user/points/redemptions/[id]/tracking", () => {
       ok: true,
       routes: [{ time: "2026-09-05T10:00:00.000Z", description: "已签收", location: "上海市" }],
     });
+  });
+
+  it("触发用户级限流：429 RATE_LIMITED 且不调用顺丰接口", async () => {
+    mockRateLimit.mockResolvedValueOnce({ success: false });
+
+    const res = await GET(createRequest(), { params: Promise.resolve({ id: REDEMPTION_ID }) });
+    const data = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(data.error.code).toBe("RATE_LIMITED");
+    expect(mockQuerySfRoutes).not.toHaveBeenCalled();
   });
 
   it("轨迹查询成功返回运单号与轨迹", async () => {

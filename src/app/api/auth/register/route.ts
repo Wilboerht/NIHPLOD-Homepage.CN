@@ -28,6 +28,7 @@ import { z } from "zod";
 import { hashPassword, passwordSchema, getPasswordExpiryDate } from "@/lib/password";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordPasswordHistory } from "@/lib/password-policy";
 
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
       const verifyIp = getRateLimitClientIP(request);
       if (verifyIp !== smsCode.ipAddress) {
         apiConsole.warn(
-          `[Register] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${phone}`
+          `[Register] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${maskPhone(phone)}`
         );
         return NextResponse.json(
           {

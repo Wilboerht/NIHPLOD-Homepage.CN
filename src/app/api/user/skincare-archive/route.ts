@@ -97,11 +97,26 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
   // 官网账本直发：仅"当日首次手动打卡"发放；reference 与子站完全一致，天然幂等。
   // 发放失败不阻断打卡（与子站口径一致：打卡成功、积分静默缺失）
   let points: { granted: number; streak: number } | undefined;
+
+  // 金额封顶（S8）：业务规则为 +1/+2/+3，上限 10；上游返回值异常时跳过发分并告警，
+  // 不影响打卡主流程（告警仅含 userId 与原始值，不含手机号等 PII）
+  const rawAmount = upstream?.points;
+  const amountValid =
+    typeof rawAmount === "number" &&
+    Number.isInteger(rawAmount) &&
+    rawAmount > 0 &&
+    rawAmount <= 10;
+  if (upstream?.isFirstManualCheckin && !amountValid) {
+    apiConsole.warn("[skincare-archive] 打卡积分金额异常，已跳过发分", {
+      userId: payload.id,
+      points: rawAmount,
+    });
+  }
+
   if (
     upstream?.isFirstManualCheckin &&
     dateStr &&
-    typeof upstream.points === "number" &&
-    upstream.points > 0 &&
+    amountValid &&
     typeof upstream.streak === "number"
   ) {
     try {

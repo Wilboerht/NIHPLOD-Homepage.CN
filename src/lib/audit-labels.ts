@@ -77,6 +77,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   user_set_password: "用户设置密码",
   user_phone_changed: "用户换绑手机号",
   sso_audit_export: "导出 SSO 审计日志",
+  user_export: "导出用户列表",
+  audit_log_export: "导出审计日志",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {

@@ -200,6 +200,45 @@ describe("POST /api/user/skincare-archive（打卡 + 官网直发积分）", () 
     expect(mocks.error).toHaveBeenCalled();
   });
 
+  it("金额超过上限（>10）：跳过发分并告警，不影响打卡主流程", async () => {
+    mocks.advisorRequest.mockResolvedValue({
+      ...upsertUpstream,
+      data: { ...upsertUpstream.data, points: 11 },
+    });
+
+    const res = await POST(
+      createPostRequest("/api/user/skincare-archive", { date: "2026-09-24", skinState: "good" })
+    );
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.points).toBeUndefined();
+    expect(mocks.grantCheckinPoints).not.toHaveBeenCalled();
+    expect(mocks.warn).toHaveBeenCalledWith(
+      "[skincare-archive] 打卡积分金额异常，已跳过发分",
+      expect.objectContaining({ userId: "user-1", points: 11 })
+    );
+  });
+
+  it("金额非整数或非正数：跳过发分并告警", async () => {
+    for (const badAmount of [2.5, 0, -3]) {
+      vi.clearAllMocks();
+      mocks.advisorRequest.mockResolvedValue({
+        ...upsertUpstream,
+        data: { ...upsertUpstream.data, points: badAmount },
+      });
+
+      const res = await POST(
+        createPostRequest("/api/user/skincare-archive", { date: "2026-09-24", skinState: "good" })
+      );
+      const json = (await res.json()) as Record<string, unknown>;
+      expect(res.status).toBe(200);
+      expect(json.points).toBeUndefined();
+      expect(mocks.grantCheckinPoints).not.toHaveBeenCalled();
+      expect(mocks.warn).toHaveBeenCalled();
+    }
+  });
+
   it("子站 400（输入校验失败）原样返回 400", async () => {
     mocks.advisorRequest.mockResolvedValue({
       ok: false,

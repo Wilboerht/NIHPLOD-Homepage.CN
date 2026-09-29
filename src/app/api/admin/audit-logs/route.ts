@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { listAuditLogs, AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
+import { listAuditLogs, createAuditLog, AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
 import {
   AUDIT_ACTION_LABELS as ACTION_LABELS,
   AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
@@ -130,6 +130,24 @@ export async function GET(request: NextRequest) {
         ]);
       }
       const csv = [headers.join(","), ...rows.map((r) => r.map(escapeCSV).join(","))].join("\n");
+
+      // 导出审计：记录筛选条件与导出条数
+      await createAuditLog({
+        action: "audit_log_export",
+        targetType: "system",
+        detail: {
+          action: params.action ?? null,
+          targetType: params.targetType ?? null,
+          adminId: params.adminId ?? null,
+          startDate: startDate?.toISOString() ?? null,
+          endDate: endDate?.toISOString() ?? null,
+          exportedCount: exportItems.length,
+          truncated,
+        },
+        adminId: admin.id,
+        request,
+      });
+
       return new NextResponse(`\uFEFF${csv}`, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",

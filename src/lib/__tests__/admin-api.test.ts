@@ -179,6 +179,7 @@ vi.mock("@/lib/token-blacklist", () => ({
   removeFromBlacklist: vi.fn(),
   isTokenBlacklisted: vi.fn().mockReturnValue(false),
   isAccessTokenRevoked: vi.fn().mockReturnValue(false),
+  consumeAccessTokenOnce: vi.fn().mockResolvedValue(true),
 }));
 
 // Mock admin-stats
@@ -240,8 +241,12 @@ vi.mock("@/schemas/api", async () => {
 });
 
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
+import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 
 const mockPrisma = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>;
+const mockCreateAuditLog = createAuditLog as ReturnType<typeof vi.fn>;
+const mockConsumeOnce = consumeAccessTokenOnce as ReturnType<typeof vi.fn>;
 
 // ============================================
 // 工具函数
@@ -319,6 +324,8 @@ describe("管理端 API 集成测试", () => {
     // 默认：无账户锁定（防止跨测试状态泄漏）
     mockPrisma.loginAttempt.count.mockResolvedValue(0);
     mockPrisma.loginAttempt.findFirst.mockResolvedValue(null);
+    // 默认：TOTP 一次性消费成功（非重放）
+    mockConsumeOnce.mockResolvedValue(true);
   });
 
   // ============================================
@@ -420,7 +427,7 @@ describe("管理端 API 集成测试", () => {
       expect(data.error.message).toBe("邮箱或密码错误");
     });
 
-    it("账号被禁用应返回 403", async () => {
+    it("账号被禁用应返回与密码错误相同的 401 INVALID_CREDENTIALS（防枚举），且仍执行一次密码比较并写审计", async () => {
       mockValidateCSRFToken.mockReturnValue(true);
       mockPrisma.admin.findUnique.mockResolvedValue({
         id: "admin-1",
@@ -443,8 +450,24 @@ describe("管理端 API 集成测试", () => {
       });
       const res = await POST(req);
       const data = await res.json();
-      expect(res.status).toBe(403);
-      expect(data.error.code).toBe("ACCOUNT_DISABLED");
+
+      // 对外与"管理员不存在/密码错误"完全一致的响应
+      expect(res.status).toBe(401);
+      expect(data.error.code).toBe("INVALID_CREDENTIALS");
+      expect(data.error.message).toBe("邮箱或密码错误");
+      // 时序对齐：禁用账号也执行一次 bcrypt 比较（dummy 哈希）
+      expect(mockVerifyPassword).toHaveBeenCalled();
+      // 不签发 token
+      expect(mockSignToken).not.toHaveBeenCalled();
+      // 禁用事实写入服务端审计日志
+      expect(mockCreateAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "login",
+          targetType: "admin",
+          targetId: "admin-1",
+          detail: expect.objectContaining({ reason: "account_disabled" }),
+        })
+      );
     });
 
     it("正常登录应返回 200 并设置 Cookie", async () => {
@@ -534,6 +557,68 @@ describe("管理端 API 集成测试", () => {
 
       expect(res.status).toBe(500);
       expect(data.error.code).toBe("TOTP_MISCONFIGURED");
+    });
+
+    it("TOTP 验证码正确但已被消费（重放/并发）应返回 TOTP_INVALID", async () => {
+      mockValidateCSRFToken.mockReturnValue(true);
+      mockPrisma.admin.findUnique.mockResolvedValue({
+        id: "admin-1",
+        email: "admin@test.com",
+        password: "$2a$12$hash",
+        name: "Admin",
+        role: "admin",
+        status: "ACTIVE",
+        deletedAt: null,
+        totpEnabled: true,
+        totpSecret: "encrypted-secret",
+        totpBackupCodes: "[]",
+      });
+      // 原子消费返回 false → 该验证码已被使用
+      mockConsumeOnce.mockResolvedValue(false);
+
+      const { POST } = await import("@/app/api/admin/login/route");
+      const req = createRequest("/api/admin/login", {
+        method: "POST",
+        body: { email: "admin@test.com", password: "Admin123", totpCode: "123456" },
+        headers: { origin: "https://nihplod.cn" },
+      });
+      const res = await POST(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(401);
+      expect(data.error.code).toBe("TOTP_INVALID");
+      expect(mockConsumeOnce).toHaveBeenCalledWith("totp:admin-1:123456");
+      expect(mockSignToken).not.toHaveBeenCalled();
+    });
+
+    it("TOTP 验证码正确且首次消费应登录成功", async () => {
+      mockValidateCSRFToken.mockReturnValue(true);
+      mockPrisma.admin.findUnique.mockResolvedValue({
+        id: "admin-1",
+        email: "admin@test.com",
+        password: "$2a$12$hash",
+        name: "Admin",
+        role: "admin",
+        status: "ACTIVE",
+        deletedAt: null,
+        totpEnabled: true,
+        totpSecret: "encrypted-secret",
+        totpBackupCodes: "[]",
+      });
+      mockSignToken.mockResolvedValue("mock-jwt-token-admin-1");
+
+      const { POST } = await import("@/app/api/admin/login/route");
+      const req = createRequest("/api/admin/login", {
+        method: "POST",
+        body: { email: "admin@test.com", password: "Admin123", totpCode: "123456" },
+        headers: { origin: "https://nihplod.cn" },
+      });
+      const res = await POST(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(mockConsumeOnce).toHaveBeenCalledWith("totp:admin-1:123456");
     });
   });
 

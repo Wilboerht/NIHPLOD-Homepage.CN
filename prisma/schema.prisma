@@ -34,6 +34,7 @@ model Product {
   featured      Boolean        @default(false) // 是否推荐
   published     Boolean        @default(false) // 是否发布
   pointRedeemable Boolean      @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
+  redeemStock   Int?           // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
   geoFaqs       Json?          // AI 生成的 GEO FAQ 数据
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @default(now()) @updatedAt

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockUpsert = vi.fn();
+const mockCreate = vi.fn();
 const mockFindUnique = vi.fn();
 const mockDeleteMany = vi.fn();
 
@@ -8,6 +9,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     tokenBlacklist: {
       upsert: (...args: unknown[]) => mockUpsert(...args),
+      create: (...args: unknown[]) => mockCreate(...args),
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       deleteMany: (...args: unknown[]) => mockDeleteMany(...args),
     },
@@ -62,6 +64,23 @@ describe("token-blacklist-store", () => {
 
       await store.blacklistUser("user-long", "admin", Date.now() + 24 * 60 * 60 * 1000);
       expect(await store.isUserBlacklisted("user-long")).toEqual({ reason: "admin" });
+    });
+
+    it("consumeAccessTokenOnce：首次消费成功，重复消费视为重放", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "memory";
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      expect(await store.consumeAccessTokenOnce("jti-once")).toBe(true);
+      expect(await store.consumeAccessTokenOnce("jti-once")).toBe(false);
+      expect(await store.isAccessTokenRevoked("jti-once")).toBe(true);
+    });
+
+    it("consumeAccessTokenOnce：已过期的 exp 不落黑名单", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "memory";
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      expect(await store.consumeAccessTokenOnce("jti-expired-once", Date.now() - 1)).toBe(true);
+      expect(await store.isAccessTokenRevoked("jti-expired-once")).toBe(false);
     });
   });
 
@@ -128,6 +147,35 @@ describe("token-blacklist-store", () => {
       expect(mockDeleteMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { type: "user", key: "user:user-1" } })
       );
+    });
+
+    it("consumeAccessTokenOnce：应通过 create 原子插入，首次成功返回 true", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "database";
+      mockCreate.mockResolvedValue({});
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      expect(await store.consumeAccessTokenOnce("jti-1", Date.now() + 1000)).toBe(true);
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ type: "access_token", key: "at:jti-1" }),
+        })
+      );
+    });
+
+    it("consumeAccessTokenOnce：P2002 唯一约束冲突视为已消费（重放）返回 false", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "database";
+      mockCreate.mockRejectedValue({ code: "P2002" });
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      expect(await store.consumeAccessTokenOnce("jti-1")).toBe(false);
+    });
+
+    it("consumeAccessTokenOnce：DB 故障 fail-closed 返回 false", async () => {
+      process.env.TOKEN_BLACKLIST_STORAGE = "database";
+      mockCreate.mockRejectedValue(new Error("connection refused"));
+      const { tokenBlacklistStore: store } = await import("@/lib/token-blacklist-store");
+
+      expect(await store.consumeAccessTokenOnce("jti-1")).toBe(false);
     });
   });
 

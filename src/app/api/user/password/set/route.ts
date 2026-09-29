@@ -25,6 +25,8 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
 import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocation";
+import { invalidateProfileCache } from "@/lib/points";
+import { rateLimit } from "@/lib/ratelimit";
 import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 
 const setPasswordSchema = z
@@ -46,6 +48,18 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
   }
 
   try {
+    // 用户级限流（每用户每小时 10 次）：设置密码消耗短信验证码校验资源，防滥用
+    const limitResult = await rateLimit(`password-set:${payload.id}`, "default", {
+      maxRequests: 10,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const result = setPasswordSchema.safeParse(body);
     if (!result.success) {
@@ -174,6 +188,9 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
     sendPasswordChangedNotification(user.phone).catch((err) => {
       apiConsole.error("[SetPassword] 安全通知发送失败:", err);
     });
+
+    // 失效资料缓存：profile 缓存携带 hasPassword，设置成功后必须立即失效
+    invalidateProfileCache();
 
     logAuthEvent("user_set_password", {
       userId: user.id,

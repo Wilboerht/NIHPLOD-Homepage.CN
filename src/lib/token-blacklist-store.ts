@@ -15,6 +15,7 @@
  */
 import { LRUCache } from "lru-cache";
 import { prisma } from "./prisma";
+import { apiConsole } from "./logger";
 
 const ACCESS_TOKEN_BLACKLIST_TTL_MS = 2 * 60 * 60 * 1000; // 2 小时，与 access token 一致
 const USER_BLACKLIST_TTL_MS = 2 * 60 * 60 * 1000; // 2 小时，覆盖 access token 剩余有效期窗口
@@ -24,6 +25,13 @@ export type BlacklistEntryType = "access_token" | "user";
 export interface TokenBlacklistStore {
   revokeAccessToken(jti: string, expiresAtMs?: number): Promise<void>;
   isAccessTokenRevoked(jti: string): Promise<boolean>;
+  /**
+   * 原子消费（检查 + 标记合一，消除 check-then-set 的 TOCTOU 窗口）：
+   * jti 未被消费则原子标记并返回 true；已被消费（重放）返回 false。
+   * 存储不可用（如 DB 故障）时 fail-closed 返回 false，避免故障窗口内重放被放行。
+   * 适用一次性凭证防重放（如管理员 TOTP 验证码）。
+   */
+  consumeAccessTokenOnce(jti: string, expiresAtMs?: number): Promise<boolean>;
   blacklistUser(userId: string, reason: string, expiresAtMs?: number): Promise<void>;
   isUserBlacklisted(userId: string): Promise<{ reason: string } | null>;
   removeUserBlacklist(userId: string): Promise<void>;
@@ -59,6 +67,23 @@ class MemoryTokenBlacklistStore implements TokenBlacklistStore {
   async isAccessTokenRevoked(jti: string): Promise<boolean> {
     // get() 对过期条目返回 undefined，has() 对过期条目仍返回 true
     return this.tokenCache.get(jti) !== undefined;
+  }
+
+  async consumeAccessTokenOnce(jti: string, expiresAtMs?: number): Promise<boolean> {
+    // 单进程内 get→set 之间无 await，天然原子；多实例部署须使用 database 后端共享状态
+    if (this.tokenCache.get(jti) !== undefined) return false;
+    // TTL 语义与 revokeAccessToken 一致：已过期的不落库（也不得回退默认 TTL）
+    if (expiresAtMs !== undefined) {
+      const ttl = expiresAtMs - Date.now();
+      if (ttl <= 0) {
+        this.tokenCache.delete(jti);
+        return true;
+      }
+      this.tokenCache.set(jti, { revokedAt: Date.now() }, { ttl });
+      return true;
+    }
+    this.tokenCache.set(jti, { revokedAt: Date.now() });
+    return true;
   }
 
   async blacklistUser(userId: string, reason: string, expiresAtMs?: number): Promise<void> {
@@ -116,6 +141,36 @@ class DatabaseTokenBlacklistStore implements TokenBlacklistStore {
       return false;
     }
     return entry.type === "access_token";
+  }
+
+  async consumeAccessTokenOnce(
+    jti: string,
+    expiresAtMs = Date.now() + ACCESS_TOKEN_BLACKLIST_TTL_MS
+  ): Promise<boolean> {
+    // 原子性由数据库 INSERT 唯一约束保证（与 consumeWechatExchangeToken 同模式）：
+    // 首次插入成功 → 本次消费成功；P2002 冲突 → 已被消费（重放）
+    try {
+      await prisma.tokenBlacklist.create({
+        data: {
+          type: "access_token",
+          key: `at:${jti}`,
+          expiresAt: new Date(expiresAtMs),
+        },
+      });
+      return true;
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (error as { code: string }).code === "P2002"
+      ) {
+        return false;
+      }
+      // DB 不可用：fail-closed，拒绝消费，避免故障窗口内一次性凭证被重放
+      apiConsole.warn("[TokenBlacklist] 原子消费失败（fail-closed）:", error);
+      return false;
+    }
   }
 
   async blacklistUser(

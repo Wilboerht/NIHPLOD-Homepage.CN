@@ -57,24 +57,26 @@ export type RedeemGiftResult =
         | "PRODUCT_NOT_REDEEMABLE"
         | "NOT_ELIGIBLE"
         | "ADDRESS_NOT_FOUND"
+        | "OUT_OF_STOCK"
         | "INSUFFICIENT"
         | "INVALID_REQUEST";
       message: string;
     };
 
 /**
- * 兑换产品（单事务：幂等检查 → 产品校验 → 地址校验 → 折算 → 扣分 → 生成兑换记录）
+ * 兑换产品（单事务：幂等检查 → 产品校验 → 等级重读 → 地址校验 → 库存扣减 → 扣分 → 生成兑换记录）
  * 同一 requestId 重复调用直接返回首次结果（duplicated: true），不重复扣分。
+ * 会员等级在事务内重读（不接受外部传入的等级快照，防 TOCTOU 等级降档套利）。
+ * redeemStock 非 null 时以条件更新扣库存（CAS），命中 0 行即库存不足，并发不超卖。
  * 收货地址取快照入库（履约寄送；事后修改地址簿不影响历史订单）。
  */
 export async function redeemGiftForUser(params: {
   userId: string;
   productId: string;
   requestId: string;
-  level: MembershipLevel;
   addressId: string;
 }): Promise<RedeemGiftResult> {
-  const { userId, productId, requestId, level, addressId } = params;
+  const { userId, productId, requestId, addressId } = params;
   if (!requestId || requestId.length > 64) {
     return { ok: false, code: "INVALID_REQUEST", message: "请求参数错误" };
   }
@@ -97,7 +99,7 @@ export async function redeemGiftForUser(params: {
 
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { id: true, name: true, price: true, pointRedeemable: true, published: true },
+      select: { id: true, name: true, price: true, pointRedeemable: true, published: true, redeemStock: true },
     });
     if (!product) {
       return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
@@ -105,6 +107,13 @@ export async function redeemGiftForUser(params: {
     if (!product.pointRedeemable || !product.published) {
       return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
     }
+
+    // 等级以事务内读取为准（外部快照可能已过期：消费升级/退款降档的 TOCTOU 窗口）
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { membershipLevel: true },
+    });
+    const level: MembershipLevel = user?.membershipLevel ?? "REGULAR";
 
     const points = giftCostForUser(product.price, level);
     if (points === null) {
@@ -121,6 +130,17 @@ export async function redeemGiftForUser(params: {
     }
     const fullAddress = `${address.region} ${address.detail}`;
 
+    // 限量库存：条件扣减（CAS），命中 0 行即库存不足；null = 不限量
+    if (product.redeemStock !== null) {
+      const deducted = await tx.product.updateMany({
+        where: { id: productId, redeemStock: { gte: 1 } },
+        data: { redeemStock: { decrement: 1 } },
+      });
+      if (deducted.count === 0) {
+        return { ok: false, code: "OUT_OF_STOCK", message: "该礼品已兑完" };
+      }
+    }
+
     const result = await redeemPoints(tx, {
       userId,
       amount: points,
@@ -128,30 +148,7 @@ export async function redeemGiftForUser(params: {
       note: `兑换产品：${product.name}`,
     });
     if (!result.ok) {
-      if (result.code === "DUPLICATE") {
-        // 扣分流水已存在但兑换记录缺失（极端并发窗口）：补建记录，不重复扣分
-        const redemption = await tx.pointRedemption.create({
-          data: {
-            userId,
-            productId,
-            productName: product.name,
-            priceYuan: product.price,
-            points,
-            reference,
-            recipient: address.recipient,
-            phone: address.phone,
-            address: fullAddress,
-          },
-        });
-        return {
-          ok: true,
-          duplicated: true,
-          points,
-          available: result.available,
-          redemptionId: redemption.id,
-        };
-      }
-      return { ok: false, code: result.code, message: "可用积分不足" };
+      return { ok: false, code: "INSUFFICIENT", message: "可用积分不足" };
     }
 
     const redemption = await tx.pointRedemption.create({

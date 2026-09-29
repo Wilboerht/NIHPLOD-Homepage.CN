@@ -496,14 +496,26 @@ function AdminUsersContent() {
     }
   };
 
-  /** 重置用户密码（生成一次性临时密码） */
+  /** 重置用户密码（生成一次性临时密码，需二次验证） */
   const confirmResetPassword = async () => {
     if (!detailUser) return;
     setResetPasswordLoading(true);
     try {
-      const data = await apiPost<{ tempPassword: string }>(
-        `/api/admin/users/${detailUser.id}/reset-password`
-      );
+      const submit = (totpCode?: string) =>
+        apiPost<{ tempPassword: string }>(`/api/admin/users/${detailUser.id}/reset-password`, {
+          totpCode,
+        });
+
+      let data: { tempPassword: string };
+      try {
+        data = await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const code = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!code) return;
+        data = await submit(code);
+      }
+
       setResetPasswordOpen(false);
       setTempPassword(data.tempPassword);
     } catch (err) {
@@ -703,7 +715,7 @@ function AdminUsersContent() {
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
           <Input
-            placeholder="搜索手机号/昵称..."
+            placeholder="搜索完整手机号/昵称..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
@@ -1680,7 +1692,7 @@ function AdminUsersContent() {
         onClose={() => setResetPasswordOpen(false)}
         onConfirm={confirmResetPassword}
         title="重置用户密码"
-        description={`确定重置「${detailUser?.nickname || detailUser?.phone || ""}」的密码吗？将生成一次性临时密码，并强制下线该用户全部会话（含 SSO）。`}
+        description={`确定重置「${detailUser?.nickname || detailUser?.phone || ""}」的密码吗？将生成一次性临时密码，并强制下线该用户全部会话（含 SSO）。该操作需输入二次验证码确认。`}
         confirmText="确认重置"
         type="danger"
         loading={resetPasswordLoading}

@@ -22,6 +22,8 @@ const querySchema = z.object({
 const updateSchema = z.object({
   productId: z.string().cuid(),
   pointRedeemable: z.boolean(),
+  // 兑换库存：null = 不限量；不传则保持不变
+  redeemStock: z.number().int("库存必须为整数").min(0, "库存不能为负数").max(999999).nullable().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -81,6 +83,7 @@ export async function GET(request: NextRequest) {
           price: true,
           published: true,
           pointRedeemable: true,
+          redeemStock: true,
           category: { select: { name: true } },
         },
       }),
@@ -96,6 +99,7 @@ export async function GET(request: NextRequest) {
           priceYuan: Number(p.price),
           published: p.published,
           pointRedeemable: p.pointRedeemable,
+          redeemStock: p.redeemStock,
           categoryName: p.category.name,
         })),
         pagination: {
@@ -150,7 +154,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const { productId, pointRedeemable } = parsed.data;
+    const { productId, pointRedeemable, redeemStock } = parsed.data;
 
     const existing = await prisma.product.findUnique({
       where: { id: productId },
@@ -174,15 +178,22 @@ export async function PATCH(request: NextRequest) {
 
     const product = await prisma.product.update({
       where: { id: productId },
-      data: { pointRedeemable },
-      select: { id: true, name: true, pointRedeemable: true },
+      data: {
+        pointRedeemable,
+        ...(redeemStock !== undefined ? { redeemStock } : {}),
+      },
+      select: { id: true, name: true, pointRedeemable: true, redeemStock: true },
     });
 
     await createAuditLog({
       action: "point_gift_update",
       targetType: "point_gift",
       targetId: productId,
-      detail: { productName: product.name, pointRedeemable },
+      detail: {
+        productName: product.name,
+        pointRedeemable,
+        ...(redeemStock !== undefined ? { redeemStock } : {}),
+      },
       adminId: admin.id,
       request,
     });

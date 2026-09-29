@@ -41,6 +41,14 @@ vi.mock("@/lib/upload", () => ({
   validateFileBuffer: vi.fn(),
 }));
 
+vi.mock("@/lib/ratelimit", () => ({
+  rateLimit: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock("@/lib/spent-adjustment-files", () => ({
+  isSpentProofMultipartTooLarge: vi.fn().mockReturnValue(false),
+}));
+
 vi.mock("@/lib/profile-webhook", () => ({
   sendProfileUpdateWebhook: (...args: unknown[]) => mockSendProfileUpdateWebhook(...args),
   normalizeGender: (g: string | null | undefined) => (g === "male" || g === "female" ? g : null),
@@ -51,9 +59,15 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { revalidateTag } from "next/cache";
-import { PUT } from "@/app/api/user/profile/route";
+import { PUT, POST } from "@/app/api/user/profile/route";
+import { verifyUserAuth } from "@/lib/auth";
+import { rateLimit } from "@/lib/ratelimit";
+import { isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 
 const mockRevalidateTag = revalidateTag as ReturnType<typeof vi.fn>;
+const mockVerifyUserAuth = verifyUserAuth as ReturnType<typeof vi.fn>;
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
+const mockMultipartTooLarge = isSpentProofMultipartTooLarge as ReturnType<typeof vi.fn>;
 
 function putRequest(body: unknown) {
   return new NextRequest(new URL("/api/user/profile", "http://localhost:3000"), {
@@ -242,6 +256,44 @@ describe("PUT /api/user/profile - 性别保存与缓存失效", () => {
     const res = await PUT(putRequest({ gender: "other" }));
 
     expect(res.status).toBe(400);
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/user/profile - 头像上传加固", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1" });
+    mockRateLimit.mockResolvedValue({ success: true });
+    mockMultipartTooLarge.mockReturnValue(false);
+  });
+
+  function uploadRequest() {
+    const form = new FormData();
+    form.append("file", new File([new Uint8Array([1, 2, 3])], "avatar.jpg", { type: "image/jpeg" }));
+    return new NextRequest(new URL("/api/user/profile", "http://localhost:3000"), {
+      method: "POST",
+      body: form,
+    });
+  }
+
+  it("用户级限流触发应返回 429 RATE_LIMITED", async () => {
+    mockRateLimit.mockResolvedValue({ success: false });
+
+    const res = await POST(uploadRequest());
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).error.code).toBe("RATE_LIMITED");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("Content-Length 超过粗筛上限应返回 413 FILE_TOO_LARGE", async () => {
+    mockMultipartTooLarge.mockReturnValue(true);
+
+    const res = await POST(uploadRequest());
+
+    expect(res.status).toBe(413);
+    expect((await res.json()).error.code).toBe("FILE_TOO_LARGE");
     expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 });

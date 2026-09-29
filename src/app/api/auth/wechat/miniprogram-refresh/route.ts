@@ -169,7 +169,9 @@ export async function POST(request: NextRequest) {
           reason: rotation.reason,
           ip: clientIP,
         });
-        await revokeRefreshToken(payload.id, undefined, undefined, "reuse");
+        // 仅撤销内部（非 OAuth）token 家族：与浏览器端 session-refresh 口径一致，
+        // 不应把用户在所有子站的 OAuth 授权一并吊销
+        await revokeRefreshToken(payload.id, undefined, null, "reuse");
       }
 
       logAuthEvent("user_refresh_token", {

@@ -73,7 +73,12 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: vi.fn(),
 }));
 
+vi.mock("@/lib/points", () => ({
+  invalidateProfileCache: vi.fn(),
+}));
+
 import { PUT } from "@/app/api/user/password/route";
+import { invalidateProfileCache } from "@/lib/points";
 
 function putRequest(body: unknown): NextRequest {
   return new NextRequest(new URL("/api/user/password", "http://localhost:3000"), {
@@ -140,5 +145,14 @@ describe("PUT /api/user/password - 改密后 backchannel logout", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+  });
+
+  it("改密成功后失效资料缓存（hasPassword 立即更新）", async () => {
+    mockOAuthSessionFindMany.mockResolvedValue([]);
+
+    const res = await PUT(putRequest(validBody));
+
+    expect(res.status).toBe(200);
+    expect(invalidateProfileCache).toHaveBeenCalled();
   });
 });

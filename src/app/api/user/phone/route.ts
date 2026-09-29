@@ -16,6 +16,8 @@ import { withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
+import { sendPhoneChangedNotification } from "@/lib/sms";
+import { maskPhone } from "@/lib/mask-phone";
 import { invalidateProfileCache } from "@/lib/points";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocation";
@@ -224,8 +226,16 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       userId: user.id,
       identifier: user.phone,
       success: true,
-      detail: { newPhone },
+      detail: { newPhone: maskPhone(newPhone) },
     });
+
+    // 换绑成功后向旧手机号发送安全通知（fail-soft：失败仅记日志，不阻断主流程）；
+    // 微信占位手机号（wx_ 前缀）无短信通道，跳过
+    if (isRealPhone(user.phone)) {
+      sendPhoneChangedNotification(user.phone).catch((err) => {
+        apiConsole.error("[PhoneRebind] 旧手机号安全通知发送失败:", err);
+      });
+    }
 
     // 5. 账号标识变更 → 撤销其他设备会话（保留当前设备），OAuth 会话全撤并 backchannel 通知
     try {

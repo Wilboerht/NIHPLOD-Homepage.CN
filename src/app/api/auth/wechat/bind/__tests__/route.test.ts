@@ -118,6 +118,68 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
     );
   });
 
+  it("携带 Origin 的浏览器请求即使有 bindToken 也必须过 CSRF，否则 403（防登录 CSRF）", async () => {
+    mockValidateCSRF.mockReturnValue(false);
+    (csrfForbiddenResponse as ReturnType<typeof vi.fn>).mockReturnValue(
+      NextResponse.json(
+        { success: false, error: { code: "CSRF_INVALID", message: "CSRF 验证失败" } },
+        { status: 403 }
+      )
+    );
+
+    const res = await POST(
+      createRequest(
+        { ...validBody, bindToken: "body-bind-token" },
+        { headers: { Origin: "https://evil.example.com" } }
+      )
+    );
+    const data = await res.json();
+
+    expect(mockValidateCSRF).toHaveBeenCalled();
+    expect(res.status).toBe(403);
+    expect(data.error.code).toBe("CSRF_INVALID");
+    expect(mockResolve).not.toHaveBeenCalled();
+  });
+
+  it("携带 Referer 的浏览器请求即使有 bindToken 也必须过 CSRF，否则 403", async () => {
+    mockValidateCSRF.mockReturnValue(false);
+    (csrfForbiddenResponse as ReturnType<typeof vi.fn>).mockReturnValue(
+      NextResponse.json(
+        { success: false, error: { code: "CSRF_INVALID", message: "CSRF 验证失败" } },
+        { status: 403 }
+      )
+    );
+
+    const res = await POST(
+      createRequest(
+        { ...validBody, bindToken: "body-bind-token" },
+        { headers: { Referer: "https://evil.example.com/page" } }
+      )
+    );
+    const data = await res.json();
+
+    expect(mockValidateCSRF).toHaveBeenCalled();
+    expect(res.status).toBe(403);
+    expect(data.error.code).toBe("CSRF_INVALID");
+    expect(mockResolve).not.toHaveBeenCalled();
+  });
+
+  it("携带 Origin 的浏览器请求 + bindToken + CSRF 通过时应正常绑定", async () => {
+    mockValidateCSRF.mockReturnValue(true);
+
+    const res = await POST(
+      createRequest(
+        { ...validBody, bindToken: "body-bind-token" },
+        { headers: { Origin: "http://localhost:3000" } }
+      )
+    );
+    const data = await res.json();
+
+    expect(mockValidateCSRF).toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+  });
+
   it("Cookie 通道（无 body bindToken）无 CSRF 应返回 403", async () => {
     mockValidateCSRF.mockReturnValue(false);
     (csrfForbiddenResponse as ReturnType<typeof vi.fn>).mockReturnValue(

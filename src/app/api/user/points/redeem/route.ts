@@ -9,9 +9,10 @@
  *
  * 数据操作与 OAuth 资源端点（/api/oauth/points/redeem）共用。
  */
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { rateLimit } from "@/lib/ratelimit";
 import { redeemPointsResponse } from "@/lib/points-mall-api";
 
 export const dynamic = "force-dynamic";
@@ -20,5 +21,18 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
   }
+
+  // 用户级限流：兑换会扣分并生成履约单，防高频兑换滥用
+  const limitResult = await rateLimit(`user:${payload.id}`, "default", {
+    maxRequests: 10,
+    windowMs: 60 * 1000,
+  });
+  if (!limitResult.success) {
+    return NextResponse.json(
+      { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+      { status: 429 }
+    );
+  }
+
   return redeemPointsResponse(payload.id, request);
 });

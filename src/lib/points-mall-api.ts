@@ -208,7 +208,6 @@ export async function redeemPointsResponse(userId: string, request: Request): Pr
       productId,
       addressId,
       requestId,
-      level: user.membershipLevel,
     });
 
     if (!result.ok) {
@@ -217,6 +216,7 @@ export async function redeemPointsResponse(userId: string, request: Request): Pr
         PRODUCT_NOT_REDEEMABLE: 400,
         NOT_ELIGIBLE: 403,
         ADDRESS_NOT_FOUND: 400,
+        OUT_OF_STOCK: 400,
         INSUFFICIENT: 400,
         INVALID_REQUEST: 400,
       };

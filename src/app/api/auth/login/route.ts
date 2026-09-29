@@ -27,6 +27,7 @@ import {
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       const verifyIp = getRateLimitClientIP(request);
       if (verifyIp !== smsCode.ipAddress) {
         apiConsole.warn(
-          `[Login] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${phone}`
+          `[Login] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${maskPhone(phone)}`
         );
         return NextResponse.json(
           {

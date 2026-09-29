@@ -117,13 +117,19 @@ export async function GET(request: NextRequest) {
     response.cookies.set(WECHAT_NONCE_COOKIE_NAME, nonce, WECHAT_NONCE_COOKIE_OPTIONS);
     return response;
   } catch (error) {
+    // 生产环境不向客户端泄露内部错误详情（可能含配置/密钥线索），仅服务端日志；
+    // 开发环境保留详情便于调试（与 wechat/callback 的口径一致）
     apiConsole.error("[WechatAuth] 异常:", error);
+    const message =
+      process.env.NODE_ENV === "development" && error instanceof Error
+        ? error.message
+        : "服务器错误";
     return NextResponse.json(
       {
         success: false,
         error: {
           code: "INTERNAL_ERROR",
-          message: error instanceof Error ? error.message : "服务器错误",
+          message,
         },
       },
       { status: 500 }

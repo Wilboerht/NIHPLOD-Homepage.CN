@@ -3,7 +3,7 @@
  * GET /api/user/spent-adjustments/image?key=<objectName>
  *
  * 仅允许凭证所属用户查看：验证登录态 + 申请归属后，重定向到私有 bucket 的
- * 短时效签名 URL（4 小时）。私有 bucket 未配置时返回 404。
+ * 短时效签名 URL（15 分钟）。私有 bucket 未配置时返回 404。
  * 归属校验与签名逻辑与 OAuth 资源端点共用（见 src/lib/spent-adjustment-files.ts）。
  */
 import { NextRequest, NextResponse } from "next/server";

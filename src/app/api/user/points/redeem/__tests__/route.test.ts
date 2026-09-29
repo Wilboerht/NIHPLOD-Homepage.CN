@@ -17,6 +17,10 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: vi.fn(),
 }));
 
+vi.mock("@/lib/ratelimit", () => ({
+  rateLimit: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: { user: { findUnique: vi.fn() } },
 }));
@@ -31,11 +35,13 @@ vi.mock("@/lib/point-gifts", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { redeemGiftForUser } from "@/lib/point-gifts";
+import { rateLimit } from "@/lib/ratelimit";
 import { POST } from "@/app/api/user/points/redeem/route";
 
 const mockUserFindUnique = (prisma.user as unknown as { findUnique: ReturnType<typeof vi.fn> })
   .findUnique;
 const mockRedeem = redeemGiftForUser as ReturnType<typeof vi.fn>;
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 function postRequest(body: unknown): NextRequest {
   return new NextRequest(new URL("/api/user/points/redeem", "http://localhost:3000"), {
@@ -103,8 +109,17 @@ describe("POST /api/user/points/redeem", () => {
       productId: VALID_BODY.productId,
       addressId: VALID_BODY.addressId,
       requestId: "req-uuid-1",
-      level: "GOLD",
     });
+  });
+
+  it("触发用户级限流应返回 429 RATE_LIMITED 且不进入兑换流程", async () => {
+    mockRateLimit.mockResolvedValueOnce({ success: false });
+
+    const res = await POST(postRequest(VALID_BODY));
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).error.code).toBe("RATE_LIMITED");
+    expect(mockRedeem).not.toHaveBeenCalled();
   });
 
   it("积分不足应返回 400 INSUFFICIENT", async () => {
@@ -114,6 +129,15 @@ describe("POST /api/user/points/redeem", () => {
 
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("INSUFFICIENT");
+  });
+
+  it("库存不足应返回 400 OUT_OF_STOCK", async () => {
+    mockRedeem.mockResolvedValue({ ok: false, code: "OUT_OF_STOCK", message: "该礼品已兑完" });
+
+    const res = await POST(postRequest(VALID_BODY));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("OUT_OF_STOCK");
   });
 
   it("普通档应返回 403 NOT_ELIGIBLE", async () => {

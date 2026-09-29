@@ -91,7 +91,9 @@ export type AuditAction =
   | "admin_login"
   | "admin_logout"
   | "refresh_token_reuse_detected"
-  | "sso_audit_export";
+  | "sso_audit_export"
+  | "user_export"
+  | "audit_log_export";
 
 export type AuditTargetType =
   | "order"
@@ -194,6 +196,8 @@ export const AUDIT_ACTIONS = [
   "admin_logout",
   "refresh_token_reuse_detected",
   "sso_audit_export",
+  "user_export",
+  "audit_log_export",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [

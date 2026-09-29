@@ -205,7 +205,7 @@ export function KineticBackground() {
             />
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
               <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
-                开始测肤
+                在线测肤
               </span>
             </div>
           </div>

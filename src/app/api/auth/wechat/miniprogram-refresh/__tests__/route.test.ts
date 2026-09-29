@@ -196,6 +196,8 @@ describe("POST /api/auth/wechat/miniprogram-refresh", () => {
 
     expect(res.status).toBe(401);
     expect(data.error.code).toBe("TOKEN_REVOKED");
-    expect(mockRevoke).toHaveBeenCalledWith("user-1", undefined, undefined, "reuse");
+    // 重用撤销范围与浏览器端 session-refresh 对齐：clientId=null 仅撤内部 token，
+    // 不殃及用户在各子站的 OAuth 授权 token
+    expect(mockRevoke).toHaveBeenCalledWith("user-1", undefined, null, "reuse");
   });
 });

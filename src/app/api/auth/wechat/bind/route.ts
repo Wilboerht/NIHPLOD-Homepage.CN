@@ -72,10 +72,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // CSRF 校验：body 携带 bindToken 的非浏览器通道（小程序等）无 Cookie，无法双端比对，予以豁免；
-    // 浏览器 Cookie 通道保持强制校验。豁免安全性：绑定必须通过 SMS 验证码（攻击者无法获取），
-    // 且 bindToken 为服务端签名 JWT，不可伪造。
-    if (!result.data.bindToken && !validateCSRFToken(request)) {
+    // CSRF 校验：body 携带 bindToken 的非浏览器通道（小程序等）无 Cookie，无法双端比对，予以豁免。
+    // 豁免前提：请求不得携带 Origin/Referer —— 小程序 wx.request 不携带来源头；浏览器发起的
+    // 跨站 POST（含 text/plain 简单请求）浏览器强制携带 Origin，因此携带来源头的请求即使带
+    // bindToken 也仍走 CSRF 校验，杜绝跨站滥用该豁免发起登录 CSRF（与 /api/auth/send-code
+    // 对 bind 通道的豁免口径一致）。豁免安全性：绑定必须通过 SMS 验证码（攻击者无法获取），
+    // 且 bindToken 为服务端签名 JWT，不可伪造。浏览器 Cookie 通道保持强制校验。
+    const hasBrowserOrigin = Boolean(
+      request.headers.get("origin") || request.headers.get("referer")
+    );
+    if ((!result.data.bindToken || hasBrowserOrigin) && !validateCSRFToken(request)) {
       return csrfForbiddenResponse();
     }
 

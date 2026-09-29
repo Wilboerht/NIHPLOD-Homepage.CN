@@ -10,7 +10,8 @@ import { createCipheriv, createDecipheriv, randomBytes, createHash, timingSafeEq
 import { LRUCache } from "lru-cache";
 
 // TOTP 重放保护：同一 code 在窗口期内仅允许使用一次
-// TTL = 2 × period (60 秒)，覆盖 30 秒时间步长的前后各一步
+// otplib v13 默认 epochTolerance=0，即仅当前 30 秒步长的验证码有效（不容忍前后步长）；
+// TTL 取 2 × period（60 秒），覆盖验证码的整个有效期，防止有效期内重复使用
 const usedTotpCodes = new LRUCache<string, number>({
   max: 5000,
   ttl: 60 * 1000,

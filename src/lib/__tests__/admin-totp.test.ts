@@ -122,4 +122,19 @@ describe("requireMoneyOperationTotp", () => {
       data: { totpBackupCodes: JSON.stringify(["hashed-2"]) },
     });
   });
+
+  it("同一动态验证码不可重放（原子消费，二次使用返回 TOTP_INVALID）", async () => {
+    (verifyTOTP as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+    // 首次消费成功
+    const first = await requireMoneyOperationTotp("admin-1", "654321");
+    expect(first).toBeNull();
+
+    // 重放同一验证码 → 拒绝
+    const second = await requireMoneyOperationTotp("admin-1", "654321");
+    const data = await second!.json();
+
+    expect(second!.status).toBe(400);
+    expect(data.error.code).toBe("TOTP_INVALID");
+  });
 });

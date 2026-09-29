@@ -11,7 +11,7 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashIdentifier } from "@/lib/auth-security";
-import { revokeAccessToken, isAccessTokenRevoked } from "@/lib/token-blacklist";
+import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 
 // 管理员账户级防爆破配置
 const ADMIN_MAX_ATTEMPTS = 5;
@@ -186,22 +186,30 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
-    // 账号已被禁用或软删除
-    if (admin && (admin.status !== "ACTIVE" || admin.deletedAt !== null)) {
-      await recordAdminAttempt(email, false, request);
-      return NextResponse.json(
-        { success: false, error: { code: "ACCOUNT_DISABLED", message: "账号已被禁用" } },
-        { status: 403 }
-      );
-    }
+    // 账号已被禁用或软删除：对外与"管理员不存在/密码错误"统一返回 INVALID_CREDENTIALS
+    //（防账号枚举），禁用事实仅写入服务端审计日志
+    const adminDisabled = Boolean(admin && (admin.status !== "ACTIVE" || admin.deletedAt !== null));
 
-    // 使用恒定时间比较防御时序攻击：无论用户是否存在都执行一次 bcrypt
-    const targetHash = admin ? admin.password : getDummyHash();
+    // 使用恒定时间比较防御时序攻击：无论用户是否存在、是否被禁用都执行一次 bcrypt
+    //（禁用账号用 dummy 哈希，避免跳过比较产生时序差异泄露账号存在性）
+    const targetHash = admin && !adminDisabled ? admin.password : getDummyHash();
     const isPasswordValid = await verifyPassword(password, targetHash);
 
-    // 使用通用错误信息，避免泄露用户是否存在
-    if (!admin || !isPasswordValid) {
+    // 使用通用错误信息，避免泄露用户是否存在或是否被禁用
+    if (!admin || adminDisabled || !isPasswordValid) {
       await recordAdminAttempt(email, false, request);
+      if (admin && adminDisabled) {
+        apiConsole.warn(`[AdminLogin] 已禁用/已删除账号尝试登录: adminId=${admin.id}`);
+        // 审计失败不阻断响应（createAuditLog 内部已 try/catch）
+        await createAuditLog({
+          action: "login",
+          targetType: "admin",
+          targetId: admin.id,
+          detail: { email: admin.email, reason: "account_disabled" },
+          adminId: admin.id,
+          request,
+        });
+      }
       return NextResponse.json(
         {
           success: false,
@@ -260,15 +268,12 @@ export async function POST(request: NextRequest) {
         const secret = decryptTOTPSecret(admin.totpSecret);
         totpValid = verifyTOTP(totpCode, secret);
         if (totpValid) {
-          // 一次性：同一验证码在有效窗口内跨实例防重放
+          // 一次性：原子消费（唯一约束插入，冲突即重放），消除 check-then-set 的 TOCTOU
+          // 窗口——两个并发请求不再能用同一验证码双双通过；存储故障时 fail-closed 拒绝
           const replayKey = `totp:${admin.id}:${totpCode}`;
-          if (await isAccessTokenRevoked(replayKey)) {
-            apiConsole.warn("[AdminLogin] 检测到 TOTP 重放:", admin.id);
+          if (!(await consumeAccessTokenOnce(replayKey))) {
+            apiConsole.warn("[AdminLogin] 检测到 TOTP 重放或存储不可用:", admin.id);
             totpValid = false;
-          } else {
-            await revokeAccessToken(replayKey).catch((err) =>
-              apiConsole.warn("[AdminLogin] 标记验证码已用失败:", err)
-            );
           }
         }
       } catch (err) {

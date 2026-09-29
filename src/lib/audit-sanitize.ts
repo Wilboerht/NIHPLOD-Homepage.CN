@@ -7,7 +7,8 @@
 import { maskPhone, maskAddress, maskIdentifier } from "./mask-phone";
 
 const PHONE_KEYS = new Set(["phone", "newPhone", "oldPhone", "mobile"]);
-const ADDRESS_KEYS = new Set(["address", "detail"]);
+const ADDRESS_KEYS = new Set(["address"]);
+const BIRTHDAY_KEYS = new Set(["birthday", "birthdayBefore", "birthdayAfter"]);
 const IDENTIFIER_KEYS = new Set([
   "recipient",
   "wechatOpenId",
@@ -27,6 +28,7 @@ export function maskAuditDetail(detail: unknown): unknown {
     if (typeof value === "string") {
       if (PHONE_KEYS.has(key)) result[key] = value ? maskPhone(value) : value;
       else if (ADDRESS_KEYS.has(key)) result[key] = maskAddress(value);
+      else if (BIRTHDAY_KEYS.has(key)) result[key] = value ? "****-**-**" : value;
       else if (IDENTIFIER_KEYS.has(key)) result[key] = maskIdentifier(value);
       else result[key] = value;
     } else {

@@ -3,11 +3,14 @@
  * POST /api/admin/users/[id]/reset-password - 生成一次性临时密码并强制下线全部会话
  *
  * 安全约束：
+ * - 资金/安全敏感操作：须通过二次验证（TOTP 或备用码，requireMoneyOperationTotp）
  * - 临时密码仅本次响应返回一次，数据库仅存 bcrypt 哈希
  * - 重置后撤销全部 Refresh Token + access token 黑名单 + OAuth 会话 + backchannel logout
+ * - 重置成功后向被重置用户手机号发送安全提醒短信（fail-soft，不阻断主流程）
  * - 操作写入审计（user_password_reset）
  */
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
@@ -21,8 +24,15 @@ import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { maskPhone } from "@/lib/mask-phone";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { sendAdminPasswordResetNotification } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
+
+const resetPasswordSchema = z.object({
+  // 资金/安全类操作二次验证码（TOTP 或备用码）
+  totpCode: z.string().max(20).optional(),
+});
 
 const PASSWORD_SETS = {
   upper: "ABCDEFGHJKLMNPQRSTUVWXYZ",
@@ -78,6 +88,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
+
+    // 请求体可选（历史客户端不带 body），但携带时必须通过 schema 校验
+    const body = await request.json().catch(() => ({}));
+    const parsed = resetPasswordSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+        { status: 400 }
+      );
+    }
+
+    // 资金/安全类操作：二次验证（TOTP / 备用码），与积分调整同一口径
+    const totpResponse = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode);
+    if (totpResponse) return totpResponse;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -150,6 +174,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       detail: { phone: maskPhone(user.phone), revokedOAuthSessions },
       adminId: admin.id,
       request,
+    });
+
+    // 安全提醒短信（fail-soft：发送失败仅记日志，不影响重置结果）
+    sendAdminPasswordResetNotification(user.phone).catch((err) => {
+      apiConsole.error("[AdminResetPassword] 安全通知发送失败:", err);
     });
 
     return NextResponse.json({

@@ -48,6 +48,7 @@ vi.mock("@/lib/sms", () => ({
   verifyCode: vi.fn(),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   sendLoginCode: vi.fn().mockResolvedValue({ success: true }),
+  sendPhoneChangedNotification: vi.fn().mockResolvedValue(undefined),
   generateVerifyCode: vi.fn().mockReturnValue("123456"),
   hashVerifyCode: vi.fn().mockReturnValue("hashed-code"),
   SMS_CODE_MAX_ATTEMPTS: 5,
@@ -67,12 +68,15 @@ vi.mock("@/lib/logger", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/ratelimit";
-import { verifyCode, recordSmsCodeFailure, sendLoginCode } from "@/lib/sms";
+import { verifyCode, recordSmsCodeFailure, sendLoginCode, sendPhoneChangedNotification } from "@/lib/sms";
 import { invalidateProfileCache } from "@/lib/points";
+import { logAuthEvent } from "@/lib/auth-logger";
 import { PUT } from "@/app/api/user/phone/route";
 import { POST } from "@/app/api/user/phone/send-code/route";
 
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
+const mockSendPhoneChangedNotification = sendPhoneChangedNotification as ReturnType<typeof vi.fn>;
+const mockLogAuthEvent = logAuthEvent as ReturnType<typeof vi.fn>;
 
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
 const mockUserUpdate = prisma.user.update as ReturnType<typeof vi.fn>;
@@ -211,6 +215,38 @@ describe("换绑手机号", () => {
         data: { phone: "13900139000" },
       });
       expect(invalidateProfileCache).toHaveBeenCalled();
+    });
+
+    it("换绑成功：审计 detail 中新手机号脱敏，并向旧手机号发送安全通知", async () => {
+      mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
+      const res = await PUT(
+        createRequest(
+          "/api/user/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
+      );
+      expect(res.status).toBe(200);
+      // 审计日志不明文落新手机号
+      expect(mockLogAuthEvent).toHaveBeenCalledWith(
+        "user_phone_changed",
+        expect.objectContaining({ detail: { newPhone: "139****9000" } })
+      );
+      // 安全通知发往旧手机号
+      expect(mockSendPhoneChangedNotification).toHaveBeenCalledWith("13800138000");
+    });
+
+    it("微信占位手机号账号换绑：不向旧号发送通知（无短信通道）", async () => {
+      mockUserFindUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
+        "id" in args.where ? { id: "user-1", phone: "wx_abc123" } : null
+      );
+      mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
+
+      const res = await PUT(
+        createRequest("/api/user/phone", { newPhone: "13900139000", newCode: "654321" }, "PUT")
+      );
+      expect(res.status).toBe(200);
+      expect(mockSendPhoneChangedNotification).not.toHaveBeenCalled();
     });
 
     it("微信占位手机号账号换绑：跳过当前验证码，仅核销新手机验证码", async () => {

@@ -64,5 +64,19 @@ export async function isAccessTokenRevoked(jti: string): Promise<boolean> {
   return tokenBlacklistStore.isAccessTokenRevoked(jti);
 }
 
+/**
+ * 原子消费黑名单条目（检查 + 标记合一，消除 TOCTOU 窗口）。
+ * 适用一次性凭证防重放（如管理员 TOTP 验证码）：同一 jti 仅首次调用返回 true，
+ * 后续（含并发/跨实例）返回 false；存储故障时 fail-closed 返回 false。
+ *
+ * @param expiresAtMs - 记录过期时间（毫秒时间戳），省略时回退默认 2h
+ */
+export async function consumeAccessTokenOnce(
+  jti: string,
+  expiresAtMs?: number
+): Promise<boolean> {
+  return tokenBlacklistStore.consumeAccessTokenOnce(jti, expiresAtMs);
+}
+
 // 同步兼容导出（仅在确认单实例内存模式时使用）
 export { tokenBlacklistStore };

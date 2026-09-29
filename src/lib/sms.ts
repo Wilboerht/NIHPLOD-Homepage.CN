@@ -88,7 +88,7 @@ import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 import { apiConsole } from "@/lib/logger";
 
-export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET" | "SPENT_REVIEW";
+export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET" | "SPENT_REVIEW" | "ADMIN_PASSWORD_RESET" | "PHONE_CHANGED";
 
 export interface SMSParams {
   phone: string;
@@ -273,6 +273,8 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
     LOGIN_CODE: process.env.SMS_TEMPLATE_CODE_LOGIN,
     PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_PASSWORD_RESET,
     SPENT_REVIEW: process.env.SMS_TEMPLATE_CODE_SPENT_REVIEW,
+    ADMIN_PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_ADMIN_PASSWORD_RESET,
+    PHONE_CHANGED: process.env.SMS_TEMPLATE_CODE_PHONE_CHANGED,
   };
   return templates[template] || null;
 }
@@ -284,12 +286,16 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
  * 当前模板均为单参数：
  * - LOGIN_CODE：{1} 为验证码
  * - PASSWORD_RESET：{1} 为密码变更时间（安全通知文案）
+ * - ADMIN_PASSWORD_RESET：{1} 为密码被管理员重置的时间（安全通知文案）
+ * - PHONE_CHANGED：{1} 为手机号变更时间（安全通知文案，发往旧手机号）
  * 若未来模板改为多参数，在此按模板变量顺序追加键名即可。
  */
 const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
   LOGIN_CODE: ["code"],
   PASSWORD_RESET: ["time"],
   SPENT_REVIEW: ["result"],
+  ADMIN_PASSWORD_RESET: ["time"],
+  PHONE_CHANGED: ["time"],
 };
 
 /**
@@ -374,6 +380,8 @@ function getTencentTemplateId(template: SMSTemplate): string | null {
     LOGIN_CODE: process.env.TENCENT_SMS_TEMPLATE_ID_LOGIN,
     PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_PASSWORD_RESET,
     SPENT_REVIEW: process.env.TENCENT_SMS_TEMPLATE_ID_SPENT_REVIEW,
+    ADMIN_PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_ADMIN_PASSWORD_RESET,
+    PHONE_CHANGED: process.env.TENCENT_SMS_TEMPLATE_ID_PHONE_CHANGED,
   };
   return templates[template] || null;
 }
@@ -405,6 +413,44 @@ export async function sendPasswordChangedNotification(phone: string): Promise<vo
     }
   } catch (error) {
     apiConsole.error("[PasswordNotification] 发送异常:", error);
+  }
+}
+
+/**
+ * 发送"密码被管理员重置"安全通知（管理端重置用户密码后调用）
+ * 模板未配置或发送失败仅记日志，不影响重置主流程（fail-soft）
+ */
+export async function sendAdminPasswordResetNotification(phone: string): Promise<void> {
+  try {
+    const result = await sendSMS({
+      phone,
+      template: "ADMIN_PASSWORD_RESET",
+      params: { time: new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) },
+    });
+    if (!result.success) {
+      apiConsole.error("[AdminPasswordResetNotification] 短信发送失败:", result.error);
+    }
+  } catch (error) {
+    apiConsole.error("[AdminPasswordResetNotification] 发送异常:", error);
+  }
+}
+
+/**
+ * 发送"手机号已变更"安全通知（换绑成功后发往旧手机号）
+ * 模板未配置或发送失败仅记日志，不影响换绑主流程（fail-soft）
+ */
+export async function sendPhoneChangedNotification(oldPhone: string): Promise<void> {
+  try {
+    const result = await sendSMS({
+      phone: oldPhone,
+      template: "PHONE_CHANGED",
+      params: { time: new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) },
+    });
+    if (!result.success) {
+      apiConsole.error("[PhoneChangedNotification] 短信发送失败:", result.error);
+    }
+  } catch (error) {
+    apiConsole.error("[PhoneChangedNotification] 发送异常:", error);
   }
 }
 

@@ -20,6 +20,7 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { sendPasswordChangedNotification } from "@/lib/sms";
 import { updateUserPassword } from "@/lib/password-policy";
 import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocation";
+import { invalidateProfileCache } from "@/lib/points";
 import {
   checkAccountLockout,
   recordLoginAttempt,
@@ -156,6 +157,9 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     sendPasswordChangedNotification(user.phone).catch((err) => {
       apiConsole.error("[ChangePassword] 安全通知发送失败:", err);
     });
+
+    // 失效资料缓存：profile 缓存携带 hasPassword，改密后必须立即失效
+    invalidateProfileCache();
 
     logAuthEvent("user_set_password", {
       userId: user.id,

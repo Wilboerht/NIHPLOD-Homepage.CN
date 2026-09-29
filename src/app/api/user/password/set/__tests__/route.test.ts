@@ -59,9 +59,21 @@ vi.mock("@/lib/session-revocation", () => ({
     mockRevokeOtherSessions(...args),
 }));
 
+vi.mock("@/lib/ratelimit", () => ({
+  rateLimit: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock("@/lib/points", () => ({
+  invalidateProfileCache: vi.fn(),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
+import { rateLimit } from "@/lib/ratelimit";
+import { invalidateProfileCache } from "@/lib/points";
 import { POST } from "@/app/api/user/password/set/route";
+
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
 const mockSmsUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
@@ -150,5 +162,24 @@ describe("POST /api/user/password/set 验证码防爆破", () => {
       userId: "user-1",
       currentRefreshToken: null,
     });
+  });
+
+  it("用户级限流触发应返回 429 RATE_LIMITED，不消耗验证码", async () => {
+    mockRateLimit.mockResolvedValueOnce({ success: false });
+
+    const res = await POST(createRequest(setBody));
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).error.code).toBe("RATE_LIMITED");
+    expect(mockSmsFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("设置成功后失效资料缓存（hasPassword 立即更新）", async () => {
+    mockVerifyCode.mockReturnValue(true);
+
+    const res = await POST(createRequest(setBody));
+
+    expect(res.status).toBe(200);
+    expect(invalidateProfileCache).toHaveBeenCalled();
   });
 });

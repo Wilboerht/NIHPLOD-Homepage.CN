@@ -1,13 +1,14 @@
 /**
  * 积分兑换核心逻辑测试（兑换产品来自产品库）
- * 覆盖：兑礼率折算（普通档不参与）、兑换事务（幂等/产品校验/地址校验/扣分/记录）、履约 CAS
+ * 覆盖：兑礼率折算（普通档不参与）、兑换事务（幂等/产品校验/事务内等级重读/地址校验/库存扣减/扣分/记录）、履约 CAS
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { txClient } = vi.hoisted(() => ({
   txClient: {
     pointRedemption: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
-    product: { findUnique: vi.fn() },
+    product: { findUnique: vi.fn(), updateMany: vi.fn() },
+    user: { findUnique: vi.fn() },
     userAddress: { findUnique: vi.fn() },
   },
 }));
@@ -38,6 +39,8 @@ const mockRedeemPoints = redeemPoints as ReturnType<typeof vi.fn>;
 const mockTxFindUnique = txClient.pointRedemption.findUnique as ReturnType<typeof vi.fn>;
 const mockTxCreate = txClient.pointRedemption.create as ReturnType<typeof vi.fn>;
 const mockTxProductFind = txClient.product.findUnique as ReturnType<typeof vi.fn>;
+const mockTxProductUpdateMany = txClient.product.updateMany as ReturnType<typeof vi.fn>;
+const mockTxUserFind = txClient.user.findUnique as ReturnType<typeof vi.fn>;
 const mockTxAddressFind = txClient.userAddress.findUnique as ReturnType<typeof vi.fn>;
 
 const REDEEMABLE_PRODUCT = {
@@ -46,6 +49,7 @@ const REDEEMABLE_PRODUCT = {
   price: new Prisma.Decimal("300.00"),
   pointRedeemable: true,
   published: true,
+  redeemStock: null,
 };
 
 const SHIPPING_ADDRESS = {
@@ -76,17 +80,18 @@ describe("redeemGiftForUser 兑换事务", () => {
     vi.clearAllMocks();
     mockTxFindUnique.mockResolvedValue(null);
     mockTxProductFind.mockResolvedValue(REDEEMABLE_PRODUCT);
+    mockTxProductUpdateMany.mockResolvedValue({ count: 1 });
+    mockTxUserFind.mockResolvedValue({ membershipLevel: "GOLD" });
     mockTxAddressFind.mockResolvedValue(SHIPPING_ADDRESS);
     mockTxCreate.mockResolvedValue({ id: "redemption-1" });
     mockRedeemPoints.mockResolvedValue({ ok: true, available: 770, spent: 230 });
   });
 
-  it("成功兑换：按等级折算扣分并生成兑换记录（含产品/收货快照）", async () => {
+  it("成功兑换：按事务内读取的等级折算扣分并生成兑换记录（含产品/收货快照）", async () => {
     const result = await redeemGiftForUser({
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
-      level: "GOLD",
       addressId: "addr-1",
     });
 
@@ -132,7 +137,6 @@ describe("redeemGiftForUser 兑换事务", () => {
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
-      level: "GOLD",
       addressId: "addr-1",
     });
 
@@ -152,7 +156,6 @@ describe("redeemGiftForUser 兑换事务", () => {
       userId: "user-1",
       productId: "product-x",
       requestId: "req-1",
-      level: "GOLD",
       addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "PRODUCT_NOT_FOUND" });
@@ -164,18 +167,17 @@ describe("redeemGiftForUser 兑换事务", () => {
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
-      level: "GOLD",
       addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "PRODUCT_NOT_REDEEMABLE" });
   });
 
-  it("普通档：NOT_ELIGIBLE", async () => {
+  it("事务内读到普通档：NOT_ELIGIBLE（等级以事务内重读为准）", async () => {
+    mockTxUserFind.mockResolvedValue({ membershipLevel: "REGULAR" });
     const result = await redeemGiftForUser({
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
-      level: "REGULAR",
       addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "NOT_ELIGIBLE" });
@@ -188,12 +190,51 @@ describe("redeemGiftForUser 兑换事务", () => {
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
-      level: "GOLD",
       addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "ADDRESS_NOT_FOUND" });
     expect(mockRedeemPoints).not.toHaveBeenCalled();
     expect(mockTxCreate).not.toHaveBeenCalled();
+  });
+
+  it("限量库存：条件扣减（CAS）成功后正常兑换", async () => {
+    mockTxProductFind.mockResolvedValue({ ...REDEEMABLE_PRODUCT, redeemStock: 5 });
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+    expect(result).toMatchObject({ ok: true, duplicated: false });
+    expect(mockTxProductUpdateMany).toHaveBeenCalledWith({
+      where: { id: "product-1", redeemStock: { gte: 1 } },
+      data: { redeemStock: { decrement: 1 } },
+    });
+  });
+
+  it("库存为 0（条件更新命中 0 行）：OUT_OF_STOCK 且不扣分", async () => {
+    mockTxProductFind.mockResolvedValue({ ...REDEEMABLE_PRODUCT, redeemStock: 0 });
+    mockTxProductUpdateMany.mockResolvedValue({ count: 0 });
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+    expect(result).toMatchObject({ ok: false, code: "OUT_OF_STOCK" });
+    expect(mockRedeemPoints).not.toHaveBeenCalled();
+    expect(mockTxCreate).not.toHaveBeenCalled();
+  });
+
+  it("redeemStock 为 null：不限量，不扣库存", async () => {
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+    expect(result).toMatchObject({ ok: true });
+    expect(mockTxProductUpdateMany).not.toHaveBeenCalled();
   });
 
   it("积分不足：INSUFFICIENT", async () => {
@@ -202,7 +243,6 @@ describe("redeemGiftForUser 兑换事务", () => {
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
-      level: "GOLD",
       addressId: "addr-1",
     });
     expect(result).toMatchObject({ ok: false, code: "INSUFFICIENT" });

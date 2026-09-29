@@ -63,7 +63,8 @@ export async function GET(request: NextRequest) {
     if (params.search) {
       where.OR = [
         { id: { equals: params.search } },
-        { phone: { contains: params.search, mode: "insensitive" } },
+        // 手机号仅精确匹配：模糊匹配（contains）会让无敏感权限的角色逐位穷举还原完整手机号
+        { phone: { equals: params.search } },
         { nickname: { contains: params.search, mode: "insensitive" } },
       ];
     }
@@ -115,6 +116,20 @@ export async function GET(request: NextRequest) {
           ].join(",")
         )
         .join("\n");
+
+      // 导出审计：记录筛选条件与导出条数（search 可能为完整手机号，统一脱敏）
+      const { createAuditLog } = await import("@/lib/audit");
+      await createAuditLog({
+        action: "user_export",
+        targetType: "user",
+        detail: {
+          search: params.search ? maskPhone(params.search) : null,
+          status: params.status ?? null,
+          exportedCount: users.length,
+        },
+        adminId: admin.id,
+        request,
+      });
 
       return new NextResponse(csvHeaders + csvRows, {
         headers: {

@@ -10,6 +10,8 @@ import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { updateProfileSchema } from "@/lib/profile-schema";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
+import { rateLimit } from "@/lib/ratelimit";
+import { isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 
@@ -222,7 +224,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 获取上传文件
+    // 2. 用户级上传限流（与消费补录凭证上传同一口径，防滥用）
+    const limitResult = await rateLimit(`user-upload:${payload.id}`, "default", {
+      maxRequests: 20,
+      windowMs: 60 * 1000,
+    });
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "上传过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
+    }
+
+    // 3. 解析 multipart 前先按 Content-Length 粗筛，避免超大请求体完整缓冲进内存
+    if (isSpentProofMultipartTooLarge(request.headers.get("content-length"))) {
+      return NextResponse.json(
+        { success: false, error: { code: "FILE_TOO_LARGE", message: "文件过大" } },
+        { status: 413 }
+      );
+    }
+
+    // 4. 获取上传文件
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -233,7 +255,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. 验证文件
+    // 5. 验证文件
     const validation = validateUploadServer(file.type, file.size);
     if (!validation.valid) {
       return NextResponse.json(
@@ -242,10 +264,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 读取内容并处理
+    // 6. 读取内容并处理
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 4.1 通过 magic bytes 检测真实文件类型
+    // 6.1 通过 magic bytes 检测真实文件类型
     const fileTypeResult = await validateFileBuffer(buffer);
     if (!fileTypeResult.valid) {
       return NextResponse.json(
@@ -257,7 +279,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4.2 头像场景仅接受图片（通用上传白名单含 PDF，此处收紧）
+    // 6.2 头像场景仅接受图片（通用上传白名单含 PDF，此处收紧）
     if (!fileTypeResult.detectedType?.startsWith("image/")) {
       return NextResponse.json(
         {
@@ -279,7 +301,7 @@ export async function POST(request: NextRequest) {
     // 使用统一上传逻辑 (自动根据策略选择 OSS 或本地)
     const result = await processAndSaveImage(buffer, safeName || "avatar", "avatars");
 
-    // 5. 更新数据库中的头像链接（先读旧值，用于判断头像是否实际变更以决定是否推 webhook）
+    // 7. 更新数据库中的头像链接（先读旧值，用于判断头像是否实际变更以决定是否推 webhook）
     const previousAvatar = (
       await prisma.user.findUnique({ where: { id: payload.id }, select: { avatar: true } })
     )?.avatar;

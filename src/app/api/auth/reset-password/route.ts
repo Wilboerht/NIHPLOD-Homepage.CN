@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { passwordSchema } from "@/lib/password";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
       const verifyIp = getRateLimitClientIP(request);
       if (verifyIp !== smsCode.ipAddress) {
         apiConsole.warn(
-          `[ResetPassword] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${phone}`
+          `[ResetPassword] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}, 手机=${maskPhone(phone)}`
         );
         return NextResponse.json(
           {
