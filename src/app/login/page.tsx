@@ -975,10 +975,10 @@ function LoginPageContent() {
   const scopeDescriptions: Record<string, string> = {
     openid: "识别您的账号（用于登录）",
     profile: "读取昵称、头像",
-    phone: "读取脱敏手机号",
+    phone: "读取脱敏手机号；换绑手机号（需短信验证）",
     membership: "读取会员等级、累计消费；读取和管理积分兑换与收货地址",
     birthday: "读取生日信息",
-    "profile:write": "修改昵称、头像、生日、性别",
+    "profile:write": "修改昵称、头像、生日、性别、密码",
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {
