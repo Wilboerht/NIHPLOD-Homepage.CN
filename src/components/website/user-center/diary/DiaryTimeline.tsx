@@ -174,8 +174,9 @@ export function DiaryTimeline({
   return (
     <div>
       {!hasAnyEvent && (
-        /* 空态引导：无框居中（与左列"解锁引导"同一种样式语言，全站弹层一致） */
-        <div className="py-10 text-center mb-6">
+        /* 空态引导：无框居中（与左列"解锁引导"同一种样式语言，全站弹层一致）；
+           min-h 撑起时间线区域高度，提示文字在区域内垂直居中 */
+        <div className="flex min-h-[240px] flex-col items-center justify-center py-10 text-center mb-6">
           <p className="text-[13px] text-brand-charcoal/70 font-light leading-[1.8] tracking-[0.06em] mb-4">
             完成一次测肤后，这里会自动生成你的护肤记录
           </p>

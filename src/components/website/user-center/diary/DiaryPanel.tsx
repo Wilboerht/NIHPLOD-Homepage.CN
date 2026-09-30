@@ -745,9 +745,17 @@ export function DiaryPanel() {
                               <div className="md:hidden">{panelActions}</div>
                             </div>
                           </div>
-                          {recentCheckInCount >= 2 && (
+                          {recentCheckInCount >= 2 ? (
                             <div className="mb-4">
                               <CheckInTrend entries={entries} todayStr={todayStr} />
+                            </div>
+                          ) : (
+                            /* 无色带占位：撑满色带高度（与 CheckInTrend 的 viewBox 比例一致），
+                               提示文字在占位空间内居中，避免数据不足时布局塌缩 */
+                            <div className="mb-4 flex w-full aspect-[640/92] items-center justify-center text-center">
+                              <p className="text-[13px] text-brand-charcoal/60 font-light">
+                                近 30 天内打卡不足 2 天，暂无打卡色带可看
+                              </p>
                             </div>
                           )}
                           <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-4 border-t border-stone-200/60`}>
