@@ -789,10 +789,13 @@ export function DiaryPanel() {
 
                     {/* 护肤历程 */}
                     <section>
-                      <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
-                        <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
-                        护肤历程
-                      </h3>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
+                          <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
+                          护肤历程
+                        </h3>
+                        {goTestLink}
+                      </div>
 
                       {testsError && (
                           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
