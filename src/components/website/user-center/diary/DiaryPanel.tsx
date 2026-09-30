@@ -728,7 +728,7 @@ export function DiaryPanel() {
                           标题行与「肌肤变化」镜像：标题在左，右侧为 30 天计数（+ 移动端今日打卡 CTA；
                           桌面端 CTA 由面板标题行承载）；时间线的今日引导据此收为纯文字提示 */}
                       {summary && summary.totalCheckins > 0 && (
-                        <div className="mt-8 border-t border-stone-300/80 pt-6">
+                        <div className="mt-6 border-t border-stone-300/80 pt-6">
                           <div className="flex items-center justify-between gap-3 mb-3">
                             <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
                               <Flame className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
