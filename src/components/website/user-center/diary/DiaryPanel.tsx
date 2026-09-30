@@ -573,11 +573,12 @@ export function DiaryPanel() {
                       transition={{ duration: 0.18 }}
                     >
                 {/* ===== 登录：概览（肌肤变化 + 打卡）+ 时间线 ===== */}
-                {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；左列 sticky 且限高内部滚动，
-                    避免左列高于视口时 pin 住后底部内容不可达；移动端单列堆叠 */}
+                {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；移动端单列堆叠。
+                    左列不做 sticky/内部滚动：随面板滚动区整体滚动（滚动条已由 PanelShell 隐藏），
+                    避免限高裁切导致底部统计不可达 */}
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
                     {/* 左列：肌肤变化（趋势）+ 打卡（色带/连续性统计），语义分组 */}
-                    <section className="mb-8 lg:mb-0 lg:self-start lg:sticky lg:top-0 lg:max-h-[min(520px,calc(100dvh_-_12rem))] lg:overflow-y-auto lg:scrollbar-hide lg:pr-1">
+                    <section className="mb-8 lg:mb-0">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
@@ -592,7 +593,7 @@ export function DiaryPanel() {
                                   type="button"
                                   onClick={() => switchTrendRange(r)}
                                   aria-pressed={trendRange === r}
-                                  className={`inline-flex items-center rounded-full border px-4 py-2 text-xs transition-colors active:opacity-70 cursor-pointer ${
+                                  className={`inline-flex items-center rounded-full border px-4 py-2.5 md:py-2 text-xs transition-colors active:opacity-70 cursor-pointer ${
                                     trendRange === r
                                       ? "border-brand-charcoal/40 bg-brand-charcoal/10 font-medium text-brand-charcoal"
                                       : "border-brand-charcoal/30 bg-white/40 text-brand-charcoal hover:border-brand-charcoal/60 hover:bg-brand-charcoal/5"
@@ -665,7 +666,7 @@ export function DiaryPanel() {
                           列数跟随实际项数（最长连续为 0 时不占列）。
                           PC 端半卡片：极浅底托住彩色色带（无描边无阴影）；移动端平铺 + 分割线 */}
                       {summary && summary.totalCheckins > 0 && (
-                        <div className="mt-4 border-t border-stone-300/80 pt-4 lg:border-t-0 lg:rounded-2xl lg:bg-white/40 lg:p-4">
+                        <div className="mt-6 border-t border-stone-300/80 pt-4 lg:border-t-0 lg:rounded-2xl lg:bg-white/40 lg:p-4">
                           <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
                             <Flame className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
                             打卡
@@ -742,7 +743,7 @@ export function DiaryPanel() {
                               type="button"
                               onClick={() => setCalendarView(v.key)}
                               aria-pressed={calendarView === v.key}
-                              className={`inline-flex items-center rounded-full border px-4 py-2 text-xs transition-colors active:opacity-70 cursor-pointer ${
+                              className={`inline-flex items-center rounded-full border px-4 py-2.5 md:py-2 text-xs transition-colors active:opacity-70 cursor-pointer ${
                                 calendarView === v.key
                                   ? "border-brand-charcoal/40 bg-brand-charcoal/10 font-medium text-brand-charcoal"
                                   : "border-brand-charcoal/30 bg-white/40 text-brand-charcoal hover:border-brand-charcoal/60 hover:bg-brand-charcoal/5"

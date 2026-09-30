@@ -87,6 +87,11 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
   // 起点分数：绘图区水平基准线，直观表达"相对第一次测肤是改善还是回落"
   const baselineY = yOf(scores[0]);
 
+  // X 轴中间刻度：点足够多且中点不贴近两端标签时给出中间日期参照（首末标签已占两端）
+  const midIdx = n >= 5 ? Math.floor((n - 1) / 2) : -1;
+  const showMidLabel =
+    midIdx >= 0 && points[midIdx].x > PAD_L + 60 && points[midIdx].x < W - PAD_R - 60;
+
   // 少于 2 个点无法构成趋势（曲线/面积无意义），不渲染（置于所有 hooks 之后，保证 hooks 调用顺序一致）
   if (n < 2) return null;
 
@@ -110,7 +115,11 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
           {delta !== 0 && (
             <span
               className={`text-[12px] font-light px-2.5 py-1 rounded-full ${
-                delta > 0 ? "bg-[#4C8055]/10 text-[#4C8055]" : "bg-[#D44C47]/10 text-[#D44C47]"
+                Math.abs(delta) <= 2
+                  ? "bg-brand-charcoal/[0.06] text-brand-charcoal/55"
+                  : delta > 0
+                    ? "bg-[#4C8055]/10 text-[#4C8055]"
+                    : "bg-[#D44C47]/10 text-[#D44C47]"
               }`}
             >
               较上次 {delta > 0 ? `+${delta}` : delta}
@@ -175,10 +184,11 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
           strokeLinejoin="round"
         />
 
-        {/* 数据点 + 日期：只标注首末两端（时间范围），数值由 hover 提示与摘要区承载 */}
+        {/* 数据点 + 日期：标注首末两端 + 中间刻度（点足够多时），数值由 hover 提示与摘要区承载 */}
         {points.map((p, i) => {
           const isLatest = i === n - 1;
           const isFirst = i === 0;
+          const isMid = i === midIdx && showMidLabel;
           return (
             <g key={i}>
               {/* 隐形热区：放大 hover/触摸目标，title 提供日期+分数提示 */}
@@ -198,11 +208,11 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
                 strokeWidth="2"
                 className="pointer-events-none"
               />
-              {(isFirst || isLatest) && (
+              {(isFirst || isLatest || isMid) && (
                 <text
                   x={p.x}
                   y={H - 8}
-                  textAnchor={isLatest ? "end" : "start"}
+                  textAnchor={isLatest ? "end" : isFirst ? "start" : "middle"}
                   fontWeight={isLatest ? 600 : 400}
                   fill={isLatest ? "#5c4937" : "#8c7a6b"}
                   className="text-[24px]"

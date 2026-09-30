@@ -233,7 +233,7 @@ export function DiaryTimeline({
         return (
           <div key={group.dateStr}>
             {monthDivider && (
-              <div className="mb-4 mt-3 first:mt-0">
+              <div className="mb-4 mt-2 first:mt-0">
                 <span className="text-[12px] tracking-[0.2em] text-brand-charcoal/55">
                   {monthDivider}
                 </span>
@@ -253,7 +253,7 @@ export function DiaryTimeline({
                 {isToday && !visibleEvents.some((e) => e.kind === "diary") && (
                   visibleEvents.length === 0 ? (
                     <div className="relative">
-                      <span className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
+                      <span className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
                       <div className="flex items-center gap-3">
                         <span className="flex-1 text-[13px] text-brand-charcoal/60 font-light">
                           今天还没有记录
@@ -282,7 +282,7 @@ export function DiaryTimeline({
                   ) : (
                     onCheckIn && (
                       <div className="relative">
-                        <span className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
+                        <span className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
                         <button
                           type="button"
                           onClick={() => onCheckIn(manualDiaryEntry, todayStr)}
@@ -312,7 +312,7 @@ export function DiaryTimeline({
                   onCheckIn &&
                   canBackfill(group.dateStr) && (
                     <div className="relative">
-                      <span className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
+                      <span className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
                       <button
                         type="button"
                         onClick={() => onCheckIn(manualDiaryEntry, group.dateStr)}
@@ -333,7 +333,7 @@ export function DiaryTimeline({
                     return (
                       <div key={`d-${ev.entry.id}-${i}`} className="relative group">
                         <span
-                          className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-[#F7F4EE]"
+                          className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-[#F7F4EE]"
                           style={{ backgroundColor: meta.color }}
                         />
                         {/* 操作按钮：移动端常显（无 hover 可依赖），桌面端悬浮行尾显现；行内不占位（极简）。
@@ -437,7 +437,7 @@ export function DiaryTimeline({
                   const skinType = result?.skinProfile?.typeLabel || result?.skinType?.typeLabel;
                   return (
                     <div key={`t-${ev.test.sessionId}-${i}`} className="relative">
-                        <span className="absolute -left-[22px] top-1 w-2 h-2 rounded-full border-2 border-[#F7F4EE] bg-brand-cocoa" />
+                        <span className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-[#F7F4EE] bg-brand-cocoa" />
                       <Link
                         href={`${ADVISOR_URL}/reports/${ev.test.sessionId}?skipCover=1`}
                         target="_blank"

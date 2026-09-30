@@ -63,7 +63,7 @@ export function CheckInTrend({ entries, todayStr }: { entries: DiaryEntry[]; tod
 
   return (
     <div>
-      <div className="flex items-end justify-between mb-2.5">
+      <div className="flex items-end justify-between mb-3">
         <p className="text-[12px] tracking-[0.15em] text-brand-charcoal/60 font-light">
           近 30 天打卡状态
         </p>
