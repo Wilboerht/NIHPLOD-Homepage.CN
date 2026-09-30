@@ -18,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { HistorySession } from "@/components/website/user-center/diary/TestHistoryList";
 import { TestHistoryList } from "@/components/website/user-center/diary/TestHistoryList";
 import { DiaryTimeline, STATE_META, type DiaryEntry } from "@/components/website/user-center/diary/DiaryTimeline";
-import { DiaryCalendar } from "@/components/website/user-center/diary/DiaryCalendar";
 import { TrendChart, type TrendsData } from "@/components/website/user-center/diary/TrendChart";
 import { CheckInTrend } from "@/components/website/user-center/diary/CheckInTrend";
 import { CheckInModal } from "@/components/website/user-center/diary/CheckInModal";
@@ -118,23 +117,16 @@ export function DiaryPanel() {
   // 游标分页：当前已加载最旧一条测肤记录的完成时间（ISO），"加载更早"时作为 before 参数
   const testsCursorRef = useRef<string | null>(null);
   const loadedTestIdsRef = useRef<Set<string>>(new Set());
-  // "今天"快照（YYYY-MM-DD）：每次打开弹层时刷新，供时间线/日历/打卡色带统一使用，
+  // "今天"快照（YYYY-MM-DD）：每次打开弹层时刷新，供时间线/打卡色带统一使用，
   // 避免子组件渲染期调用 new Date()（react-hooks/purity）且跨午夜常驻后口径不刷新
   const [todayStr, setTodayStr] = useState(() => localDateStr(new Date()));
-  // 日历热力图
-  const [calendarView, setCalendarView] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(() => localDateStr(new Date()).slice(0, 7));
-  const [calendarEntries, setCalendarEntries] = useState<DiaryEntry[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(false);
-  const [calendarError, setCalendarError] = useState(false);
-  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   // 全部记录翻页位置保留
   const [lastHistoryPage, setLastHistoryPage] = useState(1);
   // 删除中条目 id
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // 请求时序守卫：打开/切号/重开时自增；所有异步回调写回 state 前比对，
-  // 防止旧账号/旧请求的晚到响应串入当前界面（bootstrap/趋势/日历由 effect cancelled 覆盖）
+  // 防止旧账号/旧请求的晚到响应串入当前界面（bootstrap/趋势由 effect cancelled 覆盖）
   const requestSeqRef = useRef(0);
   // 同步防抖锁：同帧双击「加载更早」时 state 守卫尚未生效，用 ref 保证只发一次请求
   const entriesLoadingMoreRef = useRef(false);
@@ -276,8 +268,6 @@ export function DiaryPanel() {
         // 刷新失败要明确告知：打卡/删除刚提示成功，列表却没更新会让用户以为丢记录
         toast.error("列表刷新失败，请稍后再试");
       });
-    // 日历视图同步刷新
-    setCalendarRefreshKey((k) => k + 1);
     // 数据变更后作废短缓存，保证趋势/测肤列表/聚合首屏下次打开拉取新数据
     bustShortCache();
   }, [entries.length, fetchBootstrap, applyBootstrap, toast]);
@@ -363,11 +353,6 @@ export function DiaryPanel() {
       loadedTestIdsRef.current = new Set();
       setHistoryView(false);
       testsCursorRef.current = null;
-      setCalendarView(false);
-      setCalendarEntries([]);
-      setCalendarError(false);
-      // 日历月份回到本月：避免上次停留在历史月份，重开切到日历时困惑
-      setCalendarMonth(localDateStr(new Date()).slice(0, 7));
       setLastHistoryPage(1);
       setDeletingId(null);
       // 打卡弹层状态一并复位：极端情况下（如弹层内跳转导致档案被关）重开不会残留上次的打卡抽屉
@@ -429,33 +414,6 @@ export function DiaryPanel() {
     bustShortCache();
     setTrendsRefreshKey((k) => k + 1);
   }, []);
-
-  // 日历热力图：切换视图/月份时按需拉取该月条目；打卡保存/删除后随 refreshKey 重拉
-  useEffect(() => {
-    if (!userId || !calendarView) return;
-    let cancelled = false;
-    deferInEffect(() => {
-      setCalendarLoading(true);
-      setCalendarError(false);
-    });
-    diaryFetch(`/api/user/skincare-archive?month=${calendarMonth}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
-      .then((data) => {
-        if (cancelled) return;
-        setCalendarEntries(data.data ?? []);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        console.error("Calendar month fetch error:", e);
-        setCalendarError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setCalendarLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, calendarView, calendarMonth, calendarRefreshKey]);
 
   // 时间线「加载更早」：游标分页追加更早的测肤记录（before = 当前最旧一条的完成时间），
   // 分页期间新增测肤不会像 offset 页码推导那样漂移；sessionId 去重兜底，无新增时置 exhausted
@@ -660,10 +618,10 @@ export function DiaryPanel() {
                 ) : (
                 <>
                 {/* ===== 登录：概览（肌肤变化 + 打卡）+ 时间线 ===== */}
-                {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；移动端单列堆叠。
+                {/* PC 端（lg+）等宽双列；移动端单列堆叠。
                     左列不做 sticky/内部滚动：随面板滚动区整体滚动（滚动条已由 PanelShell 隐藏），
                     避免限高裁切导致底部统计不可达 */}
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-10">
                     {/* 左列：肌肤变化（趋势）+ 打卡（色带/连续性统计），语义分组 */}
                     <section className="mb-8 lg:mb-0">
                       <div className="flex items-center justify-between mb-3">
@@ -831,72 +789,12 @@ export function DiaryPanel() {
 
                     {/* 护肤历程 */}
                     <section>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 min-w-0">
-                          <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
-                          护肤历程
-                        </h3>
-                        {/* 视图切换：独立胶囊（风格对齐会员中心「录入消费」/渠道选择） */}
-                        <div className="flex items-center gap-2" role="group" aria-label="历程视图切换">
-                          {([
-                            { key: false, label: "时间线" },
-                            { key: true, label: "日历" },
-                          ] as const).map((v) => (
-                            <button
-                              key={v.label}
-                              type="button"
-                              onClick={() => setCalendarView(v.key)}
-                              aria-pressed={calendarView === v.key}
-                              className={`inline-flex items-center rounded-full border px-4 py-2.5 md:py-2 text-xs transition-colors active:opacity-70 cursor-pointer ${
-                                calendarView === v.key
-                                  ? "border-brand-charcoal/40 bg-brand-charcoal/10 font-medium text-brand-charcoal"
-                                  : "border-brand-charcoal/30 bg-white/40 text-brand-charcoal hover:border-brand-charcoal/60 hover:bg-brand-charcoal/5"
-                              }`}
-                            >
-                              {v.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
+                        <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
+                        护肤历程
+                      </h3>
 
-                      {calendarView ? (
-                        <>
-                          {calendarError && (
-                            <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                              <span className="text-[13px] text-brand-charcoal/70 font-light">
-                                日历加载失败，可能是网络波动
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setCalendarRefreshKey((k) => k + 1)}
-                                className="shrink-0 inline-flex items-center gap-1.5 h-9 px-5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium hover:bg-brand-cocoa-dark transition-colors cursor-pointer"
-                              >
-                                <RefreshCw className="w-3 h-3" strokeWidth={1.8} />
-                                重试
-                              </button>
-                            </div>
-                          )}
-                          <DiaryCalendar
-                            entries={calendarEntries}
-                            month={calendarMonth}
-                            todayStr={todayStr}
-                            onMonthChange={setCalendarMonth}
-                            onBackfill={(dateStr) => setCheckIn({ open: true, existing: null, dateStr })}
-                            onSelectEntry={(entry) => {
-                              // 测肤自动条目对用户不算手动打卡：点按走"接管"语义（existing=null 新建覆盖）；
-                              // 手动打卡条目带入旧值编辑（与时间线的入口语义一致）
-                              setCheckIn({
-                                open: true,
-                                existing: isAutoDiaryEntry(entry) ? null : entry,
-                                dateStr: entry.date.slice(0, 10),
-                              });
-                            }}
-                            loading={calendarLoading}
-                          />
-                        </>
-                      ) : (
-                        <>
-                        {testsError && (
+                      {testsError && (
                           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                             <span className="text-[13px] text-brand-charcoal/70 font-light">
                               测肤记录加载失败，可能是网络波动或登录状态过期
@@ -944,8 +842,6 @@ export function DiaryPanel() {
                           refreshKey={diaryRefreshKey}
                         />
                         )}
-                        </>
-                      )}
                     </section>
                 </div>
                 </>
