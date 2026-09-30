@@ -252,7 +252,7 @@ export function UserCenterModal() {
                 {!isMobile && (
                   <div className="flex w-full shrink-0 flex-col border-r border-stone-200/60 md:w-64">
                     {/* 用户头像区域 */}
-                    <div className="px-12 pb-4 pt-12">
+                    <div className="px-12 pb-4 pt-10">
                       <div className="flex flex-col items-start gap-4 text-left">
                         <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-cream/40 object-cover">
                           {user.avatar ? (
