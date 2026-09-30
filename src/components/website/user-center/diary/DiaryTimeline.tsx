@@ -83,6 +83,8 @@ interface DiaryTimelineProps {
   onLoadMoreEntries?: () => void;
   /** 日记列表刷新（如打卡保存）后自增，用于收起"近 30 天"折叠态 */
   refreshKey?: number;
+  /** 今日打卡 CTA 已由面板「打卡」区标题承载时置 true：今日引导只留文字提示，避免同屏重复 CTA */
+  hideTodayCta?: boolean;
 }
 
 export function DiaryTimeline({
@@ -100,6 +102,7 @@ export function DiaryTimeline({
   entriesLoadingMore = false,
   onLoadMoreEntries,
   refreshKey,
+  hideTodayCta = false,
 }: DiaryTimelineProps) {
   const [showAll, setShowAll] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -254,6 +257,12 @@ export function DiaryTimeline({
                   visibleEvents.length === 0 ? (
                     <div className="relative">
                       <span className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
+                      {hideTodayCta ? (
+                        /* 打卡 CTA 由「打卡」区标题承载：此处仅留文字提示，避免同屏重复入口 */
+                        <span className="text-[13px] text-brand-charcoal/60 font-light">
+                          今天还没有记录
+                        </span>
+                      ) : (
                       <div className="flex items-center gap-3">
                         <span className="flex-1 text-[13px] text-brand-charcoal/60 font-light">
                           今天还没有记录
@@ -278,9 +287,10 @@ export function DiaryTimeline({
                           <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
                         </Link>
                       </div>
+                      )}
                     </div>
                   ) : (
-                    onCheckIn && (
+                    onCheckIn && !hideTodayCta && (
                       <div className="relative">
                         <span className="absolute -left-[24.5px] top-1 w-2 h-2 rounded-full border-2 border-dashed border-brand-charcoal/25 bg-[#F7F4EE]" />
                         <button

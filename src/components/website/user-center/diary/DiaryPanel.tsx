@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import {
   CalendarCheck,
+  Check,
   ChevronLeft,
   ChevronRight,
   Flame,
@@ -156,6 +157,13 @@ export function DiaryPanel() {
     return entries.filter(
       (e) => Boolean(STATE_META[e.skinState]) && e.date.slice(0, 10) >= cutoffStr
     ).length;
+  }, [entries, todayStr]);
+
+  // 今日手动打卡条目：测肤自动生成的条目对用户不算打卡（与时间线"接管"口径一致），
+  // 供「打卡」区标题的 CTA 状态机使用（null = 未手动打卡，按钮显示"今日打卡"）
+  const manualTodayEntry = useMemo(() => {
+    const e = entries.find((en) => en.date.slice(0, 10) === todayStr);
+    return e && !isAutoDiaryEntry(e) ? e : null;
   }, [entries, todayStr]);
 
   // 趋势按天聚合（本地日历日，同日多次测肤取当日最后一次）：
@@ -664,13 +672,43 @@ export function DiaryPanel() {
 
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列）。
-                          全端平铺：细分隔线 + 留白分组（与时间线/趋势区同一套去卡片语言） */}
+                          全端平铺：细分隔线 + 留白分组（与时间线/趋势区同一套去卡片语言）。
+                          标题行与「肌肤变化」镜像：标题在左，右侧承载 30 天计数 + 今日打卡 CTA
+                          （已打卡时切换为完成态、点击可编辑）；时间线的今日引导据此收为纯文字提示 */}
                       {summary && summary.totalCheckins > 0 && (
                         <div className="mt-8 border-t border-stone-300/80 pt-6">
-                          <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
-                            <Flame className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
-                            打卡
-                          </h3>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
+                              <Flame className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
+                              打卡
+                            </h3>
+                            <div className="flex items-center gap-3">
+                              {recentCheckInCount > 0 && (
+                                <span className="text-[12px] text-brand-charcoal/55 font-light font-num tabular-nums">
+                                  近 30 天打卡 {recentCheckInCount} 天
+                                </span>
+                              )}
+                              {manualTodayEntry ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setCheckIn({ open: true, existing: manualTodayEntry, dateStr: todayStr })}
+                                  className="shrink-0 inline-flex items-center gap-1 text-[12px] text-brand-charcoal/55 font-light transition-colors hover:text-brand-charcoal cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5 text-[#4C8055]" strokeWidth={1.8} />
+                                  今日已打卡
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-cocoa-dark active:opacity-80 cursor-pointer"
+                                >
+                                  <Flame className="w-3.5 h-3.5" strokeWidth={1.8} />
+                                  今日打卡
+                                </button>
+                              )}
+                            </div>
+                          </div>
                           {recentCheckInCount >= 2 && (
                             <div className="mb-4">
                               <CheckInTrend entries={entries} todayStr={todayStr} />
@@ -827,6 +865,7 @@ export function DiaryPanel() {
                           tests={tests}
                           loading={!entriesLoaded || !testsLoaded}
                           todayStr={todayStr}
+                          hideTodayCta={Boolean(summary && summary.totalCheckins > 0)}
                           onCheckIn={(existing, dateStr) => setCheckIn({ open: true, existing, dateStr })}
                           onDeleteEntry={handleDeleteEntry}
                           deletingId={deletingId}

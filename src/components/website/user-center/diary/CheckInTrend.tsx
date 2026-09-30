@@ -39,8 +39,6 @@ export function CheckInTrend({ entries, todayStr }: { entries: DiaryEntry[]; tod
     days.push({ dateStr, entry: dayMap.get(dateStr) });
   }
 
-  const checkedCount = days.filter((d) => d.entry).length;
-
   const W = 640;
   const H = 92;
   const PAD_L = 4;
@@ -63,15 +61,7 @@ export function CheckInTrend({ entries, todayStr }: { entries: DiaryEntry[]; tod
 
   return (
     <div>
-      <div className="flex items-end justify-between mb-3">
-        <p className="text-[12px] tracking-[0.15em] text-brand-charcoal/60 font-light">
-          近 30 天打卡状态
-        </p>
-        <p className="text-[12px] text-brand-charcoal/55 font-light">
-          已打卡 {checkedCount} 天
-        </p>
-      </div>
-
+      {/* 标题行由父级「打卡」区标题承载（近 30 天打卡计数 + 今日打卡 CTA），此处只留色带与图例 */}
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="近 30 天打卡状态趋势">
         {days.map(({ dateStr, entry }, i) => {
           const x = PAD_L + i * cellW;
