@@ -579,8 +579,6 @@ export function DiaryPanel() {
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
                     {/* 左列：肌肤变化（趋势）+ 打卡（色带/连续性统计），语义分组 */}
                     <section className="mb-8 lg:mb-0">
-                      {/* 肌肤变化：桌面端卡片（对齐全站卡片语言），移动端平铺靠留白组织 */}
-                      <div className="lg:rounded-xl lg:border lg:border-stone-200/60 lg:bg-white/40 lg:p-5">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
                           <TrendingUp className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
@@ -609,7 +607,7 @@ export function DiaryPanel() {
                         </div>
                       </div>
 
-                      {/* 趋势区：移动端平铺（靠留白组织），桌面端由外层卡片承载 */}
+                      {/* 趋势区：与时间轴同风格的极简平铺（无卡片外壳，靠留白组织） */}
                       {!trendsLoaded || !entriesLoaded ? (
                         <div className="animate-pulse">
                           {/* 摘要骨架：与 TrendChart 真实布局一致（左：标签+大字+日期，右：差值胶囊），避免加载完成瞬间跳动 */}
@@ -663,13 +661,12 @@ export function DiaryPanel() {
                           </p>
                         </div>
                       )}
-                      </div>
 
-                      {/* 打卡：与测肤趋势语义分离的独立卡片（色带 + 连续性统计）。
+                      {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列）。
-                          桌面端卡片（与肌肤变化卡同款）；移动端平铺 + 分割线 */}
+                          PC 端半卡片：极浅底托住彩色色带（无描边无阴影）；移动端平铺 + 分割线 */}
                       {summary && summary.totalCheckins > 0 && (
-                        <div className="mt-6 border-t border-stone-300/80 pt-4 lg:border-t-0 lg:rounded-xl lg:border lg:border-stone-200/60 lg:bg-white/40 lg:p-5">
+                        <div className="mt-6 border-t border-stone-300/80 pt-4 lg:border-t-0 lg:rounded-2xl lg:bg-white/40 lg:p-4">
                           <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 mb-3">
                             <Flame className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
                             打卡
@@ -681,7 +678,7 @@ export function DiaryPanel() {
                           )}
                           <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-4 border-t border-stone-200/60`}>
                             <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
-                              <p className={`text-xl font-num font-light leading-none ${summary.currentStreak > 0 ? "text-amber-600" : "text-brand-charcoal"}`}>
+                              <p className="text-xl font-num font-light text-brand-charcoal leading-none">
                                 {summary.currentStreak}
                                 <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">天</span>
                               </p>
