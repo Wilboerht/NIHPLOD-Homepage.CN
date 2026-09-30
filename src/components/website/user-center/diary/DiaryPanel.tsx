@@ -688,7 +688,8 @@ export function DiaryPanel() {
                           ) : rangeTrends ? (
                             <TrendChart trends={rangeTrends} totalTests={summary?.testCount} />
                           ) : (
-                            <div className="py-6 text-center">
+                            /* 无趋势占位：撑满图表区高度（与 TrendChart 的 viewBox 比例一致），避免切换时间窗时布局跳动 */
+                            <div className="flex w-full aspect-[640/216] items-center justify-center text-center">
                               <p className="text-[13px] text-brand-charcoal/60 font-light">
                                 近 {trendRange} 天内测肤不足 2 次，暂无趋势可看
                               </p>
