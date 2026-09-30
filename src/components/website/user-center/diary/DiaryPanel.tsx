@@ -631,17 +631,17 @@ export function DiaryPanel() {
                         </h3>
                         <div className="flex items-center gap-3">
                           {aggregatedTrends && (
-                            <div className="flex items-center gap-2" role="group" aria-label="趋势时间范围">
+                            <div className="flex items-center gap-0.5 rounded-full bg-brand-charcoal/[0.06] p-0.5" role="group" aria-label="趋势时间范围">
                               {([7, 30] as const).map((r) => (
                                 <button
                                   key={r}
                                   type="button"
                                   onClick={() => switchTrendRange(r)}
                                   aria-pressed={trendRange === r}
-                                  className={`inline-flex items-center rounded-full border px-4 py-2.5 md:py-2 text-xs transition-colors active:opacity-70 cursor-pointer ${
+                                  className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs transition-colors cursor-pointer ${
                                     trendRange === r
-                                      ? "border-brand-charcoal/40 bg-brand-charcoal/10 font-medium text-brand-charcoal"
-                                      : "border-brand-charcoal/30 bg-white/40 text-brand-charcoal hover:border-brand-charcoal/60 hover:bg-brand-charcoal/5"
+                                      ? "bg-brand-cocoa text-white font-medium"
+                                      : "text-brand-charcoal/60 hover:text-brand-charcoal"
                                   }`}
                                 >
                                   近 {r} 天
