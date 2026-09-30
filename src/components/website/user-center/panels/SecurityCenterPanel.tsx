@@ -15,6 +15,7 @@ import { AuthorizationsPanel } from "./AuthorizationsPanel";
 import { BindingsPanel } from "./BindingsPanel";
 import { LoginHistoryPanel } from "./LoginHistoryPanel";
 import { AccountDeletionPanel } from "./AccountDeletionPanel";
+import { PANEL_HEADER_CLASS, PANEL_ROOT_CLASS, PANEL_TITLE_CLASS } from "../PanelShell";
 
 const SECTION_LABELS: Record<SecuritySection, string> = {
   devices: "设备管理",
@@ -28,10 +29,10 @@ export function SecurityCenterPanel() {
   const { securitySection, setSecuritySection } = useAuth();
 
   return (
-    <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-security">
+    <div className={PANEL_ROOT_CLASS} data-testid="panel-security">
       {/* 标题 - 移动端由弹窗全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-        <h2 className="text-xl font-medium tracking-wide text-stone-800">安全中心</h2>
+      <div className={PANEL_HEADER_CLASS}>
+        <h2 className={PANEL_TITLE_CLASS}>安全中心</h2>
       </div>
 
       {/* 分段标签 */}
@@ -50,7 +51,7 @@ export function SecurityCenterPanel() {
               onClick={() => setSecuritySection(section)}
               className={`rounded-full px-4 py-2 text-xs transition-colors active:opacity-70 ${
                 securitySection === section
-                  ? "bg-[#00263e]/10 font-medium text-[#00263e]"
+                  ? "bg-brand-primary/10 font-medium text-brand-primary"
                   : "text-stone-500 hover:text-stone-800"
               }`}
             >

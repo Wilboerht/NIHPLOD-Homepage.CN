@@ -12,6 +12,7 @@ import { Loader2, Link2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { PanelShell } from "../PanelShell";
 
 interface Identity {
   id: string;
@@ -93,66 +94,55 @@ export function BindingsPanel({ embedded }: BindingsPanelProps) {
   };
 
   return (
-    <div
-      className={`flex h-full flex-col ${embedded ? "" : "pt-4 md:pt-10"}`}
-      data-testid="panel-bindings"
-    >
-      {!embedded && (
-        <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-          <h2 className="text-xl font-medium tracking-wide text-stone-800">账号绑定</h2>
+    <PanelShell title="账号绑定" embedded={embedded} testId="panel-bindings">
+      <p className="mb-4 text-sm text-stone-400">
+        管理第三方平台绑定，可解除不再使用的平台授权。
+      </p>
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
+        </div>
+      ) : identities.length === 0 ? (
+        <p className="py-10 text-center text-sm text-stone-400">暂无第三方绑定</p>
+      ) : (
+        <div className="space-y-3">
+          {identities.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <Link2 className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-stone-800">
+                    {providerLabel(item.provider)}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-stone-400">
+                    {item.nickname ? `${item.nickname} · ` : ""}
+                    绑定时间：{new Date(item.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              {item.canUnbind ? (
+                <button
+                  onClick={() => handleUnbind(item)}
+                  disabled={unbindingId === item.id}
+                  className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
+                >
+                  {unbindingId === item.id ? "解绑中..." : "解除绑定"}
+                </button>
+              ) : (
+                <span
+                  className="shrink-0 text-xs text-stone-300"
+                  title="请先绑定真实手机号，避免账号无法登录"
+                >
+                  需先绑定手机号
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
-
-      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
-        <p className="mb-4 text-sm text-stone-400">
-          管理第三方平台绑定，可解除不再使用的平台授权。
-        </p>
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-          </div>
-        ) : identities.length === 0 ? (
-          <p className="py-10 text-center text-sm text-stone-400">暂无第三方绑定</p>
-        ) : (
-          <div className="space-y-3">
-            {identities.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Link2 className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-stone-800">
-                      {providerLabel(item.provider)}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-stone-400">
-                      {item.nickname ? `${item.nickname} · ` : ""}
-                      绑定时间：{new Date(item.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                {item.canUnbind ? (
-                  <button
-                    onClick={() => handleUnbind(item)}
-                    disabled={unbindingId === item.id}
-                    className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {unbindingId === item.id ? "解绑中..." : "解除绑定"}
-                  </button>
-                ) : (
-                  <span
-                    className="shrink-0 text-xs text-stone-300"
-                    title="请先绑定真实手机号，避免账号无法登录"
-                  >
-                    需先绑定手机号
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </PanelShell>
   );
 }

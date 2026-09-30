@@ -20,6 +20,7 @@ import { DiaryCalendar } from "@/components/website/user-center/diary/DiaryCalen
 import { TrendChart, type TrendsData } from "@/components/website/user-center/diary/TrendChart";
 import { CheckInTrend } from "@/components/website/user-center/diary/CheckInTrend";
 import { CheckInModal } from "@/components/website/user-center/diary/CheckInModal";
+import { PanelShell } from "@/components/website/user-center/PanelShell";
 import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -81,7 +82,7 @@ function daysAgoCutoff(days: number): number {
 /**
  * DiaryPanel — 「护肤档案」面板（2026-09 由独立 DiaryModal 合并进用户中心「护肤档案」tab）
  * 肌肤变化 + 护肤历程时间线；「全部记录」为面板内视图切换（原内容淡出 → 记录淡入），
- * 打卡保持二级弹层。面板外壳/滚动锁/Escape 由 UserCenterModal 统一负责；本面板自带标题与滚动区。
+ * 打卡保持二级弹层。面板外壳/滚动锁/Escape 由 UserCenterModal 统一负责；标题与滚动区走 PanelShell 共享外壳。
  */
 export function DiaryPanel() {
   const { user } = useAuth();
@@ -509,14 +510,13 @@ export function DiaryPanel() {
 
   return (
     <LazyMotion features={domAnimation}>
-      <div className="flex h-full flex-col">
-        {/* 桌面端标题栏（移动端标题由账户弹层头部显示）：视图切换时标题随视图变化；
-            全部测肤记录为整面板级视图切换，入口紧随标题（靠右会被弹层关闭按钮压住） */}
-        <div className="hidden shrink-0 items-center gap-4 border-b border-stone-200/60 px-6 pb-6 pt-10 md:flex md:px-16">
-          <h2 className="text-xl font-medium tracking-wide text-stone-800">
-            {historyView ? "测肤记录" : "护肤档案"}
-          </h2>
-          {!historyView && (
+      {/* 桌面端标题栏（移动端标题由账户弹层头部显示）：视图切换时标题随视图变化；
+          全部测肤记录为整面板级视图切换，入口紧随标题（靠右会被弹层关闭按钮压住）。
+          内容区可滚动：两视图淡出/淡入切换，同一面板内完成 */}
+      <PanelShell
+        title={historyView ? "测肤记录" : "护肤档案"}
+        headerExtra={
+          !historyView && (
             <button
               type="button"
               onClick={() => setHistoryView(true)}
@@ -525,14 +525,11 @@ export function DiaryPanel() {
               全部测肤记录
               <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
             </button>
-          )}
-        </div>
-
-        {/* 内容区（可滚动）：两视图淡出/淡入切换，同一面板内完成 */}
-        <div
-          ref={scrollRef}
-          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-6 md:px-16"
-        >
+          )
+        }
+        scrollRef={scrollRef}
+        scrollClassName="min-h-0"
+      >
                 <AnimatePresence mode="wait" initial={false}>
                   {historyView ? (
                     <m.div
@@ -848,8 +845,7 @@ export function DiaryPanel() {
                   </m.div>
                 )}
                 </AnimatePresence>
-        </div>
-      </div>
+      </PanelShell>
 
       {/* 二级弹层：打卡/补打卡（DOM 顺序在弹层主体之后，AccountModal Portal 内自然置顶）；全部记录已改为同面板内视图切换 */}
       <CheckInModal

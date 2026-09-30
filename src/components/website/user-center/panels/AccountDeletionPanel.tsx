@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
+import { PanelShell } from "../PanelShell";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400 md:text-sm";
@@ -152,137 +153,125 @@ export function AccountDeletionPanel({ embedded }: AccountDeletionPanelProps) {
   };
 
   return (
-    <div
-      className={`flex h-full flex-col ${embedded ? "" : "pt-4 md:pt-10"}`}
-      data-testid="panel-deletion"
-    >
-      {/* 标题 - 移动端由弹窗全局 Header 管理；内嵌时由安全中心分段标签承担 */}
-      {!embedded && (
-        <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-          <h2 className="text-xl font-medium tracking-wide text-stone-800">账号注销</h2>
+    <PanelShell title="账号注销" embedded={embedded} testId="panel-deletion">
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
         </div>
-      )}
-
-      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
+      ) : isPlaceholderAccount || unsupportedMessage ? (
+        /* 微信占位手机号账号 / 服务端判定不支持：客服引导 */
+        <div className="max-w-md rounded-xl border border-amber-200/70 bg-amber-50/60 p-4">
+          <div className="flex items-start gap-2 text-sm text-amber-800">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              {unsupportedMessage ||
+                "微信快捷注册的账号暂不支持网页端自助注销，请联系客服 service@nihplod.cn 办理。我们将在核实身份后为您处理。"}
+            </p>
           </div>
-        ) : isPlaceholderAccount || unsupportedMessage ? (
-          /* 微信占位手机号账号 / 服务端判定不支持：客服引导 */
-          <div className="max-w-md rounded-xl border border-amber-200/70 bg-amber-50/60 p-4">
+        </div>
+      ) : pending ? (
+        /* 冷静期视图：状态 + 撤回 */
+        <div className="max-w-md space-y-4">
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-4">
             <div className="flex items-start gap-2 text-sm text-amber-800">
-              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>
-                {unsupportedMessage ||
-                  "微信快捷注册的账号暂不支持网页端自助注销，请联系客服 service@nihplod.cn 办理。我们将在核实身份后为您处理。"}
-              </p>
-            </div>
-          </div>
-        ) : pending ? (
-          /* 冷静期视图：状态 + 撤回 */
-          <div className="max-w-md space-y-4">
-            <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-4">
-              <div className="flex items-start gap-2 text-sm text-amber-800">
-                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>
-                  <p className="font-medium">
-                    注销处理中，将于 {formatScheduledAt(pending.scheduledAt)}（
-                    {pending.remainingDays} 天后）生效
-                  </p>
-                  <p className="mt-1 text-xs text-amber-700">
-                    冷静期内账号可正常使用；生效后账号不可恢复，所有子站将退出登录。
-                  </p>
-                </div>
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  注销处理中，将于 {formatScheduledAt(pending.scheduledAt)}（
+                  {pending.remainingDays} 天后）生效
+                </p>
+                <p className="mt-1 text-xs text-amber-700">
+                  冷静期内账号可正常使用；生效后账号不可恢复，所有子站将退出登录。
+                </p>
               </div>
             </div>
-            {warnings.length > 0 && (
-              <ul className="space-y-1 text-xs text-stone-500">
-                {warnings.map((w) => (
-                  <li key={w}>· {w}</li>
-                ))}
-              </ul>
-            )}
-            <button
-              onClick={handleCancel}
-              disabled={cancelling}
-              className="rounded-full border border-stone-300 px-6 py-2.5 text-sm text-stone-700 transition-colors hover:bg-white/60 disabled:opacity-50"
-            >
-              {cancelling ? "撤回中..." : "撤回注销申请"}
-            </button>
           </div>
-        ) : user && user.hasPassword === false ? (
-          /* 未设置密码：无法完成身份验证，引导先设密码 */
-          <p className="max-w-md text-sm text-stone-500">
-            申请注销前需要先验证登录密码。请先在「个人信息」中设置登录密码，再回到本页操作。
-          </p>
-        ) : (
-          /* 申请表单：风险说明 + 密码验证 + 二次确认 */
-          <div className="max-w-md space-y-5">
-            <div className="space-y-4">
-              {Object.values(DELETION_CONSEQUENCES).map((block) => (
-                <div key={block.title}>
-                  <h3 className="text-sm font-medium text-stone-700">{block.title}</h3>
-                  <ul className="mt-1 space-y-1 text-xs text-stone-500">
-                    {block.items.map((item) => (
-                      <li key={item}>· {item}</li>
-                    ))}
-                  </ul>
-                </div>
+          {warnings.length > 0 && (
+            <ul className="space-y-1 text-xs text-stone-500">
+              {warnings.map((w) => (
+                <li key={w}>· {w}</li>
               ))}
-            </div>
-
-            <div>
-              <label htmlFor="deletion-password" className="mb-1 block text-xs text-stone-400">
-                登录密码（身份验证）
-              </label>
-              <input
-                id="deletion-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-                autoComplete="current-password"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="deletion-reason" className="mb-1 block text-xs text-stone-400">
-                注销原因（选填）
-              </label>
-              <input
-                id="deletion-reason"
-                type="text"
-                maxLength={500}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="帮助我们改进（选填）"
-                className={inputClass}
-              />
-            </div>
-
-            <label className="flex items-start gap-2 text-xs text-stone-600">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-[#00263e]"
-              />
-              <span>
-                我已阅读并理解上述后果，知晓冷静期结束后账号将被注销且不可恢复，自愿申请注销账号。
-              </span>
-            </label>
-
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !confirmed || !password}
-              className="rounded-full bg-red-700 px-6 py-2.5 text-sm text-white transition-colors hover:bg-red-800 disabled:opacity-50"
-            >
-              {submitting ? "提交中..." : "申请注销账号"}
-            </button>
+            </ul>
+          )}
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="rounded-full border border-stone-300 px-6 py-2.5 text-sm text-stone-700 transition-colors hover:bg-white/60 disabled:opacity-50"
+          >
+            {cancelling ? "撤回中..." : "撤回注销申请"}
+          </button>
+        </div>
+      ) : user && user.hasPassword === false ? (
+        /* 未设置密码：无法完成身份验证，引导先设密码 */
+        <p className="max-w-md text-sm text-stone-500">
+          申请注销前需要先验证登录密码。请先在「个人信息」中设置登录密码，再回到本页操作。
+        </p>
+      ) : (
+        /* 申请表单：风险说明 + 密码验证 + 二次确认 */
+        <div className="max-w-md space-y-5">
+          <div className="space-y-4">
+            {Object.values(DELETION_CONSEQUENCES).map((block) => (
+              <div key={block.title}>
+                <h3 className="text-sm font-medium text-stone-700">{block.title}</h3>
+                <ul className="mt-1 space-y-1 text-xs text-stone-500">
+                  {block.items.map((item) => (
+                    <li key={item}>· {item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
-    </div>
+
+          <div>
+            <label htmlFor="deletion-password" className="mb-1 block text-xs text-stone-400">
+              登录密码（身份验证）
+            </label>
+            <input
+              id="deletion-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+              autoComplete="current-password"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="deletion-reason" className="mb-1 block text-xs text-stone-400">
+              注销原因（选填）
+            </label>
+            <input
+              id="deletion-reason"
+              type="text"
+              maxLength={500}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="帮助我们改进（选填）"
+              className={inputClass}
+            />
+          </div>
+
+          <label className="flex items-start gap-2 text-xs text-stone-600">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-brand-primary"
+            />
+            <span>
+              我已阅读并理解上述后果，知晓冷静期结束后账号将被注销且不可恢复，自愿申请注销账号。
+            </span>
+          </label>
+
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !confirmed || !password}
+            className="rounded-full bg-red-700 px-6 py-2.5 text-sm text-white transition-colors hover:bg-red-800 disabled:opacity-50"
+          >
+            {submitting ? "提交中..." : "申请注销账号"}
+          </button>
+        </div>
+      )}
+    </PanelShell>
   );
 }

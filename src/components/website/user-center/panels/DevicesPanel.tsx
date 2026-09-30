@@ -13,6 +13,7 @@ import { Loader2, MonitorSmartphone } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { PanelShell } from "../PanelShell";
 
 interface Device {
   id: string;
@@ -73,63 +74,51 @@ export function DevicesPanel({ embedded }: DevicesPanelProps) {
   };
 
   return (
-    <div
-      className={`flex h-full flex-col ${embedded ? "" : "pt-4 md:pt-10"}`}
-      data-testid="panel-devices"
-    >
-      {/* 标题 - 移动端由弹窗全局 Header 管理；内嵌时由安全中心分段标签承担 */}
-      {!embedded && (
-        <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-          <h2 className="text-xl font-medium tracking-wide text-stone-800">设备管理</h2>
+    <PanelShell title="设备管理" embedded={embedded} testId="panel-devices">
+      <p className="mb-4 text-sm text-stone-400">管理登录设备，可强制下线可疑设备。</p>
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
+        </div>
+      ) : devices.length === 0 ? (
+        <p className="py-10 text-center text-sm text-stone-400">暂无设备记录</p>
+      ) : (
+        <div className="space-y-3">
+          {devices.map((d) => (
+            <div
+              key={d.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <MonitorSmartphone className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-stone-800">
+                    {d.deviceName}
+                    {d.isCurrent && (
+                      <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 align-middle text-[10px] font-normal text-emerald-600">
+                        当前设备
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-stone-400">
+                    IP: {d.ipAddress} · 登录时间：{new Date(d.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              {d.isCurrent ? (
+                <span className="shrink-0 text-xs text-stone-300">本机</span>
+              ) : (
+                <button
+                  onClick={() => handleForceLogout(d.id)}
+                  className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50"
+                >
+                  强制下线
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
-
-      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
-        <p className="mb-4 text-sm text-stone-400">管理登录设备，可强制下线可疑设备。</p>
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-          </div>
-        ) : devices.length === 0 ? (
-          <p className="py-10 text-center text-sm text-stone-400">暂无设备记录</p>
-        ) : (
-          <div className="space-y-3">
-            {devices.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <MonitorSmartphone className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-stone-800">
-                      {d.deviceName}
-                      {d.isCurrent && (
-                        <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 align-middle text-[10px] font-normal text-emerald-600">
-                          当前设备
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-stone-400">
-                      IP: {d.ipAddress} · 登录时间：{new Date(d.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                {d.isCurrent ? (
-                  <span className="shrink-0 text-xs text-stone-300">本机</span>
-                ) : (
-                  <button
-                    onClick={() => handleForceLogout(d.id)}
-                    className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50"
-                  >
-                    强制下线
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </PanelShell>
   );
 }

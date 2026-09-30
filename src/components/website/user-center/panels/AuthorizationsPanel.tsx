@@ -16,6 +16,7 @@ import { Loader2, KeyRound } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { PanelShell } from "../PanelShell";
 
 interface OAuthSession {
   clientId: string;
@@ -88,58 +89,51 @@ export function AuthorizationsPanel({ onRevoked, hideTitle, embedded }: Authoriz
   };
 
   return (
-    <div
-      className={`flex h-full flex-col ${embedded ? "" : "pt-4 md:pt-10"}`}
-      data-testid="panel-authorizations"
+    <PanelShell
+      title="授权管理"
+      embedded={embedded}
+      hideTitle={hideTitle}
+      testId="panel-authorizations"
     >
-      {/* 标题 - 移动端由弹窗全局 Header 管理；embed 自带 tab 标题或内嵌安全中心时隐藏 */}
-      {!hideTitle && !embedded && (
-        <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-          <h2 className="text-xl font-medium tracking-wide text-stone-800">授权管理</h2>
+      <p className="mb-4 text-sm text-stone-400">
+        管理已授权的第三方应用。撤销授权后，该应用将无法访问您的账户信息。
+      </p>
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
+        </div>
+      ) : sessions.length === 0 ? (
+        <p className="py-10 text-center text-sm text-stone-400">暂无已授权应用</p>
+      ) : (
+        <div className="space-y-3">
+          {sessions.map((s) => (
+            <div
+              key={s.clientId}
+              className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <KeyRound className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-stone-800">
+                    {s.clientName || s.clientId}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-stone-400">
+                    权限：{s.scopes.join(", ")} · 授权时间：
+                    {new Date(s.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleRevoke(s.clientId, s.clientName)}
+                disabled={revoking === s.clientId}
+                className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                {revoking === s.clientId ? "撤销中..." : "撤销授权"}
+              </button>
+            </div>
+          ))}
         </div>
       )}
-
-      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
-        <p className="mb-4 text-sm text-stone-400">
-          管理已授权的第三方应用。撤销授权后，该应用将无法访问您的账户信息。
-        </p>
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-          </div>
-        ) : sessions.length === 0 ? (
-          <p className="py-10 text-center text-sm text-stone-400">暂无已授权应用</p>
-        ) : (
-          <div className="space-y-3">
-            {sessions.map((s) => (
-              <div
-                key={s.clientId}
-                className="flex items-center justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <KeyRound className="h-5 w-5 shrink-0 text-stone-400" strokeWidth={1.5} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-stone-800">
-                      {s.clientName || s.clientId}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-stone-400">
-                      权限：{s.scopes.join(", ")} · 授权时间：
-                      {new Date(s.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRevoke(s.clientId, s.clientName)}
-                  disabled={revoking === s.clientId}
-                  className="shrink-0 rounded-full border border-red-200 px-4 py-1.5 text-xs text-red-500 transition-colors hover:bg-red-50 disabled:opacity-50"
-                >
-                  {revoking === s.clientId ? "撤销中..." : "撤销授权"}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </PanelShell>
   );
 }

@@ -47,6 +47,7 @@ import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SpentAdjustmentPanel, type SpentPanelView } from "./SpentAdjustmentPanel";
+import { PanelShell } from "./PanelShell";
 
 // 会员卡背景图（四档）：
 // - 会员卡（当前等级）：bg-cover 铺满作卡面底色，容器高度由内容决定
@@ -301,573 +302,563 @@ export function VipPanel() {
   };
 
   return (
-    <div className="flex h-full flex-col pt-4 md:pt-10" data-testid="panel-vip">
-      {/* 标题 - 移动端由弹窗全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 border-b border-stone-200/60 px-6 pb-6 md:flex md:px-16">
-        <h2 className="text-xl font-medium tracking-wide text-stone-800">会员中心</h2>
-      </div>
+    <PanelShell title="会员中心" testId="panel-vip" scrollRef={scrollRef}>
+      <AnimatePresence mode="wait" initial={false}>
+        {view === "main" && (
+          <m.div
+            key="main"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* 两栏排版：左栏会员卡 + 会员权益，右栏提升引导卡（纵跨两行，含 AI 测肤）。
+                PC：行高 auto/1fr 由右栏决定总高；权益区 contain:size 使内容不参与行高计算，
+                只占满会员卡以下剩余高度并在超出时卡片内滚动，底边与右栏（AI 测肤卡）对齐。
+                移动端按 会员卡 → 提升引导 → 会员权益 → AI 测肤 顺序堆叠（AI 卡 order-last）。 */}
+            <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:grid-rows-[auto_1fr] lg:items-start">
+              {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，背景图按卡面铺满） */}
+              <div
+                className={`relative flex aspect-[1.586/1] w-full flex-col overflow-hidden rounded-xl border lg:col-start-1 lg:row-start-1 ${tierStyle.card}`}
+              >
+                {/* 卡面背景图 */}
+                {cardBgImage && (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${cardBgImage})` }}
+                  />
+                )}
 
-      <div
-        ref={scrollRef}
-        className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16"
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          {view === "main" && (
-            <m.div
-              key="main"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* 两栏排版：左栏会员卡 + 会员权益，右栏提升引导卡（纵跨两行，含 AI 测肤）。
-                  PC：行高 auto/1fr 由右栏决定总高；权益区 contain:size 使内容不参与行高计算，
-                  只占满会员卡以下剩余高度并在超出时卡片内滚动，底边与右栏（AI 测肤卡）对齐。
-                  移动端按 会员卡 → 提升引导 → 会员权益 → AI 测肤 顺序堆叠（AI 卡 order-last）。 */}
-              <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:grid-rows-[auto_1fr] lg:items-start">
-                {/* 当前等级会员卡（标准卡片比例 85.6:53.98 ≈ 1.586:1，背景图按卡面铺满） */}
-                <div
-                  className={`relative flex aspect-[1.586/1] w-full flex-col overflow-hidden rounded-xl border lg:col-start-1 lg:row-start-1 ${tierStyle.card}`}
-                >
-                  {/* 卡面背景图 */}
-                  {cardBgImage && (
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: `url(${cardBgImage})` }}
-                    />
-                  )}
-
-                  {/* 上半区文字底色：薄白纱保证可读性（图色仍然透出） */}
-                  <div className="relative bg-white/25 p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs tracking-wider text-stone-500">当前等级</p>
-                        <h3 className="mt-1 text-xl font-medium text-stone-800">
-                          {currentLevel.name}
-                        </h3>
-                        <p className="mt-1 text-[11px] font-light tracking-wider text-stone-500">
-                          NO.{memberId}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setUserCenterView("mall")}
-                        className="text-right transition-opacity hover:opacity-70"
-                      >
-                        <p className="text-xs text-stone-500">我的积分</p>
-                        <p className="mt-1 text-xl font-light text-stone-800">
-                          {pointsData ? pointsData.available.toLocaleString() : "—"}
-                        </p>
-                      </button>
+                {/* 上半区文字底色：薄白纱保证可读性（图色仍然透出） */}
+                <div className="relative bg-white/25 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs tracking-wider text-stone-500">当前等级</p>
+                      <h3 className="mt-1 text-xl font-medium text-stone-800">
+                        {currentLevel.name}
+                      </h3>
+                      <p className="mt-1 text-[11px] font-light tracking-wider text-stone-500">
+                        NO.{memberId}
+                      </p>
                     </div>
-                  </div>
-
-                  {/* 品牌 logo 常驻右下角，直接压在卡面背景图上 */}
-                  <div className="relative mt-auto flex justify-end p-5">
-                    <Image
-                      src="/images/NIHPLOD-logo.svg"
-                      alt="NIHPLOD"
-                      width={130}
-                      height={36}
-                      className="w-[72px] object-contain"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setUserCenterView("mall")}
+                      className="text-right transition-opacity hover:opacity-70"
+                    >
+                      <p className="text-xs text-stone-500">我的积分</p>
+                      <p className="mt-1 text-xl font-light text-stone-800">
+                        {pointsData ? pointsData.available.toLocaleString() : "—"}
+                      </p>
+                    </button>
                   </div>
                 </div>
 
-                {/* 右栏：提升引导卡（进度 + 如何提升 + 录入入口）与 AI 测肤用量卡，各自独立成卡。
-                    卡片间距与页面节奏统一为 gap-6（24px，与会员卡/会员权益及两栏列间距一致）。
-                    移动端 display:contents 拍平，让 AI 测肤卡可用 order 排到会员权益之后 */}
-                <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6">
-                  <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
-                    <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                      <TrendingUp className="h-[18px] w-[18px] text-[#00263e]" />
-                      提升会员等级
-                    </h4>
+                {/* 品牌 logo 常驻右下角，直接压在卡面背景图上 */}
+                <div className="relative mt-auto flex justify-end p-5">
+                  <Image
+                    src="/images/NIHPLOD-logo.svg"
+                    alt="NIHPLOD"
+                    width={130}
+                    height={36}
+                    className="w-[72px] object-contain"
+                  />
+                </div>
+              </div>
 
-                    {nextLevel ? (
-                      /* 升级进度卡：细实线 + 微白底；差额 + 目标等级一行，进度条通栏，百分比居右 */
-                      <div className="mt-3 rounded-xl border border-stone-200/60 bg-white/50 p-4">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <p className="text-sm text-stone-600">
-                            再消费{" "}
-                            <span className="text-base font-semibold leading-none text-[#00263e]">
-                              ¥{nextLevel.spentNeeded.toLocaleString()}
-                            </span>
-                          </p>
-                          <p className="shrink-0 text-xs text-stone-400">升级{nextLevel.name}</p>
-                        </div>
-                        <div className="mt-3 h-1 overflow-hidden rounded-full bg-stone-200/70">
-                          <div
-                            className="h-full rounded-full bg-[#00263e]/80 transition-all duration-500"
-                            style={{ width: `${nextLevel.progress}%` }}
-                          />
-                        </div>
-                        <p className="mt-1.5 text-right text-xs text-stone-400">
-                          {nextLevel.progress}%
+              {/* 右栏：提升引导卡（进度 + 如何提升 + 录入入口）与 AI 测肤用量卡，各自独立成卡。
+                  卡片间距与页面节奏统一为 gap-6（24px，与会员卡/会员权益及两栏列间距一致）。
+                  移动端 display:contents 拍平，让 AI 测肤卡可用 order 排到会员权益之后 */}
+              <div className="contents lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6">
+                <div className="rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                  <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                    <TrendingUp className="h-[18px] w-[18px] text-brand-primary" />
+                    提升会员等级
+                  </h4>
+
+                  {nextLevel ? (
+                    /* 升级进度卡：细实线 + 微白底；差额 + 目标等级一行，进度条通栏，百分比居右 */
+                    <div className="mt-3 rounded-xl border border-stone-200/60 bg-white/50 p-4">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm text-stone-600">
+                          再消费{" "}
+                          <span className="text-base font-semibold leading-none text-brand-primary">
+                            ¥{nextLevel.spentNeeded.toLocaleString()}
+                          </span>
                         </p>
+                        <p className="shrink-0 text-xs text-stone-400">升级{nextLevel.name}</p>
                       </div>
-                    ) : (
-                      <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                        您已是最高等级会员，全渠道消费记录可随时补录留存。
+                      <div className="mt-3 h-1 overflow-hidden rounded-full bg-stone-200/70">
+                        <div
+                          className="h-full rounded-full bg-brand-primary/80 transition-all duration-500"
+                          style={{ width: `${nextLevel.progress}%` }}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-right text-xs text-stone-400">
+                        {nextLevel.progress}%
                       </p>
-                    )}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                      您已是最高等级会员，全渠道消费记录可随时补录留存。
+                    </p>
+                  )}
 
-                    {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
-                    <div className="mt-6 border-t border-stone-300/70 pt-6">
-                      <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                        <Info className="h-[18px] w-[18px] text-[#00263e]" />
-                        如何提升会员等级
-                      </h5>
-                      {/* 步骤列表与官方渠道说明互斥交叉淡入淡出（问号图标切换，带点击防抖） */}
-                      <div className="mt-3">
-                        <AnimatePresence mode="wait" initial={false}>
-                          {showChannelTip ? (
-                            <m.div
-                              key="channel-tip"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.18 }}
-                            >
-                              <p className="text-xs leading-relaxed text-stone-400">
-                                <button
-                                  type="button"
-                                  onClick={toggleChannelTip}
-                                  aria-label="返回步骤说明"
-                                  className="mr-1 inline-flex translate-y-[2px] text-[#00263e] transition-opacity hover:opacity-70"
-                                >
-                                  <ChevronLeft className="h-3.5 w-3.5" />
-                                </button>
-                                {CHANNEL_TIP_TEXT}
-                              </p>
-                            </m.div>
-                          ) : (
-                            <m.div
-                              key="steps"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.18 }}
-                              className="space-y-2"
-                            >
-                              {[
-                                "在官方渠道下单消费",
-                                "签收成功后，复制订单编号",
-                                "登录中国官网 > 会员中心录入消费 > 提交订单编号与凭证",
-                              ].map((step, i) => (
-                                <div key={i} className="flex items-baseline gap-2">
-                                  <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
-                                  <p className="text-xs leading-relaxed text-stone-500">
-                                    {step}
-                                    {i === 0 &&
-                                      (isTouch ? (
-                                        /* 触屏：点击问号整版切换到渠道说明（带返回） */
+                  {/* 如何提升会员等级：三步流程 + 录入消费 / 查看录入历史 */}
+                  <div className="mt-6 border-t border-stone-300/70 pt-6">
+                    <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                      <Info className="h-[18px] w-[18px] text-brand-primary" />
+                      如何提升会员等级
+                    </h5>
+                    {/* 步骤列表与官方渠道说明互斥交叉淡入淡出（问号图标切换，带点击防抖） */}
+                    <div className="mt-3">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {showChannelTip ? (
+                          <m.div
+                            key="channel-tip"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                          >
+                            <p className="text-xs leading-relaxed text-stone-400">
+                              <button
+                                type="button"
+                                onClick={toggleChannelTip}
+                                aria-label="返回步骤说明"
+                                className="mr-1 inline-flex translate-y-[2px] text-brand-primary transition-opacity hover:opacity-70"
+                              >
+                                <ChevronLeft className="h-3.5 w-3.5" />
+                              </button>
+                              {CHANNEL_TIP_TEXT}
+                            </p>
+                          </m.div>
+                        ) : (
+                          <m.div
+                            key="steps"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="space-y-2"
+                          >
+                            {[
+                              "在官方渠道下单消费",
+                              "签收成功后，复制订单编号",
+                              "登录中国官网 > 会员中心录入消费 > 提交订单编号与凭证",
+                            ].map((step, i) => (
+                              <div key={i} className="flex items-baseline gap-2">
+                                <span className="shrink-0 text-xs text-stone-400">{i + 1}.</span>
+                                <p className="text-xs leading-relaxed text-stone-500">
+                                  {step}
+                                  {i === 0 &&
+                                    (isTouch ? (
+                                      /* 触屏：点击问号整版切换到渠道说明（带返回） */
+                                      <button
+                                        type="button"
+                                        onClick={toggleChannelTip}
+                                        aria-label="查看官方渠道说明"
+                                        aria-expanded={showChannelTip}
+                                        className="relative ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-brand-primary active:opacity-60"
+                                      >
+                                        <CircleHelp className="h-3.5 w-3.5" />
+                                      </button>
+                                    ) : (
+                                      /* PC：悬浮问号出现气泡说明（Tooltip 走 Portal，不被裁剪） */
+                                      <Tooltip
+                                        content={CHANNEL_TIP_TEXT}
+                                        side="top"
+                                        className="max-w-[280px] whitespace-normal leading-relaxed"
+                                      >
                                         <button
                                           type="button"
-                                          onClick={toggleChannelTip}
                                           aria-label="查看官方渠道说明"
-                                          aria-expanded={showChannelTip}
-                                          className="relative ml-1 inline-flex translate-y-[2px] text-stone-400 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-[#00263e] active:opacity-60"
+                                          className="relative ml-1 inline-flex translate-y-[2px] cursor-help text-stone-400 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-brand-primary"
                                         >
                                           <CircleHelp className="h-3.5 w-3.5" />
                                         </button>
-                                      ) : (
-                                        /* PC：悬浮问号出现气泡说明（Tooltip 走 Portal，不被裁剪） */
-                                        <Tooltip
-                                          content={CHANNEL_TIP_TEXT}
-                                          side="top"
-                                          className="max-w-[280px] whitespace-normal leading-relaxed"
-                                        >
-                                          <button
-                                            type="button"
-                                            aria-label="查看官方渠道说明"
-                                            className="relative ml-1 inline-flex translate-y-[2px] cursor-help text-stone-400 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-[#00263e]"
-                                          >
-                                            <CircleHelp className="h-3.5 w-3.5" />
-                                          </button>
-                                        </Tooltip>
-                                      ))}
-                                  </p>
-                                </div>
-                              ))}
-                            </m.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                      <div className="mt-4 flex items-center gap-4">
-                        <button
-                          type="button"
-                          onClick={focusSpentForm}
-                          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#00263e]/30 bg-white/40 px-5 py-2 text-xs text-[#00263e] transition-colors hover:border-[#00263e]/60 hover:bg-[#00263e]/5 active:opacity-70"
-                        >
-                          录入消费
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setView("spent-history")}
-                          className="py-1.5 text-xs text-stone-500 transition-colors hover:text-stone-800 active:opacity-60"
-                        >
-                          查看录入历史
-                        </button>
-                      </div>
+                                      </Tooltip>
+                                    ))}
+                                </p>
+                              </div>
+                            ))}
+                          </m.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                  </div>
-
-                  {/* AI 测肤用量卡（来自测肤子站；不可用时弱提示 + 手动刷新，不影响其它内容）。
-                      移动端 order-last：排在会员权益之后；PC 端仍在右栏原位 */}
-                  <div className="order-last rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:order-none">
-                    <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                      <ScanFace className="h-[18px] w-[18px] text-[#00263e]" />
-                      AI 测肤
-                    </h5>
-                    {!skinTestUsage ? (
-                      <div className="mt-2 flex items-center gap-1.5">
-                        <p className="text-xs leading-relaxed text-stone-400">测肤用量暂不可用</p>
-                        <button
-                          type="button"
-                          onClick={() => void refreshSkinTestUsage()}
-                          disabled={refreshingUsage}
-                          aria-label="刷新测肤用量"
-                          className="text-stone-400 transition-colors hover:text-stone-600 disabled:cursor-not-allowed"
-                        >
-                          <RefreshCw
-                            className={`h-3.5 w-3.5 ${refreshingUsage ? "animate-spin" : ""}`}
-                          />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-3 space-y-2">
-                        {skinTestUsage.quota.unlimited ? (
-                          <p className="text-sm text-stone-700">
-                            AI 测肤 <span className="font-medium text-stone-800">不限次</span>
-                          </p>
-                        ) : (
-                          <p className="text-sm text-stone-700">
-                            已用{" "}
-                            <span className="font-medium text-stone-800">
-                              {skinTestUsage.totalUsed}
-                            </span>
-                            {" / 共 "}
-                            {/* 子站契约：unlimited=false 时 lifetimeLimit 必为 number（unlimited 分支已在上方处理） */}
-                            {skinTestUsage.quota.lifetimeLimit} 次
-                          </p>
-                        )}
-                        {skinTestUsage.quota.dailyLimit != null && (
-                          <p className="text-xs text-stone-500">
-                            今日已用 {skinTestUsage.todayUsed}/{skinTestUsage.quota.dailyLimit}
-                          </p>
-                        )}
-                        {!skinTestUsage.quota.unlimited &&
-                          skinTestUsage.remaining != null &&
-                          skinTestUsage.remaining <= 0 && (
-                            <div className="pt-1">
-                              <p className="text-xs leading-relaxed text-stone-500">
-                                {vipData.membershipLevel === "SILVER"
-                                  ? "测肤次数已用完，升级金卡会员可享不限次 AI 测肤"
-                                  : "测肤次数已用完，升级银卡会员可获更多测肤次数"}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={focusSpentForm}
-                                className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
-                              >
-                                了解会员升级
-                              </button>
-                            </div>
-                          )}
-                      </div>
-                    )}
+                    <div className="mt-4 flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={focusSpentForm}
+                        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brand-primary/30 bg-white/40 px-5 py-2 text-xs text-brand-primary transition-colors hover:border-brand-primary/60 hover:bg-brand-primary/5 active:opacity-70"
+                      >
+                        录入消费
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setView("spent-history")}
+                        className="py-1.5 text-xs text-stone-500 transition-colors hover:text-stone-800 active:opacity-60"
+                      >
+                        查看录入历史
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* 会员权益 - 直接展示当前等级权益（标题 + 说明常显）；「全部等级」入口进入四档对比。
-                    PC：contain:size 使内容不参与网格行高计算，卡片高度只由右栏决定（底边与 AI 测肤卡对齐），
-                    内容超出时卡片内滚动 */}
-                <div className="flex flex-col lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:self-stretch lg:overflow-hidden lg:[contain:size]">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                      <Crown className="h-[18px] w-[18px] text-[#00263e]" />
-                      会员权益
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setView("levels")}
-                      className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3.5 py-1.5 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
-                    >
-                      全部等级
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="relative flex min-h-0 flex-1 flex-col">
-                    <div
-                      ref={benefitsScrollRef}
-                      onScroll={updateBenefitsScroll}
-                      className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-stone-200/60 bg-white/40 p-5"
-                    >
-                      {currentLevel.benefits.map((b, i) => {
-                        const BenefitIcon = benefitIcon(b.title);
-                        return (
-                          <div key={i} className="flex items-start gap-2.5">
-                            <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#00263e]" />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-stone-800">{b.title}</p>
-                              <p className="mt-0.5 text-[13px] leading-relaxed text-stone-400 md:text-xs">
-                                {b.desc}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                {/* AI 测肤用量卡（来自测肤子站；不可用时弱提示 + 手动刷新，不影响其它内容）。
+                    移动端 order-last：排在会员权益之后；PC 端仍在右栏原位 */}
+                <div className="order-last rounded-xl border border-stone-200/60 bg-white/40 p-5 lg:order-none">
+                  <h5 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                    <ScanFace className="h-[18px] w-[18px] text-brand-primary" />
+                    AI 测肤
+                  </h5>
+                  {!skinTestUsage ? (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <p className="text-xs leading-relaxed text-stone-400">测肤用量暂不可用</p>
+                      <button
+                        type="button"
+                        onClick={() => void refreshSkinTestUsage()}
+                        disabled={refreshingUsage}
+                        aria-label="刷新测肤用量"
+                        className="text-stone-400 transition-colors hover:text-stone-600 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw
+                          className={`h-3.5 w-3.5 ${refreshingUsage ? "animate-spin" : ""}`}
+                        />
+                      </button>
                     </div>
-                    {/* 内容溢出且未滚到底：底部由实到虚的渐隐遮罩；
-                        淡入淡出过渡（滚到底时柔和消失），pointer-events-none 不拦截滚动 */}
-                    <AnimatePresence>
-                      {benefitsScroll.overflowing && !benefitsScroll.atBottom && (
-                        <m.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          aria-hidden
-                          data-testid="benefits-fade"
-                          className="pointer-events-none absolute inset-x-px bottom-px h-8 rounded-b-[11px] bg-gradient-to-t from-[#FBF8F0] to-transparent"
-                        />
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {skinTestUsage.quota.unlimited ? (
+                        <p className="text-sm text-stone-700">
+                          AI 测肤 <span className="font-medium text-stone-800">不限次</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-stone-700">
+                          已用{" "}
+                          <span className="font-medium text-stone-800">
+                            {skinTestUsage.totalUsed}
+                          </span>
+                          {" / 共 "}
+                          {/* 子站契约：unlimited=false 时 lifetimeLimit 必为 number（unlimited 分支已在上方处理） */}
+                          {skinTestUsage.quota.lifetimeLimit} 次
+                        </p>
                       )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </div>
-            </m.div>
-          )}
-
-          {view === "levels" && (
-            <m.div
-              key="levels"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* 头部：标题 + 返回 */}
-              <div className="flex items-center justify-between gap-2">
-                <h4 className="text-lg font-medium text-stone-800">等级权益对比</h4>
-                <button
-                  type="button"
-                  onClick={() => setView("main")}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  返回
-                </button>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                会员等级按官方店铺累计消费实时判定，等级永久有效、可升可降。
-              </p>
-
-              {/* 四档权益一页式对比：当前最清晰，已解锁次之，未解锁去色淡化 */}
-              <div className="mt-4 space-y-4">
-                {allLevels.map((level) => {
-                  const isCurrent = level.level === currentLevel.level;
-                  const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
-                  const isLocked = !isCurrent && !isUnlocked;
-                  const tierBgImage = CARD_BG_IMAGES[level.level];
-                  // 距该等级的累计消费进度（未达档 0–99%，用等级自身色系的进度条区分）
-                  const tierProgress =
-                    level.minSpent > 0
-                      ? Math.min(100, Math.round((totalSpent / level.minSpent) * 100))
-                      : 100;
-                  return (
-                    <div
-                      key={level.level}
-                      className={`relative overflow-hidden rounded-xl border ${
-                        isCurrent
-                          ? "border-[#00263e] bg-white/70"
-                          : isUnlocked
-                            ? "border-stone-200/60 bg-white/50"
-                            : "border-stone-200/50 bg-white/40"
-                      }`}
-                    >
-                      {tierBgImage && (
-                        <div
-                          aria-hidden
-                          className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
-                            isCurrent
-                              ? "opacity-25 blur-[2px]"
-                              : isUnlocked
-                                ? "opacity-15 blur-sm"
-                                : "opacity-[0.08] blur-sm grayscale"
-                          }`}
-                          style={{ backgroundImage: `url(${tierBgImage})` }}
-                        />
+                      {skinTestUsage.quota.dailyLimit != null && (
+                        <p className="text-xs text-stone-500">
+                          今日已用 {skinTestUsage.todayUsed}/{skinTestUsage.quota.dailyLimit}
+                        </p>
                       )}
-                      <div className="relative p-5">
-                        {/* 等级名 + 状态徽标 + 门槛 */}
-                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <p
-                              className={`text-base font-medium ${
-                                isCurrent
-                                  ? "text-stone-900"
-                                  : isUnlocked
-                                    ? "text-stone-700"
-                                    : "text-stone-400"
-                              }`}
-                            >
-                              {level.name}
+                      {!skinTestUsage.quota.unlimited &&
+                        skinTestUsage.remaining != null &&
+                        skinTestUsage.remaining <= 0 && (
+                          <div className="pt-1">
+                            <p className="text-xs leading-relaxed text-stone-500">
+                              {vipData.membershipLevel === "SILVER"
+                                ? "测肤次数已用完，升级金卡会员可享不限次 AI 测肤"
+                                : "测肤次数已用完，升级银卡会员可获更多测肤次数"}
                             </p>
-                            {isCurrent ? (
-                              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#00263e]/10 px-2.5 py-0.5 text-[11px] font-medium text-[#00263e]">
-                                <Crown className="h-3 w-3" />
-                                当前
-                              </span>
-                            ) : isUnlocked ? (
-                              <span className="flex shrink-0 items-center gap-1 rounded-full border border-stone-200/80 bg-white/60 px-2.5 py-0.5 text-[11px] text-stone-500">
-                                <Check className="h-3 w-3 text-[#00263e]" />
-                                已解锁
-                              </span>
-                            ) : (
-                              <span className="flex shrink-0 items-center gap-1 rounded-full border border-stone-200/60 bg-white/40 px-2.5 py-0.5 text-[11px] text-stone-400">
-                                <Lock className="h-3 w-3" />
-                                未解锁
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-stone-400">
-                            {level.minSpent > 0
-                              ? `消费满 ¥${level.minSpent.toLocaleString()}`
-                              : "注册即享"}
-                          </p>
-                        </div>
-
-                        {/* 权益列表：适配图标 + 标题 + 描述；宽卡片两列（窄屏单列） */}
-                        <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-stone-200/60 pt-4 md:grid-cols-2">
-                          {level.benefits.map((b, i) => {
-                            const BenefitIcon = benefitIcon(b.title);
-                            return (
-                              <div key={i} className="flex items-start gap-2.5">
-                                <BenefitIcon
-                                  className={`mt-0.5 h-4 w-4 shrink-0 ${
-                                    isLocked ? "text-stone-400" : "text-[#00263e]"
-                                  }`}
-                                />
-                                <div className="min-w-0">
-                                  <p
-                                    className={`text-sm font-medium ${
-                                      isLocked ? "text-stone-500" : "text-stone-800"
-                                    }`}
-                                  >
-                                    {b.title}
-                                  </p>
-                                  <p className="mt-0.5 text-[13px] leading-relaxed text-stone-400 md:text-xs">
-                                    {b.desc}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* 未达档等级：解锁进度（等级色进度条）+ 补录引导。
-                            通栏页脚（负边距贴卡片边缘、极浅底色），避免卡片套卡片 */}
-                        {isLocked && (
-                          <div className="-mx-5 -mb-5 mt-4 border-t border-stone-200/60 bg-stone-500/[0.04] px-5 py-4">
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="flex min-w-0 items-center gap-1.5 text-xs text-stone-600">
-                                <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
-                                <span>
-                                  还差{" "}
-                                  <span className="text-sm font-medium text-[#00263e]">
-                                    ¥{(level.minSpent - totalSpent).toLocaleString()}
-                                  </span>{" "}
-                                  解锁该等级
-                                </span>
-                              </p>
-                              <button
-                                type="button"
-                                onClick={focusSpentForm}
-                                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
-                              >
-                                补录消费记录
-                              </button>
-                            </div>
-                            <div className="mt-3 flex items-center gap-2">
-                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-200/70">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 ${
-                                    TIER_CARD_STYLES[level.level]?.bar ?? "bg-[#00263e]/80"
-                                  }`}
-                                  style={{ width: `${tierProgress}%` }}
-                                />
-                              </div>
-                              <span className="shrink-0 text-[11px] text-stone-400">
-                                {tierProgress}%
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 当前为普通档：升级引导（解锁银卡全部权益），同样用通栏页脚 */}
-                        {isCurrent && level.level === "REGULAR" && (
-                          <div className="-mx-5 -mb-5 mt-4 border-t border-stone-200/60 bg-stone-500/[0.04] px-5 py-4">
-                            <div className="flex items-start gap-2">
-                              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
-                              <p className="text-xs leading-relaxed text-stone-600">
-                                累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
-                                顾问、积分兑礼与生日礼遇等权益
-                              </p>
-                            </div>
                             <button
                               type="button"
                               onClick={focusSpentForm}
-                              className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#00263e] px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
+                              className="mt-3 inline-flex items-center gap-1 rounded-full bg-brand-primary px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
+                            >
+                              了解会员升级
+                            </button>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 会员权益 - 直接展示当前等级权益（标题 + 说明常显）；「全部等级」入口进入四档对比。
+                  PC：contain:size 使内容不参与网格行高计算，卡片高度只由右栏决定（底边与 AI 测肤卡对齐），
+                  内容超出时卡片内滚动 */}
+              <div className="flex flex-col lg:col-start-1 lg:row-start-2 lg:min-h-0 lg:self-stretch lg:overflow-hidden lg:[contain:size]">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h4 className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                    <Crown className="h-[18px] w-[18px] text-brand-primary" />
+                    会员权益
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setView("levels")}
+                    className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3.5 py-1.5 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
+                  >
+                    全部等级
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                  <div
+                    ref={benefitsScrollRef}
+                    onScroll={updateBenefitsScroll}
+                    className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-stone-200/60 bg-white/40 p-5"
+                  >
+                    {currentLevel.benefits.map((b, i) => {
+                      const BenefitIcon = benefitIcon(b.title);
+                      return (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <BenefitIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-stone-800">{b.title}</p>
+                            <p className="mt-0.5 text-[13px] leading-relaxed text-stone-400 md:text-xs">
+                              {b.desc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* 内容溢出且未滚到底：底部由实到虚的渐隐遮罩；
+                      淡入淡出过渡（滚到底时柔和消失），pointer-events-none 不拦截滚动 */}
+                  <AnimatePresence>
+                    {benefitsScroll.overflowing && !benefitsScroll.atBottom && (
+                      <m.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        aria-hidden
+                        data-testid="benefits-fade"
+                        className="pointer-events-none absolute inset-x-px bottom-px h-8 rounded-b-[11px] bg-gradient-to-t from-brand-cream to-transparent"
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+          </m.div>
+        )}
+
+        {view === "levels" && (
+          <m.div
+            key="levels"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* 头部：标题 + 返回 */}
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-lg font-medium text-stone-800">等级权益对比</h4>
+              <button
+                type="button"
+                onClick={() => setView("main")}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                返回
+              </button>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-stone-400">
+              会员等级按官方店铺累计消费实时判定，等级永久有效、可升可降。
+            </p>
+
+            {/* 四档权益一页式对比：当前最清晰，已解锁次之，未解锁去色淡化 */}
+            <div className="mt-4 space-y-4">
+              {allLevels.map((level) => {
+                const isCurrent = level.level === currentLevel.level;
+                const isUnlocked = !isCurrent && level.minSpent <= totalSpent;
+                const isLocked = !isCurrent && !isUnlocked;
+                const tierBgImage = CARD_BG_IMAGES[level.level];
+                // 距该等级的累计消费进度（未达档 0–99%，用等级自身色系的进度条区分）
+                const tierProgress =
+                  level.minSpent > 0
+                    ? Math.min(100, Math.round((totalSpent / level.minSpent) * 100))
+                    : 100;
+                return (
+                  <div
+                    key={level.level}
+                    className={`relative overflow-hidden rounded-xl border ${
+                      isCurrent
+                        ? "border-brand-primary bg-white/70"
+                        : isUnlocked
+                          ? "border-stone-200/60 bg-white/50"
+                          : "border-stone-200/50 bg-white/40"
+                    }`}
+                  >
+                    {tierBgImage && (
+                      <div
+                        aria-hidden
+                        className={`pointer-events-none absolute inset-0 bg-cover bg-center ${
+                          isCurrent
+                            ? "opacity-25 blur-[2px]"
+                            : isUnlocked
+                              ? "opacity-15 blur-sm"
+                              : "opacity-[0.08] blur-sm grayscale"
+                        }`}
+                        style={{ backgroundImage: `url(${tierBgImage})` }}
+                      />
+                    )}
+                    <div className="relative p-5">
+                      {/* 等级名 + 状态徽标 + 门槛 */}
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={`text-base font-medium ${
+                              isCurrent
+                                ? "text-stone-900"
+                                : isUnlocked
+                                  ? "text-stone-700"
+                                  : "text-stone-400"
+                            }`}
+                          >
+                            {level.name}
+                          </p>
+                          {isCurrent ? (
+                            <span className="flex shrink-0 items-center gap-1 rounded-full bg-brand-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-brand-primary">
+                              <Crown className="h-3 w-3" />
+                              当前
+                            </span>
+                          ) : isUnlocked ? (
+                            <span className="flex shrink-0 items-center gap-1 rounded-full border border-stone-200/80 bg-white/60 px-2.5 py-0.5 text-[11px] text-stone-500">
+                              <Check className="h-3 w-3 text-brand-primary" />
+                              已解锁
+                            </span>
+                          ) : (
+                            <span className="flex shrink-0 items-center gap-1 rounded-full border border-stone-200/60 bg-white/40 px-2.5 py-0.5 text-[11px] text-stone-400">
+                              <Lock className="h-3 w-3" />
+                              未解锁
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-stone-400">
+                          {level.minSpent > 0
+                            ? `消费满 ¥${level.minSpent.toLocaleString()}`
+                            : "注册即享"}
+                        </p>
+                      </div>
+
+                      {/* 权益列表：适配图标 + 标题 + 描述；宽卡片两列（窄屏单列） */}
+                      <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-stone-200/60 pt-4 md:grid-cols-2">
+                        {level.benefits.map((b, i) => {
+                          const BenefitIcon = benefitIcon(b.title);
+                          return (
+                            <div key={i} className="flex items-start gap-2.5">
+                              <BenefitIcon
+                                className={`mt-0.5 h-4 w-4 shrink-0 ${
+                                  isLocked ? "text-stone-400" : "text-brand-primary"
+                                }`}
+                              />
+                              <div className="min-w-0">
+                                <p
+                                  className={`text-sm font-medium ${
+                                    isLocked ? "text-stone-500" : "text-stone-800"
+                                  }`}
+                                >
+                                  {b.title}
+                                </p>
+                                <p className="mt-0.5 text-[13px] leading-relaxed text-stone-400 md:text-xs">
+                                  {b.desc}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* 未达档等级：解锁进度（等级色进度条）+ 补录引导。
+                          通栏页脚（负边距贴卡片边缘、极浅底色），避免卡片套卡片 */}
+                      {isLocked && (
+                        <div className="-mx-5 -mb-5 mt-4 border-t border-stone-200/60 bg-stone-500/[0.04] px-5 py-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="flex min-w-0 items-center gap-1.5 text-xs text-stone-600">
+                              <Lock className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                              <span>
+                                还差{" "}
+                                <span className="text-sm font-medium text-brand-primary">
+                                  ¥{(level.minSpent - totalSpent).toLocaleString()}
+                                </span>{" "}
+                                解锁该等级
+                              </span>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={focusSpentForm}
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-primary px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
                             >
                               补录消费记录
                             </button>
                           </div>
-                        )}
-                      </div>
+                          <div className="mt-3 flex items-center gap-2">
+                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-200/70">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  TIER_CARD_STYLES[level.level]?.bar ?? "bg-brand-primary/80"
+                                }`}
+                                style={{ width: `${tierProgress}%` }}
+                              />
+                            </div>
+                            <span className="shrink-0 text-[11px] text-stone-400">
+                              {tierProgress}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 当前为普通档：升级引导（解锁银卡全部权益），同样用通栏页脚 */}
+                      {isCurrent && level.level === "REGULAR" && (
+                        <div className="-mx-5 -mb-5 mt-4 border-t border-stone-200/60 bg-stone-500/[0.04] px-5 py-4">
+                          <div className="flex items-start gap-2">
+                            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                            <p className="text-xs leading-relaxed text-stone-600">
+                              累计消费满 ¥1,000 升级银卡会员，解锁档案保留、AI
+                              顾问、积分兑礼与生日礼遇等权益
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={focusSpentForm}
+                            className="mt-3 inline-flex items-center gap-1 rounded-full bg-brand-primary px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80"
+                          >
+                            补录消费记录
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </m.div>
-          )}
+                  </div>
+                );
+              })}
+            </div>
+          </m.div>
+        )}
 
-          {view === "spent-form" && (
-            <m.div
-              key="spent-form"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <SpentAdjustmentPanel
-                view="form"
-                onViewChange={handleSpentViewChange}
-                onApplicationsLoaded={handleApplicationsLoaded}
-              />
-            </m.div>
-          )}
+        {view === "spent-form" && (
+          <m.div
+            key="spent-form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <SpentAdjustmentPanel
+              view="form"
+              onViewChange={handleSpentViewChange}
+              onApplicationsLoaded={handleApplicationsLoaded}
+            />
+          </m.div>
+        )}
 
-          {view === "spent-history" && (
-            <m.div
-              key="spent-history"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <SpentAdjustmentPanel
-                view="history"
-                onViewChange={handleSpentViewChange}
-                onApplicationsLoaded={handleApplicationsLoaded}
-              />
-            </m.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
+        {view === "spent-history" && (
+          <m.div
+            key="spent-history"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <SpentAdjustmentPanel
+              view="history"
+              onViewChange={handleSpentViewChange}
+              onApplicationsLoaded={handleApplicationsLoaded}
+            />
+          </m.div>
+        )}
+      </AnimatePresence>
+    </PanelShell>
   );
 }

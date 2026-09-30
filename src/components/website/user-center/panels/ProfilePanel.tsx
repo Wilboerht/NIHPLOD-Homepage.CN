@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { SecurityPanel } from "./SecurityPanel";
+import { PanelShell } from "../PanelShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -375,18 +376,13 @@ export function ProfilePanel() {
   const isPlaceholderPhone = !user.phone || !/^1[3-9]\d{9}$/.test(user.phone);
 
   return (
-    <div className="flex h-full flex-col pt-4 md:pt-10">
-      {/* 标题 - 移动端由全局 Header 管理 */}
-      <div className="hidden flex-shrink-0 border-b-0 border-stone-200/60 px-6 pb-6 md:flex md:border-b md:px-16">
-        <h2 className="text-xl font-medium tracking-wide text-stone-800">个人信息</h2>
-      </div>
-
-      <div className="scrollbar-hide flex-1 overflow-y-auto overscroll-contain px-6 py-6 md:px-16">
+    <>
+      <PanelShell title="个人信息">
         {/* 头像区域 */}
         <div className="mb-5 flex items-center gap-4 md:mb-10 md:gap-6">
           {/* 可点击上传头像 */}
           <div className="group relative">
-            <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-[#FBF8F0]/20 transition-all group-hover:border-stone-300 md:h-20 md:w-20">
+            <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-brand-cream/20 transition-all group-hover:border-stone-300 md:h-20 md:w-20">
               {user.avatar ? (
                 <Image
                   src={user.avatar}
@@ -556,7 +552,7 @@ export function ProfilePanel() {
                       onClick={() => void saveGender(opt.value)}
                       className={`rounded-full border px-5 py-2 text-sm transition-colors disabled:opacity-50 ${
                         gender === opt.value
-                          ? "border-[#00263e] bg-[#00263e] text-white"
+                          ? "border-brand-primary bg-brand-primary text-white"
                           : "border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-800"
                       }`}
                     >
@@ -749,7 +745,7 @@ export function ProfilePanel() {
                   <button
                     onClick={handlePhoneChange}
                     disabled={phoneSaving}
-                    className="rounded-full bg-[#00263e] px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:opacity-50"
+                    className="rounded-full bg-brand-primary px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:opacity-50"
                   >
                     {phoneSaving ? "换绑中..." : "确认换绑"}
                   </button>
@@ -856,7 +852,7 @@ export function ProfilePanel() {
                     {addresses.map((a) => (
                       <div
                         key={a.id}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 px-4 py-3"
+                        className="flex items-start justify-between gap-3 rounded-xl border border-stone-200/60 bg-white/40 p-4"
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-stone-800">
@@ -865,7 +861,7 @@ export function ProfilePanel() {
                               {a.phone}
                             </span>
                             {a.isDefault && (
-                              <span className="ml-2 rounded-full bg-[#00263e]/10 px-2 py-0.5 text-[11px] text-[#00263e]">
+                              <span className="ml-2 rounded-full bg-brand-primary/10 px-2 py-0.5 text-[11px] text-brand-primary">
                                 默认
                               </span>
                             )}
@@ -915,7 +911,7 @@ export function ProfilePanel() {
                 {showAddressForm && (
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-[#00263e]" />
+                      <MapPin className="h-4 w-4 text-brand-primary" />
                       <h3 className="text-sm font-medium text-stone-700">
                         {editingAddressId ? "编辑收货地址" : "新增收货地址"}
                       </h3>
@@ -925,7 +921,7 @@ export function ProfilePanel() {
                     </p>
                     <div>
                       <label htmlFor="addr-recipient" className="mb-1 block text-xs text-stone-500">
-                        收货人 <span className="text-[#00263e]">*</span>
+                        收货人 <span className="text-brand-primary">*</span>
                       </label>
                       <input
                         id="addr-recipient"
@@ -939,7 +935,7 @@ export function ProfilePanel() {
                     </div>
                     <div>
                       <label htmlFor="addr-phone" className="mb-1 block text-xs text-stone-500">
-                        手机号 <span className="text-[#00263e]">*</span>
+                        手机号 <span className="text-brand-primary">*</span>
                       </label>
                       <input
                         id="addr-phone"
@@ -954,7 +950,7 @@ export function ProfilePanel() {
                     </div>
                     <div>
                       <label htmlFor="addr-region" className="mb-1 block text-xs text-stone-500">
-                        省市区 <span className="text-[#00263e]">*</span>
+                        省市区 <span className="text-brand-primary">*</span>
                       </label>
                       <input
                         id="addr-region"
@@ -968,7 +964,7 @@ export function ProfilePanel() {
                     </div>
                     <div>
                       <label htmlFor="addr-detail" className="mb-1 block text-xs text-stone-500">
-                        详细地址 <span className="text-[#00263e]">*</span>
+                        详细地址 <span className="text-brand-primary">*</span>
                       </label>
                       <input
                         id="addr-detail"
@@ -985,7 +981,7 @@ export function ProfilePanel() {
                         type="checkbox"
                         checked={addrDefault}
                         onChange={(e) => setAddrDefault(e.target.checked)}
-                        className="h-3.5 w-3.5 accent-[#00263e]"
+                        className="h-3.5 w-3.5 accent-brand-primary"
                       />
                       设为默认地址
                     </label>
@@ -994,7 +990,7 @@ export function ProfilePanel() {
                         type="button"
                         onClick={saveAddress}
                         disabled={addressSaving}
-                        className="rounded-full bg-[#00263e] px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:opacity-50"
+                        className="rounded-full bg-brand-primary px-6 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:opacity-50"
                       >
                         {addressSaving ? "保存中..." : "保存"}
                       </button>
@@ -1028,7 +1024,7 @@ export function ProfilePanel() {
             退出登录
           </button>
         </div>
-      </div>
+      </PanelShell>
       {/* 移动端退出登录确认 */}
       <LogoutConfirmDialog
         open={showLogoutConfirm}
@@ -1047,6 +1043,6 @@ export function ProfilePanel() {
         confirmText="删除"
         type="danger"
       />
-    </div>
+    </>
   );
 }

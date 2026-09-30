@@ -67,13 +67,13 @@ const STATUS_ICONS = {
 
 const STATUS_COLORS = {
   PENDING: "text-stone-500",
-  APPROVED: "text-[#00263e]",
+  APPROVED: "text-brand-primary",
   REJECTED: "text-red-500",
 } as const;
 
 const STATUS_BG = {
   PENDING: "bg-stone-100",
-  APPROVED: "bg-[#00263e]/10",
+  APPROVED: "bg-brand-primary/10",
   REJECTED: "bg-red-50",
 } as const;
 
@@ -311,7 +311,7 @@ export function SpentAdjustmentPanel({
             <div className="space-y-4">
               <div>
                 <p className="mb-2 text-xs text-stone-600">
-                  购买渠道 <span className="text-[#00263e]">*</span>
+                  购买渠道 <span className="text-brand-primary">*</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {SPENT_CHANNELS.map((c) => {
@@ -323,7 +323,7 @@ export function SpentAdjustmentPanel({
                         onClick={() => setChannel(c)}
                         className={`relative inline-flex items-center rounded-full border px-3.5 py-2 text-xs transition-colors active:opacity-70 ${
                           selected
-                            ? "border-[#00263e]/40 font-medium text-[#00263e]"
+                            ? "border-brand-primary/40 font-medium text-brand-primary"
                             : "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-800"
                         }`}
                       >
@@ -331,7 +331,7 @@ export function SpentAdjustmentPanel({
                         {selected && (
                           <m.span
                             layoutId="spent-channel-pill"
-                            className="absolute inset-0 rounded-full bg-[#00263e]/10"
+                            className="absolute inset-0 rounded-full bg-brand-primary/10"
                             transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                           />
                         )}
@@ -350,7 +350,7 @@ export function SpentAdjustmentPanel({
                 <div>
                   <div className="mb-1 flex items-center justify-between">
                     <label htmlFor="spent-dealer" className="text-xs text-stone-600">
-                      经销商名称 <span className="text-[#00263e]">*</span>
+                      经销商名称 <span className="text-brand-primary">*</span>
                     </label>
                     <span className="text-[11px] text-stone-400">
                       {dealerName.length}/{MAX_DEALER_NAME_LENGTH}
@@ -363,7 +363,7 @@ export function SpentAdjustmentPanel({
                     value={dealerName}
                     onChange={(e) => setDealerName(e.target.value)}
                     placeholder="如：XX 美妆集合店 / XX 贸易有限公司"
-                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-brand-primary md:text-sm"
                   />
                 </div>
               )}
@@ -384,7 +384,7 @@ export function SpentAdjustmentPanel({
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="请说明购买渠道与订单信息（如平台名称、购买方式等）"
-                    className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
+                    className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-brand-primary md:text-sm"
                   />
                 </div>
               )}
@@ -392,7 +392,7 @@ export function SpentAdjustmentPanel({
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label htmlFor="spent-order-no" className="text-xs text-stone-600">
-                    订单号 / 小票号 <span className="text-[#00263e]">*</span>
+                    订单号 / 小票号 <span className="text-brand-primary">*</span>
                   </label>
                   <span className="text-[11px] text-stone-400">{orderNo.length}/64</span>
                 </div>
@@ -403,7 +403,7 @@ export function SpentAdjustmentPanel({
                   value={orderNo}
                   onChange={(e) => setOrderNo(e.target.value)}
                   placeholder="如：天猫订单号 / 线下小票号"
-                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
+                  className="w-full rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-brand-primary md:text-sm"
                 />
               </div>
             </div>
@@ -426,7 +426,7 @@ export function SpentAdjustmentPanel({
                     value={amountClaimed}
                     onChange={(e) => setAmountClaimed(e.target.value)}
                     placeholder="1280"
-                    className="w-full rounded-xl border border-stone-200 bg-white/70 py-2.5 pl-8 pr-4 text-base text-stone-800 outline-none transition-colors [appearance:textfield] placeholder:text-stone-400 focus:border-[#00263e] md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-full rounded-xl border border-stone-200 bg-white/70 py-2.5 pl-8 pr-4 text-base text-stone-800 outline-none transition-colors [appearance:textfield] placeholder:text-stone-400 focus:border-brand-primary md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
               </div>
@@ -442,7 +442,7 @@ export function SpentAdjustmentPanel({
                   value={purchasedAt}
                   max={localDateStr(new Date())}
                   onChange={(e) => setPurchasedAt(e.target.value)}
-                  className="w-full min-w-0 appearance-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors focus:border-[#00263e] md:text-sm"
+                  className="w-full min-w-0 appearance-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors focus:border-brand-primary md:text-sm"
                 />
               </div>
             </div>
@@ -523,7 +523,7 @@ export function SpentAdjustmentPanel({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="补充说明（如订单含多个商品、退款情况等）"
-                  className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-[#00263e] md:text-sm"
+                  className="w-full resize-none rounded-xl border border-stone-200 bg-white/70 px-4 py-2.5 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-400 focus:border-brand-primary md:text-sm"
                 />
               </section>
             )}
@@ -534,7 +534,7 @@ export function SpentAdjustmentPanel({
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting || uploading || reachedPendingLimit}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#00263e] px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-primary px-6 py-3 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -576,7 +576,7 @@ export function SpentAdjustmentPanel({
                   return (
                     <div
                       key={a.id}
-                      className="rounded-xl border border-stone-200/60 bg-white/40 px-4 py-3"
+                      className="rounded-xl border border-stone-200/60 bg-white/40 p-4"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
@@ -645,7 +645,7 @@ export function SpentAdjustmentPanel({
                       )}
 
                       {a.status === "APPROVED" && a.reviewAmount != null && (
-                        <p className="mt-1.5 text-xs text-[#00263e]">
+                        <p className="mt-1.5 text-xs text-brand-primary">
                           已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
                         </p>
                       )}

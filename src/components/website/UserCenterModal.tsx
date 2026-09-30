@@ -198,7 +198,7 @@ export function UserCenterModal() {
               }
             >
               {/* 底层基础色 */}
-              <div className="absolute inset-0 z-0 bg-[#FBF8F0]" />
+              <div className="absolute inset-0 z-0 bg-brand-cream" />
 
               {/* 背景动态装饰层 (位于模糊层之下)，移动端全屏仅纯色底以保低端机性能 */}
               <div className="pointer-events-none absolute inset-0 z-10 hidden overflow-hidden md:block">
@@ -254,7 +254,7 @@ export function UserCenterModal() {
                     {/* 用户头像区域 */}
                     <div className="px-12 pb-4 pt-12">
                       <div className="flex flex-col items-start gap-4 text-left">
-                        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FBF8F0]/40 object-cover">
+                        <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-cream/40 object-cover">
                           {user.avatar ? (
                             <Image
                               src={user.avatar}
@@ -353,7 +353,7 @@ export function UserCenterModal() {
                         if (!isMobile || (e.button !== undefined && e.button !== 0)) return;
                         dragControls.start(e);
                       }}
-                      className="shrink-0 select-none border-b border-stone-200/40 bg-[#FBF8F0] md:hidden"
+                      className="shrink-0 select-none border-b border-stone-200/40 bg-brand-cream md:hidden"
                     >
                       {/* 下滑把手提示 */}
                       <div aria-hidden className="flex justify-center pt-2">
@@ -387,7 +387,7 @@ export function UserCenterModal() {
                   {isMobile && (
                     <nav
                       aria-label="用户中心导航"
-                      className="shrink-0 border-t border-stone-200/40 bg-[#FBF8F0]/95 backdrop-blur-md md:hidden"
+                      className="shrink-0 border-t border-stone-200/40 bg-brand-cream/95 backdrop-blur-md md:hidden"
                       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
                     >
                       <div className="grid h-16 grid-cols-5">
@@ -400,7 +400,7 @@ export function UserCenterModal() {
                               onClick={() => setUserCenterView(id)}
                               aria-current={isActive ? "page" : undefined}
                               className={`flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${
-                                isActive ? "text-[#00263e]" : "text-stone-400 hover:text-stone-800"
+                                isActive ? "text-brand-primary" : "text-stone-400 hover:text-stone-800"
                               }`}
                             >
                               <Icon className="h-5 w-5" strokeWidth={isActive ? 2 : 1.5} />
