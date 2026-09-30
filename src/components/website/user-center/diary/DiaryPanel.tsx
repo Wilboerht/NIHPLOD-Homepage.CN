@@ -516,25 +516,41 @@ export function DiaryPanel() {
     scrollRef.current?.scrollTo({ top: 0 });
   }, []);
 
+  // 「打卡」区是否渲染（有过打卡记录才显示）；今日打卡 CTA 也以此为准：
+  // 新用户由时间线空态承担引导，避免同屏重复 CTA
+  const showCheckInSection = Boolean(summary && summary.totalCheckins > 0);
+
+  // 今日打卡 CTA 状态机：未打卡 = 描边胶囊入口；已打卡 = 完成态（点击编辑今日记录）。
+  // 桌面端由标题行 headerExtra 承载（滚动时常驻可见），移动端在「打卡」区标题右侧
+  const todayCheckInCta = manualTodayEntry ? (
+    <button
+      type="button"
+      onClick={() => setCheckIn({ open: true, existing: manualTodayEntry, dateStr: todayStr })}
+      className="shrink-0 inline-flex items-center gap-1 text-[12px] text-brand-charcoal/55 font-light transition-colors hover:text-brand-charcoal cursor-pointer"
+    >
+      <Check className="w-3.5 h-3.5 text-[#4C8055]" strokeWidth={1.8} />
+      今日已打卡
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+      className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
+    >
+      <Flame className="w-3.5 h-3.5" strokeWidth={1.8} />
+      打卡
+    </button>
+  );
+
   return (
     <LazyMotion features={domAnimation}>
       {/* 桌面端标题栏（移动端标题由账户弹层头部显示）：视图切换时标题随视图变化；
-          全部测肤记录为整面板级视图切换，入口紧随标题（靠右会被弹层关闭按钮压住）。
+          标题右侧承载今日打卡 CTA（常驻可见；仅有过打卡记录时显示，新用户由时间线空态引导）。
+          「全部测肤记录」入口在下方「护肤历程」标题旁（全端统一）。
           内容区可滚动：两视图淡出/淡入切换，同一面板内完成 */}
       <PanelShell
         title={historyView ? "测肤记录" : "护肤档案"}
-        headerExtra={
-          !historyView && (
-            <button
-              type="button"
-              onClick={() => setHistoryView(true)}
-              className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
-            >
-              全部测肤记录
-              <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
-            </button>
-          )
-        }
+        headerExtra={!historyView && showCheckInSection && todayCheckInCta}
         scrollRef={scrollRef}
         scrollClassName="min-h-0"
       >
@@ -673,8 +689,8 @@ export function DiaryPanel() {
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列）。
                           全端平铺：细分隔线 + 留白分组（与时间线/趋势区同一套去卡片语言）。
-                          标题行与「肌肤变化」镜像：标题在左，右侧承载 30 天计数 + 今日打卡 CTA
-                          （已打卡时切换为完成态、点击可编辑）；时间线的今日引导据此收为纯文字提示 */}
+                          标题行与「肌肤变化」镜像：标题在左，右侧为 30 天计数（+ 移动端今日打卡 CTA；
+                          桌面端 CTA 由面板标题行承载）；时间线的今日引导据此收为纯文字提示 */}
                       {summary && summary.totalCheckins > 0 && (
                         <div className="mt-8 border-t border-stone-300/80 pt-6">
                           <div className="flex items-center justify-between gap-3 mb-3">
@@ -688,25 +704,7 @@ export function DiaryPanel() {
                                   近 30 天打卡 {recentCheckInCount} 天
                                 </span>
                               )}
-                              {manualTodayEntry ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setCheckIn({ open: true, existing: manualTodayEntry, dateStr: todayStr })}
-                                  className="shrink-0 inline-flex items-center gap-1 text-[12px] text-brand-charcoal/55 font-light transition-colors hover:text-brand-charcoal cursor-pointer"
-                                >
-                                  <Check className="w-3.5 h-3.5 text-[#4C8055]" strokeWidth={1.8} />
-                                  今日已打卡
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                                  className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
-                                >
-                                  <Flame className="w-3.5 h-3.5" strokeWidth={1.8} />
-                                  打卡
-                                </button>
-                              )}
+                              <div className="md:hidden">{todayCheckInCta}</div>
                             </div>
                           </div>
                           {recentCheckInCount >= 2 && (
@@ -760,13 +758,14 @@ export function DiaryPanel() {
                             <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
                             护肤历程
                           </h3>
-                          {/* 移动端：整面板级视图切换入口（桌面端在标题栏右侧） */}
+                          {/* 全部测肤记录：整面板级视图切换入口（全端统一在此处，紧邻「护肤历程」标题） */}
                           <button
                             type="button"
                             onClick={() => setHistoryView(true)}
-                            className="md:hidden shrink-0 inline-flex items-center gap-0.5 text-[12px] font-light tracking-[0.05em] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal cursor-pointer"
+                            className="shrink-0 inline-flex items-center gap-0.5 text-[12px] font-light tracking-[0.05em] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal cursor-pointer"
                           >
-                            查看全部
+                            <span className="md:hidden">查看全部</span>
+                            <span className="hidden md:inline">全部测肤记录</span>
                             <ChevronRight className="w-3 h-3" strokeWidth={1.8} />
                           </button>
                         </div>
@@ -865,7 +864,7 @@ export function DiaryPanel() {
                           tests={tests}
                           loading={!entriesLoaded || !testsLoaded}
                           todayStr={todayStr}
-                          hideTodayCta={Boolean(summary && summary.totalCheckins > 0)}
+                          hideTodayCta={showCheckInSection}
                           onCheckIn={(existing, dateStr) => setCheckIn({ open: true, existing, dateStr })}
                           onDeleteEntry={handleDeleteEntry}
                           deletingId={deletingId}
