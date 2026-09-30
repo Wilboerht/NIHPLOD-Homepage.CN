@@ -168,21 +168,21 @@ export function DiaryPanel() {
       const day = localDateStr(new Date(trends.dates[i]));
       byDay.set(day, { date: trends.dates[i], score: trends.scores[i] });
     }
-    const days = Array.from(byDay.values()).slice(-30); // 保留最近 30 天，供时间窗切换
+    const days = Array.from(byDay.values()).slice(-90); // 保留最近 90 天，供时间窗切换
     // 聚合后不足两个"天"无法构成趋势（如当天连测两次）→ 视为无趋势，走解锁引导
     if (days.length < 2) return null;
     return { dates: days.map((d) => d.date), scores: days.map((d) => d.score) };
   }, [trends]);
 
-  // 图表时间窗：近 7 天 / 近 30 天（默认 30 天，可切近 7 天聚焦近期）
-  const [trendRange, setTrendRange] = useState<7 | 30>(30);
+  // 图表时间窗：近 7 天 / 近 30 天 / 近 90 天（默认 30 天）
+  const [trendRange, setTrendRange] = useState<7 | 30 | 90>(30);
   // 时间窗截止时刻：渲染期禁止调用 Date.now 等非纯函数（react-hooks/purity），
   // 由切换事件与挂载 effect 维护；null = 尚未初始化（渲染占位）
   const [rangeCutoff, setRangeCutoff] = useState<number | null>(null);
   useEffect(() => {
     if (rangeCutoff === null) deferInEffect(() => setRangeCutoff(daysAgoCutoff(trendRange)));
   }, [rangeCutoff, trendRange]);
-  const switchTrendRange = (r: 7 | 30) => {
+  const switchTrendRange = (r: 7 | 30 | 90) => {
     setTrendRange(r);
     setRangeCutoff(daysAgoCutoff(r));
   };
@@ -632,7 +632,7 @@ export function DiaryPanel() {
                         <div className="flex items-center gap-3">
                           {aggregatedTrends && (
                             <div className="flex items-center gap-0.5 rounded-full bg-brand-charcoal/[0.06] p-0.5" role="group" aria-label="趋势时间范围">
-                              {([7, 30] as const).map((r) => (
+                              {([7, 30, 90] as const).map((r) => (
                                 <button
                                   key={r}
                                   type="button"
