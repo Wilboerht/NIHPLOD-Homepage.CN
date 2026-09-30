@@ -546,7 +546,7 @@ export function DiaryPanel() {
     <LazyMotion features={domAnimation}>
       {/* 桌面端标题栏（移动端标题由账户弹层头部显示）：视图切换时标题随视图变化；
           标题右侧承载今日打卡 CTA（常驻可见；仅有过打卡记录时显示，新用户由时间线空态引导）。
-          「全部测肤记录」入口在下方「护肤历程」标题旁（全端统一）。
+          「全部测肤记录」入口在趋势图下方（承接图表摘要 → 明细记录的阅读顺序）。
           内容区可滚动：两视图淡出/淡入切换，同一面板内完成 */}
       <PanelShell
         title={historyView ? "测肤记录" : "护肤档案"}
@@ -686,6 +686,21 @@ export function DiaryPanel() {
                         </div>
                       )}
 
+                      {/* 全部测肤记录入口：承接趋势图（图 = 聚合摘要，链接 = 明细记录）；
+                          以测肤总数为门槛（无记录时入口是死胡同，不显示），不依赖趋势图自身的加载/解锁状态 */}
+                      {testsLoaded && testsTotal > 0 && (
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setHistoryView(true)}
+                            className="inline-flex items-center gap-0.5 text-[12px] font-light tracking-[0.05em] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal cursor-pointer"
+                          >
+                            全部测肤记录
+                            <ChevronRight className="w-3 h-3" strokeWidth={1.8} />
+                          </button>
+                        </div>
+                      )}
+
                       {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列）。
                           全端平铺：细分隔线 + 留白分组（与时间线/趋势区同一套去卡片语言）。
@@ -753,22 +768,10 @@ export function DiaryPanel() {
                     {/* 护肤历程 */}
                     <section>
                       <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
-                            <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
-                            护肤历程
-                          </h3>
-                          {/* 全部测肤记录：整面板级视图切换入口（全端统一在此处，紧邻「护肤历程」标题） */}
-                          <button
-                            type="button"
-                            onClick={() => setHistoryView(true)}
-                            className="shrink-0 inline-flex items-center gap-0.5 text-[12px] font-light tracking-[0.05em] text-brand-charcoal/55 transition-colors hover:text-brand-charcoal cursor-pointer"
-                          >
-                            <span className="md:hidden">查看全部</span>
-                            <span className="hidden md:inline">全部测肤记录</span>
-                            <ChevronRight className="w-3 h-3" strokeWidth={1.8} />
-                          </button>
-                        </div>
+                        <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2 min-w-0">
+                          <NotebookPen className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
+                          护肤历程
+                        </h3>
                         {/* 视图切换：独立胶囊（风格对齐会员中心「录入消费」/渠道选择） */}
                         <div className="flex items-center gap-2" role="group" aria-label="历程视图切换">
                           {([
