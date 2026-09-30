@@ -6,9 +6,8 @@ import { ChevronLeft, ChevronRight, Clock, ScanFace } from "lucide-react";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { STATE_META } from "@/components/website/user-center/diary/DiaryTimeline";
-import { scoreToSkinState } from "@/lib/diary-utils";
+import { ADVISOR_URL, scoreToSkinState } from "@/lib/diary-utils";
 
-const ADVISOR_URL = (process.env.NEXT_PUBLIC_ADVISOR_URL || "https://advisor.nihplod.cn").replace(/\/+$/, "");
 const REQUEST_TIMEOUT_MS = 8000;
 
 /**

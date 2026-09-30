@@ -26,7 +26,7 @@ import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { localDateStr } from "@/lib/local-date";
-import { parseClientDate, isAutoDiaryEntry } from "@/lib/diary-utils";
+import { ADVISOR_URL, parseClientDate, isAutoDiaryEntry } from "@/lib/diary-utils";
 
 const TESTS_PAGE_SIZE = 50;
 const ENTRIES_PAGE_SIZE = 30;
@@ -520,8 +520,22 @@ export function DiaryPanel() {
   // 新用户由时间线空态承担引导，避免同屏重复 CTA
   const showCheckInSection = Boolean(summary && summary.totalCheckins > 0);
 
-  // 今日打卡 CTA 状态机：未打卡 = 描边胶囊入口；已打卡 = 完成态（点击编辑今日记录）。
-  // 桌面端由标题行 headerExtra 承载（滚动时常驻可见），移动端在「打卡」区标题右侧
+  // 面板级操作区：去测肤（外跳测肤工具，新标签页）+ 今日打卡 CTA。
+  // 桌面端由标题行 headerExtra 承载（滚动时常驻可见），移动端在「打卡」区标题右侧；
+  // 仅有过打卡记录时显示（新用户由时间线空态引导，避免同屏重复 CTA）
+  const goTestLink = (
+    <a
+      href={`${ADVISOR_URL}/?start=1`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal"
+    >
+      去测肤
+      <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
+    </a>
+  );
+
+  // 今日打卡 CTA 状态机：未打卡 = 描边胶囊入口；已打卡 = 完成态（点击编辑今日记录）
   const todayCheckInCta = manualTodayEntry ? (
     <button
       type="button"
@@ -542,15 +556,22 @@ export function DiaryPanel() {
     </button>
   );
 
+  const panelActions = (
+    <div className="flex items-center gap-2">
+      {goTestLink}
+      {todayCheckInCta}
+    </div>
+  );
+
   return (
     <LazyMotion features={domAnimation}>
       {/* 桌面端标题栏（移动端标题由账户弹层头部显示）：视图切换时标题随视图变化；
-          标题右侧承载今日打卡 CTA（常驻可见；仅有过打卡记录时显示，新用户由时间线空态引导）。
+          标题右侧承载操作区「去测肤 + 打卡」（常驻可见；仅有过打卡记录时显示，新用户由时间线空态引导）。
           「全部测肤记录」入口在趋势图下方（承接图表摘要 → 明细记录的阅读顺序）。
           内容区可滚动：两视图淡出/淡入切换，同一面板内完成 */}
       <PanelShell
         title={historyView ? "测肤记录" : "护肤档案"}
-        headerExtra={!historyView && showCheckInSection && todayCheckInCta}
+        headerExtra={!historyView && showCheckInSection && panelActions}
         scrollRef={scrollRef}
         scrollClassName="min-h-0"
       >
@@ -715,11 +736,12 @@ export function DiaryPanel() {
                             </h3>
                             <div className="flex items-center gap-3">
                               {recentCheckInCount > 0 && (
-                                <span className="text-[12px] text-brand-charcoal/55 font-light font-num tabular-nums">
+                                <span className="hidden md:inline text-[12px] text-brand-charcoal/55 font-light font-num tabular-nums">
                                   近 30 天打卡 {recentCheckInCount} 天
                                 </span>
                               )}
-                              <div className="md:hidden">{todayCheckInCta}</div>
+                              {/* 移动端操作区（桌面端由面板标题行承载） */}
+                              <div className="md:hidden">{panelActions}</div>
                             </div>
                           </div>
                           {recentCheckInCount >= 2 && (
@@ -728,7 +750,7 @@ export function DiaryPanel() {
                             </div>
                           )}
                           <div className={`grid ${summary.longestStreak > 0 ? "grid-cols-3" : "grid-cols-2"} pt-4 border-t border-stone-200/60`}>
-                            <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
+                            <div className="relative flex flex-col items-center gap-1.5 py-1 after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-stone-300/80 last:after:hidden">
                               <p className="text-xl font-num font-light text-brand-charcoal leading-none">
                                 {summary.currentStreak}
                                 <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">天</span>
@@ -738,7 +760,7 @@ export function DiaryPanel() {
                                 连续打卡
                               </p>
                             </div>
-                            <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
+                            <div className="relative flex flex-col items-center gap-1.5 py-1 after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-stone-300/80 last:after:hidden">
                               <p className="text-xl font-num font-light text-brand-charcoal leading-none">
                                 {summary.totalCheckins}
                                 <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">次</span>
@@ -749,7 +771,7 @@ export function DiaryPanel() {
                               </p>
                             </div>
                             {summary.longestStreak > 0 && (
-                              <div className="flex flex-col items-center gap-1.5 py-1 border-r border-stone-200/60 last:border-r-0">
+                              <div className="relative flex flex-col items-center gap-1.5 py-1 after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-stone-300/80 last:after:hidden">
                                 <p className="text-xl font-num font-light text-brand-charcoal leading-none">
                                   {summary.longestStreak}
                                   <span className="ml-0.5 text-[11px] font-sans font-light text-brand-charcoal/65">天</span>

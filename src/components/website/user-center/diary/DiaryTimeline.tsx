@@ -17,9 +17,7 @@ import {
 import type { HistorySession } from "@/components/website/user-center/diary/TestHistoryList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { localDateStr } from "@/lib/local-date";
-import { isAutoDiaryEntry, isDiaryDateInRange, parseClientDate } from "@/lib/diary-utils";
-
-const ADVISOR_URL = (process.env.NEXT_PUBLIC_ADVISOR_URL || "https://advisor.nihplod.cn").replace(/\/+$/, "");
+import { ADVISOR_URL, isAutoDiaryEntry, isDiaryDateInRange, parseClientDate } from "@/lib/diary-utils";
 
 /**
  * DiaryTimeline — 护肤历程时间线（PRD v1.5）
