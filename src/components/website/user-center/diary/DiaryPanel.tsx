@@ -722,7 +722,7 @@ export function DiaryPanel() {
                         </div>
                       )}
 
-                      {/* 打卡：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
+                      {/* 打卡记录：与测肤趋势语义分离的独立子区块（色带 + 连续性统计）。
                           列数跟随实际项数（最长连续为 0 时不占列）。
                           全端平铺：细分隔线 + 留白分组（与时间线/趋势区同一套去卡片语言）。
                           标题行与「肌肤变化」镜像：标题在左，右侧为 30 天计数（+ 移动端今日打卡 CTA；
@@ -732,7 +732,7 @@ export function DiaryPanel() {
                           <div className="flex items-center justify-between gap-3 mb-3">
                             <h3 className="text-[15px] font-medium text-stone-800 flex items-center gap-2">
                               <Flame className="w-4 h-4 text-stone-400" strokeWidth={1.5} />
-                              打卡
+                              打卡记录
                             </h3>
                             <div className="flex items-center gap-3">
                               {recentCheckInCount > 0 && (
