@@ -701,10 +701,10 @@ export function DiaryPanel() {
                                 <button
                                   type="button"
                                   onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                                  className="shrink-0 inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-full bg-brand-cocoa text-white text-[12px] font-medium tracking-[0.05em] transition-colors hover:bg-brand-cocoa-dark active:opacity-80 cursor-pointer"
+                                  className="shrink-0 h-8 inline-flex items-center gap-1 px-3.5 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
                                 >
                                   <Flame className="w-3.5 h-3.5" strokeWidth={1.8} />
-                                  今日打卡
+                                  打卡
                                 </button>
                               )}
                             </div>
