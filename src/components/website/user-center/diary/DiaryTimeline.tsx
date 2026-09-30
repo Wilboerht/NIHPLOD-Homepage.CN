@@ -180,25 +180,26 @@ export function DiaryTimeline({
             完成一次测肤后，这里会自动生成你的护肤记录
           </p>
           <div className="flex items-center justify-center gap-3">
+            {/* 新用户主行动是去测肤（自动生成记录+评分，两次测肤解锁趋势），打卡降为次按钮 */}
+            <Link
+              href={`${ADVISOR_URL}/?start=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-5 rounded-full bg-brand-cocoa text-white text-[12px] tracking-[0.05em] font-medium transition-colors hover:bg-brand-cocoa-dark active:opacity-80"
+            >
+              去测肤
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
+            </Link>
             {onCheckIn && (
               <button
                 type="button"
                 onClick={() => onCheckIn(null, todayStr)}
-                className="inline-flex items-center justify-center gap-1.5 px-5 h-9 rounded-full bg-brand-cocoa text-white text-[12px] tracking-[0.05em] font-medium transition-colors hover:bg-brand-cocoa-dark active:opacity-80 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal cursor-pointer"
               >
                 <CalendarCheck className="w-3.5 h-3.5" strokeWidth={1.8} />
                 今日打卡
               </button>
             )}
-            <Link
-              href={`${ADVISOR_URL}/?start=1`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1 h-9 px-4 rounded-full border border-brand-charcoal/20 text-brand-charcoal/60 text-[12px] transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal"
-            >
-              去测肤
-              <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.8} />
-            </Link>
           </div>
         </div>
       )}

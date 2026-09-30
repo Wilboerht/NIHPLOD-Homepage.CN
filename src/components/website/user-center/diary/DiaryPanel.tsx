@@ -10,6 +10,7 @@ import {
   Flame,
   NotebookPen,
   RefreshCw,
+  ScanFace,
   TrendingUp,
   Trophy,
 } from "lucide-react";
@@ -520,6 +521,12 @@ export function DiaryPanel() {
   // 新用户由时间线空态承担引导，避免同屏重复 CTA
   const showCheckInSection = Boolean(summary && summary.totalCheckins > 0);
 
+  // 新用户空态：首屏加载完成、无错误且完全无记录时，用跨列 hero 空态替代双列布局
+  // （加载中走骨架屏、错误走各自错误条，都不会被误判为空态）
+  const isEmpty =
+    entriesLoaded && testsLoaded && !entriesError && !testsError &&
+    entries.length === 0 && tests.length === 0;
+
   // 面板级操作区：去测肤（外跳测肤工具，新标签页）+ 今日打卡 CTA。
   // 桌面端由标题行 headerExtra 承载（滚动时常驻可见），移动端在「打卡」区标题右侧；
   // 仅有过打卡记录时显示（新用户由时间线空态引导，避免同屏重复 CTA）
@@ -617,6 +624,41 @@ export function DiaryPanel() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.18 }}
                     >
+                {isEmpty ? (
+                  /* 新用户 hero 空态：跨列居中（图标 + 说明 + 主「去测肤」/ 次「今日打卡」），
+                     有数据后进入双列布局 */
+                  <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-charcoal/[0.05]">
+                      <ScanFace className="h-6 w-6 text-brand-charcoal/50" strokeWidth={1.5} />
+                    </div>
+                    <p className="mb-2 text-[15px] font-medium text-stone-800">
+                      完成一次测肤，自动生成你的护肤记录
+                    </p>
+                    <p className="mb-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60">
+                      两次不同日期的测肤后，解锁肌肤变化趋势
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <a
+                        href={`${ADVISOR_URL}/?start=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-brand-cocoa px-5 text-[12px] font-medium tracking-[0.05em] text-white transition-colors hover:bg-brand-cocoa-dark active:opacity-80"
+                      >
+                        去测肤
+                        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+                        className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-brand-charcoal/20 px-4 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal"
+                      >
+                        <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        今日打卡
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                <>
                 {/* ===== 登录：概览（肌肤变化 + 打卡）+ 时间线 ===== */}
                 {/* PC 端（lg+）非对称双列（5:7，把宽度让给时间线）；移动端单列堆叠。
                     左列不做 sticky/内部滚动：随面板滚动区整体滚动（滚动条已由 PanelShell 隐藏），
@@ -906,6 +948,8 @@ export function DiaryPanel() {
                       )}
                     </section>
                 </div>
+                </>
+                )}
                   </m.div>
                 )}
                 </AnimatePresence>
