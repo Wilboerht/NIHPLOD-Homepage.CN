@@ -14,7 +14,7 @@ const COPY = {
 } as const;
 
 /**
- * advisor.nihplod.cn 肤质自测工具引导链接
+ * smart.nihplod.cn 肤质自测工具引导链接
  * 移动端为带边框的卡片样式，桌面端为极简文字链接
  */
 export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps) {
@@ -26,7 +26,7 @@ export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps)
       )}
     >
       <a
-        href="https://advisor.nihplod.cn"
+        href="https://smart.nihplod.cn"
         target="_blank"
         rel="noopener noreferrer"
         className="group flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:tracking-[0.12em]"

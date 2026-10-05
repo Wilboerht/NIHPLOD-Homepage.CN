@@ -297,7 +297,7 @@ const user = await userRes.json();`;
               <Input
                 value={redirectUri}
                 onChange={(e) => setRedirectUri(e.target.value)}
-                placeholder="https://advisor.nihplod.cn/api/auth/callback"
+                placeholder="https://smart.nihplod.cn/api/auth/callback"
               />
               <p className="mt-1 text-xs text-gray-400">用户授权后，主站将把授权码发送到此 URL。</p>
             </div>

@@ -9,7 +9,7 @@
  *   npx tsx scripts/register-post-logout-uri.ts <clientId> <uri> [uri...]
  * 示例（advisor 子站）：
  *   npx tsx scripts/register-post-logout-uri.ts q6n4aitms0wgn2sz1nj96au5 \
- *     https://advisor.nihplod.cn https://advisor.nihplod.cn/
+ *     https://smart.nihplod.cn https://smart.nihplod.cn/
  *
  * 加载 .env.production.local / .env.local / .env.production / .env
  * （与 Next.js 运行时优先级一致：靠前的文件优先，dotenv 默认不覆盖已设置变量）。

@@ -12,7 +12,7 @@ import { advisorJson } from "@/lib/advisor-internal";
 
 export const dynamic = "force-dynamic";
 
-/** 测肤子站（advisor.nihplod.cn）返回的 AI 测肤用量 */
+/** 测肤子站（smart.nihplod.cn）返回的 AI 测肤用量 */
 interface SkinTestUsage {
   // level 可能为 null：子站对从未使用过测肤的用户返回 level: null
   level: string | null;

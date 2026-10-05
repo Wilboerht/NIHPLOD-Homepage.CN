@@ -131,7 +131,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
     nameEn: "AI Skin Advisor",
     description: "注册即享 10 次 AI 测肤，通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
     links: [
-      { label: "立即体验", url: "https://advisor.nihplod.cn", isAdmin: false, description: "" },
+      { label: "立即体验", url: "https://smart.nihplod.cn", isAdmin: false, description: "" },
     ],
   };
 

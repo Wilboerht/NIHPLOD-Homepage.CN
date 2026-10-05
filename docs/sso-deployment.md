@@ -216,8 +216,8 @@ JWKS 端点支持同时暴露当前与上一代公钥，实现无感轮换：
 - `EMBED_ALLOWED_ORIGINS`（服务端，CSP `frame-ancestors`）与 `NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS`（客户端 postMessage targetOrigin 白名单）**两个值必须完全一致**，均为逗号分隔的完整 origin，例如：
 
 ```bash
-EMBED_ALLOWED_ORIGINS=https://advisor.nihplod.cn,https://mall.nihplod.cn
-NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS=https://advisor.nihplod.cn,https://mall.nihplod.cn
+EMBED_ALLOWED_ORIGINS=https://smart.nihplod.cn,https://mall.nihplod.cn
+NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS=https://smart.nihplod.cn,https://mall.nihplod.cn
 ```
 
 - 不启用 `/account/embed` 嵌入时**两个都不配置**，此时 `frame-ancestors` 默认仅 `'self'`（仅允许同源嵌入）。

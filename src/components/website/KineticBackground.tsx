@@ -190,7 +190,7 @@ export function KineticBackground() {
             style={{ gridColumn: "span 2", aspectRatio: "auto" }}
           >
             <a
-              href="https://advisor.nihplod.cn"
+              href="https://smart.nihplod.cn"
               target="_blank"
               rel="noopener noreferrer"
               className="absolute inset-0 z-20"

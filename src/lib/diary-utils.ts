@@ -112,4 +112,4 @@ export function cappedCheckinStreak(hasYesterday: boolean, hasDayBefore: boolean
 }
 
 /** AI 测肤工具站点地址（NEXT_PUBLIC_ADVISOR_URL 可覆盖），打卡/测肤记录的外跳链接共用 */
-export const ADVISOR_URL = (process.env.NEXT_PUBLIC_ADVISOR_URL || "https://advisor.nihplod.cn").replace(/\/+$/, "");
+export const ADVISOR_URL = (process.env.NEXT_PUBLIC_ADVISOR_URL || "https://smart.nihplod.cn").replace(/\/+$/, "");

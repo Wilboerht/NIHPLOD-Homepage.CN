@@ -483,7 +483,7 @@ SSO 中心使用 `__Host-user_token` Cookie 维持用户登录状态：
 | `Path` | `/` | 全站可用 |
 | `__Host-` 前缀 | 是 | 强制 Secure + Path=/ |
 
-子域名间（如 `advisor.nihplod.cn`→`nihplod.cn`）的顶级导航会携带 Cookie，用户无需重复登录。
+子域名间（如 `smart.nihplod.cn`→`nihplod.cn`）的顶级导航会携带 Cookie，用户无需重复登录。
 
 ## 跨域（CORS）
 

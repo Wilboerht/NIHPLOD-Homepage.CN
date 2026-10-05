@@ -42,7 +42,7 @@ describe("KineticBackground 便当盒", () => {
   it("包含肌智派外链卡：新标签页打开测肤子站", () => {
     render(<KineticBackground />);
     const link = screen.getByRole("link", { name: "肌智派在线测肤" });
-    expect(link).toHaveAttribute("href", "https://advisor.nihplod.cn");
+    expect(link).toHaveAttribute("href", "https://smart.nihplod.cn");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
   });

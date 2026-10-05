@@ -35,7 +35,7 @@ describe("GET /api/oauth/check-post-logout-uri", () => {
     vi.clearAllMocks();
     mockRateLimit.mockResolvedValue({ success: true, remaining: 19, reset: 0, limit: 20 });
     mockFindFirst.mockResolvedValue({
-      postLogoutRedirectUris: ["https://advisor.nihplod.cn/logged-out"],
+      postLogoutRedirectUris: ["https://smart.nihplod.cn/logged-out"],
     });
   });
 
@@ -50,7 +50,7 @@ describe("GET /api/oauth/check-post-logout-uri", () => {
   it("已注册的 postLogoutRedirectUri 返回 trusted=true", async () => {
     const { GET } = await import("@/app/api/oauth/check-post-logout-uri/route");
     const res = await GET(
-      createRequest("https://advisor.nihplod.cn/logged-out", "advisor-client")
+      createRequest("https://smart.nihplod.cn/logged-out", "advisor-client")
     );
     expect((await res.json()).trusted).toBe(true);
   });
@@ -61,7 +61,7 @@ describe("GET /api/oauth/check-post-logout-uri", () => {
       (await (await GET(createRequest("https://evil.com/x", "advisor-client"))).json()).trusted
     ).toBe(false);
     expect(
-      (await (await GET(createRequest("https://advisor.nihplod.cn/logged-out"))).json()).trusted
+      (await (await GET(createRequest("https://smart.nihplod.cn/logged-out"))).json()).trusted
     ).toBe(false);
   });
 

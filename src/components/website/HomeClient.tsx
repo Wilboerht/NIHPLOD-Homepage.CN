@@ -383,7 +383,7 @@ export default function HomeClient(_: HomeClientProps) {
                   <span className="tracking-[0.15em]">探索旎柏</span>
                 </m.button>
                 <m.a
-                  href="https://advisor.nihplod.cn"
+                  href="https://smart.nihplod.cn"
                   target="_blank"
                   rel="noopener noreferrer"
                   whileTap={{ scale: 0.98 }}

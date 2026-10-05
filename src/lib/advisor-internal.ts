@@ -1,5 +1,5 @@
 /**
- * 主站 → 测肤子站（advisor.nihplod.cn）内部接口客户端
+ * 主站 → 测肤子站（smart.nihplod.cn）内部接口客户端
  *
  * 用途：用户中心「护肤档案」读取/操作用户在子站的测肤与打卡数据
  * （子站是护肤档案的唯一数据源）；会员中心测肤用量也复用本模块。
@@ -18,7 +18,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { apiConsole } from "@/lib/logger";
 
 const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_BASE = "https://advisor.nihplod.cn";
+const DEFAULT_BASE = "https://smart.nihplod.cn";
 
 export function advisorBaseUrl(): string {
   return (process.env.ADVISOR_API_BASE || DEFAULT_BASE).replace(/\/+$/, "");

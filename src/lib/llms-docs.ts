@@ -23,7 +23,7 @@ interface LlmsFaq {
   answer: string;
 }
 
-export const ADVISOR_URL = "https://advisor.nihplod.cn";
+export const ADVISOR_URL = "https://smart.nihplod.cn";
 
 function readGeoFaqs(value: unknown): LlmsFaq[] {
   if (!Array.isArray(value)) return [];

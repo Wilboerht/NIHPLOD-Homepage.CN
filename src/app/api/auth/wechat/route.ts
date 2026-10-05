@@ -1,6 +1,6 @@
 /**
  * 获取微信登录授权 URL
- * GET /api/auth/wechat?redirect=/user&callback=https://advisor.nihplod.cn
+ * GET /api/auth/wechat?redirect=/user&callback=https://smart.nihplod.cn
  *
  * - redirect: 授权完成后最终重定向的页面路径（相对路径）
  * - callback: 授权完成后跳转到的站点域名（可选，用于子站场景）

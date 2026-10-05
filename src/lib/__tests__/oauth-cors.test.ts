@@ -35,7 +35,7 @@ describe("getOAuthCorsHeaders", () => {
     mockFindMany.mockResolvedValue([
       {
         redirectUris: [
-          "https://advisor.nihplod.cn/api/auth/callback",
+          "https://smart.nihplod.cn/api/auth/callback",
           "https://mall.nihplod.cn/callback",
         ],
       },
@@ -49,9 +49,9 @@ describe("getOAuthCorsHeaders", () => {
 
   it("已注册 redirect_uri 的 origin 返回精确反射的白名单头，且不含 credentials", async () => {
     const { getOAuthCorsHeaders } = await loadCors();
-    const headers = await getOAuthCorsHeaders(createRequest("https://advisor.nihplod.cn"));
+    const headers = await getOAuthCorsHeaders(createRequest("https://smart.nihplod.cn"));
 
-    expect(headers["Access-Control-Allow-Origin"]).toBe("https://advisor.nihplod.cn");
+    expect(headers["Access-Control-Allow-Origin"]).toBe("https://smart.nihplod.cn");
     expect(headers["Access-Control-Allow-Methods"]).toContain("POST");
     expect(headers["Access-Control-Allow-Headers"]).toContain("DPoP");
     expect(headers.Vary).toBe("Origin");
@@ -68,12 +68,12 @@ describe("getOAuthCorsHeaders", () => {
   it("端口/协议不同视为不同 origin（精确匹配）", async () => {
     const { getOAuthCorsHeaders } = await loadCors();
     expect(
-      (await getOAuthCorsHeaders(createRequest("https://advisor.nihplod.cn:8443")))[
+      (await getOAuthCorsHeaders(createRequest("https://smart.nihplod.cn:8443")))[
         "Access-Control-Allow-Origin"
       ]
     ).toBeUndefined();
     expect(
-      (await getOAuthCorsHeaders(createRequest("http://advisor.nihplod.cn")))[
+      (await getOAuthCorsHeaders(createRequest("http://smart.nihplod.cn")))[
         "Access-Control-Allow-Origin"
       ]
     ).toBeUndefined();
@@ -81,7 +81,7 @@ describe("getOAuthCorsHeaders", () => {
 
   it("origin 白名单仅来自 isActive=true 的 client", async () => {
     const { getOAuthCorsHeaders } = await loadCors();
-    await getOAuthCorsHeaders(createRequest("https://advisor.nihplod.cn"));
+    await getOAuthCorsHeaders(createRequest("https://smart.nihplod.cn"));
 
     expect(mockFindMany).toHaveBeenCalledWith({
       where: { isActive: true },
@@ -91,7 +91,7 @@ describe("getOAuthCorsHeaders", () => {
 
   it("10s 内命中缓存，不重复查库", async () => {
     const { getOAuthCorsHeaders } = await loadCors();
-    await getOAuthCorsHeaders(createRequest("https://advisor.nihplod.cn"));
+    await getOAuthCorsHeaders(createRequest("https://smart.nihplod.cn"));
     await getOAuthCorsHeaders(createRequest("https://mall.nihplod.cn"));
 
     expect(mockFindMany).toHaveBeenCalledTimes(1);

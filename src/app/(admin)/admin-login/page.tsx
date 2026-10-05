@@ -208,7 +208,7 @@ export default function LoginPage() {
               <div className="flex items-center gap-2">
                 <span className="select-none text-brand-charcoal/25">/</span>
                 <a
-                  href="https://advisor.nihplod.cn/admin"
+                  href="https://smart.nihplod.cn/admin"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"

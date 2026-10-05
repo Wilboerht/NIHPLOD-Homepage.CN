@@ -1030,7 +1030,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     >
                       <a
-                        href="https://advisor.nihplod.cn"
+                        href="https://smart.nihplod.cn"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group flex items-center gap-1.5 text-sm font-light tracking-[0.08em] text-brand-charcoal/60 transition-all duration-300 hover:text-brand-charcoal"

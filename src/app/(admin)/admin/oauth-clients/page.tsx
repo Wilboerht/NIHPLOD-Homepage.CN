@@ -871,7 +871,7 @@ if (!payload) {
               <textarea
                 value={formRedirectUris}
                 onChange={(e) => setFormRedirectUris(e.target.value)}
-                placeholder="https://advisor.nihplod.cn/api/auth/callback&#10;https://shop.nihplod.cn/callback"
+                placeholder="https://smart.nihplod.cn/api/auth/callback&#10;https://shop.nihplod.cn/callback"
                 rows={3}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
@@ -884,7 +884,7 @@ if (!payload) {
               <textarea
                 value={formPostLogoutUris}
                 onChange={(e) => setFormPostLogoutUris(e.target.value)}
-                placeholder="https://advisor.nihplod.cn/login&#10;https://shop.nihplod.cn/logged-out"
+                placeholder="https://smart.nihplod.cn/login&#10;https://shop.nihplod.cn/logged-out"
                 rows={2}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
@@ -922,7 +922,7 @@ if (!payload) {
               <Input
                 value={formBackchannelUri}
                 onChange={(e) => setFormBackchannelUri(e.target.value)}
-                placeholder="https://advisor.nihplod.cn/api/sso/logout"
+                placeholder="https://smart.nihplod.cn/api/sso/logout"
               />
             </div>
             <div>
@@ -932,7 +932,7 @@ if (!payload) {
               <Input
                 value={formWebhookUri}
                 onChange={(e) => setFormWebhookUri(e.target.value)}
-                placeholder="https://advisor.nihplod.cn/api/sso/webhook"
+                placeholder="https://smart.nihplod.cn/api/sso/webhook"
               />
               <p className="mt-1 text-xs text-gray-400">
                 用户昵称/头像/生日变更时推送签名事件，须为 https:// 公网地址

@@ -41,7 +41,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/oauth-cors", () => ({
   getOAuthCorsHeaders: vi
     .fn()
-    .mockResolvedValue({ "Access-Control-Allow-Origin": "https://advisor.nihplod.cn" }),
+    .mockResolvedValue({ "Access-Control-Allow-Origin": "https://smart.nihplod.cn" }),
 }));
 
 const mockUploadSpentProofFile = vi.fn();
@@ -171,7 +171,7 @@ describe("/api/oauth/spent-adjustments/image", () => {
     expect(res.headers.get("location")).toBe(
       "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=abc"
     );
-    expect(res.headers.get("access-control-allow-origin")).toBe("https://advisor.nihplod.cn");
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://smart.nihplod.cn");
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(mockResolveSpentProofImage).toHaveBeenCalledWith(
       "user-1",
