@@ -229,6 +229,37 @@ describe("internal-api", () => {
       );
       expect(config?.project).toBe("advisor");
     });
+
+    it("forceQueryBinding=true 时即使全局开关关闭也强制绑定 query（purge 等敏感端点）", async () => {
+      delete process.env.INTERNAL_API_SIGN_QUERY;
+      const headers = createSignedInternalRequestHeaders("advisor", "POST", PATH, "", {
+        query: "userId=u1",
+        forceQueryBinding: true,
+      });
+      expect(headers).not.toBeNull();
+
+      const timestamp = Number(headers!["X-Internal-API-Timestamp"]);
+      const nonce = headers!["X-Internal-API-Nonce"];
+      const bodyHash = await hashRequestBody("");
+
+      // 新格式（绑定 query）验签通过
+      expect(
+        verifyInternalApiSignature(
+          "advisor-key",
+          headers!["X-Internal-API-Signature"],
+          "POST",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          { query: "userId=u1" }
+        )?.project
+      ).toBe("advisor");
+
+      // 签名应与「未绑定 query 的旧格式」不同（证明确实走了新格式而非碰巧匹配）
+      const legacy = generateInternalApiSignature(VALID_SECRET, "POST", PATH, timestamp, nonce, bodyHash);
+      expect(headers!["X-Internal-API-Signature"]).not.toBe(legacy);
+    });
   });
 
   describe("isTimestampValid", () => {

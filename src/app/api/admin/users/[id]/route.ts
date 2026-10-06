@@ -12,17 +12,14 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
-import { Prisma } from "@/generated/prisma/client";
 import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { blacklistUserTokens } from "@/lib/token-blacklist";
-import { removeIdentities } from "@/lib/external-identity";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
-import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets, toWebhookStatus } from "@/lib/webhook";
 import { cascadeUserStatusChange } from "@/lib/user-status";
 import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { hashIdentifier } from "@/lib/auth-security";
+import { executeAccountDeletion, DELETION_STATUS } from "@/lib/account-deletion";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -564,10 +561,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 }
 
-// DELETE /api/admin/users/:id - 软删除用户（GDPR 合规）
-// 口径说明：本接口只做「封禁 + 匿名化」（user.update），不做物理删除——
-// 积分/消费等 6 张财务表已改 Restrict 外键，物理删除有业务记录的用户会被
-// DB 层拒绝；用户主渠道的物理删除诉求引导走账号自助注销流程（冷静期 + 匿名化）。
+// DELETE /api/admin/users/:id - 删除用户（匿名化注销，GDPR 合规）
+// 口径说明：与自助注销共用同一执行器（executeAccountDeletion）——创建到期时间为
+// 现在的 AccountDeletionRequest 后同步执行，保证管理端与自助路径的匿名化字段、
+// PII 清理、子站 purge、会话撤销口径完全一致；全程只 update 不 delete
+// （积分/消费等 6 张财务表为 Restrict 外键，User 行必须保留）。
+// 执行失败返回 502，申请保留 FAILED 状态，由管理端「账号注销」人工队列跟进。
 export async function DELETE(request: NextRequest, context: RouteContext) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
@@ -608,84 +607,74 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // 软删除：封禁 + 匿名化 PII（含生日等个人资料字段一并清空）
-    const anonymizedPhone = `deleted_${user.id.slice(0, 8)}`;
-    await prisma.user.update({
-      where: { id },
-      data: {
-        status: "BANNED",
-        phone: anonymizedPhone,
-        nickname: "[已删除]",
-        avatar: null,
-        birthday: null,
-        wechatOpenId: null,
-        wechatUnionId: null,
-      },
-    });
-
-    // 同步移除全部外部平台身份（PII 匿名化口径与微信列置 null 一致，不限定微信系）
-    await removeIdentities(id);
-
-    // 撤销所有 token + 加入黑名单
-    await prisma.refreshToken.updateMany({
-      where: { userId: id, revokedAt: null },
-      data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
-    });
-    await blacklistUserTokens(user.id, "用户数据已被删除");
-
-    // 撤销所有 OAuth 会话 + 清除用户授权 + 通知子项目
-    // 撤销前先查出活跃会话的 sid，供 backchannel logout_token 携带
-    const activeSessions = await prisma.oAuthSession.findMany({
-      where: { userId: id, revokedAt: null, expiresAt: { gt: new Date() } },
-      select: { clientId: true, sessionId: true },
-      orderBy: { createdAt: "desc" },
-    });
-    if (activeSessions.length > 0) {
-      const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-      const sids: Record<string, string> = {};
-      for (const s of activeSessions) {
-        if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-      }
-      await prisma.oAuthSession.updateMany({
-        where: { userId: id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      await prisma.userConsent.updateMany({
-        where: { userId: id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      await sendBackchannelLogout(user.id, clientIds, { includeInactive: true, sids }).catch(
-        () => {}
+    if (user.status === "DELETED") {
+      return NextResponse.json(
+        { success: false, error: { code: "ALREADY_DELETED", message: "该用户已注销" } },
+        { status: 409 }
       );
     }
 
-    // 清除资料变更失败队列：payload 含生日/性别/昵称/消费额等 PII 快照，
-    // 用户删除后不得继续留存或重投（backchannel 队列保留——登出通知仍需送达）
-    await prisma.webhookDeliveryFailure
-      .deleteMany({ where: { userId: id } })
-      .catch((err) => apiConsole.warn("[AdminUserDelete] 清理资料变更失败队列失败:", err));
-
-    // Webhook 推送账户删除事件（best-effort，不阻断主流程）
-    // oldStatus 发删除前的状态（DELETED 经 toWebhookStatus 归入 "deleted"）；newStatus 固定 "deleted"，商城侧按此约定映射为禁用
-    try {
-      await dispatchStatusChangeWebhook(
+    // 执行中（RUNNING）的申请禁止重复触发，防与正在进行的匿名化竞态
+    const existingRequest = await prisma.accountDeletionRequest.findUnique({
+      where: { userId: id },
+      select: { status: true },
+    });
+    if (existingRequest && existingRequest.status === DELETION_STATUS.RUNNING) {
+      return NextResponse.json(
         {
-          userId: user.id,
-          oldStatus: toWebhookStatus(user.status),
-          newStatus: "deleted",
-          source: "admin",
+          success: false,
+          error: { code: "DELETION_IN_PROGRESS", message: "该用户注销正在执行中，请稍后查询结果" },
         },
-        getStatusChangeWebhookTargets()
+        { status: 409 }
       );
-    } catch (err) {
-      apiConsole.warn("[AdminUserDelete] Webhook 通知失败:", err);
+    }
+
+    // 建立/重置注销申请（到期时间为现在），随后同步执行——
+    // 管理员能立即看到成败（与人工重试同口径），无需等待下一轮 cron
+    const now = new Date();
+    const deletionRequest = await prisma.accountDeletionRequest.upsert({
+      where: { userId: id },
+      create: {
+        userId: id,
+        reason: "管理端删除",
+        phoneHash: hashIdentifier(user.phone),
+        scheduledAt: now,
+      },
+      update: {
+        status: DELETION_STATUS.PENDING,
+        reason: "管理端删除",
+        phoneHash: hashIdentifier(user.phone),
+        requestedAt: now,
+        scheduledAt: now,
+        cancelledAt: null,
+        completedAt: null,
+        attempts: 0,
+        lastError: null,
+      },
+    });
+
+    const result = await executeAccountDeletion(deletionRequest.id, { notifyUser: false });
+
+    if (result !== "completed") {
+      // 执行失败（子站不可达/DB 异常等）：申请已置 FAILED 并记录 lastError，
+      // 引导管理员到人工队列跟进，不静默吞错
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "DELETION_EXECUTION_FAILED",
+            message: "注销执行失败，申请已转入人工处理（管理端 → 账号注销队列可查看失败原因并重试）",
+          },
+        },
+        { status: 502 }
+      );
     }
 
     await createAuditLog({
       action: "user_deleted",
       targetType: "user",
       targetId: user.id,
-      detail: { anonymizedPhone, previousStatus: user.status },
+      detail: { requestId: deletionRequest.id, previousStatus: user.status },
       adminId: admin.id,
       request,
     });
@@ -699,29 +688,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       detail: {
         action: "user_deleted",
         previousStatus: user.status,
-        newStatus: "BANNED",
+        newStatus: "DELETED",
         adminId: admin.id,
       },
     });
 
     return NextResponse.json({ success: true, data: { message: "用户数据已删除" } });
   } catch (error) {
-    // 防御性兜底：匿名化流程只 update 不 delete，正常不会触发外键违例；
-    // 若未来改动引入物理删除，6 张财务表（Restrict）会抛 P2003，
-    // 此时必须引导走注销流程而非物理删除，返回 409 明确口径
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "USER_HAS_BUSINESS_RECORDS",
-            message:
-              "该用户存在积分/消费等业务记录，不可物理删除，请引导用户使用账号注销流程（匿名化）",
-          },
-        },
-        { status: 409 }
-      );
-    }
     apiConsole.error("[AdminUserDelete] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },

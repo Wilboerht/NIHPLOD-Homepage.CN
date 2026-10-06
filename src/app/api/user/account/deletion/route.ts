@@ -4,7 +4,7 @@
  * GET    /api/user/account/deletion  查询当前进行中的注销申请（无则 request: null）
  * POST   /api/user/account/deletion  提交注销申请（密码验证 + CSRF + 用户级频控 3 次/天；幂等：
  *                                    已有 PENDING 申请直接返回既有申请；CANCELLED/FAILED 记录原位重置）
- * DELETE /api/user/account/deletion  撤回申请（仅 PENDING 可撤回，条件更新防竞态）
+ * DELETE /api/user/account/deletion  撤回申请（仅 PENDING 可撤回，条件更新防竞态；用户级频控 5 次/天）
  *
  * 安全与口径：
  * - 微信占位手机号账号（wx_ 前缀，无密码可验）本期不支持网页端注销，引导联系客服；
@@ -15,12 +15,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import { withUserAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { verifyPassword } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { logAuthEvent } from "@/lib/auth-logger";
+import { hashIdentifier } from "@/lib/auth-security";
 import { apiConsole } from "@/lib/logger";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 
@@ -169,6 +171,9 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
 
     const coolingDays = getCoolingDays();
     const scheduledAt = new Date(Date.now() + coolingDays * 24 * 60 * 60 * 1000);
+    // 申请时手机号哈希（不落明文）：执行时按此清理申请时号码衍生的 LoginAttempt 等记录，
+    // 覆盖冷静期内用户换绑手机号的场景
+    const phoneHash = hashIdentifier(user.phone);
 
     // 幂等：已有 PENDING 申请直接返回既有申请；历史 CANCELLED/FAILED 记录原位重置
     // （userId 唯一约束保证同一用户仅一条申请记录）
@@ -196,6 +201,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
         data: {
           status: DELETION_REQUEST_STATUS.PENDING,
           reason: parsed.data.reason ?? null,
+          phoneHash,
           requestedAt: new Date(),
           scheduledAt,
           cancelledAt: null,
@@ -205,13 +211,43 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
         },
       });
     } else {
-      record = await prisma.accountDeletionRequest.create({
-        data: {
-          userId: user.id,
-          reason: parsed.data.reason ?? null,
-          scheduledAt,
-        },
-      });
+      try {
+        record = await prisma.accountDeletionRequest.create({
+          data: {
+            userId: user.id,
+            reason: parsed.data.reason ?? null,
+            phoneHash,
+            scheduledAt,
+          },
+        });
+      } catch (createError) {
+        // findUnique → create 竞态：并发请求已抢先创建（userId 唯一约束 P2002），
+        // 回读既有申请幂等返回，不向上抛 500
+        if (
+          createError instanceof Prisma.PrismaClientKnownRequestError &&
+          createError.code === "P2002"
+        ) {
+          const raced = await prisma.accountDeletionRequest.findUnique({
+            where: { userId: user.id },
+          });
+          if (raced && raced.status === DELETION_REQUEST_STATUS.RUNNING) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: { code: "DELETION_IN_PROGRESS", message: "注销正在执行中，请稍后再查询结果" },
+              },
+              { status: 409 }
+            );
+          }
+          if (raced) {
+            record = raced;
+          } else {
+            throw createError;
+          }
+        } else {
+          throw createError;
+        }
+      }
     }
 
     // 未履约权益提示（不阻断，仅提示）：待履约的积分兑换 / 未使用的积分余额
@@ -260,6 +296,15 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
 
 export const DELETE = withUserAuth(async (request: NextRequest, payload) => {
   try {
+    // 用户级频控：5 次/天（独立于申请额度，防撤回接口被滥用探测状态）
+    const limitResult = await rateLimit(`user:${payload.id}`, "account-deletion-cancel");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
+    }
+
     // 条件更新防竞态：仅 PENDING 可撤回，concurrent 撤回/执行只会成功一次
     const cancelled = await prisma.accountDeletionRequest.updateMany({
       where: { userId: payload.id, status: DELETION_REQUEST_STATUS.PENDING },

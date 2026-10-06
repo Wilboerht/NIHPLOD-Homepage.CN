@@ -301,6 +301,9 @@ model AccountDeletionRequest {
   userId       String    @unique // 同一用户仅一条进行中的申请
   status       String    @default("PENDING") // PENDING | CANCELLED | COMPLETED | FAILED
   reason       String? // 用户选填
+  // 申请时手机号的 HMAC（hashIdentifier 口径，不落明文）：冷静期内用户可能换绑手机号，
+  // 执行时除当前号码哈希外还需按本哈希清理 LoginAttempt 等衍生数据
+  phoneHash    String?
   requestedAt  DateTime  @default(now())
   scheduledAt  DateTime // 冷静期结束时间（执行窗口），由 ACCOUNT_DELETION_COOLING_DAYS 决定
   cancelledAt  DateTime?

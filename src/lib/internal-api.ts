@@ -200,6 +200,8 @@ export function generateInternalApiSignature(
  * query 为 canonicalizeQuery 结果（无 query 时为空串）。
  * 默认仍使用旧格式（不绑定 query）以兼容未升级的子站；先让子站支持双验签，
  * 再将 `INTERNAL_API_SIGN_QUERY=true` 打开切换到新格式。
+ * 敏感端点（如账号注销数据清除）可传 `forceQueryBinding: true` 强制新格式，
+ * 独立于全局开关——子站验签侧两种格式均支持，无需等待全局切换。
  *
  * @returns 签名请求头；INTERNAL_API_KEYS 中未配置该项目密钥时返回 null（调用方决定回退策略）
  */
@@ -208,7 +210,7 @@ export function createSignedInternalRequestHeaders(
   method: string,
   path: string,
   bodyText = "",
-  options?: { query?: string }
+  options?: { query?: string; forceQueryBinding?: boolean }
 ): Record<string, string> | null {
   const { keys } = getInternalApiKeys();
   const config = [...keys.values()].find((item) => item.project === project);
@@ -217,7 +219,8 @@ export function createSignedInternalRequestHeaders(
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = randomBytes(16).toString("hex");
   const bodyHash = createHash("sha256").update(bodyText).digest("hex");
-  const useQueryBinding = process.env.INTERNAL_API_SIGN_QUERY === "true";
+  const useQueryBinding =
+    options?.forceQueryBinding === true || process.env.INTERNAL_API_SIGN_QUERY === "true";
   const signature = generateInternalApiSignature(
     config.secret,
     method,

@@ -68,6 +68,10 @@ vi.mock("@/lib/auth-logger", () => ({
   logAuthEvent: (...args: unknown[]) => mockLogAuthEvent(...args),
 }));
 
+vi.mock("@/lib/auth-security", () => ({
+  hashIdentifier: (s: string) => `hmac-${s}`,
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
@@ -164,6 +168,9 @@ describe("/api/user/account/deletion", () => {
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
       expect(scheduledAt.getTime()).toBeGreaterThanOrEqual(before + sevenDays - 1000);
       expect(scheduledAt.getTime()).toBeLessThanOrEqual(Date.now() + sevenDays + 1000);
+      // 申请时手机号哈希落库（供执行时清理换绑前号码的衍生数据），不落明文
+      expect(createArgs.data.phoneHash).toBe("hmac-13800138000");
+      expect(JSON.stringify(createArgs.data)).not.toContain('"13800138000"');
 
       expect(mockCreateAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ action: "account_deletion_request", targetType: "user", userId: "user-1" })
@@ -201,6 +208,60 @@ describe("/api/user/account/deletion", () => {
       expect(body.error.code).toBe("PLACEHOLDER_ACCOUNT_UNSUPPORTED");
       expect(mockDeletionCreate).not.toHaveBeenCalled();
     });
+
+    it("findUnique→create 竞态（P2002）：回读既有申请幂等返回，不报 500", async () => {
+      const { Prisma } = await import("@/generated/prisma/client");
+      mockDeletionCreate.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+          code: "P2002",
+          clientVersion: "7.9.1",
+        })
+      );
+      // 竞态另一方创建成功的申请
+      mockDeletionFindUnique
+        .mockResolvedValueOnce(null) // 提交时的幂等检查
+        .mockResolvedValueOnce(pendingRequest); // P2002 后回读
+
+      const res = await POST(postRequest({ password: "Pass1234" }));
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.request.status).toBe("PENDING");
+    });
+
+    it("P2002 竞态回读到 RUNNING：返回 409 注销执行中", async () => {
+      const { Prisma } = await import("@/generated/prisma/client");
+      mockDeletionCreate.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+          code: "P2002",
+          clientVersion: "7.9.1",
+        })
+      );
+      mockDeletionFindUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ ...pendingRequest, status: "RUNNING" });
+
+      const res = await POST(postRequest({ password: "Pass1234" }));
+
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.error.code).toBe("DELETION_IN_PROGRESS");
+    });
+
+    it("原位重置历史申请时同步更新 phoneHash", async () => {
+      mockDeletionFindUnique.mockResolvedValue({ ...pendingRequest, status: "CANCELLED" });
+      mockDeletionUpdate.mockResolvedValue(pendingRequest);
+
+      const res = await POST(postRequest({ password: "Pass1234" }));
+
+      expect(res.status).toBe(200);
+      expect(mockDeletionUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "PENDING", phoneHash: "hmac-13800138000" }),
+        })
+      );
+    });
   });
 
   describe("DELETE 撤回申请", () => {
@@ -208,6 +269,8 @@ describe("/api/user/account/deletion", () => {
       mockDeletionUpdateMany.mockResolvedValue({ count: 1 });
       const res = await DELETE(deleteRequest());
       expect(res.status).toBe(200);
+      // 撤回走独立的用户级频控桶（不消耗申请额度）
+      expect(mockRateLimit).toHaveBeenCalledWith("user:user-1", "account-deletion-cancel");
       expect(mockDeletionUpdateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { userId: "user-1", status: "PENDING" },
@@ -217,6 +280,15 @@ describe("/api/user/account/deletion", () => {
       expect(mockCreateAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ action: "account_deletion_cancel", userId: "user-1" })
       );
+    });
+
+    it("触发撤回频控返回 429，不执行撤回", async () => {
+      mockRateLimit.mockResolvedValue({ success: false, remaining: 0, reset: 0, limit: 5 });
+      const res = await DELETE(deleteRequest());
+      expect(res.status).toBe(429);
+      const body = await res.json();
+      expect(body.error.code).toBe("TOO_MANY_REQUESTS");
+      expect(mockDeletionUpdateMany).not.toHaveBeenCalled();
     });
 
     it("重复撤回/无进行中申请返回 409", async () => {

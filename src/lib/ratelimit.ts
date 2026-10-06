@@ -115,8 +115,10 @@ export const RATE_LIMIT_PRESETS = {
   "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 换绑手机号限制 - 每 15 分钟 5 次（用户级，防枚举/防滥用） */
   "phone-rebind": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
-  /** 账号注销申请 - 每天 3 次（用户级，防恶意注销/滥用；撤回不消耗该额度） */
+  /** 账号注销申请 - 每天 3 次（用户级，防恶意注销/滥用） */
   "account-deletion": { maxRequests: 3, windowMs: 24 * 60 * 60 * 1000 },
+  /** 账号注销撤回 - 每天 5 次（用户级，独立桶，不消耗申请额度） */
+  "account-deletion-cancel": { maxRequests: 5, windowMs: 24 * 60 * 60 * 1000 },
   /** 管理员登录限制 - 每 15 分钟 5 次（独立桶，不与 C 端 login 共享） */
   "admin-login": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 管理员 TOTP 二次验证限制 - 每 5 分钟 3 次 */

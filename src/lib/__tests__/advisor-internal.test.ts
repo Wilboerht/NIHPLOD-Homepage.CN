@@ -11,13 +11,15 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
-import { advisorJson, advisorRequest, mapAdvisorError } from "@/lib/advisor-internal";
+import { advisorJson, advisorRequest, mapAdvisorError, getSubsitePurgeTargets, purgeUserFromSubsites } from "@/lib/advisor-internal";
 
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.ADVISOR_INTERNAL_SECRET;
   delete process.env.ADVISOR_API_BASE;
   delete process.env.INTERNAL_API_KEYS;
+  delete process.env.SUBSITE_PURGE_TARGETS;
+  delete process.env.INTERNAL_API_SIGN_QUERY;
 });
 
 describe("advisorRequest", () => {
@@ -93,5 +95,157 @@ describe("mapAdvisorError", () => {
     expect(
       mapAdvisorError({ status: 0, code: "UPSTREAM_ERROR", message: "子站服务连接失败" })
     ).toEqual({ status: 502, code: "UPSTREAM_ERROR", message: "子站服务连接失败" });
+  });
+});
+
+describe("getSubsitePurgeTargets", () => {
+  it("未配置 SUBSITE_PURGE_TARGETS：回退 advisor 默认目标（ADVISOR_API_BASE 派生）", () => {
+    expect(getSubsitePurgeTargets()).toEqual([
+      {
+        name: "advisor",
+        baseUrl: "https://smart.nihplod.cn",
+        purgePath: "/api/internal/user-data/purge",
+      },
+    ]);
+  });
+
+  it("ADVISOR_API_BASE 参与回退目标（尾斜杠归一化）", () => {
+    process.env.ADVISOR_API_BASE = "http://127.0.0.1:3002/";
+    expect(getSubsitePurgeTargets()[0].baseUrl).toBe("http://127.0.0.1:3002");
+  });
+
+  it("配置多目标：按配置返回，purgePath 缺省补默认，project 可选", () => {
+    process.env.SUBSITE_PURGE_TARGETS = JSON.stringify([
+      { name: "advisor", baseUrl: "https://smart.example.com" },
+      {
+        name: "mall",
+        baseUrl: "https://mall.example.com",
+        purgePath: "/api/internal/purge",
+        project: "mall-sso",
+      },
+    ]);
+
+    expect(getSubsitePurgeTargets()).toEqual([
+      {
+        name: "advisor",
+        baseUrl: "https://smart.example.com",
+        purgePath: "/api/internal/user-data/purge",
+        project: undefined,
+      },
+      {
+        name: "mall",
+        baseUrl: "https://mall.example.com",
+        purgePath: "/api/internal/purge",
+        project: "mall-sso",
+      },
+    ]);
+  });
+
+  it("非法 JSON / 非数组：告警并回退 advisor 默认目标", () => {
+    process.env.SUBSITE_PURGE_TARGETS = "{not json";
+    expect(getSubsitePurgeTargets()).toHaveLength(1);
+    expect(getSubsitePurgeTargets()[0].name).toBe("advisor");
+
+    process.env.SUBSITE_PURGE_TARGETS = JSON.stringify({ name: "advisor" });
+    expect(getSubsitePurgeTargets()[0].name).toBe("advisor");
+  });
+
+  it("缺 name/baseUrl 的条目被跳过", () => {
+    process.env.SUBSITE_PURGE_TARGETS = JSON.stringify([
+      { baseUrl: "https://noname.example.com" },
+      { name: "ok", baseUrl: "https://ok.example.com" },
+    ]);
+    const targets = getSubsitePurgeTargets();
+    expect(targets).toHaveLength(1);
+    expect(targets[0].name).toBe("ok");
+  });
+});
+
+describe("purgeUserFromSubsites", () => {
+  const KEYS = JSON.stringify([
+    { project: "advisor", key: "advisor-test-key", secret: "a".repeat(32) },
+    { project: "mall", key: "mall-test-key", secret: "b".repeat(32) },
+  ]);
+
+  it("L4：目标未配置密钥（NOT_CONFIGURED）warn 级跳过，注销继续执行", async () => {
+    // 不配置任何 INTERNAL_API_KEYS / ADVISOR_INTERNAL_SECRET
+    const result = await purgeUserFromSubsites("user-1");
+
+    expect(result).toEqual({ ok: true });
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it("L4：多目标中已配置目标失败 → 返回失败并标识目标名", async () => {
+    process.env.INTERNAL_API_KEYS = KEYS; // advisor + mall 均有密钥
+    process.env.SUBSITE_PURGE_TARGETS = JSON.stringify([
+      { name: "advisor", baseUrl: "https://smart.example.com" },
+      { name: "mall", baseUrl: "https://mall.example.com", purgePath: "/api/internal/purge" },
+    ]);
+    globalFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) }) // advisor 成功
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "boom" }) }); // mall 失败
+
+    const result = await purgeUserFromSubsites("user-1");
+
+    expect(result).toMatchObject({ ok: false, target: "mall", code: "UPSTREAM_ERROR" });
+    expect(globalFetch).toHaveBeenCalledTimes(2);
+    expect(globalFetch.mock.calls[0][0]).toBe(
+      "https://smart.example.com/api/internal/user-data/purge?userId=user-1"
+    );
+    expect(globalFetch.mock.calls[1][0]).toBe(
+      "https://mall.example.com/api/internal/purge?userId=user-1"
+    );
+  });
+
+  it("L4：混合场景——未配置目标跳过 + 已配置目标执行", async () => {
+    // 只配置 advisor 密钥，mall 未配置 → mall 跳过，整体 ok
+    process.env.INTERNAL_API_KEYS = JSON.stringify([
+      { project: "advisor", key: "advisor-test-key", secret: "a".repeat(32) },
+    ]);
+    process.env.SUBSITE_PURGE_TARGETS = JSON.stringify([
+      { name: "mall", baseUrl: "https://mall.example.com" },
+      { name: "advisor", baseUrl: "https://smart.example.com" },
+    ]);
+    globalFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+    const result = await purgeUserFromSubsites("user-1");
+
+    expect(result).toEqual({ ok: true });
+    expect(globalFetch).toHaveBeenCalledTimes(1); // 仅 advisor 发出请求
+  });
+
+  it("L3：purge 请求始终绑定 query 签名（独立于 INTERNAL_API_SIGN_QUERY 全局开关）", async () => {
+    process.env.INTERNAL_API_KEYS = KEYS;
+    // 全局开关关闭：默认应签旧格式，但 purge 必须仍绑定 query
+    delete process.env.INTERNAL_API_SIGN_QUERY;
+    globalFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+    await purgeUserFromSubsites("user-1");
+
+    const [, init] = globalFetch.mock.calls[0] as [string, { headers: Record<string, string> }];
+    // 用新格式（绑定 query）重算签名应能匹配；旧格式不应匹配
+    const { generateInternalApiSignature, hashRequestBody } = await import("@/lib/internal-api");
+    const timestamp = Number(init.headers["X-Internal-API-Timestamp"]);
+    const nonce = init.headers["X-Internal-API-Nonce"];
+    const bodyHash = await hashRequestBody("");
+    const withQuery = generateInternalApiSignature(
+      "a".repeat(32),
+      "POST",
+      "/api/internal/user-data/purge",
+      timestamp,
+      nonce,
+      bodyHash,
+      "userId=user-1"
+    );
+    const legacy = generateInternalApiSignature(
+      "a".repeat(32),
+      "POST",
+      "/api/internal/user-data/purge",
+      timestamp,
+      nonce,
+      bodyHash
+    );
+    expect(init.headers["X-Internal-API-Signature"]).toBe(withQuery);
+    expect(init.headers["X-Internal-API-Signature"]).not.toBe(legacy);
   });
 });

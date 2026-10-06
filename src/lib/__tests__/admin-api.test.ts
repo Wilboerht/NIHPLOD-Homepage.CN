@@ -18,6 +18,7 @@ const {
   mockRateLimit,
   mockValidateCSRFToken,
   mockRecordSsoEvent,
+  mockExecuteAccountDeletion,
 } = vi.hoisted(() => {
   const createMockModel = () => ({
     findUnique: vi.fn(),
@@ -26,6 +27,7 @@ const {
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    upsert: vi.fn(),
     deleteMany: vi.fn(),
     count: vi.fn(),
     groupBy: vi.fn(),
@@ -40,6 +42,7 @@ const {
     mockRateLimit: vi.fn(),
     mockValidateCSRFToken: vi.fn(),
     mockRecordSsoEvent: vi.fn(),
+    mockExecuteAccountDeletion: vi.fn(),
   };
 });
 
@@ -76,6 +79,8 @@ vi.mock("@/lib/prisma", () => {
       ...mockPrismaModel(),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    // 管理端删除用户：建立/重置注销申请后同步执行（upsert + findUnique）
+    accountDeletionRequest: mockPrismaModel(),
   };
   return { prisma, default: prisma };
 });
@@ -180,6 +185,19 @@ vi.mock("@/lib/token-blacklist", () => ({
   isTokenBlacklisted: vi.fn().mockReturnValue(false),
   isAccessTokenRevoked: vi.fn().mockReturnValue(false),
   consumeAccessTokenOnce: vi.fn().mockResolvedValue(true),
+}));
+
+// Mock 账号注销执行器（管理端删除用户路由同步调用；默认执行成功）
+mockExecuteAccountDeletion.mockResolvedValue("completed");
+vi.mock("@/lib/account-deletion", () => ({
+  executeAccountDeletion: (...args: unknown[]) => mockExecuteAccountDeletion(...args),
+  DELETION_STATUS: {
+    PENDING: "PENDING",
+    RUNNING: "RUNNING",
+    CANCELLED: "CANCELLED",
+    COMPLETED: "COMPLETED",
+    FAILED: "FAILED",
+  },
 }));
 
 // Mock admin-stats
@@ -946,7 +964,7 @@ describe("管理端 API 集成测试", () => {
       );
     });
 
-    it("删除用户应匿名化 PII 并写入 SSO 审计事件（user_deleted）", async () => {
+    it("删除用户应走注销执行器并写入 SSO 审计事件（user_deleted）", async () => {
       const req = createRequest("/api/admin/users/user-1", { method: "DELETE" });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
@@ -954,7 +972,8 @@ describe("管理端 API 集成测试", () => {
         phone: "13800138000",
         status: "ACTIVE",
       });
-      mockPrisma.oAuthSession.findMany.mockResolvedValue([]);
+      mockPrisma.accountDeletionRequest.findUnique.mockResolvedValue(null);
+      mockPrisma.accountDeletionRequest.upsert.mockResolvedValue({ id: "req-1", userId: "user-1" });
 
       const { DELETE } = await import("@/app/api/admin/users/[id]/route");
       const res = await DELETE(req, { params: Promise.resolve({ id: "user-1" }) });
@@ -962,17 +981,12 @@ describe("管理端 API 集成测试", () => {
 
       expect(res.status).toBe(200);
       expect(data.success).toBe(true);
-      // 软删除：封禁 + 匿名化（含生日等 PII 字段置 null）
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            status: "BANNED",
-            nickname: "[已删除]",
-            birthday: null,
-          }),
-        })
+      // 与自助注销共用同一执行器：建单（立即到期）后同步执行，不发回执短信
+      expect(mockPrisma.accountDeletionRequest.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: "user-1" } })
       );
-      // 验证写入 SSO 审计事件
+      expect(mockExecuteAccountDeletion).toHaveBeenCalledWith("req-1", { notifyUser: false });
+      // 验证写入 SSO 审计事件（newStatus 与执行器匿名化口径一致为 DELETED）
       expect(mockRecordSsoEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           event: "status_change",
@@ -981,7 +995,7 @@ describe("管理端 API 集成测试", () => {
           detail: expect.objectContaining({
             action: "user_deleted",
             previousStatus: "ACTIVE",
-            newStatus: "BANNED",
+            newStatus: "DELETED",
           }),
         })
       );
