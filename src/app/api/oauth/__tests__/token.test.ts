@@ -92,6 +92,11 @@ vi.mock("@/lib/oauth-code", async () => {
   };
 });
 
+// === Mock token-blacklist（刷新授权的黑名单兜底检查，默认不拉黑）===
+vi.mock("@/lib/token-blacklist", () => ({
+  isTokenBlacklisted: vi.fn().mockResolvedValue(null),
+}));
+
 // === Mock dpop ===
 vi.mock("@/lib/dpop", () => ({
   validateDPoPProof: vi.fn(),
@@ -106,6 +111,7 @@ import { rateLimit } from "@/lib/ratelimit";
 import { atomicallyRotateRefreshToken, revokeRefreshToken } from "@/lib/auth-security";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { validateDPoPProof } from "@/lib/dpop";
+import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { prisma } from "@/lib/prisma";
 import { signRefreshToken } from "@/lib/jwt";
 import { verifyPKCE } from "@/lib/oauth-code";
@@ -163,6 +169,28 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(401);
       const body = await res.json();
       expect(body.error).toBe("invalid_client");
+    });
+
+    it("同时使用 Basic 与 body client_secret 两种认证方式应返回 400", async () => {
+      const basic = Buffer.from("test-client:secret").toString("base64");
+      const req = new Request("http://localhost/api/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${basic}`,
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          client_secret: "secret", // body 另带 secret → 双重认证
+        }),
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_client");
+      expect(body.error_description).toContain("多种客户端认证方式");
+      // 冲突在认证前拦截
+      expect(verifyOAuthClientSecret).not.toHaveBeenCalled();
     });
   });
 
@@ -1027,7 +1055,9 @@ describe("POST /api/oauth/token", () => {
         valid: true,
       } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-rotate-1",
         scopes: ["openid", "phone"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         id: "user-1",
@@ -1069,6 +1099,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-scope-1",
         scopes: ["openid", "phone"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -1106,6 +1137,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-scope-2",
         scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
 
       const refreshToken = await signRefreshToken({
@@ -1136,6 +1168,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-refresh-1",
         scopes: ["openid", "phone"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -1193,6 +1226,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-1",
         scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
       // 轮换层检测到顺序重用：事务内已吊销家族 + 撤销 session + recordSsoEvent，
@@ -1238,6 +1272,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-bound-1",
         scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -1312,6 +1347,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-dpop-1",
         scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
 
@@ -1341,6 +1377,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-dpop-1",
         scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
       vi.mocked(validateDPoPProof).mockResolvedValue({ valid: true, jkt: "jkt-other" });
@@ -1378,6 +1415,7 @@ describe("POST /api/oauth/token", () => {
       (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         sessionId: "sess-dpop-1",
         scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
       (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
       (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
@@ -1415,6 +1453,106 @@ describe("POST /api/oauth/token", () => {
       expect((decodeJwt(body.access_token).cnf as { jkt?: string }).jkt).toBe("jkt-bound");
       // 绑定延续到新 refresh token（下一次刷新仍要求 DPoP proof）
       expect(decodeJwt(body.refresh_token).dpop_jkt).toBe("jkt-bound");
+    });
+
+    it("用户已被拉黑（黑名单兜底）：返回 400 invalid_grant，不执行轮换", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(isTokenBlacklisted).mockResolvedValueOnce({ reason: "banned" });
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-bl-1",
+        scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        status: "ACTIVE",
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        clientId: "test-client",
+        scope: "openid",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("invalid_grant");
+      expect(body.error_description).toContain("账户已被限制");
+      expect(isTokenBlacklisted).toHaveBeenCalledWith("user-1");
+      expect(atomicallyRotateRefreshToken).not.toHaveBeenCalled();
+      expect(scheduleSsoEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "token",
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "blacklisted" },
+        })
+      );
+    });
+
+    it("refresh 换发的新 refresh token 过期时间按 OAuthSession.expiresAt 封顶", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      // 会话 1 小时后到期：新 refresh token 的 TTL 必须随之封顶，而非内部默认 30 天
+      const sessionExpiresAt = new Date(Date.now() + 3600 * 1000);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-cap-1",
+        scopes: ["openid"],
+        expiresAt: sessionExpiresAt,
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        status: "ACTIVE",
+      });
+
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        clientId: "test-client",
+        scope: "openid",
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      const newRefreshPayload = decodeJwt(body.refresh_token);
+      const ttl = newRefreshPayload.exp! - newRefreshPayload.iat!;
+      // ≈ 3600 秒（允许数秒执行偏差），显著小于内部默认 30 天
+      expect(ttl).toBeGreaterThan(3500);
+      expect(ttl).toBeLessThanOrEqual(3600);
+      expect(body.refresh_expires_in).toBe(ttl);
+      // DB 侧 refresh token 记录的过期时间与会话一致（硬顶）
+      expect(atomicallyRotateRefreshToken).toHaveBeenCalledWith(
+        "user-1",
+        refreshToken,
+        expect.any(String),
+        sessionExpiresAt,
+        expect.anything(),
+        "test-client"
+      );
     });
   });
 

@@ -1,7 +1,7 @@
 /**
  * @nihplod/sso-verify 测试
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { SignJWT, generateKeyPair, exportSPKI, exportJWK } from "jose";
 import {
   createTokenVerifier,
@@ -82,6 +82,26 @@ describe("createTokenVerifier", () => {
 
       const payload = await verifier.verify(token);
       expect(payload).toBeNull();
+    });
+
+    it("缺少 exp 的 token 被拒绝", async () => {
+      const token = await new SignJWT({
+        type: "access_token",
+        sub: "user-123",
+        client_id: audience,
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuer(issuer)
+        .setAudience(audience)
+        .sign(accessSecret);
+
+      const verifier = createTokenVerifier({
+        audience,
+        issuer,
+        accessTokenSecret: accessSecretString,
+      });
+
+      expect(await verifier.verify(token)).toBeNull();
     });
   });
 
@@ -310,6 +330,58 @@ describe("RS256 本地验证", () => {
     expect(await verifier.verify(token)).toBeNull();
   });
 
+  it("缺少 exp 的 RS256 token 被拒绝", async () => {
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const pem = await exportSPKI(publicKey);
+    const token = await new SignJWT({
+      type: "access_token",
+      sub: "user-rs256",
+      client_id: audience,
+    })
+      .setProtectedHeader({ alg: "RS256", kid: "access-token-rs256-v1" })
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .sign(privateKey);
+
+    const verifier = createTokenVerifier({ audience, issuer, accessTokenPublicKey: pem });
+
+    expect(await verifier.verify(token)).toBeNull();
+  });
+
+  it("accessTokenPublicKey 已轮换（旧公钥）时回退 jwksUri 验证成功", async () => {
+    // 主站轮换密钥后，子项目本地配置的旧公钥验签失败，
+    // 应回退 JWKS 获取当前公钥，而不是直接判定失败
+    const { createServer } = await import("node:http");
+    const { publicKey: stalePublicKey } = await generateKeyPair("RS256");
+    const stalePem = await exportSPKI(stalePublicKey);
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const jwk = { ...(await exportJWK(publicKey)), kid: "access-token-rs256-v1", alg: "RS256", use: "sig" };
+
+    const server = createServer((_req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ keys: [jwk] }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+
+    try {
+      const token = await createRS256AccessToken(privateKey);
+      const verifier = createTokenVerifier({
+        audience,
+        issuer,
+        accessTokenPublicKey: stalePem,
+        jwksUri: `http://127.0.0.1:${port}/jwks`,
+      });
+
+      const payload = await verifier.verify(token);
+      expect(payload).not.toBeNull();
+      expect(payload!.sub).toBe("user-rs256");
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("主站风格 token（用户 ID 在 id claim、无 sub）本地验签后归一化出 sub", async () => {
     // 回归测试：主站 access token 的 payload 是 { id, client_id, ... } 无 sub；
     // 本地验签路径曾原样返回导致消费方读 payload.sub 得到 undefined（session-init 误判未登录）
@@ -406,7 +478,35 @@ describe("verifyLogoutToken", () => {
 
     const payload = await verifier.verifyLogoutToken(token);
     expect(payload?.sub).toBe("user-123");
+    // 构造时一次 + 首次实际走回退路径一次
     expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls[0][0]).toContain("废弃路径");
+    warnSpy.mockRestore();
+  });
+
+  it("回退路径可生效时构造即输出废弃告警", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+      allowLegacyAccessTokenSecretFallback: true,
+    });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toContain("废弃路径");
+    warnSpy.mockRestore();
+  });
+
+  it("已配置 logoutTokenSecret 时构造不输出废弃告警（回退路径不会生效）", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    createTokenVerifier({
+      audience,
+      issuer,
+      accessTokenSecret: accessSecretString,
+      logoutTokenSecret: logoutSecretString,
+      allowLegacyAccessTokenSecretFallback: true,
+    });
+    expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
@@ -496,6 +596,41 @@ describe("verifyLogoutToken", () => {
     });
 
     expect(await verifier.verifyLogoutToken(token)).toBeNull();
+  });
+
+  it("logoutTokenPublicKey 已轮换（旧公钥）时回退 jwksUri 验证成功", async () => {
+    // 与 access token 相同的轮换兜底语义：直接公钥验签失败时回退 JWKS
+    const { createServer } = await import("node:http");
+    const { publicKey: stalePublicKey } = await generateKeyPair("RS256");
+    const stalePem = await exportSPKI(stalePublicKey);
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const jwk = { ...(await exportJWK(publicKey)), kid: "logout-token-rs256-v1", alg: "RS256", use: "sig" };
+
+    const server = createServer((_req, res) => {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ keys: [jwk] }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+
+    try {
+      const token = await createLogoutTokenRS256(privateKey, {
+        jti: "logout-rs256-jwks-fallback-1",
+      });
+      const verifier = createTokenVerifier({
+        audience,
+        issuer,
+        logoutTokenPublicKey: stalePem,
+        jwksUri: `http://127.0.0.1:${port}/jwks`,
+      });
+
+      const payload = await verifier.verifyLogoutToken(token);
+      expect(payload).not.toBeNull();
+      expect(payload!.sub).toBe("user-123");
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 });
 
@@ -1048,5 +1183,74 @@ describe("ssoMiddleware 错误处理", () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
+  });
+});
+
+describe("端点传输安全", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("生产环境 http:// 非 loopback 端点直接抛错", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(() =>
+      createTokenVerifier({
+        audience,
+        issuer,
+        introspectionEndpoint: "http://sso.internal.example.com/api/oauth/introspect",
+        clientId: audience,
+      })
+    ).toThrow(/https/);
+  });
+
+  it("生产环境 https:// 端点正常构造", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(() =>
+      createTokenVerifier({
+        audience,
+        issuer,
+        introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+        clientId: audience,
+      })
+    ).not.toThrow();
+  });
+
+  it("非生产环境 http:// 非 loopback 端点告警一次且正常构造", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const options = {
+      audience,
+      issuer,
+      introspectionEndpoint: "http://sso-dev.internal.example.com/api/oauth/introspect",
+      clientId: audience,
+    };
+
+    expect(() => createTokenVerifier(options)).not.toThrow();
+    // 同一端点名重复构造不再重复告警（每进程一次）
+    expect(() => createTokenVerifier(options)).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toContain("http://");
+    expect(warnSpy.mock.calls[0][0]).toContain("introspectionEndpoint");
+  });
+
+  it("非生产环境 http:// loopback 地址静默通过（不告警）", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(() =>
+      createTokenVerifier({
+        audience,
+        issuer,
+        introspectionEndpoint: "http://127.0.0.1:3000/api/oauth/introspect",
+        clientId: audience,
+      })
+    ).not.toThrow();
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

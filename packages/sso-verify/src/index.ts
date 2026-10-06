@@ -91,13 +91,16 @@ export interface SsoVerifierOptions {
    * 主站在配置 JWT_ACCESS_PRIVATE_KEY 后以 RS256 签名 access_token，
    * 子项目可传入此公钥进行本地验证，避免每次都调用 Introspection 端点。
    * 若主站未配置 RS256 密钥（回退 HS256 签名），此选项不生效。
+   * 同时配置 jwksUri 时优先尝试此直接公钥，验证失败后自动回退 JWKS
+   * （覆盖主站密钥轮换后旧公钥尚未更新的过渡期）。
    */
   accessTokenPublicKey?: string;
 
   /**
    * JWKS 端点 URL（可选）。
    * 子项目可传入此 URL 以动态获取 RS256 公钥进行本地验证。
-   * 当 accessTokenPublicKey 未配置时，将通过此端点获取匹配 kid 的公钥。
+   * 当 accessTokenPublicKey 未配置时，将通过此端点获取匹配 kid 的公钥；
+   * 两者同时配置时先尝试直接公钥，失败后回退本端点（密钥轮换兜底）。
    */
   jwksUri?: string;
 
@@ -116,6 +119,12 @@ export interface SsoVerifierOptions {
    * 风险：合法共享 access secret 的内部服务即可伪造任意用户的 logout_token（强制全站登出），
    * access secret 泄漏会同时击穿 access token 与 logout token 两条信任边界。
    * 仅当无法立即迁移旧部署时显式设为 true，并尽快改用 logoutTokenSecret 或 RS256 公钥。
+   *
+   * 开启后会在两处输出告警（console.warn）：
+   * 1. 构造 verifier 时——若该回退路径实际可生效（配置了 accessTokenSecret 但未配置
+   *    logoutTokenSecret）立即提示一次；
+   * 2. 首次实际使用回退路径验证 HS256 logout_token 时——提示该路径正在被真实流量触发
+   *    （一次性告警）。
    */
   allowLegacyAccessTokenSecretFallback?: boolean;
 
@@ -123,7 +132,8 @@ export interface SsoVerifierOptions {
    * Logout Token RS256 公钥（PEM 格式，可选）。
    * 主站 logout_token 使用独立密钥对（kid: logout-token-rs256-v1）签名，
    * 与 access token 密钥不同，因此不能使用 accessTokenPublicKey 验证。
-   * 若未提供但配置了 jwksUri，将通过 JWKS 按 kid 匹配获取对应公钥。
+   * 若未提供但配置了 jwksUri，将通过 JWKS 按 kid 匹配获取对应公钥；
+   * 两者同时配置时先尝试此直接公钥，验证失败后回退 JWKS（密钥轮换兜底）。
    * RS256 签名的 logout_token 在无任何可用公钥时验证失败（返回 null），
    * 不会静默回退到 HS256。
    */
@@ -256,6 +266,16 @@ const processedLogoutJtis = new LRUCache<string, number>({
   ttl: 10 * 60 * 1000,
 });
 
+// 废弃的 HS256 logout_token 回退（accessTokenSecret 代验）告警文案，
+// 构造时与首次实际使用时复用同一条消息
+const LEGACY_LOGOUT_SECRET_FALLBACK_WARNING =
+  "[sso-verify] 正在使用 accessTokenSecret 验证 HS256 logout_token（废弃路径）：" +
+  "共享 access secret 的服务可伪造任意用户登出。" +
+  "请改用 logoutTokenSecret，或配置 logoutTokenPublicKey/jwksUri 走 RS256。";
+
+// 非生产环境下 http:// 非 loopback 端点的告警去重（每个端点名每进程只提示一次）
+const warnedInsecureEndpoints = new Set<string>();
+
 // ============================================
 // Token Verifier
 // ============================================
@@ -285,10 +305,16 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
   // 一次性告警标志：使用废弃的 accessTokenSecret 回退验证 logout_token 时提示迁移
   let warnedLegacyLogoutSecret = false;
 
+  // 构造时即提示：显式开启回退且该路径实际可生效（有 accessTokenSecret、无 logoutTokenSecret）
+  if (allowLegacyAccessTokenSecretFallback && accessTokenSecret && !logoutTokenSecret) {
+    console.warn(LEGACY_LOGOUT_SECRET_FALLBACK_WARNING);
+  }
+
   // 端点传输安全：生产环境禁止 http://（introspection 会携带 client_secret）
   // 允许 localhost/127.0.0.1/::1 方便本地联调。
+  // 非生产环境下 http:// 非 loopback 端点输出一次性告警（不阻断本地联调）。
   const assertHttpsEndpoint = (value: string | undefined, name: string): void => {
-    if (!value || process.env.NODE_ENV !== "production") return;
+    if (!value) return;
     let url: URL;
     try {
       url = new URL(value);
@@ -299,6 +325,16 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     const host = url.hostname.replace(/^\[|\]$/g, "");
     const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
     if (url.protocol === "http:" && isLoopback) return;
+    if (process.env.NODE_ENV !== "production") {
+      if (url.protocol === "http:" && !warnedInsecureEndpoints.has(name)) {
+        warnedInsecureEndpoints.add(name);
+        console.warn(
+          `[sso-verify] ${name} 使用非加密的 http:// 且非 loopback 地址；` +
+            "生产环境（NODE_ENV=production）将直接抛错"
+        );
+      }
+      return;
+    }
     throw new Error(
       `[sso-verify] 生产环境 ${name} 必须为 https://（当前 ${url.protocol}//${url.host}），` +
         "避免凭证/令牌经明文传输"
@@ -516,6 +552,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         issuer,
         audience,
         algorithms: ["HS256"],
+        requiredClaims: ["exp"],
         clockTolerance: clockToleranceSeconds,
       });
 
@@ -530,7 +567,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
   }
 
   /**
-   * RS256 本地验证（优先直接公钥，其次 JWKS 远程获取）
+   * RS256 本地验证（优先直接公钥，验证失败回退 JWKS 远程获取）
    */
   async function verifyWithRS256(token: string): Promise<VerifiedTokenPayload | null> {
     // 检查是否有 RS256 验证能力
@@ -539,17 +576,23 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     if (!hasPublicKey && !hasJwks) return null;
 
     try {
-      // 优先使用直接公钥
+      // 优先使用直接公钥；验证失败（如主站轮换密钥后本地公钥过期）
+      // 时回退 JWKS，而不是直接判定失败
       const directKey = await getRS256PublicKey();
       if (directKey) {
-        const { payload } = await jwtVerify(token, directKey, {
-          issuer,
-          audience,
-          algorithms: ["RS256"],
-          clockTolerance: clockToleranceSeconds,
-        });
-        if ((payload as { type?: string }).type !== "access_token") return null;
-        return normalizeLocalPayload(payload);
+        try {
+          const { payload } = await jwtVerify(token, directKey, {
+            issuer,
+            audience,
+            algorithms: ["RS256"],
+            requiredClaims: ["exp"],
+            clockTolerance: clockToleranceSeconds,
+          });
+          if ((payload as { type?: string }).type !== "access_token") return null;
+          return normalizeLocalPayload(payload);
+        } catch {
+          // 直接公钥验证失败，继续尝试 JWKS
+        }
       }
 
       // 回退到 JWKS 远程获取
@@ -559,6 +602,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           issuer,
           audience,
           algorithms: ["RS256"],
+          requiredClaims: ["exp"],
           clockTolerance: clockToleranceSeconds,
         });
         if ((payload as { type?: string }).type !== "access_token") return null;
@@ -704,6 +748,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
       }
 
       // 1. RS256：使用 logout token 独立公钥（logoutTokenPublicKey）或 JWKS（按 kid 匹配）。
+      //    直接公钥验证失败（如密钥轮换后本地公钥过期）时回退 JWKS；
       //    无任何可用公钥时直接失败，不回退 HS256。
       if (alg === "RS256") {
         const directKey = await getLogoutRS256PublicKey();
@@ -713,11 +758,12 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
               issuer,
               audience,
               algorithms: ["RS256"],
+              requiredClaims: ["exp"],
               clockTolerance: clockToleranceSeconds,
             });
             return await validateLogoutPayload(payload as unknown as Record<string, unknown>);
           } catch {
-            return null;
+            // 直接公钥验证失败，继续尝试 JWKS
           }
         }
 
@@ -735,6 +781,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
               issuer,
               audience,
               algorithms: ["RS256"],
+              requiredClaims: ["exp"],
               clockTolerance: clockToleranceSeconds,
             });
             return await validateLogoutPayload(payload as unknown as Record<string, unknown>);
@@ -755,11 +802,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         if (!logoutTokenSecret && allowLegacyAccessTokenSecretFallback) {
           if (!warnedLegacyLogoutSecret) {
             warnedLegacyLogoutSecret = true;
-            console.warn(
-              "[sso-verify] 正在使用 accessTokenSecret 验证 HS256 logout_token（废弃路径）：" +
-                "共享 access secret 的服务可伪造任意用户登出。" +
-                "请改用 logoutTokenSecret，或配置 logoutTokenPublicKey/jwksUri 走 RS256。"
-            );
+            console.warn(LEGACY_LOGOUT_SECRET_FALLBACK_WARNING);
           }
         }
 
@@ -769,6 +812,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
             issuer,
             audience,
             algorithms: ["HS256"],
+            requiredClaims: ["exp"],
             clockTolerance: clockToleranceSeconds,
           });
           return await validateLogoutPayload(payload as unknown as Record<string, unknown>);

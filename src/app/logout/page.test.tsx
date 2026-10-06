@@ -53,6 +53,8 @@ describe("LogoutPage 分层退出", () => {
     vi.clearAllMocks();
     fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
+    // 清理用例间遗留的 id_token_hint fragment
+    window.location.hash = "";
     // 带 client_id 渲染：验证主文案不再承诺"同步退出已授权的应用"
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams("client_id=test-client&post_logout_redirect_uri=/dashboard")
@@ -157,6 +159,46 @@ describe("LogoutPage 分层退出", () => {
     expect(
       fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
     ).toBe(false);
+  });
+
+  it("hint 验签通过且与会话一致时仍展示确认页，不自动调用 /api/auth/logout", async () => {
+    // 免确认自动登出已移除：RP 级登出由 end-session 快速通道服务端完成，
+    // 到达本页必须用户点击确认。hint 验签结果仅用于不一致提示。
+    window.location.hash = "#id_token_hint=valid-hint";
+    fetchMock.mockImplementation((input: RequestInfo | URL, _?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/user/profile")) {
+        return Promise.resolve({ ok: true, json: async () => ({ success: true }) });
+      }
+      if (url.includes("/api/oauth/logout/verify-hint")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ valid: true, matchesSession: true }),
+        });
+      }
+      if (url.includes("/api/oauth/check-post-logout-uri")) {
+        return Promise.resolve({ ok: true, json: async () => ({ trusted: true }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<LogoutPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("确定要退出当前设备的登录吗？")).toBeInTheDocument();
+    });
+    // verify-hint 已完成（matchesSession=true）后仍停留在确认页，不自动登出
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input]) => String(input).includes("verify-hint"))
+      ).toBe(true);
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
+    ).toBe(false);
+    // 不再出现免确认过渡态文案
+    expect(screen.queryByText("正在退出登录...")).not.toBeInTheDocument();
   });
 
   it("access 与 refresh 均失效：判定无会话，不调用登出接口", async () => {

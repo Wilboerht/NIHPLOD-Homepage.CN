@@ -28,7 +28,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     refreshToken: { findFirst: vi.fn() },
     oAuthSession: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
-    user: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -195,6 +195,45 @@ describe("POST /api/auth/logout access token 失效场景", () => {
     const res = await POST(createRequest());
 
     expect(res.status).toBe(200);
+    expectCookiesCleared(res);
+  });
+});
+
+describe("POST /api/auth/logout allDevices（全设备登出）", () => {
+  const mockUserUpdate = prisma.user.update as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // 已认证用户
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1", exp: 9999999999 });
+    (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ phone: "13800000000" });
+  });
+
+  it("allDevices=true：撤销全部 refresh token 并写入 sessionsInvalidatedAt 使已签发 access token 失效", async () => {
+    const res = await POST(createRequest(true, { allDevices: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, undefined, "logout");
+    expect(mockUserUpdate).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { sessionsInvalidatedAt: expect.any(Date) },
+    });
+    expectCookiesCleared(res);
+  });
+
+  it("单设备登出：不写入 sessionsInvalidatedAt", async () => {
+    mockRefreshFindFirst.mockResolvedValue({ clientId: null });
+
+    const res = await POST(createRequest(true, {}));
+
+    expect(res.status).toBe(200);
+    expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      "user-1",
+      REFRESH_TOKEN,
+      undefined,
+      "logout"
+    );
+    expect(mockUserUpdate).not.toHaveBeenCalled();
     expectCookiesCleared(res);
   });
 });

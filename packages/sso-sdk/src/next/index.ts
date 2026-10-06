@@ -19,6 +19,7 @@ export type { LogoutRouteConfig } from "./logout";
 
 export { createBackchannelLogoutRouteHandler } from "./backchannel-logout";
 export type { BackchannelLogoutRouteConfig } from "./backchannel-logout";
+export type { LogoutJtiStore } from "../core/logout-token";
 
 export {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,

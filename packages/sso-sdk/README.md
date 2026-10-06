@@ -84,7 +84,7 @@ if (params.get("sso_probe") === "no_session") {
 
 ### `sso.handleCallback(callbackUrl)`
 
-Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens. When the requested scope includes `openid`, the token response **must** contain an `id_token` (fail-closed: a missing `id_token` is rejected instead of silently skipping validation). The SDK verifies the ID Token's signature, issuer, audience, expiry and `at_hash`, and — when the login was initiated via `login()` / `getLoginUrl()` / `loginPopup()` — also validates the OIDC `nonce` claim against the value generated at login time (constant-time comparison, protecting against ID Token replay; the check is skipped if no nonce is stored, e.g. when the Next.js nonce cookie has expired).
+Handle the OAuth callback. Parses `code` and `state` from the URL, validates state, and exchanges the code for tokens. When the requested scope includes `openid`, the token response **must** contain an `id_token` (fail-closed: a missing `id_token` is rejected instead of silently skipping validation). The SDK verifies the ID Token's signature, issuer, audience, expiry and `at_hash`, and — when the login was initiated via `login()` / `getLoginUrl()` / `loginPopup()` — also validates the OIDC `nonce` claim against the value generated at login time (constant-time comparison, protecting against ID Token replay). The check is fail-closed both ways: a stored nonce requires a matching token nonce, and (since 1.6.0) a token carrying a `nonce` claim while no expected nonce is stored locally (e.g. the nonce cookie/sessionStorage entry was evicted) is rejected as well.
 
 | Parameter | Type | Description |
 |------|------|------|
@@ -450,6 +450,8 @@ export const POST = createBackchannelLogoutRouteHandler({
 
 The backchannel handler receives `logout_token` pushes from the SSO center (OIDC Back-Channel Logout) when the user signs out globally or revokes consent, verifies the token (RS256 signature via JWKS, issuer/audience/expiry, `events` claim, `jti` replay protection), clears the SSO cookies, and calls your `onLogout` hook. If the hook throws, it responds 500 so the IdP retries delivery. **Remember to register this route's public URL as `backchannelLogoutUri` in the SSO admin console for your client.**
 
+> **jti replay storage (since 1.6.0):** the default replay cache is an in-memory per-instance Map. Multi-instance / serverless deployments MUST inject shared storage via the `jtiStore` option (e.g. Redis: `addIfAbsent` = `SET key 1 NX EX ttl`, `remove` = `DEL key` — `remove` lets the SDK release the jti so the IdP can redeliver after an `onLogout` failure; without it, redeliveries are rejected as replays).
+
 Trigger the logout endpoint with a POST request (recommended):
 
 ```tsx
@@ -469,7 +471,7 @@ Default cookie names:
 | access_token | `__Host-nihplod_sso_at` | Requires Secure + Path=/ + no Domain |
 | refresh_token | `__Host-nihplod_sso_rt` | Requires Secure + Path=/ + no Domain |
 | state | `__Host-nihplod_sso_state` | Requires Secure + Path=/ + no Domain |
-| nonce | `__Host-nihplod_sso_nonce` | OIDC nonce for ID Token replay protection. Validated when the nonce cookie is present (cookie TTL 10 minutes); if the cookie has expired, the nonce check is skipped. Requires Secure + Path=/ + no Domain |
+| nonce | `__Host-nihplod_sso_nonce` | OIDC nonce for ID Token replay protection. Validated fail-closed when the nonce cookie is present (cookie TTL 10 minutes); since 1.6.0, an id_token that carries a `nonce` while the cookie has expired is also rejected (restart the login flow). Requires Secure + Path=/ + no Domain |
 | id_token | `__Host-nihplod_sso_id` | ID token cookie used as `id_token_hint` for RP-Initiated Logout. Requires Secure + Path=/ + no Domain |
 | logout_state | `__Host-nihplod_sso_logout_state` | One-time logout state for CSRF protection on the RP-Initiated Logout callback. Requires Secure + Path=/ + no Domain |
 | return_url | `__Host-nihplod_sso_return` | Requires Secure + Path=/ + no Domain |
@@ -478,6 +480,23 @@ Default cookie names:
 > In the Next.js BFF flow, the transient cookies above (`state`, `nonce`, `return_url`, `verifier`) are written with the per-login `state` as a name suffix (e.g. `__Host-nihplod_sso_state_<state>`) and looked up by the `state` returned from the IdP. This keeps concurrent tabs from overwriting each other's login attempt. The legacy unsuffixed names are still accepted as a fallback during rolling upgrades.
 
 > For local development with `http://localhost`, browsers reject `Secure` cookies — and cookies named with `__Host-`/`__Secure-` prefixes are refused outright when `Secure` is missing (Chrome, Edge and Firefox all enforce this; behavior on `localhost` varies by browser, some treat it as a secure context for `Secure` cookies, none accept prefixed names without `Secure`). The visible symptom: the login callback appears to succeed but the cookies are never written, so the middleware keeps judging you as logged out and redirects to the SSO authorize page in an infinite loop. Fix: set `insecureLocalDev: true` on `createSsoMiddleware`, `createCallbackRouteHandler` and `createLogoutRouteHandler` (it disables `Secure` and strips the prefixes, with a startup warning), or serve local dev over HTTPS. HTTPS is mandatory in production — and as a production guard, all three helpers force-ignore `insecureLocalDev` (keeping `Secure` and the `__Host-`/`__Secure-` prefixes, with a warning) when `NODE_ENV=production` and `ssoBaseUrl` uses HTTPS.
+
+---
+
+## Changelog
+
+### 1.6.0
+
+Security and correctness hardening. Migration notes:
+
+- **ID Token must carry `iat`.** `validateIdToken` now rejects tokens without an `iat` claim (`id_token_invalid`). Any spec-compliant IdP already includes it.
+- **Nonce check fails closed.** An `id_token` that carries a `nonce` claim while no expected nonce is stored locally (e.g. the nonce cookie/sessionStorage entry was evicted) is now rejected with `id_token_nonce_mismatch` (OIDC Core §12.2), instead of silently skipping the check. Refresh-issued ID tokens must not carry `nonce` per spec, so the refresh flow is unaffected. If login fails with this error after upgrading, restart the login flow — do not downgrade the check.
+- **New `jtiStore` option** for `createBackchannelLogoutRouteHandler` / `verifyLogoutToken(Detailed)`. The default jti replay cache is an in-memory per-instance Map; multi-instance / serverless deployments MUST inject shared storage (e.g. Redis `SET NX EX` for `addIfAbsent`, `DEL` for `remove` — `remove` lets the SDK release the jti so the IdP can redeliver after your `onLogout` hook fails). Replay keys are now prefixed with the token issuer to prevent cross-issuer jti collisions.
+- **New `allowCrossOriginDiscoveryEndpoints` option** on `SsoClientConfig` (default `false`). Discovery documents whose `authorization_endpoint` is not same-origin with `ssoBaseUrl`, or whose `token_endpoint` / `userinfo_endpoint` is not same-origin with `ssoBaseUrl` (or `serverBaseUrl` when configured), are rejected with a warning and the SDK falls back to the default endpoints. Set this flag only if your SSO center genuinely hosts endpoints on another origin.
+- **Multi-tab token sync**: after a silent refresh, the new token data is broadcast to other tabs via `BroadcastChannel` and persisted directly (light shape check), so other tabs no longer attempt their own refresh with an already-rotated refresh_token. Older SDK tabs (no payload) fall back to the previous `loadUser()`-only behavior.
+- `handleCallback` now clears the one-time transient data (state/nonce/PKCE verifier/silent-probe marker) when the token endpoint returns an error (e.g. `invalid_grant`) or when the required `id_token` is missing — the authorization code is already consumed and retrying cannot succeed. Network failures and JWKS validation failures still retain the data for retry.
+- `getAccessToken()` / `getUserInfo()` refresh when the token has less than 10s of validity left (expiry skew), instead of returning a token that may expire in flight. `isAuthenticated()` intentionally keeps the exact check (it's a synchronous UI hint).
+- Next.js callback: the token exchange request now has a 10s timeout (previously unbounded) and still gets one retry before the 502 error page. RP-Initiated Logout state comparison is now constant-time. The middleware never asset-bypasses paths under `/api/` (e.g. `/api/app.js` no longer skips authentication; list public API paths in `publicPaths` explicitly).
 
 ---
 

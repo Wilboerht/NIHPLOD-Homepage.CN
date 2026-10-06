@@ -28,6 +28,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { fetchDiscoveryCached } from "../core/discovery";
+import { timingSafeEqualString } from "../core/security";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
@@ -238,7 +239,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     const returnedState = request.nextUrl.searchParams.get("state");
     if (returnedState) {
       const savedState = request.cookies.get(logoutStateCookieName)?.value;
-      if (!savedState || savedState !== returnedState) {
+      if (!savedState || !timingSafeEqualString(savedState, returnedState)) {
         return NextResponse.json(
           { error: "invalid_request", error_description: "Logout state 不匹配" },
           { status: 400 }

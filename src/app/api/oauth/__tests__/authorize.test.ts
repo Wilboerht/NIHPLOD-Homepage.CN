@@ -450,7 +450,7 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     mockRefreshSuccess();
     mockConsentGranted();
     const req = new NextRequest(buildAuthorizeUrl(), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=valid-rt" },
+      headers: { Cookie: "__Host-user_token=expired-token; nihplod_user_refresh=valid-rt" },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);
@@ -464,14 +464,14 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     );
     // 新双 token 通过 Set-Cookie 下发到重定向响应
     expect(res.cookies.get("__Host-user_token")?.value).toBe("new-access-token");
-    expect(res.cookies.get("__Host-user_refresh_token")?.value).toBe("new-refresh-token");
+    expect(res.cookies.get("nihplod_user_refresh")?.value).toBe("new-refresh-token");
   });
 
   it("access 缺失 + refresh 有效：prompt=none 不再回 login_required，而是正常签发 code", async () => {
     mockRefreshSuccess();
     mockConsentGranted();
     const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
-      headers: { Cookie: "__Host-user_refresh_token=valid-rt" },
+      headers: { Cookie: "nihplod_user_refresh=valid-rt" },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);
@@ -486,7 +486,7 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
     mockRefreshUserSession.mockResolvedValueOnce({ success: false, reason: "revoked" });
     const req = new NextRequest(buildAuthorizeUrl(), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=revoked-rt" },
+      headers: { Cookie: "__Host-user_token=expired-token; nihplod_user_refresh=revoked-rt" },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);
@@ -494,14 +494,14 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     expect(location.pathname).toBe("/login");
     expect(location.searchParams.get("return_to")).toContain("/api/oauth/authorize");
     expect(res.cookies.get("__Host-user_token")).toBeUndefined();
-    expect(res.cookies.get("__Host-user_refresh_token")).toBeUndefined();
+    expect(res.cookies.get("nihplod_user_refresh")).toBeUndefined();
   });
 
   it("access 失效 + refresh 无效 + prompt=none：仍回传 login_required", async () => {
     vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
     mockRefreshUserSession.mockResolvedValueOnce({ success: false, reason: "revoked" });
     const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=revoked-rt" },
+      headers: { Cookie: "__Host-user_token=expired-token; nihplod_user_refresh=revoked-rt" },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);
@@ -538,14 +538,14 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     mockRefreshSuccess();
     // 默认 userConsent.findUnique → null（未授权）→ 走 consent 页路径
     const req = new NextRequest(buildAuthorizeUrl(), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=valid-rt" },
+      headers: { Cookie: "__Host-user_token=expired-token; nihplod_user_refresh=valid-rt" },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);
     const consentUrl = new URL(res.headers.get("location")!);
     expect(consentUrl.searchParams.get("mode")).toBe("consent");
     expect(res.cookies.get("__Host-user_token")?.value).toBe("new-access-token");
-    expect(res.cookies.get("__Host-user_refresh_token")?.value).toBe("new-refresh-token");
+    expect(res.cookies.get("nihplod_user_refresh")?.value).toBe("new-refresh-token");
   });
 
   it("透明刷新成功但 max_age 超期（auth_time 过旧）：仍要求重新登录", async () => {
@@ -558,7 +558,7 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
       authTime: Math.floor(Date.now() / 1000) - 3600, // 1 小时前认证
     });
     const req = new NextRequest(buildAuthorizeUrl({ prompt: "none", max_age: "600" }), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-user_refresh_token=valid-rt" },
+      headers: { Cookie: "__Host-user_token=expired-token; nihplod_user_refresh=valid-rt" },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);

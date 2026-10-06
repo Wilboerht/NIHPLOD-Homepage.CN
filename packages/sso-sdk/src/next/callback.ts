@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateIdToken } from "../core/id-token";
 import { isTrustedReturnUrl, timingSafeEqualString } from "../core/security";
+import { fetchWithTimeout } from "../core/http";
 import {
   DEFAULT_ACCESS_TOKEN_COOKIE_NAME,
   DEFAULT_REFRESH_TOKEN_COOKIE_NAME,
@@ -423,11 +424,17 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
         await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
       }
       try {
-        res = await fetch(tokenEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString(),
-        });
+        // 10s 超时：token 端点挂起时 abort 抛错落入 catch，走重试 + 502，
+        // 而不是让回调请求无限挂起
+        res = await fetchWithTimeout(
+          tokenEndpoint,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+          },
+          10_000
+        );
         lastError = null;
         break;
       } catch (err) {

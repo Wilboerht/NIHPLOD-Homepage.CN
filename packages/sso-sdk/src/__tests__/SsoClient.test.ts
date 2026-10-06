@@ -674,6 +674,62 @@ describe("SsoClient", () => {
       // 成功后一次性临时数据被清除
       expect(getPkceVerifier(CLIENT_ID)).toBeNull();
     });
+
+    it("token 端点返回 invalid_grant（!res.ok）时清除 state/verifier/nonce", async () => {
+      installFetchRouter({
+        token: () =>
+          jsonResponse(
+            { error: "invalid_grant", error_description: "授权码已失效" },
+            400
+          ),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      saveOAuthState("grant-state", CLIENT_ID);
+      saveOAuthNonce("grant-nonce", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+      saveSilentProbe("grant-state", CLIENT_ID);
+
+      const err = await client
+        .handleCallback("https://test-app.com/callback?code=consumed-code&state=grant-state")
+        .catch((e) => e);
+      expect(err).toBeInstanceOf(SsoError);
+      expect(err.code).toBe("authorization_code_expired");
+      // 授权码已消费，重试必然失败：临时数据全部清除
+      expect(getOAuthState(CLIENT_ID)).toBeNull();
+      expect(getOAuthNonce(CLIENT_ID)).toBeNull();
+      expect(getPkceVerifier(CLIENT_ID)).toBeNull();
+      expect(getSilentProbe(CLIENT_ID)).toBeNull();
+    });
+
+    it("缺少 id_token 拒绝时清除临时数据", async () => {
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "new-access-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+            // 故意不返回 id_token
+          }),
+      });
+
+      const client = new SsoClient({ ...defaultConfig, scopes: "openid profile" });
+      saveOAuthState("no-idtoken-state", CLIENT_ID);
+      saveOAuthNonce("no-idtoken-nonce", CLIENT_ID);
+      savePkceVerifier(CLIENT_ID, "test-verifier");
+      saveSilentProbe("no-idtoken-state", CLIENT_ID);
+
+      await expect(
+        client.handleCallback("https://test-app.com/callback?code=c&state=no-idtoken-state")
+      ).rejects.toThrow("缺少 id_token");
+      // 拒绝时不保存任何 token，且临时数据全部清除
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+      expect(getOAuthState(CLIENT_ID)).toBeNull();
+      expect(getOAuthNonce(CLIENT_ID)).toBeNull();
+      expect(getPkceVerifier(CLIENT_ID)).toBeNull();
+      expect(getSilentProbe(CLIENT_ID)).toBeNull();
+    });
   });
 
   describe("OIDC nonce", () => {
@@ -886,6 +942,50 @@ describe("SsoClient", () => {
       const client = new SsoClient(defaultConfig);
       const token = await client.getAccessToken();
       expect(token).toBe("valid-token");
+    });
+
+    it("token 剩余有效期 < 10s 时触发刷新而非返回旧 token", async () => {
+      const now = Date.now();
+      saveTokenData({
+        access_token: "nearly-expired-token",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "refresh-token",
+        issued_at: now - 900_000,
+        expires_at: now + 5_000, // 剩余 5s，处于 10s 提前量内
+      }, CLIENT_ID);
+
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "refreshed-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+          }),
+      });
+
+      const client = new SsoClient(defaultConfig);
+      const token = await client.getAccessToken();
+      expect(token).toBe("refreshed-token");
+    });
+
+    it("token 剩余有效期 > 10s 时不触发刷新", async () => {
+      const now = Date.now();
+      saveTokenData({
+        access_token: "fresh-enough-token",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "refresh-token",
+        issued_at: now,
+        expires_at: now + 60_000, // 剩余 60s，超出 10s 提前量
+      }, CLIENT_ID);
+
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const client = new SsoClient(defaultConfig);
+      const token = await client.getAccessToken();
+      expect(token).toBe("fresh-enough-token");
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -1113,6 +1213,40 @@ describe("SsoClient", () => {
       expect(userinfoAuth).toBe("Bearer refreshed-token");
     });
 
+    it("token 剩余有效期 < 10s 时触发刷新后再请求 userinfo", async () => {
+      const now = Date.now();
+      saveTokenData({
+        access_token: "nearly-expired-token",
+        token_type: "Bearer",
+        expires_in: 900,
+        refresh_token: "refresh-token",
+        issued_at: now - 900_000,
+        expires_at: now + 5_000, // 剩余 5s，处于 10s 提前量内
+      }, CLIENT_ID);
+
+      let userinfoAuth: string | undefined;
+      installFetchRouter({
+        token: () =>
+          jsonResponse({
+            access_token: "refreshed-token",
+            token_type: "Bearer",
+            expires_in: 900,
+            refresh_token: "new-refresh-token",
+          }),
+        userinfo: (_url, init) => {
+          userinfoAuth = (init?.headers as Record<string, string>)?.Authorization;
+          return jsonResponse({ sub: "user-123", nickname: "Refreshed User" });
+        },
+      });
+
+      const client = new SsoClient(defaultConfig);
+      const user = await client.getUserInfo();
+
+      expect(user.sub).toBe("user-123");
+      // userinfo 请求应携带刷新后的新 access_token
+      expect(userinfoAuth).toBe("Bearer refreshed-token");
+    });
+
     it("401 响应时清除 token 并抛出错误", async () => {
       const now = Date.now();
       saveTokenData({
@@ -1186,6 +1320,85 @@ describe("SsoClient", () => {
           `https://test-app.com/callback?state=${saved}`
         )
       ).toBe(false);
+    });
+  });
+
+  describe("Discovery 端点 origin 校验", () => {
+    function saveExpiredToken(): void {
+      const now = Date.now();
+      saveTokenData(
+        {
+          access_token: "expired-token",
+          token_type: "Bearer",
+          expires_in: 900,
+          refresh_token: "refresh-token-1",
+          issued_at: now - 1_000_000,
+          expires_at: now - 1000,
+        },
+        CLIENT_ID
+      );
+    }
+
+    it("Discovery 返回异源 token_endpoint 时回退默认端点并告警（不缓存该文档）", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      saveExpiredToken();
+      const calls = installFetchRouter({
+        discovery: {
+          ...mockDiscovery,
+          token_endpoint: "https://evil.com/api/oauth/token",
+        },
+      });
+
+      const client = new SsoClient(defaultConfig);
+      await client.refreshToken();
+
+      // token 请求回落到 ssoBaseUrl 默认端点，而非攻击者 origin
+      const tokenCall = calls.find((c) => c.url.includes("/api/oauth/token"));
+      expect(tokenCall?.url).toBe("https://nihplod.cn/api/oauth/token");
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("origin"));
+      warnSpy.mockRestore();
+    });
+
+    it("allowCrossOriginDiscoveryEndpoints=true 时放行跨源端点", async () => {
+      saveExpiredToken();
+      const calls = installFetchRouter({
+        discovery: {
+          ...mockDiscovery,
+          token_endpoint: "https://sso-internal.example.com/api/oauth/token",
+        },
+      });
+
+      const client = new SsoClient({
+        ...defaultConfig,
+        allowCrossOriginDiscoveryEndpoints: true,
+      });
+      await client.refreshToken();
+
+      const tokenCall = calls.find((c) => c.url.includes("/api/oauth/token"));
+      expect(tokenCall?.url).toBe("https://sso-internal.example.com/api/oauth/token");
+    });
+
+    it("配置了 serverBaseUrl 时，token_endpoint 与内网地址同源即放行", async () => {
+      saveExpiredToken();
+      // serverBaseUrl 配置时 _getTokenEndpoint 直连内网默认端点（不走 discovery），
+      // 但 getDiscovery() 本身仍会校验：与 _serverBase 同源的端点应被接受
+      installFetchRouter({
+        discovery: {
+          ...mockDiscovery,
+          token_endpoint: "http://127.0.0.1:3000/api/oauth/token",
+          userinfo_endpoint: "http://127.0.0.1:3000/api/oauth/userinfo",
+          authorization_endpoint: "https://nihplod.cn/api/oauth/authorize",
+        },
+      });
+
+      const client = new SsoClient({
+        ...defaultConfig,
+        serverBaseUrl: "http://127.0.0.1:3000",
+      });
+      const discovery = await client.getDiscovery();
+      expect(discovery?.token_endpoint).toBe(
+        "http://127.0.0.1:3000/api/oauth/token"
+      );
     });
   });
 

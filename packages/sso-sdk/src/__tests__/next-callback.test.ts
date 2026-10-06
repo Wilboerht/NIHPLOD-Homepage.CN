@@ -374,7 +374,7 @@ describe("createCallbackRouteHandler", () => {
       })
     );
     // 模拟旧接入方：callback 未配置 scopes
-    const { scopes: _scopes, ...legacyConfig } = config;
+    const { scopes: _, ...legacyConfig } = config;
     const handler = createCallbackRouteHandler(legacyConfig);
     const res = await handler(
       buildRequest(
@@ -504,6 +504,37 @@ describe("createCallbackRouteHandler", () => {
     expect(res.cookies.get("nihplod_sso_at")).toBeUndefined();
   });
 
+  it("token 交换挂起超时时返回 502（超时 + 重试后仍失败）", async () => {
+    vi.useFakeTimers();
+    try {
+      // fetch 永不 resolve，仅响应 abort（fetchWithTimeout 超时触发）
+      vi.spyOn(globalThis, "fetch").mockImplementation(
+        (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            (init as RequestInit | undefined)?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError"))
+            );
+          })
+      );
+      const handler = createCallbackRouteHandler(config);
+      const promise = handler(
+        buildRequest(
+          { code: "auth-code", state: "saved-state" },
+          { [STATE_COOKIE]: "saved-state", [VERIFIER_COOKIE]: "v" }
+        )
+      );
+      // 第 1 次超时(10s) + 退避 1s + 第 2 次超时(10s) ≈ 21s
+      await vi.advanceTimersByTimeAsync(25_000);
+      const res = await promise;
+      expect(res.status).toBe(502);
+      const body = await res.json();
+      expect(body.error).toBe("server_error");
+      expect(body.error_description).toContain("Token 请求失败");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   describe("OIDC nonce", () => {
     function buildNonceRequest(nonceCookie: string | null) {
       const cookies: Record<string, string> = {
@@ -565,6 +596,20 @@ describe("createCallbackRouteHandler", () => {
 
       expect(res.status).toBe(307);
       expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("at-1");
+    });
+
+    it("nonce cookie 缺失但 id_token 带 nonce → 400（fail-closed）", async () => {
+      // nonce cookie 过期/被清除后，携带 nonce 的 id_token 无法核对来源，拒绝登录
+      const idToken = await buildRs256IdToken(validIdTokenPayload({ nonce: "orphan-nonce" }));
+      installFetchRouterWithIdToken(idToken);
+
+      const handler = createCallbackRouteHandler(config);
+      const res = await handler(buildNonceRequest(null));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("id_token_invalid");
+      expect(res.cookies.get("__Host-nihplod_sso_at")).toBeUndefined();
     });
 
     it("state 不匹配（可能的 CSRF）时 nonce cookie 一并清除", async () => {

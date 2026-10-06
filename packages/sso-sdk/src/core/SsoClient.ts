@@ -41,30 +41,20 @@ import {
 } from "./storage";
 import { validateIdToken } from "./id-token";
 import { isTrustedReturnUrl, timingSafeEqualString } from "./security";
+import { fetchWithTimeout } from "./http";
 
 // ============================================
 // 网络请求超时
 // ============================================
 
-/** token / userinfo 请求默认超时（毫秒）：避免回调页/登录流程无限挂起 */
-const REQUEST_TIMEOUT_MS = 10_000;
+// fetchWithTimeout（默认超时 10s）已收敛到 ./http（与 next/callback 共用）
 /** revoke 为 best-effort，短超时避免登出等待过久 */
 const REVOKE_TIMEOUT_MS = 3_000;
-
-/** 带超时的 fetch（AbortController）；超时抛 AbortError（调用方按网络错误处理） */
-async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init: RequestInit = {},
-  timeoutMs: number = REQUEST_TIMEOUT_MS
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
+/**
+ * 过期判定提前量（毫秒）：getAccessToken/getUserInfo 在 token 剩余有效期
+ * 不足 10s 时即触发刷新，避免拿到的 token 在请求到达服务端时已过期
+ */
+const EXPIRY_SKEW_MS = 10_000;
 
 // ============================================
 // 类型定义
@@ -127,6 +117,18 @@ export interface SsoClientConfig {
 
   /** SSO 中心地址，如 "https://nihplod.cn" */
   ssoBaseUrl: string;
+
+  /**
+   * 允许 Discovery 文档声明跨源端点（默认 false）。
+   *
+   * ⚠️ 安全警告：Discovery 文档若被篡改（如中间人/反向代理劫持），攻击者可把
+   * token_endpoint 指向自己的服务器窃取 authorization code / refresh_token。
+   * SDK 默认校验 authorization_endpoint 必须与 ssoBaseUrl 同源、
+   * token_endpoint / userinfo_endpoint 必须与 ssoBaseUrl（或 serverBaseUrl）同源，
+   * 不匹配时告警并回退到默认端点。仅当 SSO 中心确实把端点托管在其他域名时
+   * 才设置此开关，并自行确保 Discovery 通道可信。
+   */
+  allowCrossOriginDiscoveryEndpoints?: boolean;
 
   /** 请求的 scope（空格分隔），如 "openid profile phone" */
   scopes?: string;
@@ -230,6 +232,8 @@ export class SsoClient {
   private _discovery: OidcDiscovery | null = null;
   private _discoveryFetchedAt: number = 0;
   private _refreshLock: Promise<TokenData> | null = null;
+  /** Discovery 端点 origin 校验失败只告警一次（拒绝的文档不缓存，避免每次调用刷屏） */
+  private _discoveryOriginWarned = false;
 
   /** Discovery 文档缓存 TTL（5 分钟） */
   private static readonly DISCOVERY_TTL_MS = 5 * 60 * 1000;
@@ -266,6 +270,55 @@ export class SsoClient {
   // ============================================
   // 内部方法
   // ============================================
+
+  /**
+   * 校验 Discovery 文档端点 origin（防文档被篡改后 token/code 被导向攻击者服务器）：
+   * - authorization_endpoint 必须与 ssoBaseUrl 同源（浏览器跳转目标）；
+   * - token_endpoint / userinfo_endpoint 必须与 ssoBaseUrl 同源，
+   *   或（配置了 serverBaseUrl 时）与内网地址同源。
+   * 任一不匹配：告警并返回 null（上层回退到默认端点，fail-safe）。
+   * 可通过 config.allowCrossOriginDiscoveryEndpoints 关闭（见配置项警告）。
+   */
+  private _sanitizeDiscovery(d: OidcDiscovery): OidcDiscovery | null {
+    if (this.config.allowCrossOriginDiscoveryEndpoints) return d;
+    const allowedOrigins = new Set<string>();
+    try {
+      allowedOrigins.add(new URL(this.config.ssoBaseUrl).origin);
+      allowedOrigins.add(new URL(this._serverBase).origin);
+    } catch {
+      return null;
+    }
+    const sameOrigin = (endpoint: string): boolean => {
+      try {
+        return allowedOrigins.has(new URL(endpoint).origin);
+      } catch {
+        return false;
+      }
+    };
+    // 浏览器跳转端点只允许公网 origin（内网地址用户浏览器不可达）
+    const publicOrigin = new URL(this.config.ssoBaseUrl).origin;
+    let authorizationOk = false;
+    try {
+      authorizationOk = new URL(d.authorization_endpoint).origin === publicOrigin;
+    } catch {
+      authorizationOk = false;
+    }
+    const bad: string[] = [];
+    if (!authorizationOk) bad.push("authorization_endpoint");
+    if (!sameOrigin(d.token_endpoint)) bad.push("token_endpoint");
+    if (!sameOrigin(d.userinfo_endpoint)) bad.push("userinfo_endpoint");
+    if (bad.length > 0) {
+      if (!this._discoveryOriginWarned) {
+        this._discoveryOriginWarned = true;
+        console.warn(
+          `[SSO SDK] OIDC Discovery 端点 origin 与 ssoBaseUrl/serverBaseUrl 不匹配（${bad.join(", ")}），` +
+          "已回退到默认端点。若 SSO 中心确实托管跨源端点，请设置 allowCrossOriginDiscoveryEndpoints: true"
+        );
+      }
+      return null;
+    }
+    return d;
+  }
 
   /**
    * 获取 OIDC Discovery 文档（带缓存 + 超时）
@@ -305,7 +358,11 @@ export class SsoClient {
         return null;
       }
 
-      this._discovery = (await res.json()) as OidcDiscovery;
+      const doc = (await res.json()) as OidcDiscovery;
+      // 端点 origin 校验：不匹配的文档视为不可用，回退默认端点（不缓存）
+      const sanitized = this._sanitizeDiscovery(doc);
+      if (!sanitized) return null;
+      this._discovery = sanitized;
       this._discoveryFetchedAt = now;
       return this._discovery;
     } catch (err) {
@@ -755,6 +812,12 @@ export class SsoClient {
     }
 
     if (!res.ok) {
+      // 授权码已被消费（一次性），即使重试同一回调也只会再次得到 invalid_grant，
+      // 因此与 error-param 路径一致清除本次流程的全部临时数据
+      removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       let errData: Record<string, unknown> = {};
       try { errData = await res.json(); } catch { /* ignore */ }
       const serverError = (errData.error as string) || "";
@@ -776,6 +839,11 @@ export class SsoClient {
     // 缺失时 nonce/at_hash/签名均无从校验，直接 fail-closed 拒绝而不是静默降级。
     const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
     if (requestedScopes.includes("openid") && !data.id_token) {
+      // 授权码已消费、重试必然得到相同结果，临时数据（state/verifier/nonce）一并清除
+      removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       removeTokenData(this.config.clientId);
       throw new SsoError(
         "id_token_invalid",
@@ -906,6 +974,10 @@ export class SsoClient {
 
     if (data.id_token) {
       try {
+        // refresh 流程不传 expectedNonce：原始 nonce 是一次性的，登录成功后已删除。
+        // refresh 签发的 ID Token 按 OIDC Core §12.2 不得携带 nonce；
+        // validateIdToken 现已 fail-closed 拒绝任何携带 nonce 但无期望值的 token，
+        // 因此此处无需传值也不会误伤合法 refresh 响应
         await validateIdToken(
           data.id_token,
           data.access_token,
@@ -946,8 +1018,8 @@ export class SsoClient {
       throw new SsoError("not_authenticated", "未登录");
     }
 
-    // 若已过期，先刷新
-    if (Date.now() >= tokenData.expires_at) {
+    // 若已过期（含 10s 提前量：避免返回即将过期的 token），先刷新
+    if (Date.now() >= tokenData.expires_at - EXPIRY_SKEW_MS) {
       tokenData = await this.refreshToken();
     }
 
@@ -988,7 +1060,7 @@ export class SsoClient {
     let tokenData = getTokenData(this.config.clientId);
     if (!tokenData) return null;
 
-    if (Date.now() >= tokenData.expires_at) {
+    if (Date.now() >= tokenData.expires_at - EXPIRY_SKEW_MS) {
       tokenData = await this.refreshToken();
     }
 
@@ -999,6 +1071,9 @@ export class SsoClient {
    * 检查是否已认证（不发起网络请求）
    *
    * 仅检查本地是否存在未过期的 access_token。
+   * 故意不做 EXPIRY_SKEW_MS 提前量：这是同步的 UI 提示判定（是否显示"已登录"），
+   * 提前 10s 翻转 false 会让调用方在 token 仍有效时误显示未登录；真正发请求的
+   * getAccessToken/getUserInfo 已带提前量。
    */
   isAuthenticated(): boolean {
     const tokenData = getTokenData(this.config.clientId);

@@ -10,7 +10,7 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => {
   const prisma = {
-    user: { findUnique: vi.fn(), create: vi.fn() },
+    user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     smsCode: { findFirst: vi.fn(), updateMany: vi.fn() },
     oAuthSession: { findMany: vi.fn(), updateMany: vi.fn() },
     refreshToken: { findFirst: vi.fn() },

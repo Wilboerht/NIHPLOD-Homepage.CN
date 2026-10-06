@@ -16,6 +16,8 @@ var processedLogoutJtis = new LRUCache({
   max: 1e4,
   ttl: 10 * 60 * 1e3
 });
+var LEGACY_LOGOUT_SECRET_FALLBACK_WARNING = "[sso-verify] \u6B63\u5728\u4F7F\u7528 accessTokenSecret \u9A8C\u8BC1 HS256 logout_token\uFF08\u5E9F\u5F03\u8DEF\u5F84\uFF09\uFF1A\u5171\u4EAB access secret \u7684\u670D\u52A1\u53EF\u4F2A\u9020\u4EFB\u610F\u7528\u6237\u767B\u51FA\u3002\u8BF7\u6539\u7528 logoutTokenSecret\uFF0C\u6216\u914D\u7F6E logoutTokenPublicKey/jwksUri \u8D70 RS256\u3002";
+var warnedInsecureEndpoints = /* @__PURE__ */ new Set();
 function createTokenVerifier(options) {
   const {
     audience,
@@ -28,6 +30,7 @@ function createTokenVerifier(options) {
     jwksUri,
     logoutTokenSecret,
     logoutTokenPublicKey,
+    allowLegacyAccessTokenSecretFallback = false,
     introspectCacheTtl = 30 * 1e3,
     introspectTimeoutMs = 10 * 1e3,
     introspectNegativeCacheTtl = 5 * 1e3,
@@ -36,8 +39,12 @@ function createTokenVerifier(options) {
     logoutJtiStore,
     strictAudience = true
   } = options;
+  let warnedLegacyLogoutSecret = false;
+  if (allowLegacyAccessTokenSecretFallback && accessTokenSecret && !logoutTokenSecret) {
+    console.warn(LEGACY_LOGOUT_SECRET_FALLBACK_WARNING);
+  }
   const assertHttpsEndpoint = (value, name) => {
-    if (!value || process.env.NODE_ENV !== "production") return;
+    if (!value) return;
     let url;
     try {
       url = new URL(value);
@@ -48,6 +55,15 @@ function createTokenVerifier(options) {
     const host = url.hostname.replace(/^\[|\]$/g, "");
     const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
     if (url.protocol === "http:" && isLoopback) return;
+    if (process.env.NODE_ENV !== "production") {
+      if (url.protocol === "http:" && !warnedInsecureEndpoints.has(name)) {
+        warnedInsecureEndpoints.add(name);
+        console.warn(
+          `[sso-verify] ${name} \u4F7F\u7528\u975E\u52A0\u5BC6\u7684 http:// \u4E14\u975E loopback \u5730\u5740\uFF1B\u751F\u4EA7\u73AF\u5883\uFF08NODE_ENV=production\uFF09\u5C06\u76F4\u63A5\u629B\u9519`
+        );
+      }
+      return;
+    }
     throw new Error(
       `[sso-verify] \u751F\u4EA7\u73AF\u5883 ${name} \u5FC5\u987B\u4E3A https://\uFF08\u5F53\u524D ${url.protocol}//${url.host}\uFF09\uFF0C\u907F\u514D\u51ED\u8BC1/\u4EE4\u724C\u7ECF\u660E\u6587\u4F20\u8F93`
     );
@@ -212,6 +228,7 @@ function createTokenVerifier(options) {
         issuer,
         audience,
         algorithms: ["HS256"],
+        requiredClaims: ["exp"],
         clockTolerance: clockToleranceSeconds
       });
       if (payload.type !== "access_token") {
@@ -229,14 +246,18 @@ function createTokenVerifier(options) {
     try {
       const directKey = await getRS256PublicKey();
       if (directKey) {
-        const { payload } = await jwtVerify(token, directKey, {
-          issuer,
-          audience,
-          algorithms: ["RS256"],
-          clockTolerance: clockToleranceSeconds
-        });
-        if (payload.type !== "access_token") return null;
-        return normalizeLocalPayload(payload);
+        try {
+          const { payload } = await jwtVerify(token, directKey, {
+            issuer,
+            audience,
+            algorithms: ["RS256"],
+            requiredClaims: ["exp"],
+            clockTolerance: clockToleranceSeconds
+          });
+          if (payload.type !== "access_token") return null;
+          return normalizeLocalPayload(payload);
+        } catch {
+        }
       }
       const jwks = getJwksKeySet();
       if (jwks) {
@@ -244,6 +265,7 @@ function createTokenVerifier(options) {
           issuer,
           audience,
           algorithms: ["RS256"],
+          requiredClaims: ["exp"],
           clockTolerance: clockToleranceSeconds
         });
         if (payload.type !== "access_token") return null;
@@ -365,11 +387,11 @@ function createTokenVerifier(options) {
               issuer,
               audience,
               algorithms: ["RS256"],
+              requiredClaims: ["exp"],
               clockTolerance: clockToleranceSeconds
             });
             return await validateLogoutPayload(payload);
           } catch {
-            return null;
           }
         }
         let jwks = null;
@@ -384,6 +406,7 @@ function createTokenVerifier(options) {
               issuer,
               audience,
               algorithms: ["RS256"],
+              requiredClaims: ["exp"],
               clockTolerance: clockToleranceSeconds
             });
             return await validateLogoutPayload(payload);
@@ -394,14 +417,21 @@ function createTokenVerifier(options) {
         return null;
       }
       if (alg === "HS256") {
-        const secret = logoutTokenSecret || accessTokenSecret;
+        const secret = logoutTokenSecret || (allowLegacyAccessTokenSecretFallback ? accessTokenSecret : void 0);
         if (!secret) return null;
+        if (!logoutTokenSecret && allowLegacyAccessTokenSecretFallback) {
+          if (!warnedLegacyLogoutSecret) {
+            warnedLegacyLogoutSecret = true;
+            console.warn(LEGACY_LOGOUT_SECRET_FALLBACK_WARNING);
+          }
+        }
         try {
           const key = new TextEncoder().encode(secret);
           const { payload } = await jwtVerify(token, key, {
             issuer,
             audience,
             algorithms: ["HS256"],
+            requiredClaims: ["exp"],
             clockTolerance: clockToleranceSeconds
           });
           return await validateLogoutPayload(payload);

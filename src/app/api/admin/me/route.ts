@@ -7,6 +7,11 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
 import { blacklistAdminTokens } from "@/lib/token-blacklist";
+import {
+  checkAccountLockout,
+  recordLoginAttempt,
+  clearLoginAttempts,
+} from "@/lib/auth-security";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { z } from "zod";
 
@@ -85,14 +90,34 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
           { status: 404 }
         );
       }
+      // 账户级防爆破：持有会话者也限制旧密码试错次数。
+      // 使用独立 scope（admin_password:），与管理员登录锁定桶隔离，
+      // 防止改密试错连带锁死登录（与用户侧 password: scope 同口径，见 lib/password-manage.ts）
+      const scopeId = `admin_password:${admin.email}`;
+      const { locked, remainingMinutes } = await checkAccountLockout(scopeId);
+      if (locked) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "ACCOUNT_LOCKED",
+              message: `操作过于频繁，请在 ${remainingMinutes} 分钟后重试`,
+            },
+          },
+          { status: 429 }
+        );
+      }
       const bcrypt = await import("bcryptjs");
       const valid = await bcrypt.compare(data.currentPassword, adminRecord.password);
       if (!valid) {
+        await recordLoginAttempt(scopeId, false, request, "password_incorrect", "admin");
         return NextResponse.json(
           { success: false, error: { code: "INVALID_PASSWORD", message: "当前密码错误" } },
           { status: 400 }
         );
       }
+      // 旧密码校验通过：清除该 scope 的失败记录
+      await clearLoginAttempts(scopeId);
       updateData.password = await hashPassword(data.newPassword);
     }
 

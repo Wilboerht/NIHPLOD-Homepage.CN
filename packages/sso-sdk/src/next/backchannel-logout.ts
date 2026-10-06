@@ -27,6 +27,7 @@ import { SsoError } from "../core/errors";
 import {
   verifyLogoutTokenDetailed,
   releaseLogoutTokenJti,
+  type LogoutJtiStore,
   type LogoutTokenPayload,
   type VerifiedLogoutToken,
 } from "../core/logout-token";
@@ -68,6 +69,16 @@ export interface BackchannelLogoutRouteConfig {
 
   /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
   idTokenCookieName?: string;
+
+  /**
+   * jti 防重放存储（可选）。
+   *
+   * 默认实现是进程内 Map（per-instance）：多实例 / Serverless 部署下各实例
+   * 互不可见，重放保护形同虚设（IdP 重投/攻击者重放到另一实例会被当作首次）。
+   * 这类部署 MUST 注入共享存储（如 Redis：addIfAbsent = `SET key 1 NX EX ttl`，
+   * remove = `DEL key`——onLogout 失败时用于释放 jti 允许 IdP 重投）。
+   */
+  jtiStore?: LogoutJtiStore;
 
   /**
    * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
@@ -129,7 +140,9 @@ export function createBackchannelLogoutRouteHandler(
 
     let verified: VerifiedLogoutToken;
     try {
-      verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId);
+      verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId, {
+        jtiStore: config.jtiStore,
+      });
     } catch (err) {
       // 验证失败一律 400（规范：RP 认为 token 无效时返回 400，IdP 不再以该 token 重试）
       const code = err instanceof SsoError ? err.code : "logout_token_invalid";
@@ -148,7 +161,7 @@ export function createBackchannelLogoutRouteHandler(
       // 钩子失败时释放 jti：否则 IdP 用同一 logout_token 重投会被重放检查
       // 以 400 拒绝（IdP 视为 token 无效、不再重试），RP 本地会话永远清不掉。
       // 成功路径不得释放。
-      releaseLogoutTokenJti(verified.jti);
+      await releaseLogoutTokenJti(verified.replayKey, { jtiStore: config.jtiStore });
       console.error(
         "[SSO SDK] backchannel logout onLogout 钩子执行失败:",
         err

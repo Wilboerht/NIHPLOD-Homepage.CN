@@ -371,9 +371,12 @@ const revokedJtiCache = new LRUCache<string, boolean>({
   ttl: VERIFY_CACHE_TTL_MS,
 });
 
-// value 为 false 表示"用户不存在"；{ changedAt: null } 表示存在但未改过密码
+// value 为 false 表示"用户不存在"；{ changedAt: null, sessionsInvalidatedAt: null } 表示存在但从未触发失效
 // （LRUCache 值类型不允许 null/undefined，故用对象包裹；缓存未命中时 get 返回 undefined）
-const passwordChangedAtCache = new LRUCache<string, { changedAt: Date | null } | false>({
+const passwordChangedAtCache = new LRUCache<
+  string,
+  { changedAt: Date | null; sessionsInvalidatedAt: Date | null } | false
+>({
   max: 10000,
   ttl: VERIFY_CACHE_TTL_MS,
 });
@@ -394,27 +397,32 @@ async function isAccessTokenRevokedCached(jti: string): Promise<boolean> {
 }
 
 /**
- * 查询用户最近一次改密时间（5s 缓存，key=userId）。
- * 返回值语义：undefined = 用户不存在；null = 存在但未改过密码；Date = 改密时间。
+ * 查询用户"凭据失效时间"（5s 缓存，key=userId）：最近一次改密时间 + 全设备登出时间。
+ * 返回值语义：undefined = 用户不存在；其余为 { changedAt, sessionsInvalidatedAt }（各自 null = 未触发）。
  * "用户不存在"同样缓存 5s，防止对已删除用户的 token 反复打库；
  * DB 异常不缓存（直接上抛），保持原有失败行为。
  */
-async function getPasswordChangedAtCached(userId: string): Promise<Date | null | undefined> {
+async function getPasswordChangedAtCached(
+  userId: string
+): Promise<{ changedAt: Date | null; sessionsInvalidatedAt: Date | null } | undefined> {
   const cached = passwordChangedAtCache.get(userId);
   if (cached !== undefined) {
-    return cached === false ? undefined : cached.changedAt;
+    return cached === false ? undefined : cached;
   }
   const userRecord = await prisma.user.findUnique({
     where: { id: userId },
-    select: { passwordChangedAt: true },
+    select: { passwordChangedAt: true, sessionsInvalidatedAt: true },
   });
   if (!userRecord) {
     passwordChangedAtCache.set(userId, false);
     return undefined;
   }
-  const changedAt = userRecord.passwordChangedAt ?? null;
-  passwordChangedAtCache.set(userId, { changedAt });
-  return changedAt;
+  const value = {
+    changedAt: userRecord.passwordChangedAt ?? null,
+    sessionsInvalidatedAt: userRecord.sessionsInvalidatedAt ?? null,
+  };
+  passwordChangedAtCache.set(userId, value);
+  return value;
 }
 
 /**
@@ -464,21 +472,22 @@ export async function verifyUserToken(
       return null;
     }
 
-    // 改密即时失效：token 签发时间早于最近一次密码变更 → 拒绝。
+    // 改密/全设备登出即时失效：token 签发时间早于最近一次密码变更或全设备登出 → 拒绝。
     // 替代 user 级黑名单方案：重置/修改密码后，旧 token 全部失效，
     // 而受害者重新登录签发的新 token（iat >= 改密时刻）不受影响，无自锁窗口。
     // 比对以秒为粒度（iat 为 Unix 秒），同一秒内签发的 token 放行（可忽略窗口）。
     // 5s 进程内缓存：改密后旧 token 最长延迟 5s 失效；DB 异常不缓存，保持 fail-closed。
-    const passwordChangedAt = await getPasswordChangedAtCached(userId);
-    if (passwordChangedAt === undefined) {
+    const credentialCutoff = await getPasswordChangedAtCached(userId);
+    if (credentialCutoff === undefined) {
       // 用户不存在
       return null;
     }
-    if (
-      passwordChangedAt &&
-      typeof payload.iat === "number" &&
-      payload.iat < Math.floor(passwordChangedAt.getTime() / 1000)
-    ) {
+    // 两个失效点取较晚者作为统一口径：任一失效动作后签发的 token 才放行
+    const cutoffMs = Math.max(
+      credentialCutoff.changedAt?.getTime() ?? 0,
+      credentialCutoff.sessionsInvalidatedAt?.getTime() ?? 0
+    );
+    if (cutoffMs && typeof payload.iat === "number" && payload.iat < Math.floor(cutoffMs / 1000)) {
       return null;
     }
 
@@ -500,15 +509,20 @@ export async function verifyUserToken(
  * @param payload.sid - 关联的 OAuthSession.sessionId，可选。revoke 时据此定位单个会话撤销。
  * @param payload.dpopJkt - DPoP 绑定的 JWK Thumbprint，可选。refresh 时据此要求并验证 DPoP proof。
  * @param payload.authTime - 原始认证时间（Unix 秒），可选。refresh 换发时透传，跨轮换不丢失。
+ * @param options.expiresInSeconds - 可选的过期秒数覆盖。OAuth 刷新场景由调用方按
+ *   OAuthSession.expiresAt 封顶；缺省保持内部 30d 行为。
  */
-export async function signRefreshToken(payload: {
-  id: string;
-  clientId?: string;
-  scope?: string;
-  sid?: string;
-  dpopJkt?: string;
-  authTime?: number;
-}): Promise<string> {
+export async function signRefreshToken(
+  payload: {
+    id: string;
+    clientId?: string;
+    scope?: string;
+    sid?: string;
+    dpopJkt?: string;
+    authTime?: number;
+  },
+  options?: { expiresInSeconds?: number }
+): Promise<string> {
   const jwtPayload: Record<string, unknown> = {
     id: payload.id,
     type: "refresh" as const,
@@ -525,7 +539,7 @@ export async function signRefreshToken(payload: {
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience("refresh")
-    .setExpirationTime(refreshTokenExpiresIn)
+    .setExpirationTime(options?.expiresInSeconds ? `${options.expiresInSeconds}s` : refreshTokenExpiresIn)
     .sign(refreshSecret);
 
   return token;

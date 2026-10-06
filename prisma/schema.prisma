@@ -211,6 +211,8 @@ model User {
   // 密码策略
   passwordChangedAt DateTime?                   // 上次密码修改时间
   passwordExpiresAt DateTime?                   // 密码过期时间（null 表示未启用过期策略）
+  // 全设备登出时间：access token iat 早于此时间一律拒绝（与 passwordChangedAt 同口径）
+  sessionsInvalidatedAt DateTime?
 
   // 多租户预留：如需租户隔离，添加 tenantId String? 字段，并在所有查询中添加 WHERE tenantId = ? 条件
 

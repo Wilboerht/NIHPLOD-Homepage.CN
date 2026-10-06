@@ -112,6 +112,17 @@ interface SsoClientConfig {
     redirectUri: string;
     /** SSO 中心地址，如 "https://nihplod.cn" */
     ssoBaseUrl: string;
+    /**
+     * 允许 Discovery 文档声明跨源端点（默认 false）。
+     *
+     * ⚠️ 安全警告：Discovery 文档若被篡改（如中间人/反向代理劫持），攻击者可把
+     * token_endpoint 指向自己的服务器窃取 authorization code / refresh_token。
+     * SDK 默认校验 authorization_endpoint 必须与 ssoBaseUrl 同源、
+     * token_endpoint / userinfo_endpoint 必须与 ssoBaseUrl（或 serverBaseUrl）同源，
+     * 不匹配时告警并回退到默认端点。仅当 SSO 中心确实把端点托管在其他域名时
+     * 才设置此开关，并自行确保 Discovery 通道可信。
+     */
+    allowCrossOriginDiscoveryEndpoints?: boolean;
     /** 请求的 scope（空格分隔），如 "openid profile phone" */
     scopes?: string;
     /** RP-Initiated Logout 返回地址（可选）。不传时回退到 redirectUri */
@@ -195,6 +206,8 @@ declare class SsoClient {
     private _discovery;
     private _discoveryFetchedAt;
     private _refreshLock;
+    /** Discovery 端点 origin 校验失败只告警一次（拒绝的文档不缓存，避免每次调用刷屏） */
+    private _discoveryOriginWarned;
     /** Discovery 文档缓存 TTL（5 分钟） */
     private static readonly DISCOVERY_TTL_MS;
     /** Discovery fetch 超时（10 秒） */
@@ -206,6 +219,15 @@ declare class SsoClient {
      * 不会输出 token/授权码等敏感值。
      */
     debugLog(...args: unknown[]): void;
+    /**
+     * 校验 Discovery 文档端点 origin（防文档被篡改后 token/code 被导向攻击者服务器）：
+     * - authorization_endpoint 必须与 ssoBaseUrl 同源（浏览器跳转目标）；
+     * - token_endpoint / userinfo_endpoint 必须与 ssoBaseUrl 同源，
+     *   或（配置了 serverBaseUrl 时）与内网地址同源。
+     * 任一不匹配：告警并返回 null（上层回退到默认端点，fail-safe）。
+     * 可通过 config.allowCrossOriginDiscoveryEndpoints 关闭（见配置项警告）。
+     */
+    private _sanitizeDiscovery;
     /**
      * 获取 OIDC Discovery 文档（带缓存 + 超时）
      *
@@ -327,6 +349,9 @@ declare class SsoClient {
      * 检查是否已认证（不发起网络请求）
      *
      * 仅检查本地是否存在未过期的 access_token。
+     * 故意不做 EXPIRY_SKEW_MS 提前量：这是同步的 UI 提示判定（是否显示"已登录"），
+     * 提前 10s 翻转 false 会让调用方在 token 仍有效时误显示未登录；真正发请求的
+     * getAccessToken/getUserInfo 已带提前量。
      */
     isAuthenticated(): boolean;
     /**

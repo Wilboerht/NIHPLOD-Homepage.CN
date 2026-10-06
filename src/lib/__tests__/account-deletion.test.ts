@@ -156,6 +156,11 @@ describe("executeAccountDeletion", () => {
     expect(mockTxSmsCodeDeleteMany).toHaveBeenCalledWith({ where: { phone: "13800138000" } });
     expect(mockTxRefreshTokenDeleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
     expect(mockTxUserAddressDeleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+    // 登录尝试：userId 维度 + 历史无 userId 记录的 identifier 维度各清一轮
+    expect(mockTxLoginAttemptDeleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+    expect(mockTxLoginAttemptDeleteMany).toHaveBeenCalledWith({
+      where: { identifier: "hmac-13800138000" },
+    });
 
     // 匿名化字段：phone 占位、凭据/资料/微信列清空、status=DELETED（不物理删除）
     const updateArgs = mockTxUserUpdate.mock.calls[0][0];

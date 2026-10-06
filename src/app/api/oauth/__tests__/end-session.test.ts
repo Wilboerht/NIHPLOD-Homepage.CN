@@ -33,6 +33,7 @@ vi.mock("@/lib/oauth-client", () => ({
 vi.mock("@/lib/token-blacklist", () => ({
   revokeAccessToken: vi.fn().mockResolvedValue(undefined),
 }));
+import { revokeAccessToken } from "@/lib/token-blacklist";
 // 登出闭环：级联撤销 OAuth 会话/refresh token + backchannel 广播
 const mockRevokeOAuthClientSessions = vi.fn();
 vi.mock("@/lib/oauth-session-revoke", () => ({
@@ -190,7 +191,7 @@ describe("GET /api/oauth/end-session", () => {
       clockToleranceSeconds: 30,
       requireAudience: true,
     });
-    // 登出闭环：撤销该 client 的 OAuth 会话/refresh token 并广播 backchannel logout
+    // RP 级登出：仅撤销发起方 client 的 OAuth 会话/refresh token 并广播 backchannel logout
     expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-1", {
       reason: "logout",
     });
@@ -199,10 +200,12 @@ describe("GET /api/oauth/end-session", () => {
     expect(location.origin).toBe("https://a.com");
     expect(location.pathname).toBe("/done");
     expect(location.searchParams.get("state")).toBe("s1");
-    // 主站会话 Cookie 被清除
+    // 爆炸半径收窄：主站会话 Cookie 不清除（主站登出只能经 /logout 确认页显式确认），
+    // 当前 access token 的 jti 不撤销
     const setCookies = res.headers.getSetCookie();
-    expect(setCookies.some((c) => c.startsWith("__Host-user_token="))).toBe(true);
-    expect(setCookies.some((c) => c.startsWith("__Host-user_refresh="))).toBe(true);
+    expect(setCookies.some((c) => c.startsWith("__Host-user_token="))).toBe(false);
+    expect(setCookies.some((c) => c.startsWith("__Host-user_refresh="))).toBe(false);
+    expect(revokeAccessToken).not.toHaveBeenCalled();
   });
 
   it("快速通道：hint 身份与当前会话不一致时回落确认页（防伪造登出）", async () => {
@@ -270,10 +273,11 @@ describe("GET /api/oauth/end-session", () => {
     expect(setCookies.some((c) => c.startsWith("__Host-user_token="))).toBe(false);
   });
 
-  it("登出闭环：主站 refresh token 无关联 client 时按可信 clientId 兜底撤销 OAuth 会话", async () => {
+  it("登出闭环：撤销范围始终绑定可信 clientId（refresh cookie 不改变撤销目标）", async () => {
     mockVerifyIdToken.mockResolvedValue({ sub: "user-1", aud: "client-1" });
     mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1" });
-    // refresh token 记录不存在/无 clientId（主站内部登录）：由 hint aud 兜底定位 client
+    // 即使请求携带主站 refresh cookie，RP 级登出也只撤销发起方 client 的会话，
+    // 不再读取/撤销主站 refresh token（无 refresh-cookie clientId 兜底逻辑）
     const res = await GET(
       createRequest(
         { client_id: "client-1", id_token_hint: "valid-hint" },
@@ -284,5 +288,21 @@ describe("GET /api/oauth/end-session", () => {
     expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-1", {
       reason: "logout",
     });
+  });
+
+  it("快速通道：相对路径 post_logout_redirect_uri 按本站 origin 解析", async () => {
+    mockVerifyIdToken.mockResolvedValue({ sub: "user-1", aud: "client-1" });
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1" });
+    mockIsTrusted.mockResolvedValue(true);
+    const res = await GET(
+      createRequest({
+        client_id: "client-1",
+        id_token_hint: "valid-hint",
+        post_logout_redirect_uri: "/logged-out",
+        state: "s2",
+      })
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("http://localhost/logged-out?state=s2");
   });
 });

@@ -114,15 +114,18 @@ async function computeCodeChallenge(verifier) {
 function matchesPath(pathname, paths) {
   return paths.some((path) => {
     if (pathname === path) return true;
-    if (path.endsWith("/:path*") && pathname.startsWith(path.replace("/:path*", ""))) return true;
-    if (pathname.startsWith(path + "/")) return true;
-    return false;
+    if (path.endsWith("/:path*")) {
+      const base = path.slice(0, -"/:path*".length);
+      return pathname === base || pathname.startsWith(base + "/");
+    }
+    return pathname.startsWith(path + "/");
   });
 }
 var introspectionCache = /* @__PURE__ */ new Map();
 var INTROSPECT_CACHE_TTL_MS = 3e4;
 var INTROSPECT_CACHE_MAX_ENTRIES = 500;
 var INTROSPECT_TIMEOUT_MS = 5e3;
+var warnedIntrospectClientAuthFailure = false;
 async function introspectCacheKey(token, clientId) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -176,8 +179,13 @@ async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) 
       if (res.status !== 401 && res.status !== 403) {
         return "unreachable";
       }
-      introspectCacheSet(cacheKey, false);
-      return "inactive";
+      if (!warnedIntrospectClientAuthFailure) {
+        warnedIntrospectClientAuthFailure = true;
+        console.warn(
+          `[SSO SDK] introspection \u5BA2\u6237\u7AEF\u8BA4\u8BC1\u5931\u8D25\uFF08HTTP ${res.status}\uFF09\uFF1A\u8BF7\u68C0\u67E5 clientId/clientSecret \u4E0E\u4E3B\u7AD9\u6CE8\u518C\u4FE1\u606F\u662F\u5426\u4E00\u81F4\u3002\u8BE5\u6545\u969C\u4E0D\u4F1A\u88AB\u7F13\u5B58\u4E3A token \u5931\u6548\uFF0C\u4E5F\u4E0D\u4F1A\u89E6\u53D1\u9759\u9ED8\u91CD\u767B\u5F55\u5FAA\u73AF\u3002`
+        );
+      }
+      return "unreachable";
     }
     const data = await res.json();
     const active = data.active === true;
@@ -220,7 +228,7 @@ function createSsoMiddleware(config) {
   }
   return async function ssoMiddleware(request) {
     const { pathname } = request.nextUrl;
-    if (pathname.startsWith("/_next/") || pathname.startsWith("/favicon.ico") || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff2?)$/)) {
+    if (!pathname.startsWith("/api/") && (pathname.startsWith("/_next/") || pathname.startsWith("/favicon.ico") || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff2?)$/))) {
       return import_server.NextResponse.next();
     }
     if (pathname === callbackPath) {
@@ -539,7 +547,10 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
   if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
   }
-  if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
+  if (typeof payload.iat !== "number") {
+    throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 iat \u58F0\u660E");
+  }
+  if (payload.iat * 1e3 > Date.now() + 6e4) {
     throw new SsoError("id_token_invalid", "ID Token iat \u5728\u672A\u6765\uFF0C\u7591\u4F3C\u4F2A\u9020\u6216\u65F6\u949F\u5F02\u5E38");
   }
   if (typeof payload.sub !== "string" || !payload.sub) {
@@ -556,8 +567,25 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
     if (!tokenNonce || !timingSafeEqualString(expectedNonce, tokenNonce)) {
       throw new SsoError("id_token_nonce_mismatch", "ID Token nonce \u4E0D\u5339\u914D");
     }
+  } else if (typeof payload.nonce === "string" && payload.nonce) {
+    throw new SsoError(
+      "id_token_nonce_mismatch",
+      "ID Token \u643A\u5E26 nonce \u4F46\u672C\u5730\u65E0\u671F\u671B\u503C\uFF08\u53EF\u80FD\u975E\u672C\u6B21\u767B\u5F55\u4F1A\u8BDD\u7B7E\u53D1\uFF09"
+    );
   }
   return { sub: payload.sub };
+}
+
+// src/core/http.ts
+var REQUEST_TIMEOUT_MS = 1e4;
+async function fetchWithTimeout(input, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // src/next/callback.ts
@@ -784,11 +812,15 @@ function createCallbackRouteHandler(config) {
         await new Promise((r) => setTimeout(r, 1e3 * Math.pow(2, attempt - 1)));
       }
       try {
-        res = await fetch(tokenEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString()
-        });
+        res = await fetchWithTimeout(
+          tokenEndpoint,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString()
+          },
+          1e4
+        );
         lastError = null;
         break;
       } catch (err) {
@@ -1022,7 +1054,7 @@ function createLogoutRouteHandler(config) {
     const returnedState = request.nextUrl.searchParams.get("state");
     if (returnedState) {
       const savedState = request.cookies.get(logoutStateCookieName)?.value;
-      if (!savedState || savedState !== returnedState) {
+      if (!savedState || !timingSafeEqualString(savedState, returnedState)) {
         return import_server3.NextResponse.json(
           { error: "invalid_request", error_description: "Logout state \u4E0D\u5339\u914D" },
           { status: 400 }
@@ -1138,8 +1170,19 @@ var import_server4 = require("next/server");
 var BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout";
 var JTI_CACHE_CAPACITY = 1e3;
 var seenJti = /* @__PURE__ */ new Map();
-function releaseLogoutTokenJti(jti) {
-  seenJti.delete(jti);
+async function releaseLogoutTokenJti(replayKey, options = {}) {
+  const store = options.jtiStore;
+  if (store?.remove) {
+    await store.remove(replayKey);
+    return;
+  }
+  if (store) {
+    console.warn(
+      "[SSO SDK] \u81EA\u5B9A\u4E49 jtiStore \u672A\u5B9E\u73B0 remove()\uFF1AonLogout \u5931\u8D25\u540E\u65E0\u6CD5\u91CA\u653E jti\uFF0CIdP \u7528\u540C\u4E00 logout_token \u91CD\u6295\u5C06\u88AB\u91CD\u653E\u68C0\u67E5\u62D2\u7EDD\uFF08logout_token_replay\uFF09"
+    );
+    return;
+  }
+  seenJti.delete(replayKey);
 }
 function recordJti(jti, expiresAtMs) {
   const now = Date.now();
@@ -1156,7 +1199,7 @@ function recordJti(jti, expiresAtMs) {
   seenJti.set(jti, expiresAtMs);
   return true;
 }
-async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId) {
+async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId, options = {}) {
   const baseUrl = ssoBaseUrl.replace(/\/+$/, "");
   const header = decodeJwtHeader(logoutToken);
   if (!header) {
@@ -1265,10 +1308,27 @@ async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId) {
   if (!jti) {
     throw new SsoError("logout_token_invalid", "Logout Token \u7F3A\u5C11 jti \u58F0\u660E");
   }
-  if (!recordJti(jti, payload.exp * 1e3 + 6e4)) {
+  const replayKey = `${normalizedIssuer}:${jti}`;
+  const replayTtlSeconds = Math.max(
+    1,
+    Math.ceil((payload.exp * 1e3 + 6e4 - Date.now()) / 1e3)
+  );
+  const jtiStore = options.jtiStore;
+  if (jtiStore) {
+    if (jtiStore.addIfAbsent) {
+      if (!await jtiStore.addIfAbsent(replayKey, replayTtlSeconds)) {
+        throw new SsoError("logout_token_replay", "Logout Token jti \u91CD\u653E");
+      }
+    } else {
+      if (await jtiStore.has(replayKey)) {
+        throw new SsoError("logout_token_replay", "Logout Token jti \u91CD\u653E");
+      }
+      await jtiStore.add(replayKey, replayTtlSeconds);
+    }
+  } else if (!recordJti(replayKey, payload.exp * 1e3 + 6e4)) {
     throw new SsoError("logout_token_replay", "Logout Token jti \u91CD\u653E");
   }
-  return { payload: { sub, sid }, jti };
+  return { payload: { sub, sid }, jti, replayKey };
 }
 
 // src/next/backchannel-logout.ts
@@ -1310,7 +1370,9 @@ function createBackchannelLogoutRouteHandler(config) {
     }
     let verified;
     try {
-      verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId);
+      verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId, {
+        jtiStore: config.jtiStore
+      });
     } catch (err) {
       const code = err instanceof SsoError ? err.code : "logout_token_invalid";
       const description = err instanceof SsoError ? err.description : "Logout Token \u9A8C\u8BC1\u5931\u8D25";
@@ -1322,7 +1384,7 @@ function createBackchannelLogoutRouteHandler(config) {
     try {
       await onLogout?.(verified.payload, request);
     } catch (err) {
-      releaseLogoutTokenJti(verified.jti);
+      await releaseLogoutTokenJti(verified.replayKey, { jtiStore: config.jtiStore });
       console.error(
         "[SSO SDK] backchannel logout onLogout \u94A9\u5B50\u6267\u884C\u5931\u8D25:",
         err

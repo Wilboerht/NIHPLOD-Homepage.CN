@@ -112,6 +112,29 @@ describe("DPoP jti 防重放（DB 共享）", () => {
     vi.mocked(prisma.tokenBlacklist.create).mockResolvedValue({} as never);
   });
 
+  it("缺少 jti 的 proof 应被拒绝（RFC 9449 §4.2），且不写入 TokenBlacklist", async () => {
+    const { publicKey, privateKey } = await generateKeyPair("ES256", { extractable: true });
+    const jwk = await exportJWK(publicKey);
+    const proof = await new SignJWT({ htm: "POST", htu: TEST_HTU })
+      .setProtectedHeader({ alg: "ES256", typ: "dpop+jwt", jwk })
+      .setIssuedAt()
+      .sign(privateKey);
+    const result = await validateDPoPProof(proof, "POST", TEST_HTU);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("invalid_dpop_proof");
+    expect(result.errorDescription).toContain("jti");
+    expect(prisma.tokenBlacklist.create).not.toHaveBeenCalled();
+  });
+
+  it("jti 超过 128 字符应被拒绝（TokenBlacklist 主键长度上限）", async () => {
+    const proof = await makeProof(`jti-too-long-${"j".repeat(128)}`);
+    const result = await validateDPoPProof(proof, "POST", TEST_HTU);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("invalid_dpop_proof");
+    expect(result.errorDescription).toContain("jti");
+    expect(prisma.tokenBlacklist.create).not.toHaveBeenCalled();
+  });
+
   it("首次使用的 jti 应通过验证并写入 TokenBlacklist", async () => {
     const proof = await makeProof("jti-first-use");
     const result = await validateDPoPProof(proof, "POST", TEST_HTU);

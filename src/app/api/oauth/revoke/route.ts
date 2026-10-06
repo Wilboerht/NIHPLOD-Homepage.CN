@@ -65,9 +65,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { client_id, client_secret } = getClientCredentials(request, body);
+    const { client_id, client_secret, conflict } = getClientCredentials(request, body);
     const token = body.token;
     const token_type_hint = body.token_type_hint;
+
+    if (conflict) {
+      return resJson(
+        { error: "invalid_client", error_description: "不允许同时使用多种客户端认证方式" },
+        400
+      );
+    }
 
     if (!client_id) {
       return resJson({ error: "invalid_client", error_description: "缺少 client_id" }, 401);

@@ -70,25 +70,45 @@ interface SsoVerifierOptions {
      * 主站在配置 JWT_ACCESS_PRIVATE_KEY 后以 RS256 签名 access_token，
      * 子项目可传入此公钥进行本地验证，避免每次都调用 Introspection 端点。
      * 若主站未配置 RS256 密钥（回退 HS256 签名），此选项不生效。
+     * 同时配置 jwksUri 时优先尝试此直接公钥，验证失败后自动回退 JWKS
+     * （覆盖主站密钥轮换后旧公钥尚未更新的过渡期）。
      */
     accessTokenPublicKey?: string;
     /**
      * JWKS 端点 URL（可选）。
      * 子项目可传入此 URL 以动态获取 RS256 公钥进行本地验证。
-     * 当 accessTokenPublicKey 未配置时，将通过此端点获取匹配 kid 的公钥。
+     * 当 accessTokenPublicKey 未配置时，将通过此端点获取匹配 kid 的公钥；
+     * 两者同时配置时先尝试直接公钥，失败后回退本端点（密钥轮换兜底）。
      */
     jwksUri?: string;
     /**
      * Logout Token Secret（可选）。
      * 用于本地验证主站签发的 logout_token（HS256 签名）。
-     * 若未提供，将回退使用 accessTokenSecret 进行验证。
+     * 若未提供且未显式开启 allowLegacyAccessTokenSecretFallback，HS256 logout_token
+     * 验证将失败（返回 null）。
      */
     logoutTokenSecret?: string;
+    /**
+     * 允许 HS256 logout_token 回退使用 accessTokenSecret 验证（默认 false，废弃路径）。
+     *
+     * 历史行为：未配置 logoutTokenSecret 时回退使用 accessTokenSecret 验证。
+     * 风险：合法共享 access secret 的内部服务即可伪造任意用户的 logout_token（强制全站登出），
+     * access secret 泄漏会同时击穿 access token 与 logout token 两条信任边界。
+     * 仅当无法立即迁移旧部署时显式设为 true，并尽快改用 logoutTokenSecret 或 RS256 公钥。
+     *
+     * 开启后会在两处输出告警（console.warn）：
+     * 1. 构造 verifier 时——若该回退路径实际可生效（配置了 accessTokenSecret 但未配置
+     *    logoutTokenSecret）立即提示一次；
+     * 2. 首次实际使用回退路径验证 HS256 logout_token 时——提示该路径正在被真实流量触发
+     *    （一次性告警）。
+     */
+    allowLegacyAccessTokenSecretFallback?: boolean;
     /**
      * Logout Token RS256 公钥（PEM 格式，可选）。
      * 主站 logout_token 使用独立密钥对（kid: logout-token-rs256-v1）签名，
      * 与 access token 密钥不同，因此不能使用 accessTokenPublicKey 验证。
-     * 若未提供但配置了 jwksUri，将通过 JWKS 按 kid 匹配获取对应公钥。
+     * 若未提供但配置了 jwksUri，将通过 JWKS 按 kid 匹配获取对应公钥；
+     * 两者同时配置时先尝试此直接公钥，验证失败后回退 JWKS（密钥轮换兜底）。
      * RS256 签名的 logout_token 在无任何可用公钥时验证失败（返回 null），
      * 不会静默回退到 HS256。
      */

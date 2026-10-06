@@ -13,6 +13,8 @@ import { timingSafeEqual } from "crypto";
 export interface ClientCredentials {
   client_id: string;
   client_secret: string | undefined;
+  /** 同时使用了多种客户端认证方式（RFC 6749 §2.3 禁止）：Basic 与 body 混用 */
+  conflict?: boolean;
 }
 
 /**
@@ -53,9 +55,15 @@ export function getClientCredentials(
 ): ClientCredentials {
   const basic = parseBasicAuth(request.headers.get("authorization"));
   if (basic) {
+    // body 重复携带相同的 client_id 不算冲突（宽松兼容冗余传参）；
+    // 但 body 另带 client_secret 或不同的 client_id 即为双重认证，须拒绝
+    const conflict =
+      !!body.client_secret || (!!body.client_id && body.client_id !== basic.client_id);
     return {
       client_id: basic.client_id,
       client_secret: basic.client_secret || undefined,
+      // 仅在冲突时写入，保持无冲突返回形状向后兼容
+      ...(conflict ? { conflict: true } : {}),
     };
   }
 

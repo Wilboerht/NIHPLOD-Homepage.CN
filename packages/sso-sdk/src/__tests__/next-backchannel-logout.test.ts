@@ -363,4 +363,127 @@ describe("createBackchannelLogoutRouteHandler", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
     errorSpy.mockRestore();
   });
+
+  describe("注入 jtiStore", () => {
+    /** 基于 Map 的伪共享存储（addIfAbsent + remove 语义对齐 Redis SET NX EX / DEL） */
+    function createMapStore(overrides: Partial<{
+      addIfAbsent: (key: string, ttl: number) => boolean;
+      remove: (key: string) => void;
+    }> = {}) {
+      const map = new Map<string, number>();
+      return {
+        map,
+        has: (key: string) => map.has(key),
+        add: (key: string, ttl: number) => void map.set(key, ttl),
+        addIfAbsent:
+          overrides.addIfAbsent ??
+          ((key: string, ttl: number) => {
+            if (map.has(key)) return false;
+            map.set(key, ttl);
+            return true;
+          }),
+        ...(overrides.remove !== undefined ? { remove: overrides.remove } : {}),
+      };
+    }
+
+    it("addIfAbsent 返回 false（重放）时返回 400", async () => {
+      installFetchRouter();
+      const jtiStore = createMapStore({ addIfAbsent: () => false });
+      const handler = createBackchannelLogoutRouteHandler({ ...config, jtiStore });
+
+      const token = await buildLogoutToken(validLogoutPayload());
+      const res = await handler(postWithToken(token));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("logout_token_replay");
+    });
+
+    it("onLogout 失败时调用 store.remove 释放 jti，IdP 重投被接受", async () => {
+      installFetchRouter();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const removeSpy = vi.fn(() => void 0);
+      const backing = new Map<string, number>();
+      const jtiStore = {
+        has: (key: string) => backing.has(key),
+        add: (key: string, ttl: number) => void backing.set(key, ttl),
+        addIfAbsent: (key: string, ttl: number) => {
+          if (backing.has(key)) return false;
+          backing.set(key, ttl);
+          return true;
+        },
+        remove: (key: string) => {
+          removeSpy(key);
+          backing.delete(key);
+        },
+      };
+      const failing = createBackchannelLogoutRouteHandler({
+        ...config,
+        jtiStore,
+        onLogout: () => {
+          throw new Error("db down");
+        },
+      });
+
+      const token = await buildLogoutToken(validLogoutPayload());
+      const first = await failing(postWithToken(token));
+      expect(first.status).toBe(500);
+      // remove 以 issuer 前缀的重放键调用
+      expect(removeSpy).toHaveBeenCalledTimes(1);
+      expect(removeSpy.mock.calls[0][0]).toMatch(/^https:\/\/nihplod\.cn:jti-/);
+
+      // 重投同一 logout_token：jti 已释放，验证与钩子重新执行
+      const onRetry = vi.fn();
+      const succeeding = createBackchannelLogoutRouteHandler({
+        ...config,
+        jtiStore,
+        onLogout: onRetry,
+      });
+      const second = await succeeding(postWithToken(token));
+      expect(second.status).toBe(200);
+      expect(onRetry).toHaveBeenCalledTimes(1);
+      errorSpy.mockRestore();
+    });
+
+    it("store 未实现 remove 时告警且 IdP 重投被重放检查拒绝", async () => {
+      installFetchRouter();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const backing = new Map<string, number>();
+      const jtiStore = {
+        has: (key: string) => backing.has(key),
+        add: (key: string, ttl: number) => void backing.set(key, ttl),
+        addIfAbsent: (key: string, ttl: number) => {
+          if (backing.has(key)) return false;
+          backing.set(key, ttl);
+          return true;
+        },
+        // 故意不实现 remove
+      };
+      const failing = createBackchannelLogoutRouteHandler({
+        ...config,
+        jtiStore,
+        onLogout: () => {
+          throw new Error("db down");
+        },
+      });
+
+      const token = await buildLogoutToken(validLogoutPayload());
+      const first = await failing(postWithToken(token));
+      expect(first.status).toBe(500);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("未实现 remove()"));
+
+      // 重投：jti 未释放，被重放检查拒绝
+      const succeeding = createBackchannelLogoutRouteHandler({
+        ...config,
+        jtiStore,
+        onLogout: vi.fn(),
+      });
+      const second = await succeeding(postWithToken(token));
+      expect(second.status).toBe(400);
+      expect((await second.json()).error).toBe("logout_token_replay");
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+  });
 });

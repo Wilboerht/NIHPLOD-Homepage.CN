@@ -111,6 +111,11 @@ export function validatePasswordStrength(password: string): { valid: boolean; me
   if (password.length > PASSWORD_MAX_LENGTH) {
     return { valid: false, message: `密码最多${PASSWORD_MAX_LENGTH}位` };
   }
+  // bcrypt 仅取密码前 72 个 UTF-8 字节，超长部分被静默截断（两个仅尾部不同的密码会撞库）；
+  // 显式拒绝而非截断。须用 TextEncoder：本模块被客户端组件（如 RegisterForm）引用，不可用 Buffer
+  if (new TextEncoder().encode(password).length > 72) {
+    return { valid: false, message: "密码过长：按 UTF-8 字节计算最多 72 字节（中文按 3 字节计）" };
+  }
   if (!/[A-Z]/.test(password)) {
     return { valid: false, message: "密码需包含大写字母" };
   }
@@ -138,6 +143,10 @@ export const passwordSchema = z
   .string()
   .min(PASSWORD_MIN_LENGTH, "密码至少8位")
   .max(PASSWORD_MAX_LENGTH, "密码最多32位")
+  // bcrypt 72 字节截断防护（同 validatePasswordStrength；TextEncoder 兼容浏览器端引用）
+  .refine((val) => new TextEncoder().encode(val).length <= 72, {
+    message: "密码过长：按 UTF-8 字节计算最多 72 字节（中文按 3 字节计）",
+  })
   .regex(/[A-Z]/, "密码需包含大写字母")
   .regex(/[a-z]/, "密码需包含小写字母")
   .regex(/[0-9]/, "密码需包含数字")

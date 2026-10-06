@@ -13,18 +13,8 @@ import { isTrustedPostLogoutRedirectUri } from "@/lib/post-logout-redirect";
 import { verifyIdToken } from "@/lib/jwt";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { verifyUserAuth } from "@/lib/auth";
-import { revokeRefreshToken } from "@/lib/auth-security";
-import { revokeAccessToken } from "@/lib/token-blacklist";
 import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { logAuthEvent } from "@/lib/auth-logger";
-import { prisma } from "@/lib/prisma";
-import { CSRF_COOKIE_NAME } from "@/lib/csrf";
-import {
-  USER_COOKIE_NAME,
-  USER_ACCESS_COOKIE_OPTIONS,
-  USER_REFRESH_COOKIE_NAME,
-  USER_REFRESH_COOKIE_OPTIONS,
-} from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -83,54 +73,26 @@ export async function GET(request: NextRequest) {
             ? await isTrustedPostLogoutRedirectUri(postLogoutRedirectUri, effectiveClientId)
             : false;
 
-          // 单设备登出，与 POST /api/auth/logout 的 allDevices=false 同口径
-          const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
-          let sessionClientId: string | null = null;
-          if (refreshToken) {
-            await revokeRefreshToken(user.id, refreshToken, undefined, "logout");
-            // refresh token 关联 OAuth client 时（经子站 SSO 授权建立的会话），按记录定位
-            const { createHash } = await import("crypto");
-            const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
-            const refreshRecord = await prisma.refreshToken.findFirst({
-              where: { userId: user.id, token: tokenHash },
-              select: { clientId: true },
-            });
-            sessionClientId = refreshRecord?.clientId ?? null;
-          }
-          // 登出闭环：主站会话多为内部登录（refresh token clientId=null），以可信
-          // clientId（显式 client_id 已经 aud 校验，或已验签 hint 的 aud）兜底撤销
-          // 该 client 下的 OAuthSession 与 refresh token，并广播 backchannel logout
-          const revokeClientId = sessionClientId ?? effectiveClientId;
-          if (revokeClientId) {
-            await revokeOAuthClientSessions(user.id, revokeClientId, { reason: "logout" });
-          }
-          if (user.jti) {
-            await revokeAccessToken(user.jti, user.exp ? user.exp * 1000 : undefined);
-          }
+          // RP 级登出免确认仅撤销发起方 client 的会话；主站会话只能经 /logout 确认页
+          // 用户显式确认后由 POST /api/auth/logout 清除——否则任何持有有效 id_token 的
+          // RP 都能经跨站 GET 静默踢掉用户的主站会话。
+          await revokeOAuthClientSessions(user.id, effectiveClientId, { reason: "logout" });
           logAuthEvent("user_logout", {
             userId: user.id,
             success: true,
             allDevices: false,
             ip,
-            channel: "end_session_fast_path",
+            channel: "end_session_rp_scoped",
           });
 
+          // 相对路径回跳地址按本站 origin 解析（同源安全）；已注册的绝对地址不受影响
+          const baseOrigin = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
           const target =
             trusted && postLogoutRedirectUri
-              ? new URL(postLogoutRedirectUri)
-              : new URL("/", process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin);
+              ? new URL(postLogoutRedirectUri, baseOrigin)
+              : new URL("/", baseOrigin);
           if (state) target.searchParams.set("state", state);
-          const res = NextResponse.redirect(target, 302);
-          res.cookies.set(USER_COOKIE_NAME, "", { ...USER_ACCESS_COOKIE_OPTIONS, maxAge: 0 });
-          res.cookies.set(USER_REFRESH_COOKIE_NAME, "", { ...USER_REFRESH_COOKIE_OPTIONS, maxAge: 0 });
-          res.cookies.set(CSRF_COOKIE_NAME, "", {
-            httpOnly: false,
-            secure: true,
-            sameSite: "strict",
-            path: "/",
-            maxAge: 0,
-          });
-          return res;
+          return NextResponse.redirect(target, 302);
         }
       } catch (fastPathError) {
         // 快速通道失败不阻断登出：回落到下方 /logout 确认页流程

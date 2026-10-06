@@ -123,6 +123,40 @@ describe("密码工具", () => {
     });
   });
 
+  describe("bcrypt 72 字节截断防护", () => {
+    // bcrypt 仅取前 72 个 UTF-8 字节：超过即存在"仅尾部不同的密码被当作同一密码"的风险。
+    // 注意 PASSWORD_MAX_LENGTH=32（字符），以下用例在 32 字符内构造字节边界。
+    it("32 个 ASCII 字符（32 字节）通过", () => {
+      const password = `A1${"a".repeat(30)}`;
+      expect(passwordSchema.safeParse(password).success).toBe(true);
+      expect(validatePasswordStrength(password).valid).toBe(true);
+    });
+
+    it("72 字节（23×中 + Aa1）恰好通过", () => {
+      const password = `${"中".repeat(23)}Aa1`;
+      expect(new TextEncoder().encode(password).length).toBe(72);
+      expect(passwordSchema.safeParse(password).success).toBe(true);
+      expect(validatePasswordStrength(password).valid).toBe(true);
+    });
+
+    it("75 字节（24×中 + Aa1）被拒绝", () => {
+      const password = `${"中".repeat(24)}Aa1`;
+      expect(new TextEncoder().encode(password).length).toBe(75);
+      const schemaResult = passwordSchema.safeParse(password);
+      expect(schemaResult.success).toBe(false);
+      const strengthResult = validatePasswordStrength(password);
+      expect(strengthResult.valid).toBe(false);
+      expect(strengthResult.message).toContain("72 字节");
+    });
+
+    it("71 字节（20×中 + 11 个 ASCII）通过", () => {
+      const password = `${"中".repeat(20)}Aa1${"b".repeat(8)}`;
+      expect(new TextEncoder().encode(password).length).toBe(71);
+      expect(passwordSchema.safeParse(password).success).toBe(true);
+      expect(validatePasswordStrength(password).valid).toBe(true);
+    });
+  });
+
   describe("密码历史", () => {
     beforeEach(() => {
       vi.clearAllMocks();

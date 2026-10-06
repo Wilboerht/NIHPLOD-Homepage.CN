@@ -205,7 +205,9 @@ export async function checkAccountLockout(
 /**
  * 清除特定用户的登录尝试记录（成功登录后清除）
  * @param identifier 登录标识
- * @param type 限制清除的登录类型（password | sms），不传则清除所有
+ * @param type 限制清除的登录类型（password | sms），不传则清除所有；
+ *   成功登录应不传 type——跨类型严格计数（任一类型失败均计入锁定），
+ *   若成功登录只清除本类型，残留的其他类型失败记录会让锁定继续生效
  */
 export async function clearLoginAttempts(identifier: string, type?: string): Promise<void> {
   try {

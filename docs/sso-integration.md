@@ -300,6 +300,8 @@ SSO 中心区分两种退出语义，子项目应按场景选择：
 
 官网 `/logout` 确认页默认只退出**当前设备**（撤销发起方 client 的 OAuthSession/refresh_token 并 backchannel 通知该 client）；用户可勾选"同时退出所有设备和已授权的平台"升级为全设备登出（撤销全部 refresh token 并通知**所有**已授权的活跃 client）。官网账户中心的"强制下线设备"也会对被踢设备关联的 client 发送 backchannel 通知。
 
+**RP 级登出语义**：子项目调 `end_session_endpoint` 的免确认快速通道（`id_token_hint` 未过期、`aud` 匹配且 `sub` 与当前会话一致）只退出**该子项目**的 SSO 会话（撤销该 client 的 OAuthSession 并 backchannel 通知），**不再清除主站登录态**（主站 Cookie 与主站 refresh token 保持不变）。需要全站退出时，应引导用户到官网 `/logout` 确认页由用户显式确认（快速通道不满足条件时也会自动回落到该确认页）。
+
 ### 推荐 UI 模式
 
 - **子站退出按钮默认做本站退出**，并附可选入口"同时退出所有平台"（跳转全局退出）。避免用户在某个子站点一次退出就把手机/其他电脑的会话全部踢掉。
@@ -839,7 +841,7 @@ const payload = await verifier.verify(token);
 
 ### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
 
-A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；**默认只结束当前设备的 SSO 会话**（与子站单设备退出同口径），同时撤销该 client 在 SSO 中心的 OAuthSession 与 refresh_token 并触发对应会话的 backchannel logout；用户在主站登出页勾选"同时退出所有设备和已授权的平台"才会撤销该用户全部会话。`id_token_hint` 未过期且与当前会话一致时走免确认快速通道直接登出；hint 已过期或缺失时回落主站 `/logout` 确认页，由用户显式确认后登出。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
+A: Public Client 调用 `sso.logout(true)` 会重定向到 SSO 中心的 end_session_endpoint（Discovery 获取，默认 `/api/oauth/end-session`）；`id_token_hint` 未过期且与当前会话一致时走免确认快速通道，**仅撤销该 client 在 SSO 中心的 OAuthSession 与 refresh_token** 并触发对应会话的 backchannel logout（RP 级登出，不动主站登录态）；hint 已过期或缺失时回落主站 `/logout` 确认页，由用户显式确认后退出当前设备的主站会话，勾选"同时退出所有设备和已授权的平台"才会撤销该用户全部会话。`@nihplod/sso-sdk` 在调用 `logout()`（不带参数）时，也会尝试携带 `client_id` 调用 `/api/oauth/revoke` 撤销当前 refresh_token（RFC 7009 允许 Public Client 仅使用 client_id 撤销）。
 
 ### Q: Next.js middleware 是否支持 PKCE？
 

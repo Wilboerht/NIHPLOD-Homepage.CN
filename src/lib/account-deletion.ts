@@ -118,6 +118,8 @@ export async function executeAccountDeletion(requestId: string): Promise<Deletio
       await tx.passwordHistory.deleteMany({ where: { userId } });
       await tx.smsCode.deleteMany({ where: { phone: originalPhone } });
       await tx.loginAttempt.deleteMany({ where: { userId } });
+      // 兼容历史无 userId 的记录：按手机号哈希再清一轮
+      await tx.loginAttempt.deleteMany({ where: { identifier: hashIdentifier(originalPhone) } });
       await tx.userAddress.deleteMany({ where: { userId } });
       await tx.webhookDeliveryFailure.deleteMany({ where: { userId } });
       await tx.refreshToken.deleteMany({ where: { userId } });

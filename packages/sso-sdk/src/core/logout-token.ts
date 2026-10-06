@@ -7,7 +7,7 @@
  * - aud 必须等于本 client、exp 必须有效
  * - type 必须为 "logout_token"（防跨用途 token 混用，与 sso-verify 对齐）
  * - events 必须包含 backchannel-logout 事件键，且事件值必须是对象
- * - sub / sid 至少居一；jti 必须存在且未重放（进程内 LRU）
+ * - sub / sid 至少居一；jti 必须存在且未重放（默认进程内 LRU，可注入 LogoutJtiStore）
  *
  * 与 ID Token 的差异：logout_token 不得要求 nonce（规范明确禁止携带），
  * 也不校验 at_hash / iat。
@@ -38,6 +38,34 @@ export interface LogoutTokenPayload {
 export interface VerifiedLogoutToken {
   payload: LogoutTokenPayload;
   jti: string;
+  /**
+   * 内部重放键（`${issuer}:${jti}`），releaseLogoutTokenJti 应传入此值。
+   * 跨 issuer 隔离 jti 命名空间，避免不同 IdP 的相同 jti 互相误判重放。
+   */
+  replayKey: string;
+}
+
+/**
+ * jti 防重放存储接口（可注入）。
+ *
+ * 默认实现是进程内 Map（per-instance）：多实例 / Serverless 部署下各实例
+ * 互不可见，重放检查形同虚设，必须注入共享存储（如 Redis）。
+ * key 为 `${issuer}:${jti}`，ttlSeconds 为建议过期时间（logout_token exp + 60s 宽限）。
+ */
+export interface LogoutJtiStore {
+  has(key: string): Promise<boolean> | boolean;
+  add(key: string, ttlSeconds: number): Promise<void> | void;
+  /**
+   * 原子 check-and-set（如 Redis `SET key 1 NX EX ttl`）：返回 false 表示
+   * key 已存在（判重放）。提供时优先使用；缺失时回退 has+add
+   * （非原子，仅单实例部署可接受：并发窗口内同一 jti 可能双双通过）。
+   */
+  addIfAbsent?(key: string, ttlSeconds: number): Promise<boolean> | boolean;
+  /**
+   * 释放已记录的 key。onLogout 钩子失败后需要允许 IdP 用同一 logout_token
+   * 重投，SDK 会调用此方法；未实现时 IdP 重投将被重放检查以 400 拒绝。
+   */
+  remove?(key: string): Promise<void> | void;
 }
 
 /** jti 防重放缓存：jti → 过期时间（epoch ms），容量上限 1000 */
@@ -55,9 +83,29 @@ export function clearLogoutTokenReplayCache(): void {
  * 仅当 logout_token 验证通过、但调用方的本地会话清理（onLogout 钩子）失败、
  * 需要允许 IdP 用同一 logout_token 重投时调用。成功后调用会使重放保护失效，
  * 因此正常成功路径不得调用。
+ *
+ * @param replayKey VerifiedLogoutToken.replayKey（`${issuer}:${jti}`）
+ * @param options.jtiStore 与验证时相同的自定义存储：实现了 remove() 时经它释放
+ *   （IdP 重投可成功）；未实现 remove() 时无法释放，告警说明 IdP 重投将被
+ *   重放检查拒绝；未提供存储时从进程内默认缓存删除。
  */
-export function releaseLogoutTokenJti(jti: string): void {
-  seenJti.delete(jti);
+export async function releaseLogoutTokenJti(
+  replayKey: string,
+  options: { jtiStore?: LogoutJtiStore } = {}
+): Promise<void> {
+  const store = options.jtiStore;
+  if (store?.remove) {
+    await store.remove(replayKey);
+    return;
+  }
+  if (store) {
+    console.warn(
+      "[SSO SDK] 自定义 jtiStore 未实现 remove()：onLogout 失败后无法释放 jti，" +
+      "IdP 用同一 logout_token 重投将被重放检查拒绝（logout_token_replay）"
+    );
+    return;
+  }
+  seenJti.delete(replayKey);
 }
 
 /**
@@ -89,13 +137,17 @@ function recordJti(jti: string, expiresAtMs: number): boolean {
  * @param logoutToken IdP POST 到 backchannelLogoutUri 的 logout_token（JWT）
  * @param ssoBaseUrl SSO 中心地址（Discovery / JWKS 基准）
  * @param clientId 本应用 Client ID（aud 必须等于它）
+ * @param options.jtiStore 自定义 jti 防重放存储。默认进程内 Map（per-instance）；
+ *   多实例 / Serverless 部署 MUST 注入共享存储（如 Redis SET NX EX），
+ *   否则重放检查只在单实例内有效。
  * @returns 验证通过的负载与 jti
  * @throws SsoError 任一校验失败
  */
 export async function verifyLogoutTokenDetailed(
   logoutToken: string,
   ssoBaseUrl: string,
-  clientId: string
+  clientId: string,
+  options: { jtiStore?: LogoutJtiStore } = {}
 ): Promise<VerifiedLogoutToken> {
   const baseUrl = ssoBaseUrl.replace(/\/+$/, "");
 
@@ -237,30 +289,54 @@ export async function verifyLogoutTokenDetailed(
     );
   }
 
-  // jti 必须存在且未重放（缓存到 token exp 为止）
+  // jti 必须存在且未重放（缓存到 token exp + 60s 宽限为止）。
+  // 以 issuer 为前缀隔离不同 IdP 的 jti 命名空间，防跨 issuer 碰撞误判重放
   const jti = typeof payload.jti === "string" ? payload.jti : "";
   if (!jti) {
     throw new SsoError("logout_token_invalid", "Logout Token 缺少 jti 声明");
   }
-  if (!recordJti(jti, payload.exp * 1000 + 60_000)) {
+  const replayKey = `${normalizedIssuer}:${jti}`;
+  const replayTtlSeconds = Math.max(
+    1,
+    Math.ceil((payload.exp * 1000 + 60_000 - Date.now()) / 1000)
+  );
+  const jtiStore = options.jtiStore;
+  if (jtiStore) {
+    if (jtiStore.addIfAbsent) {
+      // 原子 check-and-set（推荐，如 Redis SET NX EX）
+      if (!(await jtiStore.addIfAbsent(replayKey, replayTtlSeconds))) {
+        throw new SsoError("logout_token_replay", "Logout Token jti 重放");
+      }
+    } else {
+      // 非原子 has+add 回退：仅单实例部署可接受
+      // （并发窗口内同一 jti 可能双双通过检查）
+      if (await jtiStore.has(replayKey)) {
+        throw new SsoError("logout_token_replay", "Logout Token jti 重放");
+      }
+      await jtiStore.add(replayKey, replayTtlSeconds);
+    }
+  } else if (!recordJti(replayKey, payload.exp * 1000 + 60_000)) {
     throw new SsoError("logout_token_replay", "Logout Token jti 重放");
   }
 
-  return { payload: { sub, sid }, jti };
+  return { payload: { sub, sid }, jti, replayKey };
 }
 
 /**
  * 验证 Backchannel Logout Token（仅返回负载，向后兼容入口）
  *
  * 注意：除验证外还会记录 jti 防重放。调用方若在验证通过后本地处理失败，
- * 需改用 verifyLogoutTokenDetailed 获取 jti 并调用 releaseLogoutTokenJti 释放，
- * 以便 IdP 重投。
+ * 需改用 verifyLogoutTokenDetailed 获取 jti/replayKey 并调用 releaseLogoutTokenJti
+ * 释放，以便 IdP 重投。
+ *
+ * @param options.jtiStore 同 verifyLogoutTokenDetailed
  */
 export async function verifyLogoutToken(
   logoutToken: string,
   ssoBaseUrl: string,
-  clientId: string
+  clientId: string,
+  options: { jtiStore?: LogoutJtiStore } = {}
 ): Promise<LogoutTokenPayload> {
-  const verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId);
+  const verified = await verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId, options);
   return verified.payload;
 }

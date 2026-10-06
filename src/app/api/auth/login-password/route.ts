@@ -207,8 +207,8 @@ export async function POST(request: NextRequest) {
     // 7. 记录成功登录
     await recordLoginAttempt(phone, true, request, undefined, "password", user.id);
 
-    // 8. 清除当前类型的失败登录记录（成功登录后重置）
-    await clearLoginAttempts(phone, "password");
+    // 8. 清除该账户所有类型的失败登录记录（跨类型严格计数，成功登录后全量重置）
+    await clearLoginAttempts(phone);
 
     // 9. 签发 Access Token（短期，2小时）
     const accessToken = await signUserToken({

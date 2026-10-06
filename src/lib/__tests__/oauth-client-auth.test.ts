@@ -50,6 +50,35 @@ describe("oauth-client-auth", () => {
       });
       expect(result.client_secret).toBeUndefined();
     });
+
+    it("Basic + body 另带 client_secret：标记为双重认证冲突", () => {
+      const credentials = Buffer.from("client-id:client-secret").toString("base64");
+      const request = {
+        headers: { get: () => `Basic ${credentials}` },
+      };
+      const result = getClientCredentials(request, { client_secret: "other-secret" });
+      expect(result.conflict).toBe(true);
+      expect(result.client_id).toBe("client-id");
+    });
+
+    it("Basic + body 携带不同的 client_id：标记为双重认证冲突", () => {
+      const credentials = Buffer.from("client-id:client-secret").toString("base64");
+      const request = {
+        headers: { get: () => `Basic ${credentials}` },
+      };
+      const result = getClientCredentials(request, { client_id: "other-client" });
+      expect(result.conflict).toBe(true);
+    });
+
+    it("Basic + body 仅重复相同的 client_id：不算冲突（宽松兼容冗余传参）", () => {
+      const credentials = Buffer.from("client-id:client-secret").toString("base64");
+      const request = {
+        headers: { get: () => `Basic ${credentials}` },
+      };
+      const result = getClientCredentials(request, { client_id: "client-id" });
+      expect(result.conflict).toBeFalsy();
+      expect(result).toEqual({ client_id: "client-id", client_secret: "client-secret" });
+    });
   });
 
   describe("safeEqual", () => {

@@ -168,8 +168,8 @@ export async function changePassword(params: {
       );
     }
 
-    // 清除密码类型的失败记录（与 checkAccountLockout 使用同一 scope 前缀）
-    await clearLoginAttempts(`password:${user.phone}`, "password");
+    // 清除该 scope 的失败记录（不传 type：清除所有类型，与 checkAccountLockout 使用同一 scope 前缀）
+    await clearLoginAttempts(`password:${user.phone}`);
 
     await afterCredentialChange({
       userId: user.id,

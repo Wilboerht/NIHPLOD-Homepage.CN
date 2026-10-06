@@ -153,6 +153,42 @@ describe("JWT 工具", () => {
       expect(await verifyUserToken(token)).toMatchObject({ id: "user-1" });
       _clearVerifyCache();
     });
+
+    it("全设备登出后签发的旧 token 应被拒绝，登出前签发的新 token 不受影响", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const token = await signUserToken({ id: "user-1" });
+
+      // 全设备登出时间晚于 token 签发时间 → 旧 token 立即失效
+      _clearVerifyCache();
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        passwordChangedAt: null,
+        sessionsInvalidatedAt: new Date(Date.now() + 5_000),
+      } as never);
+      expect(await verifyUserToken(token)).toBeNull();
+
+      // 全设备登出时间早于签发时间 → 正常验证（重新登录后的新 token）
+      _clearVerifyCache();
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        passwordChangedAt: null,
+        sessionsInvalidatedAt: new Date(Date.now() - 60_000),
+      } as never);
+      expect(await verifyUserToken(token)).toMatchObject({ id: "user-1" });
+      _clearVerifyCache();
+    });
+
+    it("passwordChangedAt 与 sessionsInvalidatedAt 取较晚者作为失效口径", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const token = await signUserToken({ id: "user-1" });
+
+      // 改密时间早于签发时间，但全设备登出时间晚于签发时间 → 仍拒绝
+      _clearVerifyCache();
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        passwordChangedAt: new Date(Date.now() - 60_000),
+        sessionsInvalidatedAt: new Date(Date.now() + 5_000),
+      } as never);
+      expect(await verifyUserToken(token)).toBeNull();
+      _clearVerifyCache();
+    });
   });
 
   describe("Refresh Token", () => {
@@ -178,6 +214,20 @@ describe("JWT 工具", () => {
       const token = await signRefreshToken({ id: "user-1", authTime });
       const payload = await verifyRefreshToken(token);
       expect(payload?.auth_time).toBe(authTime);
+    });
+
+    it("传入 expiresInSeconds 时按指定秒数过期（OAuth 会话封顶场景）", async () => {
+      const token = await signRefreshToken({ id: "user-1" }, { expiresInSeconds: 300 });
+      const payload = await verifyRefreshToken(token);
+      expect(payload).not.toBeNull();
+      expect(payload!.exp! - payload!.iat!).toBe(300);
+    });
+
+    it("缺省不传 expiresInSeconds 时仍为 30 天（内部行为不变）", async () => {
+      const token = await signRefreshToken({ id: "user-1" });
+      const payload = await verifyRefreshToken(token);
+      expect(payload).not.toBeNull();
+      expect(payload!.exp! - payload!.iat!).toBe(30 * 24 * 60 * 60);
     });
   });
 

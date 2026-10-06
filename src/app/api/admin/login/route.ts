@@ -12,11 +12,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashIdentifier } from "@/lib/auth-security";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
-
-// 管理员账户级防爆破配置
-const ADMIN_MAX_ATTEMPTS = 5;
-const ADMIN_WINDOW_MS = 15 * 60 * 1000; // 15 分钟
-const ADMIN_LOCKOUT_MS = 30 * 60 * 1000; // 30 分钟
+import { checkAdminLockout } from "@/lib/admin-lockout";
 
 // 防时序攻击 dummy 哈希（与 password.ts 中 SALT_ROUNDS = 13 保持一致）
 // 懒加载生成，避免冷启动延迟，同时保证与真实密码哈希相同的盐轮数
@@ -31,36 +27,6 @@ function getDummyHash(): string {
 function hashEmail(email: string): string {
   // HMAC（LOGIN_ATTEMPT_HMAC_KEY）：与用户侧一致，避免拖库后邮箱被枚举还原
   return hashIdentifier(email);
-}
-
-async function checkAdminLockout(
-  email: string
-): Promise<{ locked: boolean; remainingMinutes: number }> {
-  const identifier = hashEmail(email);
-  const windowStart = new Date(Date.now() - ADMIN_WINDOW_MS);
-  const failedAttempts = await prisma.loginAttempt.count({
-    where: {
-      identifier,
-      type: "admin",
-      success: false,
-      createdAt: { gte: windowStart },
-    },
-  });
-
-  if (failedAttempts >= ADMIN_MAX_ATTEMPTS) {
-    const lastFailed = await prisma.loginAttempt.findFirst({
-      where: { identifier, type: "admin", success: false },
-      orderBy: { createdAt: "desc" },
-    });
-    if (lastFailed) {
-      const remainingMs = lastFailed.createdAt.getTime() + ADMIN_LOCKOUT_MS - Date.now();
-      if (remainingMs > 0) {
-        return { locked: true, remainingMinutes: Math.ceil(remainingMs / 60 / 1000) };
-      }
-    }
-  }
-
-  return { locked: false, remainingMinutes: 0 };
 }
 
 async function recordAdminAttempt(

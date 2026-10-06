@@ -19,7 +19,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { SsoClient } from "../core/SsoClient";
-import { getTokenData, removeTokenData } from "../core/storage";
+import { getTokenData, removeTokenData, saveTokenData } from "../core/storage";
 import type { TokenData } from "../core/storage";
 import { SsoError } from "../core/errors";
 import type { SsoClientConfig, SsoUser } from "../core/SsoClient";
@@ -121,12 +121,26 @@ const TAB_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)
 /**
  * 广播跨 Tab 登录态事件（logout / token）。
  * BroadcastChannel 不可用（旧浏览器/隐私模式）时静默跳过，行为退化为原有方式。
+ *
+ * token 事件可携带刷新后的完整 TokenData，接收方直接落盘，
+ * 避免其他 Tab 因 sessionStorage 不共享而重复刷新（旧 RT 已被轮换撤销）。
+ * BroadcastChannel 是同源信道，与 sessionStorage 处于同一信任域：
+ * 能读取广播数据的脚本同样能读本 Tab 的存储，不引入新的暴露面。
  */
-export function broadcastSsoEvent(clientId: string, type: "logout" | "token"): void {
+export function broadcastSsoEvent(
+  clientId: string,
+  type: "logout" | "token",
+  tokenData?: TokenData
+): void {
   if (typeof BroadcastChannel === "undefined") return;
   try {
     const channel = new BroadcastChannel(CHANNEL_PREFIX + clientId);
-    channel.postMessage({ type, sourceTabId: TAB_ID });
+    // logout 不携带 tokenData（无意义且扩大暴露面）
+    channel.postMessage({
+      type,
+      sourceTabId: TAB_ID,
+      ...(type === "token" && tokenData ? { tokenData } : {}),
+    });
     channel.close();
   } catch {
     // 忽略：广播失败不影响主流程
@@ -332,7 +346,9 @@ export function SsoProvider({
           const td = await client.refreshToken();
           refreshFailureCountRef.current = 0;
           onTokenRefreshed?.(td.access_token);
-          broadcastSsoEvent(client.config.clientId, "token");
+          // 携带新 token 广播：sessionStorage 不跨 Tab，其他 Tab 凭它直接落盘，
+          // 否则它们本地旧 RT 已被轮换撤销，自行刷新必然 invalid_grant
+          broadcastSsoEvent(client.config.clientId, "token", td);
           loadUser();
         } catch (err) {
           // refresh_token 被撤销/过期：立即保留"会话已过期"信号（否则 loadUser 走
@@ -440,12 +456,19 @@ export function SsoProvider({
 
   // 跨 Tab 事件同步（BroadcastChannel）：补足 sessionStorage 默认存储下 storage 事件不触发的缺口。
   // 忽略自己发出的消息（同 Tab 监听对象也会收到）：token 事件由发起方自行 loadUser，
-  // logout 事件按"全局登出"处理——清除本地 token 并同步 UI，避免其他 Tab 定时刷新把用户"登回来"
+  // logout 事件按"全局登出"处理——清除本地 token 并同步 UI，避免其他 Tab 定时刷新把用户"登回来"。
+  // BroadcastChannel 是同源信道，与 sessionStorage 同一信任域：能读广播的脚本同样能读本 Tab 存储。
+  // token 消息携带完整 TokenData 时直接落盘（轻量形状校验，防畸形数据写坏存储），
+  // 本 Tab 的刷新定时器无需取消：到点时重读 getTokenData，secLeft > refreshThreshold 会自然重新排程。
   useEffect(() => {
     if (typeof BroadcastChannel === "undefined") return;
     const channel = new BroadcastChannel(CHANNEL_PREFIX + client.config.clientId);
     channel.onmessage = (event: MessageEvent) => {
-      const data = event.data as { type?: string; sourceTabId?: string } | null;
+      const data = event.data as {
+        type?: string;
+        sourceTabId?: string;
+        tokenData?: unknown;
+      } | null;
       if (!data || data.sourceTabId === TAB_ID) return;
       if (data.type === "logout") {
         removeTokenData(client.config.clientId);
@@ -456,6 +479,17 @@ export function SsoProvider({
         sessionExpiredNotifiedRef.current = false;
         refreshFailureCountRef.current = 0;
       } else if (data.type === "token") {
+        const td = data.tokenData as Partial<TokenData> | null | undefined;
+        if (
+          td &&
+          typeof td.access_token === "string" &&
+          typeof td.expires_at === "number" &&
+          typeof td.refresh_token === "string"
+        ) {
+          // 携带完整 TokenData：直接落盘，本 Tab 无需再刷新（旧 RT 已被轮换撤销）
+          saveTokenData(td as TokenData, client.config.clientId);
+        }
+        // 无 tokenData（旧版 SDK 的 Tab）时退化为原有行为：loadUser 内部自行处理
         loadUser();
       }
     };

@@ -261,6 +261,29 @@ describe("validateIdToken nonce 校验", () => {
     const result = await validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID);
     expect(result.sub).toBe("user123");
   });
+
+  it("不传 expectedNonce 但 id_token 携带 nonce 时拒绝（fail-closed，OIDC Core §12.2）", async () => {
+    installFetchMock([{ keys: [publicJwk] }]);
+    const token = await buildRs256IdToken(validPayload({ nonce: "orphan-nonce" }), "new-key");
+
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID)
+    ).rejects.toMatchObject({ code: "id_token_nonce_mismatch" });
+  });
+
+  it("缺少 iat 的 id_token 被判 invalid", async () => {
+    installFetchMock([{ keys: [publicJwk] }]);
+    const payload = validPayload();
+    delete payload.iat;
+    const token = await buildRs256IdToken(payload, "new-key");
+
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID)
+    ).rejects.toMatchObject({ code: "id_token_invalid" });
+    await expect(
+      validateIdToken(token, ACCESS_TOKEN, BASE_URL, CLIENT_ID)
+    ).rejects.toThrow("缺少 iat");
+  });
 });
 
 describe("discovery 失败不缓存", () => {

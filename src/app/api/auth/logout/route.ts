@@ -55,6 +55,11 @@ export async function POST(request: NextRequest) {
       } else {
         // 撤销所有 Refresh Token
         await revokeRefreshToken(user.id, undefined, undefined, "logout");
+        // 使所有已签发 access token 立即失效；iat 同秒放行，与改密口径一致
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { sessionsInvalidatedAt: new Date() },
+        });
       }
 
       // 撤销当前 access token 的 jti（防止登出后仍被使用）

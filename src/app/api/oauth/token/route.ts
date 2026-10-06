@@ -36,6 +36,7 @@ import {
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
+import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
@@ -107,7 +108,14 @@ export async function POST(request: NextRequest) {
     }
 
     const grant_type = body.grant_type;
-    const { client_id, client_secret } = getClientCredentials(request, body);
+    const { client_id, client_secret, conflict } = getClientCredentials(request, body);
+
+    if (conflict) {
+      return resJson(
+        { error: "invalid_client", error_description: "不允许同时使用多种客户端认证方式" },
+        400
+      );
+    }
 
     if (!client_id) {
       return resJson({ error: "invalid_client", error_description: "缺少 client_id" }, 401);
@@ -851,6 +859,21 @@ export async function POST(request: NextRequest) {
         return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
       }
 
+      // 黑名单兜底（纵深防御）：覆盖封禁级联部分失败/时序窗口，
+      // 与 access token 侧 verifyOAuthAccessToken 的黑名单检查口径一致
+      if (await isTokenBlacklisted(refreshPayload.id)) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "blacklisted" },
+        });
+        return resJson({ error: "invalid_grant", error_description: "账户已被限制" }, 400);
+      }
+
       // 3.1 改密即时失效（纵深防御，与主站内部刷新口径一致）：
       // 授权码/刷新流程撤销会话后仍可能残留（如撤销失败），此处按签发时间兜底拒绝
       if (
@@ -883,15 +906,24 @@ export async function POST(request: NextRequest) {
         sid: session.sessionId,
       });
 
-      // 签发新的 Refresh Token 并原子化轮换（继承所有权、scope、sid 与 DPoP 绑定）
-      const newRefreshToken = await signRefreshToken({
-        id: refreshPayload.id,
-        clientId: client_id,
-        scope: scopeStr,
-        sid: session.sessionId,
-        dpopJkt,
-      });
-      const newRefreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      // 签发新的 Refresh Token 并原子化轮换（继承所有权、scope、sid 与 DPoP 绑定）。
+      // 硬顶：OAuthSession 是固定过期的授权会话，refresh token 滚动续期不得越过
+      // session.expiresAt——否则会话到期后 refresh token 仍能继续换新 access token。
+      const sessionTtlSeconds = Math.max(
+        1,
+        Math.floor((session.expiresAt.getTime() - Date.now()) / 1000)
+      );
+      const newRefreshToken = await signRefreshToken(
+        {
+          id: refreshPayload.id,
+          clientId: client_id,
+          scope: scopeStr,
+          sid: session.sessionId,
+          dpopJkt,
+        },
+        { expiresInSeconds: sessionTtlSeconds }
+      );
+      const newRefreshExpiresAt = session.expiresAt;
 
       const deviceInfo = extractDeviceInfo(request);
       const rotationResult = await atomicallyRotateRefreshToken(
@@ -955,7 +987,7 @@ export async function POST(request: NextRequest) {
         detail: { grant_type: "refresh_token" },
       });
 
-      const refreshExpiresIn = 30 * 24 * 60 * 60;
+      const refreshExpiresIn = sessionTtlSeconds;
       const newExpiresIn =
         getExpiresInFromToken(newAccessToken) ??
         (client.accessTokenTtlSeconds || DEFAULT_ACCESS_TOKEN_EXPIRES_IN);

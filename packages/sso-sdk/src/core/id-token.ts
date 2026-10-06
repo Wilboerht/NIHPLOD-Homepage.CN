@@ -49,7 +49,8 @@ export interface ValidateIdTokenOptions {
    * 期望的 OIDC nonce（login 时生成并随 authorize 请求发送）。
    * 传入后 ID Token 必须携带 nonce claim 且与该值常量时间相等（fail-closed），
    * 否则抛出 id_token_nonce_mismatch，防止 ID Token 重放。
-   * 不传则跳过 nonce 校验（如 refresh 流程签发的 ID Token）。
+   * 不传时（如 refresh 流程）：ID Token 若仍携带 nonce 会被拒绝（OIDC Core §12.2，
+   * refresh 签发的 ID Token 不得携带 nonce），否则跳过 nonce 校验。
    */
   expectedNonce?: string;
 }
@@ -327,8 +328,11 @@ export async function validateIdToken(
     throw new SsoError("id_token_expired", "ID Token 已过期");
   }
 
-  // iat 不得在未来（允许 60s clock skew）
-  if (typeof payload.iat === "number" && payload.iat * 1000 > Date.now() + 60_000) {
+  // iat 必需（OIDC Core §2：ID Token 必须包含 iat）且不得在未来（允许 60s clock skew）
+  if (typeof payload.iat !== "number") {
+    throw new SsoError("id_token_invalid", "ID Token 缺少 iat 声明");
+  }
+  if (payload.iat * 1000 > Date.now() + 60_000) {
     throw new SsoError("id_token_invalid", "ID Token iat 在未来，疑似伪造或时钟异常");
   }
 
@@ -345,12 +349,21 @@ export async function validateIdToken(
   }
 
   // 校验 nonce（OIDC Core §3.1.3.7）：调用方传入 expectedNonce 时 fail-closed，
-  // ID Token 必须携带 nonce 且与登录时生成的值常量时间相等，防 ID Token 重放
+  // ID Token 必须携带 nonce 且与登录时生成的值常量时间相等，防 ID Token 重放。
+  // 未传 expectedNonce（如本地 nonce cookie 已被清除/过期）但 ID Token 携带 nonce
+  // 时同样拒绝（OIDC Core §12.2）：该 token 声称绑定某次登录会话，本地却无法核对，
+  // 可能是非本次登录签发的重放 token。refresh 签发的 ID Token 按规范不携带 nonce，
+  // 不受影响（refresh 流程不传 expectedNonce 且 token 无 nonce claim）。
   if (expectedNonce !== undefined) {
     const tokenNonce = typeof payload.nonce === "string" ? payload.nonce : "";
     if (!tokenNonce || !timingSafeEqualString(expectedNonce, tokenNonce)) {
       throw new SsoError("id_token_nonce_mismatch", "ID Token nonce 不匹配");
     }
+  } else if (typeof payload.nonce === "string" && payload.nonce) {
+    throw new SsoError(
+      "id_token_nonce_mismatch",
+      "ID Token 携带 nonce 但本地无期望值（可能非本次登录会话签发）"
+    );
   }
 
   return { sub: payload.sub };

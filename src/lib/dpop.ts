@@ -309,6 +309,15 @@ export async function validateDPoPProof(
     };
   }
 
+  // RFC 9449 §4.2 jti 必填；jti 用作 TokenBlacklist 主键需长度上限
+  if (typeof payload.jti !== "string" || payload.jti.length === 0 || payload.jti.length > 128) {
+    return {
+      valid: false,
+      error: "invalid_dpop_proof",
+      errorDescription: "DPoP proof 缺少合法的 jti",
+    };
+  }
+
   // htm 必须匹配实际 HTTP method
   if (payload.htm !== htm) {
     return {

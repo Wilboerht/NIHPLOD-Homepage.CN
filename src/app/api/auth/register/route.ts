@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
 
     // 记录成功注册并清除失败记录（与 login 一致）
     await recordLoginAttempt(phone, true, request, undefined, "sms", user.id);
-    await clearLoginAttempts(phone, "sms");
+    await clearLoginAttempts(phone);
 
     logAuthEvent("user_register", {
       userId: user.id,

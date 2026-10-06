@@ -46,6 +46,22 @@ describe("createSsoMiddleware", () => {
     }
   });
 
+  it("/api/ 下的路径永不按静态资源扩展名放行：未认证的 /api/app.js 重定向登录", async () => {
+    const middleware = createSsoMiddleware(config);
+    const res = await middleware(new NextRequest("https://myapp.com/api/app.js"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/api/oauth/authorize");
+  });
+
+  it("/api/ 下显式列入 publicPaths 的路径仍放行", async () => {
+    const middleware = createSsoMiddleware({
+      ...config,
+      publicPaths: ["/api/public"],
+    });
+    const res = await middleware(new NextRequest("https://myapp.com/api/public/app.js"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("公开路径不需要认证", async () => {
     const middleware = createSsoMiddleware({
       ...config,

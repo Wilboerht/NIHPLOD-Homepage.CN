@@ -558,7 +558,10 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
   if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("id_token_expired", "ID Token \u5DF2\u8FC7\u671F");
   }
-  if (typeof payload.iat === "number" && payload.iat * 1e3 > Date.now() + 6e4) {
+  if (typeof payload.iat !== "number") {
+    throw new SsoError("id_token_invalid", "ID Token \u7F3A\u5C11 iat \u58F0\u660E");
+  }
+  if (payload.iat * 1e3 > Date.now() + 6e4) {
     throw new SsoError("id_token_invalid", "ID Token iat \u5728\u672A\u6765\uFF0C\u7591\u4F3C\u4F2A\u9020\u6216\u65F6\u949F\u5F02\u5E38");
   }
   if (typeof payload.sub !== "string" || !payload.sub) {
@@ -575,13 +578,17 @@ async function validateIdToken(idToken, accessToken, expectedIssuer, expectedCli
     if (!tokenNonce || !timingSafeEqualString(expectedNonce, tokenNonce)) {
       throw new SsoError("id_token_nonce_mismatch", "ID Token nonce \u4E0D\u5339\u914D");
     }
+  } else if (typeof payload.nonce === "string" && payload.nonce) {
+    throw new SsoError(
+      "id_token_nonce_mismatch",
+      "ID Token \u643A\u5E26 nonce \u4F46\u672C\u5730\u65E0\u671F\u671B\u503C\uFF08\u53EF\u80FD\u975E\u672C\u6B21\u767B\u5F55\u4F1A\u8BDD\u7B7E\u53D1\uFF09"
+    );
   }
   return { sub: payload.sub };
 }
 
-// src/core/SsoClient.ts
+// src/core/http.ts
 var REQUEST_TIMEOUT_MS = 1e4;
-var REVOKE_TIMEOUT_MS = 3e3;
 async function fetchWithTimeout(input, init = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -591,6 +598,10 @@ async function fetchWithTimeout(input, init = {}, timeoutMs = REQUEST_TIMEOUT_MS
     clearTimeout(timer);
   }
 }
+
+// src/core/SsoClient.ts
+var REVOKE_TIMEOUT_MS = 3e3;
+var EXPIRY_SKEW_MS = 1e4;
 function assertValidTokenResponse(data, requireRefreshToken) {
   if (typeof data.access_token !== "string" || !data.access_token) {
     throw new SsoError("token_request_failed", "Token \u54CD\u5E94\u7F3A\u5C11 access_token");
@@ -618,6 +629,8 @@ var _SsoClient = class _SsoClient {
     this._discovery = null;
     this._discoveryFetchedAt = 0;
     this._refreshLock = null;
+    /** Discovery 端点 origin 校验失败只告警一次（拒绝的文档不缓存，避免每次调用刷屏） */
+    this._discoveryOriginWarned = false;
     if (!config.clientId) throw new SsoError("invalid_config", "clientId \u4E0D\u80FD\u4E3A\u7A7A");
     if (!config.redirectUri) throw new SsoError("invalid_config", "redirectUri \u4E0D\u80FD\u4E3A\u7A7A");
     if (!config.ssoBaseUrl) throw new SsoError("invalid_config", "ssoBaseUrl \u4E0D\u80FD\u4E3A\u7A7A");
@@ -641,6 +654,52 @@ var _SsoClient = class _SsoClient {
   // ============================================
   // 内部方法
   // ============================================
+  /**
+   * 校验 Discovery 文档端点 origin（防文档被篡改后 token/code 被导向攻击者服务器）：
+   * - authorization_endpoint 必须与 ssoBaseUrl 同源（浏览器跳转目标）；
+   * - token_endpoint / userinfo_endpoint 必须与 ssoBaseUrl 同源，
+   *   或（配置了 serverBaseUrl 时）与内网地址同源。
+   * 任一不匹配：告警并返回 null（上层回退到默认端点，fail-safe）。
+   * 可通过 config.allowCrossOriginDiscoveryEndpoints 关闭（见配置项警告）。
+   */
+  _sanitizeDiscovery(d) {
+    if (this.config.allowCrossOriginDiscoveryEndpoints) return d;
+    const allowedOrigins = /* @__PURE__ */ new Set();
+    try {
+      allowedOrigins.add(new URL(this.config.ssoBaseUrl).origin);
+      allowedOrigins.add(new URL(this._serverBase).origin);
+    } catch {
+      return null;
+    }
+    const sameOrigin = (endpoint) => {
+      try {
+        return allowedOrigins.has(new URL(endpoint).origin);
+      } catch {
+        return false;
+      }
+    };
+    const publicOrigin = new URL(this.config.ssoBaseUrl).origin;
+    let authorizationOk = false;
+    try {
+      authorizationOk = new URL(d.authorization_endpoint).origin === publicOrigin;
+    } catch {
+      authorizationOk = false;
+    }
+    const bad = [];
+    if (!authorizationOk) bad.push("authorization_endpoint");
+    if (!sameOrigin(d.token_endpoint)) bad.push("token_endpoint");
+    if (!sameOrigin(d.userinfo_endpoint)) bad.push("userinfo_endpoint");
+    if (bad.length > 0) {
+      if (!this._discoveryOriginWarned) {
+        this._discoveryOriginWarned = true;
+        console.warn(
+          `[SSO SDK] OIDC Discovery \u7AEF\u70B9 origin \u4E0E ssoBaseUrl/serverBaseUrl \u4E0D\u5339\u914D\uFF08${bad.join(", ")}\uFF09\uFF0C\u5DF2\u56DE\u9000\u5230\u9ED8\u8BA4\u7AEF\u70B9\u3002\u82E5 SSO \u4E2D\u5FC3\u786E\u5B9E\u6258\u7BA1\u8DE8\u6E90\u7AEF\u70B9\uFF0C\u8BF7\u8BBE\u7F6E allowCrossOriginDiscoveryEndpoints: true`
+        );
+      }
+      return null;
+    }
+    return d;
+  }
   /**
    * 获取 OIDC Discovery 文档（带缓存 + 超时）
    *
@@ -667,7 +726,10 @@ var _SsoClient = class _SsoClient {
         );
         return null;
       }
-      this._discovery = await res.json();
+      const doc = await res.json();
+      const sanitized = this._sanitizeDiscovery(doc);
+      if (!sanitized) return null;
+      this._discovery = sanitized;
       this._discoveryFetchedAt = now;
       return this._discovery;
     } catch (err) {
@@ -1027,6 +1089,10 @@ var _SsoClient = class _SsoClient {
       throw new SsoError("network_error", "\u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25", err);
     }
     if (!res.ok) {
+      removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       let errData = {};
       try {
         errData = await res.json();
@@ -1042,6 +1108,10 @@ var _SsoClient = class _SsoClient {
     assertValidTokenResponse(data, true);
     const requestedScopes = (this.config.scopes || "openid profile").split(" ").filter(Boolean);
     if (requestedScopes.includes("openid") && !data.id_token) {
+      removeOAuthState(this.config.clientId);
+      removeOAuthNonce(this.config.clientId);
+      removePkceVerifier(this.config.clientId);
+      removeSilentProbe(this.config.clientId);
       removeTokenData(this.config.clientId);
       throw new SsoError(
         "id_token_invalid",
@@ -1186,7 +1256,7 @@ var _SsoClient = class _SsoClient {
     if (!tokenData) {
       throw new SsoError("not_authenticated", "\u672A\u767B\u5F55");
     }
-    if (Date.now() >= tokenData.expires_at) {
+    if (Date.now() >= tokenData.expires_at - EXPIRY_SKEW_MS) {
       tokenData = await this.refreshToken();
     }
     const userinfoEndpoint = await this._getUserinfoEndpoint();
@@ -1221,7 +1291,7 @@ var _SsoClient = class _SsoClient {
   async getAccessToken() {
     let tokenData = getTokenData(this.config.clientId);
     if (!tokenData) return null;
-    if (Date.now() >= tokenData.expires_at) {
+    if (Date.now() >= tokenData.expires_at - EXPIRY_SKEW_MS) {
       tokenData = await this.refreshToken();
     }
     return tokenData.access_token;
@@ -1230,6 +1300,9 @@ var _SsoClient = class _SsoClient {
    * 检查是否已认证（不发起网络请求）
    *
    * 仅检查本地是否存在未过期的 access_token。
+   * 故意不做 EXPIRY_SKEW_MS 提前量：这是同步的 UI 提示判定（是否显示"已登录"），
+   * 提前 10s 翻转 false 会让调用方在 token 仍有效时误显示未登录；真正发请求的
+   * getAccessToken/getUserInfo 已带提前量。
    */
   isAuthenticated() {
     const tokenData = getTokenData(this.config.clientId);

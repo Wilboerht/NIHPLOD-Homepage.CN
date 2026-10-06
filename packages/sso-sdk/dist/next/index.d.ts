@@ -36,7 +36,12 @@ interface SsoMiddlewareConfig {
     redirectUri: string;
     /** 请求的 scope（空格分隔），默认 "openid profile" */
     scopes?: string;
-    /** 公开路由前缀（不需要认证） */
+    /**
+     * 公开路由前缀（不需要认证）。
+     *
+     * 注意：/api/ 下的路径永不按静态资源扩展名（.js/.css/...）放行；
+     * 如需公开某个 API 路径，必须在此显式列出。
+     */
     publicPaths?: string[];
     /** 回调路径（不触发重定向），默认 "/api/auth/callback" */
     callbackPath?: string;
@@ -298,6 +303,28 @@ interface LogoutTokenPayload {
     sub?: string;
     sid?: string;
 }
+/**
+ * jti 防重放存储接口（可注入）。
+ *
+ * 默认实现是进程内 Map（per-instance）：多实例 / Serverless 部署下各实例
+ * 互不可见，重放检查形同虚设，必须注入共享存储（如 Redis）。
+ * key 为 `${issuer}:${jti}`，ttlSeconds 为建议过期时间（logout_token exp + 60s 宽限）。
+ */
+interface LogoutJtiStore {
+    has(key: string): Promise<boolean> | boolean;
+    add(key: string, ttlSeconds: number): Promise<void> | void;
+    /**
+     * 原子 check-and-set（如 Redis `SET key 1 NX EX ttl`）：返回 false 表示
+     * key 已存在（判重放）。提供时优先使用；缺失时回退 has+add
+     * （非原子，仅单实例部署可接受：并发窗口内同一 jti 可能双双通过）。
+     */
+    addIfAbsent?(key: string, ttlSeconds: number): Promise<boolean> | boolean;
+    /**
+     * 释放已记录的 key。onLogout 钩子失败后需要允许 IdP 用同一 logout_token
+     * 重投，SDK 会调用此方法；未实现时 IdP 重投将被重放检查以 400 拒绝。
+     */
+    remove?(key: string): Promise<void> | void;
+}
 
 /**
  * App Router Backchannel Logout 接收端 Route Handler
@@ -340,6 +367,15 @@ interface BackchannelLogoutRouteConfig {
     refreshTokenCookieName?: string;
     /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
     idTokenCookieName?: string;
+    /**
+     * jti 防重放存储（可选）。
+     *
+     * 默认实现是进程内 Map（per-instance）：多实例 / Serverless 部署下各实例
+     * 互不可见，重放保护形同虚设（IdP 重投/攻击者重放到另一实例会被当作首次）。
+     * 这类部署 MUST 注入共享存储（如 Redis：addIfAbsent = `SET key 1 NX EX ttl`，
+     * remove = `DEL key`——onLogout 失败时用于释放 jti 允许 IdP 重投）。
+     */
+    jtiStore?: LogoutJtiStore;
     /**
      * 本地 HTTP 开发模式（默认 false）。关闭 Cookie 的 Secure 属性并去除
      * __Host-/__Secure- 前缀；必须与 middleware / callback / logout 的配置保持一致。
@@ -391,4 +427,4 @@ declare function getSecureCookieOptions(maxAge?: number, path?: string, secure?:
     maxAge?: number;
 };
 
-export { type BackchannelLogoutRouteConfig, type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_NONCE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutRouteConfig, type SsoMiddlewareConfig, createBackchannelLogoutRouteHandler, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };
+export { type BackchannelLogoutRouteConfig, type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_NONCE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutJtiStore, type LogoutRouteConfig, type SsoMiddlewareConfig, createBackchannelLogoutRouteHandler, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };

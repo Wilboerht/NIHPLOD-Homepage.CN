@@ -55,7 +55,12 @@ export interface SsoMiddlewareConfig {
   /** 请求的 scope（空格分隔），默认 "openid profile" */
   scopes?: string;
 
-  /** 公开路由前缀（不需要认证） */
+  /**
+   * 公开路由前缀（不需要认证）。
+   *
+   * 注意：/api/ 下的路径永不按静态资源扩展名（.js/.css/...）放行；
+   * 如需公开某个 API 路径，必须在此显式列出。
+   */
   publicPaths?: string[];
 
   /** 回调路径（不触发重定向），默认 "/api/auth/callback" */
@@ -387,11 +392,14 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   return async function ssoMiddleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Exclude Next.js internal routes and static assets
+    // Exclude Next.js internal routes and static assets.
+    // /api/ 下的路径永不按静态资源放行：攻击者可构造 /api/xxx.js 形式的 API 路径
+    // 绕过鉴权；API 路由即使扩展名像静态资源也必须走完整认证检查
     if (
-      pathname.startsWith("/_next/") ||
-      pathname.startsWith("/favicon.ico") ||
-      pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff2?)$/)
+      !pathname.startsWith("/api/") &&
+      (pathname.startsWith("/_next/") ||
+        pathname.startsWith("/favicon.ico") ||
+        pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff2?)$/))
     ) {
       return NextResponse.next();
     }
