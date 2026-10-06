@@ -230,6 +230,17 @@ export async function setPassword(params: {
       return fail(400, "CODE_INVALID", "验证码错误或已过期");
     }
 
+    // IP 绑定校验（核销之前执行，失败不烧码）：验证码使用 IP 需与发送 IP 一致（可配置）
+    if (process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress) {
+      const verifyIp = getClientIP(params.request);
+      if (verifyIp !== smsCode.ipAddress) {
+        apiConsole.warn(
+          `[SetPassword] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}`
+        );
+        return fail(400, "IP_MISMATCH", "验证环境异常，请重新获取验证码");
+      }
+    }
+
     if (!verifyCode(user.phone, params.code, "reset", smsCode.codeHash)) {
       // 单码失败计数：达到上限自动作废该验证码（防爆破）
       await recordSmsCodeFailure(smsCode.id);
@@ -350,10 +361,10 @@ export async function sendPasswordSetCode(params: {
 
     const smsResult = await sendLoginCode(phone, code);
     if (!smsResult.success) {
+      // 运营商发送失败（未交付）：删除已入库的行，释放 60s 冷却与小时配额
       apiConsole.error("[PasswordSetCode] 短信发送失败:", smsResult.error);
-      await prisma.smsCode.updateMany({
+      await prisma.smsCode.deleteMany({
         where: { phone, type: "reset", used: false },
-        data: { used: true },
       });
       return fail(500, "SMS_FAILED", "验证码发送失败，请稍后重试");
     }

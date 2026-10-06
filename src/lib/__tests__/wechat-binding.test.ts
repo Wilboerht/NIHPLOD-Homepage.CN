@@ -3,7 +3,7 @@
  * 覆盖：小程序 provider 不写 User.wechatOpenId 旧列；默认 provider 行为不变；
  * ExternalIdentity 按 provider 双写
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@/lib/prisma", () => {
   const txClient = {
@@ -18,6 +18,9 @@ vi.mock("@/lib/prisma", () => {
   return {
     prisma: {
       smsCode: { findFirst: vi.fn(), updateMany: vi.fn() },
+      // 绑定冲突预检（step 0，事务外）使用的顶层句柄
+      user: { findUnique: vi.fn(), findFirst: vi.fn() },
+      externalIdentity: { findUnique: vi.fn() },
       // 事务 mock：直接以 txClient 执行回调，并暴露给测试断言
       $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
       __tx: txClient,
@@ -83,8 +86,22 @@ const mockPrisma = prisma as unknown as {
     findFirst: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
   };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
+  };
+  externalIdentity: {
+    findUnique: ReturnType<typeof vi.fn>;
+  };
   __tx: TxClient;
 };
+
+/** 绑定冲突预检（step 0）默认无冲突：手机号无归属、无旧微信账户、无身份行 */
+function mockPrecheckNoConflict() {
+  mockPrisma.user.findUnique.mockResolvedValue(null);
+  mockPrisma.user.findFirst.mockResolvedValue(null);
+  mockPrisma.externalIdentity.findUnique.mockResolvedValue(null);
+}
 
 const createdUser = {
   id: "user-1",
@@ -109,6 +126,7 @@ function buildInput(provider?: string): WechatBindingInput {
 describe("resolveWechatBinding provider 写入语义", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrecheckNoConflict();
     mockPrisma.smsCode.findFirst.mockResolvedValue({ id: "sms-1", codeHash: "hash" });
     mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.__tx.user.findFirst.mockResolvedValue(null); // 无旧微信账户
@@ -241,6 +259,7 @@ describe("resolveWechatBinding provider 写入语义", () => {
 describe("resolveWechatBinding 短信验证码类型（register/bind 双通道）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrecheckNoConflict();
     mockVerifyCode.mockReturnValue(true);
     mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.__tx.user.findFirst.mockResolvedValue(null);
@@ -297,5 +316,95 @@ describe("resolveWechatBinding 短信验证码类型（register/bind 双通道�
     expect(mockRecordSmsCodeFailure).toHaveBeenCalledWith("sms-3");
     // 核销不应发生
     expect(mockPrisma.smsCode.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveWechatBinding 安全回归（IP 绑定 / 冲突预检）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrecheckNoConflict();
+    mockVerifyCode.mockReturnValue(true);
+    mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.__tx.user.findFirst.mockResolvedValue(null);
+    mockPrisma.__tx.user.findUnique.mockResolvedValue(null);
+    mockPrisma.__tx.user.create.mockResolvedValue(createdUser);
+    mockPrisma.__tx.externalIdentity.upsert.mockResolvedValue({ id: "ei-1" });
+    mockPrisma.__tx.externalIdentity.findUnique.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("SMS_VERIFY_IP_BIND=true 且 IP 不匹配：拒绝核销且不烧码", async () => {
+    vi.stubEnv("SMS_VERIFY_IP_BIND", "true");
+    // 发码记录 IP 与请求 IP（getClientIP mock 固定 127.0.0.1）不一致
+    mockPrisma.smsCode.findFirst.mockResolvedValue({
+      id: "sms-9",
+      codeHash: "hash",
+      type: "bind",
+      ipAddress: "10.0.0.9",
+    });
+
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram"));
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("INVALID_CODE");
+      expect(result.message).toBe("验证环境异常，请重新获取验证码");
+    }
+    // IP 校验在核销之前：不验码、不烧码、不递增失败计数
+    expect(mockVerifyCode).not.toHaveBeenCalled();
+    expect(mockPrisma.smsCode.updateMany).not.toHaveBeenCalled();
+    expect(mockRecordSmsCodeFailure).not.toHaveBeenCalled();
+  });
+
+  it("SMS_VERIFY_IP_BIND=true 且 IP 一致：正常核销完成绑定", async () => {
+    vi.stubEnv("SMS_VERIFY_IP_BIND", "true");
+    mockPrisma.smsCode.findFirst.mockResolvedValue({
+      id: "sms-10",
+      codeHash: "hash",
+      type: "bind",
+      ipAddress: "127.0.0.1",
+    });
+
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram"));
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.smsCode.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "sms-10", used: false }) })
+    );
+  });
+
+  it("微信身份已绑定其他真实账户：预检即返回 WECHAT_ALREADY_BOUND，不发生短信验证", async () => {
+    // 身份行归属 user-other；目标手机号无归属；原归属账户为真实手机号账户
+    mockPrisma.externalIdentity.findUnique.mockResolvedValue({ userId: "user-other" });
+    mockPrisma.user.findUnique.mockImplementation(
+      async (args: { where: Record<string, unknown> }) =>
+        "phone" in args.where ? null : { phone: "13900139000" }
+    );
+
+    const result = await resolveWechatBinding(buildInput("douyin"));
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("WECHAT_ALREADY_BOUND");
+    }
+    // 预检在短信验证之前：验证码查询/校验/核销均未发生
+    expect(mockPrisma.smsCode.findFirst).not.toHaveBeenCalled();
+    expect(mockVerifyCode).not.toHaveBeenCalled();
+    expect(mockPrisma.smsCode.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("微信旧列已绑定其他真实账户：预检即返回 WECHAT_ALREADY_BOUND，不发生短信验证", async () => {
+    mockPrisma.user.findFirst.mockResolvedValue({ id: "user-old", phone: "13900139000" });
+
+    const result = await resolveWechatBinding(buildInput());
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("WECHAT_ALREADY_BOUND");
+    }
+    expect(mockPrisma.smsCode.findFirst).not.toHaveBeenCalled();
   });
 });

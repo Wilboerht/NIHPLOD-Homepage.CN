@@ -17,6 +17,8 @@
  * - 否则生产环境直接抛错（防止全局限流桶共享），非生产返回 socket 地址或 "unknown"
  */
 
+import crypto from "crypto";
+
 export interface ClientIPOptions {
   /** 是否信任代理头，默认根据环境变量判断 */
   trustProxy?: boolean;
@@ -76,4 +78,35 @@ export function getClientIP(
   }
 
   return "unknown";
+}
+
+/**
+ * 子站 BFF 代理的真实客户端 IP：仅当请求携带的 X-Subsite-Proxy-Key 与环境变量
+ * SUBSITE_PROXY_KEY 一致（常量时间比较）时，才信任并返回其 X-Forwarded-For 中的
+ * 客户端 IP；否则返回 null，调用方回退到 getClientIP。
+ *
+ * 背景：子站（如 smart.nihplod.cn）以服务器到服务器方式代理 send-code 等请求，
+ * 主站看到的对端 IP 恒为子站服务器——若不信任其透传的客户端 IP，按 IP 的限流会
+ * 退化为「所有子站用户共享一个桶」，且 SmsCode.ipAddress 记成子站 IP 导致
+ * IP 绑定校验（SMS_VERIFY_IP_BIND）对代理用户误报 IP_MISMATCH。
+ *
+ * 安全性：未配置 SUBSITE_PROXY_KEY 时永远返回 null（公网伪造的 XFF 不被信任）；
+ * 子站经内网直连主站，其写入的 XFF 只有客户端 IP 一个条目，取最后一项即可。
+ */
+export function getSubsiteProxiedClientIP(request: { headers: Headers }): string | null {
+  const configuredKey = process.env.SUBSITE_PROXY_KEY;
+  if (!configuredKey) return null;
+  const presented = request.headers.get("x-subsite-proxy-key");
+  if (!presented) return null;
+  const a = Buffer.from(configuredKey);
+  const b = Buffer.from(presented);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (!forwardedFor) return null;
+  const ips = forwardedFor
+    .split(",")
+    .map((ip) => ip.trim())
+    .filter((ip) => ip && /^[\d.:a-fA-F]+$/.test(ip));
+  return ips[ips.length - 1] ?? null;
 }

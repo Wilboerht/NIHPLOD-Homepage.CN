@@ -44,6 +44,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/password-policy", () => ({
   updateUserPassword: vi.fn().mockResolvedValue({ success: true }),
+  checkPasswordHistory: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("@/lib/auth-logger", () => ({
@@ -62,13 +63,17 @@ vi.mock("@/lib/csrf", () => ({
 import { prisma } from "@/lib/prisma";
 import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
 import { recordLoginAttempt } from "@/lib/auth-security";
+import { updateUserPassword, checkPasswordHistory } from "@/lib/password-policy";
 import { POST } from "@/app/api/auth/reset-password/route";
 
 const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
 const mockSmsUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
+const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
 const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
 const mockRecordSmsCodeFailure = recordSmsCodeFailure as ReturnType<typeof vi.fn>;
 const mockRecordLoginAttempt = recordLoginAttempt as ReturnType<typeof vi.fn>;
+const mockUpdateUserPassword = updateUserPassword as ReturnType<typeof vi.fn>;
+const mockCheckPasswordHistory = checkPasswordHistory as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown): NextRequest {
   return new NextRequest(new URL("/api/auth/reset-password", "http://localhost:3000"), {
@@ -136,5 +141,54 @@ describe("POST /api/auth/reset-password 验证码防爆破", () => {
     expect(mockRecordSmsCodeFailure).not.toHaveBeenCalled();
     // 无码场景同样不写入 LoginAttempt（防锁号 DoS，与 register 口径一致）
     expect(mockRecordLoginAttempt).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/auth/reset-password 密码历史检查与核销顺序", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // 验证码有效、用户存在且状态正常的成功路径基线
+    mockSmsFindFirst.mockResolvedValue({ id: "sms-1", codeHash: "hash" });
+    mockSmsUpdateMany.mockResolvedValue({ count: 1 });
+    mockVerifyCode.mockReturnValue(true);
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", phone: resetBody.phone, status: "ACTIVE" });
+    mockCheckPasswordHistory.mockResolvedValue(false);
+    mockUpdateUserPassword.mockResolvedValue({ success: true });
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
+    (prisma.refreshToken.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 0 });
+    (prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+  });
+
+  it("新密码命中历史密码应返回 400 PASSWORD_HISTORY_REUSED，且不消耗验证码", async () => {
+    mockCheckPasswordHistory.mockResolvedValue(true);
+
+    const res = await POST(createRequest(resetBody));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("PASSWORD_HISTORY_REUSED");
+    expect(data.error.message).toBe("新密码不能是最近使用过的密码");
+    // 历史命中在核销之前：验证码保留，用户修正密码后可直接用原码重试
+    expect(mockSmsUpdateMany).not.toHaveBeenCalled();
+    expect(mockUpdateUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("历史检查通过：先原子核销验证码，再以 skipHistoryCheck 更新密码", async () => {
+    const res = await POST(createRequest(resetBody));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    // 验证码已原子核销
+    expect(mockSmsUpdateMany).toHaveBeenCalledWith({
+      where: { id: "sms-1", used: false },
+      data: { used: true },
+    });
+    // 历史检查已在核销前完成，更新时跳过二次检查
+    expect(mockUpdateUserPassword).toHaveBeenCalledWith("user-1", resetBody.password, {
+      skipHistoryCheck: true,
+    });
   });
 });

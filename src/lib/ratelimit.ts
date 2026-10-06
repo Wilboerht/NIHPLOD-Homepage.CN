@@ -101,6 +101,10 @@ export const RATE_LIMIT_PRESETS = {
   "comprehensive-analyze": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
   /** 表单提交限制 */
   form: { maxRequests: 10, windowMs: 60 * 1000 },
+  /** 短信发送每日上限 - 手机号级（配合每小时 5 次，堵住"每小时 5 条 × 24h = 120 条/天"的轰炸窗口） */
+  "sms-daily-phone": { maxRequests: 20, windowMs: 24 * 60 * 60 * 1000 },
+  /** 短信发送每日上限 - IP 级（防分布式低成本轮换号码发短信烧费用） */
+  "sms-daily-ip": { maxRequests: 100, windowMs: 24 * 60 * 60 * 1000 },
   /** 登录限制 - 防暴力破解 */
   login: { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** AI Chat 限制 - 每分钟 10 次 */

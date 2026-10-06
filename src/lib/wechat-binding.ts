@@ -21,6 +21,7 @@ import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { apiConsole } from "@/lib/logger";
 import type { NextRequest } from "next/server";
 
 export interface WechatBindingInput {
@@ -56,8 +57,11 @@ export interface WechatBindingResult {
 
 /**
  * 校验短信验证码并标记为已使用。
+ *
+ * @param ip 请求来源 IP：SMS_VERIFY_IP_BIND=true 时与发码记录 IP 比对
+ *   （与 register/login/reset/phone-rebind 的 IP 绑定口径一致，核销前校验，失败不烧码）
  */
-async function verifyAndConsumeSmsCode(phone: string, code: string) {
+async function verifyAndConsumeSmsCode(phone: string, code: string, ip: string) {
   // 同时接受两种验证码类型：register（官网扫码绑定页复用注册通道发码，历史行为不变）与
   // bind（小程序「关联官网账户」通道，POST /api/auth/send-code type=bind）。
   // 取最新一条未使用记录；验证码哈希含 type（HMAC(phone:code:type)），
@@ -78,6 +82,13 @@ async function verifyAndConsumeSmsCode(phone: string, code: string) {
   if (!smsCode) {
     return { valid: false as const, error: "验证码错误或已过期" };
   }
+
+  // IP 绑定校验（核销之前执行，失败不烧码）：验证码使用 IP 需与发送 IP 一致（可配置）
+  if (process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress && ip !== smsCode.ipAddress) {
+    apiConsole.warn("[WechatBind] 验证码 IP 不匹配，拒绝核销");
+    return { valid: false as const, error: "验证环境异常，请重新获取验证码" };
+  }
+
   if (!verifyCode(phone, code, smsCode.type, smsCode.codeHash)) {
     // 单码失败计数：达到上限自动作废该验证码（防爆破）
     await recordSmsCodeFailure(smsCode.id);
@@ -114,6 +125,52 @@ export async function resolveWechatBinding(
   const isWechatProvider = provider.startsWith("wechat_");
   const writesLegacyWechatColumn = provider === "wechat_open" || provider === "wechat_mp";
 
+  // 0. 绑定冲突预检（核销验证码之前）：该微信身份已绑定其他真实账户时提前返回，
+  //    避免用户烧掉验证码后才收到 WECHAT_ALREADY_BOUND。调用方持有微信授权凭证
+  //   （bindToken/exchange token），暴露"自己的微信是否已绑定"不构成枚举。
+  //    事务内的同名检查仍是并发下的权威判定，此处仅为体验优化。
+  {
+    const phoneOwner = await prisma.user.findUnique({
+      where: { phone },
+      select: { id: true },
+    });
+    const oldWechatUser = await prisma.user.findFirst({
+      where:
+        wechatInfo.unionid && isWechatProvider
+          ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
+          : { wechatOpenId: wechatInfo.openid },
+      select: { id: true, phone: true },
+    });
+    if (
+      oldWechatUser &&
+      !oldWechatUser.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX) &&
+      (!phoneOwner || phoneOwner.id !== oldWechatUser.id)
+    ) {
+      return {
+        success: false,
+        code: "WECHAT_ALREADY_BOUND",
+        message: "该微信已绑定其他账号，请直接用微信登录，或联系客服处理",
+      };
+    }
+    const existingIdentity = await prisma.externalIdentity.findUnique({
+      where: { provider_subjectId: { provider, subjectId: wechatInfo.openid } },
+      select: { userId: true },
+    });
+    if (existingIdentity && (!phoneOwner || existingIdentity.userId !== phoneOwner.id)) {
+      const previousOwner = await prisma.user.findUnique({
+        where: { id: existingIdentity.userId },
+        select: { phone: true },
+      });
+      if (previousOwner && !previousOwner.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
+        return {
+          success: false,
+          code: "WECHAT_ALREADY_BOUND",
+          message: "该微信已绑定其他账号，请直接用微信登录，或联系客服处理",
+        };
+      }
+    }
+  }
+
   // 1. 验证码校验：微信手机号快速验证组件（getPhoneNumber）已由微信证明手机号归属，
   //    携带 wxVerifiedPhone 的通道跳过短信验证码；其余通道强制短信校验
   if (wxVerifiedPhone) {
@@ -124,7 +181,7 @@ export async function resolveWechatBinding(
     if (!code) {
       return { success: false, code: "INVALID_CODE", message: "请输入验证码" };
     }
-    const smsResult = await verifyAndConsumeSmsCode(phone, code);
+    const smsResult = await verifyAndConsumeSmsCode(phone, code, getClientIP(request));
     if (!smsResult.valid) {
       return { success: false, code: "INVALID_CODE", message: smsResult.error };
     }

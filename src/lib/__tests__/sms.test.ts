@@ -5,13 +5,27 @@
  * - hashVerifyCode：HMAC-SHA256(phone:code:type)、确定性、密钥缺失抛错
  * - verifyCode：timingSafeEqual 比对、哈希不匹配/空哈希返回 false
  * - recordSmsCodeFailure：原子递增 attempts，达到上限（5 次）作废验证码
+ * - recordFakeSmsThrottleEntry：假发送限流占位记录（used=true 哑码行）
+ * - 腾讯云失败日志脱敏：SendStatusSet 中的 PhoneNumber 以掩码落日志
  * - mock 通道生产守卫：生产环境下 SMS_DEBUG_LOG_CODE 被忽略（不打印明文码）
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+const { mockTencentSendSms } = vi.hoisted(() => ({
+  mockTencentSendSms: vi.fn(),
+}));
+
+vi.mock("tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js", () => ({
+  v20210111: {
+    Client: class {
+      SendSms = mockTencentSendSms;
+    },
+  },
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    smsCode: { updateMany: vi.fn() },
+    smsCode: { updateMany: vi.fn(), create: vi.fn() },
   },
 }));
 
@@ -21,17 +35,21 @@ vi.mock("@/lib/logger", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { maskPhone } from "@/lib/mask-phone";
 import {
   generateVerifyCode,
   hashVerifyCode,
   verifyCode,
   recordSmsCodeFailure,
+  recordFakeSmsThrottleEntry,
   sendSMS,
   SMS_CODE_MAX_ATTEMPTS,
 } from "@/lib/sms";
 
 const mockUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
+const mockCreate = prisma.smsCode.create as ReturnType<typeof vi.fn>;
 const mockWarn = apiConsole.warn as ReturnType<typeof vi.fn>;
+const mockError = apiConsole.error as ReturnType<typeof vi.fn>;
 
 const TEST_PHONE = "13800138000";
 const TEST_CODE = "123456";
@@ -155,5 +173,80 @@ describe("mock 通道生产环境 DEBUG 守卫", () => {
     for (const call of mockWarn.mock.calls) {
       expect(String(call[0])).not.toContain(TEST_CODE);
     }
+  });
+});
+
+describe("recordFakeSmsThrottleEntry（假发送限流占位记录）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCreate.mockResolvedValue({ id: "sms-fake-1" });
+  });
+
+  it("应写入 used=true 的哑码记录（与真实发码同口径消耗冷却/小时配额）", async () => {
+    await recordFakeSmsThrottleEntry(TEST_PHONE, TEST_TYPE, "1.2.3.4", 5);
+
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        phone: TEST_PHONE,
+        type: TEST_TYPE,
+        used: true,
+        ipAddress: "1.2.3.4",
+        codeHash: expect.any(String),
+        expiresAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it("哑码 codeHash 为随机码哈希：任何校验路径都无法核销", async () => {
+    await recordFakeSmsThrottleEntry(TEST_PHONE, TEST_TYPE, "1.2.3.4", 5);
+
+    const codeHash = mockCreate.mock.calls[0][0].data.codeHash as string;
+    // 占位码是随机生成的未交付验证码：常见猜测码无法通过哈希校验
+    expect(verifyCode(TEST_PHONE, "123456", TEST_TYPE, codeHash)).toBe(false);
+    expect(verifyCode(TEST_PHONE, "000000", TEST_TYPE, codeHash)).toBe(false);
+  });
+});
+
+describe("腾讯云发送失败日志脱敏", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("SMS_PROVIDER", "tencent");
+    vi.stubEnv("TENCENT_SMS_SECRET_ID", "test-secret-id");
+    vi.stubEnv("TENCENT_SMS_SECRET_KEY", "test-secret-key");
+    vi.stubEnv("TENCENT_SMS_APP_ID", "test-app-id");
+    vi.stubEnv("TENCENT_SMS_SIGN_NAME", "测试签名");
+    vi.stubEnv("TENCENT_SMS_TEMPLATE_ID_LOGIN", "tpl-login");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("失败日志中 SendStatusSet 的 PhoneNumber 应脱敏（不落明文手机号）", async () => {
+    mockTencentSendSms.mockResolvedValue({
+      SendStatusSet: [
+        {
+          Code: "FailedOperation.PhoneNumberInBlacklist",
+          Message: "手机号在黑名单中",
+          PhoneNumber: `+86${TEST_PHONE}`,
+        },
+      ],
+    });
+
+    const result = await sendSMS({
+      phone: TEST_PHONE,
+      template: "LOGIN_CODE",
+      params: { code: TEST_CODE },
+    });
+
+    expect(result.success).toBe(false);
+    const failureCall = mockError.mock.calls.find((call) =>
+      String(call[0]).includes("[Tencent SMS] 发送失败")
+    );
+    expect(failureCall).toBeDefined();
+    const logged = failureCall![1] as { PhoneNumber?: string };
+    // 与全站掩码口径一致（+86 前缀参与脱敏）
+    expect(logged.PhoneNumber).toBe(maskPhone(`+86${TEST_PHONE}`));
+    expect(logged.PhoneNumber).not.toContain(TEST_PHONE);
   });
 });

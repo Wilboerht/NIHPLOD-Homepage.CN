@@ -51,6 +51,8 @@ vi.mock("@/lib/sms", () => ({
   sendPhoneChangedNotification: vi.fn().mockResolvedValue(undefined),
   generateVerifyCode: vi.fn().mockReturnValue("123456"),
   hashVerifyCode: vi.fn().mockReturnValue("hashed-code"),
+  simulateSmsSendLatency: vi.fn().mockResolvedValue(undefined),
+  recordFakeSmsThrottleEntry: vi.fn().mockResolvedValue(undefined),
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));
 
@@ -68,7 +70,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/ratelimit";
-import { verifyCode, recordSmsCodeFailure, sendLoginCode, sendPhoneChangedNotification } from "@/lib/sms";
+import { verifyCode, recordSmsCodeFailure, sendLoginCode, sendPhoneChangedNotification, recordFakeSmsThrottleEntry } from "@/lib/sms";
 import { invalidateProfileCache } from "@/lib/points";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { PUT } from "@/app/api/user/phone/route";
@@ -76,6 +78,7 @@ import { POST } from "@/app/api/user/phone/send-code/route";
 
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 const mockSendPhoneChangedNotification = sendPhoneChangedNotification as ReturnType<typeof vi.fn>;
+const mockRecordFakeSmsThrottleEntry = recordFakeSmsThrottleEntry as ReturnType<typeof vi.fn>;
 const mockLogAuthEvent = logAuthEvent as ReturnType<typeof vi.fn>;
 
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
@@ -140,12 +143,13 @@ describe("换绑手机号", () => {
       expect((await res.json()).error.code).toBe("SAME_PHONE");
     });
 
-    it("新手机号已被注册应返回 PHONE_IN_USE", async () => {
+    it("新手机号已被注册且双验证码有效时应返回 PHONE_IN_USE（占用检查在双码校验之后）", async () => {
       mockUserFindUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
         "id" in args.where
           ? { id: "user-1", phone: "13800138000" }
           : { id: "user-2", phone: "13900139000" }
       );
+      mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
 
       const res = await PUT(
         createRequest(
@@ -156,6 +160,31 @@ describe("换绑手机号", () => {
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("PHONE_IN_USE");
+      // 占用检查在事务之前：不核销验证码、不更新手机号
+      expect(mockSmsUpdateMany).not.toHaveBeenCalled();
+      expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it("新手机号已被注册但验证码错误应返回 CODE_INVALID（不泄露占用状态）", async () => {
+      mockUserFindUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
+        "id" in args.where
+          ? { id: "user-1", phone: "13800138000" }
+          : { id: "user-2", phone: "13900139000" }
+      );
+      mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
+      mockVerifyCode.mockReturnValue(false);
+
+      const res = await PUT(
+        createRequest(
+          "/api/user/phone",
+          { newPhone: "13900139000", currentCode: "000000", newCode: "654321" },
+          "PUT"
+        )
+      );
+      // 未持有效验证码的调用不得探测号码注册状态：统一 CODE_INVALID，而非 PHONE_IN_USE
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("CODE_INVALID");
+      expect(mockUserUpdate).not.toHaveBeenCalled();
     });
 
     it("当前手机验证码错误应返回 CODE_INVALID 并记录单码失败", async () => {
@@ -336,7 +365,7 @@ describe("换绑手机号", () => {
       expect((await res.json()).error.code).toBe("SAME_PHONE");
     });
 
-    it("新手机号已被注册应返回 PHONE_IN_USE", async () => {
+    it("新手机号已被注册应假发送：返回成功并写限流占位记录，不发真实短信（防枚举）", async () => {
       mockUserFindUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
         "id" in args.where
           ? { id: "user-1", phone: "13800138000" }
@@ -345,8 +374,21 @@ describe("换绑手机号", () => {
       const res = await POST(
         createRequest("/api/user/phone/send-code", { target: "new", newPhone: "13900139000" })
       );
-      expect(res.status).toBe(400);
-      expect((await res.json()).error.code).toBe("PHONE_IN_USE");
+      const data = await res.json();
+
+      // 与真实发送相同的响应（不返回 PHONE_IN_USE，避免已登录接口成为注册状态探测通道）
+      expect(res.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.expiresIn).toBe(300);
+      // 写 used=true 限流占位记录（冷却/小时计数口径一致），但不发真实短信
+      expect(mockRecordFakeSmsThrottleEntry).toHaveBeenCalledWith(
+        "13900139000",
+        "rebind-new",
+        "127.0.0.1",
+        5
+      );
+      expect(mockSendLoginCode).not.toHaveBeenCalled();
+      expect(mockSmsCreate).not.toHaveBeenCalled();
     });
 
     it("发送到当前手机成功：入库 rebind-current 验证码并返回有效期", async () => {

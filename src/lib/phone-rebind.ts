@@ -22,6 +22,8 @@ import {
   sendPhoneChangedNotification,
   generateVerifyCode,
   hashVerifyCode,
+  simulateSmsSendLatency,
+  recordFakeSmsThrottleEntry,
 } from "@/lib/sms";
 import { maskPhone } from "@/lib/mask-phone";
 import { invalidateProfileCache } from "@/lib/points";
@@ -91,7 +93,7 @@ function codeInvalidError() {
  * 发送换绑验证码（第一步）
  * - target=current：向当前登录手机号发码（验证身份，type=rebind-current）
  * - target=new：向新手机号发码（验证新号码所有权，type=rebind-new），
- *   新号码已注册时返回 PHONE_IN_USE（需登录态，无防枚举的假发送需求）
+ *   新号码已注册时走假发送（与 send-code 反枚举口径一致，不返回 PHONE_IN_USE）
  *
  * @param ip 用于写入验证码记录的来源 IP（可选 IP 绑定校验在换绑时核对）
  */
@@ -146,14 +148,9 @@ export async function sendPhoneRebindCode(params: {
       if (newPhone === user.phone) {
         return fail(400, "SAME_PHONE", "新手机号不能与当前手机号相同");
       }
-      // 新号码已被注册则拒绝（需登录态才能走到这里，无需防枚举假发送）
-      const existing = await prisma.user.findUnique({
-        where: { phone: newPhone },
-        select: { id: true },
-      });
-      if (existing) {
-        return fail(400, "PHONE_IN_USE", "该手机号已被注册");
-      }
+      // 注意：新号码是否已注册的检查推迟到冷却/小时限流之后（见下方），
+      // 且对已注册号码走假发送——与 /api/auth/send-code 的反枚举口径一致，
+      // 避免已登录接口成为"号码是否注册"的探测通道
       targetPhone = newPhone;
       type = "rebind-new";
     }
@@ -178,6 +175,21 @@ export async function sendPhoneRebindCode(params: {
     });
     if (hourlyCount >= MAX_SEND_PER_HOUR) {
       return fail(429, "RATE_LIMITED", "发送次数过多，请稍后再试");
+    }
+
+    // target=new 的新号码占用检查（推迟到限流之后）：已注册 → 假发送
+    //（写限流占位记录 + 模拟耗时 + 与真实发送相同的响应），不泄露注册状态；
+    // 用户若无有效验证码，换绑第二步会以统一文案拒绝
+    if (target === "new") {
+      const existing = await prisma.user.findUnique({
+        where: { phone: targetPhone },
+        select: { id: true },
+      });
+      if (existing) {
+        await recordFakeSmsThrottleEntry(targetPhone, type, ip, CODE_EXPIRE_MINUTES);
+        await simulateSmsSendLatency();
+        return { ok: true, data: { expiresIn: CODE_EXPIRE_MINUTES * 60 } };
+      }
     }
 
     const code = generateVerifyCode();
@@ -205,10 +217,10 @@ export async function sendPhoneRebindCode(params: {
 
     const smsResult = await sendLoginCode(targetPhone, code);
     if (!smsResult.success) {
+      // 运营商发送失败（未交付）：删除已入库的行，释放 60s 冷却与小时配额
       apiConsole.error("[PhoneRebind] 短信发送失败:", smsResult.error);
-      await prisma.smsCode.updateMany({
+      await prisma.smsCode.deleteMany({
         where: { phone: targetPhone, type, used: false },
-        data: { used: true },
       });
       return fail(500, "SMS_FAILED", "验证码发送失败，请稍后重试");
     }
@@ -275,15 +287,6 @@ export async function changeUserPhone(params: {
       return fail(400, "INVALID_PARAMS", "请先获取当前手机验证码");
     }
 
-    // 新手机号必须未被注册
-    const existing = await prisma.user.findUnique({
-      where: { phone: newPhone },
-      select: { id: true },
-    });
-    if (existing) {
-      return fail(400, "PHONE_IN_USE", "该手机号已被注册");
-    }
-
     // 1. 校验当前手机号验证码（验证身份；微信占位手机号账号无短信通道，跳过此步）
     let currentSmsCode: Awaited<ReturnType<typeof findUsableCode>> = null;
     if (needCurrentVerification) {
@@ -321,6 +324,16 @@ export async function changeUserPhone(params: {
     if (!verifyCode(newPhone, newCode, "rebind-new", newSmsCode.codeHash)) {
       await recordSmsCodeFailure(newSmsCode.id);
       return codeInvalidError();
+    }
+
+    // 新手机号占用检查放在双码校验之后：未持有效验证码的调用不应探测号码注册状态
+    //（与 send-code 假发送口径一致；事务内 P2002 兜底并发抢注）
+    const existing = await prisma.user.findUnique({
+      where: { phone: newPhone },
+      select: { id: true },
+    });
+    if (existing) {
+      return fail(400, "PHONE_IN_USE", "该手机号已被注册");
     }
 
     // 3. 事务内：原子核销验证码 + 更新手机号。

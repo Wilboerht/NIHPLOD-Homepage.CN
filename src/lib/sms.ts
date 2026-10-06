@@ -13,6 +13,7 @@
 import crypto from "crypto";
 import { randomInt } from "./random";
 import { prisma } from "./prisma";
+import { maskPhone } from "./mask-phone";
 
 /**
  * 单条验证码最大校验失败次数。
@@ -83,6 +84,49 @@ export function verifyCode(
   } catch {
     return false;
   }
+}
+
+/**
+ * 模拟真实短信通道耗时（防时序枚举）。
+ * 真实通道是外部 HTTP 调用（阿里云/腾讯云），正常耗时约数百 ms；
+ * 假发送取 300~900ms 随机值，与真实路径同量级且区间重叠。
+ *
+ * 已知的残余侧信道（可接受）：真实发送的运营商 HTTP 调用偶发超过 900ms，
+ * 且多 3 次 DB 写，重复测量下响应时间分布仍可概率性区分。彻底抹平需要
+ * 对真实路径也做延迟归一化，成本远大于收益，暂不处理。
+ */
+export async function simulateSmsSendLatency() {
+  await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 600));
+}
+
+/**
+ * 假发送（防枚举）的限流占位记录。
+ *
+ * 假发送路径必须写入一条"已使用"的哑码记录，使 60 秒冷却与每小时上限
+ * 对「已注册」与「未注册」号码表现完全一致——否则限流层本身会成为
+ * 注册状态枚举预言机（已注册号码第二次请求 429，未注册永远 200）。
+ *
+ * 说明：
+ * - used=true 不占 partial unique index（仅约束 used=false 行），不阻塞后续真实发码；
+ * - codeHash 是一个从未交付的随机码哈希，任何校验路径都无法核销它；
+ * - 记录同样参与小时计数，假发送也消耗限流额度（防滥用口径一致）。
+ */
+export async function recordFakeSmsThrottleEntry(
+  phone: string,
+  type: string,
+  ip: string,
+  expireMinutes: number
+): Promise<void> {
+  await prisma.smsCode.create({
+    data: {
+      phone,
+      type,
+      used: true,
+      codeHash: hashVerifyCode(phone, generateVerifyCode(), type),
+      expiresAt: new Date(Date.now() + expireMinutes * 60 * 1000),
+      ipAddress: ip,
+    },
+  });
 }
 import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
@@ -366,7 +410,12 @@ async function sendTencentSMS(options: SMSParams): Promise<SMSResult> {
       apiConsole.info("[Tencent SMS] 发送成功:", res.SendStatusSet[0].SerialNo);
       return { success: true, messageId: res.SendStatusSet[0].SerialNo };
     } else {
-      apiConsole.error("[Tencent SMS] 发送失败:", res.SendStatusSet?.[0]);
+      // 脱敏后再落日志：SendStatusSet 携带完整手机号（+86 前缀），与全站掩码口径一致
+      const failed = res.SendStatusSet?.[0];
+      apiConsole.error(
+        "[Tencent SMS] 发送失败:",
+        failed ? { ...failed, PhoneNumber: maskPhone(failed.PhoneNumber ?? "") } : res
+      );
       return {
         success: false,
         error: "短信发送失败",

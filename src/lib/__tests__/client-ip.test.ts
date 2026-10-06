@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getClientIP } from "@/lib/client-ip";
+import { getClientIP, getSubsiteProxiedClientIP } from "@/lib/client-ip";
 
 function createRequest(headers: Record<string, string>): Request {
   return new Request("http://localhost", {
@@ -115,5 +115,69 @@ describe("getClientIP", () => {
     });
 
     expect(getClientIP(request)).toBe("1.2.3.4");
+  });
+});
+
+describe("getSubsiteProxiedClientIP（子站 BFF 代理透传 IP）", () => {
+  afterEach(() => {
+    delete process.env.SUBSITE_PROXY_KEY;
+  });
+
+  it("未配置 SUBSITE_PROXY_KEY 时永远返回 null（公网伪造的 XFF 不被信任）", () => {
+    delete process.env.SUBSITE_PROXY_KEY;
+
+    const request = createRequest({
+      "x-subsite-proxy-key": "any-key",
+      "x-forwarded-for": "1.2.3.4",
+    });
+
+    expect(getSubsiteProxiedClientIP(request)).toBeNull();
+  });
+
+  it("凭证不匹配时返回 null（常量时间比较，长度不同同样拒绝）", () => {
+    process.env.SUBSITE_PROXY_KEY = "subsite-secret";
+
+    const wrongKey = createRequest({
+      "x-subsite-proxy-key": "subsite-WRONG!",
+      "x-forwarded-for": "1.2.3.4",
+    });
+    expect(getSubsiteProxiedClientIP(wrongKey)).toBeNull();
+
+    const shortKey = createRequest({
+      "x-subsite-proxy-key": "short",
+      "x-forwarded-for": "1.2.3.4",
+    });
+    expect(getSubsiteProxiedClientIP(shortKey)).toBeNull();
+  });
+
+  it("未携带 x-subsite-proxy-key 头时返回 null", () => {
+    process.env.SUBSITE_PROXY_KEY = "subsite-secret";
+
+    const request = createRequest({
+      "x-forwarded-for": "1.2.3.4",
+    });
+
+    expect(getSubsiteProxiedClientIP(request)).toBeNull();
+  });
+
+  it("凭证匹配时返回 XFF 最后一个条目（子站写入的客户端 IP）", () => {
+    process.env.SUBSITE_PROXY_KEY = "subsite-secret";
+
+    const request = createRequest({
+      "x-subsite-proxy-key": "subsite-secret",
+      "x-forwarded-for": "1.2.3.4, 5.6.7.8",
+    });
+
+    expect(getSubsiteProxiedClientIP(request)).toBe("5.6.7.8");
+  });
+
+  it("凭证匹配但无 XFF 头时返回 null（调用方回退到 getClientIP）", () => {
+    process.env.SUBSITE_PROXY_KEY = "subsite-secret";
+
+    const request = createRequest({
+      "x-subsite-proxy-key": "subsite-secret",
+    });
+
+    expect(getSubsiteProxiedClientIP(request)).toBeNull();
   });
 });

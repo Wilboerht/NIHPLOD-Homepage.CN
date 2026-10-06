@@ -21,7 +21,7 @@ import {
   sendPasswordChangedNotification,
   SMS_CODE_MAX_ATTEMPTS,
 } from "@/lib/sms";
-import { updateUserPassword } from "@/lib/password-policy";
+import { updateUserPassword, checkPasswordHistory } from "@/lib/password-policy";
 
 // 请求参数验证
 const resetPasswordSchema = z
@@ -152,23 +152,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 原子核销验证码（updateMany + used:false 防止并发重用）
-    const consumeResult = await prisma.smsCode.updateMany({
-      where: { id: smsCode.id, used: false },
-      data: { used: true },
-    });
-    if (consumeResult.count === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "CODE_INVALID",
-            message: "验证码错误或已过期",
-          },
-        },
-        { status: 400 }
-      );
-    }
+    // 原子核销验证码前的前置校验（有效验证码本身已隐含号码已注册，此后不再构成枚举泄露）：
+    // 用户存在性、账号状态、密码历史任一失败都不烧码，用户修正后可直接用原码重试，
+    // 不必等 60 秒重发验证码（历史密码命中是用户体验最差的一条路径）
 
     // 查找用户
     const user = await prisma.user.findUnique({
@@ -207,8 +193,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 重置密码（含密码历史检查与过期策略）
-    const updateResult = await updateUserPassword(user.id, password);
+    // 密码历史检查（核销之前）：命中最近使用过的密码时不消耗验证码
+    if (await checkPasswordHistory(user.id, password)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PASSWORD_HISTORY_REUSED",
+            message: "新密码不能是最近使用过的密码",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 原子核销验证码（updateMany + used:false 防止并发重用）
+    const consumeResult = await prisma.smsCode.updateMany({
+      where: { id: smsCode.id, used: false },
+      data: { used: true },
+    });
+    if (consumeResult.count === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CODE_INVALID",
+            message: "验证码错误或已过期",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 重置密码（历史检查已在核销前完成，跳过二次检查）
+    const updateResult = await updateUserPassword(user.id, password, { skipHistoryCheck: true });
     if (!updateResult.success) {
       return NextResponse.json(
         {

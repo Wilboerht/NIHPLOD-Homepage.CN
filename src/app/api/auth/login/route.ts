@@ -165,7 +165,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 原子核销验证码（updateMany + used:false 防止并发重用）
+    // 原子核销验证码（updateMany + used:false 防止并发重用）。
+    // 刻意的顺序：核销先于用户存在性/状态检查——有效验证码本身已隐含号码已注册
+    //（未注册号码在 send-code 走假发送，拿不到真实码），先核销不存在枚举泄露；
+    // 反向排序反而会让攻击者用无效码探测账号状态
     const consumeResult = await prisma.smsCode.updateMany({
       where: { id: smsCode.id, used: false },
       data: { used: true },

@@ -4,10 +4,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendLoginCode, generateVerifyCode, hashVerifyCode } from "@/lib/sms";
+import {
+  sendLoginCode,
+  generateVerifyCode,
+  hashVerifyCode,
+  simulateSmsSendLatency,
+  recordFakeSmsThrottleEntry,
+} from "@/lib/sms";
 import { z } from "zod";
 import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/ratelimit";
-import { getClientIP } from "@/lib/client-ip";
+import { getSubsiteProxiedClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 import { verifyUserToken, verifyWechatBindToken } from "@/lib/jwt";
@@ -46,24 +52,34 @@ function fakeSendResponse() {
   );
 }
 
-/**
- * 模拟真实短信通道耗时。
- * 真实通道是外部 HTTP 调用（阿里云/腾讯云），正常耗时约数百 ms；
- * 假发送取 300~900ms 随机值，与真实路径同量级且区间重叠，
- * 防止通过响应时间区分手机号是否已注册（时序枚举）。
- */
-async function simulateSmsSendLatency() {
-  await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 600));
-}
-
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // 子站 BFF 代理（smart.nihplod.cn 等）以服务器到服务器方式转发请求：
+  // 仅当 X-Subsite-Proxy-Key 与 SUBSITE_PROXY_KEY 匹配时才信任其透传的 XFF
+  // 客户端 IP，否则所有子站用户会共享子站服务器 IP 这一个限流桶，
+  // 且 SmsCode.ipAddress 记录错误导致 IP 绑定校验误报
+  const ip = getSubsiteProxiedClientIP(request) ?? getClientIPFromRateLimit(request);
+
   // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
-  const ip = getClientIPFromRateLimit(request);
   const ipLimit = await rateLimit(ip, "form"); // 使用 form 级别的限制 (1分钟10次)
   if (!ipLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_REQUESTS",
+          message: "请求过于频繁，请稍后再试",
+        },
+      },
+      { status: 429 }
+    );
+  }
+
+  // 1b. IP 每日上限：分钟级限流之外的成本闸（防分布式轮换号码烧短信费）
+  const ipDailyLimit = await rateLimit(`sms-ip:${ip}`, "sms-daily-ip");
+  if (!ipDailyLimit.success) {
     return NextResponse.json(
       {
         success: false,
@@ -128,6 +144,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, type } = result.data;
+
+    // 手机号每日上限（真实/假发送同口径消耗，保持限流层不泄露注册状态）
+    const phoneDailyLimit = await rateLimit(`sms-phone:${phone}`, "sms-daily-phone");
+    if (!phoneDailyLimit.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "发送次数过多，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
 
     // 绑定通道真实发码准入（防枚举）：
     // 绑定必须验证手机号归属，故 bind 对已注册/未注册号码都需真实发码；
@@ -226,17 +257,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (type === "register" && userExists) {
+      // 假发送也写限流占位记录：冷却/小时计数对注册与未注册号码表现一致，
+      // 否则限流层本身成为枚举预言机（已注册第二次 429，未注册永远 200）
+      await recordFakeSmsThrottleEntry(phone, type, ip, CODE_EXPIRE_MINUTES);
       // 模拟短信发送耗时，防止时序泄露用户存在性
       await simulateSmsSendLatency();
       return fakeSendResponse();
     }
 
     if (type === "login" && !userExists) {
+      await recordFakeSmsThrottleEntry(phone, type, ip, CODE_EXPIRE_MINUTES);
       await simulateSmsSendLatency();
       return fakeSendResponse();
     }
 
     if (type === "reset" && !userExists) {
+      await recordFakeSmsThrottleEntry(phone, type, ip, CODE_EXPIRE_MINUTES);
       await simulateSmsSendLatency();
       return fakeSendResponse();
     }
@@ -244,6 +280,7 @@ export async function POST(request: NextRequest) {
     // 绑定场景：有授权凭证时真实发码（含未注册号码，绑定流程需验证号码归属）；
     // 无凭证且号码未注册时假发送，保持防枚举口径；无凭证且已注册维持历史行为
     if (type === "bind" && !bindHasAuthContext && !userExists) {
+      await recordFakeSmsThrottleEntry(phone, type, ip, CODE_EXPIRE_MINUTES);
       await simulateSmsSendLatency();
       return fakeSendResponse();
     }
@@ -270,7 +307,7 @@ export async function POST(request: NextRequest) {
         codeHash,
         type,
         expiresAt,
-        ipAddress: getClientIP(request),
+        ipAddress: ip,
       },
     });
 
@@ -278,11 +315,11 @@ export async function POST(request: NextRequest) {
     const smsResult = await sendLoginCode(phone, code);
 
     if (!smsResult.success) {
-      // 短信发送失败，清理已入库的验证码（避免脏数据）
+      // 运营商发送失败（未交付）：删除已入库的行，释放 60s 冷却与小时配额——
+      // 否则运营商故障期间用户连试 5 次会一条短信没收到却被锁一小时
       apiConsole.error("[SendCode] 短信发送失败:", smsResult.error);
-      await prisma.smsCode.updateMany({
+      await prisma.smsCode.deleteMany({
         where: { phone, type, used: false },
-        data: { used: true },
       });
       return NextResponse.json(
         {
@@ -300,7 +337,7 @@ export async function POST(request: NextRequest) {
       identifier: phone,
       success: true,
       type,
-      ip: getClientIP(request),
+      ip,
     });
 
     return NextResponse.json({

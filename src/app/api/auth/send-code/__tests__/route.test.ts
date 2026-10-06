@@ -26,6 +26,7 @@ vi.mock("@/lib/prisma", () => ({
       count: vi.fn(),
       updateMany: vi.fn(),
       create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     user: { findUnique: vi.fn() },
   },
@@ -35,6 +36,8 @@ vi.mock("@/lib/sms", () => ({
   sendLoginCode: vi.fn(),
   generateVerifyCode: vi.fn().mockReturnValue("123456"),
   hashVerifyCode: vi.fn().mockReturnValue("hashed-code"),
+  simulateSmsSendLatency: vi.fn().mockResolvedValue(undefined),
+  recordFakeSmsThrottleEntry: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/ratelimit", () => ({
@@ -44,6 +47,7 @@ vi.mock("@/lib/ratelimit", () => ({
 
 vi.mock("@/lib/client-ip", () => ({
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
+  getSubsiteProxiedClientIP: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock("@/lib/auth-logger", () => ({
@@ -60,8 +64,9 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { sendLoginCode } from "@/lib/sms";
+import { sendLoginCode, recordFakeSmsThrottleEntry } from "@/lib/sms";
 import { rateLimit } from "@/lib/ratelimit";
+import { getSubsiteProxiedClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { POST } from "@/app/api/auth/send-code/route";
 
@@ -71,11 +76,14 @@ const mockPrisma = prisma as unknown as {
     count: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
+    deleteMany: ReturnType<typeof vi.fn>;
   };
   user: { findUnique: ReturnType<typeof vi.fn> };
 };
 const mockSendLoginCode = sendLoginCode as ReturnType<typeof vi.fn>;
+const mockRecordFakeSmsThrottleEntry = recordFakeSmsThrottleEntry as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
+const mockGetSubsiteProxiedClientIP = getSubsiteProxiedClientIP as ReturnType<typeof vi.fn>;
 const mockValidateCSRF = validateCSRFToken as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown, extraHeaders?: Record<string, string>): NextRequest {
@@ -170,7 +178,7 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(mockSendLoginCode).toHaveBeenCalledWith(bindBody.phone, "123456");
   });
 
-  it("type=bind 未注册手机号应假发送：返回成功但不发码不入库", async () => {
+  it("type=bind 未注册手机号应假发送：返回成功、不发真实短信，但写入限流占位记录", async () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
 
     const res = await POST(createRequest(bindBody));
@@ -178,8 +186,14 @@ describe("POST /api/auth/send-code type=bind", () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    // 防枚举假发送：不写库、不调短信通道、不记审计
-    expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
+    // 防枚举假发送：不调短信通道，但写入 used=true 占位记录
+    //（冷却/小时计数对注册与未注册号码表现一致，限流层不泄露注册状态）
+    expect(mockRecordFakeSmsThrottleEntry).toHaveBeenCalledWith(
+      bindBody.phone,
+      "bind",
+      "127.0.0.1",
+      5
+    );
     expect(mockSendLoginCode).not.toHaveBeenCalled();
   }, 10000);
 
@@ -204,6 +218,7 @@ describe("POST /api/auth/send-code type=bind", () => {
 
     expect(res.status).toBe(200);
     expect(mockSendLoginCode).not.toHaveBeenCalled();
+    expect(mockRecordFakeSmsThrottleEntry).toHaveBeenCalledWith(bindBody.phone, "bind", "127.0.0.1", 5);
   });
 
   it("type=bind 未注册手机号 + Bearer 本人号码：真实发码（小程序关联账户）", async () => {
@@ -392,5 +407,138 @@ describe("POST /api/auth/send-code 生产环境短信通道守卫", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockSendLoginCode).toHaveBeenCalledWith("13800138000", "123456");
+  });
+});
+
+describe("POST /api/auth/send-code 防枚举限流一致性回归", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRateLimit.mockResolvedValue({ success: true });
+    mockValidateCSRF.mockReturnValue(true);
+    mockGetSubsiteProxiedClientIP.mockReturnValue(null);
+    mockPrisma.smsCode.findFirst.mockResolvedValue(null);
+    mockPrisma.smsCode.count.mockResolvedValue(0);
+    mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.smsCode.create.mockResolvedValue({ id: "sms-1" });
+    mockPrisma.smsCode.deleteMany.mockResolvedValue({ count: 1 });
+    mockSendLoginCode.mockResolvedValue({ success: true, messageId: "mock_1" });
+    mockVerifyUserToken.mockResolvedValue(null);
+    mockVerifyBindToken.mockResolvedValue(null);
+  });
+
+  it("已注册与未注册号码两次快速请求的状态码完全一致（第二次均为 429 TOO_FREQUENT）", async () => {
+    mockPrisma.user.findUnique.mockImplementation(
+      async (args: { where: { phone: string } }) =>
+        args.where.phone === "13800138000" ? { id: "user-1" } : null
+    );
+    // 假发送同样写入占位记录：第二次请求两者都命中 60 秒冷却
+    mockPrisma.smsCode.findFirst
+      .mockResolvedValueOnce(null) // 已注册 第 1 次
+      .mockResolvedValueOnce({ id: "sms-r2", createdAt: new Date() }) // 已注册 第 2 次
+      .mockResolvedValueOnce(null) // 未注册 第 1 次
+      .mockResolvedValueOnce({ id: "sms-u2", createdAt: new Date() }); // 未注册 第 2 次
+
+    const r1 = await POST(createRequest({ phone: "13800138000", type: "bind" }));
+    const r2 = await POST(createRequest({ phone: "13800138000", type: "bind" }));
+    const u1 = await POST(createRequest({ phone: "13900139000", type: "bind" }));
+    const u2 = await POST(createRequest({ phone: "13900139000", type: "bind" }));
+
+    expect(r1.status).toBe(u1.status);
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(u2.status);
+    expect(r2.status).toBe(429);
+    expect((await r2.json()).error.code).toBe("TOO_FREQUENT");
+    expect((await u2.json()).error.code).toBe("TOO_FREQUENT");
+  });
+
+  it("假发送写入 used=true 限流占位记录（recordFakeSmsThrottleEntry），不发真实短信", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+
+    const res = await POST(createRequest({ phone: "13900139000", type: "login" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data).toEqual({ success: true, data: { expiresIn: 300 } });
+    expect(mockRecordFakeSmsThrottleEntry).toHaveBeenCalledWith(
+      "13900139000",
+      "login",
+      "127.0.0.1",
+      5
+    );
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+    // 占位记录由 recordFakeSmsThrottleEntry 内部写入（used=true 断言见 sms.test.ts）
+    expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
+  });
+
+  it("子站代理凭证有效：限流键与 SmsCode.ipAddress 均使用透传的客户端 IP", async () => {
+    mockGetSubsiteProxiedClientIP.mockReturnValue("203.0.113.5");
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(
+      createRequest(bindBody, {
+        "x-subsite-proxy-key": "subsite-secret",
+        "x-forwarded-for": "203.0.113.5",
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRateLimit).toHaveBeenCalledWith("203.0.113.5", "form");
+    expect(mockRateLimit).toHaveBeenCalledWith("sms-ip:203.0.113.5", "sms-daily-ip");
+    expect(mockPrisma.smsCode.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ ipAddress: "203.0.113.5" }),
+      })
+    );
+  });
+
+  it("子站代理凭证无效/缺失：忽略 XFF，回退到连接层 IP", async () => {
+    mockGetSubsiteProxiedClientIP.mockReturnValue(null);
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(
+      createRequest(bindBody, { "x-forwarded-for": "203.0.113.5" })
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRateLimit).toHaveBeenCalledWith("127.0.0.1", "form");
+    expect(mockRateLimit).toHaveBeenCalledWith("sms-ip:127.0.0.1", "sms-daily-ip");
+    expect(mockPrisma.smsCode.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ ipAddress: "127.0.0.1" }),
+      })
+    );
+  });
+
+  it("运营商发送失败：删除已入库行（deleteMany），立即重发不受 60 秒冷却阻塞", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+    mockSendLoginCode.mockResolvedValueOnce({ success: false, error: "运营商故障" });
+
+    const res1 = await POST(createRequest(bindBody));
+    const data1 = await res1.json();
+
+    expect(res1.status).toBe(500);
+    expect(data1.error.code).toBe("SMS_FAILED");
+    expect(mockPrisma.smsCode.deleteMany).toHaveBeenCalledWith({
+      where: { phone: bindBody.phone, type: "bind", used: false },
+    });
+
+    // 失败后行已删除：立即重发时冷却查询无记录，可正常发码
+    const res2 = await POST(createRequest(bindBody));
+    expect(res2.status).toBe(200);
+    expect(mockSendLoginCode).toHaveBeenCalledTimes(2);
+  });
+
+  it("手机号每日上限（sms-daily-phone）超限应返回 429 RATE_LIMITED", async () => {
+    mockRateLimit.mockImplementation(async (_key: string, preset: string) =>
+      preset === "sms-daily-phone" ? { success: false } : { success: true }
+    );
+
+    const res = await POST(createRequest(bindBody));
+    const data = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(data.error.code).toBe("RATE_LIMITED");
+    expect(mockRateLimit).toHaveBeenCalledWith(`sms-phone:${bindBody.phone}`, "sms-daily-phone");
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
   });
 });
