@@ -51,8 +51,6 @@ export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
     useAuth();
   const mounted = useMounted();
-  // 用户系统偏好减少动画时停用背景光斑循环动画
-  const reduceMotion = useReducedMotion();
   // 与 CSS md 断点（768px）对齐：移动端全屏壳，桌面端居中卡片壳
   const isMobile = useMediaQuery("(max-width: 767px)");
   const dialogRef = useRef<HTMLDivElement>(null);
