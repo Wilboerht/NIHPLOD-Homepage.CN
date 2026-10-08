@@ -200,50 +200,7 @@ export function UserCenterModal() {
               {/* 底层基础色 */}
               <div className="absolute inset-0 z-0 bg-brand-cream" />
 
-              {/* 背景动态装饰层 (位于模糊层之下)，移动端全屏仅纯色底以保低端机性能 */}
-              <div className="pointer-events-none absolute inset-0 z-10 hidden overflow-hidden md:block">
-                <m.div
-                  animate={
-                    reduceMotion
-                      ? undefined
-                      : {
-                          x: ["-30%", "40%", "10%", "-30%"],
-                          y: ["-30%", "20%", "40%", "-30%"],
-                          rotate: [0, 180, 360],
-                          scale: [1, 1.4, 1.2, 1],
-                        }
-                  }
-                  transition={{
-                    duration: 25,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  style={{ willChange: "transform" }}
-                  className="absolute h-[120%] w-[120%] rounded-full bg-brand-primary/10 blur-[150px]"
-                />
-                <m.div
-                  animate={
-                    reduceMotion
-                      ? undefined
-                      : {
-                          x: ["40%", "-20%", "30%", "40%"],
-                          y: ["40%", "10%", "-30%", "40%"],
-                          rotate: [0, -180, -360],
-                          scale: [1, 1.3, 1.1, 1],
-                        }
-                  }
-                  transition={{
-                    duration: 35,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  style={{ willChange: "transform" }}
-                  className="absolute h-[110%] w-[110%] rounded-full bg-brand-gold/10 blur-[130px]"
-                />
-              </div>
-
-              {/* 模糊与纹理盖层 (在此之下的内容会被模糊)，仅桌面端渲染 */}
-              <div className="absolute inset-0 z-20 hidden bg-white/5 backdrop-blur-[40px] md:block" />
+              {/* 噪点纹理盖层，仅桌面端渲染（动态光斑与模糊层已移除，纯色底更干净） */}
               <div className="pointer-events-none absolute inset-0 z-20 hidden bg-[url('/textures/mineral-grain.png')] opacity-[0.05] mix-blend-overlay md:block" />
 
               {/* 内容区域容器 (最上层)：移动端 flex-col（头 + 内容 + 底部 Tab），桌面 flex-row（侧边栏 + 内容） */}
