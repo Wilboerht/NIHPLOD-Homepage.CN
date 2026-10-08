@@ -274,6 +274,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setDeletionRequest(null);
     setUserCenterOpen(false);
+    // 已在登录面板：不整页跳转——避免清空用户正在填写的表单（含人机验证求解进度）、
+    // return_to 指向 /login 自身的套娃，以及 SSO 面板 return_to 双层嵌套；
+    // 仅给当前 URL 补 expired=1（App Router 会同步 useSearchParams，内嵌提示照常显示）
+    if (window.location.pathname === "/login") {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("expired")) {
+        url.searchParams.set("expired", "1");
+        window.history.replaceState(null, "", url.toString());
+      }
+      return;
+    }
     const returnTo = window.location.pathname + window.location.search;
     window.location.href = `${buildAuthUrl("login", returnTo)}&expired=1`;
   }, [user]);

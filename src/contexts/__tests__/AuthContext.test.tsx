@@ -287,3 +287,67 @@ describe("AuthContext 注销冷静期状态", () => {
     );
   });
 });
+
+describe("AuthContext 会话终结与登录页竞态", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    // 每个用例显式设定 URL，避免相互影响（jsdom 默认 http://localhost:3000/）
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("已在 /login 面板时触发会话终结：不整页跳转，仅清态并给当前 URL 补 expired=1", async () => {
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1" }));
+    localStorage.setItem("auth_hint", "1");
+    // 模拟用户正在 SSO 登录面板上（return_to 指向 authorize）
+    window.history.replaceState(
+      null,
+      "",
+      "/login?return_to=%2Fapi%2Foauth%2Fauthorize%3Fclient_id%3Dabc"
+    );
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
+    await waitFor(() => {
+      expect(screen.queryByText("loading")).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    });
+
+    // 清态
+    expect(localStorage.getItem("auth_hint")).toBeNull();
+    // 关键：不整页跳转、return_to 不被套娃（仍为 authorize，而非指向 /login 自身），
+    // 仅在原 URL 上补 expired=1 供登录页展示内嵌提示
+    expect(window.location.pathname).toBe("/login");
+    expect(window.location.search).toContain("return_to=%2Fapi%2Foauth%2Fauthorize%3Fclient_id%3Dabc");
+    expect(window.location.search).toContain("expired=1");
+    expect(window.location.search).not.toContain("mode=login");
+  });
+
+  it("已在 /login 且 URL 已含 expired=1：不重复追加参数", async () => {
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1" }));
+    localStorage.setItem("auth_hint", "1");
+    window.history.replaceState(null, "", "/login?expired=1");
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
+    await waitFor(() => {
+      expect(screen.queryByText("loading")).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    });
+
+    expect(window.location.search).toBe("?expired=1");
+    expect(localStorage.getItem("auth_hint")).toBeNull();
+  });
+});
