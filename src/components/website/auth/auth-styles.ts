@@ -14,3 +14,14 @@ export const mobileInputFlexClass = `flex-1 ${mobileInputBase}`;
 
 export const mobileBtnClass =
   "w-full py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal border border-brand-charcoal/25 hover:bg-brand-charcoal/[0.03] active:scale-[0.98] transition-all disabled:opacity-40";
+
+/** PC 端输入框错误态（下划线变红） */
+export const pcInputErrorClass =
+  "w-full bg-transparent border-0 border-b border-red-400/70 rounded-none py-4 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/60 placeholder:text-sm placeholder:tracking-wider placeholder:uppercase focus:outline-none focus:border-red-500/70 transition-colors";
+
+/** 移动端输入框错误态（下划线变红） */
+export const mobileInputErrorBase =
+  "bg-transparent border-0 border-b border-red-400/70 rounded-none py-3 px-0 text-base tracking-wide text-brand-charcoal placeholder:text-brand-charcoal/60 placeholder:text-sm placeholder:tracking-wider focus:outline-none focus:border-red-500/70 transition-colors";
+
+export const mobileInputErrorClass = `w-full ${mobileInputErrorBase}`;
+export const mobileInputErrorFlexClass = `flex-1 ${mobileInputErrorBase}`;

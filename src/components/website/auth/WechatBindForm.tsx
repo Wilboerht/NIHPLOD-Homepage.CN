@@ -3,13 +3,18 @@
 import { Eye, EyeOff, CheckCircle } from "lucide-react";
 import {
   pcInputClass,
+  pcInputErrorClass,
   pcBtnClass,
   mobileInputClass,
   mobileInputFlexClass,
+  mobileInputErrorClass,
+  mobileInputErrorFlexClass,
   mobileBtnClass,
 } from "./auth-styles";
 import { PASSWORD_MAX_LENGTH } from "./auth-utils";
 import { AgreementCheckbox } from "./LoginForm";
+import { AuthFieldError, type AuthFieldErrors } from "./AuthFieldError";
+import { AuthFormNotice } from "./AuthFormNotice";
 
 export interface WechatBindFormProps {
   variant: "pc" | "mobile";
@@ -22,6 +27,10 @@ export interface WechatBindFormProps {
   loading: boolean;
   mobileAgreed: boolean;
   agreementShake: number;
+  /** 字段级内联错误 */
+  errors?: AuthFieldErrors;
+  /** 表单级错误（服务端返回），展示在提交按钮上方 */
+  formError?: string;
   onRegPhoneChange: (v: string) => void;
   onRegCodeChange: (v: string) => void;
   onRegPasswordChange: (v: string) => void;
@@ -42,6 +51,8 @@ export function WechatBindForm({
   loading,
   mobileAgreed,
   agreementShake,
+  errors,
+  formError,
   onRegPhoneChange,
   onRegCodeChange,
   onRegPasswordChange,
@@ -60,57 +71,73 @@ export function WechatBindForm({
           微信授权成功，请绑定手机号以完成登录。
         </p>
         <form onSubmit={onSubmit} className="space-y-8">
-          <input
-            type="tel"
-            required
-            value={regPhone}
-            onChange={(e) => onRegPhoneChange(e.target.value)}
-            className={pcInputClass}
-            maxLength={11}
-            placeholder="手机号"
-          />
-          <div className="relative flex gap-3">
+          <div>
             <input
-              type="text"
+              type="tel"
               required
-              maxLength={6}
-              value={regCode}
-              onChange={(e) => onRegCodeChange(e.target.value)}
-              className={`${pcInputClass} flex-1`}
-              placeholder="验证码"
+              value={regPhone}
+              onChange={(e) => onRegPhoneChange(e.target.value)}
+              className={errors?.phone ? pcInputErrorClass : pcInputClass}
+              maxLength={11}
+              placeholder="手机号"
             />
-            <button
-              type="button"
-              onClick={onSendRegCode}
-              disabled={regCodeSending || regCountdown > 0 || !regPhone}
-              className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
-            >
-              {regCountdown > 0 ? `${regCountdown}s` : "获取"}
-            </button>
+            <AuthFieldError message={errors?.phone} />
           </div>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={regPassword}
-              onChange={(e) => onRegPasswordChange(e.target.value)}
-              className={`${pcInputClass} pr-10`}
-              maxLength={PASSWORD_MAX_LENGTH}
-              autoComplete="new-password"
-              placeholder="设置登录密码（可选，留空将自动生成）"
-            />
-            <button
-              type="button"
-              onClick={onShowPasswordToggle}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+          <div>
+            <div className="relative flex gap-3">
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={regCode}
+                onChange={(e) => onRegCodeChange(e.target.value)}
+                className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
+                placeholder="验证码"
+              />
+              <button
+                type="button"
+                onClick={onSendRegCode}
+                disabled={regCodeSending || regCountdown > 0 || !regPhone}
+                className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+              >
+                {regCountdown > 0 ? `${regCountdown}s` : "获取"}
+              </button>
+            </div>
+            <AuthFieldError message={errors?.code} />
+            {!errors?.code && regCountdown > 0 && (
+              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                验证码已发送，请注意查收
+              </p>
+            )}
+          </div>
+          <div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={regPassword}
+                onChange={(e) => onRegPasswordChange(e.target.value)}
+                className={`${errors?.password ? pcInputErrorClass : pcInputClass} pr-10`}
+                maxLength={PASSWORD_MAX_LENGTH}
+                autoComplete="new-password"
+                placeholder="设置登录密码（可选，留空将自动生成）"
+              />
+              <button
+                type="button"
+                onClick={onShowPasswordToggle}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <AuthFieldError message={errors?.password} />
           </div>
           <AgreementCheckbox
             checked={mobileAgreed}
             onChange={onMobileAgreedChange}
             agreementShake={agreementShake}
+            error={errors?.agreement}
           />
+          <AuthFormNotice message={formError} />
           <button type="submit" disabled={loading} className={pcBtnClass}>
             {loading ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-charcoal/20 border-t-brand-charcoal" />
@@ -153,51 +180,65 @@ export function WechatBindForm({
             onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
             maxLength={11}
             placeholder="手机号"
-            className={mobileInputClass}
+            className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
           />
+          <AuthFieldError message={errors?.phone} />
         </div>
-        <div className="relative flex gap-2">
-          <input
-            type="text"
-            required
-            maxLength={6}
-            value={regCode}
-            onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="验证码"
-            className={mobileInputFlexClass}
-          />
-          <button
-            type="button"
-            onClick={onSendRegCode}
-            disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
-            className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
-          >
-            {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
-          </button>
+        <div>
+          <div className="relative flex gap-2">
+            <input
+              type="text"
+              required
+              maxLength={6}
+              value={regCode}
+              onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="验证码"
+              className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
+            />
+            <button
+              type="button"
+              onClick={onSendRegCode}
+              disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
+              className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
+            >
+              {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
+            </button>
+          </div>
+          <AuthFieldError message={errors?.code} />
+          {!errors?.code && regCountdown > 0 && (
+            <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+              验证码已发送，请注意查收
+            </p>
+          )}
         </div>
-        <div className="relative">
-          <input
-            type={showPassword ? "text" : "password"}
-            value={regPassword}
-            onChange={(e) => onRegPasswordChange(e.target.value)}
-            placeholder="设置登录密码（可选，留空将自动生成）"
-            maxLength={PASSWORD_MAX_LENGTH}
-            autoComplete="new-password"
-            className={`${mobileInputClass} pr-10`}
-          />
-          <button
-            type="button"
-            onClick={onShowPasswordToggle}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+        <div>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={regPassword}
+              onChange={(e) => onRegPasswordChange(e.target.value)}
+              placeholder="设置登录密码（可选，留空将自动生成）"
+              maxLength={PASSWORD_MAX_LENGTH}
+              autoComplete="new-password"
+              className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={onShowPasswordToggle}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          <AuthFieldError message={errors?.password} />
         </div>
         <AgreementCheckbox
           checked={mobileAgreed}
           onChange={onMobileAgreedChange}
           agreementShake={agreementShake}
+          error={errors?.agreement}
         />
+        <AuthFormNotice message={formError} />
         <div className="pt-2">
           <button type="submit" disabled={loading} className={mobileBtnClass}>
             <span className="relative z-10 flex items-center justify-center gap-2">

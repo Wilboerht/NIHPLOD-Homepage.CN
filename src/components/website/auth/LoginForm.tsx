@@ -3,8 +3,18 @@
 import Image from "next/image";
 import { m } from "framer-motion";
 import { Eye, EyeOff, ArrowLeftRight, MessageCircle, Music2 } from "lucide-react";
-import { pcInputClass, pcBtnClass, mobileInputClass, mobileInputFlexClass } from "./auth-styles";
+import {
+  pcInputClass,
+  pcInputErrorClass,
+  pcBtnClass,
+  mobileInputClass,
+  mobileInputFlexClass,
+  mobileInputErrorClass,
+  mobileInputErrorFlexClass,
+} from "./auth-styles";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { AuthFieldError, type AuthFieldErrors } from "./AuthFieldError";
+import { AuthFormNotice } from "./AuthFormNotice";
 
 export interface LoginFormProps {
   /** "pc" | "mobile" — 渲染桌面端或移动端布局 */
@@ -20,6 +30,12 @@ export interface LoginFormProps {
   mobileAgreed: boolean;
   agreementShake: number;
   loading: boolean;
+  /** 字段级内联错误 */
+  errors?: AuthFieldErrors;
+  /** 表单级错误（服务端返回），展示在协议勾选下方、提交按钮上方 */
+  formError?: string;
+  /** 表单顶部成功提示（如重置密码后回到登录） */
+  notice?: string;
   /** Setters */
   onLoginPhoneChange: (v: string) => void;
   onLoginPasswordChange: (v: string) => void;
@@ -42,48 +58,53 @@ export function AgreementCheckbox({
   onChange,
   agreementShake,
   disabled = false,
+  error,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   agreementShake: number;
   disabled?: boolean;
+  error?: string;
 }) {
   return (
-    <m.div
-      key={agreementShake}
-      initial={{ x: 0 }}
-      animate={{ x: [-5, 5, -5, 5, -3, 3, 0] }}
-      transition={{ duration: 0.4 }}
-    >
-      <Checkbox
-        id="login-agreement"
-        checked={checked}
-        onChange={onChange}
-        disabled={disabled}
-        label={
-          <span className="text-xs tracking-wide text-brand-charcoal/70">
-            我已阅读并同意
-            <a
-              href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
-            >
-              《用户协议》
-            </a>
-            和
-            <a
-              href="/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
-            >
-              《隐私政策》
-            </a>
-          </span>
-        }
-      />
-    </m.div>
+    <div>
+      <m.div
+        key={agreementShake}
+        initial={{ x: 0 }}
+        animate={{ x: [-5, 5, -5, 5, -3, 3, 0] }}
+        transition={{ duration: 0.4 }}
+      >
+        <Checkbox
+          id="login-agreement"
+          checked={checked}
+          onChange={onChange}
+          disabled={disabled}
+          label={
+            <span className="text-xs tracking-wide text-brand-charcoal/70">
+              我已阅读并同意
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+              >
+                《用户协议》
+              </a>
+              和
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+              >
+                《隐私政策》
+              </a>
+            </span>
+          }
+        />
+      </m.div>
+      <AuthFieldError message={error} />
+    </div>
   );
 }
 
@@ -99,6 +120,9 @@ export function LoginForm({
   mobileAgreed,
   agreementShake,
   loading,
+  errors,
+  formError,
+  notice,
   onLoginPhoneChange,
   onLoginPasswordChange,
   onLoginCodeChange,
@@ -121,40 +145,50 @@ export function LoginForm({
           登录
         </h1>
         <form id="pc-login-form" onSubmit={onSubmit} className="space-y-10">
+          <AuthFormNotice message={notice} tone="success" />
           <div>
             <input
               type="tel"
               required
               value={loginPhone}
               onChange={(e) => onLoginPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
-              className={pcInputClass}
+              className={errors?.phone ? pcInputErrorClass : pcInputClass}
               maxLength={11}
               autoComplete="tel"
               placeholder="手机号"
             />
+            <AuthFieldError message={errors?.phone} />
           </div>
 
           {loginMethod === "code" && (
             <>
-              <div className="relative flex gap-3">
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={loginCode}
-                  onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className={`${pcInputClass} flex-1`}
-                  autoComplete="one-time-code"
-                  placeholder="验证码"
-                />
-                <button
-                  type="button"
-                  onClick={onSendLoginCode}
-                  disabled={loginCodeSending || loginCodeCountdown > 0 || loginPhone.length !== 11}
-                  className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
-                >
-                  {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
-                </button>
+              <div>
+                <div className="relative flex gap-3">
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={loginCode}
+                    onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
+                    autoComplete="one-time-code"
+                    placeholder="验证码"
+                  />
+                  <button
+                    type="button"
+                    onClick={onSendLoginCode}
+                    disabled={loginCodeSending || loginCodeCountdown > 0 || loginPhone.length !== 11}
+                    className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+                  >
+                    {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
+                  </button>
+                </div>
+                <AuthFieldError message={errors?.code} />
+                {!errors?.code && loginCodeCountdown > 0 && (
+                  <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                    验证码已发送，请注意查收
+                  </p>
+                )}
               </div>
               <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
                 一直没收到验证码？该手机号可能尚未注册，可
@@ -171,25 +205,28 @@ export function LoginForm({
           )}
 
           {loginMethod === "password" && (
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={loginPassword}
-                onChange={(e) => onLoginPasswordChange(e.target.value)}
-                className={`${pcInputClass} pr-10`}
-                maxLength={128}
-                autoComplete="current-password"
-                placeholder="密码"
-              />
-              <button
-                type="button"
-                onClick={onShowPasswordToggle}
-                aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            <div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={loginPassword}
+                  onChange={(e) => onLoginPasswordChange(e.target.value)}
+                  className={`${errors?.password ? pcInputErrorClass : pcInputClass} pr-10`}
+                  maxLength={128}
+                  autoComplete="current-password"
+                  placeholder="密码"
+                />
+                <button
+                  type="button"
+                  onClick={onShowPasswordToggle}
+                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <AuthFieldError message={errors?.password} />
             </div>
           )}
 
@@ -217,7 +254,9 @@ export function LoginForm({
             checked={agreed}
             onChange={onMobileAgreedChange}
             agreementShake={agreementShake}
+            error={errors?.agreement}
           />
+          <AuthFormNotice message={formError} />
         </form>
 
         <div className="mt-10 flex flex-col gap-6 text-center">
@@ -282,6 +321,7 @@ export function LoginForm({
         />
       </div>
       <form id="mobile-login-form" onSubmit={onSubmit} className="w-full space-y-6">
+        <AuthFormNotice message={notice} tone="success" />
         <div>
           <input
             type="tel"
@@ -293,34 +333,43 @@ export function LoginForm({
             onChange={(e) => onLoginPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
             maxLength={11}
             placeholder="手机号"
-            className={mobileInputClass}
+            className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
           />
+          <AuthFieldError message={errors?.phone} />
         </div>
 
         {loginMethod === "code" && (
           <>
-            <div className="animate-fade-scale-in relative flex gap-2">
-              <input
-                type="text"
-                required
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                value={loginCode}
-                onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="验证码"
-                className={mobileInputFlexClass}
-              />
-              <div className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={onSendLoginCode}
-                  disabled={loginCodeCountdown > 0 || loginPhone.length !== 11 || loginCodeSending}
-                  className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
-                >
-                  {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
-                </button>
+            <div className="animate-fade-scale-in">
+              <div className="relative flex gap-2">
+                <input
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={loginCode}
+                  onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="验证码"
+                  className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
+                />
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={onSendLoginCode}
+                    disabled={loginCodeCountdown > 0 || loginPhone.length !== 11 || loginCodeSending}
+                    className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
+                  >
+                    {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
+                  </button>
+                </div>
               </div>
+              <AuthFieldError message={errors?.code} />
+              {!errors?.code && loginCodeCountdown > 0 && (
+                <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                  验证码已发送，请注意查收
+                </p>
+              )}
             </div>
             <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
               一直没收到验证码？该手机号可能尚未注册，可
@@ -337,24 +386,27 @@ export function LoginForm({
         )}
 
         {loginMethod === "password" && (
-          <div className="animate-fade-scale-in relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              value={loginPassword}
-              onChange={(e) => onLoginPasswordChange(e.target.value)}
-              placeholder="密码"
-              className={`${mobileInputClass} pr-10`}
-              maxLength={128}
-            />
-            <button
-              type="button"
-              onClick={onShowPasswordToggle}
-              aria-label={showPassword ? "隐藏密码" : "显示密码"}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+          <div className="animate-fade-scale-in">
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={loginPassword}
+                onChange={(e) => onLoginPasswordChange(e.target.value)}
+                placeholder="密码"
+                className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
+                maxLength={128}
+              />
+              <button
+                type="button"
+                onClick={onShowPasswordToggle}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <AuthFieldError message={errors?.password} />
           </div>
         )}
 
@@ -386,7 +438,9 @@ export function LoginForm({
           checked={agreed}
           onChange={onMobileAgreedChange}
           agreementShake={agreementShake}
+          error={errors?.agreement}
         />
+        <AuthFormNotice message={formError} />
       </form>
 
       <div className="flex flex-col gap-6">

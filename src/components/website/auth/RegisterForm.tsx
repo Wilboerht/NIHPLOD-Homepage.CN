@@ -4,13 +4,18 @@ import { m } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import {
   pcInputClass,
+  pcInputErrorClass,
   pcBtnClass,
   mobileInputClass,
   mobileInputFlexClass,
+  mobileInputErrorClass,
+  mobileInputErrorFlexClass,
   mobileBtnClass,
 } from "./auth-styles";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from "./auth-utils";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { AuthFieldError, type AuthFieldErrors } from "./AuthFieldError";
+import { AuthFormNotice } from "./AuthFormNotice";
 
 export interface RegisterFormProps {
   variant: "pc" | "mobile";
@@ -25,6 +30,10 @@ export interface RegisterFormProps {
   mobileAgreed: boolean;
   agreementShake: number;
   loading: boolean;
+  /** 字段级内联错误 */
+  errors?: AuthFieldErrors;
+  /** 表单级错误（服务端返回），展示在提交按钮上方 */
+  formError?: string;
   onRegNameChange: (v: string) => void;
   onRegPhoneChange: (v: string) => void;
   onRegCodeChange: (v: string) => void;
@@ -50,6 +59,8 @@ export function RegisterForm({
   mobileAgreed,
   agreementShake,
   loading,
+  errors,
+  formError,
   onRegNameChange,
   onRegPhoneChange,
   onRegCodeChange,
@@ -62,40 +73,43 @@ export function RegisterForm({
   onSwitchToLogin,
 }: RegisterFormProps) {
   const agreementCheckbox = (
-    <m.div
-      key={agreementShake}
-      initial={{ x: 0 }}
-      animate={{ x: [-5, 5, -5, 5, -3, 3, 0] }}
-      transition={{ duration: 0.4 }}
-    >
-      <Checkbox
-        id="register-agreement"
-        checked={mobileAgreed}
-        onChange={onMobileAgreedChange}
-        label={
-          <span className="text-xs tracking-wide text-brand-charcoal/70">
-            我已阅读并同意
-            <a
-              href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
-            >
-              《用户协议》
-            </a>
-            和
-            <a
-              href="/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
-            >
-              《隐私政策》
-            </a>
-          </span>
-        }
-      />
-    </m.div>
+    <div>
+      <m.div
+        key={agreementShake}
+        initial={{ x: 0 }}
+        animate={{ x: [-5, 5, -5, 5, -3, 3, 0] }}
+        transition={{ duration: 0.4 }}
+      >
+        <Checkbox
+          id="register-agreement"
+          checked={mobileAgreed}
+          onChange={onMobileAgreedChange}
+          label={
+            <span className="text-xs tracking-wide text-brand-charcoal/70">
+              我已阅读并同意
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+              >
+                《用户协议》
+              </a>
+              和
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+              >
+                《隐私政策》
+              </a>
+            </span>
+          }
+        />
+      </m.div>
+      <AuthFieldError message={errors?.agreement} />
+    </div>
   );
 
   if (variant === "pc") {
@@ -114,35 +128,46 @@ export function RegisterForm({
             autoComplete="name"
             placeholder="昵称或名字"
           />
-          <input
-            type="tel"
-            required
-            value={regPhone}
-            onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
-            className={pcInputClass}
-            maxLength={11}
-            autoComplete="tel"
-            placeholder="手机号"
-          />
-          <div className="relative flex gap-3">
+          <div>
             <input
-              type="text"
+              type="tel"
               required
-              maxLength={6}
-              value={regCode}
-              onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className={`${pcInputClass} flex-1`}
-              autoComplete="one-time-code"
-              placeholder="验证码"
+              value={regPhone}
+              onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
+              className={errors?.phone ? pcInputErrorClass : pcInputClass}
+              maxLength={11}
+              autoComplete="tel"
+              placeholder="手机号"
             />
-            <button
-              type="button"
-              onClick={onSendRegCode}
-              disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
-              className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
-            >
-              {regCountdown > 0 ? `${regCountdown}s` : "获取"}
-            </button>
+            <AuthFieldError message={errors?.phone} />
+          </div>
+          <div>
+            <div className="relative flex gap-3">
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={regCode}
+                onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
+                autoComplete="one-time-code"
+                placeholder="验证码"
+              />
+              <button
+                type="button"
+                onClick={onSendRegCode}
+                disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
+                className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
+              >
+                {regCountdown > 0 ? `${regCountdown}s` : "获取"}
+              </button>
+            </div>
+            <AuthFieldError message={errors?.code} />
+            {!errors?.code && regCountdown > 0 && (
+              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                验证码已发送，请注意查收
+              </p>
+            )}
           </div>
           <p className="pt-1 text-[11px] leading-relaxed text-brand-charcoal/50">
             一直没收到验证码？该手机号可能已注册，可
@@ -155,49 +180,56 @@ export function RegisterForm({
             </button>
             或使用登录页的「忘记密码」
           </p>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={PASSWORD_MIN_LENGTH}
-              value={regPassword}
-              onChange={(e) => onRegPasswordChange(e.target.value)}
-              className={`${pcInputClass} pr-10`}
-              maxLength={PASSWORD_MAX_LENGTH}
-              autoComplete="new-password"
-              placeholder="密码（8-32位，含大小写字母和数字）"
-            />
-            <button
-              type="button"
-              onClick={onShowPasswordToggle}
-              aria-label={showPassword ? "隐藏密码" : "显示密码"}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+          <div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={PASSWORD_MIN_LENGTH}
+                value={regPassword}
+                onChange={(e) => onRegPasswordChange(e.target.value)}
+                className={`${errors?.password ? pcInputErrorClass : pcInputClass} pr-10`}
+                maxLength={PASSWORD_MAX_LENGTH}
+                autoComplete="new-password"
+                placeholder="密码（8-32位，含大小写字母和数字）"
+              />
+              <button
+                type="button"
+                onClick={onShowPasswordToggle}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <AuthFieldError message={errors?.password} />
           </div>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={PASSWORD_MIN_LENGTH}
-              value={regConfirmPassword}
-              onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
-              className={`${pcInputClass} pr-10`}
-              maxLength={PASSWORD_MAX_LENGTH}
-              autoComplete="new-password"
-              placeholder="确认密码"
-            />
-            <button
-              type="button"
-              onClick={onShowPasswordToggle}
-              aria-label={showPassword ? "隐藏密码" : "显示密码"}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
+          <div>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={PASSWORD_MIN_LENGTH}
+                value={regConfirmPassword}
+                onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
+                className={`${errors?.confirmPassword ? pcInputErrorClass : pcInputClass} pr-10`}
+                maxLength={PASSWORD_MAX_LENGTH}
+                autoComplete="new-password"
+                placeholder="确认密码"
+              />
+              <button
+                type="button"
+                onClick={onShowPasswordToggle}
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <AuthFieldError message={errors?.confirmPassword} />
           </div>
           {agreementCheckbox}
+          <AuthFormNotice message={formError} />
           <div className="pt-4">
             <button type="submit" disabled={loading} className={pcBtnClass}>
               {loading ? (
@@ -249,28 +281,37 @@ export function RegisterForm({
             onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
             maxLength={11}
             placeholder="手机号"
-            className={mobileInputClass}
+            className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
           />
+          <AuthFieldError message={errors?.phone} />
         </div>
-        <div className="relative flex gap-2">
-          <input
-            type="text"
-            required
-            maxLength={6}
-            value={regCode}
-            onChange={(e) => onRegCodeChange(e.target.value)}
-            placeholder="验证码"
-            autoComplete="one-time-code"
-            className={mobileInputFlexClass}
-          />
-          <button
-            type="button"
-            onClick={onSendRegCode}
-            disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
-            className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
-          >
-            {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
-          </button>
+        <div>
+          <div className="relative flex gap-2">
+            <input
+              type="text"
+              required
+              maxLength={6}
+              value={regCode}
+              onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="验证码"
+              autoComplete="one-time-code"
+              className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
+            />
+            <button
+              type="button"
+              onClick={onSendRegCode}
+              disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
+              className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
+            >
+              {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
+            </button>
+          </div>
+          <AuthFieldError message={errors?.code} />
+          {!errors?.code && regCountdown > 0 && (
+            <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+              验证码已发送，请注意查收
+            </p>
+          )}
         </div>
         <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
           一直没收到验证码？该手机号可能已注册，可
@@ -283,47 +324,54 @@ export function RegisterForm({
           </button>
           或使用登录页的「忘记密码」
         </p>
-        <div className="relative">
-          <input
-            type={showPassword ? "text" : "password"}
-            required
-            minLength={PASSWORD_MIN_LENGTH}
-            value={regPassword}
-            onChange={(e) => onRegPasswordChange(e.target.value)}
-            placeholder="密码（8-32位，含大小写字母和数字）"
-            maxLength={PASSWORD_MAX_LENGTH}
-            className={`${mobileInputClass} pr-10`}
-          />
-          <button
-            type="button"
-            onClick={onShowPasswordToggle}
-            aria-label={showPassword ? "隐藏密码" : "显示密码"}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+        <div>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={PASSWORD_MIN_LENGTH}
+              value={regPassword}
+              onChange={(e) => onRegPasswordChange(e.target.value)}
+              placeholder="密码（8-32位，含大小写字母和数字）"
+              maxLength={PASSWORD_MAX_LENGTH}
+              className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={onShowPasswordToggle}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          <AuthFieldError message={errors?.password} />
         </div>
-        <div className="relative">
-          <input
-            type={showPassword ? "text" : "password"}
-            required
-            minLength={PASSWORD_MIN_LENGTH}
-            value={regConfirmPassword}
-            onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
-            placeholder="确认密码"
-            maxLength={PASSWORD_MAX_LENGTH}
-            className={`${mobileInputClass} pr-10`}
-          />
-          <button
-            type="button"
-            onClick={onShowPasswordToggle}
-            aria-label={showPassword ? "隐藏密码" : "显示密码"}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+        <div>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={PASSWORD_MIN_LENGTH}
+              value={regConfirmPassword}
+              onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
+              placeholder="确认密码"
+              maxLength={PASSWORD_MAX_LENGTH}
+              className={`${errors?.confirmPassword ? mobileInputErrorClass : mobileInputClass} pr-10`}
+            />
+            <button
+              type="button"
+              onClick={onShowPasswordToggle}
+              aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          <AuthFieldError message={errors?.confirmPassword} />
         </div>
         {agreementCheckbox}
+        <AuthFormNotice message={formError} />
         <div className="pt-2">
           <button type="submit" disabled={loading} className={mobileBtnClass}>
             <span className="relative z-10 flex items-center justify-center gap-2">
