@@ -238,7 +238,7 @@ export function UserCenterModal() {
                     ease: "linear",
                   }}
                   style={{ willChange: "transform" }}
-                  className="absolute h-[110%] w-[110%] rounded-full bg-stone-400/15 blur-[130px]"
+                  className="absolute h-[110%] w-[110%] rounded-full bg-brand-gold/10 blur-[130px]"
                 />
               </div>
 
