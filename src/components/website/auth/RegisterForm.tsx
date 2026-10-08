@@ -169,17 +169,6 @@ export function RegisterForm({
               </p>
             )}
           </div>
-          <p className="pt-1 text-[11px] leading-relaxed text-brand-charcoal/50">
-            一直没收到验证码？该手机号可能已注册，可
-            <button
-              type="button"
-              onClick={onSwitchToLogin}
-              className="underline decoration-brand-charcoal/25 underline-offset-2 transition-colors hover:text-brand-charcoal/80"
-            >
-              直接登录
-            </button>
-            或使用登录页的「忘记密码」
-          </p>
           <div>
             <div className="relative">
               <input
@@ -313,17 +302,6 @@ export function RegisterForm({
             </p>
           )}
         </div>
-        <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
-          一直没收到验证码？该手机号可能已注册，可
-          <button
-            type="button"
-            onClick={onSwitchToLogin}
-            className="underline decoration-brand-charcoal/25 underline-offset-2 transition-colors hover:text-brand-charcoal/80"
-          >
-            直接登录
-          </button>
-          或使用登录页的「忘记密码」
-        </p>
         <div>
           <div className="relative">
             <input
