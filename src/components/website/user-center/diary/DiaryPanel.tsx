@@ -591,7 +591,7 @@ export function DiaryPanel() {
                       <ScanFace className="h-7 w-7 text-brand-charcoal/55" strokeWidth={1.5} />
                     </div>
                     <p className="mb-7 text-[16px] font-medium tracking-[0.04em] text-stone-800">
-                      开始你的护肤档案
+                      开启你的护肤档案
                     </p>
                     <ol className="mb-9 flex flex-col items-start gap-2.5">
                       <li className="flex items-center gap-2.5">
