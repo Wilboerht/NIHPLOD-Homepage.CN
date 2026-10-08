@@ -585,7 +585,7 @@ export function DiaryPanel() {
                 {isEmpty ? (
                   /* 新用户 hero 空态：跨列居中（图标 + 价值主张 + 步骤化引导 + 主「去测肤」），
                      步骤列表传达递进：一次测肤 → 生成记录，两次 → 解锁趋势，坚持打卡 → 送积分兑产品；
-                     「今日打卡」对新用户动机弱，降级为主按钮下方的文字链，避免稀释主 CTA */
+                     「去测肤」「今日打卡」平权并排（用户要求不分主次），有数据后进入双列布局 */
                   <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
                     <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-brand-charcoal/10 bg-brand-charcoal/[0.04]">
                       <ScanFace className="h-7 w-7 text-brand-charcoal/55" strokeWidth={1.5} />
@@ -619,23 +619,25 @@ export function DiaryPanel() {
                         </span>
                       </li>
                     </ol>
-                    <a
-                      href={`${ADVISOR_URL}/?start=1`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-brand-cocoa px-5 text-[12px] font-medium tracking-[0.05em] text-white transition-colors hover:bg-brand-cocoa-dark active:opacity-80"
-                    >
-                      去测肤
-                      <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                      className="mt-4 inline-flex cursor-pointer items-center gap-1 text-[12px] text-brand-charcoal/50 underline decoration-brand-charcoal/20 underline-offset-4 transition-colors hover:text-brand-charcoal"
-                    >
-                      <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-                      今日打卡
-                    </button>
+                    {/* 双 CTA 平权并排：直角发丝边框 + font-light + 宽字距，
+                        对齐品牌编辑风按钮语言（同登录页 pcBtnClass），去掉胶囊与图标避免油腻 */}
+                    <div className="flex items-center justify-center gap-3">
+                      <a
+                        href={`${ADVISOR_URL}/?start=1`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-9 items-center justify-center border border-brand-charcoal/25 px-6 text-[12px] font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                      >
+                        去测肤
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+                        className="inline-flex h-9 cursor-pointer items-center justify-center border border-brand-charcoal/25 px-6 text-[12px] font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                      >
+                        今日打卡
+                      </button>
+                    </div>
                   </div>
                 ) : (
                 <>
