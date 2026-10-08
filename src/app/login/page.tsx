@@ -470,6 +470,19 @@ function LoginPageContent() {
     clearFieldError("agreement");
   };
 
+  // PoW 人机验证（无感求解）：提交时后台求解，求解期间按钮原位显示「核验中…」
+  const [captchaSolving, setCaptchaSolving] = useState(false);
+
+  /** 求解 PoW token（期间置 captchaSolving，供按钮展示「核验中…」） */
+  const runWithCaptcha = async (): Promise<string> => {
+    setCaptchaSolving(true);
+    try {
+      return await solveCaptcha();
+    } finally {
+      setCaptchaSolving(false);
+    }
+  };
+
   // Countdown timers
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -554,13 +567,15 @@ function LoginPageContent() {
       setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
       return;
     }
-    setLoading(true);
     try {
       if (loginMethod === "code") {
+        // 验证码登录：短信码即凭证，无需人机验证
+        setLoading(true);
         await apiPost("/api/auth/login", { phone: loginPhone, code: loginCode });
       } else {
-        // 密码登录先过 invisible PoW 人机验证（求解耗时并入 loading 态，用户无感）
-        const captchaToken = await solveCaptcha();
+        // 密码登录先过 PoW 人机验证（求解期间按钮显示「核验中…」）
+        const captchaToken = await runWithCaptcha();
+        setLoading(true);
         await apiPost("/api/auth/login-password", {
           phone: loginPhone,
           password: loginPassword,
@@ -661,9 +676,9 @@ function LoginPageContent() {
       return;
     }
     setFormError("");
-    setRegCodeSending(true);
     try {
-      const captchaToken = await solveCaptcha();
+      const captchaToken = await runWithCaptcha();
+      setRegCodeSending(true);
       await apiPost("/api/auth/send-code", { phone: regPhone, type: "register", captchaToken });
       // 发送成功由倒计时与验证码框下方的"已发送"提示表达
       setRegCountdown(60);
@@ -690,9 +705,9 @@ function LoginPageContent() {
       return;
     }
     setFormError("");
-    setRegCodeSending(true);
     try {
-      const captchaToken = await solveCaptcha();
+      const captchaToken = await runWithCaptcha();
+      setRegCodeSending(true);
       await apiPost("/api/auth/send-code", { phone: regPhone, type: "bind", captchaToken });
       setRegCountdown(60);
     } catch (error) {
@@ -710,9 +725,9 @@ function LoginPageContent() {
   const handleSendResetLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
-    setLoading(true);
     try {
-      const captchaToken = await solveCaptcha();
+      const captchaToken = await runWithCaptcha();
+      setLoading(true);
       await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset", captchaToken });
       // 发送成功由下一步"验证码已发送至 138****xxxx"表达
       setForgotSubmitted(true);
@@ -734,9 +749,9 @@ function LoginPageContent() {
       return;
     }
     setFormError("");
-    setLoading(true);
     try {
-      const captchaToken = await solveCaptcha();
+      const captchaToken = await runWithCaptcha();
+      setLoading(true);
       await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset", captchaToken });
       setResetCountdown(60);
       setMobileForgotStep("code");
@@ -827,9 +842,9 @@ function LoginPageContent() {
       return;
     }
     setFormError("");
-    setLoginCodeSending(true);
     try {
-      const captchaToken = await solveCaptcha();
+      const captchaToken = await runWithCaptcha();
+      setLoginCodeSending(true);
       await apiPost("/api/auth/send-code", { phone: loginPhone, type: "login", captchaToken });
       setLoginCodeCountdown(60);
     } catch (error) {
@@ -957,6 +972,7 @@ function LoginPageContent() {
             errors={fieldErrors}
             formError={formError}
             notice={loginNotice}
+            captchaSolving={captchaSolving}
             onLoginPhoneChange={fieldChange(setLoginPhone, "phone")}
             onLoginPasswordChange={fieldChange(setLoginPassword, "password")}
             onLoginCodeChange={fieldChange(setLoginCode, "code")}
@@ -994,6 +1010,7 @@ function LoginPageContent() {
             loading={loading}
             errors={fieldErrors}
             formError={formError}
+            captchaSolving={captchaSolving}
             onRegNameChange={fieldChange(setRegName)}
             onRegPhoneChange={fieldChange(setRegPhone, "phone")}
             onRegCodeChange={fieldChange(setRegCode, "code")}
@@ -1021,6 +1038,7 @@ function LoginPageContent() {
             loading={loading}
             errors={fieldErrors}
             formError={formError}
+            captchaSolving={captchaSolving}
             onForgotPhoneChange={fieldChange(setForgotPhone, "phone")}
             onResetCodeChange={fieldChange(setResetCode, "code")}
             onResetNewPasswordChange={fieldChange(setResetNewPassword, "password")}
@@ -1056,6 +1074,7 @@ function LoginPageContent() {
             agreementShake={agreementShake}
             errors={fieldErrors}
             formError={formError}
+            captchaSolving={captchaSolving}
             onRegPhoneChange={fieldChange(setRegPhone, "phone")}
             onRegCodeChange={fieldChange(setRegCode, "code")}
             onRegPasswordChange={fieldChange(setRegPassword, "password")}

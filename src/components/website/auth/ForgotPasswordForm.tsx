@@ -32,6 +32,8 @@ export interface ForgotPasswordFormProps {
   errors?: AuthFieldErrors;
   /** 表单级错误（服务端返回），展示在操作按钮上方 */
   formError?: string;
+  /** PoW 人机验证求解中：按钮原位显示「核验中…」 */
+  captchaSolving?: boolean;
   onForgotPhoneChange: (v: string) => void;
   onResetCodeChange: (v: string) => void;
   onResetNewPasswordChange: (v: string) => void;
@@ -59,6 +61,7 @@ export function ForgotPasswordForm({
   loading,
   errors,
   formError,
+  captchaSolving,
   onForgotPhoneChange,
   onResetCodeChange,
   onResetNewPasswordChange,
@@ -159,10 +162,14 @@ export function ForgotPasswordForm({
               <button
                 type="button"
                 onClick={onSendResetLink}
-                disabled={loading || resetCountdown > 0}
+                disabled={loading || resetCountdown > 0 || captchaSolving}
                 className="text-xs tracking-wider text-brand-charcoal/70 transition-colors hover:text-brand-charcoal disabled:opacity-40"
               >
-                {resetCountdown > 0 ? `${resetCountdown}s 后重新发送` : "重新发送验证码"}
+                {captchaSolving
+                  ? "核验中…"
+                  : resetCountdown > 0
+                    ? `${resetCountdown}s 后重新发送`
+                    : "重新发送验证码"}
               </button>
             </div>
           </form>
@@ -187,8 +194,10 @@ export function ForgotPasswordForm({
               <AuthFieldError message={errors?.phone} />
             </div>
             <AuthFormNotice message={formError} />
-            <button type="submit" disabled={loading} className={pcBtnClass}>
-              {loading ? (
+            <button type="submit" disabled={loading || captchaSolving} className={pcBtnClass}>
+              {captchaSolving ? (
+                "核验中…"
+              ) : loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-charcoal/20 border-t-brand-charcoal" />
               ) : (
                 "发送验证码"
@@ -244,10 +253,10 @@ export function ForgotPasswordForm({
             <button
               type="button"
               onClick={onMobileSendResetCode}
-              disabled={loading || forgotPhone.length !== 11}
+              disabled={loading || forgotPhone.length !== 11 || captchaSolving}
               className={mobileBtnClass}
             >
-              {loading ? "发送中..." : "找回密码"}
+              {captchaSolving ? "核验中…" : loading ? "发送中..." : "找回密码"}
             </button>
           </div>
         )}
@@ -303,7 +312,9 @@ export function ForgotPasswordForm({
               </button>
             </div>
             <p className="text-center text-xs font-light text-brand-charcoal/70">
-              {resetCountdown > 0 ? (
+              {captchaSolving ? (
+                "核验中…"
+              ) : resetCountdown > 0 ? (
                 `${resetCountdown}秒后可重新发送`
               ) : (
                 <button

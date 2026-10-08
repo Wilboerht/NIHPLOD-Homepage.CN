@@ -7,7 +7,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
@@ -88,6 +88,30 @@ describe("LoginPage", () => {
 
     expect(await screen.findByText("验证码已发送，请注意查收")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "60s" })).toBeInTheDocument();
+  });
+
+  it("人机验证求解期间按钮原位显示「核验中…」并禁用", async () => {
+    // 求解器挂起直到手动释放，才能观测到「核验中…」中间态
+    let release!: (token: string) => void;
+    const { solveCaptcha } = await import("@/lib/captcha-client");
+    (solveCaptcha as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          release = resolve;
+        })
+    );
+    mockApiPost.mockResolvedValue({});
+    render(<LoginPage />);
+
+    switchToCodeLogin();
+    fireEvent.click(screen.getByRole("button", { name: "获取验证码" }));
+
+    expect(await screen.findByRole("button", { name: "核验中…" })).toBeDisabled();
+
+    await act(async () => {
+      release("token-1");
+    });
+    expect(await screen.findByRole("button", { name: "60s" })).toBeInTheDocument();
   });
 
   it("密码过期时切换到找回密码，并内联提示短信重置与客服兜底文案", async () => {

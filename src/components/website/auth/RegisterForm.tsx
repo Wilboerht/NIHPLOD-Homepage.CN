@@ -34,6 +34,8 @@ export interface RegisterFormProps {
   errors?: AuthFieldErrors;
   /** 表单级错误（服务端返回），展示在提交按钮上方 */
   formError?: string;
+  /** PoW 人机验证求解中：按钮原位显示「核验中…」 */
+  captchaSolving?: boolean;
   onRegNameChange: (v: string) => void;
   onRegPhoneChange: (v: string) => void;
   onRegCodeChange: (v: string) => void;
@@ -61,6 +63,7 @@ export function RegisterForm({
   loading,
   errors,
   formError,
+  captchaSolving,
   onRegNameChange,
   onRegPhoneChange,
   onRegCodeChange,
@@ -156,10 +159,10 @@ export function RegisterForm({
               <button
                 type="button"
                 onClick={onSendRegCode}
-                disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
+                disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11 || captchaSolving}
                 className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
               >
-                {regCountdown > 0 ? `${regCountdown}s` : "获取"}
+                {captchaSolving ? "核验中…" : regCountdown > 0 ? `${regCountdown}s` : "获取"}
               </button>
             </div>
             <AuthFieldError message={errors?.code} />
@@ -289,10 +292,10 @@ export function RegisterForm({
             <button
               type="button"
               onClick={onSendRegCode}
-              disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11}
+              disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11 || captchaSolving}
               className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
             >
-              {regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
+              {captchaSolving ? "核验中…" : regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}
             </button>
           </div>
           <AuthFieldError message={errors?.code} />
