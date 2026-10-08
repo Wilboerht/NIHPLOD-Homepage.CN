@@ -107,6 +107,8 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "获取验证码" }));
 
     expect(await screen.findByRole("button", { name: "核验中…" })).toBeDisabled();
+    // 求解态按流程隔离：同屏的登录提交按钮不受影响
+    expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
 
     await act(async () => {
       release("token-1");

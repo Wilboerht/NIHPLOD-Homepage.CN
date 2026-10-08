@@ -36,8 +36,10 @@ export interface LoginFormProps {
   formError?: string;
   /** 表单顶部成功提示（如重置密码后回到登录） */
   notice?: string;
-  /** PoW 人机验证求解中：按钮原位显示「核验中…」 */
-  captchaSolving?: boolean;
+  /** PoW 求解中（密码登录提交）：登录按钮原位显示「核验中…」 */
+  submitVerifying?: boolean;
+  /** PoW 求解中（发送登录验证码）：发码按钮原位显示「核验中…」 */
+  codeVerifying?: boolean;
   /** Setters */
   onLoginPhoneChange: (v: string) => void;
   onLoginPasswordChange: (v: string) => void;
@@ -125,7 +127,8 @@ export function LoginForm({
   errors,
   formError,
   notice,
-  captchaSolving,
+  submitVerifying,
+  codeVerifying,
   onLoginPhoneChange,
   onLoginPasswordChange,
   onLoginCodeChange,
@@ -183,11 +186,11 @@ export function LoginForm({
                     loginCodeSending ||
                     loginCodeCountdown > 0 ||
                     loginPhone.length !== 11 ||
-                    captchaSolving
+                    codeVerifying
                   }
                   className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
                 >
-                  {captchaSolving
+                  {codeVerifying
                     ? "核验中…"
                     : loginCodeCountdown > 0
                       ? `${loginCodeCountdown}s`
@@ -262,10 +265,10 @@ export function LoginForm({
           <button
             type="submit"
             form="pc-login-form"
-            disabled={loading || captchaSolving}
-            className={`${pcBtnClass} ${!agreed && !loading && !captchaSolving ? "cursor-not-allowed opacity-40" : ""}`}
+            disabled={loading || submitVerifying}
+            className={`${pcBtnClass} ${!agreed && !loading && !submitVerifying ? "cursor-not-allowed opacity-40" : ""}`}
           >
-            {captchaSolving ? (
+            {submitVerifying ? (
               "核验中…"
             ) : loading ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-charcoal/20 border-t-brand-charcoal" />
@@ -361,11 +364,11 @@ export function LoginForm({
                     loginCodeCountdown > 0 ||
                     loginPhone.length !== 11 ||
                     loginCodeSending ||
-                    captchaSolving
+                    codeVerifying
                   }
                   className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
                 >
-                  {captchaSolving
+                  {codeVerifying
                     ? "核验中…"
                     : loginCodeCountdown > 0
                       ? `${loginCodeCountdown}s`
@@ -445,11 +448,11 @@ export function LoginForm({
           <button
             type="submit"
             form="mobile-login-form"
-            disabled={loading || captchaSolving}
-            className={`min-h-12 w-full border border-brand-charcoal/25 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!agreed && !loading && !captchaSolving ? "cursor-not-allowed opacity-40" : ""}`}
+            disabled={loading || submitVerifying}
+            className={`min-h-12 w-full border border-brand-charcoal/25 py-3.5 text-sm font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98] disabled:opacity-40 ${!agreed && !loading && !submitVerifying ? "cursor-not-allowed opacity-40" : ""}`}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              {captchaSolving ? (
+              {submitVerifying ? (
                 "核验中…"
               ) : loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-charcoal/20 border-t-brand-charcoal" />
