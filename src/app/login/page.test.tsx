@@ -2,7 +2,7 @@
 
 /**
  * 登录页 UX 行为测试
- * 覆盖：mock 短信（SMS_UNAVAILABLE）提示、密码过期兜底文案、协议未勾选文字提示、
+ * 覆盖：mock 短信（SMS_UNAVAILABLE）内联提示、密码过期兜底文案、协议未勾选内联提示、
  * 已登录访问 /login 的跳转（含 SSO 场景豁免）
  */
 import React from "react";
@@ -11,8 +11,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
-const mockToastSuccess = vi.fn();
-const mockToastError = vi.fn();
 const mockRefreshUser = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -25,10 +23,6 @@ vi.mock("@/hooks/useMediaQuery", () => ({ useIsMobile: () => false }));
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
-}));
-
-vi.mock("@/components/ui/Toast", () => ({
-  useToast: () => ({ success: mockToastSuccess, error: mockToastError }),
 }));
 
 vi.mock("@/lib/api-client", async () => {
@@ -66,38 +60,34 @@ describe("LoginPage", () => {
     setupLoggedOut();
   });
 
-  it("短信服务不可用（SMS_UNAVAILABLE）时显示明确提示且不进入倒计时", async () => {
+  it("短信服务不可用（SMS_UNAVAILABLE）时内联显示明确提示且不进入倒计时", async () => {
     mockApiPost.mockRejectedValue(new ApiError("SMS_UNAVAILABLE", "短信服务暂不可用", 503));
     render(<LoginPage />);
 
     switchToCodeLogin();
     fireEvent.click(screen.getByRole("button", { name: "获取验证码" }));
 
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(SMS_UNAVAILABLE_HINT);
-    });
-    // 不得谎称"已发送"，也不得开始重发倒计时
-    expect(mockToastSuccess).not.toHaveBeenCalled();
+    // 内联字段错误（验证码框下方），不得谎称"已发送"，也不得开始重发倒计时
+    expect(await screen.findByText(SMS_UNAVAILABLE_HINT)).toBeInTheDocument();
+    expect(screen.queryByText("验证码已发送，请注意查收")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "获取验证码" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^\d+s$/ })).not.toBeInTheDocument();
   });
 
-  it("验证码发送成功时提示已发送并开始 60s 倒计时", async () => {
+  it("验证码发送成功时内联提示已发送并开始 60s 倒计时", async () => {
     mockApiPost.mockResolvedValue({});
     render(<LoginPage />);
 
     switchToCodeLogin();
     fireEvent.click(screen.getByRole("button", { name: "获取验证码" }));
 
-    await waitFor(() => {
-      expect(mockToastSuccess).toHaveBeenCalledWith("验证码已发送");
-    });
+    expect(await screen.findByText("验证码已发送，请注意查收")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "60s" })).toBeInTheDocument();
   });
 
-  it("密码过期时提示短信重置并附客服兜底文案，同时切换到找回密码", async () => {
+  it("密码过期时切换到找回密码，并内联提示短信重置与客服兜底文案", async () => {
     mockApiPost.mockRejectedValue(new ApiError("PASSWORD_EXPIRED", "密码已过期", 403));
-    render(<LoginPage />);
+    const { rerender } = render(<LoginPage />);
 
     fireEvent.change(screen.getByPlaceholderText("手机号"), { target: { value: "13800138000" } });
     fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "Passw0rd" } });
@@ -105,27 +95,29 @@ describe("LoginPage", () => {
     fireEvent.submit(document.getElementById("pc-login-form")!);
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(
-        expect.stringContaining("service@nihplod.cn 人工处理")
-      );
+      expect(mockReplace).toHaveBeenCalledWith("/login?mode=reset");
     });
-    expect(mockReplace).toHaveBeenCalledWith("/login?mode=reset");
+    // 模拟路由已切换到 reset 模式（mock 的 router.replace 不会真正改 URL）：
+    // 错误说明经 pendingModePayload 在模式切换完成后落地为找回密码表单的内联错误
+    mockUseSearchParams.mockReturnValue(new URLSearchParams("mode=reset"));
+    rerender(<LoginPage />);
+    expect(await screen.findByText(/service@nihplod\.cn 人工处理/)).toBeInTheDocument();
   });
 
-  it("未勾选协议时除抖动动画外给出文字错误提示", async () => {
+  it("未勾选协议时除抖动动画外给出内联文字错误提示", async () => {
     render(<LoginPage />);
 
     fireEvent.change(screen.getByPlaceholderText("手机号"), { target: { value: "13800138000" } });
     fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "Passw0rd" } });
     fireEvent.submit(document.getElementById("pc-login-form")!);
 
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith("请先阅读并同意《用户协议》和《隐私政策》");
-    });
+    expect(
+      await screen.findByText("请先阅读并同意《用户协议》和《隐私政策》")
+    ).toBeInTheDocument();
     expect(mockApiPost).not.toHaveBeenCalled();
   });
 
-  it("登录成功后淡入打勾成功态（不再弹成功 toast），最短展示后再跳转", async () => {
+  it("登录成功后淡入打勾成功态，最短展示后再跳转", async () => {
     mockApiPost.mockResolvedValue({});
     render(<LoginPage />);
 
@@ -137,19 +129,17 @@ describe("LoginPage", () => {
     // 表单淡出 → 成功视图淡入（role=status 供读屏播报）
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("登录成功");
-    // 成功过渡替代 toast，且最短展示期内尚未跳转
-    expect(mockToastSuccess).not.toHaveBeenCalled();
+    // 最短展示期内尚未跳转
     expect(mockPush).not.toHaveBeenCalled();
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"), { timeout: 3000 });
   });
 
-  it("会话过期（expired=1）时在面板内嵌提示登录已过期，不再弹 toast", async () => {
+  it("会话过期（expired=1）时在面板内嵌提示登录已过期", async () => {
     mockUseSearchParams.mockReturnValue(new URLSearchParams("expired=1"));
     render(<LoginPage />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("登录已过期，请重新登录");
-    expect(mockToastError).not.toHaveBeenCalled();
   });
 
   it("已登录用户直接访问 /login（无 SSO 参数）时重定向到首页", async () => {

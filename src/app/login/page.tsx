@@ -9,7 +9,7 @@
  * - PC：右侧固定白色面板，从右侧滑入。
  * - 移动端：全屏米色面板，从右侧滑入。
  */
-import { useState, useEffect, Suspense, useCallback } from "react";
+import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import { useMounted } from "@/hooks/useMounted";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -17,7 +17,6 @@ import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ChevronLeft, Clock } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/Toast";
 import { apiPost, ApiError } from "@/lib/api-client";
 import { SESSION_EXPIRED_HINT_KEY } from "@/lib/fetch-with-auth";
 import { isSafeSameOriginUrlOrPath } from "@/lib/url-safety";
@@ -27,6 +26,7 @@ import { LoginForm } from "@/components/website/auth/LoginForm";
 import { RegisterForm } from "@/components/website/auth/RegisterForm";
 import { ForgotPasswordForm } from "@/components/website/auth/ForgotPasswordForm";
 import { WechatBindForm } from "@/components/website/auth/WechatBindForm";
+import type { AuthFieldErrors } from "@/components/website/auth/AuthFieldError";
 
 type AuthMode = "login" | "register" | "reset" | "consent" | "wechat-bind";
 
@@ -166,7 +166,6 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
-  const toast = useToast();
   const { user, isLoading: authLoading, refreshUser } = useAuth();
 
   const returnTo = searchParams.get("return_to");
@@ -279,6 +278,20 @@ function LoginPageContent() {
 
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentError, setConsentError] = useState("");
+
+  // 内联错误提示（替代浮动 toast，同一时刻只有一个模式可见，故各模式共用）
+  /** 字段级错误：展示在对应输入框下方 */
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
+  /** 表单级错误（服务端返回）：展示在提交按钮上方 */
+  const [formError, setFormError] = useState("");
+  /** 重置密码成功后回到登录页的顶部成功提示 */
+  const [loginNotice, setLoginNotice] = useState("");
+  /** 跨模式携带的提示/预填：模式切换时的渲染期重置会清空表单状态，需在切换完成后再写入 */
+  const pendingModePayload = useRef<{
+    loginPhone?: string;
+    loginNotice?: string;
+    resetError?: string;
+  } | null>(null);
 
   const isSafeReturnTo = useCallback((url: string): boolean => {
     // 统一走 src/lib/url-safety：拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站）
@@ -416,7 +429,45 @@ function LoginPageContent() {
     setResetCode("");
     setResetNewPassword("");
     setResetConfirmPassword("");
+    setFieldErrors({});
+    setFormError("");
+    setLoginNotice("");
   }
+
+  // 跨模式提示/预填的落地：渲染期重置完成后（effect 晚于渲染期 setState 生效）再写入，
+  // 用于"密码过期跳重置页带错误说明"、"重置成功回登录页带成功提示+预填手机号"
+  useEffect(() => {
+    const pending = pendingModePayload.current;
+    if (!pending) return;
+    if (mode === "login") {
+      pendingModePayload.current = null;
+      if (pending.loginPhone !== undefined) setLoginPhone(pending.loginPhone);
+      if (pending.loginNotice) setLoginNotice(pending.loginNotice);
+    } else if (mode === "reset") {
+      pendingModePayload.current = null;
+      if (pending.resetError) setFormError(pending.resetError);
+    }
+  }, [mode]);
+
+  /** 清除某个字段的内联错误 */
+  const clearFieldError = (key: keyof AuthFieldErrors) => {
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  };
+
+  /** 字段输入回调：写入新值，同时清除该字段错误与表单级错误 */
+  const fieldChange = (setter: (v: string) => void, key?: keyof AuthFieldErrors) => {
+    return (v: string) => {
+      setter(v);
+      if (key) clearFieldError(key);
+      setFormError((prev) => (prev ? "" : prev));
+    };
+  };
+
+  /** 协议勾选变化：勾选/取消都清除协议错误 */
+  const handleAgreedChange = (v: boolean) => {
+    setMobileAgreed(v);
+    clearFieldError("agreement");
+  };
 
   // Countdown timers
   useEffect(() => {
@@ -494,9 +545,12 @@ function LoginPageContent() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
+    setFormError("");
+    setLoginNotice("");
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
-      toast.error("请先阅读并同意《用户协议》和《隐私政策》");
+      setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
       return;
     }
     setLoading(true);
@@ -511,12 +565,13 @@ function LoginPageContent() {
       // 密码过期（密码登录/短信登录均可能）：引导进入"忘记密码"短信重置闭环。
       // 同时提示短信不可用时的兜底渠道（生产 mock 短信场景下短信重置走不通）。
       if (error instanceof ApiError && error.code === "PASSWORD_EXPIRED") {
-        toast.error(
-          "密码已过期，请通过短信验证码重置密码；如无法接收短信验证码，请联系客服 service@nihplod.cn 人工处理"
-        );
+        pendingModePayload.current = {
+          resetError:
+            "密码已过期，请通过短信验证码重置密码；如无法接收短信验证码，请联系客服 service@nihplod.cn 人工处理",
+        };
         handleForgotPassword();
       } else {
-        toast.error(getErrorMessage(error, "登录失败，请检查账号密码"));
+        setFormError(getErrorMessage(error, "登录失败，请检查账号密码"));
       }
     } finally {
       setLoading(false);
@@ -525,18 +580,20 @@ function LoginPageContent() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
+    setFormError("");
     if (regPassword !== regConfirmPassword) {
-      toast.error("两次密码输入不一致，请重新输入");
+      setFieldErrors({ confirmPassword: "两次密码输入不一致，请重新输入" });
       return;
     }
     const passwordCheck = validatePasswordStrength(regPassword);
     if (!passwordCheck.valid) {
-      toast.error(passwordCheck.message || "密码不符合要求");
+      setFieldErrors({ password: passwordCheck.message || "密码不符合要求" });
       return;
     }
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
-      toast.error("请先阅读并同意《用户协议》和《隐私政策》");
+      setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
       return;
     }
     setLoading(true);
@@ -550,7 +607,7 @@ function LoginPageContent() {
       });
       await handleAuthSuccess("注册成功");
     } catch (error) {
-      toast.error(getErrorMessage(error, "注册失败，请稍后重试"));
+      setFormError(getErrorMessage(error, "注册失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -558,17 +615,19 @@ function LoginPageContent() {
 
   const handleWechatBind = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
+    setFormError("");
     // 密码可选：留空由服务端自动生成（用户之后可通过短信验证码登录/重置密码）
     if (regPassword.length > 0) {
       const passwordCheck = validatePasswordStrength(regPassword);
       if (!passwordCheck.valid) {
-        toast.error(passwordCheck.message || "密码不符合要求");
+        setFieldErrors({ password: passwordCheck.message || "密码不符合要求" });
         return;
       }
     }
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
-      toast.error("请先阅读并同意《用户协议》和《隐私政策》");
+      setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
       return;
     }
     setLoading(true);
@@ -583,7 +642,7 @@ function LoginPageContent() {
         bindResult?.passwordGenerated ? "绑定成功，已自动生成登录密码" : "绑定成功"
       );
     } catch (error) {
-      toast.error(getErrorMessage(error, "绑定失败，请稍后重试"));
+      setFormError(getErrorMessage(error, "绑定失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -591,21 +650,23 @@ function LoginPageContent() {
 
   const handleSendRegCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(regPhone)) {
-      toast.error("请输入正确的手机号");
+      setFieldErrors((prev) => ({ ...prev, phone: "请输入正确的手机号" }));
       return;
     }
+    setFormError("");
     setRegCodeSending(true);
     try {
       await apiPost("/api/auth/send-code", { phone: regPhone, type: "register" });
-      toast.success("验证码已发送");
+      // 发送成功由倒计时与验证码框下方的"已发送"提示表达
       setRegCountdown(60);
     } catch (error) {
       // SMS_UNAVAILABLE：生产环境 mock 短信，未真实发送，不能提示"已发送"也不进倒计时
-      toast.error(
-        isSmsUnavailable(error)
+      setFieldErrors((prev) => ({
+        ...prev,
+        code: isSmsUnavailable(error)
           ? SMS_UNAVAILABLE_MESSAGE
-          : getErrorMessage(error, "发送失败，请稍后重试")
-      );
+          : getErrorMessage(error, "发送失败，请稍后重试"),
+      }));
     } finally {
       setRegCodeSending(false);
     }
@@ -617,20 +678,21 @@ function LoginPageContent() {
    */
   const handleSendBindCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(regPhone)) {
-      toast.error("请输入正确的手机号");
+      setFieldErrors((prev) => ({ ...prev, phone: "请输入正确的手机号" }));
       return;
     }
+    setFormError("");
     setRegCodeSending(true);
     try {
       await apiPost("/api/auth/send-code", { phone: regPhone, type: "bind" });
-      toast.success("验证码已发送");
       setRegCountdown(60);
     } catch (error) {
-      toast.error(
-        isSmsUnavailable(error)
+      setFieldErrors((prev) => ({
+        ...prev,
+        code: isSmsUnavailable(error)
           ? SMS_UNAVAILABLE_MESSAGE
-          : getErrorMessage(error, "发送失败，请稍后重试")
-      );
+          : getErrorMessage(error, "发送失败，请稍后重试"),
+      }));
     } finally {
       setRegCodeSending(false);
     }
@@ -638,14 +700,15 @@ function LoginPageContent() {
 
   const handleSendResetLink = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
     setLoading(true);
     try {
       await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset" });
+      // 发送成功由下一步"验证码已发送至 138****xxxx"表达
       setForgotSubmitted(true);
       setResetCountdown(60);
-      toast.success("重置验证码已发送");
     } catch (error) {
-      toast.error(
+      setFormError(
         isSmsUnavailable(error)
           ? SMS_UNAVAILABLE_MESSAGE
           : getErrorMessage(error, "发送失败，请稍后重试")
@@ -657,17 +720,17 @@ function LoginPageContent() {
 
   const handleMobileSendResetCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(forgotPhone)) {
-      toast.error("请输入正确的手机号");
+      setFieldErrors((prev) => ({ ...prev, phone: "请输入正确的手机号" }));
       return;
     }
+    setFormError("");
     setLoading(true);
     try {
       await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset" });
       setResetCountdown(60);
       setMobileForgotStep("code");
-      toast.success("重置验证码已发送");
     } catch (error) {
-      toast.error(
+      setFormError(
         isSmsUnavailable(error)
           ? SMS_UNAVAILABLE_MESSAGE
           : getErrorMessage(error, "发送失败，请稍后重试")
@@ -679,13 +742,15 @@ function LoginPageContent() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
+    setFormError("");
     if (resetNewPassword !== resetConfirmPassword) {
-      toast.error("两次密码输入不一致，请重新输入");
+      setFieldErrors({ confirmPassword: "两次密码输入不一致，请重新输入" });
       return;
     }
     const passwordCheck = validatePasswordStrength(resetNewPassword);
     if (!passwordCheck.valid) {
-      toast.error(passwordCheck.message || "密码不符合要求");
+      setFieldErrors({ password: passwordCheck.message || "密码不符合要求" });
       return;
     }
     setLoading(true);
@@ -696,15 +761,18 @@ function LoginPageContent() {
         password: resetNewPassword,
         confirmPassword: resetConfirmPassword,
       });
-      toast.success("密码已重置，请登录");
+      // 回到登录页后展示成功提示并预填手机号（经 pendingModePayload 避开模式切换重置）
+      pendingModePayload.current = {
+        loginPhone: forgotPhone,
+        loginNotice: "密码已重置，请使用新密码登录",
+      };
       switchMode("login");
-      setLoginPhone(forgotPhone);
       setResetCode("");
       setResetNewPassword("");
       setResetConfirmPassword("");
       setForgotSubmitted(false);
     } catch (error) {
-      toast.error(getErrorMessage(error, "重置失败，请稍后重试"));
+      setFormError(getErrorMessage(error, "重置失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -712,13 +780,15 @@ function LoginPageContent() {
 
   const handleMobileResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
+    setFormError("");
     if (resetNewPassword !== resetConfirmPassword) {
-      toast.error("两次密码输入不一致，请重新输入");
+      setFieldErrors({ confirmPassword: "两次密码输入不一致，请重新输入" });
       return;
     }
     const passwordCheck = validatePasswordStrength(resetNewPassword);
     if (!passwordCheck.valid) {
-      toast.error(passwordCheck.message || "密码不符合要求");
+      setFieldErrors({ password: passwordCheck.message || "密码不符合要求" });
       return;
     }
     setLoading(true);
@@ -729,13 +799,12 @@ function LoginPageContent() {
         password: resetNewPassword,
         confirmPassword: resetConfirmPassword,
       });
-      toast.success("密码已重置，请登录");
       setResetCode("");
       setResetNewPassword("");
       setResetConfirmPassword("");
       setMobileForgotStep("success");
     } catch (error) {
-      toast.error(getErrorMessage(error, "重置失败，请稍后重试"));
+      setFormError(getErrorMessage(error, "重置失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -743,20 +812,21 @@ function LoginPageContent() {
 
   const handleSendLoginCode = async () => {
     if (!/^1[3-9]\d{9}$/.test(loginPhone)) {
-      toast.error("请输入正确的手机号");
+      setFieldErrors((prev) => ({ ...prev, phone: "请输入正确的手机号" }));
       return;
     }
+    setFormError("");
     setLoginCodeSending(true);
     try {
       await apiPost("/api/auth/send-code", { phone: loginPhone, type: "login" });
       setLoginCodeCountdown(60);
-      toast.success("验证码已发送");
     } catch (error) {
-      toast.error(
-        isSmsUnavailable(error)
+      setFieldErrors((prev) => ({
+        ...prev,
+        code: isSmsUnavailable(error)
           ? SMS_UNAVAILABLE_MESSAGE
-          : getErrorMessage(error, "发送失败，请稍后重试")
-      );
+          : getErrorMessage(error, "发送失败，请稍后重试"),
+      }));
     } finally {
       setLoginCodeSending(false);
     }
@@ -872,16 +942,22 @@ function LoginPageContent() {
             mobileAgreed={mobileAgreed}
             agreementShake={agreementShake}
             loading={loading}
-            onLoginPhoneChange={setLoginPhone}
-            onLoginPasswordChange={setLoginPassword}
-            onLoginCodeChange={setLoginCode}
+            errors={fieldErrors}
+            formError={formError}
+            notice={loginNotice}
+            onLoginPhoneChange={fieldChange(setLoginPhone, "phone")}
+            onLoginPasswordChange={fieldChange(setLoginPassword, "password")}
+            onLoginCodeChange={fieldChange(setLoginCode, "code")}
             onShowPasswordToggle={() => setShowPassword(!showPassword)}
             onLoginMethodToggle={() => {
               setLoginMethod(loginMethod === "password" ? "code" : "password");
               setLoginCode("");
               setLoginPassword("");
+              clearFieldError("code");
+              clearFieldError("password");
+              setFormError("");
             }}
-            onMobileAgreedChange={setMobileAgreed}
+            onMobileAgreedChange={handleAgreedChange}
             onSubmit={handleLogin}
             onSendLoginCode={handleSendLoginCode}
             onSwitchToRegister={handleSwitchToRegister}
@@ -904,13 +980,15 @@ function LoginPageContent() {
             mobileAgreed={mobileAgreed}
             agreementShake={agreementShake}
             loading={loading}
-            onRegNameChange={setRegName}
-            onRegPhoneChange={setRegPhone}
-            onRegCodeChange={setRegCode}
-            onRegPasswordChange={setRegPassword}
-            onRegConfirmPasswordChange={setRegConfirmPassword}
+            errors={fieldErrors}
+            formError={formError}
+            onRegNameChange={fieldChange(setRegName)}
+            onRegPhoneChange={fieldChange(setRegPhone, "phone")}
+            onRegCodeChange={fieldChange(setRegCode, "code")}
+            onRegPasswordChange={fieldChange(setRegPassword, "password")}
+            onRegConfirmPasswordChange={fieldChange(setRegConfirmPassword, "confirmPassword")}
             onShowPasswordToggle={() => setShowPassword(!showPassword)}
-            onMobileAgreedChange={setMobileAgreed}
+            onMobileAgreedChange={handleAgreedChange}
             onSubmit={handleRegister}
             onSendRegCode={handleSendRegCode}
             onSwitchToLogin={handleSwitchToLogin}
@@ -929,10 +1007,12 @@ function LoginPageContent() {
             resetCountdown={resetCountdown}
             mobileForgotStep={mobileForgotStep}
             loading={loading}
-            onForgotPhoneChange={setForgotPhone}
-            onResetCodeChange={setResetCode}
-            onResetNewPasswordChange={setResetNewPassword}
-            onResetConfirmPasswordChange={setResetConfirmPassword}
+            errors={fieldErrors}
+            formError={formError}
+            onForgotPhoneChange={fieldChange(setForgotPhone, "phone")}
+            onResetCodeChange={fieldChange(setResetCode, "code")}
+            onResetNewPasswordChange={fieldChange(setResetNewPassword, "password")}
+            onResetConfirmPasswordChange={fieldChange(setResetConfirmPassword, "confirmPassword")}
             onShowPasswordToggle={() => setShowPassword(!showPassword)}
             onSendResetLink={handleSendResetLink}
             onMobileSendResetCode={handleMobileSendResetCode}
@@ -940,8 +1020,13 @@ function LoginPageContent() {
             onMobileResetPassword={handleMobileResetPassword}
             onSwitchToLogin={handleSwitchToLogin}
             onMobileForgotStepChange={setMobileForgotStep}
-            toast={toast}
-            setLoginPhone={setLoginPhone}
+            // 移动端重置成功"返回登录"：携带手机号预填与成功提示（经 pendingModePayload 避开模式切换重置）
+            setLoginPhone={(v) => {
+              pendingModePayload.current = {
+                loginPhone: v,
+                loginNotice: "密码已重置，请使用新密码登录",
+              };
+            }}
           />
         );
       case "wechat-bind":
@@ -957,11 +1042,13 @@ function LoginPageContent() {
             loading={loading}
             mobileAgreed={mobileAgreed}
             agreementShake={agreementShake}
-            onRegPhoneChange={setRegPhone}
-            onRegCodeChange={setRegCode}
-            onRegPasswordChange={setRegPassword}
+            errors={fieldErrors}
+            formError={formError}
+            onRegPhoneChange={fieldChange(setRegPhone, "phone")}
+            onRegCodeChange={fieldChange(setRegCode, "code")}
+            onRegPasswordChange={fieldChange(setRegPassword, "password")}
             onShowPasswordToggle={() => setShowPassword(!showPassword)}
-            onMobileAgreedChange={setMobileAgreed}
+            onMobileAgreedChange={handleAgreedChange}
             onSubmit={handleWechatBind}
             onSendRegCode={handleSendBindCode}
           />
