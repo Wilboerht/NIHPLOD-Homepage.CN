@@ -20,6 +20,7 @@ import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-reso
 import { updateProfileSchema } from "@/lib/profile-schema";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { isActiveAccount } from "@/lib/oauth-user-guard";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -81,7 +82,8 @@ export async function GET(request: NextRequest) {
 
     if (scopes.includes("profile")) {
       response.nickname = user.nickname;
-      response.avatar = user.avatar;
+      // 未自定义头像时回退默认头像的绝对 URL（子项目跨域可直接加载）
+      response.avatar = resolveSsoAvatar(user.avatar);
       // OIDC 标准 profile claim；null = 未设置/保密（子站测肤问卷据此预填性别）
       response.gender = user.gender ?? null;
       // 是否已设置密码：子站（如测肤站）账户面板据此展示「已设置/未设置」并选择设置/修改表单
@@ -312,7 +314,8 @@ export async function PATCH(request: NextRequest) {
     const response: Record<string, unknown> = { sub: user.id };
     if (scopes.includes("profile")) {
       response.nickname = user.nickname;
-      response.avatar = user.avatar;
+      // 与 GET 口径一致：未自定义头像时回退默认头像的绝对 URL
+      response.avatar = resolveSsoAvatar(user.avatar);
       response.gender = user.gender ?? null;
     }
     if (scopes.includes("birthday")) {

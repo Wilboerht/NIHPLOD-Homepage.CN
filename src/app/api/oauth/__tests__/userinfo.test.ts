@@ -420,7 +420,8 @@ describe("PATCH /api/oauth/userinfo", () => {
     // 按 token scope 裁剪：有 profile 无 birthday → 返回 profile 字段、不含 birthday
     expect(body.sub).toBe("user-1");
     expect(body.nickname).toBe("新昵称");
-    expect(body.avatar).toBeNull();
+    // 未自定义头像：回退默认头像的绝对 URL（SSO 输出口径，子项目跨域可加载）
+    expect(body.avatar).toMatch(/\/images\/default-avatar\.png$/);
     expect(body.gender).toBe("female");
     expect(body.birthday).toBeUndefined();
 

@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
 
 /** profile_update 事件标识（events claim 的 key） */
 export const PROFILE_UPDATE_EVENT_URI = "https://nihplod.cn/event/profile_update";
@@ -54,7 +55,8 @@ export function trimProfileSnapshotByScopes(
   if (!hasProfile && !hasBirthday) return null;
   return {
     nickname: hasProfile ? profile.nickname : null,
-    avatar: hasProfile ? profile.avatar : null,
+    // 未自定义头像时回退默认头像的绝对 URL（与 userinfo / ID Token 口径一致）
+    avatar: hasProfile ? resolveSsoAvatar(profile.avatar) : null,
     gender: hasProfile ? profile.gender : null,
     birthday: hasBirthday ? profile.birthday : null,
   };

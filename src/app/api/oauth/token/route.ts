@@ -41,6 +41,7 @@ import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
 import { OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
 import { validateDPoPProof, dpopNonceHeader, getDPoPHtu, getDpopNonce } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
 
@@ -584,7 +585,8 @@ export async function POST(request: NextRequest) {
       if (scopeSet.has("phone")) idTokenClaims.phone = maskPhone(user.phone);
       if (scopeSet.has("profile")) {
         if (user.nickname) idTokenClaims.nickname = user.nickname;
-        if (user.avatar) idTokenClaims.avatar = user.avatar;
+        // 未自定义头像时回退默认头像的绝对 URL（与 userinfo 口径一致）
+        idTokenClaims.avatar = resolveSsoAvatar(user.avatar);
       }
       if (scopeSet.has("membership") && user) {
         if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
@@ -969,7 +971,8 @@ export async function POST(request: NextRequest) {
       }
       if (scopeSet.has("profile") && user) {
         if (user.nickname) idTokenClaims.nickname = user.nickname;
-        if (user.avatar) idTokenClaims.avatar = user.avatar;
+        // 未自定义头像时回退默认头像的绝对 URL（与 userinfo 口径一致）
+        idTokenClaims.avatar = resolveSsoAvatar(user.avatar);
       }
       if (scopeSet.has("membership") && user) {
         if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
