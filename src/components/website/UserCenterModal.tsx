@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMounted } from "@/hooks/useMounted";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createPortal } from "react-dom";
-import { m, AnimatePresence, useReducedMotion, useDragControls } from "framer-motion";
+import { m, AnimatePresence, useDragControls } from "framer-motion";
 import Image from "next/image";
 import { X, User, LogOut, Crown, Gift, Shield, NotebookPen } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
