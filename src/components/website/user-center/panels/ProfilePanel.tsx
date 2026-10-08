@@ -6,7 +6,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { User, Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2, LogOut } from "lucide-react";
+import { Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
@@ -383,17 +383,14 @@ export function ProfilePanel() {
           {/* 可点击上传头像 */}
           <div className="group relative">
             <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-brand-cream/20 transition-all group-hover:border-stone-300 md:h-20 md:w-20">
-              {user.avatar ? (
-                <Image
-                  src={user.avatar}
-                  alt="Avatar"
-                  fill
-                  unoptimized
-                  className="h-full w-full object-cover transition-all"
-                />
-              ) : (
-                <User className="h-7 w-7 text-stone-400 md:h-8 md:w-8" strokeWidth={1} />
-              )}
+              {/* 未自定义头像的新用户使用默认头像 */}
+              <Image
+                src={user.avatar || "/images/default-avatar.png"}
+                alt="Avatar"
+                fill
+                unoptimized
+                className="h-full w-full object-cover transition-all"
+              />
             </div>
 
             {/* 上传遮罩 */}

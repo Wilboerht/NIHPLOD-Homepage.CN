@@ -263,15 +263,17 @@ export function KineticBackground() {
               <div className="flex w-full flex-col items-center justify-center gap-1.5 sm:gap-2.5">
                 {/* 头像圆：手机端 56px，sm+ 80px；整卡即点击热区 */}
                 <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
-                  {user?.avatar ? (
+                  {user ? (
+                    /* 已登录：自定义头像，未自定义则用默认头像 */
                     <Image
-                      src={user.avatar}
+                      src={user.avatar || "/images/default-avatar.png"}
                       alt={user.nickname || "用户头像"}
                       fill
                       unoptimized
                       className="rounded-full object-cover"
                     />
                   ) : (
+                    /* 未登录：通用登录入口图标 */
                     <div className="relative h-6 w-6 opacity-70 sm:h-7 sm:w-7 sm:opacity-50">
                       <Image
                         src="/images/profile-icon.svg"
