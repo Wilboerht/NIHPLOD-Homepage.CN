@@ -620,14 +620,21 @@ export function DiaryPanel() {
                       去测肤
                       <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.8} />
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                      className="mt-4 inline-flex cursor-pointer items-center gap-1 text-[12px] text-brand-charcoal/50 underline decoration-brand-charcoal/20 underline-offset-4 transition-colors hover:text-brand-charcoal"
-                    >
-                      <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-                      今日打卡
-                    </button>
+                    <div className="mt-4 flex items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+                        className="inline-flex cursor-pointer items-center gap-1 text-[12px] text-brand-charcoal/50 underline decoration-brand-charcoal/20 underline-offset-4 transition-colors hover:text-brand-charcoal"
+                      >
+                        <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        今日打卡
+                      </button>
+                      {/* 打卡积分活动宣传：当日首次手动打卡 +1/+2/+3 分（连续打卡递增），
+                          接口见 /api/user/skincare-archive；仅作提示，不落具体数字避免规则调整时文案过期 */}
+                      <span className="inline-flex items-center rounded-full border border-amber-200/70 bg-amber-50/70 px-2 py-0.5 text-[11px] tracking-wide text-amber-700">
+                        打卡送积分
+                      </span>
+                    </div>
                   </div>
                 ) : (
                 <>
