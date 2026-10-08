@@ -584,7 +584,7 @@ export function DiaryPanel() {
                     >
                 {isEmpty ? (
                   /* 新用户 hero 空态：跨列居中（图标 + 价值主张 + 步骤化引导 + 主「去测肤」），
-                     步骤列表传达"一次 → 有记录，两次 → 解锁趋势"的递进；
+                     步骤列表传达递进：一次测肤 → 生成记录，两次 → 解锁趋势，坚持打卡 → 送积分兑产品；
                      「今日打卡」对新用户动机弱，降级为主按钮下方的文字链，避免稀释主 CTA */
                   <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
                     <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-brand-charcoal/10 bg-brand-charcoal/[0.04]">
@@ -610,6 +610,14 @@ export function DiaryPanel() {
                           两次不同日期的测肤后，解锁肌肤变化趋势
                         </span>
                       </li>
+                      <li className="flex items-center gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-cocoa/10 font-num text-[11px] font-medium text-brand-cocoa">
+                          3
+                        </span>
+                        <span className="text-[13px] font-light tracking-[0.04em] text-brand-charcoal/70">
+                          坚持打卡送积分，积分可兑产品
+                        </span>
+                      </li>
                     </ol>
                     <a
                       href={`${ADVISOR_URL}/?start=1`}
@@ -620,21 +628,14 @@ export function DiaryPanel() {
                       去测肤
                       <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.8} />
                     </a>
-                    <div className="mt-4 flex items-center gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                        className="inline-flex cursor-pointer items-center gap-1 text-[12px] text-brand-charcoal/50 underline decoration-brand-charcoal/20 underline-offset-4 transition-colors hover:text-brand-charcoal"
-                      >
-                        <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-                        今日打卡
-                      </button>
-                      {/* 打卡积分活动宣传：当日首次手动打卡 +1/+2/+3 分（连续打卡递增），
-                          接口见 /api/user/skincare-archive；仅作提示，不落具体数字避免规则调整时文案过期 */}
-                      <span className="inline-flex items-center rounded-full border border-amber-200/70 bg-amber-50/70 px-2 py-0.5 text-[11px] tracking-wide text-amber-700">
-                        打卡送积分
-                      </span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+                      className="mt-4 inline-flex cursor-pointer items-center gap-1 text-[12px] text-brand-charcoal/50 underline decoration-brand-charcoal/20 underline-offset-4 transition-colors hover:text-brand-charcoal"
+                    >
+                      <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      今日打卡
+                    </button>
                   </div>
                 ) : (
                 <>
