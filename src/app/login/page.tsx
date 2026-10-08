@@ -1393,7 +1393,7 @@ function LoginPageContent() {
               </div>
 
               <div className="scrollbar-hide flex flex-1 flex-col overflow-y-auto">
-                <div className="flex min-h-full flex-col px-6 before:flex-[1_0_0] before:content-[''] after:flex-[1_0_0] after:content-['']">
+                <div className="flex min-h-full flex-col px-6 before:flex-[1_0_2.5rem] before:content-[''] after:flex-[1_0_0] after:content-['']">
                   <AnimatePresence mode="wait">
                     <m.div
                       key={authSuccess ? "auth-success" : mode}
