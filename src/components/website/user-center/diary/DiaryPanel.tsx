@@ -619,22 +619,24 @@ export function DiaryPanel() {
                         </span>
                       </li>
                     </ol>
-                    {/* 双 CTA 平权并排：直角发丝边框 + font-light + 宽字距，
-                        对齐品牌编辑风按钮语言（同登录页 pcBtnClass），去掉胶囊与图标避免油腻 */}
+                    {/* 双 CTA 平权并排：微圆角 + 暖调薄底 + 发丝边框，图标恢复（提供功能暗示），
+                        介于胶囊按钮的"油腻"与纯描边直角的"太素"之间 */}
                     <div className="flex items-center justify-center gap-3">
                       <a
                         href={`${ADVISOR_URL}/?start=1`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex h-9 items-center justify-center border border-brand-charcoal/25 px-6 text-[12px] font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.04] px-6 text-[12px] font-light tracking-[0.12em] text-brand-charcoal transition-all hover:border-brand-charcoal/30 hover:bg-brand-charcoal/[0.07] active:scale-[0.98]"
                       >
                         去测肤
+                        <ChevronRight className="h-3.5 w-3.5 text-brand-charcoal/50" strokeWidth={1.8} />
                       </a>
                       <button
                         type="button"
                         onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                        className="inline-flex h-9 cursor-pointer items-center justify-center border border-brand-charcoal/25 px-6 text-[12px] font-light tracking-[0.15em] text-brand-charcoal transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                        className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.04] px-6 text-[12px] font-light tracking-[0.12em] text-brand-charcoal transition-all hover:border-brand-charcoal/30 hover:bg-brand-charcoal/[0.07] active:scale-[0.98]"
                       >
+                        <CalendarCheck className="h-3.5 w-3.5 text-brand-charcoal/50" strokeWidth={1.8} />
                         今日打卡
                       </button>
                     </div>
