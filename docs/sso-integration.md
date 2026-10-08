@@ -374,7 +374,7 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 ### Scope 最小权限
 
 - `openid` — 仅返回用户 ID
-- `profile` — 昵称、头像
+- `profile` — 昵称、头像（用户未自定义头像时，`avatar` 返回主站默认头像的绝对 URL，子项目可直接渲染，无需自行兜底）
 - `phone` — 手机号（脱敏）
 - `membership` — 会员等级（`membership_level`）、累计消费金额（`total_spent`，number，单位元）、积分兑礼率（`points_redeem_rate`）；同时是积分余额/流水、兑换与收货地址、消费补录等资源端点的准入 scope（**高敏感，授予前请评估**）
 - `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
