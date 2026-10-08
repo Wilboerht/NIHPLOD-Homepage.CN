@@ -1202,22 +1202,6 @@ function LoginPageContent() {
             <p className="mt-2 text-[11px] leading-relaxed text-brand-charcoal/40">
               授权后此应用会记住您的选择，后续登录不再重复询问；可在用户中心「安全中心 → 授权管理」撤销。
             </p>
-            {(params.get("client_id") || requestedScopes.length > 0) && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-brand-charcoal/40">
-                  开发者信息
-                </summary>
-                {params.get("client_id") && (
-                  <p className="mt-1 text-xs text-brand-charcoal/40">
-                    应用 ID: <code className="text-brand-charcoal/50">{params.get("client_id")}</code>
-                  </p>
-                )}
-                <p className="mt-1 text-xs text-brand-charcoal/40">
-                  请求权限:{" "}
-                  <code className="text-brand-charcoal/50">{requestedScopes.join(" ")}</code>
-                </p>
-              </details>
-            )}
           </div>
 
           {consentError && (
