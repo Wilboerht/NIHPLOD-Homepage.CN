@@ -583,37 +583,51 @@ export function DiaryPanel() {
                       transition={{ duration: 0.18 }}
                     >
                 {isEmpty ? (
-                  /* 新用户 hero 空态：跨列居中（图标 + 说明 + 主「去测肤」/ 次「今日打卡」），
-                     有数据后进入双列布局 */
+                  /* 新用户 hero 空态：跨列居中（图标 + 价值主张 + 步骤化引导 + 主「去测肤」），
+                     步骤列表传达"一次 → 有记录，两次 → 解锁趋势"的递进；
+                     「今日打卡」对新用户动机弱，降级为主按钮下方的文字链，避免稀释主 CTA */
                   <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
-                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-charcoal/[0.05]">
-                      <ScanFace className="h-6 w-6 text-brand-charcoal/50" strokeWidth={1.5} />
+                    <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-brand-charcoal/10 bg-brand-charcoal/[0.04]">
+                      <ScanFace className="h-7 w-7 text-brand-charcoal/55" strokeWidth={1.5} />
                     </div>
-                    <p className="mb-2 text-[15px] font-medium text-stone-800">
-                      完成一次测肤，自动生成你的护肤记录
+                    <p className="mb-7 text-[16px] font-medium tracking-[0.04em] text-stone-800">
+                      开始你的护肤档案
                     </p>
-                    <p className="mb-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60">
-                      两次不同日期的测肤后，解锁肌肤变化趋势
-                    </p>
-                    <div className="flex items-center justify-center gap-3">
-                      <a
-                        href={`${ADVISOR_URL}/?start=1`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-brand-cocoa px-5 text-[12px] font-medium tracking-[0.05em] text-white transition-colors hover:bg-brand-cocoa-dark active:opacity-80"
-                      >
-                        去测肤
-                        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.8} />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
-                        className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-brand-charcoal/20 px-4 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal"
-                      >
-                        <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
-                        今日打卡
-                      </button>
-                    </div>
+                    <ol className="mb-9 flex flex-col items-start gap-2.5">
+                      <li className="flex items-center gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-cocoa/10 font-num text-[11px] font-medium text-brand-cocoa">
+                          1
+                        </span>
+                        <span className="text-[13px] font-light tracking-[0.04em] text-brand-charcoal/70">
+                          完成一次测肤，自动生成你的护肤记录
+                        </span>
+                      </li>
+                      <li className="flex items-center gap-2.5">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-cocoa/10 font-num text-[11px] font-medium text-brand-cocoa">
+                          2
+                        </span>
+                        <span className="text-[13px] font-light tracking-[0.04em] text-brand-charcoal/70">
+                          两次不同日期的测肤后，解锁肌肤变化趋势
+                        </span>
+                      </li>
+                    </ol>
+                    <a
+                      href={`${ADVISOR_URL}/?start=1`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-brand-cocoa px-5 text-[12px] font-medium tracking-[0.05em] text-white transition-colors hover:bg-brand-cocoa-dark active:opacity-80"
+                    >
+                      去测肤
+                      <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setCheckIn({ open: true, existing: null, dateStr: todayStr })}
+                      className="mt-4 inline-flex cursor-pointer items-center gap-1 text-[12px] text-brand-charcoal/50 underline decoration-brand-charcoal/20 underline-offset-4 transition-colors hover:text-brand-charcoal"
+                    >
+                      <CalendarCheck className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      今日打卡
+                    </button>
                   </div>
                 ) : (
                 <>
