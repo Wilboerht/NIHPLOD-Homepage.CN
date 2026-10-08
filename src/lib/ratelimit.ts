@@ -101,6 +101,8 @@ export const RATE_LIMIT_PRESETS = {
   "comprehensive-analyze": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
   /** 表单提交限制 */
   form: { maxRequests: 10, windowMs: 60 * 1000 },
+  /** PoW 人机验证挑战签发 - 每分钟 20 次（每次提交消耗一个挑战） */
+  captcha: { maxRequests: 20, windowMs: 60 * 1000 },
   /** 短信发送每日上限 - 手机号级（配合每小时 5 次，堵住"每小时 5 条 × 24h = 120 条/天"的轰炸窗口） */
   "sms-daily-phone": { maxRequests: 20, windowMs: 24 * 60 * 60 * 1000 },
   /** 短信发送每日上限 - IP 级（防分布式低成本轮换号码发短信烧费用） */

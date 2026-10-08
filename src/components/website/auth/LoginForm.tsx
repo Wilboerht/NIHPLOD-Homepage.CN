@@ -161,47 +161,34 @@ export function LoginForm({
           </div>
 
           {loginMethod === "code" && (
-            <>
-              <div>
-                <div className="relative flex gap-3">
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={loginCode}
-                    onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
-                    autoComplete="one-time-code"
-                    placeholder="验证码"
-                  />
-                  <button
-                    type="button"
-                    onClick={onSendLoginCode}
-                    disabled={loginCodeSending || loginCodeCountdown > 0 || loginPhone.length !== 11}
-                    className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
-                  >
-                    {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
-                  </button>
-                </div>
-                <AuthFieldError message={errors?.code} />
-                {!errors?.code && loginCodeCountdown > 0 && (
-                  <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
-                    验证码已发送，请注意查收
-                  </p>
-                )}
-              </div>
-              <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
-                一直没收到验证码？该手机号可能尚未注册，可
+            <div>
+              <div className="relative flex gap-3">
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={loginCode}
+                  onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
+                  autoComplete="one-time-code"
+                  placeholder="验证码"
+                />
                 <button
                   type="button"
-                  onClick={onSwitchToRegister}
-                  className="underline decoration-brand-charcoal/25 underline-offset-2 transition-colors hover:text-brand-charcoal/80"
+                  onClick={onSendLoginCode}
+                  disabled={loginCodeSending || loginCodeCountdown > 0 || loginPhone.length !== 11}
+                  className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
                 >
-                  先注册
+                  {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
                 </button>
-                或改用密码登录
-              </p>
-            </>
+              </div>
+              <AuthFieldError message={errors?.code} />
+              {!errors?.code && loginCodeCountdown > 0 && (
+                <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                  验证码已发送，请注意查收
+                </p>
+              )}
+            </div>
           )}
 
           {loginMethod === "password" && (
@@ -339,50 +326,37 @@ export function LoginForm({
         </div>
 
         {loginMethod === "code" && (
-          <>
-            <div className="animate-fade-scale-in">
-              <div className="relative flex gap-2">
-                <input
-                  type="text"
-                  required
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={loginCode}
-                  onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="验证码"
-                  className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
-                />
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={onSendLoginCode}
-                    disabled={loginCodeCountdown > 0 || loginPhone.length !== 11 || loginCodeSending}
-                    className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
-                  >
-                    {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
-                  </button>
-                </div>
+          <div className="animate-fade-scale-in">
+            <div className="relative flex gap-2">
+              <input
+                type="text"
+                required
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={loginCode}
+                onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="验证码"
+                className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
+              />
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={onSendLoginCode}
+                  disabled={loginCodeCountdown > 0 || loginPhone.length !== 11 || loginCodeSending}
+                  className="inline-flex h-12 min-h-0 items-center justify-center border border-brand-charcoal/25 px-4 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
+                >
+                  {loginCodeCountdown > 0 ? `${loginCodeCountdown}s` : "获取验证码"}
+                </button>
               </div>
-              <AuthFieldError message={errors?.code} />
-              {!errors?.code && loginCodeCountdown > 0 && (
-                <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
-                  验证码已发送，请注意查收
-                </p>
-              )}
             </div>
-            <p className="text-[11px] leading-relaxed text-brand-charcoal/50">
-              一直没收到验证码？该手机号可能尚未注册，可
-              <button
-                type="button"
-                onClick={onSwitchToRegister}
-                className="underline decoration-brand-charcoal/25 underline-offset-2 transition-colors hover:text-brand-charcoal/80"
-              >
-                先注册
-              </button>
-              或改用密码登录
-            </p>
-          </>
+            <AuthFieldError message={errors?.code} />
+            {!errors?.code && loginCodeCountdown > 0 && (
+              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                验证码已发送，请注意查收
+              </p>
+            )}
+          </div>
         )}
 
         {loginMethod === "password" && (

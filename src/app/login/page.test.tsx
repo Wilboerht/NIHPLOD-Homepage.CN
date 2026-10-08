@@ -30,6 +30,11 @@ vi.mock("@/lib/api-client", async () => {
   return { ...actual, apiPost: vi.fn() };
 });
 
+// PoW 人机验证求解器：测试中直接返回固定 token，不做真实哈希计算
+vi.mock("@/lib/captcha-client", () => ({
+  solveCaptcha: vi.fn().mockResolvedValue("test-captcha-token"),
+}));
+
 import LoginPage from "./page";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";

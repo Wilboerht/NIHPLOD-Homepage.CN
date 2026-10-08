@@ -46,6 +46,14 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: vi.fn(),
 }));
 
+// PoW 人机验证：默认放行；失败用例单独覆盖
+const { mockVerifyCaptchaToken } = vi.hoisted(() => ({
+  mockVerifyCaptchaToken: vi.fn().mockResolvedValue({ ok: true }),
+}));
+vi.mock("@/lib/captcha", () => ({
+  verifyCaptchaToken: (...args: unknown[]) => mockVerifyCaptchaToken(...args),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { recordLoginAttempt } from "@/lib/auth-security";
@@ -79,6 +87,19 @@ describe("POST /api/auth/login-password 审计顺序", () => {
     vi.clearAllMocks();
     mockUserFindUnique.mockResolvedValue(activeUser);
     mockVerifyPassword.mockResolvedValue(true);
+    mockVerifyCaptchaToken.mockResolvedValue({ ok: true });
+  });
+
+  it("人机验证缺失/失败：返回 403 CAPTCHA_REQUIRED，且不触碰账户与审计", async () => {
+    mockVerifyCaptchaToken.mockResolvedValue({ ok: false, reason: "missing" });
+
+    const res = await POST(createRequest(loginBody));
+    const data = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(data.error.code).toBe("CAPTCHA_REQUIRED");
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
+    expect(mockRecordLoginAttempt).not.toHaveBeenCalled();
   });
 
   it("密码过期：返回 403 PASSWORD_EXPIRED，且不写入 success 登录记录", async () => {

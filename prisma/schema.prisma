@@ -561,6 +561,19 @@ model SmsCode {
   // CREATE UNIQUE INDEX "SmsCode_phone_type_used_false_key" ON "SmsCode"("phone","type") WHERE "used" = false;
 }
 
+// PoW 人机验证挑战（自研，原理同 Cap.js：SHA-256 前导零工作量证明）
+// 一次性使用：校验通过后 usedAt 落库；过期/已用即失效
+model CaptchaChallenge {
+  id         String    @id @default(cuid())
+  salt       String // 随机盐（客户端需找到 nonce 使 sha256(salt:nonce) 满足难度）
+  difficulty Int // 难度：哈希十六进制前导零个数
+  usedAt     DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
 // ============================================
 // 审计日志
 // ============================================

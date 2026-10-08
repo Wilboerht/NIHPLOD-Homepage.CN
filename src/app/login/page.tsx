@@ -18,6 +18,7 @@ import { ArrowLeft, ChevronLeft, Clock } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiPost, ApiError } from "@/lib/api-client";
+import { solveCaptcha } from "@/lib/captcha-client";
 import { SESSION_EXPIRED_HINT_KEY } from "@/lib/fetch-with-auth";
 import { isSafeSameOriginUrlOrPath } from "@/lib/url-safety";
 import { maskPhone } from "@/lib/mask-phone";
@@ -558,7 +559,13 @@ function LoginPageContent() {
       if (loginMethod === "code") {
         await apiPost("/api/auth/login", { phone: loginPhone, code: loginCode });
       } else {
-        await apiPost("/api/auth/login-password", { phone: loginPhone, password: loginPassword });
+        // 密码登录先过 invisible PoW 人机验证（求解耗时并入 loading 态，用户无感）
+        const captchaToken = await solveCaptcha();
+        await apiPost("/api/auth/login-password", {
+          phone: loginPhone,
+          password: loginPassword,
+          captchaToken,
+        });
       }
       await handleAuthSuccess("登录成功");
     } catch (error) {
@@ -656,7 +663,8 @@ function LoginPageContent() {
     setFormError("");
     setRegCodeSending(true);
     try {
-      await apiPost("/api/auth/send-code", { phone: regPhone, type: "register" });
+      const captchaToken = await solveCaptcha();
+      await apiPost("/api/auth/send-code", { phone: regPhone, type: "register", captchaToken });
       // 发送成功由倒计时与验证码框下方的"已发送"提示表达
       setRegCountdown(60);
     } catch (error) {
@@ -684,7 +692,8 @@ function LoginPageContent() {
     setFormError("");
     setRegCodeSending(true);
     try {
-      await apiPost("/api/auth/send-code", { phone: regPhone, type: "bind" });
+      const captchaToken = await solveCaptcha();
+      await apiPost("/api/auth/send-code", { phone: regPhone, type: "bind", captchaToken });
       setRegCountdown(60);
     } catch (error) {
       setFieldErrors((prev) => ({
@@ -703,7 +712,8 @@ function LoginPageContent() {
     setFormError("");
     setLoading(true);
     try {
-      await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset" });
+      const captchaToken = await solveCaptcha();
+      await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset", captchaToken });
       // 发送成功由下一步"验证码已发送至 138****xxxx"表达
       setForgotSubmitted(true);
       setResetCountdown(60);
@@ -726,7 +736,8 @@ function LoginPageContent() {
     setFormError("");
     setLoading(true);
     try {
-      await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset" });
+      const captchaToken = await solveCaptcha();
+      await apiPost("/api/auth/send-code", { phone: forgotPhone, type: "reset", captchaToken });
       setResetCountdown(60);
       setMobileForgotStep("code");
     } catch (error) {
@@ -818,7 +829,8 @@ function LoginPageContent() {
     setFormError("");
     setLoginCodeSending(true);
     try {
-      await apiPost("/api/auth/send-code", { phone: loginPhone, type: "login" });
+      const captchaToken = await solveCaptcha();
+      await apiPost("/api/auth/send-code", { phone: loginPhone, type: "login", captchaToken });
       setLoginCodeCountdown(60);
     } catch (error) {
       setFieldErrors((prev) => ({

@@ -18,6 +18,7 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 import { verifyUserToken, verifyWechatBindToken } from "@/lib/jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { verifyCaptchaToken } from "@/lib/captcha";
 import { WECHAT_BIND_COOKIE_NAME } from "@/types/auth";
 
 // 请求参数验证
@@ -27,6 +28,8 @@ const sendCodeSchema = z.object({
   type: z.enum(["login", "register", "reset", "bind"]).default("login"),
   /** 绑定通道凭证（可选）：小程序等无 Cookie 环境通过 body 传递，优先于 Cookie */
   bindToken: z.string().max(4096).optional(),
+  /** PoW 人机验证 token：官网浏览器流程必填；小程序/子站代理等豁免通道可不传 */
+  captchaToken: z.string().max(64).optional(),
 });
 
 // 验证码有效期（分钟）
@@ -60,7 +63,8 @@ export async function POST(request: NextRequest) {
   // 仅当 X-Subsite-Proxy-Key 与 SUBSITE_PROXY_KEY 匹配时才信任其透传的 XFF
   // 客户端 IP，否则所有子站用户会共享子站服务器 IP 这一个限流桶，
   // 且 SmsCode.ipAddress 记录错误导致 IP 绑定校验误报
-  const ip = getSubsiteProxiedClientIP(request) ?? getClientIPFromRateLimit(request);
+  const subsiteProxiedIP = getSubsiteProxiedClientIP(request);
+  const ip = subsiteProxiedIP ?? getClientIPFromRateLimit(request);
 
   // 1. 全局 IP 频率限制 (防止大规模短信轰炸)
   const ipLimit = await rateLimit(ip, "form"); // 使用 form 级别的限制 (1分钟10次)
@@ -141,6 +145,26 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // PoW 人机验证：官网浏览器流程必须携带一次性 token（防脚本批量刷短信）。
+    // 豁免口径 = CSRF 豁免（小程序 bind、Bearer 本人发码）+ 子站 BFF 代理
+    //（子站登录页未接入 PoW，其滥用由子站自身风控 + 上方 IP/手机号限流兜底）
+    const captchaExempt = csrfExempt || subsiteProxiedIP !== null;
+    if (!captchaExempt) {
+      const captchaResult = await verifyCaptchaToken(result.data.captchaToken);
+      if (!captchaResult.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: captchaResult.reason === "missing" ? "CAPTCHA_REQUIRED" : "CAPTCHA_INVALID",
+              message: "人机验证失败，请重试",
+            },
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const { phone, type } = result.data;

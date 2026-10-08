@@ -28,12 +28,15 @@ import {
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { verifyCaptchaToken } from "@/lib/captcha";
 import { z } from "zod";
 
 // 请求参数验证
 const loginSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   password: z.string().min(8, "密码至少8位").max(32, "密码最多32位"),
+  /** PoW 人机验证 token（必填，防脚本批量爆破；本接口仅官网登录页调用） */
+  captchaToken: z.string().max(64).optional(),
 });
 
 /**
@@ -92,6 +95,21 @@ export async function POST(request: NextRequest) {
     }
 
     const { phone, password } = result.data;
+
+    // PoW 人机验证：一次性 token，先于一切账户级检查（防脚本批量爆破消耗锁定池）
+    const captchaResult = await verifyCaptchaToken(result.data.captchaToken);
+    if (!captchaResult.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: captchaResult.reason === "missing" ? "CAPTCHA_REQUIRED" : "CAPTCHA_INVALID",
+            message: "人机验证失败，请重试",
+          },
+        },
+        { status: 403 }
+      );
+    }
 
     // 2. 检查账户是否被锁定（防爆破）
     const lockStatus = await checkAccountLockout(phone);

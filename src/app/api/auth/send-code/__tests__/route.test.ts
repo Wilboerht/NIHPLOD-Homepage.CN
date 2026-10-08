@@ -63,6 +63,14 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: vi.fn(),
 }));
 
+// PoW 人机验证：默认放行；专项用例单独覆盖
+const { mockVerifyCaptchaToken } = vi.hoisted(() => ({
+  mockVerifyCaptchaToken: vi.fn().mockResolvedValue({ ok: true }),
+}));
+vi.mock("@/lib/captcha", () => ({
+  verifyCaptchaToken: (...args: unknown[]) => mockVerifyCaptchaToken(...args),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { sendLoginCode, recordFakeSmsThrottleEntry } from "@/lib/sms";
 import { rateLimit } from "@/lib/ratelimit";
@@ -305,6 +313,50 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(res.status).toBe(403);
     expect(data.error.code).toBe("CSRF_INVALID");
     expect(mockSendLoginCode).not.toHaveBeenCalled();
+  });
+
+  it("官网浏览器流程未携带人机验证 token：403 CAPTCHA_REQUIRED，不发码不入库", async () => {
+    mockValidateCSRF.mockReturnValue(true);
+    mockVerifyCaptchaToken.mockResolvedValueOnce({ ok: false, reason: "missing" });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(
+      createRequest(
+        { phone: "13800138000", type: "register" },
+        { Origin: "http://localhost:3000" }
+      )
+    );
+    const data = await res.json();
+
+    expect(mockVerifyCaptchaToken).toHaveBeenCalledWith(undefined);
+    expect(res.status).toBe(403);
+    expect(data.error.code).toBe("CAPTCHA_REQUIRED");
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
+    expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
+  });
+
+  it("官网浏览器流程携带有效 token：正常发码", async () => {
+    mockValidateCSRF.mockReturnValue(true);
+    mockPrisma.user.findUnique.mockResolvedValue(null); // 未注册 → 假发送（响应与真实一致）
+
+    const res = await POST(
+      createRequest(
+        { phone: "13800138000", type: "register", captchaToken: "cid.123" },
+        { Origin: "http://localhost:3000" }
+      )
+    );
+
+    expect(mockVerifyCaptchaToken).toHaveBeenCalledWith("cid.123");
+    expect(res.status).toBe(200);
+  });
+
+  it("豁免通道（小程序 bind 无 Origin）不触发人机验证", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
+
+    const res = await POST(createRequest(bindBody));
+
+    expect(res.status).toBe(200);
+    expect(mockVerifyCaptchaToken).not.toHaveBeenCalled();
   });
 });
 
