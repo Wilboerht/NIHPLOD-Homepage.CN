@@ -19,6 +19,7 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 interface RedeemableProductItem {
@@ -278,42 +279,39 @@ function AdminPointGiftsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-light tracking-wide text-gray-800">积分兑换</h1>
-          <p className="mt-1 text-xs text-gray-500">
-            标记产品库中的产品为「积分可兑」后，将出现在用户面板兑换板块；
-            用户实际扣分 = 产品价格 ÷ 当前兑礼率（向下取整）
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            fetchProducts();
-            fetchRedemptions();
-          }}
-        >
-          <RefreshCw className="mr-1.5 h-4 w-4" />
-          刷新
-        </Button>
-      </div>
+      <PageHeader
+        title="积分兑换"
+        description="标记产品库中的产品为「积分可兑」后，将出现在用户面板兑换板块；用户实际扣分 = 产品价格 ÷ 当前兑礼率（向下取整）"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              fetchProducts();
+              fetchRedemptions();
+            }}
+          >
+            <RefreshCw className="mr-1.5 h-4 w-4" />
+            刷新
+          </Button>
+        }
+      />
 
       {/* 概览统计 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
           <p className="text-xs text-gray-500">全站可用积分总额</p>
           <p className="mt-1 text-2xl font-semibold text-gray-800">
             {pointsTotal.toLocaleString()}
           </p>
           <p className="mt-1 text-[11px] text-gray-400">所有用户账户可用积分之和（可含退款冲正负值）</p>
         </div>
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
           <p className="text-xs text-gray-500">待履约兑换</p>
           <p className="mt-1 text-2xl font-semibold text-gray-800">{counts.PENDING ?? 0}</p>
           <p className="mt-1 text-[11px] text-gray-400">待发货处理</p>
         </div>
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
           <p className="text-xs text-gray-500">已履约兑换</p>
           <p className="mt-1 text-2xl font-semibold text-gray-800">{counts.FULFILLED ?? 0}</p>
           <p className="mt-1 text-[11px] text-gray-400">已发货</p>
@@ -322,7 +320,7 @@ function AdminPointGiftsContent() {
 
       {/* 可兑换产品（无 gifts:read 权限时不展示，避免必然 403） */}
       {canGiftRead && (
-      <div className="rounded-xl border bg-white shadow-sm">
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
             <Gift className="h-5 w-5 text-gray-500" />
@@ -520,7 +518,7 @@ function AdminPointGiftsContent() {
       )}
 
       {/* 兑换记录 */}
-      <div className="rounded-xl border bg-white shadow-sm">
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
         <div className="border-b px-6 py-4">
           <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
             <PackageCheck className="h-5 w-5 text-gray-500" />

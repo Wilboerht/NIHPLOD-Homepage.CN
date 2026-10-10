@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Crown, Plus, Trash2, Info } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -227,15 +228,15 @@ function AdminMembershipContent() {
   return (
     <div className="space-y-6">
       {/* 头部 */}
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-medium text-brand-charcoal">
-          <Crown className="h-6 w-6 text-brand-primary" />
-          会员权益配置
-        </h1>
-        <p className="mt-1 text-sm text-brand-charcoal/50">
-          配置会员等级在前台展示的名称、门槛文案与权益列表
-        </p>
-      </div>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <Crown className="h-5 w-5 text-brand-primary" />
+            会员权益配置
+          </span>
+        }
+        description="配置会员等级在前台展示的名称、门槛文案与权益列表"
+      />
 
       {/* 判级说明 */}
       <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -279,7 +280,7 @@ function AdminMembershipContent() {
 
       {/* 编辑表单 */}
       {form && (
-        <div className="space-y-6 rounded-xl bg-white p-6 shadow-sm">
+        <div className="space-y-6 rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input
               label="等级名称"

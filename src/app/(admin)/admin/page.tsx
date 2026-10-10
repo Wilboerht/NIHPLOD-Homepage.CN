@@ -14,7 +14,7 @@ import {
   Users,
   TrendingUp,
 } from "lucide-react";
-import { StatsCard } from "@/components/admin";
+import { StatsCard, PageHeader, PanelCard } from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
@@ -98,15 +98,13 @@ export default async function AdminDashboard() {
 
   if (statsError || !stats) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">仪表盘</h1>
-        </div>
-        <div className="flex flex-col items-center justify-center rounded-xl bg-white py-16 shadow-sm">
+      <div className="flex flex-col gap-6">
+        <PageHeader title="仪表盘" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-16">
           <div className="rounded-full bg-red-50 p-4">
             <TrendingUp className="h-8 w-8 text-red-400" />
           </div>
-          <h2 className="mt-4 text-lg font-medium text-brand-charcoal">数据加载失败</h2>
+          <h2 className="mt-4 text-base font-medium text-brand-charcoal">数据加载失败</h2>
           <p className="mt-1 text-sm text-brand-charcoal/50">无法获取仪表盘统计数据，请稍后重试</p>
           <a
             href="/admin"
@@ -120,12 +118,8 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 页面标题 */}
-      <div>
-        <h1 className="text-2xl font-medium text-brand-charcoal">仪表盘</h1>
-        <p className="mt-1 text-sm text-brand-charcoal/50">欢迎回来，查看网站概览数据</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader title="仪表盘" description="欢迎回来，查看网站概览数据" />
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -157,10 +151,10 @@ export default async function AdminDashboard() {
 
       {/* SSO 概览 */}
       {ssoStats && (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
-              <Shield className="h-5 w-5 text-brand-primary" />
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
+              <Shield className="h-4 w-4 text-brand-primary" />
               SSO 概览
             </h2>
             <span className="text-xs text-brand-charcoal/50">仅超级管理员可见</span>
@@ -197,16 +191,17 @@ export default async function AdminDashboard() {
       {/* 下方内容区域 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 最近留言 */}
-        <div className="rounded-xl bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-brand-charcoal">最近留言</h2>
+        <PanelCard
+          title="最近留言"
+          className="lg:col-span-2"
+          action={
             <Link href="/admin/messages" className="text-sm text-brand-primary hover:underline">
               查看全部
             </Link>
-          </div>
-
+          }
+        >
           {stats.recentMessages && stats.recentMessages.length > 0 ? (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-3">
               {stats.recentMessages.map((message) => (
                 <Link
                   key={message.id}
@@ -251,12 +246,11 @@ export default async function AdminDashboard() {
           ) : (
             <Empty title="暂无留言" />
           )}
-        </div>
+        </PanelCard>
 
         {/* 快捷操作 */}
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">快捷操作</h2>
-          <div className="space-y-2">
+        <PanelCard title="快捷操作">
+          <div className="flex flex-col gap-2">
             {quickActions
               .filter((action) => !action.permission || hasAdminPermission(admin, action.permission))
               .map((action) => {
@@ -300,7 +294,7 @@ export default async function AdminDashboard() {
               </div>
             </>
           )}
-        </div>
+        </PanelCard>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { apiGet } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
@@ -34,8 +35,8 @@ function NewProductContent() {
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-medium text-brand-charcoal">新增产品</h1>
+    <div className="space-y-6">
+      <PageHeader title="新增产品" />
       <ProductForm mode="create" categories={categories} />
     </div>
   );

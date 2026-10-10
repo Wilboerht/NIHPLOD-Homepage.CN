@@ -17,6 +17,7 @@ import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 interface AuditLogItem {
   id: string;
@@ -152,25 +153,23 @@ function AuditLogsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">审计日志</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
-            记录管理端关键操作，便于追溯和合规审计
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="h-4 w-4" />}
-          onClick={fetchLogs}
-        >
-          刷新
-        </Button>
-      </div>
+      <PageHeader
+        title="审计日志"
+        description="记录管理端关键操作，便于追溯和合规审计"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={fetchLogs}
+          >
+            刷新
+          </Button>
+        }
+      />
 
       {/* 筛选栏 */}
-      <div className="flex flex-wrap items-center gap-4 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <Select
           options={[
             { value: "", label: "全部操作" },
@@ -225,7 +224,7 @@ function AuditLogsContent() {
       </div>
 
       {/* 日志列表 */}
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         {loading ? (
           <table className="w-full text-sm">
             <thead>

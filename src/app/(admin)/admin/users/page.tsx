@@ -42,6 +42,7 @@ import { useRowSelection } from "@/hooks/useRowSelection";
 import { apiConsole } from "@/lib/logger";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 
@@ -686,33 +687,33 @@ function AdminUsersContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">用户管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">管理注册用户</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<Download className="h-4 w-4" />}
-            onClick={exportCsv}
-          >
-            导出 CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<RefreshCw className="h-4 w-4" />}
-            onClick={fetchUsers}
-          >
-            刷新
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="用户管理"
+        description="管理注册用户"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Download className="h-4 w-4" />}
+              onClick={exportCsv}
+            >
+              导出 CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+              onClick={fetchUsers}
+            >
+              刷新
+            </Button>
+          </>
+        }
+      />
 
       {/* 搜索栏 */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
           <Input
@@ -782,7 +783,7 @@ function AdminUsersContent() {
       )}
 
       {/* 用户列表 */}
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">

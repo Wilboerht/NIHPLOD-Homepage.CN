@@ -16,6 +16,7 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -190,20 +191,20 @@ export default function AdminJobsPage() {
     <RequirePermission permission="jobs:read">
     <div className="space-y-6">
       {/* 头部 */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">招聘管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">共 {total} 个职位</p>
-        </div>
-        {canWriteJobs && (
-          <Link href="/admin/jobs/new">
-            <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="招聘管理"
+        description={`共 ${total} 个职位`}
+        actions={
+          canWriteJobs ? (
+            <Link href="/admin/jobs/new">
+              <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
       {/* 工具栏 */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex items-center gap-4">
           <div className="relative w-60">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
@@ -272,7 +273,7 @@ export default function AdminJobsPage() {
       </div>
 
       {/* 职位列表 */}
-      <div className="rounded-xl bg-white shadow-sm">
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />

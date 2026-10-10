@@ -14,6 +14,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
@@ -260,8 +261,8 @@ const userRes = await fetch("${baseUrl}/api/oauth/userinfo", {
 const user = await userRes.json();`;
 
   return (
-    <div className="max-w-3xl p-6">
-      <h1 className="mb-6 text-2xl font-bold">SSO 接入向导</h1>
+    <div className="max-w-3xl space-y-6">
+      <PageHeader title="SSO 接入向导" />
 
       {/* Steps indicator */}
       <div className="mb-8 flex items-center">

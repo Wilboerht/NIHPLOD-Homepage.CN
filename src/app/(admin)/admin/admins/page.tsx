@@ -16,6 +16,7 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { RequirePermission } from "@/components/admin";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -271,30 +272,30 @@ export default function AdminAdminsPage() {
   return (
     <RequirePermission permission="admins:read">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-medium text-brand-charcoal">管理员管理</h1>
-            <p className="mt-1 text-sm text-brand-charcoal/50">管理后台管理员账号</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<RefreshCw className="h-4 w-4" />}
-              onClick={fetchAdmins}
-            >
-              刷新
-            </Button>
-            {canManage && (
-              <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-                新增管理员
+        <PageHeader
+          title="管理员管理"
+          description="管理后台管理员账号"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<RefreshCw className="h-4 w-4" />}
+                onClick={fetchAdmins}
+              >
+                刷新
               </Button>
-            )}
-          </div>
-        </div>
+              {canManage && (
+                <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+                  新增管理员
+                </Button>
+              )}
+            </>
+          }
+        />
 
         {/* 搜索栏 */}
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
           <div className="relative max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
             <Input
@@ -331,7 +332,7 @@ export default function AdminAdminsPage() {
         </div>
 
         {/* 列表 */}
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">

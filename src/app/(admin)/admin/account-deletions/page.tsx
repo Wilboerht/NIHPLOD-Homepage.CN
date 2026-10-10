@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { UserX, RefreshCw, RotateCw, Info } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -130,25 +131,25 @@ function AdminAccountDeletionsContent() {
   return (
     <div className="space-y-6">
       {/* 头部 */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-medium text-brand-charcoal">
-            <UserX className="h-6 w-6 text-brand-primary" />
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            <UserX className="h-5 w-5 text-brand-primary" />
             注销申请管理
-          </h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
-            用户自助注销申请（冷静期 → 定时任务匿名化执行）；执行失败的申请可在此人工重试
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="h-4 w-4" />}
-          onClick={() => fetchItems(status, page)}
-        >
-          刷新
-        </Button>
-      </div>
+          </span>
+        }
+        description="用户自助注销申请（冷静期 → 定时任务匿名化执行）；执行失败的申请可在此人工重试"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={() => fetchItems(status, page)}
+          >
+            刷新
+          </Button>
+        }
+      />
 
       {/* 说明 */}
       <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/60">
@@ -182,7 +183,7 @@ function AdminAccountDeletionsContent() {
       </div>
 
       {/* 列表 */}
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />

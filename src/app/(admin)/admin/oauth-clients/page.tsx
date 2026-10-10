@@ -36,6 +36,7 @@ import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { formatDate, formatDateTimeSeconds as formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RequirePermission } from "@/components/admin";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 interface OAuthClient {
   id: string;
@@ -565,33 +566,35 @@ if (!payload) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-medium text-brand-charcoal">SSO 应用（OAuth Client）管理</h1>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索名称或 Client ID"
-              className="w-64 pl-9"
-            />
-          </div>
-          {canWrite && (
-            <>
-              <Link href="/admin/oauth-clients/wizard">
-                <Button variant="outline">向导创建</Button>
-              </Link>
-              <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
-                新建 Client
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="SSO 应用（OAuth Client）管理"
+        actions={
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索名称或 Client ID"
+                className="w-64 pl-9"
+              />
+            </div>
+            {canWrite && (
+              <>
+                <Link href="/admin/oauth-clients/wizard">
+                  <Button variant="outline">向导创建</Button>
+                </Link>
+                <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
+                  新建 Client
+                </Button>
+              </>
+            )}
+        </>
+      }
+    />
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         <table className="w-full">
           <thead className="border-b bg-gray-50">
             <tr>

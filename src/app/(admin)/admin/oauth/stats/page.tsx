@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Users, KeyRound, RefreshCw, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 import { StatsCard } from "@/components/admin/StatsCard";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
@@ -83,12 +84,7 @@ export default function OAuthStatsPage() {
   return (
     <RequirePermission permission="sso:read">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-medium text-brand-charcoal">SSO 统计概览</h1>
-            <p className="mt-1 text-sm text-brand-charcoal/50">子项目接入与授权情况总览</p>
-          </div>
-        </div>
+        <PageHeader title="SSO 统计概览" description="子项目接入与授权情况总览" />
 
         {/* 统计卡片 */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -163,7 +159,7 @@ export default function OAuthStatsPage() {
         </div>
 
         {/* 事件类型分布 */}
-        <div className="rounded-xl bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-sm font-medium text-brand-charcoal">本月事件类型分布</h2>
           {loading ? (
             <div className="space-y-3">

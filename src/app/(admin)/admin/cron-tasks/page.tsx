@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Timer, RefreshCw, Play, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -117,26 +118,25 @@ function AdminCronTasksContent() {
 
   return (
     <div className="space-y-6">
-      {/* 头部 */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-medium text-brand-charcoal">
-            <Timer className="h-6 w-6 text-brand-primary" />
+      <PageHeader
+        title={
+          <>
+            <Timer className="h-5 w-5 text-brand-primary" />
             定时任务
-          </h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
-            查看后台任务运行状态，支持手动触发；任务失败会自动记录原因
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="h-4 w-4" />}
-          onClick={fetchTasks}
-        >
-          刷新
-        </Button>
-      </div>
+          </>
+        }
+        description="查看后台任务运行状态，支持手动触发；任务失败会自动记录原因"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={fetchTasks}
+          >
+            刷新
+          </Button>
+        }
+      />
 
       {/* 未启用提示 */}
       {!cronEnabled && (
@@ -164,7 +164,7 @@ function AdminCronTasksContent() {
       ) : tasks.length === 0 ? (
         <Empty className="h-64" title="暂无定时任务" />
       ) : (
-        <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
@@ -236,7 +236,7 @@ function AdminCronTasksContent() {
       )}
 
       {/* 最近运行记录 */}
-      <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <h2 className="mb-4 text-lg font-medium text-brand-charcoal">最近运行记录</h2>
         {recentRuns.length === 0 ? (
           <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无运行记录</p>

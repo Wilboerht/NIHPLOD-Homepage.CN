@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CategoryForm } from "@/components/admin/CategoryForm";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
@@ -219,22 +220,20 @@ function AdminCategoriesContent() {
   return (
     <div className="space-y-6">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">分类管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
-            管理产品分类，拖拽调整排序，共 {categories.length} 个分类
-          </p>
-        </div>
-        {canWrite && (
-          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAdd}>
-            新增分类
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="分类管理"
+        description={`管理产品分类，拖拽调整排序，共 ${categories.length} 个分类`}
+        actions={
+          canWrite ? (
+            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAdd}>
+              新增分类
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* 分类列表（窄屏横向滚动，避免网格挤压错位） */}
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         {categories.length === 0 ? (
           <Empty className="h-48" title="暂无分类" description="点击上方按钮创建第一个分类" />
         ) : (

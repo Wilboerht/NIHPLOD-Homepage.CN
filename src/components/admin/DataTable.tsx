@@ -147,7 +147,7 @@ export function DataTable<T extends object>({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-lg border border-brand-charcoal/15 bg-white",
+        "relative overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white",
         className
       )}
     >
@@ -168,7 +168,7 @@ export function DataTable<T extends object>({
                     scope="col"
                     style={{ width: column.width }}
                     className={cn(
-                      "px-6 py-3 text-sm font-medium tracking-wider text-brand-charcoal/50",
+                      "px-6 py-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/50",
                       alignStyles[column.align || "left"],
                       column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
                     )}
@@ -252,7 +252,7 @@ export function DataTable<T extends object>({
                       <td
                         key={String(column.key)}
                         className={cn(
-                          "whitespace-nowrap px-6 py-4 text-sm text-brand-charcoal",
+                          "whitespace-nowrap px-6 py-3 text-sm text-brand-charcoal",
                           alignStyles[column.align || "left"]
                         )}
                       >
@@ -273,7 +273,7 @@ export function DataTable<T extends object>({
 
       {/* 分页：即使只有一页也展示总数/每页条数（Pagination 内部按需隐藏页码） */}
       {pagination && (pagination.total > 0 || pagination.onPageSizeChange) && (
-        <div className="border-t border-brand-charcoal/15 px-6 py-4">
+        <div className="border-t border-brand-charcoal/10 px-6 py-3">
           <Pagination
             page={pagination.page}
             pageSize={pagination.pageSize}

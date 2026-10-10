@@ -16,6 +16,7 @@ import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -226,14 +227,9 @@ function OAuthConsentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">SSO 用户授权管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">管理用户对 SSO 应用的授权记录</p>
-        </div>
-      </div>
+      <PageHeader title="SSO 用户授权管理" description="管理用户对 SSO 应用的授权记录" />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="w-48">
           <Input
             placeholder="用户手机号"
@@ -295,7 +291,7 @@ function OAuthConsentsPage() {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
         <table className="w-full">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>

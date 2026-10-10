@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { apiGet } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
@@ -131,8 +132,8 @@ function EditProductContent() {
   }
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-medium text-brand-charcoal">编辑产品</h1>
+    <div className="space-y-6">
+      <PageHeader title="编辑产品" />
       <ProductForm mode="edit" initialData={product} categories={categories} />
     </div>
   );

@@ -3,24 +3,27 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 
 function NewJobContent() {
   return (
     <div className="space-y-6">
-      {/* 顶部导航 */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/admin/jobs"
-          className="rounded-lg p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-medium text-brand-charcoal">新增职位</h1>
-          <p className="mt-0.5 text-sm text-brand-charcoal/50">创建新的招聘职位</p>
-        </div>
-      </div>
+      <PageHeader
+        title={
+          <>
+            <Link
+              href="/admin/jobs"
+              aria-label="返回职位列表"
+              className="rounded-lg p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            新增职位
+          </>
+        }
+        description="创建新的招聘职位"
+      />
 
       {/* 职位表单 */}
       <JobForm />

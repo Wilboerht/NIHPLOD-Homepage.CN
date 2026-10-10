@@ -21,6 +21,7 @@ import { useRowSelection } from "@/hooks/useRowSelection";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { formatRelativeTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 interface Message {
   id: string;
@@ -260,20 +261,20 @@ function AdminMessagesContent() {
   return (
     <div className="space-y-6">
       {/* 头部 */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">留言管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
+      <PageHeader
+        title="留言管理"
+        description={
+          <>
             共 {total} 条留言
             {unreadCount > 0 && (
               <span className="ml-2 text-brand-primary">({unreadCount} 条未读)</span>
             )}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* 工具栏 */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex items-center gap-4">
           <div className="relative w-60">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
@@ -359,7 +360,7 @@ function AdminMessagesContent() {
       </div>
 
       {/* 留言列表 */}
-      <div className="rounded-xl bg-white shadow-sm">
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />

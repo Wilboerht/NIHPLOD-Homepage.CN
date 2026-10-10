@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Webhook, RefreshCw, RotateCw, Trash2, Info } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -135,26 +136,25 @@ function AdminWebhookFailuresContent() {
 
   return (
     <div className="space-y-6">
-      {/* 头部 */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-medium text-brand-charcoal">
-            <Webhook className="h-6 w-6 text-brand-primary" />
+      <PageHeader
+        title={
+          <>
+            <Webhook className="h-5 w-5 text-brand-primary" />
             通知失败队列
-          </h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
-            资料变更 Webhook 与 Backchannel Logout 投递失败记录（cron 自动退避重投，最多 10 次）
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="h-4 w-4" />}
-          onClick={() => fetchItems(kind, page)}
-        >
-          刷新
-        </Button>
-      </div>
+          </>
+        }
+        description="资料变更 Webhook 与 Backchannel Logout 投递失败记录（cron 自动退避重投，最多 10 次）"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={() => fetchItems(kind, page)}
+          >
+            刷新
+          </Button>
+        }
+      />
 
       {/* 说明 */}
       <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/60">
@@ -196,7 +196,7 @@ function AdminWebhookFailuresContent() {
       </div>
 
       {/* 列表 */}
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />

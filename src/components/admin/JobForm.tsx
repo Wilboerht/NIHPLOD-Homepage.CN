@@ -235,7 +235,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* 基本信息 */}
-      <section className="rounded-xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <h2 className="mb-6 text-lg font-medium text-brand-charcoal">基本信息</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <Input
@@ -322,7 +322,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       </section>
 
       {/* 职责描述 */}
-      <section className="rounded-xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <h2 className="mb-6 text-lg font-medium text-brand-charcoal">职责描述</h2>
         <RichTextEditor
           value={formData.description || ""}
@@ -334,7 +334,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       </section>
 
       {/* 任职要求 */}
-      <section className="rounded-xl bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <h2 className="mb-6 text-lg font-medium text-brand-charcoal">任职要求</h2>
         <RichTextEditor
           value={formData.requirements || ""}
@@ -346,7 +346,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       </section>
 
       {/* 排序与操作 */}
-      <section className="flex items-center justify-between rounded-xl bg-white p-6 shadow-sm">
+      <section className="flex items-center justify-between rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <div className="w-32">
           <Input
             label="显示排序"

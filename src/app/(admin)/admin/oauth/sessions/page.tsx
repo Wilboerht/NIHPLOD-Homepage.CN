@@ -20,6 +20,8 @@ import {
   formatDateTimeSeconds as formatFullDateTime,
 } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { StatsCard } from "@/components/admin/StatsCard";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -206,38 +208,24 @@ function OAuthSessionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium text-brand-charcoal">SSO 会话管理</h1>
-      </div>
+      <PageHeader title="SSO 会话管理" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-xl border-l-4 border-blue-500 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-              <Key className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-brand-charcoal/50">活跃会话数</p>
-              <p className="text-2xl font-bold text-brand-charcoal">{stats.activeSessions}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border-l-4 border-green-500 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50">
-              <ShieldCheck className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-brand-charcoal/50">活跃 Refresh Token 数</p>
-              <p className="text-2xl font-bold text-brand-charcoal">{stats.activeRefreshTokens}</p>
-            </div>
-          </div>
-        </div>
+        <StatsCard
+          title="活跃会话数"
+          value={stats.activeSessions}
+          icon={<Key className="h-5 w-5" />}
+        />
+        <StatsCard
+          title="活跃 Refresh Token 数"
+          value={stats.activeRefreshTokens}
+          icon={<ShieldCheck className="h-5 w-5" />}
+        />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-56">
@@ -291,7 +279,7 @@ function OAuthSessionsPage() {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
         <table className="w-full">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>

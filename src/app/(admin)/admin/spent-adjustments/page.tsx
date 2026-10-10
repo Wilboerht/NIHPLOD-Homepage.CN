@@ -27,6 +27,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import {
   formatDateNumeric as formatDate,
@@ -215,32 +216,30 @@ function AdminSpentAdjustmentsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-light tracking-wide text-gray-800">消费记录审核</h1>
-          <p className="mt-1 text-xs text-gray-500">
-            审核用户提交的全渠道消费凭证，通过后按核实金额累加历史消费并自动重算会员等级
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {canImport && (
-            <>
-              <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-                <History className="mr-1.5 h-4 w-4" />
-                导入历史
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
-                Excel 导入
-              </Button>
-            </>
-          )}
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            <RefreshCw className="mr-1.5 h-4 w-4" />
-            刷新
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="消费记录审核"
+        description="审核用户提交的全渠道消费凭证，通过后按核实金额累加历史消费并自动重算会员等级"
+        actions={
+          <>
+            {canImport && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+                  <History className="mr-1.5 h-4 w-4" />
+                  导入历史
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+                  Excel 导入
+                </Button>
+              </>
+            )}
+            <Button variant="outline" size="sm" onClick={fetchData}>
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              刷新
+            </Button>
+          </>
+        }
+      />
 
       {/* 状态筛选 */}
       <div className="flex gap-2">

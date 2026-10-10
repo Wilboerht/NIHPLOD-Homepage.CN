@@ -372,7 +372,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
       <div className="space-y-8">
         {/* 基本信息 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">基本信息</h2>
           <div className="grid gap-6 md:grid-cols-2">
             <Input
@@ -449,7 +449,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </section>
 
         {/* 产品图片 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品图片</h2>
           <ImageUploader
             value={formData.images}
@@ -460,7 +460,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </section>
 
         {/* 产品描述 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品描述</h2>
           <RichTextEditor
             label="产品简介"
@@ -493,7 +493,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </section>
 
         {/* 功效标签 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">功效标签</h2>
           <TagInput
             label="产品功效"
@@ -506,7 +506,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </section>
 
         {/* 购买设置 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">购买设置</h2>
 
           {/* 第三方平台链接 */}
@@ -567,7 +567,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </section>
 
         {/* GEO FAQ 设置 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-medium text-brand-charcoal">GEO FAQ 优化 (SEO)</h2>
@@ -661,7 +661,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </section>
 
         {/* 其他设置 */}
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
           <h2 className="mb-4 text-lg font-medium text-brand-charcoal">其他设置</h2>
           <div className="space-y-4">
             <Input

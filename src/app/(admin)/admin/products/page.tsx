@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, X } from "lucide-react";
-import { ProductsTable, RequirePermission } from "@/components/admin";
+import { ProductsTable, RequirePermission, PageHeader } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
@@ -168,19 +168,17 @@ export default function AdminProductsPage() {
     <RequirePermission permission="products:read">
     <div className="space-y-6">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">产品管理</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">
-            管理所有产品，共 {pagination.total} 个
-          </p>
-        </div>
-        {canWriteProducts && (
-          <Link href="/admin/products/new">
-            <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="产品管理"
+        description={`管理所有产品，共 ${pagination.total} 个`}
+        actions={
+          canWriteProducts ? (
+            <Link href="/admin/products/new">
+              <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-4">

@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { cn } from "@/lib/utils";
 
 interface TOTPSetupData {
@@ -146,12 +147,9 @@ export default function TOTPSettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3">
-        <ShieldCheck className="h-6 w-6 text-brand-primary" />
-        <h1 className="text-2xl font-bold text-brand-charcoal">二次验证设置</h1>
-      </div>
+      <PageHeader title="二次验证设置" />
 
-      <div className="rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <div className="flex items-start gap-4">
           <div className={cn("rounded-full p-3", totpEnabled ? "bg-emerald-100" : "bg-amber-100")}>
             {totpEnabled ? (

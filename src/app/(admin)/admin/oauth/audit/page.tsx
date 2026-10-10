@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 
@@ -221,23 +222,23 @@ function OAuthAuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-brand-charcoal">SSO 审计日志</h1>
-          <p className="mt-1 text-sm text-brand-charcoal/50">记录 SSO 系统所有关键事件</p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={handleExportCsv}
-          disabled={exporting}
-          leftIcon={<Download className="h-4 w-4" />}
-        >
-          {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
-        </Button>
-      </div>
+      <PageHeader
+        title="SSO 审计日志"
+        description="记录 SSO 系统所有关键事件"
+        actions={
+          <Button
+            variant="outline"
+            onClick={handleExportCsv}
+            disabled={exporting}
+            leftIcon={<Download className="h-4 w-4" />}
+          >
+            {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
+          </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="flex flex-wrap items-end gap-3 rounded-xl bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-44">
             <Select
@@ -313,7 +314,7 @@ function OAuthAuditPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
         <table className="w-full">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>

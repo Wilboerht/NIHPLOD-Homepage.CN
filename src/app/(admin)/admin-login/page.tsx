@@ -3,7 +3,7 @@
 import { useState, FormEvent, useEffect, useCallback, useRef } from "react";
 import { useMounted } from "@/hooks/useMounted";
 import { useSearchParams } from "next/navigation";
-import { Eye, EyeOff, AlertCircle, Loader2, ChevronDown, ExternalLink } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, Loader2, ChevronDown, ExternalLink, Lock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -183,284 +183,250 @@ export default function LoginPage() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#fefcf8]">
-      {/* 面包屑导航 */}
-      <div className="flex items-center gap-2 px-6 py-5 text-xs text-brand-charcoal/40 sm:px-10">
-        <Link href="/" className="transition-colors hover:text-brand-charcoal/70">
-          首页
-        </Link>
-        <span className="text-brand-charcoal/25">/</span>
-        <div className="relative" ref={breadcrumbRef}>
-          <button
-            onClick={() => setBreadcrumbOpen((v) => !v)}
-            className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-          >
-            后台登录（官网）
-            <ChevronDown
-              className={cn(
-                "h-3 w-3 transition-transform duration-200",
-                breadcrumbOpen && "rotate-180"
-              )}
-            />
-          </button>
-          {breadcrumbOpen && (
-            <div className="border-brand-charcoal/8 absolute left-0 top-full z-30 mt-2 flex -translate-x-[13px] flex-col gap-2 whitespace-nowrap rounded-xl border bg-white p-3 text-xs shadow-lg">
-              <div className="flex items-center gap-2">
-                <span className="select-none text-brand-charcoal/25">/</span>
-                <a
-                  href="https://smart.nihplod.cn/admin"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"
-                  onClick={() => setBreadcrumbOpen(false)}
-                >
-                  后台登录（AI 护肤顾问）
-                  <ExternalLink className="h-3 w-3 text-brand-charcoal/40" />
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="select-none text-brand-charcoal/25">/</span>
-                <a
-                  href="https://ba.nihplod.cn/admin"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"
-                  onClick={() => setBreadcrumbOpen(false)}
-                >
-                  后台登录（授权管理）
-                  <ExternalLink className="h-3 w-3 text-brand-charcoal/40" />
-                </a>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 主体：左右分栏 */}
-      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-8 lg:px-12">
+    <div className="flex min-h-dvh flex-col bg-white">
+      {/* 主体：居中卡片 */}
+      <main className="flex flex-1 items-center justify-center px-4 py-8">
         <div
           className={cn(
-            "flex w-full max-w-5xl overflow-hidden rounded-3xl shadow-2xl shadow-brand-charcoal/[0.06] transition-all duration-700",
+            "flex w-full max-w-sm flex-col gap-6 transition-all duration-700",
             mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           )}
         >
-          {/* 左侧品牌区 */}
-          <div
-            className="relative hidden w-[44%] flex-col overflow-hidden lg:flex"
-            style={{
-              backgroundImage: "url(/images/login-background.webp)",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            {/* 品牌色遮罩层 */}
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/30 to-brand-primary/50" />
-            <div className="relative flex flex-1 flex-col justify-between p-12">
-              <div className="relative h-[30px] w-[130px]">
-                <Image
-                  src="/images/NIHPLOD-logo.svg"
-                  alt="NIHPLOD"
-                  fill
-                  className="object-contain object-left brightness-0 invert"
-                  priority
-                />
-              </div>
-              <div className="flex h-11 items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.08] px-4 backdrop-blur-sm">
-                <span className="text-xs font-light tracking-wider text-white/60">
-                  NIHPLOD Admin v2.0.1
-                </span>
-              </div>
+          {/* 标题区：锁形徽章 + 管理面板 */}
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.04]">
+              <Lock className="h-5 w-5 text-brand-charcoal/50" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl font-semibold tracking-tight text-brand-charcoal">管理面板</h1>
+              <p className="text-sm text-brand-charcoal/50">请输入您的管理账号</p>
             </div>
           </div>
 
-          {/* 右侧表单区 */}
-          <div className="flex w-full flex-col justify-center bg-white px-8 py-12 sm:px-12 lg:w-[56%] lg:px-14">
-            {/* 移动端 Logo */}
-            <div className="mb-8 lg:hidden">
-              <div className="relative h-[28px] w-[120px]">
-                <Image
-                  src="/images/NIHPLOD-logo.svg"
-                  alt="NIHPLOD"
-                  fill
-                  className="object-contain object-left"
-                  priority
-                />
-              </div>
+          {/* 表单卡片 */}
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="flex flex-col gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-6"
+          >
+            {/* 邮箱 */}
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-medium text-brand-charcoal"
+              >
+                邮箱地址
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                required
+                autoComplete="email"
+                disabled={isLoading}
+                placeholder="name@example.com"
+                aria-invalid={!!fieldErrors.email}
+                aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                className={cn(
+                  "block w-full rounded-lg border bg-brand-charcoal/[0.03] px-4 py-2 text-sm text-brand-charcoal outline-none transition-colors placeholder:text-brand-charcoal/30 disabled:opacity-50",
+                  fieldErrors.email
+                    ? "border-red-300 focus:border-red-400 focus:bg-white"
+                    : "border-brand-charcoal/15 focus:border-brand-primary/50 focus:bg-white"
+                )}
+              />
+              <p
+                id="email-error"
+                className={cn(
+                  "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
+                  fieldErrors.email
+                    ? "translate-y-0 opacity-100"
+                    : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
+                )}
+              >
+                <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                <span>{fieldErrors.email || ""}</span>
+              </p>
             </div>
 
-            <h1 className="mb-1 text-xl font-medium tracking-wide text-brand-charcoal">
-              管理员登录
-            </h1>
-            <p className="mb-8 text-sm text-brand-charcoal/50">请输入您的管理账号</p>
+            {/* 密码 */}
+            <div>
+              <label
+                htmlFor="password"
+                className="mb-1.5 block text-sm font-medium text-brand-charcoal"
+              >
+                密码
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={handlePasswordChange}
+                  required
+                  autoComplete="current-password"
+                  disabled={isLoading}
+                  minLength={8}
+                  placeholder="请输入密码"
+                  aria-invalid={!!fieldErrors.password}
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  className={cn(
+                    "block w-full rounded-lg border bg-brand-charcoal/[0.03] px-4 py-2 pr-10 text-sm text-brand-charcoal outline-none transition-colors placeholder:text-brand-charcoal/30 disabled:opacity-50",
+                    fieldErrors.password
+                      ? "border-red-300 focus:border-red-400 focus:bg-white"
+                      : "border-brand-charcoal/15 focus:border-brand-primary/50 focus:bg-white"
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-brand-charcoal/30 transition-colors hover:text-brand-charcoal/60 focus:outline-none"
+                  aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p
+                id="password-error"
+                className={cn(
+                  "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
+                  fieldErrors.password
+                    ? "translate-y-0 opacity-100"
+                    : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
+                )}
+              >
+                <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                <span>{fieldErrors.password || ""}</span>
+              </p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-              {/* 邮箱 */}
+            {/* TOTP Code */}
+            {totpRequired && (
               <div>
                 <label
-                  htmlFor="email"
-                  className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60"
+                  htmlFor="totpCode"
+                  className="mb-1.5 block text-sm font-medium text-brand-charcoal"
                 >
-                  邮箱地址
+                  二次验证码
                 </label>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={handleEmailChange}
+                  id="totpCode"
+                  ref={totpInputRef}
+                  type="text"
+                  inputMode="text"
+                  value={totpCode}
+                  onChange={handleTOTPChange}
                   required
-                  autoComplete="email"
+                  autoComplete="one-time-code"
                   disabled={isLoading}
-                  placeholder="name@example.com"
-                  aria-invalid={!!fieldErrors.email}
-                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                  maxLength={20}
+                  placeholder="6 位动态验证码或备用码"
+                  aria-invalid={!!fieldErrors.totpCode}
+                  aria-describedby={fieldErrors.totpCode ? "totp-error" : undefined}
                   className={cn(
-                    "block w-full rounded-xl border bg-brand-charcoal/[0.02] px-4 py-3 text-[15px] text-brand-charcoal outline-none transition-all duration-300 placeholder:text-brand-charcoal/25 disabled:opacity-50",
-                    fieldErrors.email
-                      ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-50"
-                      : "border-brand-charcoal/15 focus:border-brand-primary/50 focus:bg-white focus:ring-4 focus:ring-brand-primary/5"
+                    "block w-full rounded-lg border bg-brand-charcoal/[0.03] px-4 py-2 text-sm tracking-[0.3em] text-brand-charcoal outline-none transition-colors placeholder:tracking-normal placeholder:text-brand-charcoal/30 disabled:opacity-50",
+                    fieldErrors.totpCode
+                      ? "border-red-300 focus:border-red-400 focus:bg-white"
+                      : "border-brand-charcoal/15 focus:border-brand-primary/50 focus:bg-white"
                   )}
                 />
                 <p
-                  id="email-error"
+                  id="totp-error"
                   className={cn(
                     "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
-                    fieldErrors.email
+                    fieldErrors.totpCode
                       ? "translate-y-0 opacity-100"
                       : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
                   )}
                 >
                   <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                  <span>{fieldErrors.email || ""}</span>
+                  <span>{fieldErrors.totpCode || ""}</span>
                 </p>
               </div>
+            )}
 
-              {/* 密码 */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60"
-                >
-                  密码
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={handlePasswordChange}
-                    required
-                    autoComplete="current-password"
-                    disabled={isLoading}
-                    minLength={8}
-                    placeholder="请输入密码"
-                    aria-invalid={!!fieldErrors.password}
-                    aria-describedby={fieldErrors.password ? "password-error" : undefined}
-                    className={cn(
-                      "block w-full rounded-xl border bg-brand-charcoal/[0.02] px-4 py-3 pr-10 text-[15px] text-brand-charcoal outline-none transition-all duration-300 placeholder:text-brand-charcoal/25 disabled:opacity-50",
-                      fieldErrors.password
-                        ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-50"
-                        : "border-brand-charcoal/15 focus:border-brand-primary/50 focus:bg-white focus:ring-4 focus:ring-brand-primary/5"
-                    )}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-brand-charcoal/30 transition-colors hover:text-brand-charcoal/60 focus:outline-none"
-                    aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p
-                  id="password-error"
-                  className={cn(
-                    "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
-                    fieldErrors.password
-                      ? "translate-y-0 opacity-100"
-                      : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
-                  )}
-                >
-                  <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                  <span>{fieldErrors.password || ""}</span>
-                </p>
-              </div>
-
-              {/* TOTP Code */}
-              {totpRequired && (
-                <div>
-                  <label
-                    htmlFor="totpCode"
-                    className="mb-1.5 block text-xs font-medium tracking-wide text-brand-charcoal/60"
-                  >
-                    二次验证码
-                  </label>
-                  <input
-                    id="totpCode"
-                    ref={totpInputRef}
-                    type="text"
-                    inputMode="text"
-                    value={totpCode}
-                    onChange={handleTOTPChange}
-                    required
-                    autoComplete="one-time-code"
-                    disabled={isLoading}
-                    maxLength={20}
-                    placeholder="6 位动态验证码或备用码"
-                    aria-invalid={!!fieldErrors.totpCode}
-                    aria-describedby={fieldErrors.totpCode ? "totp-error" : undefined}
-                    className={cn(
-                      "block w-full rounded-xl border bg-brand-charcoal/[0.02] px-4 py-3 text-[15px] tracking-[0.3em] text-brand-charcoal outline-none transition-all duration-300 placeholder:tracking-normal placeholder:text-brand-charcoal/25 disabled:opacity-50",
-                      fieldErrors.totpCode
-                        ? "border-red-300 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-50"
-                        : "border-brand-charcoal/15 focus:border-brand-primary/50 focus:bg-white focus:ring-4 focus:ring-brand-primary/5"
-                    )}
-                  />
-                  <p
-                    id="totp-error"
-                    className={cn(
-                      "mt-1.5 flex items-center gap-1 text-xs text-red-500 transition-all duration-200",
-                      fieldErrors.totpCode
-                        ? "translate-y-0 opacity-100"
-                        : "pointer-events-none mt-0 h-0 -translate-y-1 opacity-0"
-                    )}
-                  >
-                    <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                    <span>{fieldErrors.totpCode || ""}</span>
-                  </p>
-                </div>
-              )}
-
-              {/* 错误提示 */}
-              {error && (
-                <div
-                  role="alert"
-                  aria-live="polite"
-                  className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-600"
-                >
-                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* 登录按钮 */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-primary bg-transparent py-3 text-[15px] font-medium tracking-wider text-brand-primary transition-all duration-300 hover:bg-brand-primary hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            {/* 错误提示 */}
+            {error && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-600"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    登录中...
-                  </>
-                ) : (
-                  "登 录"
-                )}
+                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* 登录按钮 */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  登录中...
+                </>
+              ) : (
+                "登录"
+              )}
+            </button>
+          </form>
+
+          {/* 子站切换（面包屑下拉） */}
+          <div className="flex items-center justify-center gap-2 text-xs text-brand-charcoal/40">
+            <Link href="/" className="transition-colors hover:text-brand-charcoal/70">
+              首页
+            </Link>
+            <span className="text-brand-charcoal/25">/</span>
+            <div className="relative" ref={breadcrumbRef}>
+              <button
+                onClick={() => setBreadcrumbOpen((v) => !v)}
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+              >
+                后台登录（官网）
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 transition-transform duration-200",
+                    breadcrumbOpen && "rotate-180"
+                  )}
+                />
               </button>
-            </form>
+              {breadcrumbOpen && (
+                <div className="absolute bottom-full left-1/2 z-30 mb-2 flex -translate-x-1/2 flex-col gap-2 whitespace-nowrap rounded-xl border border-brand-charcoal/10 bg-white p-3 text-xs shadow-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="select-none text-brand-charcoal/25">/</span>
+                    <a
+                      href="https://smart.nihplod.cn/admin"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"
+                      onClick={() => setBreadcrumbOpen(false)}
+                    >
+                      后台登录（AI 护肤顾问）
+                      <ExternalLink className="h-3 w-3 text-brand-charcoal/40" />
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="select-none text-brand-charcoal/25">/</span>
+                    <a
+                      href="https://ba.nihplod.cn/admin"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"
+                      onClick={() => setBreadcrumbOpen(false)}
+                    >
+                      后台登录（授权管理）
+                      <ExternalLink className="h-3 w-3 text-brand-charcoal/40" />
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* 页脚 */}
       <footer className="flex flex-col items-center gap-1 px-6 pb-6">
