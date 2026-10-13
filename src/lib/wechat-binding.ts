@@ -6,12 +6,15 @@
  * - /api/v1/internal/wechat/exchange（子站跨域兑换，基于 wechat_exchange_token）
  *
  * 统一处理：短信验证码校验、账户冲突解决、用户创建/更新、双 Token 签发。
+ * 签发默认走内部 HS256 双 Token；调用方传入 oauth 参数时改走 RS256 OAuth 口径
+ * （见 issueOAuthTokens，当前由小程序登录使用）。
  */
 import { prisma } from "@/lib/prisma";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import {
   signUserToken,
   signRefreshToken,
+  signOAuthAccessToken,
   type WechatBindPayload,
   type WechatExchangePayload,
 } from "@/lib/jwt";
@@ -23,6 +26,21 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { apiConsole } from "@/lib/logger";
 import type { NextRequest } from "next/server";
+
+/**
+ * OAuth 签发参数：传入时绑定成功后按 OAuth 口径签发
+ * （RS256 Access Token，type=access_token，audience=clientId，子站可经 JWKS 验签；
+ * 同时创建 OAuthSession，sid 入 token，撤销会话后 access token 即时失效）。
+ * 不传时保持内部 HS256 双 Token 行为（网页绑定等既有路径不受影响）。
+ */
+export interface WechatOAuthIssueOptions {
+  /** OAuth client_id（须已存在且 isActive，由调用方校验） */
+  clientId: string;
+  /** 空格分隔的 scope 串 */
+  scope: string;
+  /** Access Token 有效期（秒），取自 OAuthClient.accessTokenTtlSeconds */
+  accessTokenTtlSeconds: number;
+}
 
 export interface WechatBindingInput {
   phone: string;
@@ -40,6 +58,8 @@ export interface WechatBindingInput {
   request: NextRequest;
   /** 外部身份 provider 标识（默认 wechat_open；小程序登录传 wechat_miniprogram） */
   provider?: string;
+  /** OAuth 签发参数：传入时走 RS256 OAuth 口径签发（见 WechatOAuthIssueOptions） */
+  oauth?: WechatOAuthIssueOptions;
 }
 
 export interface WechatBindingResult {
@@ -51,6 +71,8 @@ export interface WechatBindingResult {
   };
   accessToken: string;
   refreshToken: string;
+  /** OAuth 签发路径的 access token 有效期（秒）；内部 HS256 路径为 undefined */
+  expiresIn?: number;
   passwordGenerated: boolean;
   message: string;
 }
@@ -105,6 +127,68 @@ async function verifyAndConsumeSmsCode(phone: string, code: string, ip: string) 
   }
 
   return { valid: true as const };
+}
+
+// 与 /api/oauth/token 的 MAX_OAUTH_SESSIONS_PER_CLIENT 口径一致
+const MAX_OAUTH_SESSIONS_PER_CLIENT = 10;
+
+/**
+ * OAuth 口径签发双 Token（供小程序登录等无授权码场景复用）。
+ * 模式与 /api/oauth/token 的 authorization_code 签发段一致：
+ * 创建 OAuthSession（同一 user+client 活跃会话达上限时撤销最旧）→
+ * RS256 Access Token（携带 sid claim）→ Refresh Token（携带 client_id/scope/sid）→
+ * 按 client 维度落库 Refresh Token。
+ *
+ * 与授权码流程的差异：无 authorizationCodeId 关联（非授权码换发），无 DPoP 绑定。
+ * Refresh Token 与 OAuthSession 的 expiresAt 沿用 30 天硬上限。
+ */
+export async function issueOAuthTokens(
+  user: { id: string; phone: string },
+  oauth: WechatOAuthIssueOptions,
+  request: NextRequest
+): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+  const { clientId, scope, accessTokenTtlSeconds } = oauth;
+  const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  // 限制同一 user+client 的活跃 session 数：达到上限时撤销最旧的会话
+  const activeSessions = await prisma.oAuthSession.findMany({
+    where: { userId: user.id, clientId, revokedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (activeSessions.length >= MAX_OAUTH_SESSIONS_PER_CLIENT) {
+    const sessionsToRevoke = activeSessions.slice(
+      0,
+      activeSessions.length - MAX_OAUTH_SESSIONS_PER_CLIENT + 1
+    );
+    await prisma.oAuthSession.updateMany({
+      where: { id: { in: sessionsToRevoke.map((s) => s.id) } },
+      data: { revokedAt: new Date() },
+    });
+  }
+  const sessionId = crypto.randomUUID();
+  await prisma.oAuthSession.create({
+    data: {
+      userId: user.id,
+      clientId,
+      sessionId,
+      scopes: scope.split(" ").filter(Boolean),
+      expiresAt: refreshExpiresAt,
+    },
+  });
+
+  const accessToken = await signOAuthAccessToken({
+    id: user.id,
+    phone: user.phone,
+    clientId,
+    scope,
+    expiresIn: `${accessTokenTtlSeconds}s`,
+    sid: sessionId,
+  });
+  const refreshToken = await signRefreshToken({ id: user.id, clientId, scope, sid: sessionId });
+  await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, extractDeviceInfo(request), clientId);
+
+  return { accessToken, refreshToken, expiresIn: accessTokenTtlSeconds };
 }
 
 /**
@@ -354,11 +438,19 @@ export async function resolveWechatBinding(
     };
   }
 
-  // 8. 签发双 Token
-  const accessToken = await signUserToken({ id: user.id });
-  const refreshToken = await signRefreshToken({ id: user.id });
-  const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+  // 8. 签发双 Token：传了 oauth 参数走 RS256 OAuth 口径（小程序登录），
+  //    否则保持内部 HS256 行为（网页绑定/子站兑换路径不变）
+  let accessToken: string;
+  let refreshToken: string;
+  let expiresIn: number | undefined;
+  if (input.oauth) {
+    ({ accessToken, refreshToken, expiresIn } = await issueOAuthTokens(user, input.oauth, request));
+  } else {
+    accessToken = await signUserToken({ id: user.id });
+    refreshToken = await signRefreshToken({ id: user.id });
+    const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+  }
 
   logAuthEvent("wechat_bind", {
     userId: user.id,
@@ -378,6 +470,7 @@ export async function resolveWechatBinding(
       },
       accessToken,
       refreshToken,
+      expiresIn,
       passwordGenerated,
       message: passwordGenerated
         ? "绑定成功，已自动登录。系统已为您生成安全密码，可在个人信息中修改"

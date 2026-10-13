@@ -38,7 +38,9 @@ import { apiConsole } from "@/lib/logger";
 const ALLOWED_PROJECTS = ["advisor"] as const;
 
 const sendTemplateSchema = z.object({
-  userId: z.string().cuid(),
+  // 兼容 cuid2 等 u 开头的合法 userId（原 z.cuid() 仅接受 c 开头，误拒生产用户）；
+  // 该接口有 HMAC 签名 + project 白名单 + 限流，放宽格式校验无安全面
+  userId: z.string().regex(/^[a-z][0-9a-z]{5,31}$/i, "invalid user id"),
   score: z.number(),
   primaryConcern: z.string().min(1).max(100),
   reportUrl: z

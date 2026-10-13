@@ -21,6 +21,8 @@ vi.mock("@/lib/prisma", () => {
       // 绑定冲突预检（step 0，事务外）使用的顶层句柄
       user: { findUnique: vi.fn(), findFirst: vi.fn() },
       externalIdentity: { findUnique: vi.fn() },
+      // OAuth 签发路径的会话句柄
+      oAuthSession: { findMany: vi.fn(), updateMany: vi.fn(), create: vi.fn() },
       // 事务 mock：直接以 txClient 执行回调，并暴露给测试断言
       $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
       __tx: txClient,
@@ -51,6 +53,7 @@ vi.mock("@/lib/auth-security", () => ({
 vi.mock("@/lib/jwt", () => ({
   signUserToken: vi.fn().mockResolvedValue("access-token"),
   signRefreshToken: vi.fn().mockResolvedValue("refresh-token"),
+  signOAuthAccessToken: vi.fn().mockResolvedValue("oauth-access-token"),
 }));
 
 vi.mock("@/lib/auth-logger", () => ({
@@ -63,10 +66,20 @@ vi.mock("@/lib/client-ip", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
-import { resolveWechatBinding, type WechatBindingInput } from "@/lib/wechat-binding";
+import { signUserToken, signRefreshToken, signOAuthAccessToken } from "@/lib/jwt";
+import { saveRefreshToken } from "@/lib/auth-security";
+import {
+  resolveWechatBinding,
+  type WechatBindingInput,
+  type WechatOAuthIssueOptions,
+} from "@/lib/wechat-binding";
 
 const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
 const mockRecordSmsCodeFailure = recordSmsCodeFailure as ReturnType<typeof vi.fn>;
+const mockSignUserToken = signUserToken as ReturnType<typeof vi.fn>;
+const mockSignRefreshToken = signRefreshToken as ReturnType<typeof vi.fn>;
+const mockSignOAuthAccessToken = signOAuthAccessToken as ReturnType<typeof vi.fn>;
+const mockSaveRefreshToken = saveRefreshToken as ReturnType<typeof vi.fn>;
 
 type TxClient = {
   user: {
@@ -93,6 +106,11 @@ const mockPrisma = prisma as unknown as {
   externalIdentity: {
     findUnique: ReturnType<typeof vi.fn>;
   };
+  oAuthSession: {
+    findMany: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+  };
   __tx: TxClient;
 };
 
@@ -111,7 +129,7 @@ const createdUser = {
   avatar: null,
 };
 
-function buildInput(provider?: string): WechatBindingInput {
+function buildInput(provider?: string, oauth?: WechatOAuthIssueOptions): WechatBindingInput {
   return {
     phone: "13800138000",
     code: "123456",
@@ -120,8 +138,15 @@ function buildInput(provider?: string): WechatBindingInput {
     // 路由层总是传 NextRequest；extractDeviceInfo 已 mock，此处无需真实实例
     request: {} as WechatBindingInput["request"],
     ...(provider ? { provider } : {}),
+    ...(oauth ? { oauth } : {}),
   };
 }
+
+const OAUTH_OPTIONS: WechatOAuthIssueOptions = {
+  clientId: "wechat-miniprogram",
+  scope: "openid profile phone membership",
+  accessTokenTtlSeconds: 28800,
+};
 
 describe("resolveWechatBinding provider 写入语义", () => {
   beforeEach(() => {
@@ -406,5 +431,97 @@ describe("resolveWechatBinding 安全回归（IP 绑定 / 冲突预检）", () =
       expect(result.code).toBe("WECHAT_ALREADY_BOUND");
     }
     expect(mockPrisma.smsCode.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveWechatBinding OAuth 签发路径", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrecheckNoConflict();
+    mockVerifyCode.mockReturnValue(true);
+    mockPrisma.smsCode.findFirst.mockResolvedValue({ id: "sms-1", codeHash: "hash", type: "bind" });
+    mockPrisma.smsCode.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.__tx.user.findFirst.mockResolvedValue(null);
+    mockPrisma.__tx.user.findUnique.mockResolvedValue(null);
+    mockPrisma.__tx.user.create.mockResolvedValue(createdUser);
+    mockPrisma.__tx.externalIdentity.upsert.mockResolvedValue({ id: "ei-1" });
+    mockPrisma.__tx.externalIdentity.findUnique.mockResolvedValue(null);
+    // 默认无活跃会话
+    mockPrisma.oAuthSession.findMany.mockResolvedValue([]);
+  });
+
+  it("传入 oauth 参数时应创建 OAuthSession 并签发 RS256 OAuth token", async () => {
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram", OAUTH_OPTIONS));
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    // OAuthSession：关联 user+client，sessionId 随机，scopes 按空格拆分，expiresAt 30 天硬上限
+    const sessionCreate = mockPrisma.oAuthSession.create.mock.calls[0][0];
+    expect(sessionCreate.data.userId).toBe("user-1");
+    expect(sessionCreate.data.clientId).toBe("wechat-miniprogram");
+    expect(typeof sessionCreate.data.sessionId).toBe("string");
+    expect(sessionCreate.data.scopes).toEqual(["openid", "profile", "phone", "membership"]);
+    expect(sessionCreate.data.expiresAt).toBeInstanceOf(Date);
+    const sessionId = sessionCreate.data.sessionId as string;
+
+    // Access Token：OAuth 口径（RS256），expiresIn 取 client TTL，携带 sid
+    expect(mockSignOAuthAccessToken).toHaveBeenCalledWith({
+      id: "user-1",
+      phone: "13800138000",
+      clientId: "wechat-miniprogram",
+      scope: "openid profile phone membership",
+      expiresIn: "28800s",
+      sid: sessionId,
+    });
+    // Refresh Token：携带 client_id/scope/sid
+    expect(mockSignRefreshToken).toHaveBeenCalledWith({
+      id: "user-1",
+      clientId: "wechat-miniprogram",
+      scope: "openid profile phone membership",
+      sid: sessionId,
+    });
+    // 落库 refresh token 按 client 维度隔离（第 5 参为 clientId）
+    expect(mockSaveRefreshToken).toHaveBeenCalledWith(
+      "user-1",
+      "refresh-token",
+      expect.any(Date),
+      expect.anything(),
+      "wechat-miniprogram"
+    );
+    // 返回 OAuth token 与 expiresIn
+    expect(result.data.accessToken).toBe("oauth-access-token");
+    expect(result.data.refreshToken).toBe("refresh-token");
+    expect(result.data.expiresIn).toBe(28800);
+    // 不再走内部 HS256 签发
+    expect(mockSignUserToken).not.toHaveBeenCalled();
+  });
+
+  it("同一 user+client 活跃会话达到上限时应撤销最旧会话", async () => {
+    // 已有 10 个活跃会话（= 上限），应撤销最旧 1 个后再建新会话
+    mockPrisma.oAuthSession.findMany.mockResolvedValue(
+      Array.from({ length: 10 }, (_, i) => ({ id: `sess-${i}` }))
+    );
+
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram", OAUTH_OPTIONS));
+
+    expect(result.success).toBe(true);
+    expect(mockPrisma.oAuthSession.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["sess-0"] } },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(mockPrisma.oAuthSession.create).toHaveBeenCalled();
+  });
+
+  it("不传 oauth 参数时保持内部 HS256 签发，不创建 OAuthSession", async () => {
+    const result = await resolveWechatBinding(buildInput("wechat_miniprogram"));
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(mockSignUserToken).toHaveBeenCalledWith({ id: "user-1" });
+    expect(result.data.accessToken).toBe("access-token");
+    expect(result.data.expiresIn).toBeUndefined();
+    expect(mockSignOAuthAccessToken).not.toHaveBeenCalled();
+    expect(mockPrisma.oAuthSession.create).not.toHaveBeenCalled();
   });
 });

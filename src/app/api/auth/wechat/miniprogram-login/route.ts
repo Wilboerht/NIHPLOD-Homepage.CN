@@ -6,10 +6,15 @@
  *
  * 流程：code2session 换 openid/unionid → 按 ExternalIdentity（provider=wechat_miniprogram）
  * 或 UnionID 聚合查找用户 → 三分支：
- * 1. 已绑定真实账户且状态正常 → 签发双 Token，JSON 响应体携带（小程序无 Cookie）
+ * 1. 已绑定真实账户且状态正常 → 签发 OAuth 双 Token（access token 为 RS256，
+ *    audience=wechat-miniprogram，子站可经 JWKS 验签），JSON 响应体携带（小程序无 Cookie）
  * 2. 占位账户/未绑定 → 返回 bindToken，前端引导手机+验证码绑定
  *    （POST /api/auth/wechat/bind，body 携带 bindToken）
  * 3. 封禁/冻结 → 403 ACCOUNT_DISABLED
+ *
+ * Token 刷新：小程序端 refresh token 走 POST /api/oauth/token 的 refresh_token grant
+ * （client_id=wechat-miniprogram，public client 免 secret）；本端点只负责登录签发，
+ * 旧的 /api/auth/wechat/miniprogram-refresh 继续服务存量 HS256 token，不在此改动。
  *
  * 安全说明：
  * - 不启用 CSRF 校验：小程序为无浏览器环境，无 __Host- Cookie 双端比对能力；
@@ -21,15 +26,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { code2session, getMiniprogramPhone } from "@/lib/wechat";
-import {
-  signUserToken,
-  signRefreshToken,
-  signWechatBindToken,
-  type WechatBindPayload,
-} from "@/lib/jwt";
-import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import { signWechatBindToken, type WechatBindPayload } from "@/lib/jwt";
 import { findUserByIdentity, findUserByUnionId, upsertIdentity } from "@/lib/external-identity";
-import { resolveWechatBinding } from "@/lib/wechat-binding";
+import { resolveWechatBinding, issueOAuthTokens } from "@/lib/wechat-binding";
+import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { checkUserStatus } from "@/lib/auth";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
@@ -37,6 +37,42 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 
 const PROVIDER = "wechat_miniprogram";
+
+// 小程序登录签发的 OAuth Client（须在 SSO 后台预建，public client，scopes 需覆盖 MP_OAUTH_SCOPE）
+const MP_OAUTH_CLIENT_ID = "wechat-miniprogram";
+const MP_OAUTH_SCOPE = "openid profile phone membership";
+
+/**
+ * 读取小程序 OAuth Client。缺失/停用属部署配置错误：
+ * 打明确错误日志并返回 null，调用方以 500 响应（日志中提示需先建 client）。
+ */
+async function requireMpOAuthClient() {
+  const client = await getOAuthClientByClientId(MP_OAUTH_CLIENT_ID);
+  if (!client || !client.isActive) {
+    apiConsole.error(
+      `[MiniprogramLogin] OAuth Client "${MP_OAUTH_CLIENT_ID}" 不存在或已停用，` +
+        `请先在 SSO 后台创建该 client（scopes 需覆盖: ${MP_OAUTH_SCOPE}）`
+    );
+    return null;
+  }
+  const missingScopes = MP_OAUTH_SCOPE.split(" ").filter((s) => !client.scopes.includes(s));
+  if (missingScopes.length > 0) {
+    apiConsole.warn(
+      `[MiniprogramLogin] OAuth Client "${MP_OAUTH_CLIENT_ID}" 的 scopes 未覆盖: ${missingScopes.join(" ")}`
+    );
+  }
+  return client;
+}
+
+function oauthClientMissingResponse() {
+  return NextResponse.json(
+    {
+      success: false,
+      error: { code: "OAUTH_CLIENT_MISSING", message: "登录服务配置异常，请稍后再试" },
+    },
+    { status: 500 }
+  );
+}
 
 const bodySchema = z.object({
   // wx.login code 为短时效一次性凭证，限制长度防异常输入
@@ -118,6 +154,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const mpClient = await requireMpOAuthClient();
+      if (!mpClient) return oauthClientMissingResponse();
+
       const wechatInfo: WechatBindPayload = {
         type: "wechat_bind",
         openid,
@@ -131,6 +170,11 @@ export async function POST(request: NextRequest) {
         wechatInfo,
         request,
         provider: PROVIDER,
+        oauth: {
+          clientId: MP_OAUTH_CLIENT_ID,
+          scope: MP_OAUTH_SCOPE,
+          accessTokenTtlSeconds: mpClient.accessTokenTtlSeconds,
+        },
       });
 
       if (!bindingResult.success) {
@@ -140,7 +184,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { user, accessToken, refreshToken, passwordGenerated, message } = bindingResult.data;
+      const { user, accessToken, refreshToken, expiresIn, passwordGenerated, message } =
+        bindingResult.data;
       logAuthEvent("user_login", {
         userId: user.id,
         identifier: user.phone,
@@ -153,8 +198,12 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           needBinding: false,
+          // OAuth 口径：accessToken 为 RS256（aud=wechat-miniprogram），expiresIn 为其有效期秒数
+          // （= OAuthClient.accessTokenTtlSeconds）；refreshToken 有效期固定 30 天，
+          // 刷新走 POST /api/oauth/token 的 refresh_token grant
           accessToken,
           refreshToken,
+          expiresIn,
           user,
           passwordGenerated,
           message,
@@ -219,11 +268,21 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 6. 签发双 Token（access 携带 jti，登出即失效自动生效）
-    const accessToken = await signUserToken({ id: user.id });
-    const refreshToken = await signRefreshToken({ id: user.id });
-    const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+    // 6. 签发 OAuth 双 Token：RS256 access token（aud=wechat-miniprogram，携带 sid，
+    //    撤销 OAuthSession 即失效）；refresh token 关联 client_id/scope/sid。
+    //    access token 有效期取 OAuthClient.accessTokenTtlSeconds（响应 expiresIn 字段），
+    //    refresh token 30 天硬上限；小程序端刷新走 POST /api/oauth/token 的 refresh_token grant
+    const mpClient = await requireMpOAuthClient();
+    if (!mpClient) return oauthClientMissingResponse();
+    const { accessToken, refreshToken, expiresIn } = await issueOAuthTokens(
+      { id: user.id, phone: user.phone },
+      {
+        clientId: MP_OAUTH_CLIENT_ID,
+        scope: MP_OAUTH_SCOPE,
+        accessTokenTtlSeconds: mpClient.accessTokenTtlSeconds,
+      },
+      request
+    );
 
     logAuthEvent("user_login", {
       userId: user.id,
@@ -239,6 +298,7 @@ export async function POST(request: NextRequest) {
         needBinding: false,
         accessToken,
         refreshToken,
+        expiresIn,
         user: {
           id: user.id,
           phone: user.phone,
