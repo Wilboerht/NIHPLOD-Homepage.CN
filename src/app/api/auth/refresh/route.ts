@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       data: {
-        accessTokenExpiresAt: getTokenExpiresAt(120), // 2小时
+        accessTokenExpiresAt: getTokenExpiresAt(480), // 8小时
         refreshTokenExpiresAt: getRefreshTokenExpiresAt(), // 30天
       },
     });

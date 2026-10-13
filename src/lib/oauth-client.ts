@@ -64,7 +64,7 @@ const createClientSchema = z.object({
   backchannelLogoutUri: backchannelLogoutUriSchema.optional(),
   webhookUri: webhookUriSchema.optional(),
   codeTtlSeconds: z.number().int().min(60).max(600).optional().default(300),
-  accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional().default(900),
+  accessTokenTtlSeconds: z.number().int().min(60).max(86400).optional().default(28800),
 });
 
 const updateClientSchema = z.object({

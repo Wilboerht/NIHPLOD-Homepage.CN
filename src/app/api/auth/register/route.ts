@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
       ip: getClientIP(request),
     });
 
-    // 3. 签发 Access Token（短期，2小时）
+    // 3. 签发 Access Token（短期，8小时）
     const accessToken = await signUserToken({
       id: user.id,
     });

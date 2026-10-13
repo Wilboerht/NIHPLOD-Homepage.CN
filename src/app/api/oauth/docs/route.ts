@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         "- PKCE (S256) 强制启用，确保授权码不被拦截\n" +
         "- redirect_uri 必须精确匹配注册值\n" +
         "- client_secret 仅在后端使用，不可暴露到前端代码\n" +
-        "- access_token 有效期 15 分钟，需使用 refresh_token 续期",
+        "- access_token 有效期 8 小时，需使用 refresh_token 续期",
       version: "1.0.0",
       contact: {
         name: "NIHPLOD Dev Team",
@@ -532,7 +532,7 @@ export async function GET(request: NextRequest) {
             },
             expires_in: {
               type: "integer",
-              description: "有效期（秒），默认 900（15 分钟）",
+              description: "有效期（秒），默认 28800（8 小时）",
             },
             refresh_expires_in: {
               type: "integer",

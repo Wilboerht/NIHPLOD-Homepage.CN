@@ -84,7 +84,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // 撤销 refresh token；OAuth client 会话同步撤销（事务内保证一致）
     // 已知窗口：目标设备已持有的 access token 对未实现 backchannel logout /
-    // 未走 introspection 校验的 RP 在其剩余 TTL（≤2 小时）内仍然有效。原因：
+    // 未走 introspection 校验的 RP 在其剩余 TTL（≤8 小时）内仍然有效。原因：
     // RefreshToken 记录不关联已签发 access token 的 jti，要消除该窗口需额外维护
     // access jti ↔ 会话的关联存储；已配置 backchannelLogoutUri 的 RP 由下方
     // 通知即时失效（access token 到期即无法续期）。

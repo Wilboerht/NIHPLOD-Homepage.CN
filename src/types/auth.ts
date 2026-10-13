@@ -187,7 +187,7 @@ export const USER_COOKIE_NAME = "__Host-user_token";
 // breaking change（旧 Cookie 成为孤儿，用户最多重新登录一次）
 export const USER_REFRESH_COOKIE_NAME = "nihplod_user_refresh";
 
-// Access Token Cookie：2 小时，与 JWT 过期时间一致
+// Access Token Cookie：8 小时，与 JWT 过期时间一致
 // 使用 Lax 而非 Strict：微信/支付宝内嵌浏览器作为第三方上下文会拦截 Strict Cookie，
 // 导致用户从微信内打开子站时无法维持登录状态。
 // 安全考量：
@@ -201,7 +201,7 @@ export const USER_ACCESS_COOKIE_OPTIONS = {
   secure: true,
   sameSite: "lax" as const,
   path: "/",
-  maxAge: 2 * 60 * 60, // 2 小时（秒）
+  maxAge: 8 * 60 * 60, // 8 小时（秒）
 };
 
 // Refresh Token Cookie：30 天；Path 收窄到 /api（浏览器仅在访问 /api 时携带，

@@ -47,8 +47,8 @@ import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-/** Access Token 默认有效期（秒）：15 分钟，client 可自定义覆盖 */
-const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = 900;
+/** Access Token 默认有效期（秒）：8 小时，client 可自定义覆盖 */
+const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = 28800;
 
 /** 同一 user+client 的活跃 OAuthSession 上限（参照 MAX_REFRESH_TOKEN_DEVICES 模式） */
 const MAX_OAUTH_SESSIONS_PER_CLIENT = 10;

@@ -17,8 +17,8 @@ import { LRUCache } from "lru-cache";
 import { prisma } from "./prisma";
 import { apiConsole } from "./logger";
 
-const ACCESS_TOKEN_BLACKLIST_TTL_MS = 2 * 60 * 60 * 1000; // 2 小时，与 access token 一致
-const USER_BLACKLIST_TTL_MS = 2 * 60 * 60 * 1000; // 2 小时，覆盖 access token 剩余有效期窗口
+const ACCESS_TOKEN_BLACKLIST_TTL_MS = 8 * 60 * 60 * 1000; // 8 小时，与 access token 一致
+const USER_BLACKLIST_TTL_MS = 8 * 60 * 60 * 1000; // 8 小时，覆盖 access token 剩余有效期窗口
 
 export type BlacklistEntryType = "access_token" | "user";
 

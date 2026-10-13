@@ -412,7 +412,7 @@ model OAuthClient {
   backchannelLogoutUri String?            // Backchannel Logout URI
   webhookUri          String?              // 用户资料变更 Webhook 推送地址（可空，未配置则不推送）
   codeTtlSeconds      Int      @default(300)    // 授权码有效期（秒），默认 5 分钟
-  accessTokenTtlSeconds Int    @default(900)    // Access Token 有效期（秒），默认 15 分钟
+  accessTokenTtlSeconds Int    @default(28800)  // Access Token 有效期（秒），默认 8 小时
   tenantId            String?              // 多租户预留：当前为 null 表示全局共享
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
