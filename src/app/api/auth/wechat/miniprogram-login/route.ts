@@ -43,7 +43,7 @@ const MP_OAUTH_CLIENT_ID = "wechat-miniprogram";
 const MP_OAUTH_SCOPE = "openid profile phone membership";
 
 /**
- * 读取小程序 OAuth Client。缺失/停用属部署配置错误：
+ * 读取小程序 OAuth Client。缺失/停用/非 public 属部署配置错误：
  * 打明确错误日志并返回 null，调用方以 500 响应（日志中提示需先建 client）。
  */
 async function requireMpOAuthClient() {
@@ -55,6 +55,15 @@ async function requireMpOAuthClient() {
     );
     return null;
   }
+  // 小程序无 secret 持有能力，refresh grant 依赖 public client 免 secret；
+  // confidential client 会在 POST /api/oauth/token 的 refresh_token grant 上 401
+  if (!client.isPublic) {
+    apiConsole.error(
+      `[MiniprogramLogin] OAuth Client "${MP_OAUTH_CLIENT_ID}" 不是 public client，` +
+        `必须建为 public client，否则 refresh grant 会 401`
+    );
+    return null;
+  }
   const missingScopes = MP_OAUTH_SCOPE.split(" ").filter((s) => !client.scopes.includes(s));
   if (missingScopes.length > 0) {
     apiConsole.warn(
@@ -62,6 +71,22 @@ async function requireMpOAuthClient() {
     );
   }
   return client;
+}
+
+/**
+ * 计算实际签发 scope：MP_OAUTH_SCOPE ∩ client.scopes（保持 MP_OAUTH_SCOPE 的顺序）。
+ * 交集为空属配置错误：打 error 日志并返回 null，调用方以 500 响应。
+ */
+function resolveMpScope(client: { scopes: string[] }): string | null {
+  const granted = MP_OAUTH_SCOPE.split(" ").filter((s) => client.scopes.includes(s));
+  if (granted.length === 0) {
+    apiConsole.error(
+      `[MiniprogramLogin] OAuth Client "${MP_OAUTH_CLIENT_ID}" 的 scopes（${client.scopes.join(" ") || "(空)"}）` +
+        `与小程序所需 scope（${MP_OAUTH_SCOPE}）无交集，请在 SSO 后台补齐 client scopes`
+    );
+    return null;
+  }
+  return granted.join(" ");
 }
 
 function oauthClientMissingResponse() {
@@ -156,6 +181,8 @@ export async function POST(request: NextRequest) {
 
       const mpClient = await requireMpOAuthClient();
       if (!mpClient) return oauthClientMissingResponse();
+      const mpScope = resolveMpScope(mpClient);
+      if (!mpScope) return oauthClientMissingResponse();
 
       const wechatInfo: WechatBindPayload = {
         type: "wechat_bind",
@@ -172,7 +199,7 @@ export async function POST(request: NextRequest) {
         provider: PROVIDER,
         oauth: {
           clientId: MP_OAUTH_CLIENT_ID,
-          scope: MP_OAUTH_SCOPE,
+          scope: mpScope,
           accessTokenTtlSeconds: mpClient.accessTokenTtlSeconds,
         },
       });
@@ -268,17 +295,21 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 6. 签发 OAuth 双 Token：RS256 access token（aud=wechat-miniprogram，携带 sid，
-    //    撤销 OAuthSession 即失效）；refresh token 关联 client_id/scope/sid。
+    // 6. 签发 OAuth 双 Token：RS256 access token（aud=wechat-miniprogram，携带 sid；
+    //    撤销 OAuthSession 后主站 verifyOAuthAccessToken/introspect 立即失效，
+    //    子站 JWKS 本地验签不感知撤销，靠短 TTL 兜底）；refresh token 关联 client_id/scope/sid。
+    //    scope 收窄为 MP_OAUTH_SCOPE ∩ client.scopes；
     //    access token 有效期取 OAuthClient.accessTokenTtlSeconds（响应 expiresIn 字段），
     //    refresh token 30 天硬上限；小程序端刷新走 POST /api/oauth/token 的 refresh_token grant
     const mpClient = await requireMpOAuthClient();
     if (!mpClient) return oauthClientMissingResponse();
+    const mpScope = resolveMpScope(mpClient);
+    if (!mpScope) return oauthClientMissingResponse();
     const { accessToken, refreshToken, expiresIn } = await issueOAuthTokens(
       { id: user.id, phone: user.phone },
       {
         clientId: MP_OAUTH_CLIENT_ID,
-        scope: MP_OAUTH_SCOPE,
+        scope: mpScope,
         accessTokenTtlSeconds: mpClient.accessTokenTtlSeconds,
       },
       request

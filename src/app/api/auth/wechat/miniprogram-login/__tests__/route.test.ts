@@ -91,6 +91,7 @@ const MP_CLIENT = {
   clientId: "wechat-miniprogram",
   scopes: ["openid", "profile", "phone", "membership"],
   isActive: true,
+  isPublic: true,
   accessTokenTtlSeconds: 28800,
 };
 const MP_OAUTH_OPTIONS = {
@@ -365,6 +366,83 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
       mockGetPhone.mockResolvedValue("13812340003");
 
       const res = await POST(createRequest({ code: "wx-code", phoneCode: "phone-code-4" }));
+      const data = await res.json();
+
+      expect(res.status).toBe(500);
+      expect(data.error.code).toBe("OAUTH_CLIENT_MISSING");
+      expect(mockResolveBinding).not.toHaveBeenCalled();
+    });
+
+    it("client 不是 public 应返回 500（confidential client 的 refresh grant 会 401）", async () => {
+      mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, isPublic: false });
+      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockFindByIdentity.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        wechatUnionId: null,
+      });
+      mockCheckStatus.mockResolvedValue({ valid: true });
+
+      const res = await POST(createRequest({ code: "wx-code" }));
+      const data = await res.json();
+
+      expect(res.status).toBe(500);
+      expect(data.error.code).toBe("OAUTH_CLIENT_MISSING");
+      expect(mockIssueOAuthTokens).not.toHaveBeenCalled();
+    });
+
+    it("client scopes 仅覆盖部分时应收窄签发 scope（MP_OAUTH_SCOPE ∩ client.scopes）", async () => {
+      mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: ["openid", "profile"] });
+      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockFindByIdentity.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        wechatUnionId: null,
+      });
+      mockCheckStatus.mockResolvedValue({ valid: true });
+
+      const res = await POST(createRequest({ code: "wx-code" }));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.data.needBinding).toBe(false);
+      expect(mockIssueOAuthTokens).toHaveBeenCalledWith(
+        { id: "user-1", phone: "13800138000" },
+        { ...MP_OAUTH_OPTIONS, scope: "openid profile" },
+        expect.anything()
+      );
+    });
+
+    it("client scopes 与所需 scope 无交集应返回 500 且不签发", async () => {
+      mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: ["email"] });
+      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockFindByIdentity.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        wechatUnionId: null,
+      });
+      mockCheckStatus.mockResolvedValue({ valid: true });
+
+      const res = await POST(createRequest({ code: "wx-code" }));
+      const data = await res.json();
+
+      expect(res.status).toBe(500);
+      expect(data.error.code).toBe("OAUTH_CLIENT_MISSING");
+      expect(mockIssueOAuthTokens).not.toHaveBeenCalled();
+    });
+
+    it("phoneCode 一键登录：scope 交集为空应返回 500 且不进入绑定流程", async () => {
+      mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: [] });
+      mockCode2session.mockResolvedValue({ openid: "openid-c", unionid: undefined, sessionKey: "sk" });
+      mockGetPhone.mockResolvedValue("13812340004");
+
+      const res = await POST(createRequest({ code: "wx-code", phoneCode: "phone-code-5" }));
       const data = await res.json();
 
       expect(res.status).toBe(500);

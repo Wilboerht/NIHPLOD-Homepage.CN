@@ -30,7 +30,9 @@ import type { NextRequest } from "next/server";
 /**
  * OAuth 签发参数：传入时绑定成功后按 OAuth 口径签发
  * （RS256 Access Token，type=access_token，audience=clientId，子站可经 JWKS 验签；
- * 同时创建 OAuthSession，sid 入 token，撤销会话后 access token 即时失效）。
+ * 同时创建 OAuthSession，sid 入 token。撤销会话后的生效范围：主站
+ * verifyOAuthAccessToken/introspect 立即失效；子站 JWKS 本地验签不感知撤销，
+ * 依赖短 TTL 兜底——建 client 时 accessTokenTtlSeconds 必须设 900）。
  * 不传时保持内部 HS256 双 Token 行为（网页绑定等既有路径不受影响）。
  */
 export interface WechatOAuthIssueOptions {
@@ -141,6 +143,10 @@ const MAX_OAUTH_SESSIONS_PER_CLIENT = 10;
  *
  * 与授权码流程的差异：无 authorizationCodeId 关联（非授权码换发），无 DPoP 绑定。
  * Refresh Token 与 OAuthSession 的 expiresAt 沿用 30 天硬上限。
+ *
+ * 撤销语义：revoke OAuthSession 后主站 verifyOAuthAccessToken/introspect 按 sid 查库
+ * 立即失效；子站 JWKS 本地验签不感知撤销，依赖短 TTL
+ * （建 client 时 accessTokenTtlSeconds 必须设 900）兜底。
  */
 export async function issueOAuthTokens(
   user: { id: string; phone: string },
