@@ -19,12 +19,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
 
   // 登录页面使用独立的简洁布局
+  // 搜索引擎屏蔽由 robots.txt 的 Disallow: /admin 统一负责；
+  // 客户端组件中的 <meta name="robots"> 渲染在 body 内，搜索引擎会忽略，故不再输出
   if (pathname === "/admin-login") {
     return (
       <Suspense
         fallback={<div className="flex min-h-dvh items-center justify-center">加载中...</div>}
       >
-        <meta name="robots" content="noindex, nofollow" />
         {children}
       </Suspense>
     );
@@ -32,7 +33,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <ToastProvider>
-      <meta name="robots" content="noindex, nofollow" />
       <AdminSessionProvider>
         <AdminShell>{children}</AdminShell>
       </AdminSessionProvider>
