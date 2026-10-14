@@ -54,6 +54,9 @@ export async function OrganizationJsonLd() {
     "@id": `${baseUrl}/#organization`,
     name: "NIHPLOD 旎柏官方网站",
     legalName: "旎柏 (NIHPLOD) 中国",
+    // 品牌实体关联：告知搜索引擎与本站同属 NIHPLOD 品牌的其他官方渠道，
+    // 帮助知识图谱整合实体。后续开通官方社媒（Instagram / 微博等）后在此追加主页 URL
+    sameAs: ["https://www.nihplod.net"],
     alternateName: [
       "旎柏",
       "NIHPLOD China",
