@@ -7,13 +7,13 @@
  * 流程：code2session 换 openid/unionid → 按 ExternalIdentity（provider=wechat_miniprogram）
  * 或 UnionID 聚合查找用户 → 三分支：
  * 1. 已绑定真实账户且状态正常 → 签发 OAuth 双 Token（access token 为 RS256，
- *    audience=wechat-miniprogram，子站可经 JWKS 验签），JSON 响应体携带（小程序无 Cookie）
+ *    audience=wechat-mp-skin，子站可经 JWKS 验签），JSON 响应体携带（小程序无 Cookie）
  * 2. 占位账户/未绑定 → 返回 bindToken，前端引导手机+验证码绑定
  *    （POST /api/auth/wechat/bind，body 携带 bindToken）
  * 3. 封禁/冻结 → 403 ACCOUNT_DISABLED
  *
  * Token 刷新：小程序端 refresh token 走 POST /api/oauth/token 的 refresh_token grant
- * （client_id=wechat-miniprogram，public client 免 secret）；本端点只负责登录签发，
+ * （client_id=wechat-mp-skin，public client 免 secret）；本端点只负责登录签发，
  * 旧的 /api/auth/wechat/miniprogram-refresh 继续服务存量 HS256 token，不在此改动。
  *
  * 安全说明：
@@ -39,7 +39,7 @@ import { apiConsole } from "@/lib/logger";
 const PROVIDER = "wechat_miniprogram";
 
 // 小程序登录签发的 OAuth Client（须在 SSO 后台预建，public client，scopes 需覆盖 MP_OAUTH_SCOPE）
-const MP_OAUTH_CLIENT_ID = "wechat-miniprogram";
+const MP_OAUTH_CLIENT_ID = "wechat-mp-skin";
 const MP_OAUTH_SCOPE = "openid profile phone membership";
 
 /**
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   const clientIP = getClientIP(request);
 
   // IP 速率限制（防 code 爆破，与 wechat-bind 口径一致）
-  const ipLimit = await rateLimit(clientIP, "wechat-miniprogram");
+  const ipLimit = await rateLimit(clientIP, "wechat-mp-skin");
   if (!ipLimit.success) {
     return NextResponse.json(
       {
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           needBinding: false,
-          // OAuth 口径：accessToken 为 RS256（aud=wechat-miniprogram），expiresIn 为其有效期秒数
+          // OAuth 口径：accessToken 为 RS256（aud=wechat-mp-skin），expiresIn 为其有效期秒数
           // （= OAuthClient.accessTokenTtlSeconds）；refreshToken 有效期固定 30 天，
           // 刷新走 POST /api/oauth/token 的 refresh_token grant
           accessToken,
@@ -295,7 +295,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 6. 签发 OAuth 双 Token：RS256 access token（aud=wechat-miniprogram，携带 sid；
+    // 6. 签发 OAuth 双 Token：RS256 access token（aud=wechat-mp-skin，携带 sid；
     //    撤销 OAuthSession 后主站 verifyOAuthAccessToken/introspect 立即失效，
     //    子站 JWKS 本地验签不感知撤销，靠短 TTL 兜底）；refresh token 关联 client_id/scope/sid。
     //    scope 收窄为 MP_OAUTH_SCOPE ∩ client.scopes；

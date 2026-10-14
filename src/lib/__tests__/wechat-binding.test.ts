@@ -143,7 +143,7 @@ function buildInput(provider?: string, oauth?: WechatOAuthIssueOptions): WechatB
 }
 
 const OAUTH_OPTIONS: WechatOAuthIssueOptions = {
-  clientId: "wechat-miniprogram",
+  clientId: "wechat-mp-skin",
   scope: "openid profile phone membership",
   accessTokenTtlSeconds: 28800,
 };
@@ -459,7 +459,7 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
     // OAuthSession：关联 user+client，sessionId 随机，scopes 按空格拆分，expiresAt 30 天硬上限
     const sessionCreate = mockPrisma.oAuthSession.create.mock.calls[0][0];
     expect(sessionCreate.data.userId).toBe("user-1");
-    expect(sessionCreate.data.clientId).toBe("wechat-miniprogram");
+    expect(sessionCreate.data.clientId).toBe("wechat-mp-skin");
     expect(typeof sessionCreate.data.sessionId).toBe("string");
     expect(sessionCreate.data.scopes).toEqual(["openid", "profile", "phone", "membership"]);
     expect(sessionCreate.data.expiresAt).toBeInstanceOf(Date);
@@ -469,7 +469,7 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
     expect(mockSignOAuthAccessToken).toHaveBeenCalledWith({
       id: "user-1",
       phone: "13800138000",
-      clientId: "wechat-miniprogram",
+      clientId: "wechat-mp-skin",
       scope: "openid profile phone membership",
       expiresIn: "28800s",
       sid: sessionId,
@@ -477,7 +477,7 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
     // Refresh Token：携带 client_id/scope/sid
     expect(mockSignRefreshToken).toHaveBeenCalledWith({
       id: "user-1",
-      clientId: "wechat-miniprogram",
+      clientId: "wechat-mp-skin",
       scope: "openid profile phone membership",
       sid: sessionId,
     });
@@ -487,7 +487,7 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
       "refresh-token",
       expect.any(Date),
       expect.anything(),
-      "wechat-miniprogram"
+      "wechat-mp-skin"
     );
     // 返回 OAuth token 与 expiresIn
     expect(result.data.accessToken).toBe("oauth-access-token");

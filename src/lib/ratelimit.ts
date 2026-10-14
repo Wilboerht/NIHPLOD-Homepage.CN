@@ -148,7 +148,7 @@ export const RATE_LIMIT_PRESETS = {
   /** 微信绑定 - 每分钟 5 次 */
   "wechat-bind": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 微信小程序登录 - 每分钟 5 次（与 wechat-bind 口径一致，防 code 爆破） */
-  "wechat-miniprogram": { maxRequests: 5, windowMs: 60 * 1000 },
+  "wechat-mp-skin": { maxRequests: 5, windowMs: 60 * 1000 },
   /** 健康检查 - 每分钟 10 次 */
   health: { maxRequests: 10, windowMs: 60 * 1000 },
   /** OIDC Discovery 端点 - 每分钟 30 次（公开可缓存端点） */

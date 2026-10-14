@@ -88,14 +88,14 @@ const mockUserFindFirst = (prisma.user as unknown as { findFirst: ReturnType<typ
   .findFirst;
 
 const MP_CLIENT = {
-  clientId: "wechat-miniprogram",
+  clientId: "wechat-mp-skin",
   scopes: ["openid", "profile", "phone", "membership"],
   isActive: true,
   isPublic: true,
   accessTokenTtlSeconds: 28800,
 };
 const MP_OAUTH_OPTIONS = {
-  clientId: "wechat-miniprogram",
+  clientId: "wechat-mp-skin",
   scope: "openid profile phone membership",
   accessTokenTtlSeconds: 28800,
 };
