@@ -61,13 +61,6 @@ export async function GET(request: Request) {
     };
   }
 
-  // 微信支付 API 可达性
-  const wxResult = await checkHttp("https://api.mch.weixin.qq.com", 3000);
-  checks.wechat_pay = {
-    status: wxResult === "ok" ? "ok" : "degraded",
-    error: wxResult !== "ok" ? wxResult : undefined,
-  };
-
   const allOk = Object.values(checks).every((c) => !c.error);
 
   return NextResponse.json(
