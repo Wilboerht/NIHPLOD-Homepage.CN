@@ -25,7 +25,7 @@ function truncate(value: string, max: number): string {
   return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
 }
 
-/** 微信订阅消息时间格式：yyyy-MM-dd HH:mm（固定按 Asia/Shanghai） */
+/** 微信订阅消息时间格式：yyyy-MM-dd HH:mm（固定按 Asia/Shanghai；h23 避免部分 ICU 输出 24:xx） */
 function formatWxTime(date: Date): string {
   const parts = new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -34,7 +34,7 @@ function formatWxTime(date: Date): string {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
   }).formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
@@ -136,7 +136,7 @@ export async function notifyPointsSpentReview(params: {
   const explanation =
     status === "APPROVED"
       ? `已核实 ¥${(reviewAmount ?? 0).toLocaleString("zh-CN")}`
-      : reviewNote ?? "未通过审核";
+      : (reviewNote ?? "未通过审核");
 
   await sendPointsNotify({
     userId,

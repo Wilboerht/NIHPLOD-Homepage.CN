@@ -121,12 +121,10 @@ describe("wechat.ts 多小程序凭证", () => {
   });
 
   it("sendMiniprogramSubscribeMessage：用户未订阅（43101）返回 ok=false（不抛错）", async () => {
-    fetchMock
-      .mockResolvedValueOnce(tokenResponse("tok-sub-e"))
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ errcode: 43101, errmsg: "user refuse to accept the msg" }),
-      });
+    fetchMock.mockResolvedValueOnce(tokenResponse("tok-sub-e")).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ errcode: 43101, errmsg: "user refuse to accept the msg" }),
+    });
 
     const result = await sendMiniprogramSubscribeMessage({
       openid: "openid-2",

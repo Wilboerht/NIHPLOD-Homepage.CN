@@ -28,10 +28,7 @@ vi.mock("@/lib/wechat", () => ({
   sendMiniprogramSubscribeMessage: (...args: unknown[]) => mockSend(...args),
 }));
 
-import {
-  notifyPointsRedemptionShipped,
-  notifyPointsSpentReview,
-} from "@/lib/miniprogram-notify";
+import { notifyPointsRedemptionShipped, notifyPointsSpentReview } from "@/lib/miniprogram-notify";
 
 const CREDS = { appId: "wx1234567890abcdef", appSecret: "s".repeat(32) };
 
@@ -126,9 +123,16 @@ describe("miniprogram-notify", () => {
   });
 
   it("审核结果模板数据：结果/说明/订单号按约定组装", async () => {
-    await notifyPointsSpentReview({ ...reviewParams, status: "REJECTED", reviewNote: "订单号无法核实，请补充完整截图" });
+    await notifyPointsSpentReview({
+      ...reviewParams,
+      status: "REJECTED",
+      reviewNote: "订单号无法核实，请补充完整截图",
+    });
 
-    const arg = mockSend.mock.calls[0][0] as { data: Record<string, { value: string }>; page: string };
+    const arg = mockSend.mock.calls[0][0] as {
+      data: Record<string, { value: string }>;
+      page: string;
+    };
     expect(arg.page).toBe("pages/spent-adjustments/spent-adjustments");
     expect(arg.data.thing1.value).toBe("未通过");
     expect(arg.data.thing2.value.length).toBeLessThanOrEqual(20);
