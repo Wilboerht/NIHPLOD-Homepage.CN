@@ -606,7 +606,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
     ```
   - 主站入站在过渡期内**同时接受**旧格式（`METHOD|path|timestamp|nonce|bodyHash`），以保证未升级子站可用；子站全部升级后将 `INTERNAL_API_ALLOW_LEGACY_SIGNATURE=false` 强制新格式；
   - 主站出站（调用 advisor）默认仍签旧格式；advisor 支持新格式后设置 `INTERNAL_API_SIGN_QUERY=true` 切换。
-  - ⚠️ 旧格式不绑定 query，`GET /api/v1/internal/points/balance?phone=...` 的 `phone` 可被篡改（需先窃取请求头），升级期间请尽快切换。
+  - ⚠️ 旧格式不绑定 query，`GET /api/v1/internal/points/balance?userId=...`（旧参数 `?phone=...` 同）的 query 可被篡改（需先窃取请求头），升级期间请尽快切换。
 
 各内部端点在验签通过后还会比对密钥的 `project` 白名单，不匹配返回 403（`FORBIDDEN_PROJECT`）：
 
@@ -646,25 +646,31 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ```json
 {
-  "phone": "13800138000",
+  "userId": "cm1234567890abcdef",
   "spentDelta": 150,
   "reference": "mall-order-N20260823001",
   "note": "商城订单消费"
 }
 ```
 
-- `phone`：中国手机号（`^1[3-9]\d{9}$`，与官网注册手机号一致），联邦账号按手机号关联。
+- `userId` 与 `phone` 二选一（必须且只能提供一个）：
+  - `userId`（推荐）：官网 `User.id`，即 SSO `sub`。对全部账号稳定有效——微信占位手机号（`wx_` 前缀）账号、用户换绑手机号后均不变，建议商城持久化 userId 作为对账主键。
+  - `phone`（兼容保留）：中国手机号（`^1[3-9]\d{9}$`，与官网注册手机号一致）。仅真实手机号账号可用；用户换绑后旧号即失联，微信占位号账号无法使用。
 - `spentDelta`：可选，消费额变动（元，整数，默认 0，正加负减，如退款传负值），用于官网侧会员等级重算。
 - `reference`：商城侧唯一单据号，幂等键。重复上报不重复入账，返回 `duplicated: true`。
 - `note`：可选，备注。
 - **积分联动**：正向变动按 1:1 发放积分（立即到账、无冻结期，6 个月过期）；负向变动冲正积分（直接冲可用余额，可用可负）。所有等级均发放积分（含普通档）；兑礼为银卡及以上权益，普通档仅累积不可兑礼（`redeemRate` 为 null）。
 
-成功响应（`totalSpent`/`membershipLevel` 为入账后的官网权威值，商城应以此对齐本地展示）：
+成功响应（`userId` 为定位到的官网用户 ID，建议商城缓存以建立本地账号 → userId 映射；`totalSpent`/`membershipLevel` 为入账后的官网权威值，商城应以此对齐本地展示）：
 
 ```json
 {
   "success": true,
-  "data": { "totalSpent": 5200, "membershipLevel": "GOLD" }
+  "data": {
+    "userId": "cm1234567890abcdef",
+    "totalSpent": 5200,
+    "membershipLevel": "GOLD"
+  }
 }
 ```
 
@@ -674,21 +680,21 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ```json
 {
-  "phone": "13800138000",
+  "userId": "cm1234567890abcdef",
   "points": 300,
   "reference": "mall-redeem-R20260903001",
   "note": "兑换面霜小样"
 }
 ```
 
-- `phone`：与官网注册手机号一致，按手机号定位用户。
+- `userId` 与 `phone` 二选一（必须且只能提供一个），语义同「上报消费额变动」（userId 推荐，换绑/微信占位号账号稳定）。
 - `points`：本次扣减积分数量（正整数）。**兑礼率折算在商城侧完成**：礼品所需积分 = 商品价值 ÷ 用户当前兑礼率（普通不参与 / 银 1:1 / 金 1:1.3 / 钻 1:1.5，兑礼率可通过 balance 查询或 userinfo 的 `points_redeem_rate` 获取），向下取整后调用本接口。
 - `reference`：商城侧兑换单号，幂等键。重复调用不重复扣减，返回 `duplicated: true`。
-- 响应：`{ success: true, data: { available, spent, redeemRate, membershipLevel } }`；积分不足返回 400 `INSUFFICIENT`（附当前可用余额）。
+- 响应：`{ success: true, data: { userId, available, spent, redeemRate, membershipLevel } }`；积分不足返回 400 `INSUFFICIENT`（附当前可用余额）。
 
 ### 积分查询（商城侧，签名内部 API）
 
-`GET /api/v1/internal/points/balance?phone=13800138000`（HMAC 签名，GET 无请求体时 bodyHash 为空串的 SHA-256）
+`GET /api/v1/internal/points/balance?userId=cm1234567890abcdef`（推荐）或 `?phone=13800138000`（兼容；HMAC 签名，GET 无请求体时 bodyHash 为空串的 SHA-256）
 
 响应：
 
@@ -696,17 +702,19 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 {
   "success": true,
   "data": {
+    "userId": "cm1234567890abcdef",
     "available": 800,
-    "frozen": 200,
-    "nextReleaseAt": "2026-09-10T10:00:00.000Z",
+    "frozen": 0,
+    "nextReleaseAt": null,
     "redeemRate": 1.3,
     "membershipLevel": "GOLD"
   }
 }
 ```
 
+- `userId` 与 `phone` 二选一（必须且只能提供一个），语义同「上报消费额变动」。
 - `available`：可用积分（可为负：退款超兑债务，新积分入账先行抵债）。
-- `frozen`：稳定期冻结积分（消费后 7 天内）。
+- `frozen` / `nextReleaseAt`：已废弃的兼容字段——现行积分发放即到账（无冻结期），两者恒为 `0` / `null`，新接入方可忽略。
 - `redeemRate`：当前等级兑礼率（普通档为 `null`）。
 - 商城兑换折算公式：需扣积分 = ⌊商品价值 ÷ redeemRate⌋。
 
@@ -714,7 +722,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ### 积分查询（用户端）
 
-`GET /api/user/points`（用户登录态）：返回 `{ available, frozen, nextReleaseAt, recent[] }`，available 可为负（退款超兑债务，新积分入账先行抵债）。
+`GET /api/user/points`（用户登录态）：返回 `{ available, frozen, nextReleaseAt, recent[] }`，available 可为负（退款超兑债务，新积分入账先行抵债）；`frozen`/`nextReleaseAt` 为已废弃兼容字段（无冻结期，恒 0/null）。
 
 ### 积分商城 / 消费补录 / 收货地址（OAuth 资源端点）
 
@@ -724,7 +732,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 | 方法 | 端点 | 说明 |
 | --- | --- | --- |
-| GET | `/api/oauth/points` | 积分余额（含物化过期/释放）、冻结与最近 20 条流水 |
+| GET | `/api/oauth/points` | 积分余额（含物化过期处理）与最近 20 条流水（`frozen`/`nextReleaseAt` 为废弃兼容字段） |
 | GET | `/api/oauth/points/gifts` | 可兑换礼品（按当前等级兑礼率折算所需积分 + 产品详情） |
 | POST | `/api/oauth/points/redeem` | 兑换礼品，body `{ productId, addressId, requestId }`（requestId 幂等，不重复扣分） |
 | GET | `/api/oauth/points/redemptions?offset=10` | 我的兑换记录（offset 分页，每页 10 条） |
@@ -760,7 +768,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | --- | --- | --- |
 | 401 | `MISSING_AUTH` / `INVALID_TIMESTAMP` / `REPLAY_ATTACK` / `UNAUTHORIZED` | 鉴权失败（缺头 / 时间戳超 ±5 分钟 / nonce 重放 / 签名错误） |
 | 400 | `INVALID_JSON` / `INVALID_PARAMS` | 请求体或参数校验失败 |
-| 404 | `USER_NOT_FOUND` | 手机号在官网不存在（用户尚未在官网注册/绑定） |
+| 404 | `USER_NOT_FOUND` | userId/手机号在官网不存在（用户尚未在官网注册/绑定；换绑手机号后请改用 userId 定位） |
 | 429 | `RATE_LIMITED` | 触发 IP 限流 |
 | 500 | `INTERNAL_ERROR` | 服务器内部错误（可重试，`reference` 幂等保证重试安全） |
 

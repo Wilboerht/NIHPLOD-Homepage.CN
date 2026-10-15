@@ -49,7 +49,7 @@ const MAX_SYNC_CAS_RETRIES = 3;
  * - 幂等：以 reference 作为商城侧唯一单据号，依赖 SpentSyncRecord 的
  *   @@unique([userId, reference]) 约束，重复上报（P2002）直接返回
  *   当前权威消费额并标记 duplicated=true，不重复入账。
- * - 积分联动：正向变动发放积分（稳定期冻结），负向变动冲正积分（先冻结后可用，可负）。
+ * - 积分联动：正向变动发放积分（立即到账，无冻结期），负向变动冲正积分（直接冲可用余额，可负）。
  * - 升级：首次达档写入对应 activatedAt。
  *
  * @returns 入账后的权威消费额与等级；用户不存在返回 null

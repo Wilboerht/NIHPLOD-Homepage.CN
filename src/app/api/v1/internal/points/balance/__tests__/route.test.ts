@@ -51,7 +51,10 @@ const SECRET = "mall-secret-0123456789abcdef0123456789";
 
 let nonceCounter = 0;
 
-function createSignedRequest(phone: string, options?: { badSignature?: boolean }): NextRequest {
+function createSignedRequest(
+  params: Record<string, string>,
+  options?: { badSignature?: boolean }
+): NextRequest {
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = `test-nonce-${++nonceCounter}`;
   const bodyHash = hashRequestBody("");
@@ -60,15 +63,18 @@ function createSignedRequest(phone: string, options?: { badSignature?: boolean }
     signature = signature.replace(/.$/, signature.endsWith("0") ? "1" : "0");
   }
 
-  return new NextRequest(new URL(`${PATH}?phone=${phone}`, "http://localhost:3000"), {
-    method: "GET",
-    headers: {
-      "x-internal-api-key": KEY,
-      "x-internal-api-signature": signature,
-      "x-internal-api-timestamp": String(timestamp),
-      "x-internal-api-nonce": nonce,
-    },
-  } as never);
+  return new NextRequest(
+    new URL(`${PATH}?${new URLSearchParams(params).toString()}`, "http://localhost:3000"),
+    {
+      method: "GET",
+      headers: {
+        "x-internal-api-key": KEY,
+        "x-internal-api-signature": signature,
+        "x-internal-api-timestamp": String(timestamp),
+        "x-internal-api-nonce": nonce,
+      },
+    } as never
+  );
 }
 
 describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
@@ -80,7 +86,7 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "GOLD" });
     txClient.pointLedger.findMany.mockResolvedValue([]);
     txClient.pointLedger.findFirst.mockResolvedValue(null);
-    txClient.pointBalance.findUnique.mockResolvedValue({ available: 800, frozen: 200 });
+    txClient.pointBalance.findUnique.mockResolvedValue({ available: 800, frozen: 0 });
   });
 
   it("缺少鉴权头应返回 401 MISSING_AUTH", async () => {
@@ -95,14 +101,14 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
   });
 
   it("签名错误应返回 401 UNAUTHORIZED", async () => {
-    const res = await GET(createSignedRequest("13800138000", { badSignature: true }));
+    const res = await GET(createSignedRequest({ phone: "13800138000" }, { badSignature: true }));
 
     expect(res.status).toBe(401);
     expect((await res.json()).error.code).toBe("UNAUTHORIZED");
   });
 
   it("手机号格式非法应返回 400 INVALID_PARAMS", async () => {
-    const res = await GET(createSignedRequest("12345"));
+    const res = await GET(createSignedRequest({ phone: "12345" }));
 
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("INVALID_PARAMS");
@@ -111,25 +117,53 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
   it("用户不存在应返回 404 USER_NOT_FOUND", async () => {
     mockUserFindUnique.mockResolvedValue(null);
 
-    const res = await GET(createSignedRequest("13800138000"));
+    const res = await GET(createSignedRequest({ phone: "13800138000" }));
 
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("USER_NOT_FOUND");
   });
 
-  it("成功返回余额、冻结、解冻时间与当前兑礼率", async () => {
-    const res = await GET(createSignedRequest("13800138000"));
+  it("成功返回余额与兑礼率（userId 回传；frozen/nextReleaseAt 为废弃兼容字段）", async () => {
+    const res = await GET(createSignedRequest({ phone: "13800138000" }));
     const data = await res.json();
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data).toEqual({
+      userId: "user-1",
       available: 800,
-      frozen: 200,
+      frozen: 0,
       // 无冻结期：积分发放即到账，无待解冻积分
       nextReleaseAt: null,
       redeemRate: 1.3,
       membershipLevel: "GOLD",
     });
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { phone: "13800138000" },
+      select: { id: true, membershipLevel: true },
+    });
+  });
+
+  it("userId 定位成功（微信占位号/换绑后账号场景）", async () => {
+    const res = await GET(createSignedRequest({ userId: "user-1" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.userId).toBe("user-1");
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { id: true, membershipLevel: true },
+    });
+  });
+
+  it("userId 与 phone 同时提供或都未提供应返回 400 INVALID_PARAMS", async () => {
+    const bothRes = await GET(createSignedRequest({ userId: "user-1", phone: "13800138000" }));
+    expect(bothRes.status).toBe(400);
+    expect((await bothRes.json()).error.code).toBe("INVALID_PARAMS");
+
+    // 空 query：签名合法后进入参数校验，两者皆缺 → 400
+    const emptyRes = await GET(createSignedRequest({}));
+    expect(emptyRes.status).toBe(400);
+    expect((await emptyRes.json()).error.code).toBe("INVALID_PARAMS");
   });
 });

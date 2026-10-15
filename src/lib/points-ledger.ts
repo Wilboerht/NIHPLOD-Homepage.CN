@@ -110,7 +110,8 @@ const GRANT_LEDGER_TYPES = ["CONSUME", "BIRTHDAY", "CHECKIN", "ADJUST"] as const
  * 过期扣减：剩余 >0 且已过期的发放流水清零，余额同步扣减。
  * - 已释放部分从可用余额扣（仅扣正数：负余额是超兑债务，不因过期减免）
  * - 未释放部分从冻结余额扣（无冻结期后为 0，仅保留防御分支）
- * 每日幂等：EXPIRE 流水 reference = expire:{userId}:{YYYY-MM-DD}（当天无剩余可扣则不写）。
+ * 幂等与记账：EXPIRE 流水 reference = expire:{userId}:{时间戳}；同一用户同日可能有多批
+ * 不同时刻到期的流水，每次物化独立记账（见下方写流水处实现注释）。
  */
 export async function expirePoints(
   tx: PointTx,

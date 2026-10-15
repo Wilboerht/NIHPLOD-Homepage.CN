@@ -149,7 +149,6 @@ interface RedemptionDetailItem {
 
 interface UserDetailPoints {
   available: number;
-  frozen: number;
   redemptions: RedemptionDetailItem[];
   redemptionTotal: number;
 }
@@ -360,7 +359,6 @@ function AdminUsersContent() {
     try {
       const data = await apiGet<{
         available: number;
-        frozen: number;
         items: PointLedgerItem[];
         pagination: { totalPages: number };
       }>(`/api/admin/users/${userId}/points`, { page: targetPage, pageSize: 20 });
@@ -368,9 +366,7 @@ function AdminUsersContent() {
       setLedgerPage(targetPage);
       setLedgerTotalPages(data.pagination.totalPages);
       // 余额以流水接口物化结果为准（含过期处理）
-      setDetailPoints((prev) =>
-        prev ? { ...prev, available: data.available, frozen: data.frozen } : prev
-      );
+      setDetailPoints((prev) => (prev ? { ...prev, available: data.available } : prev));
     } catch {
       toast.error("加载积分流水失败");
     } finally {
@@ -1201,12 +1197,6 @@ function AdminUsersContent() {
                     <p className="text-xs text-brand-charcoal/50">可用积分</p>
                     <p className="mt-1 font-mono text-2xl font-semibold text-brand-charcoal">
                       {detailPoints ? detailPoints.available.toLocaleString() : "-"}
-                    </p>
-                  </div>
-                  <div className="flex-1 rounded-xl bg-brand-charcoal/[0.03] p-4">
-                    <p className="text-xs text-brand-charcoal/50">冻结积分</p>
-                    <p className="mt-1 font-mono text-2xl font-semibold text-brand-charcoal">
-                      {detailPoints ? detailPoints.frozen.toLocaleString() : "-"}
                     </p>
                   </div>
                   {canSecurityWrite && (

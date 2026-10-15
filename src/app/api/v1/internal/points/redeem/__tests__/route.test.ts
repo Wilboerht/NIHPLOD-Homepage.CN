@@ -80,6 +80,13 @@ const VALID_BODY = {
   note: "兑换面霜小样",
 };
 
+const VALID_BODY_USER_ID = {
+  userId: "user-1",
+  points: 300,
+  reference: "mall-redeem-R001",
+  note: "兑换面霜小样",
+};
+
 describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -168,6 +175,7 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
 
     expect(res.status).toBe(200);
     expect(data.data).toEqual({
+      userId: "user-1",
       available: 700,
       spent: 300,
       redeemRate: 1.3,
@@ -192,6 +200,7 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
 
     expect(res.status).toBe(200);
     expect(data.data).toEqual({
+      userId: "user-1",
       available: 700,
       spent: 0,
       duplicated: true,
@@ -199,5 +208,41 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
       membershipLevel: "GOLD",
     });
     expect(txClient.pointBalance.update).not.toHaveBeenCalled();
+  });
+
+  it("userId 定位成功（微信占位号/换绑后账号场景），响应回传 userId", async () => {
+    txClient.pointBalance.findUnique.mockResolvedValue({ available: 1000 });
+    txClient.pointLedger.findMany.mockImplementation(
+      async (args: { where?: { releasedAt?: unknown } }) => {
+        if (args.where?.releasedAt !== null && args.where?.releasedAt !== undefined) {
+          return [{ id: "r1", remaining: 1000 }];
+        }
+        return [];
+      }
+    );
+
+    const res = await POST(
+      createSignedRequest({ ...VALID_BODY_USER_ID, reference: "mall-redeem-uid-1" })
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.userId).toBe("user-1");
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { id: true, membershipLevel: true, status: true },
+    });
+  });
+
+  it("userId 与 phone 同时提供或都未提供应返回 400 INVALID_PARAMS", async () => {
+    const bothRes = await POST(createSignedRequest({ ...VALID_BODY, userId: "user-1" }));
+    expect(bothRes.status).toBe(400);
+    expect((await bothRes.json()).error.code).toBe("INVALID_PARAMS");
+
+    const neither = { ...VALID_BODY } as Record<string, unknown>;
+    delete neither.phone;
+    const neitherRes = await POST(createSignedRequest(neither));
+    expect(neitherRes.status).toBe(400);
+    expect((await neitherRes.json()).error.code).toBe("INVALID_PARAMS");
   });
 });

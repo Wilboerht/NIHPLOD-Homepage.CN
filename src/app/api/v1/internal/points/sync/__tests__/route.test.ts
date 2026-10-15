@@ -91,6 +91,13 @@ const VALID_BODY = {
   note: "商城订单消费",
 };
 
+const VALID_BODY_USER_ID = {
+  userId: "user-1",
+  spentDelta: 150,
+  reference: "mall-order-N001",
+  note: "商城订单消费",
+};
+
 describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -174,8 +181,14 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
+    // phone 兼容路径仍按手机号定位
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { phone: "13800138000" },
+      select: { id: true, status: true },
+    });
     // 850 + 150 = 1000 ≥ 1000 → 升级银卡会员
     expect(data.data).toEqual({
+      userId: "user-1",
       totalSpent: 1000,
       membershipLevel: "SILVER",
     });
@@ -323,6 +336,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data).toEqual({
+      userId: "user-1",
       totalSpent: 1000,
       membershipLevel: "SILVER",
       duplicated: true,
@@ -350,10 +364,40 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data).toEqual({
+      userId: "user-1",
       totalSpent: 1000,
       membershipLevel: "SILVER",
       duplicated: true,
     });
     // 事务因 P2002 中止并整体回滚，消费额不会重复入账（幂等返回当前权威值）
+  });
+
+  it("userId 定位成功（微信占位号/换绑后账号场景），响应回传 userId", async () => {
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
+    txClient.user.findUnique.mockResolvedValue({ totalSpent: 850, membershipLevel: "REGULAR" });
+
+    const res = await POST(
+      createSignedRequest({ ...VALID_BODY_USER_ID, reference: "mall-order-uid-1" })
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.userId).toBe("user-1");
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { id: true, status: true },
+    });
+  });
+
+  it("userId 与 phone 同时提供或都未提供应返回 400 INVALID_PARAMS", async () => {
+    const bothRes = await POST(createSignedRequest({ ...VALID_BODY, userId: "user-1" }));
+    expect(bothRes.status).toBe(400);
+    expect((await bothRes.json()).error.code).toBe("INVALID_PARAMS");
+
+    const neither = { ...VALID_BODY } as Record<string, unknown>;
+    delete neither.phone;
+    const neitherRes = await POST(createSignedRequest(neither));
+    expect(neitherRes.status).toBe(400);
+    expect((await neitherRes.json()).error.code).toBe("INVALID_PARAMS");
   });
 });

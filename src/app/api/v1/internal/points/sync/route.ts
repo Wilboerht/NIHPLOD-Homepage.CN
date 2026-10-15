@@ -8,14 +8,17 @@
  * 认证方式：HMAC-SHA256 签名（与 /api/v1/internal/user/status 一致）。
  *
  * Body：
- *   phone: string         （必填，中国手机号，与官网注册手机号一致）
+ *   userId: string        （推荐，官网 User.id 即 SSO sub；微信占位号/换手机后仍稳定，
+ *                          与 phone 二选一）
+ *   phone: string         （兼容保留，中国手机号，与官网注册手机号一致；
+ *                          仅真实手机号账号可用，与 userId 二选一）
  *   spentDelta?: number   （可选，消费额变动（元），整数，默认 0；用于等级重算）
  *   reference: string     （必填，商城侧唯一单据号，幂等键；重复上报返回 duplicated: true）
  *   note?: string         （可选，备注）
  *
  * 响应：
  *   success: true
- *   data: { totalSpent, membershipLevel, duplicated? }
+ *   data: { userId, totalSpent, membershipLevel, duplicated? }
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -35,18 +38,27 @@ import { apiConsole } from "@/lib/logger";
 // 本端点允许的 project 白名单：消费额同步仅对商城开放
 const ALLOWED_PROJECTS = ["mall"] as const;
 
-const syncSchema = z.object({
-  // 与官网注册手机号格式一致（site 本地格式，非 +86 前缀的 E.164）
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  spentDelta: z
-    .number()
-    .int("消费额变动必须为整数")
-    .min(-1_000_000, "消费额变动超出允许范围")
-    .max(1_000_000, "消费额变动超出允许范围")
-    .default(0),
-  reference: z.string().min(1, "缺少幂等单据号").max(128),
-  note: z.string().max(500).optional(),
-});
+const syncSchema = z
+  .object({
+    // 定位用户：userId（推荐）与 phone（兼容）二选一
+    userId: z.string().min(1, "userId 不能为空").max(64).optional(),
+    // 与官网注册手机号格式一致（site 本地格式，非 +86 前缀的 E.164）
+    phone: z
+      .string()
+      .regex(/^1[3-9]\d{9}$/, "请输入正确的手机号")
+      .optional(),
+    spentDelta: z
+      .number()
+      .int("消费额变动必须为整数")
+      .min(-1_000_000, "消费额变动超出允许范围")
+      .max(1_000_000, "消费额变动超出允许范围")
+      .default(0),
+    reference: z.string().min(1, "缺少幂等单据号").max(128),
+    note: z.string().max(500).optional(),
+  })
+  .refine((data) => (data.userId ? !data.phone : !!data.phone), {
+    message: "userId 与 phone 必须且只能提供一个",
+  });
 
 export const dynamic = "force-dynamic";
 
@@ -146,11 +158,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phone, spentDelta, reference, note } = parsed.data;
+    const { userId, phone, spentDelta, reference, note } = parsed.data;
 
-    // 5. 按手机号定位用户（联邦账号以手机号关联）
+    // 5. 定位用户：userId 优先（稳定，支持微信占位号/换绑后账号），phone 兼容回退
     const user = await prisma.user.findUnique({
-      where: { phone },
+      where: userId ? { id: userId } : { phone: phone ?? "" },
       select: { id: true, status: true },
     });
 
@@ -186,6 +198,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        userId: user.id,
         totalSpent: result.totalSpent,
         membershipLevel: result.membershipLevel,
         ...(result.duplicated ? { duplicated: true } : {}),

@@ -102,7 +102,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ]);
       return {
         available: balance.available,
-        frozen: balance.frozen,
         items: items.map((r) => ({
           id: r.id,
           type: r.type,

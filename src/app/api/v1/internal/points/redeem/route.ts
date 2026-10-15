@@ -11,14 +11,16 @@
  * 认证方式：HMAC-SHA256 签名（与 /api/v1/internal/points/sync 一致）。
  *
  * Body：
- *   phone: string        （必填，中国手机号，与官网注册手机号一致）
+ *   userId: string       （推荐，官网 User.id 即 SSO sub；微信占位号/换手机后仍稳定，
+ *                         与 phone 二选一）
+ *   phone: string        （兼容保留，中国手机号，与官网注册手机号一致，与 userId 二选一）
  *   points: number       （必填，扣减积分数量，正整数）
  *   reference: string    （必填，商城侧兑换单号，幂等键；重复上报不重复扣减）
  *   note?: string        （可选，备注）
  *
  * 响应：
  *   success: true
- *   data: { available }  （扣减后的可用积分）
+ *   data: { userId, available }  （扣减后的可用积分）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -39,12 +41,21 @@ import { apiConsole } from "@/lib/logger";
 // 本端点允许的 project 白名单：积分兑礼扣减仅对商城开放
 const ALLOWED_PROJECTS = ["mall"] as const;
 
-const redeemSchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-  points: z.number().int().min(1, "扣减积分必须为正整数").max(10_000_000),
-  reference: z.string().min(1, "缺少幂等单据号").max(128),
-  note: z.string().max(500).optional(),
-});
+const redeemSchema = z
+  .object({
+    // 定位用户：userId（推荐）与 phone（兼容）二选一
+    userId: z.string().min(1, "userId 不能为空").max(64).optional(),
+    phone: z
+      .string()
+      .regex(/^1[3-9]\d{9}$/, "请输入正确的手机号")
+      .optional(),
+    points: z.number().int().min(1, "扣减积分必须为正整数").max(10_000_000),
+    reference: z.string().min(1, "缺少幂等单据号").max(128),
+    note: z.string().max(500).optional(),
+  })
+  .refine((data) => (data.userId ? !data.phone : !!data.phone), {
+    message: "userId 与 phone 必须且只能提供一个",
+  });
 
 export const dynamic = "force-dynamic";
 
@@ -144,11 +155,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { phone, points, reference, note } = parsed.data;
+    const { userId, phone, points, reference, note } = parsed.data;
 
-    // 5. 按手机号定位用户（与消费同步口径一致）
+    // 5. 定位用户：userId 优先（稳定，支持微信占位号/换绑后账号），phone 兼容回退
     const user = await prisma.user.findUnique({
-      where: { phone },
+      where: userId ? { id: userId } : { phone: phone ?? "" },
       select: { id: true, membershipLevel: true, status: true },
     });
 
@@ -201,6 +212,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        userId: user.id,
         available: result.available,
         spent: result.spent,
         redeemRate: POINT_REDEEM_RATES[user.membershipLevel],

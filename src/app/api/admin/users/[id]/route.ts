@@ -113,7 +113,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     ] = await Promise.all([
         prisma.pointBalance.findUnique({
           where: { userId: id },
-          select: { available: true, frozen: true, updatedAt: true },
+          select: { available: true, updatedAt: true },
         }),
         prisma.pointRedemption.findMany({
           where: { userId: id },
@@ -243,7 +243,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
         },
         points: {
           available: balance?.available ?? 0,
-          frozen: balance?.frozen ?? 0,
           redemptions: redemptions.map((r) => ({
             id: r.id,
             productName: r.productName,

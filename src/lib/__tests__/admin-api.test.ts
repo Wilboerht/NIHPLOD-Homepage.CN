@@ -734,7 +734,10 @@ describe("管理端 API 集成测试", () => {
         createdAt: new Date("2026-08-01T00:00:00.000Z"),
         updatedAt: new Date("2026-08-21T00:00:00.000Z"),
       });
-      mockPrisma.pointBalance.findUnique.mockResolvedValue({ available: 123, frozen: 0, updatedAt: new Date() });
+      mockPrisma.pointBalance.findUnique.mockResolvedValue({
+        available: 123,
+        updatedAt: new Date(),
+      });
       mockPrisma.pointRedemption.findMany.mockResolvedValue([]);
       mockPrisma.pointRedemption.count.mockResolvedValue(0);
       mockPrisma.userAddress.findMany.mockResolvedValue([]);
@@ -760,7 +763,6 @@ describe("管理端 API 集成测试", () => {
       // 聚合分区：积分/地址/消费记录
       expect(data.data.points).toEqual({
         available: 123,
-        frozen: 0,
         redemptions: [],
         redemptionTotal: 0,
       });

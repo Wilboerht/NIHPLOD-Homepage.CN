@@ -1,6 +1,6 @@
 /**
  * 内部 API v1：商城查询用户积分余额与兑礼率
- * GET /api/v1/internal/points/balance?phone=13800138000
+ * GET /api/v1/internal/points/balance?userId=xxx（推荐）或 ?phone=13800138000（兼容）
  *
  * 商城账户页/兑换页展示与折算前调用：官网 SSO 是积分权威账本。
  * 认证方式：HMAC-SHA256 签名（与 /api/v1/internal/points/sync 一致）。
@@ -8,9 +8,10 @@
  * 响应：
  *   success: true
  *   data: {
+ *     userId: string           // 官网用户 ID
  *     available: number        // 可用积分（可为负：退款超兑债务）
- *     frozen: number           // 冻结积分（稳定期 7 天内）
- *     nextReleaseAt: string|null // 最近解冻时间（ISO）
+ *     frozen: number           // 恒为 0（无冻结期，字段保留兼容）
+ *     nextReleaseAt: string|null // 恒为 null（无冻结期，字段保留兼容）
  *     redeemRate: number|null  // 当前等级兑礼率（null=普通档不可兑礼）
  *     membershipLevel: string  // 当前等级
  *   }
@@ -34,9 +35,18 @@ import { apiConsole } from "@/lib/logger";
 // 本端点允许的 project 白名单：余额/兑礼率查询对商城与测肤子站开放（只读查询）
 const ALLOWED_PROJECTS = ["mall", "advisor"] as const;
 
-const querySchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
-});
+const querySchema = z
+  .object({
+    // 定位用户：userId（推荐）与 phone（兼容）二选一
+    userId: z.string().min(1, "userId 不能为空").max(64).optional(),
+    phone: z
+      .string()
+      .regex(/^1[3-9]\d{9}$/, "请输入正确的手机号")
+      .optional(),
+  })
+  .refine((data) => (data.userId ? !data.phone : !!data.phone), {
+    message: "userId 与 phone 必须且只能提供一个",
+  });
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +85,10 @@ export async function GET(request: NextRequest) {
 
     // 3. 解析 query 并校验签名（nonce 在验签通过后才消费，避免签名错误的请求烧掉 nonce）
     const { searchParams } = new URL(request.url);
-    const parsed = querySchema.safeParse({ phone: searchParams.get("phone") });
+    const parsed = querySchema.safeParse({
+      userId: searchParams.get("userId") ?? undefined,
+      phone: searchParams.get("phone") ?? undefined,
+    });
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
@@ -120,9 +133,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. 按手机号定位用户
+    // 4. 定位用户：userId 优先（稳定，支持微信占位号/换绑后账号），phone 兼容回退
     const user = await prisma.user.findUnique({
-      where: { phone: parsed.data.phone },
+      where: parsed.data.userId ? { id: parsed.data.userId } : { phone: parsed.data.phone ?? "" },
       select: { id: true, membershipLevel: true },
     });
     if (!user) {
@@ -138,6 +151,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        userId: user.id,
         available: balance.available,
         frozen: balance.frozen,
         nextReleaseAt: balance.nextReleaseAt?.toISOString() ?? null,

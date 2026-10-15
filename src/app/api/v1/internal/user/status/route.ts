@@ -13,7 +13,7 @@
  *
  * 响应：
  *   success: true
- *   data: { userId, status: "ACTIVE" | "SUSPENDED" | "BANNED", phone }
+ *   data: { userId, status: "ACTIVE" | "SUSPENDED" | "BANNED" }
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";

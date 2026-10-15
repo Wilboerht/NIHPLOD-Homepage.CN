@@ -63,7 +63,7 @@ vi.mock("@/lib/validation", () => ({
 
 vi.mock("@/lib/points-ledger", () => ({
   adjustPoints: vi.fn().mockResolvedValue({ duplicated: false }),
-  getPointBalanceView: vi.fn().mockResolvedValue({ available: 120, frozen: 0, nextReleaseAt: null }),
+  getPointBalanceView: vi.fn().mockResolvedValue({ available: 120 }),
 }));
 
 import { GET, POST } from "../[id]/points/route";
