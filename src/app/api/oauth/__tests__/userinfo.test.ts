@@ -65,7 +65,7 @@ vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
 }));
 
-import { GET, PATCH } from "../userinfo/route";
+import { GET, PATCH, PUT } from "../userinfo/route";
 
 describe("GET /api/oauth/userinfo", () => {
   beforeEach(() => {
@@ -340,6 +340,27 @@ describe("PATCH /api/oauth/userinfo", () => {
       scope: "openid profile",
     });
     const res = await PATCH(patchRequest({ nickname: "新昵称" }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("insufficient_scope");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("PUT 为小程序兼容别名：与 PATCH 同一鉴权链路（缺 profile:write 同样 403）", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "wechat-mp-points",
+      scope: "openid profile",
+    });
+    const req = new Request("http://localhost/api/oauth/userinfo", {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer valid-token",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ nickname: "新昵称" }),
+    });
+    const res = await PUT(req as unknown as NextRequest);
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("insufficient_scope");

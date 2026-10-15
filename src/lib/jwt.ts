@@ -578,6 +578,8 @@ export interface WechatBindPayload {
   avatar?: string;
   /** 外部身份归属平台（签发入口已知时携带，bind 端点据此写入 ExternalIdentity） */
   provider?: "wechat_open" | "wechat_mp" | "wechat_miniprogram" | "douyin";
+  /** 签发来源小程序 clientId（多小程序场景：绑定通道 phoneCode 换手机号时按该 client 选微信凭证） */
+  mpClientId?: string;
   /** 一次性消费标识：绑定成功后写入黑名单，防同 token 重放 */
   jti?: string;
 }

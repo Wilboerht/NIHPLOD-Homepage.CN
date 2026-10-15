@@ -59,7 +59,11 @@ import { POST as redeemPOST } from "../points/redeem/route";
 import { GET as redemptionsGET } from "../points/redemptions/route";
 import { GET as trackingGET } from "../points/redemptions/[id]/tracking/route";
 import { GET as addressesGET, POST as addressesPOST } from "../addresses/route";
-import { PATCH as addressPATCH, DELETE as addressDELETE } from "../addresses/[id]/route";
+import {
+  PATCH as addressPATCH,
+  PUT as addressPUT,
+  DELETE as addressDELETE,
+} from "../addresses/[id]/route";
 
 function authedToken(scope = "openid membership") {
   mockVerifyOAuthAccessToken.mockResolvedValue({
@@ -69,7 +73,11 @@ function authedToken(scope = "openid membership") {
   });
 }
 
-function req(method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: unknown): NextRequest {
+function req(
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
+  url: string,
+  body?: unknown
+): NextRequest {
   return new NextRequest(new URL(`http://localhost${url}`), {
     method,
     headers: {
@@ -90,7 +98,8 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE" });
     for (const fn of Object.values(mall)) {
-      (fn as ReturnType<typeof vi.fn>).mockResolvedValue(okResponse());
+      // 每次调用返回全新 Response：decorateOAuthResponse 会消费 body，复用实例会 "Body already read"
+      (fn as ReturnType<typeof vi.fn>).mockImplementation(() => okResponse());
     }
   });
 
@@ -167,6 +176,13 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
 
     expect(
       (await addressPATCH(req("PATCH", "/api/oauth/addresses/aid-1", { recipient: "x" }), ctx("aid-1"))).status
+    ).toBe(200);
+    expect(mall.updateAddressResponse).toHaveBeenCalledWith("user-1", "aid-1", expect.any(Request));
+
+    // PUT 为微信小程序兼容别名（wx.request 不支持 PATCH），委派同一核心
+    expect(
+      (await addressPUT(req("PUT", "/api/oauth/addresses/aid-1", { recipient: "x" }), ctx("aid-1")))
+        .status
     ).toBe(200);
     expect(mall.updateAddressResponse).toHaveBeenCalledWith("user-1", "aid-1", expect.any(Request));
 

@@ -1,7 +1,10 @@
 /**
  * OAuth 2.0 UserInfo 端点
  * GET /api/oauth/userinfo - 返回当前 Access Token 对应的用户信息
- * PATCH /api/oauth/userinfo - 修改用户资料（需 profile:write scope）
+ * PATCH（兼容 PUT）/api/oauth/userinfo - 修改用户资料（需 profile:write scope）
+ *
+ * PUT 别名原因：微信小程序 wx.request 官方 method 白名单不含 PATCH；
+ * DPoP htm 按实际请求方法校验（见 handlePatch 的 method 参数）。
  *
  * GET 按 token 中的 scope claim 裁剪返回字段，敏感字段（phone）脱敏。
  * PATCH 与主站自用 PUT /api/user/profile 共用校验 schema 与生日锁定规则，
@@ -130,10 +133,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+/**
+ * 资料修改共享实现：PATCH 与 PUT 别名（微信小程序 wx.request 兼容）走同一逻辑，
+ * DPoP htm 按实际请求方法校验。
+ */
+async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
   try {
-    // 共享鉴权（DPoP htm 按实际方法传 "PATCH"）
-    const auth = await authenticateOAuthResourceRequest(request, "PATCH");
+    const auth = await authenticateOAuthResourceRequest(request, method);
     if (!auth.ok) return auth.response;
     const { payload, ip, resJson } = auth;
     const userAgent = request.headers.get("user-agent") ?? undefined;
@@ -329,6 +335,14 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(request: NextRequest) {
+  return handlePatch(request, "PATCH");
+}
+
+export async function PUT(request: NextRequest) {
+  return handlePatch(request, "PUT");
 }
 
 export async function OPTIONS(request: NextRequest) {

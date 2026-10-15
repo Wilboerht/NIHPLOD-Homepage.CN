@@ -14,6 +14,11 @@ vi.mock("@/lib/wechat", () => ({
   getMiniprogramPhone: vi.fn(),
 }));
 
+vi.mock("@/lib/miniprogram-clients", () => ({
+  DEFAULT_MINIPROGRAM_CLIENT_ID: "wechat-mp-skin",
+  resolveMiniprogramCredentials: vi.fn(),
+}));
+
 vi.mock("@/lib/jwt", () => ({
   verifyWechatBindToken: vi.fn(),
   consumeWechatBindToken: vi.fn(),
@@ -43,6 +48,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { getMiniprogramPhone } from "@/lib/wechat";
+import { resolveMiniprogramCredentials } from "@/lib/miniprogram-clients";
 import { verifyWechatBindToken, consumeWechatBindToken, releaseWechatBindToken } from "@/lib/jwt";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit } from "@/lib/ratelimit";
@@ -51,6 +57,7 @@ import { POST } from "@/app/api/auth/wechat/bind/route";
 
 const mockResolve = resolveWechatBinding as ReturnType<typeof vi.fn>;
 const mockGetPhone = getMiniprogramPhone as ReturnType<typeof vi.fn>;
+const mockResolveCredentials = resolveMiniprogramCredentials as ReturnType<typeof vi.fn>;
 const mockVerifyBindToken = verifyWechatBindToken as ReturnType<typeof vi.fn>;
 const mockValidateCSRF = validateCSRFToken as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
@@ -74,6 +81,10 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
     vi.clearAllMocks();
     mockRateLimit.mockResolvedValue({ success: true });
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
+    mockResolveCredentials.mockReturnValue({
+      appId: "wx1234567890abcdef",
+      appSecret: "s".repeat(32),
+    });
     mockVerifyBindToken.mockResolvedValue({
       type: "wechat_bind",
       openid: "openid-1",
@@ -260,6 +271,55 @@ describe("POST /api/auth/wechat/bind CSRF 豁免", () => {
 
       expect(res.status).toBe(400);
       expect(data.error.code).toBe("INVALID_PARAMS");
+      expect(mockResolve).not.toHaveBeenCalled();
+    });
+
+    it("bindToken 携带 mpClientId 时按该 client 解析凭证换取手机号", async () => {
+      mockVerifyBindToken.mockResolvedValue({
+        type: "wechat_bind",
+        openid: "openid-1",
+        provider: "wechat_miniprogram",
+        mpClientId: "wechat-mp-points",
+      });
+      const pointsCred = { appId: "wxabcdef1234567890", appSecret: "p".repeat(32) };
+      mockResolveCredentials.mockReturnValue(pointsCred);
+      mockGetPhone.mockResolvedValue("13911112223");
+
+      const res = await POST(
+        createRequest({ bindToken: "body-bind-token", phoneCode: "phone-code-4" })
+      );
+
+      expect(res.status).toBe(200);
+      expect(mockResolveCredentials).toHaveBeenCalledWith("wechat-mp-points");
+      expect(mockGetPhone).toHaveBeenCalledWith("phone-code-4", pointsCred);
+    });
+
+    it("bindToken 无 mpClientId 时回退缺省客户端凭证", async () => {
+      mockGetPhone.mockResolvedValue("13911112224");
+
+      const res = await POST(
+        createRequest({ bindToken: "body-bind-token", phoneCode: "phone-code-5" })
+      );
+
+      expect(res.status).toBe(200);
+      expect(mockResolveCredentials).toHaveBeenCalledWith("wechat-mp-skin");
+      expect(mockGetPhone).toHaveBeenCalledWith("phone-code-5", {
+        appId: "wx1234567890abcdef",
+        appSecret: "s".repeat(32),
+      });
+    });
+
+    it("凭证未配置应返回 400 PHONE_CODE_FAILED 且不调用微信接口", async () => {
+      mockResolveCredentials.mockReturnValue(null);
+
+      const res = await POST(
+        createRequest({ bindToken: "body-bind-token", phoneCode: "phone-code-6" })
+      );
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.error.code).toBe("PHONE_CODE_FAILED");
+      expect(mockGetPhone).not.toHaveBeenCalled();
       expect(mockResolve).not.toHaveBeenCalled();
     });
   });

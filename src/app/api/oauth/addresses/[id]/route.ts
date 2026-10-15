@@ -1,10 +1,12 @@
 /**
  * OAuth 2.0 收货地址单条操作端点
- * PATCH  /api/oauth/addresses/[id] - 编辑地址
+ * PATCH（兼容 PUT）/api/oauth/addresses/[id] - 编辑地址
  * DELETE /api/oauth/addresses/[id] - 删除地址
  *
  * 与主站会话路由（/api/user/addresses/[id]）共用数据操作核心。
  * 要求 scope 含 membership。
+ * 提供 PUT 别名：微信小程序 wx.request 不支持 PATCH（官方 method 白名单不含），
+ * 且主站会话路由本身即为 PUT，语义一致。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
@@ -17,9 +19,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function handleUpdate(request: NextRequest, context: RouteContext, method: "PATCH" | "PUT") {
   try {
-    const auth = await authenticateOAuthUserRequest(request, "PATCH", {
+    const auth = await authenticateOAuthUserRequest(request, method, {
       scope: "membership",
       action: "addresses_update",
     });
@@ -36,6 +38,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  return handleUpdate(request, context, "PATCH");
+}
+
+export async function PUT(request: NextRequest, context: RouteContext) {
+  return handleUpdate(request, context, "PUT");
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {

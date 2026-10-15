@@ -12,6 +12,10 @@ import { passwordSchema } from "@/lib/password";
 import { verifyWechatBindToken, consumeWechatBindToken, releaseWechatBindToken } from "@/lib/jwt";
 import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { getMiniprogramPhone } from "@/lib/wechat";
+import {
+  DEFAULT_MINIPROGRAM_CLIENT_ID,
+  resolveMiniprogramCredentials,
+} from "@/lib/miniprogram-clients";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
@@ -163,8 +167,26 @@ export async function POST(request: NextRequest) {
           400
         );
       }
+      // 多小程序：按 bindToken 载荷中的 mpClientId 选微信凭证（缺失时回退缺省客户端）；
+      // phoneCode 由对应小程序 getPhoneNumber 按钮签发，必须用同 AppID 的 access_token 换取
+      const mpClientId = wechatInfo.mpClientId;
+      const credentials = resolveMiniprogramCredentials(
+        mpClientId ?? DEFAULT_MINIPROGRAM_CLIENT_ID
+      );
+      if (!credentials) {
+        apiConsole.error(
+          `[WechatBind] 小程序客户端凭证未配置: ${mpClientId ?? DEFAULT_MINIPROGRAM_CLIENT_ID}`
+        );
+        return await failAndRelease(
+          {
+            success: false,
+            error: { code: "PHONE_CODE_FAILED", message: "获取微信手机号失败，请重试或使用验证码" },
+          },
+          400
+        );
+      }
       try {
-        wxVerifiedPhone = await getMiniprogramPhone(phoneCode);
+        wxVerifiedPhone = await getMiniprogramPhone(phoneCode, credentials);
       } catch (error) {
         apiConsole.error("[WechatBind] getPhoneNumber 换取失败:", error);
         return await failAndRelease(

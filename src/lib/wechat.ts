@@ -373,21 +373,41 @@ export interface WechatSessionInfo {
   sessionKey: string;
 }
 
+/** 小程序凭证（多小程序场景由 lib/miniprogram-clients.ts 按 clientId 解析后传入） */
+export interface MiniprogramCredentials {
+  appId: string;
+  appSecret: string;
+}
+
+/**
+ * 旧版单小程序凭证：WECHAT_MINIPROGRAM_APP_ID/SECRET，回退 WECHAT_APP_ID/SECRET。
+ * 未显式传入凭证时使用（存量调用方零改动）。
+ */
+export function legacyMiniprogramCredentials(): MiniprogramCredentials | null {
+  const appId = process.env.WECHAT_MINIPROGRAM_APP_ID || process.env.WECHAT_APP_ID;
+  const appSecret = process.env.WECHAT_MINIPROGRAM_APP_SECRET || process.env.WECHAT_APP_SECRET;
+  if (!appId || !appSecret) return null;
+  return { appId, appSecret };
+}
+
 /**
  * 小程序 wx.login code 换取 openid / unionid / session_key
  *
  * 安全约束：
  * - session_key 仅随返回值传递，调用方不得落库/下发前端/写入日志
  *   （本项目不解密手机号，绑定统一走 SMS 验证码）
- * - appId/secret 优先取 WECHAT_MINIPROGRAM_APP_ID/SECRET，回退 WECHAT_APP_ID/SECRET
+ * - 凭证默认取旧版单小程序变量（WECHAT_MINIPROGRAM_* → WECHAT_* 回退）；
+ *   多小程序部署由调用方传入 credentials
  */
-export async function code2session(code: string): Promise<WechatSessionInfo> {
-  const appId = process.env.WECHAT_MINIPROGRAM_APP_ID || process.env.WECHAT_APP_ID;
-  const appSecret = process.env.WECHAT_MINIPROGRAM_APP_SECRET || process.env.WECHAT_APP_SECRET;
-
-  if (!appId || !appSecret) {
+export async function code2session(
+  code: string,
+  credentials?: MiniprogramCredentials
+): Promise<WechatSessionInfo> {
+  const cred = credentials ?? legacyMiniprogramCredentials();
+  if (!cred) {
     throw new Error("微信小程序 AppID 或 AppSecret 未配置");
   }
+  const { appId, appSecret } = cred;
 
   const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
 
@@ -416,55 +436,55 @@ export async function code2session(code: string): Promise<WechatSessionInfo> {
 // 小程序手机号快速验证（phoneCode 换真实手机号）
 // ============================================
 
-/** 小程序专用 access_token 缓存（与公众号缓存隔离，appId 可能不同） */
-let cachedMpAccessToken: CachedToken | null = null;
-let mpAccessTokenPromise: Promise<string> | null = null;
+/** 小程序专用 access_token 缓存（按 appId 隔离，多小程序并存时互不覆盖） */
+const mpAccessTokenCache = new Map<string, CachedToken>();
+const mpAccessTokenPromises = new Map<string, Promise<string>>();
 
 /**
- * 获取小程序 access_token（7200 秒，缓存 + Promise 锁，与 getWechatAccessToken 同策略）
- * appId/secret 与 code2session 口径一致：WECHAT_MINIPROGRAM_APP_ID/SECRET，回退 WECHAT_APP_ID/SECRET
+ * 获取小程序 access_token（7200 秒，按 appId 缓存 + Promise 锁，与 getWechatAccessToken 同策略）
+ * 凭证默认取旧版单小程序变量；多小程序部署由调用方传入 credentials
  */
-async function getMiniprogramAccessToken(): Promise<string> {
-  const { appId, appSecret } = (() => {
-    const a = process.env.WECHAT_MINIPROGRAM_APP_ID || process.env.WECHAT_APP_ID;
-    const s = process.env.WECHAT_MINIPROGRAM_APP_SECRET || process.env.WECHAT_APP_SECRET;
-    if (!a || !s) {
-      throw new Error("微信小程序 AppID 或 AppSecret 未配置");
-    }
-    return { appId: a, appSecret: s };
-  })();
+async function getMiniprogramAccessToken(credentials?: MiniprogramCredentials): Promise<string> {
+  const cred = credentials ?? legacyMiniprogramCredentials();
+  if (!cred) {
+    throw new Error("微信小程序 AppID 或 AppSecret 未配置");
+  }
+  const { appId, appSecret } = cred;
 
   const now = Date.now();
-  if (cachedMpAccessToken && cachedMpAccessToken.expiresAt > now) {
-    return cachedMpAccessToken.accessToken;
+  const cached = mpAccessTokenCache.get(appId);
+  if (cached && cached.expiresAt > now) {
+    return cached.accessToken;
   }
-  if (mpAccessTokenPromise) {
-    return mpAccessTokenPromise;
+  const inflight = mpAccessTokenPromises.get(appId);
+  if (inflight) {
+    return inflight;
   }
 
-  mpAccessTokenPromise = (async () => {
-    try {
-      const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
-      const response = await wechatFetch(url);
-      if (!response.ok) {
-        throw new Error(`小程序 Access Token 请求失败: HTTP ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.errcode) {
-        throw new Error(`获取小程序 Access Token 失败: ${data.errmsg}`);
-      }
-      const expiresIn = validateExpiresIn(data.expires_in, "miniprogram_access_token");
-      cachedMpAccessToken = {
-        accessToken: data.access_token,
-        expiresAt: now + (expiresIn - 300) * 1000,
-      };
-      return data.access_token;
-    } finally {
-      mpAccessTokenPromise = null;
+  const promise = (async () => {
+    const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appId}&secret=${appSecret}`;
+    const response = await wechatFetch(url);
+    if (!response.ok) {
+      throw new Error(`小程序 Access Token 请求失败: HTTP ${response.status}`);
     }
+    const data = await response.json();
+    if (data.errcode) {
+      throw new Error(`获取小程序 Access Token 失败: ${data.errmsg}`);
+    }
+    const expiresIn = validateExpiresIn(data.expires_in, "miniprogram_access_token");
+    mpAccessTokenCache.set(appId, {
+      accessToken: data.access_token,
+      expiresAt: Date.now() + (expiresIn - 300) * 1000,
+    });
+    return data.access_token as string;
   })();
 
-  return mpAccessTokenPromise;
+  mpAccessTokenPromises.set(appId, promise);
+  try {
+    return await promise;
+  } finally {
+    mpAccessTokenPromises.delete(appId);
+  }
 }
 
 /**
@@ -474,10 +494,14 @@ async function getMiniprogramAccessToken(): Promise<string> {
  * 取代已废弃的 session_key 解密方式；每次调用计费，仅用于用户主动授权场景。
  *
  * @param phoneCode - <button open-type="getPhoneNumber"> 回调中的 detail.code
+ * @param credentials - 多小程序凭证（缺省走旧版单小程序变量）
  * @returns 脱敏前纯数字手机号（purePhoneNumber）
  */
-export async function getMiniprogramPhone(phoneCode: string): Promise<string> {
-  const accessToken = await getMiniprogramAccessToken();
+export async function getMiniprogramPhone(
+  phoneCode: string,
+  credentials?: MiniprogramCredentials
+): Promise<string> {
+  const accessToken = await getMiniprogramAccessToken(credentials);
   const url = `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${accessToken}`;
 
   const controller = new AbortController();

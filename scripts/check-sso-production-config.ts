@@ -9,6 +9,7 @@
  * 生产环境也可直接以系统环境变量运行（dotenv 不覆盖已设置的变量，先加载的优先生效）。
  */
 import dotenv from "dotenv";
+import { parseMiniprogramClientsEnv } from "@/lib/miniprogram-clients";
 
 // 加载环境变量：dotenv 不覆盖已设置的变量，先加载的优先；
 // 按 Next.js 优先级从高到低依次加载（.env.production.local → .env.local → .env.production → .env），
@@ -600,6 +601,37 @@ if (!!douyinKey !== !!douyinSecret) {
     name: "DOUYIN_CLIENT_KEY/SECRET",
     message: douyinKey ? "已配置" : "未启用抖音登录",
   });
+}
+
+// 多小程序凭证（MINIPROGRAM_CLIENTS）：未配置 → SKIP（兼容旧版单小程序部署）；
+// 已配置则按 src/lib/miniprogram-clients.ts 同规则校验，非法条目会在运行时被丢弃，
+// 导致对应小程序登录返回 400 UNKNOWN_CLIENT / 一键绑手机返回 PHONE_CODE_FAILED
+const mpClientsRaw = process.env.MINIPROGRAM_CLIENTS;
+if (!mpClientsRaw || mpClientsRaw.trim() === "") {
+  check({
+    status: "SKIP",
+    name: "MINIPROGRAM_CLIENTS",
+    message: "未配置（回退旧版单小程序变量，仅支持缺省客户端 wechat-mp-skin）",
+  });
+} else {
+  const { entries, errors } = parseMiniprogramClientsEnv(mpClientsRaw);
+  if (errors.length > 0 || entries.length === 0) {
+    check({
+      status: "FAIL",
+      name: "MINIPROGRAM_CLIENTS",
+      message:
+        errors.length > 0
+          ? `存在非法条目（运行时将被丢弃）：${errors.join("；")}`
+          : "未解析出任何有效条目",
+      fix: "修正为合法 JSON 数组并保证 appId（wx + 16 位十六进制）/appSecret（≥16 字符、非示例值）格式正确（参考 .env.example）",
+    });
+  } else {
+    check({
+      status: "PASS",
+      name: "MINIPROGRAM_CLIENTS",
+      message: `已配置 ${entries.length} 个小程序客户端：${entries.map((e) => e.clientId).join(", ")}`,
+    });
+  }
 }
 
 // id_token_hint 验签公钥：配置了私钥（§2）但缺公钥时，需要验签的端点会失败

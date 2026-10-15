@@ -738,7 +738,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | GET | `/api/oauth/points/redemptions?offset=10` | 我的兑换记录（offset 分页，每页 10 条） |
 | GET | `/api/oauth/points/redemptions/{id}/tracking` | 兑换物流轨迹（未录运单号 400 `NO_WAYBILL`；丰桥未配置 `supported=false`） |
 | GET/POST | `/api/oauth/addresses` | 收货地址列表 / 新增（第一条自动默认，上限 20 条） |
-| PATCH/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址（删除或取消默认后自动顺延一条默认） |
+| PATCH（兼容 PUT）/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址（删除或取消默认后自动顺延一条默认） |
 
 消费补录（凭证含个人信息，私有 bucket 优先存储）：
 
@@ -790,6 +790,91 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
   无凭证时：未注册手机号返回与真实发送完全相同的成功响应（`{ success: true, data: { expiresIn: 300 } }`）但不发码、不入库，且响应耗时与真实短信通道同量级；已注册手机号维持历史行为（真实发码）。避免匿名者借用该通道枚举官网注册用户。
 - **限流不变**：60 秒发送间隔、每小时最多 5 次、IP 级限流对 `type=bind` 照常生效；频控按 `phone + type` 维度独立计数，不影响 login/register/reset 通道。
 - **验证码语义**：`SmsCode.type = "bind"`，有效期 5 分钟；绑定校验同时兼容 `register` 与 `bind` 两种类型（取最新未使用记录），历史数据与旧客户端不受影响。
+
+---
+
+## 微信小程序接入（独立小程序）
+
+官网支持多个微信小程序共用同一账号体系与积分账本（如 `wechat-mp-skin` 测肤小程序、`wechat-mp-points` 积分小程序）。小程序**直连官网 OAuth 端点**即可完成登录、手机号绑定与积分商城全部功能，无需自建后端。
+
+### 前置条件（微信平台侧）
+
+1. 新小程序完成注册与类目审核（「积分兑换」类目资质请提前确认）；
+2. **绑定同一微信开放平台账号**——UnionID 聚合的前提，官网/其它小程序的老用户可直接静默登录；未绑定时首次登录会要求手机号绑定（账号仍会正确合并）；
+3. 配置 request 合法域名：官网 API 域名（如 `https://nihplod.cn`）；
+4. 一键手机号（`getPhoneNumber`）需非个人主体，并在「用户隐私保护指引」中声明收集手机号与收货地址。
+
+### 官网侧配置
+
+1. SSO 后台创建 **public** OAuth Client（clientId 命名如 `wechat-mp-points`），scopes 建议 `openid profile phone membership profile:write birthday`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供小程序「资料编辑」；未配置的 scope 会在登录签发时被交集剔除，不影响其余功能）；
+   - 后台强制要求至少一个 `https://` 公网回调地址（redirectUris）：小程序不经过授权码回调流程，填一个占位地址即可（如 `https://nihplod.cn/mp/callback`）；
+   - 建议 `accessTokenTtlSeconds` 设为 **900**：子项目本地 JWKS 验签不感知会话撤销，短 TTL 可把撤销延迟压到分钟级（小程序端已自动静默刷新，无感）；
+2. 环境变量 `MINIPROGRAM_CLIENTS` 登记该 clientId 的微信 AppID/AppSecret（格式见 `.env.example`，修改后需重启官网）；未配置旧变量回退仅对缺省客户端 `wechat-mp-skin` 生效；
+3. 发布前运行 `npm run check:sso-config` 校验（非法条目会 FAIL）。
+
+### 登录（wx.login → 双 Token）
+
+`POST /api/auth/wechat/miniprogram-login`
+
+```json
+{
+  "code": "<wx.login 的 code>",
+  "phoneCode": "<可选：getPhoneNumber 回调 detail.code>",
+  "clientId": "wechat-mp-points"
+}
+```
+
+- `clientId`：来源小程序（可选，缺省 `wechat-mp-skin`）；未配置的 clientId 返回 400 `UNKNOWN_CLIENT`。
+- `phoneCode` 携带时一步完成「登录 + 手机号绑定」（推荐引导用户点击 getPhoneNumber 按钮）。
+
+三类响应（统一 `{ success, data }` / `{ success: false, error: { code, message } }`）：
+
+1. **直接登录**：`data: { needBinding: false, accessToken, refreshToken, expiresIn, user }`
+   - `accessToken` 为 RS256（`aud=clientId`，有效期随 OAuthClient 配置，建议小程序 client 设 900s，见「官网侧配置」），可直接调用下方资源端点；
+   - 刷新：`POST /api/oauth/token`，`grant_type=refresh_token` + `client_id` + `refresh_token`（public client 免 secret，30 天有效）。
+2. **需绑定**：`data: { needBinding: true, bindToken }`（微信占位号或未关联的老账号）
+   - 一键：`POST /api/auth/wechat/bind`，body `{ bindToken, phoneCode }`；
+   - 短信：`POST /api/auth/send-code`（`type: "bind"`；子站 BFF 代理发码需携带用户 Bearer token）→ `POST /api/auth/wechat/bind`，body `{ bindToken, phone, code }`；
+   - 绑定成功时在 body 返回 `accessToken/refreshToken`（无 Cookie 环境专用通道）。
+3. **账号异常**：403 `ACCOUNT_DISABLED`。
+
+### 可用的业务端点（`Authorization: Bearer <accessToken>`）
+
+积分商城全套端点与子站 OAuth 接入共用（契约详见上文「积分商城 / 消费补录 / 收货地址」章节）：
+
+| 方法 | 端点 | 说明 |
+| --- | --- | --- |
+| GET | `/api/oauth/points` | 积分余额（含物化过期处理）与最近 20 条流水 |
+| GET | `/api/oauth/points/gifts` | 可兑换礼品（按等级兑礼率折算所需积分） |
+| POST | `/api/oauth/points/redeem` | 兑换礼品（`requestId` 幂等） |
+| GET | `/api/oauth/points/redemptions` | 兑换记录（offset 分页） |
+| GET | `/api/oauth/points/redemptions/{id}/tracking` | 顺丰物流轨迹 |
+| GET/POST | `/api/oauth/addresses` | 收货地址簿 |
+| PATCH（兼容 PUT）/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址 |
+| GET | `/api/oauth/userinfo` | 用户信息（membership scope 含会员等级/累计消费/兑礼率） |
+| PATCH（兼容 PUT） | `/api/oauth/userinfo` | 资料编辑（昵称/头像/生日/性别；需 `profile:write`；生日首次设置后锁定） |
+| POST | `/api/oauth/userinfo/avatar` | 头像上传（multipart 字段名 `file`，≤5MB，JPG/PNG/WebP；需 `profile:write`，返回绝对 URL 后经资料编辑接口写入） |
+
+### 错误码
+
+| HTTP | code | 说明 |
+| --- | --- | --- |
+| 400 | `UNKNOWN_CLIENT` | clientId 未在官网侧配置（MINIPROGRAM_CLIENTS 缺失或条目非法） |
+| 400 | `INVALID_PARAMS` | 参数缺失或非法 |
+| 401 | `WECHAT_AUTH_FAILED` | code2session 失败（code 无效/过期，需重新 wx.login） |
+| 400 | `PHONE_CODE_FAILED` / `PHONE_INVALID` | 一键手机号换取失败 / 号码格式异常 |
+| 400 | `PHONE_IN_USE` | 绑定目标手机号已被注册 |
+| 403 | `ACCOUNT_DISABLED` | 账号封禁/冻结 |
+| 403 | `insufficient_scope` | 资源端点 scope 不足（如资料编辑缺 `profile:write`） |
+| 403 | `birthday_locked` | 生日已设置过（或已锁定），如需修改请联系客服 |
+| 500 | `OAUTH_CLIENT_MISSING` | 官网后台未创建 public client 或 scopes 无交集（部署配置问题） |
+
+### 备注
+
+- access token 过期：资源端点返回 401 `invalid_token`（OAuth 口径）→ 静默 refresh 后重试一次；refresh 也失效则重新走登录流程；
+- 资料编辑：`PATCH（兼容 PUT）/api/oauth/userinfo`（需 `profile:write`）支持昵称/头像/性别/生日；**生日为生日礼遇发放依据，首次设置后锁定**（清除后亦不可重设，服务端返回 `birthday_locked`）；头像先传 `POST /api/oauth/userinfo/avatar` 获取绝对 URL，再写入资料；
+- 会话管理：登录签发会创建 OAuth 会话，用户可在官网「安全中心 → 授权管理」查看/撤销，撤销后 access token 立即失效（`introspect` 口径）；
+- 换绑手机号不影响 `userId` 与积分数据；商城/对账请使用 `userId` 定位（详见「会员套餐/等级/积分同步」章节），不要依赖手机号。
 
 ---
 
