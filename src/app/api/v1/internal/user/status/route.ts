@@ -9,11 +9,13 @@
  * 认证方式：HMAC-SHA256 签名（与 /api/v1/internal/wechat/send-template 一致）。
  *
  * Body：
- *   userId: string  （必填，用户 ID）
+ *   userId: string    （与 userIds 二选一，单用户查询）
+ *   userIds: string[] （与 userId 二选一，批量查询，最多 100 个）
  *
  * 响应：
  *   success: true
- *   data: { userId, status: "ACTIVE" | "SUSPENDED" | "BANNED" }
+ *   data: { userId, status: "ACTIVE" | "SUSPENDED" | "BANNED" | "NOT_FOUND", updatedAt? }
+ *   （批量请求返回 data: { users: [{ userId, status, updatedAt? }] }，含 NOT_FOUND 占位）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";

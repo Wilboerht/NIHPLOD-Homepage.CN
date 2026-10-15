@@ -68,7 +68,9 @@ describe("/api/user/** 路由鉴权守卫", () => {
       while ((match = constRe.exec(code)) !== null) {
         handlerCount += 1;
         const rest = code.slice(match.index + match[0].length);
-        const wrapped = /^\s*=\s*withUserAuth\s*\(/.test(rest);
+        // 取声明到首个分号前的片段，兼容可选类型注解（如 `export const GET: Handler = ...`）
+        const head = rest.split(";", 1)[0] ?? "";
+        const wrapped = /=\s*withUserAuth\s*\(/.test(head);
         if (!wrapped && !hasManualVerify) {
           offenders.push(`${rel(file)} (${match[1]} 未以 withUserAuth 包裹)`);
         }
