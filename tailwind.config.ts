@@ -43,7 +43,6 @@ const config: Config = {
           "sans-serif",
         ],
         sans: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
-        playfair: ["var(--font-playfair)", "serif"],
         songti: [
           "SimSun",
           "宋体",

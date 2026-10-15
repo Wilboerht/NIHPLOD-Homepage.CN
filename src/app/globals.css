@@ -243,15 +243,6 @@
     color: var(--foreground);
   }
 
-  .prose h1,
-  .prose h2,
-  .prose h3,
-  .prose h4,
-  .prose h5,
-  .prose h6 {
-    font-family: var(--font-playfair);
-  }
-
   .prose h1 {
     font-size: 3rem;
   }
@@ -326,10 +317,6 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
-  }
-
-  .font-display {
-    font-family: var(--font-playfair);
   }
 
   /* 隐藏滚动条但保留滚动功能 */
