@@ -31,6 +31,7 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { sendWechatTemplateMessage } from "@/lib/wechat-template";
+import { notifySkinReportReady } from "@/lib/miniprogram-notify";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -48,6 +49,9 @@ const sendTemplateSchema = z.object({
     .url()
     .max(500)
     .regex(/^https?:\/\//, "报告链接必须以 http:// 或 https:// 开头"),
+  // 分析会话 ID（可选）：测肤小程序订阅消息「报告完成通知」的跳转参数；
+  // 旧调用方不传时仅跳过小程序通道，公众号通道行为不变
+  sessionId: z.string().max(64).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -148,10 +152,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, score, primaryConcern, reportUrl } = parsed.data;
+    const { userId, score, primaryConcern, reportUrl, sessionId } = parsed.data;
 
     // 5. 执行业务逻辑
     const result = await sendWechatTemplateMessage({ userId, score, primaryConcern, reportUrl });
+
+    // 5.1 平行通道：测肤小程序订阅消息（fail-soft，不影响公众号通道的响应语义；
+    //     未订阅 43101 / 模板未配置等均在函数内部静默处理）
+    await notifySkinReportReady({ userId, sessionId });
 
     if (!result.success) {
       return NextResponse.json(

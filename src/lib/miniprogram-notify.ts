@@ -1,5 +1,5 @@
 /**
- * 积分小程序订阅消息（发货通知 / 补录审核结果）
+ * 小程序订阅消息（积分小程序：发货/审核通知；测肤小程序：报告完成通知）
  *
  * 尽力而为（fail-soft）：模板未配置、小程序凭证缺失、用户无小程序身份、
  * 用户未订阅（43101）、微信接口异常等一律静默跳过（仅日志），不阻断业务主流程。
@@ -16,6 +16,9 @@ import { apiConsole } from "@/lib/logger";
 
 /** 积分小程序的 OAuth clientId（与 MINIPROGRAM_CLIENTS / 前端常量一致） */
 export const POINTS_MP_CLIENT_ID = "wechat-mp-points";
+
+/** 测肤小程序的 OAuth clientId（与 MINIPROGRAM_CLIENTS / 前端常量一致） */
+export const SKIN_MP_CLIENT_ID = "wechat-mp-skin";
 
 /** 微信接口「openid 不属于该 AppID」错误码：用于多 openid 逐一探测 */
 const ERRCODE_INVALID_OPENID = 40003;
@@ -41,20 +44,22 @@ function formatWxTime(date: Date): string {
 }
 
 /** 底层发送：遍历用户的全部小程序 openid 逐个尝试（见文件头说明） */
-async function sendPointsNotify(params: {
+async function sendMiniprogramNotify(params: {
   userId: string;
+  /** 小程序 OAuth clientId（决定用哪套 AppID 凭证与 openid 归属探测） */
+  mpClientId: string;
   templateId: string | undefined;
   page: string;
   data: Record<string, { value: string }>;
   context: string;
 }): Promise<void> {
-  const { userId, templateId, page, data, context } = params;
+  const { userId, mpClientId, templateId, page, data, context } = params;
   try {
     if (!templateId) return; // 模板未配置：功能未启用，静默跳过
 
-    const credentials = resolveMiniprogramCredentials(POINTS_MP_CLIENT_ID);
+    const credentials = resolveMiniprogramCredentials(mpClientId);
     if (!credentials) {
-      apiConsole.warn(`[MiniprogramNotify] ${context}: 积分小程序凭证未配置，跳过`);
+      apiConsole.warn(`[MiniprogramNotify] ${context}: 小程序凭证未配置（${mpClientId}），跳过`);
       return;
     }
 
@@ -102,8 +107,9 @@ export async function notifyPointsRedemptionShipped(redemptionId: string): Promi
     });
     if (!redemption) return;
 
-    await sendPointsNotify({
+    await sendMiniprogramNotify({
       userId: redemption.userId,
+      mpClientId: POINTS_MP_CLIENT_ID,
       templateId: process.env.MP_POINTS_TEMPLATE_SHIPPED,
       page: "pages/records/records",
       context: "发货订阅消息",
@@ -139,8 +145,9 @@ export async function notifyPointsSpentReview(params: {
       ? `已核实 ¥${(reviewAmount ?? 0).toLocaleString("zh-CN")}`
       : (reviewNote ?? "未通过审核");
 
-  await sendPointsNotify({
+  await sendMiniprogramNotify({
     userId,
+    mpClientId: POINTS_MP_CLIENT_ID,
     templateId: process.env.MP_POINTS_TEMPLATE_SPENT_REVIEW,
     page: "pages/spent-adjustments/spent-adjustments",
     context: "补录审核订阅消息",
@@ -150,4 +157,43 @@ export async function notifyPointsSpentReview(params: {
       character_string3: { value: truncate(orderNo, 32) },
     },
   });
+}
+
+/**
+ * 测肤报告完成通知（测肤子站 analyze 完成后经内部 API 转发触发）。
+ *
+ * 模板：公共模板库「检测报告生成提醒」（美妆类目）→ 选用关键词（按此顺序）：
+ *   服务名称(thing1) / 温馨提示(thing2) / 完结时间(time3)
+ * 若实际模板字段名不同（以「我的模板」详情页占位符为准），改此处 data 键即可。
+ *
+ * 一次性订阅语义：每次授权=一条推送额度，未订阅（43101）/额度用尽时微信拒绝，
+ * 属于正常业务流程（用户可能未在测肤前勾选订阅），仅记录日志。
+ *
+ * @param sessionId 分析会话 ID：作为跳转参数，点击消息直达小程序报告页
+ */
+export async function notifySkinReportReady(params: {
+  userId: string;
+  sessionId?: string | null;
+}): Promise<void> {
+  try {
+    const { userId, sessionId } = params;
+    const page = sessionId
+      ? `pages/result/result?sessionId=${encodeURIComponent(sessionId)}`
+      : "pages/index/index";
+
+    await sendMiniprogramNotify({
+      userId,
+      mpClientId: SKIN_MP_CLIENT_ID,
+      templateId: process.env.MP_SKIN_TEMPLATE_REPORT_READY,
+      page,
+      context: "报告完成订阅消息",
+      data: {
+        thing1: { value: "AI 肤质分析报告" }, // 服务名称
+        thing2: { value: "报告已生成，点击查看" }, // 温馨提示
+        time3: { value: formatWxTime(new Date()) }, // 完结时间（触发即完成时点）
+      },
+    });
+  } catch (error) {
+    apiConsole.warn("[MiniprogramNotify] 报告完成订阅消息异常（忽略）:", error);
+  }
 }
