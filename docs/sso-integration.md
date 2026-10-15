@@ -806,7 +806,14 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ### 官网侧配置
 
-1. SSO 后台创建 **public** OAuth Client（clientId 命名如 `wechat-mp-points`），scopes 建议 `openid profile phone membership profile:write birthday`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供小程序「资料编辑」；未配置的 scope 会在登录签发时被交集剔除，不影响其余功能）；
+1. SSO 后台创建 **public** OAuth Client，scopes 建议 `openid profile phone membership profile:write birthday`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供小程序「资料编辑」；未配置的 scope 会在登录签发时被交集剔除，不影响其余功能）；
+   - 注意：管理端创建时 **clientId 为随机生成且不可编辑**，创建后需在数据库改为约定值 `wechat-mp-points`（小程序登录与凭证分发均按 clientId 精确匹配）：
+   ```sql
+   UPDATE "OAuthClient"
+   SET "clientId" = 'wechat-mp-points', "accessTokenTtlSeconds" = 900
+   WHERE "clientId" = '<管理端生成的 ID>';
+   ```
+   （新建 client 尚无任何会话/授权/refresh token 引用，改名无副作用；TTL 也可在管理端编辑页调整）
    - 后台强制要求至少一个 `https://` 公网回调地址（redirectUris）：小程序不经过授权码回调流程，填一个占位地址即可（如 `https://nihplod.cn/mp/callback`）；
    - 建议 `accessTokenTtlSeconds` 设为 **900**：子项目本地 JWKS 验签不感知会话撤销，短 TTL 可把撤销延迟压到分钟级（小程序端已自动静默刷新，无感）；
 2. 环境变量 `MINIPROGRAM_CLIENTS` 登记该 clientId 的微信 AppID/AppSecret（格式见 `.env.example`，修改后需重启官网）；未配置旧变量回退仅对缺省客户端 `wechat-mp-skin` 生效；
