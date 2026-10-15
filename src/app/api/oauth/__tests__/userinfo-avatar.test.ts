@@ -92,7 +92,8 @@ describe("POST /api/oauth/userinfo/avatar", () => {
   });
 
   afterEach(() => {
-    if (savedAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    // NEXT_PUBLIC_APP_URL 在 env.d.ts 中声明为必填字段，delete 运算符会触发 TS2790，改用 Reflect
+    if (savedAppUrl === undefined) Reflect.deleteProperty(process.env, "NEXT_PUBLIC_APP_URL");
     else process.env.NEXT_PUBLIC_APP_URL = savedAppUrl;
   });
 
