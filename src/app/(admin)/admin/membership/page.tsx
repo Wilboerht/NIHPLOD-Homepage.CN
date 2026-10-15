@@ -2,8 +2,8 @@
 
 /**
  * 会员权益配置页面（仅超级管理员）
- * - 四档会员（普通/银卡/金卡/钻石）的展示文案与权益项
- * - 实际等级判定以代码硬编码阈值为准（0/1000/5000/10000），此处 minSpent 仅影响前台展示
+ * - 四档会员（普通/银卡/金卡/钻石）的名称、图标、权益文案与颜色
+ * - 消费门槛（判级与展示同源）由代码常量提供，本页不可修改
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Crown, Plus, Trash2, Info } from "lucide-react";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPut } from "@/lib/api-client";
+import { LEVEL_THRESHOLDS } from "@/lib/membership";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
@@ -31,8 +32,6 @@ interface LevelBenefit {
   name: string;
   nameEn: string;
   icon: string;
-  minSpent: number;
-  maxSpent: number | null;
   benefits: BenefitItem[];
   colorClass: string;
   source: "db" | "default";
@@ -44,14 +43,6 @@ const LEVEL_TABS: { key: LevelKey; label: string }[] = [
   { key: "GOLD", label: "金卡会员" },
   { key: "DIAMOND", label: "钻石卡会员" },
 ];
-
-/** 代码硬编码判级阈值（唯一权威），仅供页面提示 */
-const GRADING_THRESHOLDS: Record<LevelKey, number> = {
-  REGULAR: 0,
-  SILVER: 1000,
-  GOLD: 5000,
-  DIAMOND: 10000,
-};
 
 export default function AdminMembershipPage() {
   return (
@@ -163,18 +154,6 @@ function AdminMembershipContent() {
       showError("权益标题与描述不能为空");
       return;
     }
-    if (!Number.isInteger(form.minSpent) || form.minSpent < 0) {
-      showError("消费门槛必须为不小于 0 的整数");
-      return;
-    }
-    if (form.maxSpent !== null && (!Number.isInteger(form.maxSpent) || form.maxSpent < 0)) {
-      showError("消费上限必须为不小于 0 的整数或留空");
-      return;
-    }
-    if (form.maxSpent !== null && form.maxSpent < form.minSpent) {
-      showError("消费上限不能小于消费门槛");
-      return;
-    }
 
     setSaving(true);
     try {
@@ -183,8 +162,6 @@ function AdminMembershipContent() {
         name: form.name.trim(),
         nameEn: form.nameEn.trim() || undefined,
         icon: form.icon.trim() || undefined,
-        minSpent: form.minSpent,
-        maxSpent: form.maxSpent,
         benefits: form.benefits.map((b) => ({
           icon: b.icon.trim(),
           title: b.title.trim(),
@@ -235,17 +212,18 @@ function AdminMembershipContent() {
             会员权益配置
           </span>
         }
-        description="配置会员等级在前台展示的名称、门槛文案与权益列表"
+        description="配置会员等级在前台展示的名称、图标、权益列表与颜色"
       />
 
       {/* 判级说明 */}
       <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <p>
-          实际等级判定以系统硬编码阈值为准：普通 ¥0 / 银卡 ¥{GRADING_THRESHOLDS.SILVER.toLocaleString()} /
-          金卡 ¥{GRADING_THRESHOLDS.GOLD.toLocaleString()} / 钻石 ¥
-          {GRADING_THRESHOLDS.DIAMOND.toLocaleString()}。此处修改的消费门槛仅影响前台展示文案与进度展示，
-          不会改变等级判定结果。
+          等级判定与前台展示的消费门槛由系统统一固定：普通 ¥0 / 银卡 ¥
+          {LEVEL_THRESHOLDS.SILVER.toLocaleString()} / 金卡 ¥
+          {LEVEL_THRESHOLDS.GOLD.toLocaleString()} / 钻石 ¥
+          {LEVEL_THRESHOLDS.DIAMOND.toLocaleString()}
+          （唯一来源为代码，随发布生效）。本页仅配置名称、图标、权益文案与颜色。
         </p>
       </div>
 
@@ -310,24 +288,6 @@ function AdminMembershipContent() {
               onChange={(e) => setForm({ ...form, colorClass: e.target.value })}
               maxLength={100}
               placeholder="如 text-amber-600"
-              disabled={!canWrite}
-            />
-            <Input
-              label="消费门槛 minSpent（元，仅展示）"
-              type="number"
-              min={0}
-              value={String(form.minSpent)}
-              onChange={(e) => setForm({ ...form, minSpent: Number(e.target.value || 0) })}
-              disabled={!canWrite}
-            />
-            <Input
-              label="消费上限 maxSpent（元，留空表示无上限）"
-              type="number"
-              min={0}
-              value={form.maxSpent === null ? "" : String(form.maxSpent)}
-              onChange={(e) =>
-                setForm({ ...form, maxSpent: e.target.value === "" ? null : Number(e.target.value) })
-              }
               disabled={!canWrite}
             />
           </div>

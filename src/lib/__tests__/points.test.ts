@@ -44,7 +44,7 @@ vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
 }));
 
-import { applyExternalSpentSync } from "@/lib/points";
+import { applyExternalSpentSync, calculateLevel } from "@/lib/points";
 
 const flushMicrotasks = () => new Promise((r) => setTimeout(r, 10));
 
@@ -172,5 +172,17 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
     // 推送为 fire-and-forget：rejection 被 .catch 兜底，不产生未处理异常
     await vi.waitFor(() => expect(mockSendProfileUpdateWebhook).toHaveBeenCalledTimes(1));
     await flushMicrotasks();
+  });
+});
+
+describe("calculateLevel 判级阈值（与展示同源）", () => {
+  it("按累计消费判级：0 / 1000 / 5000 / 10000 为各档边界", () => {
+    expect(calculateLevel(0)).toBe("REGULAR");
+    expect(calculateLevel(999)).toBe("REGULAR");
+    expect(calculateLevel(1000)).toBe("SILVER");
+    expect(calculateLevel(4999)).toBe("SILVER");
+    expect(calculateLevel(5000)).toBe("GOLD");
+    expect(calculateLevel(9999)).toBe("GOLD");
+    expect(calculateLevel(10000)).toBe("DIAMOND");
   });
 });

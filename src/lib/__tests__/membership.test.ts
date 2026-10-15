@@ -9,9 +9,11 @@
  */
 import { describe, it, expect } from "vitest";
 import {
-  LEVEL_DEFAULT_BENEFITS,
-  POINT_REDEEM_RATES,
   BIRTHDAY_POINTS,
+  LEVEL_DEFAULT_BENEFITS,
+  LEVEL_THRESHOLDS,
+  MEMBERSHIP_LEVELS,
+  POINT_REDEEM_RATES,
 } from "@/lib/membership";
 
 describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
@@ -33,6 +35,17 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
     expect(LEVEL_DEFAULT_BENEFITS.GOLD.maxSpent).toBe(9999);
     expect(LEVEL_DEFAULT_BENEFITS.DIAMOND.minSpent).toBe(10000);
     expect(LEVEL_DEFAULT_BENEFITS.DIAMOND.maxSpent).toBeNull();
+  });
+
+  it("门槛唯一来源：LEVEL_DEFAULT_BENEFITS 派生自 LEVEL_THRESHOLDS（判级/展示同源）", () => {
+    expect(LEVEL_THRESHOLDS).toEqual({ REGULAR: 0, SILVER: 1000, GOLD: 5000, DIAMOND: 10000 });
+    expect(MEMBERSHIP_LEVELS).toEqual(["REGULAR", "SILVER", "GOLD", "DIAMOND"]);
+    for (const level of MEMBERSHIP_LEVELS) {
+      expect(LEVEL_DEFAULT_BENEFITS[level].minSpent).toBe(LEVEL_THRESHOLDS[level]);
+    }
+    expect(LEVEL_DEFAULT_BENEFITS.REGULAR.maxSpent).toBe(LEVEL_THRESHOLDS.SILVER - 1);
+    expect(LEVEL_DEFAULT_BENEFITS.SILVER.maxSpent).toBe(LEVEL_THRESHOLDS.GOLD - 1);
+    expect(LEVEL_DEFAULT_BENEFITS.GOLD.maxSpent).toBe(LEVEL_THRESHOLDS.DIAMOND - 1);
   });
 
   it("普通会员：10 次测肤体验 + 消费积分，无档案/顾问/兑礼权益", () => {

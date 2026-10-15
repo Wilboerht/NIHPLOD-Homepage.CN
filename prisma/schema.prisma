@@ -750,14 +750,13 @@ model SpentImportRow {
   @@index([userId, createdAt(sort: Desc)])
 }
 
+// 会员等级展示配置；消费门槛不在此表（唯一来源为 src/lib/membership.ts LEVEL_THRESHOLDS，判级与展示同源）
 model MembershipBenefit {
   id          String          @id @default(cuid())
   level       MembershipLevel @unique
   name        String          // 等级名称（如：普通会员）
   nameEn      String?         // 英文名称
   icon        String?         // 图标 emoji/SVG
-  minSpent    Int             // 升级所需最低历史消费金额（元）
-  maxSpent    Int?            // 该等级消费上限（最高等级为 null）
   benefits    Json            // 权益列表 [{ icon, title, desc }]
   colorClass  String?         // Tailwind 颜色类名
   createdAt   DateTime        @default(now())

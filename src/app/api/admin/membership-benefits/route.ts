@@ -3,8 +3,8 @@
  * GET /api/admin/membership-benefits - 四档权益配置（DB 覆盖 + 代码默认值兜底）
  * PUT /api/admin/membership-benefits - 更新指定档位权益配置（upsert）
  *
- * 注意：实际等级判定以 lib/points.ts LEVEL_THRESHOLDS 硬编码阈值为准（唯一权威），
- * 此处的 minSpent 仅影响前台权益/进度的展示文案。
+ * 注意：等级判级与前台展示的消费门槛统一由 lib/membership.ts LEVEL_THRESHOLDS 提供
+ * （唯一权威，随代码发布），本接口不提供门槛编辑（携带门槛字段将被拒绝）。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -32,34 +32,37 @@ const updateSchema = z.object({
   name: z.string().min(1, "等级名称不能为空").max(50),
   nameEn: z.string().max(50).optional(),
   icon: z.string().max(200).optional(),
-  minSpent: z.number().int().min(0).max(100000000),
-  maxSpent: z.number().int().min(0).max(100000000).nullable(),
   benefits: z.array(benefitItemSchema).min(1, "至少保留一条权益").max(20, "权益项最多 20 条"),
   colorClass: z.string().max(100).optional(),
 });
 
-/** 合并 DB 覆盖与代码默认值 */
+/** 管理端可编辑的展示字段（消费门槛由代码常量提供，不在此列） */
+type EditableLevelFields = Pick<
+  LevelDefaultBenefit,
+  "level" | "name" | "nameEn" | "icon" | "benefits" | "colorClass"
+>;
+
+/** 合并 DB 覆盖与代码默认值（仅展示字段；门槛不参与） */
 function mergeLevel(
   defaults: LevelDefaultBenefit,
   db: {
     name: string;
     nameEn: string | null;
     icon: string | null;
-    minSpent: number;
-    maxSpent: number | null;
     benefits: unknown;
     colorClass: string | null;
   } | null
-): LevelDefaultBenefit & { source: "db" | "default" } {
-  if (!db) return { ...defaults, source: "default" };
+): EditableLevelFields & { source: "db" | "default" } {
+  if (!db) {
+    const { level, name, nameEn, icon, benefits, colorClass } = defaults;
+    return { level, name, nameEn, icon, benefits, colorClass, source: "default" };
+  }
   const dbBenefits = Array.isArray(db.benefits) ? (db.benefits as LevelBenefitItem[]) : [];
   return {
     level: defaults.level,
     name: db.name,
     nameEn: db.nameEn ?? defaults.nameEn,
     icon: db.icon ?? defaults.icon,
-    minSpent: db.minSpent,
-    maxSpent: db.maxSpent,
     benefits: dbBenefits.length > 0 ? dbBenefits : defaults.benefits,
     colorClass: db.colorClass ?? defaults.colorClass,
     source: "db",
@@ -125,7 +128,19 @@ export async function PUT(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request, "membership:write");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, unknown>;
+    if ("minSpent" in body || "maxSpent" in body) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "THRESHOLD_IMMUTABLE",
+            message: "消费门槛由系统固定（随代码发布），不支持修改",
+          },
+        },
+        { status: 400 }
+      );
+    }
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -137,7 +152,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { level, name, nameEn, icon, minSpent, maxSpent, benefits, colorClass } = parsed.data;
+    const { level, name, nameEn, icon, benefits, colorClass } = parsed.data;
 
     const previous = await prisma.membershipBenefit.findUnique({ where: { level } });
 
@@ -148,8 +163,6 @@ export async function PUT(request: NextRequest) {
         name,
         nameEn: nameEn ?? null,
         icon: icon ?? null,
-        minSpent,
-        maxSpent,
         benefits,
         colorClass: colorClass ?? null,
       },
@@ -157,8 +170,6 @@ export async function PUT(request: NextRequest) {
         name,
         nameEn: nameEn ?? null,
         icon: icon ?? null,
-        minSpent,
-        maxSpent,
         benefits,
         colorClass: colorClass ?? null,
       },
@@ -173,12 +184,10 @@ export async function PUT(request: NextRequest) {
         before: previous
           ? {
               name: previous.name,
-              minSpent: previous.minSpent,
-              maxSpent: previous.maxSpent,
               benefits: previous.benefits,
             }
           : null,
-        after: { name, minSpent, maxSpent, benefits },
+        after: { name, benefits },
       },
       adminId: admin.id,
       request,
@@ -192,8 +201,6 @@ export async function PUT(request: NextRequest) {
         name: saved.name,
         nameEn: saved.nameEn ?? "",
         icon: saved.icon ?? "",
-        minSpent: saved.minSpent,
-        maxSpent: saved.maxSpent,
         benefits: saved.benefits,
         colorClass: saved.colorClass ?? "",
         source: "db" as const,

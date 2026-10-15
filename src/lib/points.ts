@@ -17,26 +17,16 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { creditSpendPoints, refundSpendPoints } from "@/lib/points-ledger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
-
-// 等级阈值（按历史消费金额，元）
-// 判级以此处硬编码阈值为准（唯一权威）；管理端可编辑的 MembershipBenefit.minSpent
-// 仅影响前台展示的权益文案（如"满 ¥1,000 升级银卡会员"），不参与实际等级计算。
-const LEVEL_THRESHOLDS: { level: MembershipLevel; minSpent: number }[] = [
-  { level: "REGULAR", minSpent: 0 },
-  { level: "SILVER", minSpent: 1000 },
-  { level: "GOLD", minSpent: 5000 },
-  { level: "DIAMOND", minSpent: 10000 },
-];
+import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
 
 /**
  * 根据历史消费金额计算会员等级
- * 判级阈值以本模块 LEVEL_THRESHOLDS 硬编码为准；DB 中 MembershipBenefit.minSpent
- * 可在管理端编辑，但仅用于展示文案，不影响此处的判级结果。
+ * 阈值唯一来源为 lib/membership.ts LEVEL_THRESHOLDS（与前台展示同源，不会漂移）。
  */
 export function calculateLevel(totalSpent: number): MembershipLevel {
   let level: MembershipLevel = "REGULAR";
-  for (const t of LEVEL_THRESHOLDS) {
-    if (totalSpent >= t.minSpent) level = t.level;
+  for (const lvl of MEMBERSHIP_LEVELS) {
+    if (totalSpent >= LEVEL_THRESHOLDS[lvl]) level = lvl;
   }
   return level;
 }

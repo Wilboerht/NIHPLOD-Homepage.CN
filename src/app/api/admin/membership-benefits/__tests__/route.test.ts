@@ -61,8 +61,6 @@ const VALID_BODY = {
   name: "银卡会员",
   nameEn: "Silver",
   icon: "",
-  minSpent: 1000,
-  maxSpent: 4999,
   benefits: [{ icon: "", title: "积分兑礼", desc: "兑礼 1:1" }],
   colorClass: "text-stone-500",
 };
@@ -96,8 +94,6 @@ describe("GET /api/admin/membership-benefits", () => {
         name: "银卡会员 Pro",
         nameEn: "Silver Pro",
         icon: "★",
-        minSpent: 888,
-        maxSpent: 4888,
         benefits: [{ icon: "", title: "自定义权益", desc: "描述" }],
         colorClass: "text-blue-500",
       },
@@ -109,7 +105,9 @@ describe("GET /api/admin/membership-benefits", () => {
 
     expect(silver.source).toBe("db");
     expect(silver.name).toBe("银卡会员 Pro");
-    expect(silver.minSpent).toBe(888);
+    // 门槛唯一来源为代码常量，接口不再返回门槛字段（DB 无法影响展示/判级）
+    expect(silver.minSpent).toBeUndefined();
+    expect(silver.maxSpent).toBeUndefined();
   });
 });
 
@@ -135,15 +133,31 @@ describe("PUT /api/admin/membership-benefits", () => {
     expect(res.status).toBe(400);
   });
 
+  it("携带消费门槛（minSpent/maxSpent）应返回 400 且不写库", async () => {
+    const res = await PUT(
+      createRequest("PUT", { ...VALID_BODY, minSpent: 888, maxSpent: 4888 })
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error.code).toBe("THRESHOLD_IMMUTABLE");
+    expect(prisma.membershipBenefit.upsert).not.toHaveBeenCalled();
+  });
+
   it("owner 保存成功并写审计", async () => {
     const res = await PUT(createRequest("PUT", VALID_BODY));
     const data = await res.json();
 
     expect(res.status).toBe(200);
     expect(data.data.level).toBe("SILVER");
+    expect(data.data.minSpent).toBeUndefined();
     expect(prisma.membershipBenefit.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ where: { level: "SILVER" } })
     );
+    const upsertArgs = vi.mocked(prisma.membershipBenefit.upsert).mock.calls[0][0] as {
+      create: Record<string, unknown>;
+    };
+    expect(upsertArgs.create).not.toHaveProperty("minSpent");
+    expect(upsertArgs.create).not.toHaveProperty("maxSpent");
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "update_vip_benefit",

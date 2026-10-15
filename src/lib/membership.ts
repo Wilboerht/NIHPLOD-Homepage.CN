@@ -39,6 +39,23 @@ export function levelDisplay(level: string | null | undefined): string {
 }
 
 // ============================================
+// 等级判级阈值（唯一权威来源）
+// 判级（lib/points.ts calculateLevel）与前台展示（lib/membership-view.ts）
+// 共用此常量；修改门槛需发版，管理端不可修改。
+// ============================================
+
+/** 等级顺序（由低到高），判级遍历与展示排序共用 */
+export const MEMBERSHIP_LEVELS: MembershipLevel[] = ["REGULAR", "SILVER", "GOLD", "DIAMOND"];
+
+/** 各档最低累计消费额（元），判级唯一依据 */
+export const LEVEL_THRESHOLDS: Record<MembershipLevel, number> = {
+  REGULAR: 0,
+  SILVER: 1000,
+  GOLD: 5000,
+  DIAMOND: 10000,
+};
+
+// ============================================
 // 积分规则（所有等级累积积分；兑礼仅银卡及以上，账本在官网，兑礼在商城）
 // ============================================
 
@@ -59,7 +76,8 @@ export const BIRTHDAY_POINTS: Record<MembershipLevel, number> = {
 };
 
 // ============================================
-// 等级权益默认配置（数据库未配置时的 fallback，用户端与管理端共用）
+// 等级权益默认配置（数据库仅覆盖展示文案/图标/颜色/权益列表等；门槛统一派生自
+// 上方 LEVEL_THRESHOLDS，用户端与管理端共用，管理端不可修改）
 // ============================================
 
 export interface LevelBenefitItem {
@@ -85,8 +103,8 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     name: "普通会员",
     nameEn: "Regular",
     icon: "",
-    minSpent: 0,
-    maxSpent: 999,
+    minSpent: LEVEL_THRESHOLDS.REGULAR,
+    maxSpent: LEVEL_THRESHOLDS.SILVER - 1,
     benefits: [
       { icon: "", title: "测肤体验", desc: "注册即享 10 次 AI 测肤体验机会" },
       { icon: "", title: "消费积分", desc: "消费 1 元 = 1 积分，升级银卡会员解锁积分兑礼" },
@@ -99,8 +117,8 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     name: "银卡会员",
     nameEn: "Silver",
     icon: "",
-    minSpent: 1000,
-    maxSpent: 4999,
+    minSpent: LEVEL_THRESHOLDS.SILVER,
+    maxSpent: LEVEL_THRESHOLDS.GOLD - 1,
     benefits: [
       { icon: "", title: "测肤加赠", desc: "每满 ¥1,000 加 20 次测肤，每日最多使用 10 次（银卡档有效）" },
       { icon: "", title: "档案永久保留", desc: "肌肤档案终身保留" },
@@ -115,8 +133,8 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     name: "金卡会员",
     nameEn: "Gold",
     icon: "",
-    minSpent: 5000,
-    maxSpent: 9999,
+    minSpent: LEVEL_THRESHOLDS.GOLD,
+    maxSpent: LEVEL_THRESHOLDS.DIAMOND - 1,
     benefits: [
       { icon: "", title: "不限次测肤", desc: "测肤次数不限，每日上限 10 次" },
       { icon: "", title: "档案永久保留", desc: "肌肤档案终身保留" },
@@ -131,7 +149,7 @@ export const LEVEL_DEFAULT_BENEFITS: Record<MembershipLevel, LevelDefaultBenefit
     name: "钻石卡会员",
     nameEn: "Diamond",
     icon: "",
-    minSpent: 10000,
+    minSpent: LEVEL_THRESHOLDS.DIAMOND,
     maxSpent: null,
     benefits: [
       { icon: "", title: "不限次测肤", desc: "测肤次数不限，每日上限 10 次" },
