@@ -8,12 +8,12 @@ import crypto from "crypto";
 /** WeChat API 请求超时（毫秒） */
 const WECHAT_API_TIMEOUT_MS = 10_000;
 
-/** 带超时的 WeChat API fetch（appSecret 在 query string 中是微信 API 设计要求） */
-async function wechatFetch(url: string): Promise<Response> {
+/** 带超时的 WeChat API fetch（appSecret 在 query string 中是微信 API 设计要求；init 可传 POST 等） */
+async function wechatFetch(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), WECHAT_API_TIMEOUT_MS);
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -532,4 +532,50 @@ export async function getMiniprogramPhone(
     throw new Error("微信手机号接口返回数据缺少 phone_info");
   }
   return String(phone);
+}
+
+// ============================================
+// 小程序订阅消息（一次订阅一次推送）
+// ============================================
+
+/**
+ * 发送小程序订阅消息。
+ *
+ * 前置条件：
+ * - 模板已在微信公众平台创建，data 的键（thing1/phrase2/time3 等）与模板字段一一对应；
+ * - 用户已通过 wx.requestSubscribeMessage 授权该模板（未订阅时微信返回 43101，
+ *   调用方按 fail-soft 处理，不视为异常）。
+ *
+ * 凭证默认取旧版单小程序变量；多小程序部署由调用方传入 credentials。
+ */
+export async function sendMiniprogramSubscribeMessage(params: {
+  openid: string;
+  templateId: string;
+  /** 点击消息卡片跳转的小程序页面路径（如 pages/records/records） */
+  page?: string;
+  /** 模板数据：键为模板字段名，值为 { value } */
+  data: Record<string, { value: string }>;
+  credentials?: MiniprogramCredentials;
+}): Promise<{ ok: boolean; errcode?: number; errmsg?: string }> {
+  const accessToken = await getMiniprogramAccessToken(params.credentials);
+  const url = `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${accessToken}`;
+
+  const response = await wechatFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      touser: params.openid,
+      template_id: params.templateId,
+      ...(params.page ? { page: params.page } : {}),
+      data: params.data,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`小程序订阅消息请求失败: HTTP ${response.status}`);
+  }
+
+  const data = (await response.json()) as { errcode?: number; errmsg?: string };
+  const errcode = data.errcode ?? 0;
+  return { ok: errcode === 0, errcode, errmsg: data.errmsg };
 }

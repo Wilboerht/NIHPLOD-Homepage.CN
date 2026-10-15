@@ -852,6 +852,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | 方法 | 端点 | 说明 |
 | --- | --- | --- |
 | GET | `/api/oauth/points` | 积分余额（含物化过期处理）与最近 20 条流水 |
+| GET | `/api/oauth/points/ledger?offset=` | 近一年积分流水（offset 分页每页 20 条，含业务流水号 `reference`） |
 | GET | `/api/oauth/points/gifts` | 可兑换礼品（按等级兑礼率折算所需积分） |
 | POST | `/api/oauth/points/redeem` | 兑换礼品（`requestId` 幂等） |
 | GET | `/api/oauth/points/redemptions` | 兑换记录（offset 分页） |
@@ -875,6 +876,17 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | 403 | `insufficient_scope` | 资源端点 scope 不足（如资料编辑缺 `profile:write`） |
 | 403 | `birthday_locked` | 生日已设置过（或已锁定），如需修改请联系客服 |
 | 500 | `OAUTH_CLIENT_MISSING` | 官网后台未创建 public client 或 scopes 无交集（部署配置问题） |
+
+### 订阅消息（可选）
+
+用户在兑换/提交补录时授权订阅后，官网在对应业务事件触发小程序订阅消息（fail-soft：用户未订阅/无小程序身份/接口异常均静默跳过，不影响业务主流程。多小程序 openid 自动逐一匹配）：
+
+| 事件 | 模板字段约定（微信公众平台按此创建） | 跳转页面 | 官网 env |
+| --- | --- | --- | --- |
+| 管理端「标记履约」发货 | `thing1`=商品名称 / `phrase2`=发货状态 / `time3`=发货时间 | `pages/records/records` | `MP_POINTS_TEMPLATE_SHIPPED` |
+| 补录审核完成 | `thing1`=审核结果（已通过/未通过）/ `thing2`=说明 / `character_string3`=订单号 | `pages/spent-adjustments/spent-adjustments` | `MP_POINTS_TEMPLATE_SPENT_REVIEW` |
+
+模板 ID 未配置时对应消息不发送（无需改代码）。
 
 ### 备注
 

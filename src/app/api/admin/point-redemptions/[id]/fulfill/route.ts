@@ -4,7 +4,7 @@
  *
  * Body: { waybillNo?: string } - 运单号（顺丰 SF 开头，选填；填写后用户端可查物流轨迹）
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -13,6 +13,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { fulfillRedemption } from "@/lib/point-gifts";
+import { notifyPointsRedemptionShipped } from "@/lib/miniprogram-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,15 @@ export async function POST(
       adminId: admin.id,
       request,
     });
+
+    // 积分小程序订阅消息（发货通知）：尽力而为，不阻断响应
+    // （模板未配置 / 用户未订阅 / 无小程序身份时在 notify 内静默跳过）
+    try {
+      after(() => notifyPointsRedemptionShipped(id));
+    } catch {
+      // 非请求上下文（测试等）：直接 fire-and-forget
+      void notifyPointsRedemptionShipped(id);
+    }
 
     return NextResponse.json({ success: true, data: { message: "已标记履约" } });
   } catch (error) {

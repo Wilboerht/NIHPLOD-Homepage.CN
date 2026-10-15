@@ -9,6 +9,7 @@ import { apiConsole } from "@/lib/logger";
 import { applyExternalSpentSync } from "@/lib/points";
 import { sendSpentReviewNotification } from "@/lib/sms";
 import { sendSpentAdjustmentReviewMessage } from "@/lib/wechat-template";
+import { notifyPointsSpentReview } from "@/lib/miniprogram-notify";
 import { after } from "next/server";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 import type { SpentAdjustmentStatus } from "@/generated/prisma/client";
@@ -297,6 +298,8 @@ function notifyReviewResult(params: {
       reviewAmount,
       reviewNote,
     }).catch((e) => apiConsole.error("[SpentAdjustment] 微信通知异常:", e));
+    // 积分小程序订阅消息（用户已订阅模板时送达；未订阅/未配置时在内部静默跳过）
+    void notifyPointsSpentReview({ userId, orderNo, status, reviewAmount, reviewNote });
   };
   try {
     after(fire);

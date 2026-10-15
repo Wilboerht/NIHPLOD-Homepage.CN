@@ -4,7 +4,7 @@
  * 按 appId 隔离的 token 缓存、未配置凭证抛错
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { code2session, getMiniprogramPhone } from "@/lib/wechat";
+import { code2session, getMiniprogramPhone, sendMiniprogramSubscribeMessage } from "@/lib/wechat";
 
 const fetchMock = vi.fn();
 
@@ -18,6 +18,8 @@ function phoneResponse(phone: string) {
 const CRED_A = { appId: "wxaaaaaaaaaaaaaaaa", appSecret: "secret-a-0123456789abcdef" };
 const CRED_B = { appId: "wxbbbbbbbbbbbbbbbb", appSecret: "secret-b-0123456789abcdef" };
 const CRED_C = { appId: "wxcccccccccccccccc", appSecret: "secret-c-0123456789abcdef" };
+const CRED_D = { appId: "wxdddddddddddddddd", appSecret: "secret-d-0123456789abcdef" };
+const CRED_E = { appId: "wxeeeeeeeeeeeeeeee", appSecret: "secret-e-0123456789abcdef" };
 
 function tokenCalls() {
   return fetchMock.mock.calls.filter((c) => String(c[0]).includes("/cgi-bin/token"));
@@ -90,5 +92,50 @@ describe("wechat.ts 多小程序凭证", () => {
       if (savedFallbackId !== undefined) process.env.WECHAT_APP_ID = savedFallbackId;
       if (savedFallbackSecret !== undefined) process.env.WECHAT_APP_SECRET = savedFallbackSecret;
     }
+  });
+
+  it("sendMiniprogramSubscribeMessage：成功时 POST body 含 touser/template_id/page/data", async () => {
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse("tok-sub-d"))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ errcode: 0, errmsg: "ok" }) });
+
+    const result = await sendMiniprogramSubscribeMessage({
+      openid: "openid-1",
+      templateId: "tmpl-1",
+      page: "pages/records/records",
+      data: { thing1: { value: "面霜小样" } },
+      credentials: CRED_D,
+    });
+
+    expect(result).toEqual({ ok: true, errcode: 0, errmsg: "ok" });
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toContain("/cgi-bin/message/subscribe/send");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      touser: "openid-1",
+      template_id: "tmpl-1",
+      page: "pages/records/records",
+      data: { thing1: { value: "面霜小样" } },
+    });
+  });
+
+  it("sendMiniprogramSubscribeMessage：用户未订阅（43101）返回 ok=false（不抛错）", async () => {
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse("tok-sub-e"))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ errcode: 43101, errmsg: "user refuse to accept the msg" }),
+      });
+
+    const result = await sendMiniprogramSubscribeMessage({
+      openid: "openid-2",
+      templateId: "tmpl-1",
+      data: { thing1: { value: "x" } },
+      credentials: CRED_E,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errcode).toBe(43101);
   });
 });

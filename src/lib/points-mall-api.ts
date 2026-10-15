@@ -20,8 +20,18 @@ import type { MembershipLevel } from "@/generated/prisma/client";
 import type { ProductData } from "@/components/website/ProductDrawer";
 
 const REDEMPTION_PAGE_SIZE = 10;
+const LEDGER_PAGE_SIZE = 20;
+/** 积分明细查询窗口：近一年（365 天） */
+const LEDGER_WINDOW_DAYS = 365;
 
 const redemptionQuerySchema = z.object({
+  offset: z.preprocess(
+    (val) => (val === undefined || val === null || val === "" ? 0 : Number(val)),
+    z.number().int().min(0).max(10000)
+  ),
+});
+
+const ledgerQuerySchema = z.object({
   offset: z.preprocess(
     (val) => (val === undefined || val === null || val === "" ? 0 : Number(val)),
     z.number().int().min(0).max(10000)
@@ -108,6 +118,62 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
     return NextResponse.json({ success: true, data });
   } catch (error) {
     apiConsole.error("[UserPoints] 查询失败:", error);
+    return internalError();
+  }
+}
+
+/** 近一年积分流水（offset 分页，每页 20 条；含业务流水号 reference） */
+export async function getPointsLedgerResponse(
+  userId: string,
+  request: Request
+): Promise<NextResponse> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const parsed = ledgerQuerySchema.safeParse({ offset: searchParams.get("offset") });
+    if (!parsed.success) {
+      return invalidParams("参数错误");
+    }
+    const offset = parsed.data.offset;
+
+    const since = new Date(Date.now() - LEDGER_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const where = { userId, createdAt: { gte: since } };
+
+    const [rows, total] = await Promise.all([
+      prisma.pointLedger.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: LEDGER_PAGE_SIZE + 1,
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          remaining: true,
+          note: true,
+          reference: true,
+          expiresAt: true,
+          createdAt: true,
+        },
+      }),
+      prisma.pointLedger.count({ where }),
+    ]);
+
+    const hasMore = rows.length > LEDGER_PAGE_SIZE;
+    const items = rows.slice(0, LEDGER_PAGE_SIZE).map((r) => ({
+      id: r.id,
+      type: r.type,
+      amount: r.amount,
+      remaining: r.remaining,
+      note: r.note,
+      // 业务流水号（商城单据号 / 幂等键），供用户核对
+      reference: r.reference,
+      expiresAt: r.expiresAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+    return NextResponse.json({ success: true, data: { items, hasMore, total } });
+  } catch (error) {
+    apiConsole.error("[UserPointsLedger] 查询失败:", error);
     return internalError();
   }
 }

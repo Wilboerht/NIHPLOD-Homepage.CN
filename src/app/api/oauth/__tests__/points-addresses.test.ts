@@ -42,6 +42,7 @@ vi.mock("@/lib/oauth-cors", () => ({
 
 const mall = vi.hoisted(() => ({
   getPointsOverviewResponse: vi.fn(),
+  getPointsLedgerResponse: vi.fn(),
   getPointGiftsResponse: vi.fn(),
   redeemPointsResponse: vi.fn(),
   getRedemptionsResponse: vi.fn(),
@@ -54,6 +55,7 @@ const mall = vi.hoisted(() => ({
 vi.mock("@/lib/points-mall-api", () => mall);
 
 import { GET as pointsGET } from "../points/route";
+import { GET as ledgerGET } from "../points/ledger/route";
 import { GET as giftsGET } from "../points/gifts/route";
 import { POST as redeemPOST } from "../points/redeem/route";
 import { GET as redemptionsGET } from "../points/redemptions/route";
@@ -145,6 +147,11 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
 
     expect((await pointsGET(req("GET", "/api/oauth/points"))).status).toBe(200);
     expect(mall.getPointsOverviewResponse).toHaveBeenCalledWith("user-1");
+
+    expect(
+      (await ledgerGET(req("GET", "/api/oauth/points/ledger?offset=0"))).status
+    ).toBe(200);
+    expect(mall.getPointsLedgerResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
 
     expect((await giftsGET(req("GET", "/api/oauth/points/gifts"))).status).toBe(200);
     expect(mall.getPointGiftsResponse).toHaveBeenCalledWith("user-1");
