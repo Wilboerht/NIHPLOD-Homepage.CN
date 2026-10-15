@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display } from "next/font/google";
+import localFont from "next/font/local";
 import { ViewTransitions } from "next-view-transitions";
 import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
@@ -11,9 +11,12 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
 
-// Playfair Display 字体
-const playfair = Playfair_Display({
-  subsets: ["latin"],
+// Playfair Display 字体（自托管变体版，源文件：@fontsource-variable/playfair-display 的 latin 子集）：
+// 原 next/font/google 需在构建时联网拉取 Google Fonts，被墙/断网环境会直接构建失败
+const playfair = localFont({
+  src: "./fonts/PlayfairDisplayVF.woff2",
+  weight: "400 900",
+  style: "normal",
   variable: "--font-playfair",
   display: "swap",
 });
