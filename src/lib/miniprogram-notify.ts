@@ -98,7 +98,7 @@ export async function notifyPointsRedemptionShipped(redemptionId: string): Promi
   try {
     const redemption = await prisma.pointRedemption.findUnique({
       where: { id: redemptionId },
-      select: { userId: true, productName: true, fulfilledAt: true, updatedAt: true },
+      select: { userId: true, productName: true, fulfilledAt: true },
     });
     if (!redemption) return;
 
@@ -110,7 +110,8 @@ export async function notifyPointsRedemptionShipped(redemptionId: string): Promi
       data: {
         thing1: { value: truncate(redemption.productName, 20) },
         phrase2: { value: "已发货" },
-        time3: { value: formatWxTime(redemption.fulfilledAt ?? redemption.updatedAt) },
+        // 履约流程会写入 fulfilledAt；防御回退当前时间
+        time3: { value: formatWxTime(redemption.fulfilledAt ?? new Date()) },
       },
     });
   } catch (error) {

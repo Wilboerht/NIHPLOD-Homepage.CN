@@ -49,7 +49,6 @@ describe("miniprogram-notify", () => {
       userId: "user-1",
       productName: "面霜小样",
       fulfilledAt: new Date("2026-10-15T02:30:00.000Z"),
-      updatedAt: new Date("2026-10-15T02:30:00.000Z"),
     });
   });
 
@@ -152,7 +151,6 @@ describe("miniprogram-notify", () => {
       userId: "user-1",
       productName: "超长商品名称示例用于验证截断逻辑是否正确执行",
       fulfilledAt: new Date("2026-10-15T02:30:00.000Z"),
-      updatedAt: new Date("2026-10-15T02:30:00.000Z"),
     });
 
     await notifyPointsRedemptionShipped("rid-1");
