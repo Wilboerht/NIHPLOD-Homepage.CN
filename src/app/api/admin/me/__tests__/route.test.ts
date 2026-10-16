@@ -56,6 +56,10 @@ vi.mock("@/lib/token-blacklist", () => ({
   blacklistAdminTokens: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireMoneyOperationTotp: vi.fn(),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
@@ -63,6 +67,7 @@ vi.mock("@/lib/logger", () => ({
 import { PUT } from "../route";
 import { prisma } from "@/lib/prisma";
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import bcrypt from "bcryptjs";
 
 const ADMIN = {
@@ -80,6 +85,7 @@ const mockClearAttempts = clearLoginAttempts as ReturnType<typeof vi.fn>;
 const mockCompare = bcrypt.compare as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.admin.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.admin.update as ReturnType<typeof vi.fn>;
+const mockRequireTotp = requireMoneyOperationTotp as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown) {
   return new NextRequest("http://localhost/api/admin/me", {
@@ -100,6 +106,7 @@ describe("PUT /api/admin/me 自助改密限次", () => {
       failedAttempts: 0,
       maxAttempts: 5,
     });
+    mockRequireTotp.mockResolvedValue(null);
   });
 
   it("连续旧密码错误达上限后，下一次请求返回 429 且不再执行 bcrypt 比对", async () => {
@@ -163,5 +170,63 @@ describe("PUT /api/admin/me 自助改密限次", () => {
     );
 
     expect(mockCheckLockout).toHaveBeenCalledWith(SCOPE_ID);
+  });
+
+  it("已启用 2FA 时改密缺少验证码被拒（不更新密码）", async () => {
+    mockFindUnique.mockResolvedValue({
+      password: "hashed-current-password",
+      totpEnabled: true,
+    });
+    mockCompare.mockResolvedValue(true);
+    mockRequireTotp.mockResolvedValue(
+      NextResponse.json(
+        { success: false, error: { code: "TOTP_REQUIRED", message: "请输入二次验证码以确认该操作" } },
+        { status: 400 }
+      )
+    );
+
+    const res = await PUT(
+      createRequest({ currentPassword: "OldPassw0rd", newPassword: "NewPassw0rd1" }),
+      ADMIN as never
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("TOTP_REQUIRED");
+    expect(mockRequireTotp).toHaveBeenCalledWith(ADMIN.id, undefined);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("已启用 2FA 且验证码正确时改密成功", async () => {
+    mockFindUnique.mockResolvedValue({
+      password: "hashed-current-password",
+      totpEnabled: true,
+    });
+    mockCompare.mockResolvedValue(true);
+
+    const res = await PUT(
+      createRequest({
+        currentPassword: "OldPassw0rd",
+        newPassword: "NewPassw0rd1",
+        totpCode: "123456",
+      }),
+      ADMIN as never
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRequireTotp).toHaveBeenCalledWith(ADMIN.id, "123456");
+    expect(mockUpdate).toHaveBeenCalled();
+  });
+
+  it("未启用 2FA 时不要求二次验证", async () => {
+    mockCompare.mockResolvedValue(true);
+
+    const res = await PUT(
+      createRequest({ currentPassword: "OldPassw0rd", newPassword: "NewPassw0rd1" }),
+      ADMIN as never
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRequireTotp).not.toHaveBeenCalled();
   });
 });

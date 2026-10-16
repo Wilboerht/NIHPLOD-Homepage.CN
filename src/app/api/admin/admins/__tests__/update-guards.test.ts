@@ -275,6 +275,67 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
     expect(res.status).toBe(200);
   });
 
+  it("委派边界：移除目标的 !撤销条目（变相授权超出自身权限）被拒（回归）", async () => {
+    // 目标 admin 角色的 users:sensitive:read 被 owner 以 !条目撤销；
+    // ops 委派管理员自身没有 users:sensitive:read，提交空权限数组会清掉该撤销条目，
+    // 等价于授予目标 users:sensitive:read——必须拦截
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "admin",
+      permissions: ["!users:sensitive:read"],
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, permissions: [] }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派边界：撤销超出自身范围的权限（对更高权限账号削权）被拒（回归）", async () => {
+    // ops 委派管理员自身没有 audit:read，不得给 admin 目标追加 !audit:read
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "admin",
+      permissions: [],
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, permissions: ["!audit:read"] }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派边界：移除自身权限范围内的 !撤销条目（变相授权）允许", async () => {
+    // ops 自身拥有 gifts:read，允许其清除目标 admin 上的 !gifts:read 撤销
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "admin",
+      permissions: ["!gifts:read"],
+    });
+    (prisma.admin.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      email: "target@test.com",
+      name: "Target",
+      role: "admin",
+      permissions: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const res = await PUT(
+      createRequest({ id: TARGET_ID, permissions: [] }),
+      DELEGATED as never
+    );
+
+    expect(res.status).toBe(200);
+  });
+
   it("owner 批量删除其他 owner（仍有 owner 保留）允许", async () => {
     (prisma.admin.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: TARGET_ID, role: "owner" },

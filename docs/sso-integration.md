@@ -862,6 +862,9 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | GET | `/api/oauth/userinfo` | 用户信息（membership scope 含会员等级/累计消费/兑礼率） |
 | PATCH（兼容 PUT） | `/api/oauth/userinfo` | 资料编辑（昵称/头像/生日/性别；需 `profile:write`；生日首次设置后锁定） |
 | POST | `/api/oauth/userinfo/avatar` | 头像上传（multipart 字段名 `file`，≤5MB，JPG/PNG/WebP；需 `profile:write`，返回绝对 URL 后经资料编辑接口写入） |
+| GET | `/api/oauth/account/deletion` | 查询进行中的账号注销申请（无则 `request: null`；需 `profile`） |
+| POST | `/api/oauth/account/deletion` | 提交账号注销申请（冷静期默认 7 天、可随时撤回、幂等；需 `profile:write`；不做密码校验，以微信身份 + 冷静期撤回为安全边界） |
+| DELETE | `/api/oauth/account/deletion` | 撤回注销申请（需 `profile:write`；无进行中申请返回 409 `NO_PENDING_REQUEST`） |
 
 ### 错误码
 
@@ -910,6 +913,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - access token 过期：资源端点返回 401 `invalid_token`（OAuth 口径）→ 静默 refresh 后重试一次；refresh 也失效则重新走登录流程；
 - 资料编辑：`PATCH（兼容 PUT）/api/oauth/userinfo`（需 `profile:write`）支持昵称/头像/性别/生日；**生日为生日礼遇发放依据，首次设置后锁定**（清除后亦不可重设，服务端返回 `birthday_locked`）；头像先传 `POST /api/oauth/userinfo/avatar` 获取绝对 URL，再写入资料（头像地址仅接受官网域/OSS 域，其他外链返回 400）；
 - 会话管理：登录签发会创建 OAuth 会话，用户可在官网「安全中心 → 授权管理」查看/撤销，撤销后 access token 立即失效（`introspect` 口径）；
+- 账号注销：小程序端可自助提交/撤回（`/api/oauth/account/deletion`，冷静期默认 7 天、期间账号可用且可随时撤回）；与官网安全中心自助注销共用同一申请记录与频控桶（申请 3 次/天、撤回 5 次/天）；到期统一由官网执行任务匿名化；
 - 换绑手机号不影响 `userId` 与积分数据；商城/对账请使用 `userId` 定位（详见「会员套餐/等级/积分同步」章节），不要依赖手机号。
 
 ---

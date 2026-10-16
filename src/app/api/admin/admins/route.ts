@@ -387,8 +387,12 @@ export const PUT = withAuth(async (request, admin) => {
     const permissionOverrides =
       data.permissions !== undefined ? sanitizePermissionOverrides(data.permissions) : undefined;
 
-    // 委派边界（精确）：角色变更时校验目标模板；追加授权只校验"新增"部分，
-    // 既有授权（可能由 owner 授予）允许保留，避免委派管理员连改名都被拒。
+    // 委派边界（精确）：
+    // 1) 角色变更：目标角色模板必须不超过操作者有效权限；
+    // 2) 权限变更：按「有效权限变化」判定——凡是授权状态发生变化的权限点都必须
+    //    在操作者有效权限内。移除 `!撤销` 条目等价于授予模板权限，撤销他人权限
+    //    属于削权，两者都必须拦截（此前只扫新增正向条目，可被"移除撤销"绕过）。
+    //    既有且未变化的超范围授权（可能由 owner 授予）允许保留，避免改名被误拦。
     if (
       admin.role !== "owner" &&
       (data.role !== undefined || permissionOverrides !== undefined)
@@ -411,21 +415,27 @@ export const PUT = withAuth(async (request, admin) => {
           );
         }
       }
-      if (permissionOverrides !== undefined) {
-        const currentOverrides = new Set(targetAdmin.permissions ?? []);
-        const hasOutOfScopeGrant = permissionOverrides.some(
-          (entry) =>
-            !entry.startsWith("!") && !currentOverrides.has(entry) && !actorPerms.has(entry)
+
+      const nextRole = data.role ?? targetAdmin.role;
+      const beforePerms = new Set<string>(
+        resolveAdminPermissions(targetAdmin.role, targetAdmin.permissions)
+      );
+      const afterPerms = new Set<string>(
+        resolveAdminPermissions(nextRole, permissionOverrides ?? targetAdmin.permissions)
+      );
+      const hasOutOfScopeChange = [...new Set([...beforePerms, ...afterPerms])].some(
+        (permission) =>
+          beforePerms.has(permission) !== afterPerms.has(permission) &&
+          !actorPerms.has(permission)
+      );
+      if (hasOutOfScopeChange) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "FORBIDDEN", message: "不能授予或撤销超出自身权限范围的权限" },
+          },
+          { status: 403 }
         );
-        if (hasOutOfScopeGrant) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: { code: "FORBIDDEN", message: "不能授予超出自身权限范围的权限" },
-            },
-            { status: 403 }
-          );
-        }
       }
     }
 

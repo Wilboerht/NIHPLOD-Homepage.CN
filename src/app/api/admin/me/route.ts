@@ -7,6 +7,7 @@ import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
 import { blacklistAdminTokens } from "@/lib/token-blacklist";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import {
   checkAccountLockout,
   recordLoginAttempt,
@@ -54,6 +55,8 @@ const updateMeSchema = z
     name: z.string().min(1).max(50).optional(),
     currentPassword: z.string().optional(),
     newPassword: passwordSchema.optional(),
+    // 已启用 TOTP 时改密必须携带二次验证码（或备用码），防会话/密码泄露后单因素改密
+    totpCode: z.string().max(20).optional(),
   })
   .refine((data) => !data.newPassword || data.currentPassword, {
     message: "修改密码需要提供当前密码",
@@ -82,7 +85,7 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
     if (data.newPassword && data.currentPassword) {
       const adminRecord = await prisma.admin.findUnique({
         where: { id: admin.id },
-        select: { password: true },
+        select: { password: true, totpEnabled: true },
       });
       if (!adminRecord) {
         return NextResponse.json(
@@ -118,6 +121,13 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
       }
       // 旧密码校验通过：清除该 scope 的失败记录
       await clearLoginAttempts(scopeId);
+
+      // 已启用二次验证：改密必须通过 TOTP/备用码（与关闭 2FA、资金操作同口径）
+      if (adminRecord.totpEnabled) {
+        const totpResponse = await requireMoneyOperationTotp(admin.id, data.totpCode);
+        if (totpResponse) return totpResponse;
+      }
+
       updateData.password = await hashPassword(data.newPassword);
     }
 

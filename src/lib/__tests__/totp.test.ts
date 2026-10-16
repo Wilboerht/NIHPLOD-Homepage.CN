@@ -29,7 +29,10 @@ describe("totp", () => {
     const secret = generateTOTPSecret();
     const token = generateTOTPCode(secret);
     expect(token).toHaveLength(6);
-    expect(verifyTOTP(token, secret)).toBe(true);
+    // otplib 默认仅当前 30 秒步长有效：生成与验证恰好跨窗口时旧码失效，
+    // 重取一次当前窗口的码，避免边界抖动导致偶发失败
+    const valid = verifyTOTP(token, secret) || verifyTOTP(generateTOTPCode(secret), secret);
+    expect(valid).toBe(true);
   });
 
   it("应拒绝错误的 TOTP code", () => {

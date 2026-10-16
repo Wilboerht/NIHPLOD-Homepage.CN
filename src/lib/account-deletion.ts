@@ -28,15 +28,11 @@ import { sendAccountDeletedNotification, sendAccountDeletionReminder } from "@/l
 import { hashIdentifier } from "@/lib/auth-security";
 import { deleteOSSFiles } from "@/lib/ali-oss";
 import { apiConsole } from "@/lib/logger";
+import { DELETION_STATUS } from "@/lib/account-deletion-requests";
 
-/** 注销申请状态机：RUNNING 为执行中间态（String 字段直接写，无需迁移） */
-export const DELETION_STATUS = {
-  PENDING: "PENDING",
-  RUNNING: "RUNNING",
-  CANCELLED: "CANCELLED",
-  COMPLETED: "COMPLETED",
-  FAILED: "FAILED",
-} as const;
+// 注销申请状态机常量与申请核心共用（src/lib/account-deletion-requests.ts），
+// 此处 re-export 保持既有引用（管理端路由/测试）不变
+export { DELETION_STATUS };
 
 /** 自动重试上限：达到后保留 FAILED 转人工介入 */
 export const MAX_DELETION_ATTEMPTS = 5;

@@ -9,6 +9,7 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
+import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
@@ -63,6 +64,16 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     if (!verifyTOTP(result.data.code, secret)) {
       return NextResponse.json(
         { success: false, error: { code: "TOTP_INVALID", message: "验证码错误" } },
+        { status: 400 }
+      );
+    }
+
+    // 跨实例防重放：与登录/资金操作同口径（原子消费，存储故障 fail-closed）
+    const replayKey = `totp:${admin.id}:${result.data.code}`;
+    if (!(await consumeAccessTokenOnce(replayKey))) {
+      apiConsole.warn("[TOTP Verify Setup] 检测到 TOTP 重放或存储不可用:", admin.id);
+      return NextResponse.json(
+        { success: false, error: { code: "TOTP_INVALID", message: "验证码已被使用，请等待刷新后重试" } },
         { status: 400 }
       );
     }

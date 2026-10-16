@@ -123,6 +123,22 @@ describe("requireMoneyOperationTotp", () => {
     });
   });
 
+  it("备用码消费失败时 fail-closed 拒绝（回归：不得放行未消费的一次性码）", async () => {
+    (verifyTOTP as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (verifyBackupCode as ReturnType<typeof vi.fn>).mockReturnValue({
+      remainingCodes: ["hashed-2"],
+    });
+    (prisma.admin.update as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("db down")
+    );
+
+    const res = await requireMoneyOperationTotp("admin-1", "backup-code");
+    const data = await res!.json();
+
+    expect(res!.status).toBe(400);
+    expect(data.error.code).toBe("TOTP_INVALID");
+  });
+
   it("同一动态验证码不可重放（原子消费，二次使用返回 TOTP_INVALID）", async () => {
     (verifyTOTP as ReturnType<typeof vi.fn>).mockReturnValue(true);
 

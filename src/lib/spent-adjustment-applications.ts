@@ -18,6 +18,7 @@ import {
   MAX_IMAGES,
   MAX_ORDER_NO_LENGTH,
   MAX_DEALER_NAME_LENGTH,
+  isValidSpentProofImageRef,
 } from "@/lib/spent-adjustment-meta";
 
 // 提交申请 schema：经销渠道必填经销商名称
@@ -34,10 +35,11 @@ export const createSpentApplicationSchema = z
       .optional(),
     images: z
       .array(
+        // 允许三种引用：公开 URL / 站内路径 / 私有 bucket objectName（spent-adjustments/ 前缀）
         z
           .string()
           .max(500, "图片地址过长")
-          .refine((v) => /^https?:\/\//.test(v) || v.startsWith("/"), "图片地址格式不正确")
+          .refine(isValidSpentProofImageRef, "图片地址格式不正确")
       )
       .max(MAX_IMAGES, `最多上传 ${MAX_IMAGES} 张凭证截图`)
       .optional(),

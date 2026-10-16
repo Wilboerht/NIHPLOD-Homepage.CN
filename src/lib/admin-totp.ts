@@ -3,8 +3,8 @@
  *
  * 适用：积分人工调整、消费补录审核/撤销、消费记录导入/撤销、兑换取消退分。
  * - 默认强制：管理员须先启用 TOTP，并在操作请求中携带一次性验证码（或备用码）
- * - 可用环境变量 ADMIN_TOTP_ENFORCE=false 临时关闭（灰度/应急），关闭时不校验
- * - 备用码使用后立即消费，避免重复可用
+ * - 可用环境变量 ADMIN_TOTP_ENFORCE=false 临时关闭（灰度/应急），关闭时不校验并输出告警
+ * - 备用码使用后立即消费（消费失败 fail-closed 拒绝），避免重复可用
  */
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -14,9 +14,23 @@ import { apiConsole } from "@/lib/logger";
 
 export type AdminTotpErrorCode = "TOTP_NOT_ENABLED" | "TOTP_REQUIRED" | "TOTP_INVALID";
 
-/** 是否强制资金类操作二次验证（默认开启） */
+/**
+ * 是否强制资金类操作二次验证（默认开启）
+ * 应急开关关闭时首次调用输出告警，避免生产环境静默裸奔
+ */
+let enforceDisabledWarned = false;
 export function isMoneyOperationTotpEnforced(): boolean {
-  return process.env.ADMIN_TOTP_ENFORCE !== "false";
+  if (process.env.ADMIN_TOTP_ENFORCE === "false") {
+    if (!enforceDisabledWarned) {
+      enforceDisabledWarned = true;
+      apiConsole.warn(
+        "[AdminTotp] 资金类操作二次验证已被 ADMIN_TOTP_ENFORCE=false 关闭，" +
+          "所有资金类操作将仅凭密码执行，请确认这是预期配置（生产环境应保持开启）"
+      );
+    }
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -67,12 +81,16 @@ export async function requireMoneyOperationTotp(
   if (admin.totpBackupCodes) {
     const backupResult = verifyBackupCode(trimmed, admin.totpBackupCodes);
     if (backupResult) {
-      await prisma.admin
-        .update({
+      // fail-closed：消费失败不得放行，否则未消费的备用码可在故障窗口内反复使用
+      try {
+        await prisma.admin.update({
           where: { id: adminId },
           data: { totpBackupCodes: JSON.stringify(backupResult.remainingCodes) },
-        })
-        .catch((err) => apiConsole.warn("[AdminTotp] 备用码消费失败:", err));
+        });
+      } catch (err) {
+        apiConsole.warn("[AdminTotp] 备用码消费失败（fail-closed）:", err);
+        return totpError("TOTP_INVALID", "验证码校验失败，请稍后重试");
+      }
       return null;
     }
   }

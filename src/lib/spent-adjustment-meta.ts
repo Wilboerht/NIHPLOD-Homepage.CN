@@ -64,6 +64,19 @@ export function isDirectImageUrl(value: string): boolean {
   return /^https?:\/\//.test(value) || value.startsWith("/");
 }
 
+/** 私有凭证对象名前缀（与 spent-adjustment-files.ts 的 OBJECT_PREFIX 一致） */
+const SPENT_PROOF_OBJECT_PREFIX = "spent-adjustments/";
+
+/**
+ * 凭证图片引用校验（提交入口使用）：
+ * 公开 URL / 站内路径 / 私有 bucket objectName（spent-adjustments/ 前缀）均为合法引用。
+ * objectName 的归属由读取端（resolveSpentProofImage）按 userId 前缀/申请记录权威校验。
+ */
+export function isValidSpentProofImageRef(value: string): boolean {
+  if (value.includes("..")) return false;
+  return isDirectImageUrl(value) || value.startsWith(SPENT_PROOF_OBJECT_PREFIX);
+}
+
 /**
  * 计算凭证图片的展示地址（客户端使用）
  * @param scope user=用户端（校验归属），admin=管理端（管理员登录态）

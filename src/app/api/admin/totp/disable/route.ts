@@ -10,6 +10,8 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
+import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
+import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
@@ -84,12 +86,32 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
+    // TOTP 专用速率限制（与登录口 admin-totp 桶同档），防结合密码验证穷举动态码
+    const totpLimit = await rateLimit(`admin-totp-disable:${admin.id}`, "admin-totp");
+    if (!totpLimit.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "TOTP_RATE_LIMITED", message: "二次验证尝试过于频繁，请 5 分钟后再试" },
+        },
+        { status: 429 }
+      );
+    }
+
     let totpValid = false;
     let consumedBackupResult: { remainingCodes: string[] } | null = null;
     if (admin.totpSecret) {
       try {
         const secret = decryptTOTPSecret(admin.totpSecret);
         totpValid = verifyTOTP(totpCode, secret);
+        if (totpValid) {
+          // 跨实例防重放：与登录/资金操作同口径（原子消费，存储故障 fail-closed）
+          const replayKey = `totp:${admin.id}:${totpCode}`;
+          if (!(await consumeAccessTokenOnce(replayKey))) {
+            apiConsole.warn("[TOTP Disable] 检测到 TOTP 重放或存储不可用:", admin.id);
+            totpValid = false;
+          }
+        }
       } catch {
         totpValid = false;
       }
