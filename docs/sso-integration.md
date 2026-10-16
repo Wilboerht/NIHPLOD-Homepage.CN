@@ -908,7 +908,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 ### 备注
 
 - access token 过期：资源端点返回 401 `invalid_token`（OAuth 口径）→ 静默 refresh 后重试一次；refresh 也失效则重新走登录流程；
-- 资料编辑：`PATCH（兼容 PUT）/api/oauth/userinfo`（需 `profile:write`）支持昵称/头像/性别/生日；**生日为生日礼遇发放依据，首次设置后锁定**（清除后亦不可重设，服务端返回 `birthday_locked`）；头像先传 `POST /api/oauth/userinfo/avatar` 获取绝对 URL，再写入资料；
+- 资料编辑：`PATCH（兼容 PUT）/api/oauth/userinfo`（需 `profile:write`）支持昵称/头像/性别/生日；**生日为生日礼遇发放依据，首次设置后锁定**（清除后亦不可重设，服务端返回 `birthday_locked`）；头像先传 `POST /api/oauth/userinfo/avatar` 获取绝对 URL，再写入资料（头像地址仅接受官网域/OSS 域，其他外链返回 400）；
 - 会话管理：登录签发会创建 OAuth 会话，用户可在官网「安全中心 → 授权管理」查看/撤销，撤销后 access token 立即失效（`introspect` 口径）；
 - 换绑手机号不影响 `userId` 与积分数据；商城/对账请使用 `userId` 定位（详见「会员套餐/等级/积分同步」章节），不要依赖手机号。
 

@@ -8,7 +8,8 @@ import { z } from "zod";
 
 // 更新参数验证
 export const updateProfileSchema = z.object({
-  nickname: z.string().max(20).optional(),
+  // trim 后校验长度：纯空白昵称归一为空串（路由落库时转为 null）
+  nickname: z.string().trim().max(20).optional(),
   avatar: z
     .union([
       z
@@ -45,3 +46,38 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/**
+ * 头像地址域名白名单（服务端校验）：仅允许官网域名与自有 OSS 域。
+ * 资料写接口若接受任意外链，SSO 消费方（子站）会加载不可信图片
+ * （追踪像素 / 混合内容），故 OAuth 资料更新入口默认拒绝白名单外的地址。
+ */
+const ALLOWED_AVATAR_HOSTS = (() => {
+  const hosts = new Set<string>();
+  const addUrl = (raw?: string) => {
+    if (!raw) return;
+    try {
+      hosts.add(new URL(raw).host);
+    } catch {
+      // 配置值非法时忽略（启动校验已兜底）
+    }
+  };
+  addUrl(process.env.NEXT_PUBLIC_APP_URL);
+  addUrl(process.env.NEXT_PUBLIC_BASE_URL);
+  addUrl(process.env.ALI_OSS_PUBLIC_DOMAIN);
+  if (process.env.ALI_OSS_BUCKET && process.env.ALI_OSS_REGION) {
+    hosts.add(`${process.env.ALI_OSS_BUCKET}.${process.env.ALI_OSS_REGION}.aliyuncs.com`);
+  }
+  return hosts;
+})();
+
+/** 校验头像地址是否属于允许的域名（仅对非空值调用） */
+export function isAllowedAvatarUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    return ALLOWED_AVATAR_HOSTS.has(url.host);
+  } catch {
+    return false;
+  }
+}

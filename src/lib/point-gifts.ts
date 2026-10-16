@@ -63,8 +63,23 @@ export type RedeemGiftResult =
       message: string;
     };
 
+type RedeemErrorCode = Extract<RedeemGiftResult, { ok: false }>["code"];
+
 /**
- * 兑换产品（单事务：幂等检查 → 产品校验 → 等级重读 → 地址校验 → 库存扣减 → 扣分 → 生成兑换记录）
+ * 事务内回滚信号：mutation 之后才发现的失败必须抛错回滚（Prisma 事务回调正常返回即提交），
+ * 否则已执行的扣减会被误提交（例：库存已扣但扣分 CAS 失败）。
+ */
+class RedeemRollback extends Error {
+  readonly code: RedeemErrorCode;
+
+  constructor(code: RedeemErrorCode, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/**
+ * 兑换产品（单事务：幂等检查 → 产品校验 → 等级重读 → 地址校验 → 余额预检 → 库存扣减 → 扣分 → 生成兑换记录）
  * 同一 requestId 重复调用直接返回首次结果（duplicated: true），不重复扣分。
  * 会员等级在事务内重读（不接受外部传入的等级快照，防 TOCTOU 等级降档套利）。
  * redeemStock 非 null 时以条件更新扣库存（CAS），命中 0 行即库存不足，并发不超卖。
@@ -82,97 +97,139 @@ export async function redeemGiftForUser(params: {
   }
   const reference = `redeem:${userId}:${requestId}`;
 
-  return prisma.$transaction(async (tx) => {
-    // 幂等：同一请求单只产生一条兑换记录
-    const existing = await tx.pointRedemption.findUnique({
-      where: { userId_reference: { userId, reference } },
-    });
-    if (existing) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // 幂等：同一请求单只产生一条兑换记录
+      const existing = await tx.pointRedemption.findUnique({
+        where: { userId_reference: { userId, reference } },
+      });
+      if (existing) {
+        const balance = await tx.pointBalance.findUnique({
+          where: { userId },
+          select: { available: true },
+        });
+        return {
+          ok: true,
+          duplicated: true,
+          points: existing.points,
+          available: balance?.available ?? 0,
+          redemptionId: existing.id,
+        };
+      }
+
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+        select: { id: true, name: true, price: true, pointRedeemable: true, published: true, redeemStock: true },
+      });
+      if (!product) {
+        return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
+      }
+      if (!product.pointRedeemable || !product.published) {
+        return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
+      }
+
+      // 等级以事务内读取为准（外部快照可能已过期：消费升级/退款降档的 TOCTOU 窗口）
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { membershipLevel: true },
+      });
+      const level: MembershipLevel = user?.membershipLevel ?? "REGULAR";
+
+      const points = giftCostForUser(product.price, level);
+      if (points === null) {
+        return { ok: false, code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑换" };
+      }
+
+      // 收货地址校验（扣分前拦截，地址必须属于当前用户）
+      const address = await tx.userAddress.findUnique({
+        where: { id: addressId },
+        select: { userId: true, recipient: true, phone: true, region: true, detail: true },
+      });
+      if (!address || address.userId !== userId) {
+        return { ok: false, code: "ADDRESS_NOT_FOUND", message: "收货地址不存在，请重新选择" };
+      }
+      const fullAddress = `${address.region} ${address.detail}`;
+
+      // 余额预检（先于库存扣减）：余额不足是常态错误，提前拦截避免白扣限量库存
+      const balance = await tx.pointBalance.findUnique({
+        where: { userId },
+        select: { available: true },
+      });
+      if (!balance || balance.available < points) {
+        return { ok: false, code: "INSUFFICIENT", message: "可用积分不足" };
+      }
+
+      // 限量库存：条件扣减（CAS），命中 0 行即库存不足（未发生变更，可直接返回）；null = 不限量
+      if (product.redeemStock !== null) {
+        const deducted = await tx.product.updateMany({
+          where: { id: productId, redeemStock: { gte: 1 } },
+          data: { redeemStock: { decrement: 1 } },
+        });
+        if (deducted.count === 0) {
+          return { ok: false, code: "OUT_OF_STOCK", message: "该礼品已兑完" };
+        }
+      }
+
+      const result = await redeemPoints(tx, {
+        userId,
+        amount: points,
+        reference,
+        note: `兑换产品：${product.name}`,
+      });
+      if (!result.ok) {
+        // 预检通过但扣分 CAS 失败（并发扣光）：必须抛错回滚已扣库存
+        throw new RedeemRollback("INSUFFICIENT", "可用积分不足");
+      }
+
+      const redemption = await tx.pointRedemption.create({
+        data: {
+          userId,
+          productId,
+          productName: product.name,
+          priceYuan: product.price,
+          points,
+          reference,
+          recipient: address.recipient,
+          phone: address.phone,
+          address: fullAddress,
+        },
+      });
+
       return {
         ok: true,
-        duplicated: true,
-        points: existing.points,
-        available: 0,
-        redemptionId: existing.id,
+        duplicated: false,
+        points,
+        available: result.available,
+        redemptionId: redemption.id,
       };
-    }
-
-    const product = await tx.product.findUnique({
-      where: { id: productId },
-      select: { id: true, name: true, price: true, pointRedeemable: true, published: true, redeemStock: true },
     });
-    if (!product) {
-      return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
+  } catch (error) {
+    if (error instanceof RedeemRollback) {
+      return { ok: false, code: error.code, message: error.message };
     }
-    if (!product.pointRedeemable || !product.published) {
-      return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
-    }
-
-    // 等级以事务内读取为准（外部快照可能已过期：消费升级/退款降档的 TOCTOU 窗口）
-    const user = await tx.user.findUnique({
-      where: { id: userId },
-      select: { membershipLevel: true },
-    });
-    const level: MembershipLevel = user?.membershipLevel ?? "REGULAR";
-
-    const points = giftCostForUser(product.price, level);
-    if (points === null) {
-      return { ok: false, code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑换" };
-    }
-
-    // 收货地址校验（扣分前拦截，地址必须属于当前用户）
-    const address = await tx.userAddress.findUnique({
-      where: { id: addressId },
-      select: { userId: true, recipient: true, phone: true, region: true, detail: true },
-    });
-    if (!address || address.userId !== userId) {
-      return { ok: false, code: "ADDRESS_NOT_FOUND", message: "收货地址不存在，请重新选择" };
-    }
-    const fullAddress = `${address.region} ${address.detail}`;
-
-    // 限量库存：条件扣减（CAS），命中 0 行即库存不足；null = 不限量
-    if (product.redeemStock !== null) {
-      const deducted = await tx.product.updateMany({
-        where: { id: productId, redeemStock: { gte: 1 } },
-        data: { redeemStock: { decrement: 1 } },
+    // 并发同一 requestId：两条请求都通过幂等检查，后者撞上 userId_reference 唯一约束。
+    // 此时后者事务整体回滚（含库存/积分的任何扣减），返回与首次一致的幂等结果。
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const existing = await prisma.pointRedemption.findUnique({
+        where: { userId_reference: { userId, reference } },
+        select: { id: true, points: true },
       });
-      if (deducted.count === 0) {
-        return { ok: false, code: "OUT_OF_STOCK", message: "该礼品已兑完" };
+      if (existing) {
+        const balance = await prisma.pointBalance.findUnique({
+          where: { userId },
+          select: { available: true },
+        });
+        return {
+          ok: true,
+          duplicated: true,
+          points: existing.points,
+          available: balance?.available ?? 0,
+          redemptionId: existing.id,
+        };
       }
     }
-
-    const result = await redeemPoints(tx, {
-      userId,
-      amount: points,
-      reference,
-      note: `兑换产品：${product.name}`,
-    });
-    if (!result.ok) {
-      return { ok: false, code: "INSUFFICIENT", message: "可用积分不足" };
-    }
-
-    const redemption = await tx.pointRedemption.create({
-      data: {
-        userId,
-        productId,
-        productName: product.name,
-        priceYuan: product.price,
-        points,
-        reference,
-        recipient: address.recipient,
-        phone: address.phone,
-        address: fullAddress,
-      },
-    });
-
-    return {
-      ok: true,
-      duplicated: false,
-      points,
-      available: result.available,
-      redemptionId: redemption.id,
-    };
-  });
+    throw error;
+  }
 }
 
 /** 管理端：履约（PENDING → FULFILLED，CAS 抢占防并发重复履约；可选录入运单号） */

@@ -141,7 +141,8 @@ export async function getPointsLedgerResponse(
     const [rows, total] = await Promise.all([
       prisma.pointLedger.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        // id 次级排序：同一毫秒写入的多条流水在 offset 分页下顺序稳定
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: offset,
         take: LEDGER_PAGE_SIZE + 1,
         select: {
@@ -324,7 +325,7 @@ export async function getRedemptionsResponse(userId: string, request: Request): 
     const [rows, total] = await Promise.all([
       prisma.pointRedemption.findMany({
         where: { userId },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: offset,
         take: REDEMPTION_PAGE_SIZE + 1,
         select: {

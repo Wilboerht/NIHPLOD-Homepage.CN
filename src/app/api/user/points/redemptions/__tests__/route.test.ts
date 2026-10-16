@@ -67,7 +67,7 @@ describe("GET /api/user/points/redemptions", () => {
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: "user-1" },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: 0,
         take: 11,
       })

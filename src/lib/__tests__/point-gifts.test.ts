@@ -1,12 +1,13 @@
 /**
  * 积分兑换核心逻辑测试（兑换产品来自产品库）
- * 覆盖：兑礼率折算（普通档不参与）、兑换事务（幂等/产品校验/事务内等级重读/地址校验/库存扣减/扣分/记录）、履约 CAS
+ * 覆盖：兑礼率折算（普通档不参与）、兑换事务（幂等/产品校验/事务内等级重读/地址校验/余额预检/库存扣减/扣分/记录/并发唯一约束兜底）、履约 CAS
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { txClient } = vi.hoisted(() => ({
   txClient: {
     pointRedemption: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    pointBalance: { findUnique: vi.fn() },
     product: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn() },
     userAddress: { findUnique: vi.fn() },
@@ -18,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
     product: { findMany: vi.fn() },
     pointRedemption: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    pointBalance: { findUnique: vi.fn() },
     userAddress: { findUnique: vi.fn() },
   },
 }));
@@ -38,10 +40,17 @@ import {
 const mockRedeemPoints = redeemPoints as ReturnType<typeof vi.fn>;
 const mockTxFindUnique = txClient.pointRedemption.findUnique as ReturnType<typeof vi.fn>;
 const mockTxCreate = txClient.pointRedemption.create as ReturnType<typeof vi.fn>;
+const mockTxBalanceFind = txClient.pointBalance.findUnique as ReturnType<typeof vi.fn>;
 const mockTxProductFind = txClient.product.findUnique as ReturnType<typeof vi.fn>;
 const mockTxProductUpdateMany = txClient.product.updateMany as ReturnType<typeof vi.fn>;
 const mockTxUserFind = txClient.user.findUnique as ReturnType<typeof vi.fn>;
 const mockTxAddressFind = txClient.userAddress.findUnique as ReturnType<typeof vi.fn>;
+const mockPrismaRedemptionFind = (
+  prisma.pointRedemption as unknown as { findUnique: ReturnType<typeof vi.fn> }
+).findUnique;
+const mockPrismaBalanceFind = (
+  prisma.pointBalance as unknown as { findUnique: ReturnType<typeof vi.fn> }
+).findUnique;
 
 const REDEEMABLE_PRODUCT = {
   id: "product-1",
@@ -83,6 +92,7 @@ describe("redeemGiftForUser 兑换事务", () => {
     mockTxProductUpdateMany.mockResolvedValue({ count: 1 });
     mockTxUserFind.mockResolvedValue({ membershipLevel: "GOLD" });
     mockTxAddressFind.mockResolvedValue(SHIPPING_ADDRESS);
+    mockTxBalanceFind.mockResolvedValue({ available: 770 });
     mockTxCreate.mockResolvedValue({ id: "redemption-1" });
     mockRedeemPoints.mockResolvedValue({ ok: true, available: 770, spent: 230 });
   });
@@ -130,8 +140,9 @@ describe("redeemGiftForUser 兑换事务", () => {
     });
   });
 
-  it("同一请求单重复提交：幂等返回，不重复扣分", async () => {
+  it("同一请求单重复提交：幂等返回，不重复扣分（余额取真实值）", async () => {
     mockTxFindUnique.mockResolvedValue({ id: "redemption-1", points: 230 });
+    mockTxBalanceFind.mockResolvedValue({ available: 500 });
 
     const result = await redeemGiftForUser({
       userId: "user-1",
@@ -144,7 +155,7 @@ describe("redeemGiftForUser 兑换事务", () => {
       ok: true,
       duplicated: true,
       points: 230,
-      available: 0,
+      available: 500,
       redemptionId: "redemption-1",
     });
     expect(mockRedeemPoints).not.toHaveBeenCalled();
@@ -237,16 +248,62 @@ describe("redeemGiftForUser 兑换事务", () => {
     expect(mockTxProductUpdateMany).not.toHaveBeenCalled();
   });
 
-  it("积分不足：INSUFFICIENT", async () => {
-    mockRedeemPoints.mockResolvedValue({ ok: false, code: "INSUFFICIENT", available: 10 });
+  it("余额不足（扣分前预检）：INSUFFICIENT，不扣库存、不扣分、不生成记录", async () => {
+    mockTxProductFind.mockResolvedValue({ ...REDEEMABLE_PRODUCT, redeemStock: 5 });
+    mockTxBalanceFind.mockResolvedValue({ available: 10 });
+
     const result = await redeemGiftForUser({
       userId: "user-1",
       productId: "product-1",
       requestId: "req-1",
       addressId: "addr-1",
     });
+
+    expect(result).toMatchObject({ ok: false, code: "INSUFFICIENT" });
+    expect(mockTxProductUpdateMany).not.toHaveBeenCalled();
+    expect(mockRedeemPoints).not.toHaveBeenCalled();
+    expect(mockTxCreate).not.toHaveBeenCalled();
+  });
+
+  it("预检通过但扣分 CAS 失败（并发扣光）：INSUFFICIENT 且抛错回滚已扣库存", async () => {
+    mockTxProductFind.mockResolvedValue({ ...REDEEMABLE_PRODUCT, redeemStock: 5 });
+    mockRedeemPoints.mockResolvedValue({ ok: false, code: "INSUFFICIENT", available: 0 });
+
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+
     expect(result).toMatchObject({ ok: false, code: "INSUFFICIENT" });
     expect(mockTxCreate).not.toHaveBeenCalled();
+  });
+
+  it("并发同一 requestId 撞唯一约束（P2002）：返回幂等结果而非 500", async () => {
+    mockTxCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "test",
+      })
+    );
+    mockPrismaRedemptionFind.mockResolvedValue({ id: "redemption-9", points: 230 });
+    mockPrismaBalanceFind.mockResolvedValue({ available: 480 });
+
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      duplicated: true,
+      points: 230,
+      available: 480,
+      redemptionId: "redemption-9",
+    });
   });
 });
 

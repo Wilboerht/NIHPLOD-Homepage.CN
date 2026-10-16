@@ -20,7 +20,7 @@ import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { maskPhone } from "@/lib/mask-phone";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
-import { updateProfileSchema } from "@/lib/profile-schema";
+import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { isActiveAccount } from "@/lib/oauth-user-guard";
 import { resolveSsoAvatar } from "@/lib/default-avatar";
@@ -193,6 +193,14 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
     }
 
     const { nickname, avatar, birthday, gender } = result.data;
+
+    // 头像仅允许官网域/OSS 域：防止外链头像进入 SSO 头像声明被子站加载
+    if (avatar && !isAllowedAvatarUrl(avatar)) {
+      return resJson(
+        { error: "invalid_request", error_description: "头像地址不合法，请使用官网头像上传接口" },
+        400
+      );
+    }
 
     // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
     // 以及生日锁定判定
