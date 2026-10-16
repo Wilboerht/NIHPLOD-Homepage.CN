@@ -64,6 +64,7 @@ const ALLOWED_AVATAR_HOSTS = (() => {
   };
   addUrl(process.env.NEXT_PUBLIC_APP_URL);
   addUrl(process.env.NEXT_PUBLIC_BASE_URL);
+  addUrl(process.env.NEXT_PUBLIC_WWW_URL);
   addUrl(process.env.ALI_OSS_PUBLIC_DOMAIN);
   if (process.env.ALI_OSS_BUCKET && process.env.ALI_OSS_REGION) {
     hosts.add(`${process.env.ALI_OSS_BUCKET}.${process.env.ALI_OSS_REGION}.aliyuncs.com`);

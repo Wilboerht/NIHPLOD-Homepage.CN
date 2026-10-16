@@ -1,7 +1,8 @@
 /**
  * 积分小程序订阅消息测试
  * 覆盖：模板未配置跳过、凭证缺失跳过、无身份跳过、多 openid 逐一探测（40003 后命中）、
- *       未订阅（43101）记录后结束、异常静默；发货通知的记录查询与模板数据组装（截断/时间格式）
+ *       未订阅（43101）记录后结束、异常静默；发货通知的记录查询与模板数据组装
+ *       （物品截断/快递单号/发货方式）、审核结果通知（date 类型格式/审核结果）。
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -48,7 +49,7 @@ describe("miniprogram-notify", () => {
     mockRedemptionFindUnique.mockResolvedValue({
       userId: "user-1",
       productName: "面霜小样",
-      fulfilledAt: new Date("2026-10-15T02:30:00.000Z"),
+      waybillNo: "SF0000000000",
     });
   });
 
@@ -61,9 +62,7 @@ describe("miniprogram-notify", () => {
 
   const reviewParams = {
     userId: "user-1",
-    orderNo: "TM-20261015001",
     status: "APPROVED" as const,
-    reviewAmount: 1200,
   };
 
   it("模板未配置：不查询身份、不发送", async () => {
@@ -121,21 +120,24 @@ describe("miniprogram-notify", () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
-  it("审核结果模板数据：结果/说明/订单号按约定组装", async () => {
-    await notifyPointsSpentReview({
-      ...reviewParams,
-      status: "REJECTED",
-      reviewNote: "订单号无法核实，请补充完整截图",
-    });
+  it("审核结果模板数据：date 类型审核时间与审核结果按约定组装", async () => {
+    vi.useFakeTimers();
+    try {
+      // UTC 06:30 → Asia/Shanghai 14:30
+      vi.setSystemTime(new Date("2026-10-16T06:30:00.000Z"));
 
-    const arg = mockSend.mock.calls[0][0] as {
-      data: Record<string, { value: string }>;
-      page: string;
-    };
-    expect(arg.page).toBe("pages/spent-adjustments/spent-adjustments");
-    expect(arg.data.thing1.value).toBe("未通过");
-    expect(arg.data.thing2.value.length).toBeLessThanOrEqual(20);
-    expect(arg.data.character_string3.value).toBe("TM-20261015001");
+      await notifyPointsSpentReview({ userId: "user-1", status: "REJECTED" });
+
+      const arg = mockSend.mock.calls[0][0] as {
+        data: Record<string, { value: string }>;
+        page: string;
+      };
+      expect(arg.page).toBe("pages/spent-adjustments/spent-adjustments");
+      expect(arg.data.date1.value).toBe("2026年10月16日 14:30");
+      expect(arg.data.thing2.value).toBe("未通过");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("发货通知：记录不存在时跳过", async () => {
@@ -146,20 +148,36 @@ describe("miniprogram-notify", () => {
     expect(mockSend).not.toHaveBeenCalled();
   });
 
-  it("发货通知：商品名截断与发货时间按 Asia/Shanghai 格式化", async () => {
+  it("发货通知：物品截断、快递单号与发货方式按约定组装", async () => {
     mockRedemptionFindUnique.mockResolvedValue({
       userId: "user-1",
       productName: "超长商品名称示例用于验证截断逻辑是否正确执行",
-      fulfilledAt: new Date("2026-10-15T02:30:00.000Z"),
+      waybillNo: "SF1234567890",
+    });
+
+    await notifyPointsRedemptionShipped("rid-1");
+
+    const arg = mockSend.mock.calls[0][0] as {
+      data: Record<string, { value: string }>;
+      page: string;
+    };
+    expect(arg.page).toBe("pages/records/records");
+    expect(arg.data.thing1.value.length).toBeLessThanOrEqual(20);
+    expect(arg.data.thing1.value.endsWith("…")).toBe(true);
+    expect(arg.data.character_string2.value).toBe("SF1234567890");
+    expect(arg.data.thing3.value).toBe("顺丰速运");
+  });
+
+  it("发货通知：未录入运单号时快递单号占位 -", async () => {
+    mockRedemptionFindUnique.mockResolvedValue({
+      userId: "user-1",
+      productName: "面霜小样",
+      waybillNo: null,
     });
 
     await notifyPointsRedemptionShipped("rid-1");
 
     const arg = mockSend.mock.calls[0][0] as { data: Record<string, { value: string }> };
-    expect(arg.data.thing1.value.length).toBeLessThanOrEqual(20);
-    expect(arg.data.thing1.value.endsWith("…")).toBe(true);
-    expect(arg.data.phrase2.value).toBe("已发货");
-    // UTC 02:30 → Asia/Shanghai 10:30
-    expect(arg.data.time3.value).toBe("2026-10-15 10:30");
+    expect(arg.data.character_string2.value).toBe("-");
   });
 });

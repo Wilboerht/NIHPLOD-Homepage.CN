@@ -883,8 +883,8 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 | 事件 | 模板字段约定（微信公众平台按此创建） | 跳转页面 | 官网 env |
 | --- | --- | --- | --- |
-| 管理端「标记履约」发货 | `thing1`=商品名称 / `phrase2`=发货状态 / `time3`=发货时间 | `pages/records/records` | `MP_POINTS_TEMPLATE_SHIPPED` |
-| 补录审核完成 | `thing1`=审核结果（已通过/未通过）/ `thing2`=说明 / `character_string3`=订单号 | `pages/spent-adjustments/spent-adjustments` | `MP_POINTS_TEMPLATE_SPENT_REVIEW` |
+| 管理端「标记履约」发货 | 「发货通知」：`thing1`=物品（商品名称）/ `character_string2`=快递单号（未录入运单时 `-`）/ `thing3`=发货方式（顺丰速运） | `pages/records/records` | `MP_POINTS_TEMPLATE_SHIPPED` |
+| 补录审核完成 | 「审核结果通知」：`date1`=审核时间（yyyy年M月d日 HH:mm）/ `thing2`=审核结果（已通过/未通过） | `pages/spent-adjustments/spent-adjustments` | `MP_POINTS_TEMPLATE_SPENT_REVIEW` |
 | 测肤报告完成（analyze 完成；子站经内部 API 携带 `sessionId` 触发） | 公共模板库「检测报告生成提醒」：`thing1`=服务名称（"AI 肤质分析报告"）/ `thing2`=温馨提示（"报告已生成，点击查看"）/ `time3`=完结时间 | `pages/result/result?sessionId=…` | `MP_SKIN_TEMPLATE_REPORT_READY` |
 | 测肤复测提醒（官网 cron「Send Retest Reminders」每日 10 点：子站 `/api/internal/retest-due` 出「上次测肤满 30 天」名单 → 逐个发送；未订阅 43101 静默） | 公共模板库「打卡提醒」：`thing1`=活动名称（"AI 肤质复测提醒"）/ `thing2`=温馨提示（"距上次测肤已30天，建议复测了解现状"）/ `time3`=提醒时间 | `pages/index/index` | `MP_SKIN_TEMPLATE_RETEST_REMINDER` |
 
@@ -896,12 +896,12 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 | 所属小程序 | 模板标题建议 | 关键词（按序号） | 预览示例（即字段实际取值） |
 | --- | --- | --- | --- |
-| 积分 | 发货通知 | ①商品名称 `thing` ②发货状态 `phrase` ③发货时间 `time` | 商品名称：NIHPLOD 品牌帆布袋 / 发货状态：已发货 / 发货时间：2026-10-15 14:30 |
-| 积分 | 审核结果通知 | ①审核结果 `thing` ②说明 `thing` ③订单号 `character_string` | 审核结果：已通过 / 说明：已核实 ¥1,280 / 订单号：SP20261015001 |
+| 积分 | 发货通知 | ①物品 `thing` ②快递单号 `character_string` ③发货方式 `thing` | 物品：NIHPLOD 品牌帆布袋 / 快递单号：SF1234567890 / 发货方式：顺丰速运 |
+| 积分 | 审核结果通知 | ①审核时间 `date` ②审核结果 `thing` | 审核时间：2026年10月16日 14:30 / 审核结果：已通过 |
 | 测肤 | 检测报告生成提醒 | ①服务名称 `thing` ②温馨提示 `thing` ③完结时间 `time` | 服务名称：AI 肤质分析报告 / 温馨提示：报告已生成，点击查看 / 完结时间：2026-10-15 14:30 |
 | 测肤 | 打卡提醒 | ①活动名称 `thing` ②温馨提示 `thing` ③提醒时间 `time` | 活动名称：AI 肤质复测提醒 / 温馨提示：距上次测肤已30天，建议复测了解现状 / 提醒时间：2026-10-16 10:00 |
 
-2. 字段限制（服务端已按此截断，创建时无需担心）：`thing` ≤20 字符、`phrase` ≤5 字符、`time` 为 `yyyy-MM-dd HH:mm`、`character_string` ≤32 位字母数字、`number` 为数字。
+2. 字段限制（服务端已按此截断，创建时无需担心）：`thing` ≤20 字符、`phrase` ≤5 字符、`time` 为 `yyyy-MM-dd HH:mm`、`date` 为 `yyyy年M月d日 HH:mm`、`character_string` ≤32 位字母数字、`number` 为数字。
 3. 拿到模板 ID 后填：官网 `.env` 的 `MP_POINTS_TEMPLATE_SHIPPED` / `MP_POINTS_TEMPLATE_SPENT_REVIEW` / `MP_SKIN_TEMPLATE_REPORT_READY` / `MP_SKIN_TEMPLATE_RETEST_REMINDER`（改后 `pm2 restart nihplod-app --update-env`）；积分小程序端填其 `miniprogram/utils/env.ts` 的 `SUBSCRIBE_TMPL_SHIPPED` / `SUBSCRIBE_TMPL_SPENT_REVIEW`，测肤小程序端填 `miniprogram/config.js` 的 `SUBSCRIBE_TEMPLATES.REPORT_READY` / `SUBSCRIBE_TEMPLATES.RETEST_REMINDER`（均需重新上传版本）。
 4. 验收路径：积分——真机兑换并勾选订阅授权 → 管理端「标记履约」→ 微信服务通知 → 点击进入「兑换记录」；测肤——真机点「开始测肤」勾选订阅 → 走完测肤流程 → 分析完成收「报告完成通知」→ 点击直达报告页；复测提醒——锚点是「上次测肤满 30 天」，无法当日验收，上线后观察官网日志 `[Cron] 复测提醒完成`（或管理端定时任务页手动触发确认链路）。（一次性订阅：若用户未勾选或授权额度已用尽，微信拒绝发送属正常业务，不重试）
 

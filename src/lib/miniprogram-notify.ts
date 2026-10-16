@@ -28,7 +28,7 @@ function truncate(value: string, max: number): string {
   return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
 }
 
-/** 微信订阅消息时间格式：yyyy-MM-dd HH:mm（固定按 Asia/Shanghai；h23 避免部分 ICU 输出 24:xx） */
+/** 微信订阅消息时间格式：yyyy-MM-dd HH:mm（time 类型；固定按 Asia/Shanghai；h23 避免部分 ICU 输出 24:xx） */
 function formatWxTime(date: Date): string {
   const parts = new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -41,6 +41,21 @@ function formatWxTime(date: Date): string {
   }).formatToParts(date);
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
+}
+
+/** 微信订阅消息日期格式：yyyy年M月d日 HH:mm（date 类型要求年月日格式；固定按 Asia/Shanghai） */
+function formatWxDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}年${get("month")}月${get("day")}日 ${get("hour")}:${get("minute")}`;
 }
 
 /** 底层发送：遍历用户的全部小程序 openid 逐个尝试（见文件头说明） */
@@ -94,8 +109,9 @@ async function sendMiniprogramNotify(params: {
 /**
  * 兑换发货通知（管理端标记履约时触发）。
  *
- * 微信模板字段约定（需在公众平台按此创建）：
- *   thing1=商品名称（≤20 字）、phrase2=发货状态（"已发货"）、time3=发货时间
+ * 微信模板字段约定（公众平台「发货通知」，选用时勾选关键词）：
+ *   thing1=物品（商品名称，≤20 字）、character_string2=快递单号（未录入时占位 "-"）、
+ *   thing3=发货方式（"顺丰速运"）
  *
  * @param redemptionId 兑换记录 ID（内部查询用户与商品信息）
  */
@@ -103,7 +119,7 @@ export async function notifyPointsRedemptionShipped(redemptionId: string): Promi
   try {
     const redemption = await prisma.pointRedemption.findUnique({
       where: { id: redemptionId },
-      select: { userId: true, productName: true, fulfilledAt: true },
+      select: { userId: true, productName: true, waybillNo: true },
     });
     if (!redemption) return;
 
@@ -115,9 +131,8 @@ export async function notifyPointsRedemptionShipped(redemptionId: string): Promi
       context: "发货订阅消息",
       data: {
         thing1: { value: truncate(redemption.productName, 20) },
-        phrase2: { value: "已发货" },
-        // 履约流程会写入 fulfilledAt；防御回退当前时间
-        time3: { value: formatWxTime(redemption.fulfilledAt ?? new Date()) },
+        character_string2: { value: truncate(redemption.waybillNo ?? "-", 32) },
+        thing3: { value: "顺丰速运" },
       },
     });
   } catch (error) {
@@ -128,22 +143,15 @@ export async function notifyPointsRedemptionShipped(redemptionId: string): Promi
 /**
  * 补录审核结果通知（管理端审核完成时触发）。
  *
- * 微信模板字段约定（需在公众平台按此创建）：
- *   thing1=审核结果（"已通过"/"未通过"）、thing2=说明（核实金额或驳回原因，≤20 字）、
- *   character_string3=订单号（≤32 字符）
+ * 微信模板字段约定（公众平台「审核结果通知」，选用时勾选关键词）：
+ *   date1=审核时间（发送即审核完成时点）、thing2=审核结果（"已通过"/"未通过"）
+ * 驳回原因等详情在「消费补录」列表页查看（点击消息跳转该页）。
  */
 export async function notifyPointsSpentReview(params: {
   userId: string;
-  orderNo: string;
   status: "APPROVED" | "REJECTED";
-  reviewAmount?: number;
-  reviewNote?: string;
 }): Promise<void> {
-  const { userId, orderNo, status, reviewAmount, reviewNote } = params;
-  const explanation =
-    status === "APPROVED"
-      ? `已核实 ¥${(reviewAmount ?? 0).toLocaleString("zh-CN")}`
-      : (reviewNote ?? "未通过审核");
+  const { userId, status } = params;
 
   await sendMiniprogramNotify({
     userId,
@@ -152,9 +160,8 @@ export async function notifyPointsSpentReview(params: {
     page: "pages/spent-adjustments/spent-adjustments",
     context: "补录审核订阅消息",
     data: {
-      thing1: { value: status === "APPROVED" ? "已通过" : "未通过" },
-      thing2: { value: truncate(explanation, 20) },
-      character_string3: { value: truncate(orderNo, 32) },
+      date1: { value: formatWxDate(new Date()) },
+      thing2: { value: status === "APPROVED" ? "已通过" : "未通过" },
     },
   });
 }

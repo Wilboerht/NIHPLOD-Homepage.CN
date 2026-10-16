@@ -299,7 +299,7 @@ function notifyReviewResult(params: {
       reviewNote,
     }).catch((e) => apiConsole.error("[SpentAdjustment] 微信通知异常:", e));
     // 积分小程序订阅消息（用户已订阅模板时送达；未订阅/未配置时在内部静默跳过）
-    void notifyPointsSpentReview({ userId, orderNo, status, reviewAmount, reviewNote });
+    void notifyPointsSpentReview({ userId, status });
   };
   try {
     after(fire);
