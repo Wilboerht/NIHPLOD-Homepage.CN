@@ -24,6 +24,7 @@ import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { resolveMiniprogramCredentials } from "@/lib/miniprogram-clients";
 import { apiConsole } from "@/lib/logger";
 import type { NextRequest } from "next/server";
 
@@ -288,6 +289,18 @@ export async function resolveWechatBinding(
 
   const hashedPassword = await hashPassword(password);
 
+  // 外部身份元数据：昵称/头像快照 + 来源小程序标识（存量数据无后者，仅供管理端展示来源；
+  // appId 从环境配置解析，解析不到时为 null）
+  const mpClientId = wechatInfo.type === "wechat_bind" ? wechatInfo.mpClientId : undefined;
+  const mpAppId = mpClientId
+    ? (resolveMiniprogramCredentials(mpClientId)?.appId ?? null)
+    : null;
+  const identityMetadata = {
+    nickname: wechatInfo.nickname ?? null,
+    avatar: wechatInfo.avatar ?? null,
+    ...(mpClientId ? { mpClientId, mpAppId } : {}),
+  };
+
   // 3-5. 在事务中原子化执行用户查找、冲突解决、创建/更新，消除竞态窗口
   let user;
   try {
@@ -410,14 +423,14 @@ export async function resolveWechatBinding(
         update: {
           userId: foundUser.id,
           ...(wechatInfo.unionid ? { unionId: wechatInfo.unionid } : {}),
-          metadata: { nickname: wechatInfo.nickname ?? null, avatar: wechatInfo.avatar ?? null },
+          metadata: identityMetadata,
         },
         create: {
           userId: foundUser.id,
           provider,
           subjectId: wechatInfo.openid,
           unionId: wechatInfo.unionid ?? null,
-          metadata: { nickname: wechatInfo.nickname ?? null, avatar: wechatInfo.avatar ?? null },
+          metadata: identityMetadata,
         },
       });
 

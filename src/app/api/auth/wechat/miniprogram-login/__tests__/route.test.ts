@@ -225,13 +225,17 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
       MP_OAUTH_OPTIONS,
       expect.anything()
     );
-    // 双写：provider 为 wechat_miniprogram（事务内，尾参为 tx 客户端）
+    // 双写：provider 为 wechat_miniprogram（事务内，尾参为 tx 客户端）；
+    // metadata 回填来源小程序（mpClientId/mpAppId），供管理端展示"哪个小程序"
     expect(mockUpsert).toHaveBeenCalledWith(
       "user-1",
       "wechat_miniprogram",
       "openid-1",
       "union-1",
-      undefined,
+      expect.objectContaining({
+        mpClientId: "wechat-mp-skin",
+        mpAppId: DEFAULT_CREDENTIALS.appId,
+      }),
       expect.anything()
     );
   });
@@ -258,7 +262,10 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
       "wechat_miniprogram",
       "openid-mp",
       "union-9",
-      undefined,
+      expect.objectContaining({
+        mpClientId: "wechat-mp-skin",
+        mpAppId: DEFAULT_CREDENTIALS.appId,
+      }),
       expect.anything()
     );
   });
@@ -301,6 +308,7 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
             openid: "openid-ot",
             unionid: "union-ot",
             provider: "wechat_miniprogram",
+            mpClientId: "wechat-mp-skin",
           }),
         })
       );

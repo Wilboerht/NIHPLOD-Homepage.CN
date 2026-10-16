@@ -213,6 +213,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
       });
     }
 
+    // 外部身份来源小程序名称：metadata.mpClientId → OAuthClient.name
+    // （存量绑定行无 mpClientId 字段，解析为空，前端仅能显示脱敏 OpenID）
+    const mpClientIds = [
+      ...new Set(
+        user.externalIdentities
+          .map((i) => {
+            const meta = (i.metadata ?? null) as Record<string, unknown> | null;
+            return typeof meta?.mpClientId === "string" ? meta.mpClientId : null;
+          })
+          .filter((v): v is string => v !== null)
+      ),
+    ];
+    const clientNameMap = new Map<string, string>();
+    if (mpClientIds.length > 0) {
+      const clients = await prisma.oAuthClient.findMany({
+        where: { clientId: { in: mpClientIds } },
+        select: { clientId: true, name: true },
+      });
+      for (const client of clients ?? []) {
+        clientNameMap.set(client.clientId, client.name);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -232,12 +255,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
           wechatUnionId: canReadSensitive ? user.wechatUnionId : maskIdentifier(user.wechatUnionId),
           birthday: user.birthday?.toISOString() ?? null,
           birthdayLocked: user.birthdayLocked,
-          externalIdentities: user.externalIdentities.map((i) => ({
-            ...i,
-            subjectId: canReadSensitive ? i.subjectId : maskIdentifier(i.subjectId),
-            unionId: canReadSensitive ? i.unionId : maskIdentifier(i.unionId),
-            createdAt: i.createdAt.toISOString(),
-          })),
+          externalIdentities: user.externalIdentities.map((i) => {
+            const meta = (i.metadata ?? null) as Record<string, unknown> | null;
+            const mpClientId = typeof meta?.mpClientId === "string" ? meta.mpClientId : null;
+            return {
+              ...i,
+              subjectId: canReadSensitive ? i.subjectId : maskIdentifier(i.subjectId),
+              unionId: canReadSensitive ? i.unionId : maskIdentifier(i.unionId),
+              // 来源小程序标识与名称（存量行无 mpClientId，返回 null）
+              mpClientId,
+              clientName: mpClientId ? (clientNameMap.get(mpClientId) ?? null) : null,
+              createdAt: i.createdAt.toISOString(),
+            };
+          }),
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
         },

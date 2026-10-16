@@ -107,6 +107,9 @@ interface UserDetail {
     subjectId: string;
     unionId: string | null;
     metadata: unknown;
+    // 来源小程序（metadata.mpClientId 解析；存量行无此字段）
+    mpClientId?: string | null;
+    clientName?: string | null;
     createdAt: string;
   }[];
   createdAt: string;
@@ -1067,35 +1070,48 @@ function AdminUsersContent() {
                     </dt>
                     <dd className="flex flex-col items-end gap-1.5">
                       {detailUser.externalIdentities && detailUser.externalIdentities.length > 0 ? (
-                        detailUser.externalIdentities.map((identity) => (
-                          <div key={identity.id} className="flex items-center gap-2">
-                            <Badge variant="outline" className="px-1.5 py-0 text-xs">
-                              {providerLabelMap[identity.provider] || identity.provider}
-                            </Badge>
-                            {getIdentityNickname(identity.metadata) && (
-                              <span className="max-w-[10rem] truncate text-brand-charcoal/70">
-                                {getIdentityNickname(identity.metadata)}
-                              </span>
-                            )}
-                            <span className="text-xs text-brand-charcoal/40">
-                              {formatDate(identity.createdAt)}
-                            </span>
-                            {canWriteUsers && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setIdentityUnbindTarget({
-                                    id: identity.id,
-                                    label: providerLabelMap[identity.provider] || identity.provider,
-                                  })
-                                }
-                                className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                        detailUser.externalIdentities.map((identity) => {
+                          // 小程序渠道无昵称快照：优先显示来源小程序名称（新数据），
+                          // 其次平台昵称快照（网页扫码绑定）
+                          const identityLabel =
+                            identity.clientName || getIdentityNickname(identity.metadata);
+                          return (
+                            <div key={identity.id} className="flex items-center gap-2">
+                              <Badge variant="outline" className="px-1.5 py-0 text-xs">
+                                {providerLabelMap[identity.provider] || identity.provider}
+                              </Badge>
+                              {identityLabel && (
+                                <span className="max-w-[10rem] truncate text-brand-charcoal/70">
+                                  {identityLabel}
+                                </span>
+                              )}
+                              {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
+                              <code
+                                className="max-w-[11rem] truncate font-mono text-[11px] text-brand-charcoal/40"
+                                title={`OpenID: ${identity.subjectId}`}
                               >
-                                解绑
-                              </button>
-                            )}
-                          </div>
-                        ))
+                                {identity.subjectId}
+                              </code>
+                              <span className="text-xs text-brand-charcoal/40">
+                                {formatDate(identity.createdAt)}
+                              </span>
+                              {canWriteUsers && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setIdentityUnbindTarget({
+                                      id: identity.id,
+                                      label: providerLabelMap[identity.provider] || identity.provider,
+                                    })
+                                  }
+                                  className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                >
+                                  解绑
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : detailUser.wechatOpenId ? (
                         // 双写过渡期兜底：迁移前历史数据可能仅有旧列
                         <Badge variant="success" className="px-1.5 py-0 text-xs">

@@ -191,6 +191,42 @@ describe("resolveWechatBinding provider 写入语义", () => {
     );
   });
 
+  it("wechatInfo.mpClientId 存在时写入 metadata（mpClientId + mpAppId），供管理端识别来源小程序", async () => {
+    const raw = process.env.MINIPROGRAM_CLIENTS;
+    process.env.MINIPROGRAM_CLIENTS = JSON.stringify([
+      { clientId: "wechat-mp-skin", appId: "wx1234567890abcdef", appSecret: "s".repeat(32) },
+    ]);
+    try {
+      const input = buildInput("wechat_miniprogram");
+      const result = await resolveWechatBinding({
+        ...input,
+        wechatInfo: {
+          type: "wechat_bind",
+          openid: "mini-openid",
+          unionid: "union-1",
+          mpClientId: "wechat-mp-skin",
+        },
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockPrisma.__tx.externalIdentity.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            metadata: {
+              nickname: null,
+              avatar: null,
+              mpClientId: "wechat-mp-skin",
+              mpAppId: "wx1234567890abcdef",
+            },
+          }),
+        })
+      );
+    } finally {
+      if (raw === undefined) delete process.env.MINIPROGRAM_CLIENTS;
+      else process.env.MINIPROGRAM_CLIENTS = raw;
+    }
+  });
+
   it("provider=douyin 创建用户时不写 wechatOpenId/wechatUnionId 微信系旧列", async () => {
     const result = await resolveWechatBinding(buildInput("douyin"));
 

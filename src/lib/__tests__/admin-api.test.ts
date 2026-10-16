@@ -773,6 +773,70 @@ describe("管理端 API 集成测试", () => {
       expect(data.data.user.diamondActivatedAt).toBeNull();
     });
 
+    it("外部身份含 mpClientId 时应解析并返回来源小程序名称 clientName", async () => {
+      const req = createRequest("/api/admin/users/user-1");
+      mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        phoneVerified: true,
+        nickname: "测试用户",
+        avatar: null,
+        status: "ACTIVE",
+        membershipLevel: "GOLD",
+        totalSpent: 5000,
+        silverActivatedAt: null,
+        goldActivatedAt: null,
+        diamondActivatedAt: null,
+        wechatOpenId: null,
+        wechatUnionId: null,
+        externalIdentities: [
+          {
+            id: "ei-1",
+            provider: "wechat_miniprogram",
+            subjectId: "mp-openid-1",
+            unionId: null,
+            metadata: {
+              nickname: null,
+              avatar: null,
+              mpClientId: "wechat-mp-skin",
+              mpAppId: "wx1234567890abcdef",
+            },
+            createdAt: new Date("2026-10-14T07:21:20.000Z"),
+          },
+        ],
+        createdAt: new Date("2026-08-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-10-14T07:21:20.000Z"),
+      });
+      mockPrisma.pointBalance.findUnique.mockResolvedValue(null);
+      mockPrisma.pointRedemption.findMany.mockResolvedValue([]);
+      mockPrisma.pointRedemption.count.mockResolvedValue(0);
+      mockPrisma.userAddress.findMany.mockResolvedValue([]);
+      mockPrisma.spentAdjustmentApplication.findMany.mockResolvedValue([]);
+      mockPrisma.spentAdjustmentApplication.count.mockResolvedValue(0);
+      mockPrisma.membershipLevelChange.findMany.mockResolvedValue([]);
+      mockPrisma.loginAttempt.findMany.mockResolvedValue([]);
+      mockPrisma.oAuthClient.findMany.mockResolvedValue([
+        { clientId: "wechat-mp-skin", name: "测肤小程序" },
+      ]);
+
+      const { GET } = await import("@/app/api/admin/users/[id]/route");
+      const res = await GET(req, { params: Promise.resolve({ id: "user-1" }) });
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.oAuthClient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { clientId: { in: ["wechat-mp-skin"] } },
+        })
+      );
+      expect(data.data.user.externalIdentities[0]).toMatchObject({
+        provider: "wechat_miniprogram",
+        mpClientId: "wechat-mp-skin",
+        clientName: "测肤小程序",
+      });
+    });
+
     it("无 users:sensitive:read 时手机号/收货地址/外部身份标识应脱敏", async () => {
       const req = createRequest("/api/admin/users/user-1");
       // finance 角色无 users:sensitive:read

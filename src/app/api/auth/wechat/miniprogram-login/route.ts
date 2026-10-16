@@ -216,6 +216,8 @@ export async function POST(request: NextRequest) {
         openid,
         unionid,
         provider: PROVIDER,
+        // 来源小程序：写入 ExternalIdentity.metadata，供管理端展示"哪个小程序"绑定
+        mpClientId: clientId,
       };
       const bindingResult = await resolveWechatBinding({
         phone: wxPhone,
@@ -319,9 +321,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. 双写 ExternalIdentity（unionid 聚合后 openid 归属到已有账户）+ UnionID 补写，同事务保证一致性
+    // 5. 双写 ExternalIdentity（unionid 聚合后 openid 归属到已有账户）+ UnionID 补写，同事务保证一致性；
+    //    metadata 同步回填来源小程序（存量行无该字段，登录时自愈），小程序渠道不采集昵称/头像
     await prisma.$transaction(async (tx) => {
-      await upsertIdentity(user.id, PROVIDER, openid, unionid || user.wechatUnionId, undefined, tx);
+      await upsertIdentity(
+        user.id,
+        PROVIDER,
+        openid,
+        unionid || user.wechatUnionId,
+        {
+          nickname: null,
+          avatar: null,
+          mpClientId: clientId,
+          mpAppId: credentials.appId,
+        },
+        tx
+      );
       if (unionid && !user.wechatUnionId) {
         await tx.user.update({
           where: { id: user.id },
