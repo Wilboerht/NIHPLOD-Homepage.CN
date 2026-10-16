@@ -197,3 +197,34 @@ export async function notifySkinReportReady(params: {
     apiConsole.warn("[MiniprogramNotify] 报告完成订阅消息异常（忽略）:", error);
   }
 }
+
+/**
+ * 测肤复测提醒（官网 cron 每日扫描「上次测肤完成满 30 天」的用户触发，
+ * 见 src/lib/retest-reminder.ts；30 天 ≈ 皮肤代谢周期）。
+ *
+ * 模板：公共模板库「打卡提醒」（美妆类目）→ 选用关键词（按此顺序）：
+ *   活动名称(thing1) / 温馨提示(thing2) / 提醒时间(time3)
+ * 若实际模板字段名不同（以「我的模板」详情页占位符为准），改此处 data 键即可。
+ *
+ * 一次性订阅语义：用户每次在测肤前勾选订阅会累积一条额度；未订阅（43101）
+ * 由微信拒绝，属正常业务流程（仅日志，不重试）。
+ */
+export async function notifySkinRetestReminder(params: { userId: string }): Promise<void> {
+  try {
+    const { userId } = params;
+    await sendMiniprogramNotify({
+      userId,
+      mpClientId: SKIN_MP_CLIENT_ID,
+      templateId: process.env.MP_SKIN_TEMPLATE_RETEST_REMINDER,
+      page: "pages/index/index",
+      context: "复测提醒订阅消息",
+      data: {
+        thing1: { value: "AI 肤质复测提醒" }, // 活动名称
+        thing2: { value: "距上次测肤已30天，建议复测了解现状" }, // 温馨提示
+        time3: { value: formatWxTime(new Date()) }, // 提醒时间（发送时点）
+      },
+    });
+  } catch (error) {
+    apiConsole.warn("[MiniprogramNotify] 复测提醒订阅消息异常（忽略）:", error);
+  }
+}

@@ -20,6 +20,7 @@ import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePointsCron } from "./points-ledger";
+import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
@@ -319,6 +320,25 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 账号注销执行任务失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Send Retest Reminders",
+    // 每天 10 点：向「上次测肤完成满 30 天」的用户发送测肤小程序复测提醒
+    // （子站内部接口出名单 + 微信订阅消息，全程 fail-soft，详见 lib/retest-reminder.ts）
+    cronExpression: "0 10 * * *",
+    handler: async () => {
+      try {
+        const result = await sendRetestReminders();
+        if (result.due > 0) {
+          apiConsole.info(
+            `[Cron] 复测提醒完成: 到期 ${result.due} 人，已尝试发送 ${result.attempted} 人`
+          );
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 复测提醒任务失败:", error);
         throw error;
       }
     },
