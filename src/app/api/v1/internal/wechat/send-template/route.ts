@@ -20,7 +20,7 @@
  *   primaryConcern: string
  *   reportUrl: string
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import {
   verifyInternalApiSignature,
@@ -157,9 +157,11 @@ export async function POST(request: NextRequest) {
     // 5. 执行业务逻辑
     const result = await sendWechatTemplateMessage({ userId, score, primaryConcern, reportUrl });
 
-    // 5.1 平行通道：测肤小程序订阅消息（fail-soft，不影响公众号通道的响应语义；
-    //     未订阅 43101 / 模板未配置等均在函数内部静默处理）
-    await notifySkinReportReady({ userId, sessionId });
+    // 5.1 平行通道：测肤小程序订阅消息（fail-soft），经 after() 在响应返回后执行——
+    //   不增加本端点响应时延（子站侧有 15s 超时 + 退避重试，端点多耗时会放大
+    //   "首次已发送成功但响应慢 → 子站重试 → 重复发送" 的窗口）。
+    //   notify 函数内部已兜底不抛错（未订阅 43101 / 模板未配置等均静默）。
+    after(() => notifySkinReportReady({ userId, sessionId }));
 
     if (!result.success) {
       return NextResponse.json(
