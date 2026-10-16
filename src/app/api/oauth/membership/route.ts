@@ -4,7 +4,8 @@
  *
  * 返回当前 Access Token 对应用户的会员等级、累计消费与权益配置
  * （形状同主站 GET /api/user/vip 的会员视图，共用 getMembershipView）。
- * 要求 scope 含 membership；不含 skinTestUsage（子站私有数据）。
+ * 要求 scope 含 membership；不含 skinTestUsage（测肤子站数据，
+ * 独立端点 /api/oauth/skin-test-usage，避免子站降级拖慢本端点）。
  *
  * CORS：仅允许已注册 redirect_uri 的 origin。
  */

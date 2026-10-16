@@ -8,34 +8,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { withUserAuth } from "@/lib/auth";
 import { getMembershipView } from "@/lib/membership-view";
 import { apiConsole } from "@/lib/logger";
-import { advisorJson } from "@/lib/advisor-internal";
+import { fetchSkinTestUsage } from "@/lib/skin-test-usage";
 
 export const dynamic = "force-dynamic";
-
-/** 测肤子站（smart.nihplod.cn）返回的 AI 测肤用量 */
-interface SkinTestUsage {
-  // level 可能为 null：子站对从未使用过测肤的用户返回 level: null
-  level: string | null;
-  totalUsed: number;
-  todayUsed: number;
-  quota: {
-    lifetimeLimit: number | null;
-    dailyLimit: number | null;
-    unlimited: boolean;
-  };
-  remaining: number | null;
-}
-
-/**
- * 查询测肤子站的 AI 测肤已用次数（服务端到服务端内部接口）。
- * 任何失败（env 未配置 / 超时 / 网络错误 / 非 2xx）都返回 null，绝不影响 VIP 主流程。
- */
-function fetchSkinTestUsage(userId: string): Promise<SkinTestUsage | null> {
-  return advisorJson<SkinTestUsage>("/api/internal/skin-test-usage", {
-    query: { userId },
-    timeoutMs: 3000,
-  });
-}
 
 export const GET = withUserAuth(async (_request: NextRequest, payload) => {
   try {
