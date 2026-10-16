@@ -154,7 +154,8 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
     expect(mall.getPointsLedgerResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
 
     expect((await giftsGET(req("GET", "/api/oauth/points/gifts"))).status).toBe(200);
-    expect(mall.getPointGiftsResponse).toHaveBeenCalledWith("user-1");
+    // 小程序通道以纯文本下发展示字段（无富文本渲染能力）
+    expect(mall.getPointGiftsResponse).toHaveBeenCalledWith("user-1", { plainText: true });
 
     expect((await redemptionsGET(req("GET", "/api/oauth/points/redemptions?offset=0"))).status).toBe(200);
     expect(mall.getRedemptionsResponse).toHaveBeenCalledWith("user-1", expect.any(Request));

@@ -15,6 +15,7 @@ import { listRedeemableProducts, giftCostForUser, redeemGiftForUser } from "@/li
 import { getPointBalanceView } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { MAX_ADDRESSES, addressFieldsSchema, type UserAddressView } from "@/lib/user-address";
+import { htmlToPlainText } from "@/lib/html-sanitize";
 import { querySfRoutes } from "@/lib/sf-express";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import type { ProductData } from "@/components/website/ProductDrawer";
@@ -179,8 +180,16 @@ export async function getPointsLedgerResponse(
   }
 }
 
-/** 可兑换礼品列表（含按当前等级折算所需积分与产品详情） */
-export async function getPointGiftsResponse(userId: string): Promise<NextResponse> {
+/**
+ * 可兑换礼品列表（含按当前等级折算所需积分与产品详情）
+ *
+ * @param options.plainText 将描述/成分/使用方法由富文本 HTML 转为纯文本
+ *   （供纯文本消费方使用，如微信小程序；官网商城不传，保持 HTML 由前端富文本渲染）
+ */
+export async function getPointGiftsResponse(
+  userId: string,
+  options: { plainText?: boolean } = {}
+): Promise<NextResponse> {
   try {
     const data = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
@@ -193,6 +202,10 @@ export async function getPointGiftsResponse(userId: string): Promise<NextRespons
         listRedeemableProducts(),
         getPointBalanceView(tx, userId),
       ]);
+
+      // 富文本字段的纯文本化（仅转换长文本；名称/规格等保持原样）
+      const toText = (value: string | null): string | null =>
+        options.plainText && value ? htmlToPlainText(value) : value;
 
       return {
         membershipLevel: level,
@@ -207,7 +220,7 @@ export async function getPointGiftsResponse(userId: string): Promise<NextRespons
             name: p.name,
             nameEn: p.nameEn,
             slug: p.slug,
-            description: p.description,
+            description: toText(p.description) ?? "",
             price: priceYuan,
             capacity: p.capacity ?? undefined,
             purchaseLinks: p.purchaseLinks.map((l) => ({
@@ -217,14 +230,14 @@ export async function getPointGiftsResponse(userId: string): Promise<NextRespons
             })),
             images: p.images.map((img) => ({ url: img.url, alt: img.alt ?? undefined })),
             category: { name: p.category.name },
-            ingredients: p.ingredients ?? undefined,
-            usage: p.usage ?? undefined,
+            ingredients: toText(p.ingredients) ?? undefined,
+            usage: toText(p.usage) ?? undefined,
             benefits: p.benefits,
           };
           return {
             id: p.id,
             name: p.name,
-            description: p.description,
+            description: toText(p.description),
             image: p.images[0]?.url ?? null,
             priceYuan,
             cost, // 实际所需积分（普通档为 null）

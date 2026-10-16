@@ -2,7 +2,9 @@
  * OAuth 2.0 积分礼品列表端点
  * GET /api/oauth/points/gifts - 可兑换礼品（含按当前等级折算的所需积分与详情）
  *
- * 与主站会话路由（/api/user/points/gifts）共用数据操作核心。
+ * 与主站会话路由（/api/user/points/gifts）共用数据操作核心；
+ * 小程序侧无富文本渲染能力，description/ingredients/usage 以纯文本下发
+ * （plainText 选项，官网商城保持 HTML）。
  * 要求 scope 含 membership。
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -21,7 +23,10 @@ export async function GET(request: NextRequest) {
       action: "points_gifts",
     });
     if (!auth.ok) return auth.response;
-    return decorateOAuthResponse(await getPointGiftsResponse(auth.payload.id), auth.corsHeaders);
+    return decorateOAuthResponse(
+      await getPointGiftsResponse(auth.payload.id, { plainText: true }),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth PointGifts] 异常:", error);
     return NextResponse.json(
