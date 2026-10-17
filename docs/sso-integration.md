@@ -867,6 +867,10 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | GET | `/api/oauth/account/deletion` | 查询进行中的账号注销申请（无则 `request: null`；需 `profile`） |
 | POST | `/api/oauth/account/deletion` | 提交账号注销申请（冷静期默认 7 天、可随时撤回、幂等；需 `profile:write`；不做密码校验，以微信身份 + 冷静期撤回为安全边界） |
 | DELETE | `/api/oauth/account/deletion` | 撤回注销申请（需 `profile:write`；无进行中申请返回 409 `NO_PENDING_REQUEST`） |
+| GET/DELETE | `/api/oauth/security/devices[/{id}]` | 安全中心 · 设备管理：活跃设备列表（脱敏 IP；OAuth 无 Cookie 场景优先把当前 client 最近活跃会话标记为当前）/ 强制下线（当前设备与当前小程序自身设备不可下线，需 `profile:write`） |
+| GET/DELETE | `/api/oauth/security/authorizations[/{clientId}]` | 安全中心 · 授权管理：已授权应用列表（`isCurrentClient` 标记当前小程序）/ 撤销授权（禁止撤销当前小程序自身，需 `profile:write`） |
+| GET/DELETE | `/api/oauth/security/identities[/{id}]` | 安全中心 · 账号绑定：第三方绑定列表 / 解绑（服务端要求账号已绑定真实手机号，需 `profile:write`） |
+| GET | `/api/oauth/security/login-history` | 安全中心 · 登录历史（最近 50 条登录尝试，脱敏 IP） |
 
 ### 错误码
 
