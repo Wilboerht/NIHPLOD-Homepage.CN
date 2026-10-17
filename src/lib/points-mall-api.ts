@@ -354,6 +354,15 @@ export async function getRedemptionsResponse(userId: string, request: Request): 
           waybillNo: true,
           fulfilledAt: true,
           createdAt: true,
+          product: {
+            select: {
+              images: {
+                orderBy: { order: "asc" },
+                take: 1,
+                select: { url: true },
+              },
+            },
+          },
         },
       }),
       prisma.pointRedemption.count({ where: { userId } }),
@@ -363,6 +372,7 @@ export async function getRedemptionsResponse(userId: string, request: Request): 
     const redemptions = rows.slice(0, REDEMPTION_PAGE_SIZE).map((r) => ({
       id: r.id,
       productName: r.productName,
+      image: r.product?.images[0]?.url ?? null,
       priceYuan: Number(r.priceYuan),
       points: r.points,
       status: r.status,
