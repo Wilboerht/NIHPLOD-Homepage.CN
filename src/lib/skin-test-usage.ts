@@ -19,6 +19,8 @@ export interface SkinTestUsage {
     unlimited: boolean;
   };
   remaining: number | null;
+  /** 今日是否已完成手动打卡（自动测肤日记不计入）；旧版子站可能缺失 */
+  todayCheckedIn?: boolean;
 }
 
 /**

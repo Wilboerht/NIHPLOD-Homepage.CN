@@ -863,7 +863,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | PATCH（兼容 PUT） | `/api/oauth/userinfo` | 资料编辑（昵称/头像/生日/性别；需 `profile:write`；生日首次设置后锁定） |
 | POST | `/api/oauth/userinfo/avatar` | 头像上传（multipart 字段名 `file`，≤5MB，JPG/PNG/WebP；需 `profile:write`，返回绝对 URL 后经资料编辑接口写入） |
 | GET | `/api/oauth/membership` | 会员等级/权益/升级进度（需 `membership`） |
-| GET | `/api/oauth/skin-test-usage` | AI 测肤用量（已用/剩余/每日上限；来源测肤子站，未配置/超时/异常时 `usage: null`，调用方自行 fail-soft；需 `membership`） |
+| GET | `/api/oauth/skin-test-usage` | AI 测肤用量（已用/剩余/每日上限/今日测肤与打卡状态；来源测肤子站，未配置/超时/异常时 `usage: null`，调用方自行 fail-soft；需 `membership`） |
 | GET | `/api/oauth/account/deletion` | 查询进行中的账号注销申请（无则 `request: null`；需 `profile`） |
 | POST | `/api/oauth/account/deletion` | 提交账号注销申请（冷静期默认 7 天、可随时撤回、幂等；需 `profile:write`；不做密码校验，以微信身份 + 冷静期撤回为安全边界） |
 | DELETE | `/api/oauth/account/deletion` | 撤回注销申请（需 `profile:write`；无进行中申请返回 409 `NO_PENDING_REQUEST`） |
