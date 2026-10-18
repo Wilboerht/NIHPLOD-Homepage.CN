@@ -52,10 +52,6 @@ vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@/lib/token-blacklist", () => ({
-  blacklistAdminTokens: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock("@/lib/admin-totp", () => ({
   requireMoneyOperationTotp: vi.fn(),
 }));

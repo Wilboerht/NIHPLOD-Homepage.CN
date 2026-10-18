@@ -140,6 +140,7 @@ model JobApplication {
   @@index([jobId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@index([folderId])
+  @@index([createdAt(sort: Desc)])
 }
 
 // ============================================
@@ -265,6 +266,8 @@ model User {
   @@index([wechatUnionId])
   // phone 和 wechatOpenId 已有 @unique 索引，无需重复 @@index
   @@index([passwordExpiresAt])
+  @@index([createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 /**
@@ -293,13 +296,24 @@ model ExternalIdentity {
 /**
  * 账号自助注销申请（设计稿 docs/account-deletion-plan.md 第 5 节）
  * 同一用户仅一条申请记录：撤回/完成后再次申请时原位重置为 PENDING。
- * status 取值：PENDING（冷静期中）| CANCELLED（已撤回）| COMPLETED（已执行）| FAILED（执行失败待人工）
  * userId 外键为 Restrict：注销走匿名化而非物理删除，DB 层禁止误删仍有申请记录的用户行
  */
+enum AccountDeletionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model AccountDeletionRequest {
   id           String    @id @default(cuid())
   userId       String    @unique // 同一用户仅一条进行中的申请
-  status       String    @default("PENDING") // PENDING | CANCELLED | COMPLETED | FAILED
+  status       AccountDeletionStatus @default(PENDING)
+  // 执行租约：抢占时写入，完成/失败必须带 leaseToken 条件更新，
+  // 防止两个 worker 并发执行、慢失败覆盖 COMPLETED。
+  lockedAt     DateTime?
+  leaseToken   String?
   reason       String? // 用户选填
   // 申请时手机号的 HMAC（hashIdentifier 口径，不落明文）：冷静期内用户可能换绑手机号，
   // 执行时除当前号码哈希外还需按本哈希清理 LoginAttempt 等衍生数据
@@ -314,6 +328,7 @@ model AccountDeletionRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([status, scheduledAt])
+  @@index([status, lockedAt])
 }
 
 // ============================================
@@ -413,6 +428,10 @@ model OAuthClient {
   webhookUri          String?              // 用户资料变更 Webhook 推送地址（可空，未配置则不推送）
   codeTtlSeconds      Int      @default(300)    // 授权码有效期（秒），默认 5 分钟
   accessTokenTtlSeconds Int    @default(28800)  // Access Token 有效期（秒），默认 8 小时
+  // scope 缩权版本：M2M token 携带 scv，不匹配即失效；scope 变更时递增
+  scopeVersion        Int      @default(0)
+  // 会话失效水位：scope 缩权/停用时写入，用于拒绝变更前签发的授权码/会话
+  sessionsInvalidatedAt DateTime?
   tenantId            String?              // 多租户预留：当前为 null 表示全局共享
   createdAt           DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
@@ -468,6 +487,7 @@ model OAuthSession {
   @@index([revokedAt])
   @@index([expiresAt])
   @@index([clientId])
+  @@index([revokedAt, expiresAt, createdAt])
 }
 
 model UserConsent {
@@ -484,6 +504,8 @@ model UserConsent {
   @@unique([userId, clientId])
   @@index([userId])
   @@index([clientId])
+  @@index([grantedAt(sort: Desc)])
+  @@index([clientId, revokedAt, grantedAt])
 }
 
 model SsoAuditEvent {
@@ -594,6 +616,7 @@ model AuditLog {
 
   @@index([action, createdAt(sort: Desc)])
   @@index([targetType, targetId])
+  @@index([targetType, createdAt(sort: Desc)])
   @@index([adminId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt])
@@ -615,6 +638,16 @@ model CronTaskRun {
 
   @@index([taskName, startedAt(sort: Desc)])
   @@index([startedAt])
+}
+
+// 定时任务互斥锁：多实例部署时避免同一任务并发执行
+model CronTaskLock {
+  taskName    String   @id
+  lockedUntil DateTime
+  lockedBy    String
+  updatedAt   DateTime @updatedAt
+
+  @@index([lockedUntil])
 }
 
 // ============================================
@@ -683,6 +716,7 @@ model SpentAdjustmentApplication {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
 }
 
 // 外部商城消费额同步幂等记录（商城侧单据号唯一，防止重复上报重复入账）
@@ -690,8 +724,9 @@ model SpentSyncRecord {
   id         String   @id @default(cuid())
   userId     String
   reference  String   // 商城侧唯一单据号（幂等键）
-  spentDelta Int      // 该单据对应的消费额变动（元，正加负减）
+  spentDelta Int      // 实际生效的消费额变动（元，正加负减；可能被 0 下限钳制）
   note       String?  @db.Text
+  revertedAt DateTime? // 导入撤销时间（保留记录用于审计，不物理删除）
   createdAt  DateTime @default(now())
 
   user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -702,29 +737,44 @@ model SpentSyncRecord {
 
 // 管理端 Excel 批量导入消费记录的逐行结果状态
 enum SpentImportRowStatus {
+  PENDING
   SUCCESS
   DUPLICATE
   ERROR
 }
 
 // 管理端 Excel 批量导入批次（消费记录一键导入）
+enum SpentImportBatchStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model SpentImportBatch {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   adminId       String
-  fileName      String   // 上传文件名（清洗后）
-  fileHash      String?  // 文件内容 MD5（仅审计参考，幂等以逐行 reference 为准）
-  totalRows     Int      // Excel 数据行总数
-  successRows   Int      // 成功入账行数
-  duplicateRows Int      @default(0) // 幂等命中（重复入账被跳过）行数
-  errorRows     Int      // 失败行数
-  totalAmount   Int      // 实际净入账金额（元，成功行金额之和）
-  undoneAt      DateTime? // 整批撤销时间（撤销后禁止再次撤销）
-  createdAt     DateTime @default(now())
+  fileName      String   // ??????????
+  fileHash      String?  // ???? SHA-256???????????????
+  version       String?
+  status        SpentImportBatchStatus @default(PROCESSING)
+  processedRows Int      @default(0)
+  lastError     String?  @db.Text
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  totalRows     Int      // Excel ?????
+  successRows   Int      // ??????
+  duplicateRows Int      @default(0) // ???????????????
+  errorRows     Int      // ????
+  totalAmount   Int      // ????????????? appliedDelta ???
+  undoneAt      DateTime? // ?????????????????
+  createdAt     DateTime  @default(now())
 
   admin Admin            @relation(fields: [adminId], references: [id])
   rows  SpentImportRow[]
 
   @@index([createdAt(sort: Desc)])
+  @@index([fileHash, undoneAt])
+  @@index([status, createdAt])
 }
 
 // 导入批次内的逐行明细（保存 reference 与金额，支撑整批撤销）
@@ -737,7 +787,9 @@ model SpentImportRow {
   orderNo     String?                // 订单号/小票号（选填）
   purchasedAt DateTime?              // 消费日期（选填）
   note        String?                @db.Text
-  reference   String                 // 幂等键（import:{fileHash}:{rowIndex} 或含订单号）
+  reference   String                 // 幂等键（import:{fileHash}:{rowIndex}:{batchId}）
+  appliedDelta Int?                  // 实际生效的消费额变动（可能被 0 下限钳制）
+  revertedAt   DateTime?             // 整批撤销时间
   status      SpentImportRowStatus
   error       String?                @db.Text // 失败原因（预览/执行阶段）
   userId      String?                // 成功定位到的用户（失败行可能为空）
@@ -867,6 +919,7 @@ model PointRedemption {
   @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录
   @@index([status, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
 }
 
 // 兑换履约状态
@@ -907,6 +960,9 @@ model Admin {
   // 个人权限覆盖：条目为权限点（追加授权）或 "!权限点"（从角色模板撤销）；
   // 最终权限 = 角色模板 − 撤销 + 追加（owner 恒为全部权限，忽略覆盖）
   permissions     String[]    @default([])
+  // 会话版本：改密/改角色/改权限/禁用/删除时递增，JWT 中 ver 不匹配即视为失效。
+  // 取代历史上的“用户级 token 黑名单”，避免新登录也被拦截、旧 token 在黑名单过期后复活。
+  tokenVersion    Int         @default(0)
   status          AdminStatus @default(ACTIVE) // 账号状态
   deletedAt       DateTime?   // 软删除时间
   totpSecret      String?     // 加密后的 TOTP secret

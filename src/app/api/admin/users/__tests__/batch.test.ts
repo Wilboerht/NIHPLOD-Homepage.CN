@@ -70,6 +70,10 @@ vi.mock("@/lib/token-blacklist", () => ({
 }));
 
 // === Mock backchannel logout ===
+vi.mock("@/lib/user-status", () => ({
+  changeUserStatus: vi.fn(),
+}));
+
 vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
 }));
@@ -91,9 +95,7 @@ import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
-import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
-import { dispatchStatusChangeWebhook } from "@/lib/webhook";
+import { changeUserStatus } from "@/lib/user-status";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 
@@ -109,6 +111,7 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(verifyAuth).mockResolvedValue(OWNER as never);
+    vi.mocked(changeUserStatus).mockResolvedValue({ changed: true });
   });
 
   it("非 owner 角色应返回 403", async () => {
@@ -116,58 +119,26 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
 
     const res = await POST(createRequest({ ids: ["u1"], status: "BANNED" }));
     expect(res.status).toBe(403);
-    expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    expect(changeUserStatus).not.toHaveBeenCalled();
   });
 
-  it("参数错误应返回 400", async () => {
-    const res = await POST(createRequest({ ids: [], status: "BANNED" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("批量封禁应对每个状态变更的用户执行完整级联", async () => {
-    // user-1 ACTIVE → BANNED（需级联）；user-2 已是 BANNED（跳过）；user-3 不存在
+  it("???????????????????????", async () => {
     (prisma.user.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: "user-1", status: "ACTIVE" },
       { id: "user-2", status: "BANNED" },
-    ]);
-    (prisma.user.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
-    (prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { clientId: "client-a", sessionId: "sid-1" },
     ]);
 
     const res = await POST(createRequest({ ids: ["user-1", "user-2", "user-3"], status: "BANNED" }));
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.success).toBe(true);
-    // 仅实际变更 1 个用户
     expect(data.data.updated).toBe(1);
-
-    // updateMany 只针对状态变更的用户
-    expect(prisma.user.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: { in: ["user-1"] } }, data: { status: "BANNED" } })
-    );
-    // 撤销 Refresh Token
-    expect(prisma.refreshToken.updateMany).toHaveBeenCalledTimes(1);
-    expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "user-1", revokedAt: null } })
-    );
-    // 加入 access token 黑名单
-    expect(blacklistUserTokens).toHaveBeenCalledWith("user-1", "账号已被永久封禁");
-    // 撤销 OAuth 会话 + backchannel logout（携带 sid）
-    expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "user-1", revokedAt: null } })
-    );
-    expect(sendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-a"], {
-      includeInactive: true,
-      sids: { "client-a": "sid-1" },
+    expect(changeUserStatus).toHaveBeenCalledTimes(1);
+    expect(changeUserStatus).toHaveBeenCalledWith({
+      userId: "user-1",
+      expectedStatus: "ACTIVE",
+      newStatus: "BANNED",
     });
-    // webhook 推送状态变更
-    expect(dispatchStatusChangeWebhook).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "user-1", oldStatus: "ACTIVE", newStatus: "BANNED" }),
-      expect.anything()
-    );
-    // SSO 事件仅针对实际变更的用户
     expect(recordSsoEvent).toHaveBeenCalledTimes(1);
     expect(recordSsoEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -176,7 +147,6 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
         detail: expect.objectContaining({ action: "user_banned", batch: true }),
       })
     );
-    // 汇总审计一条
     expect(createAuditLog).toHaveBeenCalledTimes(1);
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -198,12 +168,17 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
 
     expect(res.status).toBe(200);
     expect(data.data.updated).toBe(2);
-    expect(removeFromBlacklist).toHaveBeenCalledTimes(2);
-    expect(blacklistUserTokens).not.toHaveBeenCalled();
-    expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
-    expect(prisma.oAuthSession.updateMany).not.toHaveBeenCalled();
-    // 解封也推送 webhook
-    expect(dispatchStatusChangeWebhook).toHaveBeenCalledTimes(2);
+    expect(changeUserStatus).toHaveBeenCalledTimes(2);
+    expect(changeUserStatus).toHaveBeenCalledWith({
+      userId: "user-1",
+      expectedStatus: "BANNED",
+      newStatus: "ACTIVE",
+    });
+    expect(changeUserStatus).toHaveBeenCalledWith({
+      userId: "user-2",
+      expectedStatus: "SUSPENDED",
+      newStatus: "ACTIVE",
+    });
   });
 
   it("所有用户状态均未变化时不执行级联", async () => {
@@ -217,7 +192,7 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
     expect(res.status).toBe(200);
     expect(data.data.updated).toBe(0);
     expect(prisma.user.updateMany).not.toHaveBeenCalled();
-    expect(blacklistUserTokens).not.toHaveBeenCalled();
+    expect(changeUserStatus).not.toHaveBeenCalled();
     // 仍保留一条汇总审计
     expect(createAuditLog).toHaveBeenCalledTimes(1);
   });

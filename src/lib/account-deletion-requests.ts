@@ -140,6 +140,8 @@ export async function submitDeletionRequest(params: {
         completedAt: null,
         attempts: 0,
         lastError: null,
+        lockedAt: null,
+        leaseToken: null,
       },
     });
   } else {

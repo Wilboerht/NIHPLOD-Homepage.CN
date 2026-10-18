@@ -258,9 +258,25 @@ export async function fulfillRedemption(params: {
 }
 
 /**
+ * 取消 PENDING 兑换时归还限量库存。
+ * 仅当商品仍存在且 redeemStock 非 null（限量）时 +1；不限量商品保持 null。
+ */
+async function releaseRedemptionStock(
+  tx: Prisma.TransactionClient,
+  productId: string | null
+): Promise<void> {
+  if (!productId) return;
+  await tx.product.updateMany({
+    where: { id: productId, redeemStock: { not: null } },
+    data: { redeemStock: { increment: 1 } },
+  });
+}
+
+/**
  * 管理端：取消兑换并退还积分（PENDING → CANCELLED，CAS 抢占防并发重复取消）。
  * 退款走正向 ADJUST 流水（reference=cancel:{redemptionId} 幂等，6 个月有效期），
  * 已消耗的 FIFO 流水不回滚，保证账本余额与剩余量一致。
+ * 限量库存同时 +1，避免“兑换-取消”反复操作耗尽库存。
  */
 export async function cancelRedemption(params: {
   redemptionId: string;
@@ -271,7 +287,14 @@ export async function cancelRedemption(params: {
   return prisma.$transaction(async (tx) => {
     const redemption = await tx.pointRedemption.findUnique({
       where: { id: redemptionId },
-      select: { id: true, userId: true, points: true, status: true, productName: true },
+      select: {
+        id: true,
+        userId: true,
+        points: true,
+        status: true,
+        productName: true,
+        productId: true,
+      },
     });
     if (!redemption) return { ok: false, code: "NOT_FOUND" };
     if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
@@ -281,6 +304,8 @@ export async function cancelRedemption(params: {
       data: { status: "CANCELLED" },
     });
     if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
+
+    await releaseRedemptionStock(tx, redemption.productId);
 
     await adjustPoints(tx, {
       userId: redemption.userId,

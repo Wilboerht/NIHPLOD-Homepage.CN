@@ -20,9 +20,10 @@
  * 失败处理：任何步骤异常 → FAILED + lastError（attempts 在抢占时已递增）；
  * 达到 MAX_DELETION_ATTEMPTS 仍失败则 error 级告警转人工，不再自动重试。
  */
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { purgeUserFromSubsites } from "@/lib/advisor-internal";
-import { cascadeUserStatusChange } from "@/lib/user-status";
+import { quiesceUserSessions } from "@/lib/user-status";
 import { createAuditLog } from "@/lib/audit";
 import { sendAccountDeletedNotification, sendAccountDeletionReminder } from "@/lib/sms";
 import { hashIdentifier } from "@/lib/auth-security";
@@ -39,6 +40,9 @@ export const MAX_DELETION_ATTEMPTS = 5;
 
 /** 单次 cron 扫描的处理上限（防积压时单次运行过长） */
 const DELETION_BATCH_SIZE = 50;
+
+/** 执行租约：超过该时长仍为 RUNNING 视为 worker 崩溃，可被重新抢占 */
+export const DELETION_LEASE_MS = 10 * 60 * 1000;
 
 /**
  * 匿名化后的占位手机号：deleted_<HMAC(phone:userId) 前 16 位>（共 24 字符，
@@ -72,16 +76,28 @@ export async function executeAccountDeletion(
 
   // 1. 抢占：PENDING 到期 / RUNNING 崩溃残留 / FAILED 未达重试上限 → RUNNING
   // updateMany 原子条件更新，并发执行只有一个能抢到；attempts 在抢占时递增（含重试次数语义）
+  const leaseToken = randomUUID();
+  const staleBefore = new Date(now.getTime() - DELETION_LEASE_MS);
+
   const claimed = await prisma.accountDeletionRequest.updateMany({
     where: {
       id: requestId,
       scheduledAt: { lte: now },
       OR: [
-        { status: { in: [DELETION_STATUS.PENDING, DELETION_STATUS.RUNNING] } },
+        { status: DELETION_STATUS.PENDING },
         { status: DELETION_STATUS.FAILED, attempts: { lt: MAX_DELETION_ATTEMPTS } },
+        // 只回收过期的 RUNNING；新鲜租约说明另一个 worker 正在执行
+        { status: DELETION_STATUS.RUNNING, lockedAt: { lt: staleBefore } },
+        { status: DELETION_STATUS.RUNNING, lockedAt: null },
       ],
     },
-    data: { status: DELETION_STATUS.RUNNING, attempts: { increment: 1 }, lastError: null },
+    data: {
+      status: DELETION_STATUS.RUNNING,
+      attempts: { increment: 1 },
+      lastError: null,
+      lockedAt: now,
+      leaseToken,
+    },
   });
   if (claimed.count === 0) {
     return "skipped";
@@ -104,10 +120,16 @@ export async function executeAccountDeletion(
 
     // 用户不存在或已是 DELETED：无可执行对象，直接收尾（幂等重入安全）
     if (!user || user.status === "DELETED") {
-      await prisma.accountDeletionRequest.update({
-        where: { id: requestId },
-        data: { status: DELETION_STATUS.COMPLETED, completedAt: new Date() },
+      const finalized = await prisma.accountDeletionRequest.updateMany({
+        where: { id: requestId, status: DELETION_STATUS.RUNNING, leaseToken },
+        data: {
+          status: DELETION_STATUS.COMPLETED,
+          completedAt: new Date(),
+          lockedAt: null,
+          leaseToken: null,
+        },
       });
+      if (finalized.count === 0) return "skipped";
       apiConsole.warn("[AccountDeletion] 用户不存在或已注销，申请直接置完成", { requestId, userId });
       return "completed";
     }
@@ -115,9 +137,9 @@ export async function executeAccountDeletion(
     const originalPhone = user.phone;
     const placeholderPhone = anonymizedPhone(originalPhone, userId);
 
-    // 2. 撤销全部会话 + access token 黑名单 + OAuthSession + backchannel logout + 状态 webhook
-    // （newStatus=DELETED 走与冻结/封禁同一撤销口径）
-    await cascadeUserStatusChange({ userId, previousStatus: user.status, newStatus: "DELETED" });
+    // 2. 静默撤销全部会话（不改变 User.status、不发送 deleted webhook）：
+    //    若后续子站 purge/匿名化失败，用户保持 ACTIVE，可重新登录；不会向子站误报“已删除”。
+    await quiesceUserSessions(userId);
 
     // 3. 子站数据删除（主站匿名化事务之前）：失败则终止，主站数据未动，等下次 cron 重试。
     // 失败详情含目标名（subsite_purge_failed:<target>:<code>），供人工队列定位故障子站。
@@ -174,11 +196,23 @@ export async function executeAccountDeletion(
       });
 
       // 积分兑换单：待履约的一律取消（用户已注销，不再寄送）；
-      // 全部兑换单清空收货人/手机号/地址快照 PII（履约完成后快照已无留存必要）
+      // 限量库存同时归还，避免注销后库存被永久占用。
+      const pendingRedemptions = await tx.pointRedemption.findMany({
+        where: { userId, status: "PENDING" },
+        select: { productId: true },
+      });
       await tx.pointRedemption.updateMany({
         where: { userId, status: "PENDING" },
         data: { status: "CANCELLED" },
       });
+      for (const { productId } of pendingRedemptions) {
+        if (!productId) continue;
+        await tx.product.updateMany({
+          where: { id: productId, redeemStock: { not: null } },
+          data: { redeemStock: { increment: 1 } },
+        });
+      }
+      // 全部兑换单清空收货人/手机号/地址快照 PII（履约完成后快照已无留存必要）
       await tx.pointRedemption.updateMany({
         where: { userId },
         data: { recipient: null, phone: null, address: null },
@@ -216,11 +250,20 @@ export async function executeAccountDeletion(
       });
     });
 
-    // 6. 收尾：申请置 COMPLETED + 回执短信（fail-soft）+ 审计
-    await prisma.accountDeletionRequest.update({
-      where: { id: requestId },
-      data: { status: DELETION_STATUS.COMPLETED, completedAt: new Date() },
+    // 6. 收尾：条件置 COMPLETED（lease 已丢失则不覆盖他人结果）+ 回执短信 + 审计
+    const finalized = await prisma.accountDeletionRequest.updateMany({
+      where: { id: requestId, status: DELETION_STATUS.RUNNING, leaseToken },
+      data: {
+        status: DELETION_STATUS.COMPLETED,
+        completedAt: new Date(),
+        lockedAt: null,
+        leaseToken: null,
+      },
     });
+    if (finalized.count === 0) {
+      apiConsole.warn("[AccountDeletion] 完成状态写入失败：租约已丢失", { requestId, userId });
+      return "skipped";
+    }
 
     if (options.notifyUser !== false) {
       try {
@@ -248,15 +291,35 @@ export async function executeAccountDeletion(
     return "completed";
   } catch (error) {
     const message = (error instanceof Error ? error.message : String(error)).slice(0, 500);
-    const updated = await prisma.accountDeletionRequest
-      .update({
-        where: { id: requestId },
-        data: { status: DELETION_STATUS.FAILED, lastError: message },
+
+    // 只允许持有当前 lease 的 worker 标记失败：
+    // 若另一个 worker 已成功完成（lease 已清空），慢失败不得覆盖 COMPLETED。
+    const failed = await prisma.accountDeletionRequest
+      .updateMany({
+        where: { id: requestId, status: DELETION_STATUS.RUNNING, leaseToken },
+        data: {
+          status: DELETION_STATUS.FAILED,
+          lastError: message,
+          lockedAt: null,
+          leaseToken: null,
+        },
       })
       .catch((updateError) => {
         apiConsole.error("[AccountDeletion] 失败状态回写异常:", updateError);
         return null;
       });
+
+    if (!failed || failed.count === 0) {
+      apiConsole.warn("[AccountDeletion] 失败状态未写入：租约已丢失或已被其他 worker 完成", {
+        requestId,
+      });
+      return "skipped";
+    }
+
+    const updated = await prisma.accountDeletionRequest.findUnique({
+      where: { id: requestId },
+      select: { attempts: true },
+    });
 
     if (updated && updated.attempts >= MAX_DELETION_ATTEMPTS) {
       apiConsole.error(
@@ -285,12 +348,18 @@ export async function executeDueAccountDeletions(): Promise<{
   reminded: number;
 }> {
   const now = new Date();
+  const staleBefore = new Date(now.getTime() - DELETION_LEASE_MS);
 
   const dueRequests = await prisma.accountDeletionRequest.findMany({
     where: {
       scheduledAt: { lte: now },
       OR: [
-        { status: { in: [DELETION_STATUS.PENDING, DELETION_STATUS.RUNNING] } },
+        { status: DELETION_STATUS.PENDING },
+        // 只回收崩溃/超时的 RUNNING；新鲜租约由执行器继续完成
+        {
+          status: DELETION_STATUS.RUNNING,
+          OR: [{ lockedAt: null }, { lockedAt: { lt: staleBefore } }],
+        },
         { status: DELETION_STATUS.FAILED, attempts: { lt: MAX_DELETION_ATTEMPTS } },
       ],
     },

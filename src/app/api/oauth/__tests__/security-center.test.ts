@@ -318,7 +318,7 @@ describe("/api/oauth/security/*", () => {
       {
         id: "id-1",
         provider: "wechat_miniprogram",
-        metadata: { nickname: "小N" },
+        metadata: { nickname: "小N", mpClientId: "wechat-mp-points" },
         createdAt: future,
         updatedAt: future,
       },
@@ -328,7 +328,11 @@ describe("/api/oauth/security/*", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.identities[0]).toEqual(
-      expect.objectContaining({ provider: "wechat_miniprogram", canUnbind: true })
+      expect.objectContaining({
+        provider: "wechat_miniprogram",
+        mpClientId: "wechat-mp-points",
+        canUnbind: true,
+      })
     );
   });
 

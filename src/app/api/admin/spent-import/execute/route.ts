@@ -140,6 +140,18 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "IMPORT_ALREADY_EXISTS") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ALREADY_IMPORTED",
+            message: "该文件已有未撤销的导入批次，请先撤销原批次后再重新导入",
+          },
+        },
+        { status: 409 }
+      );
+    }
     apiConsole.error("[AdminSpentImport] 执行导入失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "导入失败，请稍后重试" } },

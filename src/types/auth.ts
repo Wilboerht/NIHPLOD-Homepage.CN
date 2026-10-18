@@ -35,6 +35,11 @@ export interface AdminJWTPayload extends JWTPayload {
   email: string;
   name: string;
   role: AdminRole;
+  /**
+   * 会话版本。签发时取自 Admin.tokenVersion，校验时与 DB 当前值比较。
+   * 缺失视为 0（兼容本次上线前签发的旧 token）。
+   */
+  ver?: number;
   /** 个人权限覆盖原始条目（verifyAuth 从 DB 读取） */
   permissionOverrides?: string[];
 }

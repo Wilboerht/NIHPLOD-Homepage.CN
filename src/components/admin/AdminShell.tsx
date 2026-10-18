@@ -13,7 +13,13 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { adminNavItems, getBreadcrumbs, type NavItem } from "@/config/admin-nav";
+import {
+  adminNavItems,
+  getAdminPageWidth,
+  getBreadcrumbs,
+  type AdminPageWidth,
+  type NavItem,
+} from "@/config/admin-nav";
 import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
@@ -23,16 +29,22 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { IconButton } from "./IconButton";
 
+const CONTENT_WIDTH_CLASS: Record<AdminPageWidth, string> = {
+  narrow: "max-w-3xl",
+  default: "max-w-5xl",
+  wide: "max-w-7xl",
+};
+
 /**
  * 管理端壳：w-60 侧边栏 + 移动端抽屉 + 统一页面边距
  * - 导航由 adminNavItems 配置驱动（分组 + 权限过滤），样式对齐工具面板风格
- * - 页面边距只由壳提供（px-4 py-6 sm:px-6 lg:px-8 lg:py-8），内容容器 mx-auto max-w-7xl；
- *   窄页（表单/设置）自行用 max-w-3xl 等收敛
+ * - 页面边距只由壳提供（移动端安全区 + 桌面 1.5rem + safe-area）
+ * - 内容宽度由路由决定：3xl / 5xl / 7xl，页面组件不再写 mx-auto max-w-*
  */
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, name, permissions, loading } = useAdminSession();
+  const { role, name, permissions, loading, redirecting } = useAdminSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -66,6 +78,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, pathname]);
 
+  if (redirecting) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
+        <p className="text-sm text-brand-charcoal/50">登录已过期，正在跳转...</p>
+      </div>
+    );
+  }
+
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
@@ -82,13 +103,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
   // 移动端顶栏标题：取面包屑最后一级
   const breadcrumbs = getBreadcrumbs(pathname);
   const pageTitle = breadcrumbs[breadcrumbs.length - 1]?.title ?? "管理面板";
+  const contentWidth = getAdminPageWidth(pathname);
+  const contentWidthClass = CONTENT_WIDTH_CLASS[contentWidth];
 
   return (
     <div className="min-h-dvh bg-white font-sans">
       {/* 桌面端侧边栏 */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-brand-charcoal/10 bg-white transition-all duration-300 lg:flex",
+          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-brand-charcoal/10 bg-white transition-all duration-300 xl:flex",
           collapsed ? "w-16" : "w-60"
         )}
       >
@@ -106,7 +129,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* 移动端顶栏（sticky：汉堡 + 当前页标题） */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-brand-charcoal/10 bg-white/80 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-40 flex min-h-[calc(3.5rem_+_env(safe-area-inset-top,0px))] items-center gap-3 border-b border-brand-charcoal/10 bg-white/80 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur xl:hidden">
         <IconButton label="打开导航菜单" onClick={() => setDrawerOpen(true)} className="-ml-2">
           <Menu className="h-5 w-5" />
         </IconButton>
@@ -116,7 +139,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 移动端抽屉 */}
       <div
         className={cn(
-          "fixed inset-0 z-[90] bg-black/50 transition-opacity duration-300 lg:hidden",
+          "fixed inset-0 z-[90] bg-black/50 transition-opacity duration-300 xl:hidden",
           drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={() => setDrawerOpen(false)}
@@ -124,7 +147,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[95] flex w-72 flex-col border-r border-brand-charcoal/10 bg-white transition-[transform,visibility] duration-300 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-[95] flex w-72 flex-col border-r border-brand-charcoal/10 bg-white transition-[transform,visibility] duration-300 ease-in-out xl:hidden",
           drawerOpen ? "translate-x-0" : "invisible -translate-x-full"
         )}
       >
@@ -146,18 +169,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 主内容区：页面边距只由壳提供 */}
       <main
         className={cn(
-          "min-h-dvh px-4 py-6 transition-[padding] duration-300 sm:px-6 lg:px-8 lg:py-8",
-          collapsed ? "lg:pl-24" : "lg:pl-[17rem]"
+          "min-h-dvh px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 xl:pb-8 xl:pr-8 xl:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
+          collapsed ? "xl:pl-24" : "xl:pl-[17rem]"
         )}
       >
-        <div className="mx-auto max-w-7xl">
+        <div className={cn("mx-auto", contentWidthClass)} data-admin-content-width={contentWidth}>
           <Suspense
             fallback={<div className="flex items-center justify-center py-8">加载中...</div>}
           >
             {children}
           </Suspense>
         </div>
-        <footer className="mx-auto max-w-7xl pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/40">
+        <footer
+          className={cn(
+            "mx-auto pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/40",
+            contentWidthClass
+          )}
+        >
           © {new Date().getFullYear()} NIHPLOD All Rights Reserved.
         </footer>
       </main>
@@ -209,7 +237,7 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       {/* 品牌区 */}
-      <div className="flex items-center justify-between px-4 pb-4 pt-5">
+      <div className="flex items-center justify-between px-4 pb-4 pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]">
         <Link
           href="/admin"
           onClick={onNavigate}

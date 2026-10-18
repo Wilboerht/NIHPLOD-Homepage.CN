@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { deleteUploadedFile } from "@/lib/upload";
 import prisma from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -27,7 +28,30 @@ export async function DELETE(
       );
     }
 
+    const canManageMedia = (
+      [
+        "products:write",
+        "categories:write",
+        "jobs:write",
+        "applications:write",
+        "sso:clients:write",
+      ] as const
+    ).some((permission) => hasAdminPermission(admin, permission));
+    if (!canManageMedia) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "无媒体删除权限" } },
+        { status: 403 }
+      );
+    }
+
     const { path } = await params;
+    // 防止 ../ 或反斜杠路径遍历删除上传目录外文件
+    if (path.some((part) => part === ".." || part.includes("\\"))) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PATH", message: "非法文件路径" } },
+        { status: 400 }
+      );
+    }
     const filePath = `/uploads/${path.join("/")}`;
 
     // 从数据库中查找关联的图片记录

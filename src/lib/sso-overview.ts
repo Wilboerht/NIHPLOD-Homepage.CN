@@ -7,6 +7,7 @@
  * - 授权成功率 = 本月 authorize 事件的成功占比（无数据返回 null）
  */
 import { prisma } from "./prisma";
+import { getUtc8DayStart, getUtc8MonthStart, getUtc8WeekStartMonday } from "./timezone";
 
 export interface SsoOverview {
   activeClients: number;
@@ -19,28 +20,6 @@ export interface SsoOverview {
   };
   successRate: number | null;
   eventsByType: Record<string, number>;
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** 当天 UTC+8 零点（返回 UTC Date） */
-export function getUtc8DayStart(now: Date = new Date()): Date {
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), -8, 0, 0, 0)
-  );
-}
-
-/** 本周一 UTC+8 零点（周一为周首） */
-export function getUtc8WeekStartMonday(now: Date = new Date()): Date {
-  const dayStart = getUtc8DayStart(now);
-  // getUTCDay：0=周日。转换为 0=周一
-  const day = (dayStart.getUTCDay() + 6) % 7;
-  return new Date(dayStart.getTime() - day * DAY_MS);
-}
-
-/** 本月 1 日 UTC+8 零点 */
-export function getUtc8MonthStart(now: Date = new Date()): Date {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, -8, 0, 0, 0));
 }
 
 export async function getSsoOverview(): Promise<SsoOverview> {

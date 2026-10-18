@@ -131,14 +131,15 @@ async function ensureUserConsent(
   clientId: string,
   scopes: string[]
 ): Promise<void> {
-  // 应用层生成 cuid 主键（与 schema @default(cuid()) 同风格），保持 ON CONFLICT 合并 scope 逻辑
+  // 应用层生成 cuid 主键；consent.scopes 必须精确等于本次批准的 scope 集合。
+  // 不能用 array_cat 并集：撤销后仅用 openid 重新授权会“复活”历史 profile/birthday 等权限。
   const id = generateConsentId();
   await prisma.$executeRaw`
     INSERT INTO "UserConsent" ("id", "userId", "clientId", "scopes", "grantedAt")
     VALUES (${id}, ${userId}, ${clientId}, ${scopes}::text[], NOW())
     ON CONFLICT ("userId", "clientId")
     DO UPDATE SET
-      "scopes" = ARRAY(SELECT DISTINCT unnest(array_cat("UserConsent"."scopes", ${scopes}::text[]))),
+      "scopes" = ${scopes}::text[],
       "revokedAt" = NULL,
       "grantedAt" = NOW()
   `;

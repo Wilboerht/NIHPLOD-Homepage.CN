@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import {
@@ -26,6 +27,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "UNAUTHORIZED", message: "未授权访问" } },
         { status: 401 }
+      );
+    }
+
+    // 媒体上传需至少具备一个内容写权限；防止财务/客服等只读角色写入文件系统
+    const canManageMedia = (
+      [
+        "products:write",
+        "categories:write",
+        "jobs:write",
+        "applications:write",
+        "sso:clients:write",
+      ] as const
+    ).some((permission) => hasAdminPermission(admin, permission));
+    if (!canManageMedia) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "无媒体上传权限" } },
+        { status: 403 }
       );
     }
 

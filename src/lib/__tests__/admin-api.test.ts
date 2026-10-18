@@ -51,7 +51,7 @@ const {
 // ============================================
 
 vi.mock("@/lib/prisma", () => {
-  const prisma = {
+  const prisma: Record<string, unknown> = {
     admin: mockPrismaModel(),
     user: mockPrismaModel(),
     product: mockPrismaModel(),
@@ -82,6 +82,8 @@ vi.mock("@/lib/prisma", () => {
     // 管理端删除用户：建立/重置注销申请后同步执行（upsert + findUnique）
     accountDeletionRequest: mockPrismaModel(),
   };
+  prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
+  prisma.$executeRaw = vi.fn().mockResolvedValue([]);
   return { prisma, default: prisma };
 });
 
@@ -181,7 +183,7 @@ vi.mock("@/lib/validation", () => ({
 // Mock token-blacklist
 vi.mock("@/lib/token-blacklist", () => ({
   blacklistUserTokens: vi.fn(),
-  removeFromBlacklist: vi.fn(),
+  removeFromBlacklist: vi.fn().mockResolvedValue(undefined),
   isTokenBlacklisted: vi.fn().mockReturnValue(false),
   isAccessTokenRevoked: vi.fn().mockReturnValue(false),
   consumeAccessTokenOnce: vi.fn().mockResolvedValue(true),
@@ -671,8 +673,8 @@ describe("管理端 API 集成测试", () => {
       mockAdminAuth(null, req);
 
       const { POST } = await import("@/app/api/admin/logout/route");
-      const res = await POST(req, undefined!);
-      expect(res.status).toBe(401);
+      const res = await POST(req);
+      expect(res.status).toBe(200);
     });
 
     it("已认证应返回 200 并清除 Cookie", async () => {
@@ -680,7 +682,7 @@ describe("管理端 API 集成测试", () => {
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "admin" }, req);
 
       const { POST } = await import("@/app/api/admin/logout/route");
-      const res = await POST(req, undefined!);
+      const res = await POST(req);
       const data = await res.json();
 
       expect(res.status).toBe(200);
@@ -972,6 +974,8 @@ describe("管理端 API 集成测试", () => {
         phone: "13800138000",
         status: "BANNED",
       });
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.oAuthSession.findMany.mockResolvedValue([]);
 
       const { PATCH } = await import("@/app/api/admin/users/[id]/route");
       const res = await PATCH(req, { params: Promise.resolve({ id: "user-1" }) });
@@ -1012,6 +1016,8 @@ describe("管理端 API 集成测试", () => {
         phone: "13800138000",
         status: "ACTIVE",
       });
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.oAuthSession.findMany.mockResolvedValue([]);
 
       const { PATCH } = await import("@/app/api/admin/users/[id]/route");
       const res = await PATCH(req, { params: Promise.resolve({ id: "user-1" }) });

@@ -34,6 +34,17 @@ function isAdminActive(status: AdminStatus, deletedAt: Date | null): boolean {
 }
 
 /**
+ * 会话版本是否仍然有效。
+ * 兼容本次上线前签发的旧 token（无 ver 视为 0）。
+ */
+function isAdminSessionCurrent(
+  payload: AdminJWTPayload,
+  currentVersion: number | null | undefined
+): boolean {
+  return (payload.ver ?? 0) === (currentVersion ?? 0);
+}
+
+/**
  * 从 Cookie 中获取当前登录管理员
  * 用于 Server Components 和 Server Actions
  */
@@ -55,7 +66,7 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
     return null;
   }
 
-  // 校验管理员是否仍存在且未被禁用/删除（含权限覆盖，供 SSR 页面渲染门禁）
+  // 校验管理员是否仍存在且未被禁用/删除（含权限覆盖与 tokenVersion，供 SSR 页面渲染门禁）
   const admin = await prisma.admin.findUnique({
     where: { id: payload.id },
     select: {
@@ -64,12 +75,18 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
       name: true,
       role: true,
       permissions: true,
+      tokenVersion: true,
       status: true,
       deletedAt: true,
     },
   });
 
   if (!admin || !isAdminActive(admin.status, admin.deletedAt)) {
+    return null;
+  }
+
+  // 会话版本不匹配 = 已改密/改角色/改权限/被禁用或删除；旧 token 永久失效
+  if (!isAdminSessionCurrent(payload, admin.tokenVersion)) {
     return null;
   }
 
@@ -104,15 +121,10 @@ export function getTokenFromRequest(request: NextRequest): string | null {
 }
 
 /**
- * 验证请求中的管理员认证信息
- * 用于 API 路由；对非安全方法自动校验 CSRF Token。
+ * 核心管理员认证（不含 CSRF 校验）
+ * 校验顺序：token 签名/过期 → jti 撤销 → 黑名单 → DB 状态 → tokenVersion。
  */
-export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload | null> {
-  const method = request.method?.toUpperCase() ?? "";
-  if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
-    return null;
-  }
-
+async function verifyAuthCore(request: NextRequest): Promise<AdminJWTPayload | null> {
   const token = getTokenFromRequest(request);
   if (!token) {
     return null;
@@ -123,7 +135,7 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
-  // 校验管理员是否已被拉黑（禁用/删除时加入黑名单）
+  // 兼容历史：仍检查用户级黑名单（新代码不再写入）
   if (await isTokenBlacklisted(payload.id)) {
     return null;
   }
@@ -137,6 +149,7 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
       name: true,
       role: true,
       permissions: true,
+      tokenVersion: true,
       status: true,
       deletedAt: true,
     },
@@ -146,37 +159,68 @@ export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload 
     return null;
   }
 
+  if (!isAdminSessionCurrent(payload, admin.tokenVersion)) {
+    return null;
+  }
+
   return {
     id: admin.id,
     email: admin.email,
     name: admin.name,
     role: admin.role,
+    ver: admin.tokenVersion,
     permissionOverrides: admin.permissions ?? [],
   };
 }
 
 /**
+ * 验证请求中的管理员认证信息
+ * 用于 API 路由；对非安全方法自动校验 CSRF Token。
+ *
+ * 注意：该函数将 CSRF 失败与认证失败都折叠为 null，只有需要区分错误码的
+ * withAuth/withAdmin 才应使用下面的详细分支。生产请求还会经过 middleware 的
+ * CSRF 前置校验，因此缺失 CSRF 不会静默通过。
+ */
+export async function verifyAuth(request: NextRequest): Promise<AdminJWTPayload | null> {
+  const method = request.method?.toUpperCase() ?? "";
+  if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
+    return null;
+  }
+
+  return verifyAuthCore(request);
+}
+
+/**
  * API 路由保护高阶函数（管理员）
- * 包装 API 处理函数，自动验证认证
+ * 包装 API 处理函数，自动验证 CSRF + 认证，并返回正确的 401/403 语义。
  * 支持 Next.js App Router Route Context
  */
 export function withAuth<T extends NextRequest, C = unknown, R extends Response = Response>(
   handler: (request: T, admin: AdminJWTPayload, context: C) => Promise<R>
 ): (request: T, context: C) => Promise<R> {
   return async (request: T, context: C) => {
-    const admin = await verifyAuth(request);
+    const method = request.method?.toUpperCase() ?? "";
 
-    if (!admin) {
-      const tokenExists = getTokenFromRequest(request) !== null;
+    // CSRF 失败必须是 403，不能与“会话失效”的 401 混淆
+    if (!CSRF_SAFE_METHODS.has(method) && !validateCSRFToken(request)) {
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: tokenExists ? "CSRF_INVALID" : "UNAUTHORIZED",
-            message: tokenExists ? "CSRF 验证失败" : "未授权访问",
-          },
+          error: { code: "CSRF_INVALID", message: "CSRF 验证失败" },
         },
-        { status: tokenExists ? 403 : 401 }
+        { status: 403 }
+      ) as unknown as R;
+    }
+
+    const admin = await verifyAuthCore(request);
+
+    if (!admin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "未授权访问" },
+        },
+        { status: 401 }
       ) as unknown as R;
     }
 

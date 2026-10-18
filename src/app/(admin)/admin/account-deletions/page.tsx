@@ -191,7 +191,7 @@ function AdminAccountDeletionsContent() {
         ) : items.length === 0 ? (
           <Empty className="h-64" title="暂无记录" description="当前状态下没有注销申请" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
                 <th className="px-4 py-3 font-medium">用户</th>

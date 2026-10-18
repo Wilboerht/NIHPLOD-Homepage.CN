@@ -204,7 +204,7 @@ function AdminWebhookFailuresContent() {
         ) : items.length === 0 ? (
           <Empty className="h-64" title="队列为空" description="当前没有投递失败的记录" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
                 <th className="px-4 py-3 font-medium">目标 Client</th>

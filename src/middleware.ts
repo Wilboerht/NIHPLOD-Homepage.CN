@@ -10,6 +10,19 @@ import { jwtVerify } from "jose";
 import { getIssuer } from "@/lib/oauth-constants";
 
 const AUTH_COOKIE_NAME = "__Host-admin_token";
+const CSRF_COOKIE_NAME = "__Host-csrf_token";
+const CSRF_HEADER_NAME = "X-CSRF-Token";
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * 管理端写操作的 CSRF 前置校验（纵深防御）。
+ * 路由层仍会再次校验；这里保证即使某个 route 忘记校验，也不会静默放行。
+ */
+function hasValidCsrf(request: NextRequest): boolean {
+  const headerToken = request.headers.get(CSRF_HEADER_NAME);
+  const cookieToken = request.cookies.get(CSRF_COOKIE_NAME)?.value;
+  return Boolean(headerToken && cookieToken && headerToken === cookieToken);
+}
 
 function getSecret(): Uint8Array {
   const jwtSecret = process.env.JWT_ADMIN_SECRET;
@@ -206,6 +219,20 @@ export async function middleware(request: NextRequest) {
     console.log(`[Middleware] pathname=${pathname}, method=${method}, cookie=${AUTH_COOKIE_NAME}`);
   }
 
+  // 管理端写操作统一 CSRF 前置校验（登录端点自行校验 Origin + CSRF）
+  if (
+    pathname.startsWith("/api/admin/") &&
+    pathname !== "/api/admin/login" &&
+    !CSRF_SAFE_METHODS.has(method)
+  ) {
+    if (!hasValidCsrf(request)) {
+      return NextResponse.json(
+        { success: false, error: { code: "CSRF_INVALID", message: "CSRF 验证失败" } },
+        { status: 403 }
+      );
+    }
+  }
+
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   let _authResult: boolean | undefined;
   const checkAuth = async () =>
@@ -214,8 +241,11 @@ export async function middleware(request: NextRequest) {
   // ================= 1. 页面路由保护 =================
 
   // 1.1 已登录用户访问登录页 → 重定向到后台
+  // reauth=1 例外：服务端已判定当前 token 失效（改密/改角色/删除/禁用），
+  // 必须允许登录页渲染，否则会与 /admin 的失效重定向形成无限循环。
   if (matchesPath(pathname, PUBLIC_ADMIN_PATHS)) {
-    if (token && (await checkAuth())) {
+    const reauth = request.nextUrl.searchParams.get("reauth") === "1";
+    if (!reauth && token && (await checkAuth())) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
     return applyCspNonce(request, NextResponse.next());

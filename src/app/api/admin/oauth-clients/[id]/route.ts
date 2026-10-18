@@ -153,35 +153,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Client 从活跃变为停用时：级联撤销 session/token 并通知 RP
+    // scope 缩权：updateOAuthClient 已在事务内撤销该 client 全部 session/refresh token
+    // 并收窄 consent；这里立即补投 backchannel，避免等待 cron 周期。
+    if (client.scopesChanged) {
+      scheduleBackchannelRedelivery();
+    }
+
+    // 停用：updateOAuthClient 已在同一事务内撤销全部 session/refresh token 并入队 backchannel；
+    // 这里只触发响应后补投，避免二次撤销与错误被吞掉。
     if (previousClient.isActive && client.isActive === false) {
-      try {
-        const clientId = client.clientId;
-
-        // 分页扫描活跃会话并写入 backchannel 补偿队列（不同步 HTTP）：
-        // 避免大 client 停用时无界查询 + 逐用户串行投递拖垮请求
-        const enqueued = await enqueueBackchannelLogoutForActiveSessions({ clientId });
-
-        // 撤销所有活跃 OAuthSession 与 RefreshToken
-        await prisma.$transaction(async (tx) => {
-          await tx.oAuthSession.updateMany({
-            where: { clientId, revokedAt: null },
-            data: { revokedAt: new Date() },
-          });
-          await tx.refreshToken.updateMany({
-            where: { clientId, revokedAt: null },
-            data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
-          });
-        });
-
-        apiConsole.info(
-          `[AdminOAuthClient PATCH] 停用 ${clientId}：撤销 ${enqueued.sessionCount} 个会话，入队 ${enqueued.userClientCount} 条 backchannel 通知`
-        );
-        // 响应后立即补投小批量，避免等待 cron 周期
-        scheduleBackchannelRedelivery();
-      } catch (err) {
-        apiConsole.error("[AdminOAuthClient PATCH] 停用 Client 级联撤销失败:", err);
-      }
+      scheduleBackchannelRedelivery();
     }
 
     // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）

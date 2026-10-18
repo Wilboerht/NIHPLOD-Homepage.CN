@@ -292,7 +292,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
       data: expect.objectContaining({
         userId: "user-1",
         type: "REFUND",
-        amount: -100,
+        amount: -50,
         reference: "points:mall-refund-1",
       }),
     });

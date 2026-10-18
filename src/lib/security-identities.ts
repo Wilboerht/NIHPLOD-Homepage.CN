@@ -16,6 +16,8 @@ import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 export interface SecurityIdentityView {
   id: string;
   provider: string;
+  /** 来源小程序 clientId（仅 wechat_miniprogram 身份可能有） */
+  mpClientId: string | null;
   nickname: string | null;
   avatar: string | null;
   createdAt: string;
@@ -44,10 +46,12 @@ export async function listSecurityIdentities(userId: string): Promise<SecurityId
     const meta = (i.metadata ?? null) as {
       nickname?: string | null;
       avatar?: string | null;
+      mpClientId?: string | null;
     } | null;
     return {
       id: i.id,
       provider: i.provider,
+      mpClientId: meta?.mpClientId ?? null,
       nickname: meta?.nickname ?? null,
       avatar: meta?.avatar ?? null,
       createdAt: i.createdAt.toISOString(),

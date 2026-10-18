@@ -152,7 +152,7 @@ function AuditLogsContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="审计日志"
         description="记录管理端关键操作，便于追溯和合规审计"
@@ -226,7 +226,7 @@ function AuditLogsContent() {
       {/* 日志列表 */}
       <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
         {loading ? (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
                 <th scope="col" className="px-4 py-3">
@@ -276,7 +276,7 @@ function AuditLogsContent() {
             </button>
           </div>
         ) : logs.length === 0 ? (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
                 <th scope="col" className="px-4 py-3">
@@ -311,7 +311,7 @@ function AuditLogsContent() {
             </tbody>
           </table>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
                 <th scope="col" className="px-4 py-3">

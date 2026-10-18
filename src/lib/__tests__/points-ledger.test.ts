@@ -171,9 +171,10 @@ describe("refundSpendPoints 退款冲正", () => {
         reference: "points:refund-1",
       }),
     });
-    expect(tx.pointBalance.update).toHaveBeenCalledWith({
+    expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      data: { available: { decrement: 500 } },
+      create: { userId: "user-1", available: -500 },
+      update: { available: { decrement: 500 } },
     });
   });
 
@@ -194,7 +195,11 @@ describe("refundSpendPoints 退款冲正", () => {
         reference: "points:refund-3",
       }),
     });
-    expect(tx.pointBalance.update).not.toHaveBeenCalled();
+    expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      create: { userId: "user-1", available: -300 },
+      update: { available: { decrement: 300 } },
+    });
   });
 
   it("重复 reference：跳过", async () => {

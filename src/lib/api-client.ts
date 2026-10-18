@@ -89,12 +89,10 @@ async function refreshCSRFToken(): Promise<string | null> {
       credentials: "include",
       headers: { Accept: "application/json" },
     });
-    const data = (await response.json()) as ApiResponse<{ token: string }>;
-    const token = data.data?.token ?? null;
-    // 同步写入客户端 Cookie，避免后续请求重复 fetch
-    if (token && typeof document !== "undefined") {
-      document.cookie = `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; secure; samesite=strict; max-age=3600`;
-    }
+    if (!response.ok) return null;
+    // /api/auth/csrf 通过 Set-Cookie 下发 token，JSON body 不返回 token。
+    // 必须重新读 Cookie，否则这里返回 null，首个写请求会缺少 X-CSRF-Token。
+    const token = getCSRFTokenFromCookie();
     return token;
   } catch {
     return null;

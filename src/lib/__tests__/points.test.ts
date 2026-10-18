@@ -78,7 +78,12 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
       reference: "ORDER-1",
     });
 
-    expect(result).toEqual({ totalSpent: 1300, membershipLevel: "SILVER", duplicated: false });
+    expect(result).toEqual({
+      totalSpent: 1300,
+      membershipLevel: "SILVER",
+      appliedDelta: 500,
+      duplicated: false,
+    });
     await vi.waitFor(() => expect(mockSendProfileUpdateWebhook).toHaveBeenCalledTimes(1));
     // profile 快照与现有调用方一致（birthday 转 ISO 字符串），membership 为入账后权威值
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith(
@@ -108,7 +113,12 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
       reference: "ORDER-2",
     });
 
-    expect(result).toEqual({ totalSpent: 1800, membershipLevel: "SILVER", duplicated: false });
+    expect(result).toEqual({
+      totalSpent: 1800,
+      membershipLevel: "SILVER",
+      appliedDelta: 500,
+      duplicated: false,
+    });
     await vi.waitFor(() => expect(mockSendProfileUpdateWebhook).toHaveBeenCalledTimes(1));
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith(
       "user-1",
@@ -168,7 +178,12 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
       reference: "ORDER-4",
     });
 
-    expect(result).toEqual({ totalSpent: 1300, membershipLevel: "SILVER", duplicated: false });
+    expect(result).toEqual({
+      totalSpent: 1300,
+      membershipLevel: "SILVER",
+      appliedDelta: 500,
+      duplicated: false,
+    });
     // 推送为 fire-and-forget：rejection 被 .catch 兜底，不产生未处理异常
     await vi.waitFor(() => expect(mockSendProfileUpdateWebhook).toHaveBeenCalledTimes(1));
     await flushMicrotasks();

@@ -56,7 +56,7 @@ export async function deleteAdminsSafely(params: {
 
     const targets = await tx.admin.findMany({
       where: { id: { in: ids }, deletedAt: null },
-      select: { id: true, email: true, name: true, role: true, permissions: true },
+      select: { id: true, email: true, name: true, role: true, permissions: true, status: true },
     });
 
     if (targets.length === 0) {
@@ -89,8 +89,12 @@ export async function deleteAdminsSafely(params: {
     }
 
     if (ownerTargets.length > 0) {
-      const ownerCount = await tx.admin.count({ where: { role: "owner", deletedAt: null } });
-      if (ownerTargets.length >= ownerCount) {
+      // 只统计仍可登录的 ACTIVE owner：DISABLED owner 不能被算作“还有后备 owner”
+      const ownerCount = await tx.admin.count({
+        where: { role: "owner", status: "ACTIVE", deletedAt: null },
+      });
+      const activeOwnerTargets = ownerTargets.filter((t) => t.status === "ACTIVE");
+      if (activeOwnerTargets.length >= ownerCount) {
         return {
           ok: false,
           code: "LAST_OWNER",
@@ -102,7 +106,12 @@ export async function deleteAdminsSafely(params: {
 
     await tx.admin.updateMany({
       where: { id: { in: targets.map((t) => t.id) } },
-      data: { deletedAt: new Date(), status: "DISABLED" },
+      data: {
+        deletedAt: new Date(),
+        status: "DISABLED",
+        // 旧 token 立即永久失效；新登录被 deletedAt/status 拦截
+        tokenVersion: { increment: 1 },
+      },
     });
 
     return {

@@ -30,12 +30,13 @@ interface RequirePermissionProps {
 }
 
 export function RequirePermission({ permission, children }: RequirePermissionProps) {
-  const { can, loading, error, refresh } = useAdminSession();
+  const { can, loading, redirecting, error, refresh } = useAdminSession();
 
-  if (loading) {
+  if (loading || redirecting) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+        {redirecting && <p className="text-sm text-brand-charcoal/50">登录已过期，正在跳转...</p>}
       </div>
     );
   }

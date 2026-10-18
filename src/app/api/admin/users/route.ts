@@ -224,22 +224,22 @@ export async function POST(request: NextRequest) {
       select: { id: true, status: true },
     });
     // 跳过状态未变化的用户，避免无效的级联与审计噪音
-    const toChange = targets.filter((u) => u.status !== status);
+    const toChange = targets.filter((u) => u.status !== status && u.status !== "DELETED");
+    const skippedDeleted = targets.filter((u) => u.status === "DELETED").length;
+    const changedIds: string[] = [];
 
     if (toChange.length > 0) {
-      await prisma.user.updateMany({
-        where: { id: { in: toChange.map((u) => u.id) } },
-        data: { status },
-      });
-
-      const { cascadeUserStatusChange } = await import("@/lib/user-status");
+      const { changeUserStatus } = await import("@/lib/user-status");
       const { recordSsoEvent } = await import("@/lib/sso-audit");
       for (const u of toChange) {
-        await cascadeUserStatusChange({
+        // 每用户独立事务：状态 + token 撤销原子；单个失败不会留下半改状态
+        const result = await changeUserStatus({
           userId: u.id,
-          previousStatus: u.status,
+          expectedStatus: u.status,
           newStatus: status,
         });
+        if (!result.changed) continue; // 并发修改，跳过
+        changedIds.push(u.id);
         // SSO 审计：每个实际变更的用户一条（合规敏感，与单个端点一致同步等待写入）
         await recordSsoEvent({
           event: "status_change",
@@ -268,14 +268,14 @@ export async function POST(request: NextRequest) {
       action: "user_status_change",
       targetType: "user",
       targetId: ids[0],
-      detail: { ids, status, count: toChange.length },
+      detail: { ids, status, count: changedIds.length, skippedDeleted },
       adminId: admin.id,
       request,
     });
 
     return NextResponse.json({
       success: true,
-      data: { updated: toChange.length },
+      data: { updated: changedIds.length, skippedDeleted },
     });
   } catch (error) {
     apiConsole.error("[AdminUsersBatch] 异常:", error);

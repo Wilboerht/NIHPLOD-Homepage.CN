@@ -90,7 +90,7 @@ export async function sendProfileUpdateWebhook(
       isActive: true,
       webhookUri: { not: null },
     },
-    select: { clientId: true, webhookUri: true },
+    select: { clientId: true, webhookUri: true, scopes: true },
   });
 
   // 并行投递：每个 client 独立处理，失败不影响其他 client
@@ -101,9 +101,14 @@ export async function sendProfileUpdateWebhook(
 
       // PII 最小化：只投递该 client consent scope 覆盖的字段；
       // profile/birthday 都未授权且无 membership 时整条跳过
-      const scopeSet = scopeByClient.get(client.clientId) ?? new Set<string>();
-      const trimmedProfile = trimProfileSnapshotByScopes(profile, scopeSet);
-      const includeMembership = membership !== undefined && scopeSet.has("membership");
+      const consentScopes = scopeByClient.get(client.clientId) ?? new Set<string>();
+      // PII 最小化：consent scope ∩ 当前 client scope，避免 client 缩权后继续推送旧字段
+      const clientScopes = new Set(client.scopes ?? [...consentScopes]);
+      const effectiveScopes = new Set(
+        [...consentScopes].filter((scope) => clientScopes.has(scope))
+      );
+      const trimmedProfile = trimProfileSnapshotByScopes(profile, effectiveScopes);
+      const includeMembership = membership !== undefined && effectiveScopes.has("membership");
       if (!trimmedProfile && !includeMembership) return;
       // profile claim 为事件结构必需字段；无 profile/birthday scope 时传全 null 占位（不含任何资料）
       const profileForEvent: ProfileSnapshot = trimmedProfile ?? {
@@ -211,18 +216,39 @@ const REDELIVERY_MAX_DELAY_MS = 60 * 60 * 1000; // 退避上限 1 小时
  * 重投前复核投递资格：用户仍存在且 ACTIVE，且对目标 client 的 consent 未撤销。
  * 覆盖"用户撤销授权/被注销后，失败队列仍继续投递资料快照"的合规缺口。
  */
-async function isProfileDeliveryStillAllowed(
+/**
+ * 重试时的有效 scope：用户 ACTIVE + consent 未撤销 + client 仍启用。
+ * 返回 consent.scopes ∩ client.scopes；不允许投递时返回 null。
+ */
+async function getProfileDeliveryScopes(
   userId: string,
   clientId: string
-): Promise<boolean> {
-  const [user, consent] = await Promise.all([
+): Promise<Set<string> | null> {
+  const [user, consent, client] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { status: true } }),
     prisma.userConsent.findUnique({
       where: { userId_clientId: { userId, clientId } },
-      select: { revokedAt: true },
+      select: { revokedAt: true, scopes: true },
+    }),
+    prisma.oAuthClient.findUnique({
+      where: { clientId },
+      select: { isActive: true, scopes: true },
     }),
   ]);
-  return !!user && user.status === "ACTIVE" && !!consent && !consent.revokedAt;
+
+  if (
+    !user ||
+    user.status !== "ACTIVE" ||
+    !consent ||
+    consent.revokedAt ||
+    client?.isActive === false
+  ) {
+    return null;
+  }
+
+  const consentScopes = consent.scopes ?? client?.scopes ?? [];
+  const clientScopes = new Set(client?.scopes ?? consentScopes);
+  return new Set(consentScopes.filter((scope) => clientScopes.has(scope)));
 }
 
 /**
@@ -260,8 +286,8 @@ export async function retryFailedWebhookDeliveries(
 
       const client = await prisma.oAuthClient.findUnique({
         where: { clientId: failure.clientId },
-        select: { clientId: true, webhookUri: true },
-      });
+    select: { clientId: true, webhookUri: true, scopes: true },
+  });
       const uri = client?.webhookUri;
 
       // client 已删除或未配置 webhookUri：补偿无意义，直接丢弃
@@ -272,7 +298,11 @@ export async function retryFailedWebhookDeliveries(
       }
 
       // consent 已撤销 / 用户已注销：不得继续投递资料快照，直接丢弃并审计
-      if (!(await isProfileDeliveryStillAllowed(failure.userId, failure.clientId))) {
+      const effectiveScopes = await getProfileDeliveryScopes(
+        failure.userId,
+        failure.clientId
+      );
+      if (!effectiveScopes) {
         await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
         dropped++;
         recordSsoEvent({
@@ -289,6 +319,24 @@ export async function retryFailedWebhookDeliveries(
         profile?: ProfileSnapshot;
         membership?: { level: string; totalSpent: number } | null;
       };
+
+      const trimmedProfile = payload.profile
+        ? trimProfileSnapshotByScopes(payload.profile, effectiveScopes)
+        : null;
+      const includeMembership =
+        payload.membership !== undefined && effectiveScopes.has("membership");
+      if (!trimmedProfile && !includeMembership) {
+        await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
+        dropped++;
+        recordSsoEvent({
+          event: "profile_webhook",
+          userId: failure.userId,
+          clientId: failure.clientId,
+          success: false,
+          detail: { reason: "no_granted_profile_scope" },
+        });
+        continue;
+      }
       // 重新签发事件 token（原 token 已过期），jti 重新生成；
       // 会员信息快照随落库 payload 一并读回（旧记录无此字段则不携带）
       const eventToken = await signProfileEventToken({
@@ -296,8 +344,8 @@ export async function retryFailedWebhookDeliveries(
         aud: failure.clientId,
         events: { [PROFILE_UPDATE_EVENT_URI]: {} },
         jti: crypto.randomUUID(),
-        profile: payload.profile ?? { nickname: null, avatar: null, birthday: null, gender: null },
-        ...(payload.membership !== undefined && { membership: payload.membership }),
+        profile: trimmedProfile ?? { nickname: null, avatar: null, birthday: null, gender: null },
+        ...(includeMembership && { membership: payload.membership }),
       });
 
       const res = await fetch(uri, {
@@ -377,7 +425,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
 
   const client = await prisma.oAuthClient.findUnique({
     where: { clientId: failure.clientId },
-    select: { clientId: true, webhookUri: true },
+    select: { clientId: true, webhookUri: true, isActive: true, scopes: true },
   });
   const uri = client?.webhookUri;
   if (!uri || !isSafeBackchannelUrl(uri)) {
@@ -391,8 +439,9 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
     return { ok: true, status: "dropped" };
   }
 
-  // consent 已撤销 / 用户已注销：不得继续投递资料快照
-  if (!(await isProfileDeliveryStillAllowed(failure.userId, failure.clientId))) {
+  // consent 已撤销 / 用户已注销 / client 已停用：不得继续投递资料快照
+  const effectiveScopes = await getProfileDeliveryScopes(failure.userId, failure.clientId);
+  if (!client?.isActive || !effectiveScopes) {
     recordSsoEvent({
       event: "profile_webhook",
       userId: failure.userId,
@@ -408,13 +457,28 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       profile?: ProfileSnapshot;
       membership?: { level: string; totalSpent: number } | null;
     };
+    const trimmedProfile = payload.profile
+      ? trimProfileSnapshotByScopes(payload.profile, effectiveScopes)
+      : null;
+    const includeMembership =
+      payload.membership !== undefined && effectiveScopes.has("membership");
+    if (!trimmedProfile && !includeMembership) {
+      recordSsoEvent({
+        event: "profile_webhook",
+        userId: failure.userId,
+        clientId: failure.clientId,
+        success: false,
+        detail: { reason: "no_granted_profile_scope", manual: true },
+      });
+      return { ok: true, status: "dropped" };
+    }
     const eventToken = await signProfileEventToken({
       sub: failure.userId,
       aud: failure.clientId,
       events: { [PROFILE_UPDATE_EVENT_URI]: {} },
       jti: crypto.randomUUID(),
-      profile: payload.profile ?? { nickname: null, avatar: null, birthday: null, gender: null },
-      ...(payload.membership !== undefined && { membership: payload.membership }),
+      profile: trimmedProfile ?? { nickname: null, avatar: null, birthday: null, gender: null },
+      ...(includeMembership && { membership: payload.membership }),
     });
 
     const res = await fetch(uri, {

@@ -119,10 +119,16 @@ export interface OAuthClientData {
   scopes: string[];
   isActive: boolean;
   isPublic: boolean;
+  /** scope 缩权/停用导致会话失效的水位（仅验证路径返回） */
+  sessionsInvalidatedAt?: Date | null;
+  /** M2M token 的 scope 版本（仅验证路径返回） */
+  scopeVersion?: number;
   backchannelLogoutUri: string | null;
   webhookUri: string | null;
   codeTtlSeconds: number;
   accessTokenTtlSeconds: number;
+  /** 本次更新是否发生 scope 缩权（调用方据此触发队列投递） */
+  scopesChanged?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -391,6 +397,8 @@ export async function verifyOAuthClientSecret(
       scopes: client.scopes,
       isActive: client.isActive,
       isPublic: client.isPublic,
+      sessionsInvalidatedAt: client.sessionsInvalidatedAt,
+      scopeVersion: client.scopeVersion,
       backchannelLogoutUri: client.backchannelLogoutUri,
     webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
@@ -435,16 +443,81 @@ export async function updateOAuthClient(
 ): Promise<OAuthClientData | null> {
   const parsed = updateClientSchema.parse(data);
   try {
-    const client = await prisma.oAuthClient.update({
+    const previous = await prisma.oAuthClient.findUnique({
       where: { id },
-      data: parsed,
+      select: { clientId: true, scopes: true, isActive: true },
     });
-    // isActive 变更可能影响 M2M token 有效性：主动失效进程内缓存，
-    // 使停用后已签发的 M2M token 立即失效（不等待 30s TTL）
-    if (parsed.isActive !== undefined) {
+    if (!previous) return null;
+
+    const scopesChanged =
+      parsed.scopes !== undefined &&
+      (parsed.scopes.length !== previous.scopes.length ||
+        parsed.scopes.some((scope) => !previous.scopes.includes(scope)));
+    // 停用与缩权同等处理：必须在同一事务内撤销全部会话/刷新令牌，避免部分撤销被吞掉。
+    const disabling = previous.isActive && parsed.isActive === false;
+    const shouldRevoke = scopesChanged || disabling;
+
+    if (shouldRevoke) {
+      // 先入队：事务内撤销会话后就查不到活跃会话了；入队失败不阻断安全撤销。
+      await enqueueBackchannelLogoutForActiveSessions({ clientId: previous.clientId }).catch(
+        (err) => {
+          apiConsole.error("[OAuthClient] 入队 backchannel 失败:", err);
+        }
+      );
+    }
+
+    const client = await prisma.$transaction(async (tx) => {
+      const updated = await tx.oAuthClient.update({
+        where: { id },
+        data: {
+          ...parsed,
+          ...(shouldRevoke
+            ? { scopeVersion: { increment: 1 }, sessionsInvalidatedAt: new Date() }
+            : {}),
+        },
+      });
+
+      if (shouldRevoke) {
+        const now = new Date();
+        await tx.oAuthSession.updateMany({
+          where: { clientId: updated.clientId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        await tx.refreshToken.updateMany({
+          where: { clientId: updated.clientId, revokedAt: null },
+          data: {
+            revokedAt: now,
+            revokedReason: scopesChanged ? "scope_changed" : "client_disabled",
+          },
+        });
+      }
+
+      if (scopesChanged) {
+        // consent 收窄到新 scope 集合，避免旧授权继续覆盖已移除的字段
+        const consents = await tx.userConsent.findMany({
+          where: { clientId: updated.clientId },
+          select: { id: true, scopes: true },
+        });
+        for (const consent of consents) {
+          const nextScopes = consent.scopes.filter((scope) => updated.scopes.includes(scope));
+          if (nextScopes.length !== consent.scopes.length) {
+            await tx.userConsent.update({
+              where: { id: consent.id },
+              data: { scopes: nextScopes },
+            });
+          }
+        }
+      }
+
+      return updated;
+    });
+
+    // isActive/scopeVersion 变更可能影响 M2M token 有效性：主动失效进程内缓存
+    if (parsed.isActive !== undefined || scopesChanged) {
       const { invalidateM2mClientCache } = await import("./jwt");
       invalidateM2mClientCache(client.clientId);
     }
+
     return {
       id: client.id,
       clientId: client.clientId,
@@ -455,9 +528,10 @@ export async function updateOAuthClient(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
-    webhookUri: client.webhookUri,
+      webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+      scopesChanged,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     };
@@ -467,14 +541,6 @@ export async function updateOAuthClient(
   }
 }
 
-/**
- * 删除 OAuth Client（硬删除）
- *
- * 删除前会清理该 client 关联的会话、授权、 consent 与 refresh token 记录，
- * 避免已删除 client 的历史数据残留。
- * 注意：ssoAuditEvent 刻意保留不级联删除——审计事件中的 clientName 字段
- * 本为冗余留存设计，用于 client 删除后仍可追溯历史事件。
- */
 export async function deleteOAuthClient(id: string): Promise<boolean> {
   try {
     const client = await prisma.oAuthClient.findUnique({

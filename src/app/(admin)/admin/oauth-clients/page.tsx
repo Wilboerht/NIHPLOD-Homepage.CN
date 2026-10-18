@@ -565,7 +565,7 @@ if (!payload) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="SSO 应用（OAuth Client）管理"
         actions={
@@ -595,28 +595,30 @@ if (!payload) {
 
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
-        <table className="w-full">
+        <table className="w-full min-w-[960px]">
           <thead className="border-b bg-gray-50">
             <tr>
-              <th className="min-w-[10rem] px-4 py-3 text-left text-sm font-medium text-gray-500">
+              <th className="min-w-[10rem] px-3 py-2 text-left text-sm font-medium text-gray-500">
                 名称
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Client ID</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">类型</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">回调 URL</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Scopes</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">活跃会话</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">最近活跃</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
-              <th className="sticky right-0 bg-gray-50 px-4 py-3 text-right text-sm font-medium text-gray-500">
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">Client ID</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">类型</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">回调 URL</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">Scopes</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">活跃会话</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">最近活跃</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">状态</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-gray-500">创建时间</th>
+              <th className="sticky right-0 bg-gray-50 px-3 py-2 text-right text-sm font-medium text-gray-500">
                 操作
               </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={10} />)
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRowSkeleton key={i} columns={10} density="compact" />
+              ))
             ) : clients.length === 0 ? (
               <tr>
                 <td colSpan={10} className="py-8 text-center text-gray-500">
@@ -627,7 +629,7 @@ if (!payload) {
             ) : (
               clients.map((c) => (
                 <tr key={c.id} className="border-b hover:bg-gray-50">
-                  <td className="min-w-[10rem] px-4 py-3 text-sm font-medium">
+                  <td className="min-w-[10rem] px-3 py-2 text-sm font-medium">
                     <button
                       onClick={() => setDetailClient(c)}
                       className="text-left hover:text-blue-600 hover:underline"
@@ -635,7 +637,7 @@ if (!payload) {
                       {c.name}
                     </button>
                   </td>
-                  <td className="px-4 py-3 font-mono text-sm text-gray-600">
+                  <td className="px-3 py-2 font-mono text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <span className="max-w-[120px] truncate" title={c.clientId}>
                         {c.clientId}
@@ -651,15 +653,15 @@ if (!payload) {
                       </Tooltip>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
                       {c.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-sm text-gray-600">
+                  <td className="max-w-[200px] truncate px-3 py-2 text-sm text-gray-600">
                     {c.redirectUris.join(", ")}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
                       {c.scopes.map((s) => (
                         <Badge key={s} variant="secondary" className="text-xs">
@@ -668,25 +670,25 @@ if (!payload) {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-3 py-2 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" />
                       {c.activeUserCount ?? "-"}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  <td className="px-3 py-2 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
                       {c.lastActiveAt ? formatDate(c.lastActiveAt) : "-"}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <Badge variant={c.isActive ? "success" : "danger"}>
                       {c.isActive ? "启用" : "禁用"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(c.createdAt)}</td>
-                  <td className="sticky right-0 bg-white px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-sm text-gray-500">{formatDate(c.createdAt)}</td>
+                  <td className="sticky right-0 bg-white px-3 py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip content="查看详情" side="top">
                         <button

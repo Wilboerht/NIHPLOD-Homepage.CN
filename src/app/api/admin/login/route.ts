@@ -10,8 +10,8 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { hashIdentifier } from "@/lib/auth-security";
-import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
+import { hashIdentifier, clearLoginAttempts } from "@/lib/auth-security";
+import { consumeAccessTokenOnce, removeFromBlacklist } from "@/lib/token-blacklist";
 import { checkAdminLockout } from "@/lib/admin-lockout";
 
 // 防时序攻击 dummy 哈希（与 password.ts 中 SALT_ROUNDS = 13 保持一致）
@@ -274,6 +274,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 登录成功
+    // 清除该账号的历史失败计数：锁定期内成功登录后不应再被旧失败记录拖入锁定。
+    // 同时清除历史用户级黑名单（旧版改密/改角色逻辑可能留下 24h 记录），
+    // 新会话是否有效由 Admin.tokenVersion 校验，不依赖用户级黑名单。
+    await clearLoginAttempts(email, "admin");
+    await removeFromBlacklist(admin.id).catch((err) =>
+      apiConsole.warn("[AdminLogin] 清除历史黑名单失败（不影响登录）:", err)
+    );
+
     // 记录成功登录尝试（用于审计和安全监控）
     await recordAdminAttempt(email, true, request);
 
@@ -283,6 +291,7 @@ export async function POST(request: NextRequest) {
       email: admin.email,
       name: admin.name,
       role: admin.role,
+      ver: admin.tokenVersion ?? 0,
     });
 
     const response = NextResponse.json({

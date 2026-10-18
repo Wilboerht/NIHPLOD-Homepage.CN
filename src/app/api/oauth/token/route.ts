@@ -453,9 +453,32 @@ export async function POST(request: NextRequest) {
           400
         );
       }
+      // client 在授权码签发后缩权/停用：拒绝已缩权的 code，防止 in-flight 授权绕过
+      if (
+        client.sessionsInvalidatedAt &&
+        pendingCode &&
+        pendingCode.createdAt <= client.sessionsInvalidatedAt
+      ) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: user.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "client_scopes_revoked" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "应用授权范围已变更，请重新授权" },
+          400
+        );
+      }
+
       const grantedScopes = consent && !consent.revokedAt ? consent.scopes : [];
       const allScopesCovered = codeData.scopes.every(
-        (s) => OIDC_IMPLICIT_SCOPES.includes(s) || grantedScopes.includes(s)
+        (s) =>
+          OIDC_IMPLICIT_SCOPES.includes(s) ||
+          (grantedScopes.includes(s) && client.scopes.includes(s))
       );
       if (!allScopesCovered) {
         scheduleSsoEvent({
@@ -725,16 +748,59 @@ export async function POST(request: NextRequest) {
       }
       // 优先使用原 Refresh Token payload 中的 scope，保证刷新不会扩大权限；
       // 仅当旧 token 未携带 scope 时才从 OAuthSession 回退获取。
-      const grantedScopeStr = refreshPayload.scope || session.scopes?.join(" ") || "openid";
+      // refresh 的 scope 必须是「旧 token scope ∩ 当前 consent scope ∩ 当前 client.scopes」
+      // 的交集，避免 client 缩权/consent 缩权后继续换发已移除的权限。
+      const consent = await prisma.userConsent.findUnique({
+        where: { userId_clientId: { userId: refreshPayload.id, clientId: client_id } },
+      });
+      if (consent?.revokedAt) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "consent_revoked" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "用户已撤销对该应用的授权" },
+          400
+        );
+      }
+
+      const clientScopes = new Set(client.scopes);
+      // 兼容历史 token：无 consent 行时以 client.scopes 为上限；有 consent 时严格取交集。
+      const consentScopes = new Set(consent?.scopes ?? client.scopes);
+      const effectiveGrantedScopes = (refreshPayload.scope || session.scopes?.join(" ") || "openid")
+        .split(" ")
+        .filter(Boolean)
+        .filter((scope) => clientScopes.has(scope) && consentScopes.has(scope));
+
+      if (effectiveGrantedScopes.length === 0) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "scope_revoked" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "授权范围已失效，请重新授权" },
+          400
+        );
+      }
 
       // RFC 6749 §6：refresh 请求可携带 scope 参数收窄授权范围。
-      // 不传：沿用原 scope；传入：必须是原授权 scope 的子集，否则 invalid_scope。
-      let scopeStr = grantedScopeStr;
+      // 传入的 scope 必须是当前有效 scope 的子集，否则 invalid_scope。
+      let scopeStr = effectiveGrantedScopes.join(" ");
       if (body.scope) {
-        const grantedScopes = grantedScopeStr.split(" ").filter(Boolean);
         const requestedScopes = body.scope.split(" ").filter(Boolean);
         const isSubset =
-          requestedScopes.length > 0 && requestedScopes.every((s) => grantedScopes.includes(s));
+          requestedScopes.length > 0 &&
+          requestedScopes.every((scope) => effectiveGrantedScopes.includes(scope));
         if (!isSubset) {
           scheduleSsoEvent({
             event: "token",
@@ -756,28 +822,7 @@ export async function POST(request: NextRequest) {
         scopeStr = requestedScopes.join(" ");
       }
 
-      // 精确 scope 集合：避免 includes("profile") 把 profile:write 误判为 profile
       const scopeSet = new Set(scopeStr.split(" ").filter(Boolean));
-
-      // 检查用户是否仍授权了该 client（consent 撤销后拒绝刷新）
-      const consent = await prisma.userConsent.findUnique({
-        where: { userId_clientId: { userId: refreshPayload.id, clientId: client_id } },
-      });
-      if (consent?.revokedAt) {
-        scheduleSsoEvent({
-          event: "token",
-          userId: refreshPayload.id,
-          clientId: client_id,
-          clientName: client.name,
-          ip,
-          success: false,
-          detail: { grant_type: "refresh_token", reason: "consent_revoked" },
-        });
-        return resJson(
-          { error: "invalid_grant", error_description: "用户已撤销对该应用的授权" },
-          400
-        );
-      }
 
       // DPoP 绑定延续：原 token 已绑定 DPoP（dpop_jkt）时，刷新必须携带同一密钥的
       // DPoP proof，并把 cnf.jkt 延续到新 access token；否则绑定会在首次刷新后丢失
@@ -1053,6 +1098,7 @@ export async function POST(request: NextRequest) {
         clientId: client_id,
         scope: effectiveScope,
         expiresIn: `${client.accessTokenTtlSeconds}s`,
+        scopeVersion: client.scopeVersion,
       });
 
       const expiresIn =

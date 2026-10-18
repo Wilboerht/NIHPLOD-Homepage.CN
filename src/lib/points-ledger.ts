@@ -75,36 +75,86 @@ export async function refundSpendPoints(
   params: { userId: string; amount: number; reference: string; note?: string }
 ): Promise<{ duplicated: boolean }> {
   const { userId, amount, reference, note } = params;
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error("POINT_REFUND_INVALID_AMOUNT");
+  }
+
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
   if (existing) return { duplicated: true };
 
-  // 从未有积分余额（无余额行）：仅记录退款流水，不冲余额
-  const balance = await tx.pointBalance.findUnique({
-    where: { userId },
-    select: { id: true },
-  });
-  if (!balance) {
-    await tx.pointLedger.create({
-      data: { userId, type: "REFUND", amount: -amount, reference, note: note ?? null },
-    });
-    return { duplicated: false };
-  }
+  // 先冲减原始发放流水的 remaining，再扣余额。
+  // 若退款金额大于全部剩余量，差额自然成为负余额（超兑债务）。
+  await consumeGrantsFifo(tx, userId, amount);
 
   await tx.pointLedger.create({
     data: { userId, type: "REFUND", amount: -amount, reference, note: note ?? null },
   });
 
-  await tx.pointBalance.update({
+  // 余额行不存在时也创建（available 为负），确保退款债务可被后续入账抵消
+  await tx.pointBalance.upsert({
     where: { userId },
-    data: { available: { decrement: amount } },
+    create: { userId, available: -amount },
+    update: { available: { decrement: amount } },
   });
+
   return { duplicated: false };
 }
 
 /** 会记 remaining 并参与过期清理的发放类流水类型 */
 const GRANT_LEDGER_TYPES = ["CONSUME", "BIRTHDAY", "CHECKIN", "ADJUST"] as const;
+
+/**
+ * FIFO 消耗发放流水的剩余量。
+ *
+ * 退款与兑礼共用同一口径：先消耗最旧的 remaining，确保
+ * `available = sum(remaining) + 负债务` 的账本不变量成立。
+ *
+ * 使用 `remaining >= take` 的条件更新做 CAS：并发退款/兑礼时，
+ * 后到事务若发现该行剩余量已不足会抛出冲突，由外层事务回滚/重试。
+ *
+ * @returns 实际消耗的数量（可能小于 amount；差额由调用方作为债务处理）
+ */
+async function consumeGrantsFifo(
+  tx: PointTx,
+  userId: string,
+  amount: number,
+  options: { onlyUnexpired?: boolean; now?: Date } = {}
+): Promise<number> {
+  if (amount <= 0) return 0;
+
+  const now = options.now ?? new Date();
+  const rows = await tx.pointLedger.findMany({
+    where: {
+      userId,
+      type: { in: [...GRANT_LEDGER_TYPES] },
+      remaining: { gt: 0 },
+      ...(options.onlyUnexpired ? { expiresAt: { gt: now } } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, remaining: true },
+  });
+
+  let rest = amount;
+  for (const row of rows) {
+    if (rest <= 0) break;
+    const take = Math.min(row.remaining ?? 0, rest);
+    if (take <= 0) continue;
+
+    const claimed = await tx.pointLedger.updateMany({
+      where: { id: row.id, remaining: { gte: take } },
+      data: { remaining: { decrement: take } },
+    });
+    if (claimed.count === 0) {
+      // 并发修改：让外层事务回滚，避免账本出现半消耗
+      throw new Error("POINT_LEDGER_CONFLICT");
+    }
+    rest -= take;
+  }
+
+  return amount - rest;
+}
 
 /**
  * 过期扣减：剩余 >0 且已过期的发放流水清零，余额同步扣减。

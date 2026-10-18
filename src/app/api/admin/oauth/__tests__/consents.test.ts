@@ -327,7 +327,7 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       expect(data.data.revokedCount).toBe(1);
       expect(prismaMock.userConsent.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", clientId: "client-abc", revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+        data: { revokedAt: expect.any(Date), scopes: [] },
       });
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
         sids: {},
@@ -361,7 +361,7 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       // 绝不为从未同意的用户创建 scopes:[] 空 consent 记录
       expect(prismaMock.userConsent.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", clientId: "client-abc", revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+        data: { revokedAt: expect.any(Date), scopes: [] },
       });
       expect(prismaMock.userConsent.create).not.toHaveBeenCalled();
       expect(prismaMock.userConsent.upsert).not.toHaveBeenCalled();

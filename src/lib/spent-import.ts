@@ -11,7 +11,7 @@
  * 同一文件重复上传、仅修改部分行后重新导入，未变化行均命中幂等跳过。
  * 支持整批撤销（undoImportBatch）：对每行成功入账反向冲正，撤销本身幂等。
  */
-import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -78,6 +78,8 @@ export interface ExecuteRowResult {
   rowIndex: number;
   phone: string;
   amount: number;
+  /** 实际生效的消费额变动；错误行为 null，重复行为 0 */
+  appliedDelta: number | null;
   status: "SUCCESS" | "DUPLICATE" | "ERROR";
   error: string | null;
   reference: string | null;
@@ -538,123 +540,185 @@ export async function executeImportBatch(params: {
   }
 
   const parsed = inputs.map((input, i) => toParsedRow(input, i + 2));
-  const validRows = parsed.filter((r): r is ParsedImportRow & { phone: string; amount: number } => {
-    return !r.error && r.phone !== null && r.amount !== null;
-  });
-
-  const phones = [...new Set(validRows.map((r) => r.phone))];
+  const phones = [...new Set(parsed.map((r) => r.phone).filter((p): p is string => !!p))];
   const users = await prisma.user.findMany({
     where: { phone: { in: phones } },
     select: { id: true, phone: true },
   });
   const userIdByPhone = new Map(users.map((u) => [u.phone, u.id]));
 
-  const rowResults = await mapWithConcurrency(
-    parsed,
-    IMPORT_EXECUTE_CONCURRENCY,
-    async (row): Promise<ExecuteRowResult> => {
-      if (row.error || row.phone === null || row.amount === null) {
-        return {
-          rowIndex: row.rowIndex,
-          phone: row.phone ?? "",
-          amount: row.amount ?? 0,
-          status: "ERROR",
-          error: row.error || "参数不合法",
-          reference: null,
-        };
-      }
+  const version = randomUUID();
+  const effectiveFileHash = (
+    fileHash?.trim() ||
+    createHash("sha256").update(JSON.stringify(inputs)).digest("hex")
+  ).slice(0, 64);
+  const now = new Date();
 
-      const userId = userIdByPhone.get(row.phone);
-      if (!userId) {
-        return {
-          rowIndex: row.rowIndex,
-          phone: row.phone,
-          amount: row.amount,
-          status: "ERROR",
-          error: "该手机号未注册官网账户",
-          reference: null,
-        };
-      }
+  // 先创建批次与 PENDING 行，再逐行入账：
+  // 进程崩溃/超时后批次与行仍存在，已成功行可撤销，未完成行可由恢复任务继续。
+  const batch = await prisma.$transaction(async (tx) => {
+    const lockKey = `spent-import:${effectiveFileHash}`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
-      const reference = rowReference(row.phone, row.amount, row.orderNo, row.purchasedAt);
-      try {
-        const result = await applyExternalSpentSync({
-          userId,
-          spentDelta: row.amount,
-          reference,
-          note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
-            row.orderNo ? ` ${row.orderNo}` : ""
-          }`,
-        });
-        if (!result) {
+    const active = await tx.spentImportBatch.findFirst({
+      where: {
+        fileHash: effectiveFileHash,
+        undoneAt: null,
+        status: { in: ["PROCESSING", "COMPLETED"] },
+      },
+      select: { id: true },
+    });
+    if (active) {
+      throw new Error("IMPORT_ALREADY_EXISTS");
+    }
+
+    return tx.spentImportBatch.create({
+      data: {
+        adminId,
+        fileName: fileName.slice(0, 200),
+        fileHash: effectiveFileHash,
+        version,
+        status: "PROCESSING",
+        startedAt: now,
+        totalRows: parsed.length,
+        successRows: 0,
+        duplicateRows: 0,
+        errorRows: 0,
+        totalAmount: 0,
+        rows: {
+          create: parsed.map((row) => ({
+            phone: row.phone ?? "",
+            amount: row.amount ?? 0,
+            channel: row.channel,
+            orderNo: row.orderNo,
+            purchasedAt: row.purchasedAt
+              ? new Date(`${row.purchasedAt}T00:00:00.000Z`)
+              : null,
+            note: row.note,
+            reference: `${rowReference(
+              row.phone ?? "",
+              row.amount ?? 0,
+              row.orderNo,
+              row.purchasedAt
+            )}:${version}`,
+            status: "PENDING",
+            error: null,
+            appliedDelta: null,
+            userId: row.phone ? (userIdByPhone.get(row.phone) ?? null) : null,
+          })),
+        },
+      },
+      include: { rows: true },
+    });
+  });
+
+  const rowByReference = new Map(batch.rows.map((row) => [row.reference, row]));
+
+  let rowResults: ExecuteRowResult[];
+  try {
+    rowResults = await mapWithConcurrency(
+      parsed,
+      IMPORT_EXECUTE_CONCURRENCY,
+      async (row): Promise<ExecuteRowResult> => {
+        const reference = `${rowReference(
+          row.phone ?? "",
+          row.amount ?? 0,
+          row.orderNo,
+          row.purchasedAt
+        )}:${version}`;
+        const persisted = rowByReference.get(reference);
+        if (!persisted) throw new Error("IMPORT_ROW_NOT_CREATED");
+
+        const markError = async (message: string): Promise<ExecuteRowResult> => {
+          await prisma.spentImportRow.update({
+            where: { id: persisted.id },
+            data: { status: "ERROR", error: message, appliedDelta: null },
+          });
+          return {
+            rowIndex: row.rowIndex,
+            phone: row.phone ?? "",
+            amount: row.amount ?? 0,
+            appliedDelta: null,
+            status: "ERROR",
+            error: message,
+            reference,
+          };
+        };
+
+        if (row.error || row.phone === null || row.amount === null) {
+          return markError(row.error || "参数不合法");
+        }
+
+        const userId = userIdByPhone.get(row.phone);
+        if (!userId) return markError("该手机号未注册官网账户");
+
+        try {
+          const result = await applyExternalSpentSync({
+            userId,
+            spentDelta: row.amount,
+            reference,
+            note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
+              row.orderNo ? ` ${row.orderNo}` : ""
+            }`,
+          });
+          if (!result) return markError("用户不存在");
+
+          const appliedDelta = result.duplicated ? 0 : result.appliedDelta;
+          const status = result.duplicated ? "DUPLICATE" : "SUCCESS";
+          const error = result.duplicated ? "该记录已入账过（幂等跳过）" : null;
+
+          await prisma.spentImportRow.update({
+            where: { id: persisted.id },
+            data: { status, error, appliedDelta, userId },
+          });
+
           return {
             rowIndex: row.rowIndex,
             phone: row.phone,
             amount: row.amount,
-            status: "ERROR",
-            error: "用户不存在",
+            appliedDelta,
+            status,
+            error,
             reference,
           };
+        } catch (error) {
+          apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 入账失败:`, error);
+          return markError("入账失败，请重试");
         }
-        return {
-          rowIndex: row.rowIndex,
-          phone: row.phone,
-          amount: row.amount,
-          status: result.duplicated ? "DUPLICATE" : "SUCCESS",
-          error: result.duplicated ? "该记录已入账过（幂等跳过）" : null,
-          reference,
-        };
-      } catch (error) {
-        apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 入账失败:`, error);
-        return {
-          rowIndex: row.rowIndex,
-          phone: row.phone,
-          amount: row.amount,
-          status: "ERROR",
-          error: "入账失败，请重试",
-          reference,
-        };
       }
-    }
-  );
+    );
+  } catch (error) {
+    await prisma.spentImportBatch
+      .update({
+        where: { id: batch.id },
+        data: {
+          status: "FAILED",
+          lastError: (error instanceof Error ? error.message : String(error)).slice(0, 500),
+          processedRows: batch.rows.length,
+          finishedAt: new Date(),
+        },
+      })
+      .catch(() => {});
+    throw error;
+  }
 
   const successRows = rowResults.filter((r) => r.status === "SUCCESS").length;
   const duplicateRows = rowResults.filter((r) => r.status === "DUPLICATE").length;
   const errorRows = rowResults.filter((r) => r.status === "ERROR").length;
   const totalAmount = rowResults
     .filter((r) => r.status === "SUCCESS")
-    .reduce((sum, r) => sum + r.amount, 0);
+    .reduce((sum, r) => sum + (r.appliedDelta ?? 0), 0);
 
-  const batch = await prisma.spentImportBatch.create({
+  await prisma.spentImportBatch.update({
+    where: { id: batch.id },
     data: {
-      adminId,
-      fileName: fileName.slice(0, 200),
-      fileHash: fileHash?.slice(0, 64) ?? null,
-      totalRows: parsed.length,
+      status: "COMPLETED",
+      processedRows: rowResults.length,
       successRows,
       duplicateRows,
       errorRows,
       totalAmount,
-      rows: {
-        create: rowResults.map((r) => {
-          const source = parsed.find((p) => p.rowIndex === r.rowIndex);
-          const sourcePhone = source?.phone ?? null;
-          return {
-            phone: r.phone,
-            amount: r.amount,
-            channel: source?.channel ?? null,
-            orderNo: source?.orderNo ?? null,
-            purchasedAt: source?.purchasedAt
-              ? new Date(`${source.purchasedAt}T00:00:00.000Z`)
-              : null,
-            note: source?.note ?? null,
-            reference: r.reference ?? `import:failed:${r.rowIndex}`,
-            status: r.status,
-            error: r.error,
-            userId: sourcePhone ? (userIdByPhone.get(sourcePhone) ?? null) : null,
-          };
-        }),
-      },
+      finishedAt: new Date(),
     },
   });
 
@@ -687,8 +751,14 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
       undoneAt: true,
       totalAmount: true,
       rows: {
-        where: { status: "SUCCESS" },
-        select: { id: true, userId: true, amount: true, reference: true },
+        where: { status: "SUCCESS", revertedAt: null },
+        select: {
+          id: true,
+          userId: true,
+          amount: true,
+          appliedDelta: true,
+          reference: true,
+        },
       },
     },
   });
@@ -699,7 +769,10 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
   if (batch.undoneAt) {
     return { ok: false, code: "ALREADY_UNDONE", message: "该批次已撤销，不能重复操作" };
   }
-  const successRows = batch.rows.filter((r) => r.userId);
+
+  const successRows = batch.rows.filter(
+    (r) => r.userId && (r.appliedDelta ?? r.amount) !== 0
+  );
   if (successRows.length === 0) {
     return { ok: false, code: "NOTHING_TO_UNDO", message: "该批次没有可撤销的入账记录" };
   }
@@ -709,14 +782,25 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     IMPORT_EXECUTE_CONCURRENCY,
     async (row) => {
       try {
+        const appliedDelta = row.appliedDelta ?? row.amount;
+        const reference = `import-undo:${batch.id}:${row.id}`;
+
+        // 按实际生效 delta 反向冲正；不物理删除原始 SpentSyncRecord，
+        // 保留审计并通过 revertedAt 标记，重新导入使用新版本 reference。
         await applyExternalSpentSync({
           userId: row.userId as string,
-          spentDelta: -row.amount,
-          reference: `import-undo:${batch.id}:${row.id}`,
+          spentDelta: -appliedDelta,
+          reference,
           note: `撤销Excel导入批次 ${batch.id}`,
         });
-        await prisma.spentSyncRecord.deleteMany({
+
+        await prisma.spentSyncRecord.updateMany({
           where: { userId: row.userId as string, reference: row.reference },
+          data: { revertedAt: new Date() },
+        });
+        await prisma.spentImportRow.update({
+          where: { id: row.id },
+          data: { revertedAt: new Date() },
         });
         return true;
       } catch (error) {

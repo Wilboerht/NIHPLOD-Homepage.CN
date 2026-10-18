@@ -27,14 +27,18 @@ import {
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin-permissions";
 
+export type AdminPageWidth = "narrow" | "default" | "wide";
+
 export interface NavItem {
   title: string;
   href: string;
   icon: LucideIcon;
-  badge?: number; // 可选的徽章数字（如未读消息数）
+  badge?: number; // 可选徽章数字（如未读消息数）
   /** 访问所需权限点（不填表示所有管理员可见，如个人安全设置） */
   permission?: AdminPermission;
   group?: string; // 导航分组（sidebar 渲染分组标题）
+  /** 页面内容宽度：默认 5xl；多列表格用 wide，设置/向导用 narrow */
+  width?: AdminPageWidth;
 }
 
 export const adminNavItems: NavItem[] = [
@@ -68,6 +72,7 @@ export const adminNavItems: NavItem[] = [
     icon: ClipboardCheck,
     permission: "spent:read",
     group: "商城管理",
+    width: "wide",
   },
   {
     title: "积分礼品",
@@ -130,6 +135,7 @@ export const adminNavItems: NavItem[] = [
     icon: Key,
     permission: "sso:clients:read",
     group: "SSO 管理",
+    width: "wide",
   },
   {
     title: "SSO 授权管理",
@@ -178,6 +184,23 @@ function getActiveNavItem(pathname: string): NavItem | undefined {
   }
   // 前缀匹配其他页面
   return adminNavItems.find((item) => item.href !== "/admin" && pathname.startsWith(item.href));
+}
+
+const PAGE_WIDTH_OVERRIDES: Record<string, AdminPageWidth> = {
+  // 非导航页 / 需要覆盖父级宽度的页面
+  "/admin/oauth-clients/wizard": "narrow",
+  "/admin/settings/totp": "narrow",
+};
+
+/**
+ * 页面内容宽度：由 Shell 统一应用，页面不再写 mx-auto max-w-*。
+ * 多列表格（9-10 列）用 wide，设置/向导用 narrow，其余 default(5xl)。
+ */
+export function getAdminPageWidth(pathname: string): AdminPageWidth {
+  const normalized = pathname !== "/" ? pathname.replace(/\/+$/, "") : pathname;
+  const override = PAGE_WIDTH_OVERRIDES[normalized];
+  if (override) return override;
+  return getActiveNavItem(normalized)?.width ?? "default";
 }
 
 /**

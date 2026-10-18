@@ -24,6 +24,7 @@ import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
+import { acquireCronLock, releaseCronLock } from "./cron-lock";
 
 interface ScheduledTask {
   name: string;
@@ -383,6 +384,9 @@ export async function runCronTask(
   const task = tasks.find((t) => t.name === taskName);
   if (!task) return { ok: false, error: "任务不存在" };
 
+  const lockOwner = await acquireCronLock(taskName);
+  if (!lockOwner) return { ok: false, error: "任务正在执行中，请稍后重试" };
+
   const startedAt = new Date();
   try {
     await task.handler();
@@ -416,6 +420,8 @@ export async function runCronTask(
       })
       .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
     return { ok: false, error: message };
+  } finally {
+    await releaseCronLock(taskName, lockOwner);
   }
 }
 
@@ -474,6 +480,8 @@ export function initializeCronTasks(): void {
         },
         {
           runOnInit: false,
+          // 业务时区固定为 Asia/Shanghai：避免 UTC 主机上“每天 8 点”实际在 16 点执行
+          timezone: process.env.CRON_TIMEZONE || "Asia/Shanghai",
         }
       );
 

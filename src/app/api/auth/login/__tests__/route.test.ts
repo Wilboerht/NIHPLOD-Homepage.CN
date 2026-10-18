@@ -4,7 +4,7 @@
  *       核销竞争失败统一 CODE_INVALID、成功路径正常核销
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {

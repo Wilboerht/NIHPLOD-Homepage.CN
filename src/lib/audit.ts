@@ -59,6 +59,7 @@ export type AuditAction =
   | "user_deleted"
   | "user_detail_view"
   | "user_detail_sensitive_view"
+  | "application_detail_view"
   | "user_birthday_update"
   | "user_password_reset"
   | "user_identity_unbind"
@@ -166,6 +167,7 @@ export const AUDIT_ACTIONS = [
   "user_deleted",
   "user_detail_view",
   "user_detail_sensitive_view",
+  "application_detail_view",
   "user_birthday_update",
   "user_password_reset",
   "user_identity_unbind",

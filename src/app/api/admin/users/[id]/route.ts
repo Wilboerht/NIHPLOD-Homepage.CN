@@ -15,11 +15,15 @@ import { z } from "zod";
 import type { UserStatus } from "@/generated/prisma/client";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { cascadeUserStatusChange } from "@/lib/user-status";
+import { changeUserStatus } from "@/lib/user-status";
 import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { hashIdentifier } from "@/lib/auth-security";
-import { executeAccountDeletion, DELETION_STATUS } from "@/lib/account-deletion";
+import {
+  executeAccountDeletion,
+  DELETION_STATUS,
+  DELETION_LEASE_MS,
+} from "@/lib/account-deletion";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -302,7 +306,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           items: adjustments.map((a) => ({
             id: a.id,
             channel: a.channel,
-            orderNo: a.orderNo,
+            orderNo: canReadSensitive ? a.orderNo : maskIdentifier(a.orderNo),
             amountClaimed: a.amountClaimed,
             status: a.status,
             reviewAmount: a.reviewAmount,
@@ -323,8 +327,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
           type: a.type,
           success: a.success,
           reason: a.reason,
-          ipAddress: a.ipAddress,
-          userAgent: a.userAgent,
+          // IP/UA 属敏感数据，仅 users:sensitive:read 可见
+          ipAddress: canReadSensitive ? a.ipAddress : null,
+          userAgent: canReadSensitive ? a.userAgent : null,
           clientId: a.clientId,
           createdAt: a.createdAt.toISOString(),
         })),
@@ -486,6 +491,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 已注销用户是终态：禁止任何状态回写/生日修改/恢复
+    if (user.status === "DELETED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "USER_DELETED", message: "该用户已注销，状态不可恢复或修改" },
+        },
+        { status: 409 }
+      );
+    }
+
     let updatedUser: {
       id: string;
       phone: string;
@@ -536,20 +552,40 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       });
     }
 
-    // 2) 状态变更（含级联撤销凭证 + OAuth 会话 + backchannel + webhook）
+    // 2) 状态变更：状态、sessionsInvalidatedAt、refresh token/OAuth session 在同一事务内完成
     if (status !== undefined && status !== user.status) {
-      const saved = await prisma.user.update({
-        where: { id },
-        data: { status: status as UserStatus },
-        select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
-      });
-      updatedUser = saved;
-
-      await cascadeUserStatusChange({
+      const result = await changeUserStatus({
         userId: user.id,
-        previousStatus: user.status,
+        expectedStatus: user.status,
         newStatus: status,
       });
+
+      if (!result.changed) {
+        // 并发修改：重新读取最新状态返回，避免把旧快照当成成功结果
+        const refreshed = await prisma.user.findUnique({
+          where: { id },
+          select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
+        });
+        if (!refreshed) {
+          return NextResponse.json(
+            { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+            { status: 404 }
+          );
+        }
+        return NextResponse.json({ success: true, data: { user: refreshed } });
+      }
+
+      const refreshed = await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
+      });
+      if (!refreshed) {
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+          { status: 404 }
+        );
+      }
+      updatedUser = refreshed;
 
       await createAuditLog({
         action: "user_status_change",
@@ -646,9 +682,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     // 执行中（RUNNING）的申请禁止重复触发，防与正在进行的匿名化竞态
     const existingRequest = await prisma.accountDeletionRequest.findUnique({
       where: { userId: id },
-      select: { status: true },
+      select: { status: true, lockedAt: true },
     });
-    if (existingRequest && existingRequest.status === DELETION_STATUS.RUNNING) {
+    const now = new Date();
+    const freshRunning =
+      existingRequest?.status === DELETION_STATUS.RUNNING &&
+      (!existingRequest.lockedAt ||
+        existingRequest.lockedAt.getTime() > now.getTime() - DELETION_LEASE_MS);
+    if (freshRunning) {
       return NextResponse.json(
         {
           success: false,
@@ -660,7 +701,6 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // 建立/重置注销申请（到期时间为现在），随后同步执行——
     // 管理员能立即看到成败（与人工重试同口径），无需等待下一轮 cron
-    const now = new Date();
     const deletionRequest = await prisma.accountDeletionRequest.upsert({
       where: { userId: id },
       create: {
@@ -679,6 +719,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         completedAt: null,
         attempts: 0,
         lastError: null,
+        lockedAt: null,
+        leaseToken: null,
       },
     });
 

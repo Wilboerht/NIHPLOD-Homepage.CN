@@ -652,7 +652,7 @@ describe("管理端 OAuth Client CRUD", () => {
       expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { clientId: previous.clientId, revokedAt: null },
-          data: { revokedAt: expect.any(Date), revokedReason: "admin_revoke" },
+          data: { revokedAt: expect.any(Date), revokedReason: "client_disabled" },
         })
       );
       // 通知写入补偿队列（分页 + 异步投递，不在请求内逐用户同步 HTTP）

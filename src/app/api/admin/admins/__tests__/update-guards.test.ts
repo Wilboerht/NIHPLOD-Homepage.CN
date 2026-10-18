@@ -55,10 +55,6 @@ vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@/lib/token-blacklist", () => ({
-  blacklistAdminTokens: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
@@ -66,7 +62,6 @@ vi.mock("@/lib/logger", () => ({
 import { POST, PUT } from "../route";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
-import { blacklistAdminTokens } from "@/lib/token-blacklist";
 
 const OWNER = {
   id: "clx0000000000000000000001",
@@ -427,7 +422,11 @@ describe("凭证类变更收归 owner", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(blacklistAdminTokens).toHaveBeenCalledWith(TARGET_ID, "admin_password_changed");
+    expect(prisma.admin.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
+      })
+    );
   });
 });
 
@@ -493,7 +492,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
     const res = await PUT(createRequest({ id: TARGET_ID, role: "ops" }), OWNER as never);
 
     expect(res.status).toBe(200);
-    expect(blacklistAdminTokens).toHaveBeenCalledWith(TARGET_ID, "admin_role_changed");
+    expect(prisma.admin.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
+      })
+    );
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: expect.objectContaining({ roleBefore: "admin", roleAfter: "ops" }),
@@ -571,7 +574,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
     const res = await PUT(createRequest({ id: TARGET_ID, role: "admin" }), OWNER as never);
 
     expect(res.status).toBe(200);
-    expect(blacklistAdminTokens).toHaveBeenCalledWith(TARGET_ID, "admin_role_changed");
+    expect(prisma.admin.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
+      })
+    );
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "update_admin",
@@ -591,7 +598,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(blacklistAdminTokens).toHaveBeenCalledWith(TARGET_ID, "admin_password_changed");
+    expect(prisma.admin.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
+      })
+    );
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: expect.objectContaining({ passwordChanged: true, tokensRevoked: true }),
@@ -603,7 +614,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
     const res = await PUT(createRequest({ id: TARGET_ID, name: "新名字" }), OWNER as never);
 
     expect(res.status).toBe(200);
-    expect(blacklistAdminTokens).not.toHaveBeenCalled();
+    expect(prisma.admin.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        data: expect.objectContaining({ tokenVersion: expect.anything() }),
+      })
+    );
     expect(createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: expect.objectContaining({ tokensRevoked: false, passwordChanged: false }),

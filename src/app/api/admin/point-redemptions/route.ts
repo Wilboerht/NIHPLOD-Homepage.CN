@@ -99,7 +99,12 @@ export async function GET(request: NextRequest) {
           priceYuan: Number(r.priceYuan),
           points: r.points,
           status: r.status,
-          recipient: r.recipient,
+          // PII 最小化：仅履约权限可见完整收件人姓名
+          recipient: canFulfill
+            ? r.recipient
+            : r.recipient
+              ? `${r.recipient.slice(0, 1)}**`
+              : null,
           phone: canFulfill ? r.phone : r.phone ? maskPhone(r.phone) : null,
           address: canFulfill ? r.address : maskAddress(r.address),
           carrier: r.carrier,

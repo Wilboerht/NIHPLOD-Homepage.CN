@@ -98,7 +98,14 @@ describe("DPoP 错误信息", () => {
 
   it("签名无效的 proof 同样不泄漏内部异常细节", async () => {
     const proof = await makeProof("jti-tampered");
-    const tampered = `${proof.slice(0, -2)}xx`;
+    // 篡改签名段中间字符，避免极低概率改到等值 base64 尾部导致假阴性
+    const [header, payload, signature] = proof.split(".");
+    const mid = Math.floor(signature.length / 2);
+    const tamperedSignature =
+      signature.slice(0, mid) +
+      (signature[mid] === "A" ? "B" : "A") +
+      signature.slice(mid + 1);
+    const tampered = `${header}.${payload}.${tamperedSignature}`;
     const result = await validateDPoPProof(tampered, "POST", TEST_HTU);
     expect(result.valid).toBe(false);
     expect(result.error).toBe("invalid_dpop_proof");

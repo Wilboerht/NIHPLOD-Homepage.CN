@@ -685,7 +685,7 @@ function AdminUsersContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="用户管理"
         description="管理注册用户"
@@ -783,7 +783,7 @@ function AdminUsersContent() {
 
       {/* 用户列表 */}
       <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
               {canWriteUsers && (
@@ -1135,7 +1135,7 @@ function AdminUsersContent() {
                 <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-brand-charcoal/15 pt-4">
                   {canWriteUsers && (
                     <>
-                      {detailUser.status !== "ACTIVE" && (
+                      {detailUser.status !== "ACTIVE" && detailUser.status !== "DELETED" && (
                         <Button
                           size="sm"
                           leftIcon={<CheckCircle className="h-4 w-4" />}

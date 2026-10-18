@@ -24,14 +24,18 @@ const mockTxLoginAttemptDeleteMany = vi.fn();
 const mockTxUserAddressDeleteMany = vi.fn();
 const mockTxWebhookFailureDeleteMany = vi.fn();
 const mockTxRefreshTokenDeleteMany = vi.fn();
+const mockTxRefreshTokenUpdateMany = vi.fn();
+const mockTxOAuthSessionFindMany = vi.fn();
+const mockTxOAuthSessionUpdateMany = vi.fn();
 const mockTxUserConsentUpdateMany = vi.fn();
 const mockTxPointRedemptionUpdateMany = vi.fn();
+const mockTxPointRedemptionFindMany = vi.fn();
 const mockTxSpentImportRowUpdateMany = vi.fn();
 const mockTxUserUpdate = vi.fn();
 
 const mockPurgeUserFromSubsites = vi.fn();
 const mockDeleteOSSFiles = vi.fn();
-const mockCascade = vi.fn();
+const mockQuiesce = vi.fn();
 const mockCreateAuditLog = vi.fn();
 const mockSendReceipt = vi.fn();
 const mockSendReminder = vi.fn();
@@ -61,7 +65,7 @@ vi.mock("@/lib/ali-oss", () => ({
 }));
 
 vi.mock("@/lib/user-status", () => ({
-  cascadeUserStatusChange: (...args: unknown[]) => mockCascade(...args),
+  quiesceUserSessions: (...args: unknown[]) => mockQuiesce(...args),
 }));
 
 vi.mock("@/lib/audit", () => ({
@@ -116,9 +120,19 @@ function mockTxSuccess() {
       loginAttempt: { deleteMany: mockTxLoginAttemptDeleteMany },
       userAddress: { deleteMany: mockTxUserAddressDeleteMany },
       webhookDeliveryFailure: { deleteMany: mockTxWebhookFailureDeleteMany },
-      refreshToken: { deleteMany: mockTxRefreshTokenDeleteMany },
+      refreshToken: {
+        deleteMany: mockTxRefreshTokenDeleteMany,
+        updateMany: mockTxRefreshTokenUpdateMany,
+      },
+      oAuthSession: {
+        findMany: mockTxOAuthSessionFindMany,
+        updateMany: mockTxOAuthSessionUpdateMany,
+      },
       userConsent: { updateMany: mockTxUserConsentUpdateMany },
-      pointRedemption: { updateMany: mockTxPointRedemptionUpdateMany },
+      pointRedemption: {
+        findMany: mockTxPointRedemptionFindMany,
+        updateMany: mockTxPointRedemptionUpdateMany,
+      },
       spentImportRow: { updateMany: mockTxSpentImportRowUpdateMany },
       user: { update: mockTxUserUpdate },
     })
@@ -134,7 +148,8 @@ describe("executeAccountDeletion", () => {
     mockUserFindUnique.mockResolvedValue(activeUser);
     mockPurgeUserFromSubsites.mockResolvedValue({ ok: true });
     mockDeleteOSSFiles.mockResolvedValue(undefined);
-    mockCascade.mockResolvedValue(undefined);
+    mockQuiesce.mockResolvedValue(undefined);
+    mockTxPointRedemptionFindMany.mockResolvedValue([]);
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
     mockCreateAuditLog.mockResolvedValue(true);
@@ -145,7 +160,7 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("skipped");
-    expect(mockCascade).not.toHaveBeenCalled();
+    expect(mockQuiesce).not.toHaveBeenCalled();
     expect(mockPurgeUserFromSubsites).not.toHaveBeenCalled();
     expect(mockTransaction).not.toHaveBeenCalled();
   });
@@ -155,23 +170,23 @@ describe("executeAccountDeletion", () => {
     const claimArgs = mockUpdateMany.mock.calls[0][0];
     expect(claimArgs.where.id).toBe("req-1");
     expect(claimArgs.where.scheduledAt.lte).toBeInstanceOf(Date);
-    expect(claimArgs.data).toEqual({
-      status: "RUNNING",
-      attempts: { increment: 1 },
-      lastError: null,
-    });
+    expect(claimArgs.data).toEqual(
+      expect.objectContaining({
+        status: "RUNNING",
+        attempts: { increment: 1 },
+        lastError: null,
+        lockedAt: expect.any(Date),
+        leaseToken: expect.any(String),
+      })
+    );
   });
 
   it("成功路径：会话撤销 → 子站 purge → 事务匿名化 → COMPLETED + 回执短信 + 审计", async () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    // 会话撤销（含 backchannel/webhook 由 cascade 内部负责）
-    expect(mockCascade).toHaveBeenCalledWith({
-      userId: "user-1",
-      previousStatus: "ACTIVE",
-      newStatus: "DELETED",
-    });
+    // 注销前置只静默撤销会话，不改变状态、不发 deleted webhook
+    expect(mockQuiesce).toHaveBeenCalledWith("user-1");
     // 子站 purge 携带 userId（多目标遍历逻辑由 purgeUserFromSubsites 内部负责）
     expect(mockPurgeUserFromSubsites).toHaveBeenCalledWith("user-1");
 
@@ -228,8 +243,8 @@ describe("executeAccountDeletion", () => {
     });
 
     // 收尾：COMPLETED + 回执短信发往注销前号码 + 审计不含明文手机号
-    expect(mockRequestUpdate).toHaveBeenCalledWith({
-      where: { id: "req-1" },
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
       data: expect.objectContaining({ status: "COMPLETED" }),
     });
     expect(mockSendReceipt).toHaveBeenCalledWith("13800138000");
@@ -255,7 +270,8 @@ describe("executeAccountDeletion", () => {
     mockFindUnique.mockResolvedValueOnce({ userId: "user-2", phoneHash: null });
     mockUserFindUnique.mockResolvedValueOnce({ ...activeUser, id: "user-2" });
     mockPurgeUserFromSubsites.mockResolvedValue({ ok: true });
-    mockCascade.mockResolvedValue(undefined);
+    mockQuiesce.mockResolvedValue(undefined);
+    mockTxPointRedemptionFindMany.mockResolvedValue([]);
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
     const second = await executeAccountDeletion("req-2");
@@ -355,8 +371,8 @@ describe("executeAccountDeletion", () => {
 
     expect(result).toBe("failed");
     expect(mockTransaction).not.toHaveBeenCalled();
-    expect(mockRequestUpdate).toHaveBeenCalledWith({
-      where: { id: "req-1" },
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
       data: expect.objectContaining({
         status: "FAILED",
         lastError: expect.stringContaining("subsite_purge_failed:advisor"),
@@ -382,8 +398,8 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    expect(mockRequestUpdate).toHaveBeenCalledWith({
-      where: { id: "req-1" },
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
       data: expect.objectContaining({ status: "COMPLETED" }),
     });
   });
@@ -395,15 +411,19 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("failed");
-    expect(mockRequestUpdate).toHaveBeenCalledWith({
-      where: { id: "req-1" },
-      data: { status: "FAILED", lastError: "db deadlock" },
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
+      data: expect.objectContaining({ status: "FAILED", lastError: "db deadlock" }),
     });
   });
 
   it("达到重试上限：error 级告警转人工", async () => {
     mockTransaction.mockRejectedValue(new Error("db deadlock"));
-    mockRequestUpdate.mockResolvedValue({ attempts: MAX_DELETION_ATTEMPTS });
+    mockFindUnique.mockResolvedValue({
+      userId: "user-1",
+      phoneHash: expectedHash("13800138000"),
+      attempts: MAX_DELETION_ATTEMPTS,
+    });
 
     await executeAccountDeletion("req-1");
 
@@ -416,10 +436,10 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    expect(mockCascade).not.toHaveBeenCalled();
+    expect(mockQuiesce).not.toHaveBeenCalled();
     expect(mockPurgeUserFromSubsites).not.toHaveBeenCalled();
-    expect(mockRequestUpdate).toHaveBeenCalledWith({
-      where: { id: "req-1" },
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
       data: expect.objectContaining({ status: "COMPLETED" }),
     });
   });

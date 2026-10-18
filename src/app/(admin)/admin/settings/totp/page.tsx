@@ -146,7 +146,7 @@ export default function TOTPSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader title="二次验证设置" />
 
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">

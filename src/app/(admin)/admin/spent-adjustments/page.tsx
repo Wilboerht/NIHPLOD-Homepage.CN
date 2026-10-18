@@ -215,7 +215,7 @@ function AdminSpentAdjustmentsContent() {
   const pagination = data?.pagination;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="消费记录审核"
         description="审核用户提交的全渠道消费凭证，通过后按核实金额累加历史消费并自动重算会员等级"
@@ -279,30 +279,30 @@ function AdminSpentAdjustmentsContent() {
       {/* 列表 */}
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[960px]">
             <thead>
               <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
-                <th className="px-6 py-3 font-medium">用户</th>
-                <th className="px-6 py-3 font-medium">渠道</th>
-                <th className="px-6 py-3 font-medium">订单号</th>
-                <th className="px-6 py-3 font-medium">申报金额</th>
-                <th className="px-6 py-3 font-medium">消费日期</th>
-                <th className="px-6 py-3 font-medium">凭证</th>
-                <th className="px-6 py-3 font-medium">状态</th>
-                <th className="px-6 py-3 font-medium">提交时间</th>
-                <th className="px-6 py-3 font-medium">操作</th>
+                <th className="px-3 py-2 font-medium">用户</th>
+                <th className="px-3 py-2 font-medium">渠道</th>
+                <th className="px-3 py-2 font-medium">订单号</th>
+                <th className="px-3 py-2 font-medium">申报金额</th>
+                <th className="px-3 py-2 font-medium">消费日期</th>
+                <th className="px-3 py-2 font-medium">凭证</th>
+                <th className="px-3 py-2 font-medium">状态</th>
+                <th className="px-3 py-2 font-medium">提交时间</th>
+                <th className="px-3 py-2 font-medium">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-4 py-10 text-center">
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
                   </td>
                 </tr>
               ) : loadError ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center">
+                  <td colSpan={9} className="px-4 py-10 text-center">
                     <p className="text-sm text-red-500">加载失败，请重试</p>
                     <Button
                       variant="outline"
@@ -318,32 +318,32 @@ function AdminSpentAdjustmentsContent() {
               ) : data && data.applications.length > 0 ? (
                 data.applications.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-2">
                       <p className="text-sm text-gray-700">{a.user.nickname || "未设置昵称"}</p>
                       <p className="text-xs text-gray-400">{a.user.phone}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{a.channelLabel}</td>
-                    <td className="max-w-[180px] truncate px-6 py-4 font-mono text-sm text-gray-700">
+                    <td className="px-3 py-2 text-sm text-gray-600">{a.channelLabel}</td>
+                    <td className="max-w-[180px] truncate px-3 py-2 font-mono text-sm text-gray-700">
                       {a.orderNo}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-3 py-2 text-sm text-gray-600">
                       {a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{formatDate(a.purchasedAt)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-3 py-2 text-sm text-gray-600">{formatDate(a.purchasedAt)}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">
                       {a.images.length > 0 ? `${a.images.length} 张` : "-"}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-2">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[a.status]}`}
                       >
                         {a.statusLabel}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-3 py-2 text-sm text-gray-500">
                       {formatDateTime(a.createdAt)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-2">
                       <Button variant="outline" size="sm" onClick={() => openDetail(a)}>
                         {a.status === "PENDING" ? "审核" : "查看"}
                       </Button>
@@ -352,7 +352,7 @@ function AdminSpentAdjustmentsContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-400">
                     暂无申请
                   </td>
                 </tr>
@@ -363,7 +363,7 @@ function AdminSpentAdjustmentsContent() {
 
         {/* 分页 */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-6 py-3 text-sm text-gray-500">
+          <div className="flex items-center justify-between border-t px-3 py-2 text-sm text-gray-500">
             <span>
               共 {pagination.total} 条 · 第 {pagination.page}/{pagination.totalPages} 页
             </span>

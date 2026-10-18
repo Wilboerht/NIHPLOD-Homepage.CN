@@ -10,12 +10,30 @@
  * æ³¨æ„ï¼šæœ¬å‡½æ•°åªè´Ÿè´£çº§è”å‰¯ä½œç”¨ï¼Œä¸è´Ÿè´£æ›´æ–° User.status æœ¬èº«ã€ä¸å†™å®¡è®¡æ—¥å¿—ï¼›
  * è°ƒç”¨æ–¹åº”è‡ªè¡Œè·³è¿‡ã€ŒçŠ¶æ€æœªå˜åŒ–ã€çš„ç”¨æˆ·ï¼ˆpreviousStatus === newStatusï¼‰ã€‚
  */
+import { after } from "next/server";
 import type { UserStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets, toWebhookStatus } from "@/lib/webhook";
 import { apiConsole } from "@/lib/logger";
+
+/** è¯·æ±‚ä¸Šä¸‹æ–‡å†…ç”¨ after()ï¼Œcron/æµ‹è¯•ç­‰éè¯·æ±‚ä¸Šä¸‹æ–‡å›é€€ä¸º fire-and-forget */
+function runAfter(task: () => Promise<void>): void {
+  try {
+    after(task);
+  } catch {
+    void task().catch((err) => apiConsole.warn("[UserStatus] åå°é€šçŸ¥å¤±è´¥:", err));
+  }
+}
+
+function buildSids(sessions: { clientId: string; sessionId: string }[]): Record<string, string> {
+  const sids: Record<string, string> = {};
+  for (const session of sessions) {
+    if (!sids[session.clientId]) sids[session.clientId] = session.sessionId;
+  }
+  return sids;
+}
 
 export async function cascadeUserStatusChange(params: {
   userId: string;
@@ -84,5 +102,111 @@ export async function cascadeUserStatusChange(params: {
     );
   } catch (err) {
     apiConsole.warn("[UserStatus] Webhook é€šçŸ¥å¤±è´¥:", err);
+  }
+}
+
+/**
+ * Ô­×Ó±ä¸üÓÃ»§×´Ì¬£º
+ * - ×´Ì¬¸üĞÂ¡¢sessionsInvalidatedAt¡¢refresh token/OAuth session ³·ÏúÔÚÍ¬Ò»ÊÂÎñ£»
+ * - ÊÂÎñÌá½»ºóÔÙÒì²½·¢ËÍ backchannel/status webhook£»
+ * - ²¢·¢ÖØÊÔÊ±ÓÃ expectedStatus ×ö CAS£¬²»»á°ÑÒÑÍê³ÉµÄ×´Ì¬ÔÙ´Î¼¶Áª¡£
+ */
+export async function changeUserStatus(params: {
+  userId: string;
+  expectedStatus: UserStatus;
+  newStatus: UserStatus;
+}): Promise<{ changed: boolean }> {
+  const { userId, expectedStatus, newStatus } = params;
+  const now = new Date();
+
+  const outcome = await prisma.$transaction(async (tx) => {
+    const updated = await tx.user.updateMany({
+      where: { id: userId, status: expectedStatus },
+      data:
+        newStatus === "ACTIVE"
+          ? { status: newStatus }
+          : { status: newStatus, sessionsInvalidatedAt: now },
+    });
+    if (updated.count === 0) return null;
+
+    if (newStatus === "ACTIVE") {
+      return { sessions: [] as { clientId: string; sessionId: string }[] };
+    }
+
+    const sessions = await tx.oAuthSession.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: now } },
+      select: { clientId: true, sessionId: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    await tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now, revokedReason: "admin_revoke" },
+    });
+    await tx.oAuthSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    return { sessions };
+  });
+
+  if (!outcome) return { changed: false };
+
+  const clientIds = [...new Set(outcome.sessions.map((s) => s.clientId))];
+  runAfter(async () => {
+    if (clientIds.length > 0) {
+      await sendBackchannelLogout(userId, clientIds, { includeInactive: true, sids: buildSids(outcome.sessions) });
+    }
+    await dispatchStatusChangeWebhook(
+      {
+        userId,
+        oldStatus: toWebhookStatus(expectedStatus),
+        newStatus: toWebhookStatus(newStatus),
+        source: "admin",
+      },
+      getStatusChangeWebhookTargets()
+    );
+  });
+
+  return { changed: true };
+}
+
+/**
+ * ×¢Ïú/É¾³ıÇ°ÖÃ¾²Ä¬£ºÖ»³·Ïú»á»°²¢ÉèÖÃ sessionsInvalidatedAt£¬²»¸Ä×´Ì¬¡¢²»·¢×´Ì¬ webhook¡£
+ * ÓÃÓÚ¡°purge Ê§°ÜÊ±ÓÃ»§±£³Ö ACTIVE¡¢¿ÉÖØĞÂµÇÂ¼¡±µÄ×¢ÏúÓïÒå¡£
+ */
+export async function quiesceUserSessions(userId: string): Promise<void> {
+  const now = new Date();
+
+  const sessions = await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { sessionsInvalidatedAt: now },
+    });
+
+    const activeSessions = await tx.oAuthSession.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: now } },
+      select: { clientId: true, sessionId: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    await tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now, revokedReason: "account_deletion" },
+    });
+    await tx.oAuthSession.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+
+    return activeSessions;
+  });
+
+  const clientIds = [...new Set(sessions.map((s) => s.clientId))];
+  if (clientIds.length > 0) {
+    runAfter(async () => {
+      await sendBackchannelLogout(userId, clientIds, { includeInactive: true, sids: buildSids(sessions) });
+    });
   }
 }

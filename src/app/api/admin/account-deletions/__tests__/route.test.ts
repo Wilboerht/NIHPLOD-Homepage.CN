@@ -40,6 +40,7 @@ vi.mock("@/lib/audit", () => ({
 
 vi.mock("@/lib/account-deletion", () => ({
   executeAccountDeletion: vi.fn(),
+  MAX_DELETION_ATTEMPTS: 5,
   DELETION_STATUS: {
     PENDING: "PENDING",
     RUNNING: "RUNNING",
@@ -160,7 +161,7 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
       id: failedItem.id,
       userId: "user-1",
       status: "FAILED",
-      attempts: 5,
+      attempts: 1,
     });
     vi.mocked(executeAccountDeletion).mockResolvedValue("completed");
   });

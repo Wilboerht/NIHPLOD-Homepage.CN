@@ -47,6 +47,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   point_redemption_cancel: "取消兑换并退分",
   user_detail_view: "查看用户详情",
   user_detail_sensitive_view: "查看用户敏感信息",
+  application_detail_view: "查看简历详情（PII）",
   user_birthday_update: "修改用户生日",
   user_password_reset: "重置用户密码",
   user_identity_unbind: "解绑用户外部身份",

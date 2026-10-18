@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
         }),
         prisma.userConsent.updateMany({
           where: { userId, clientId, revokedAt: null },
-          data: { revokedAt: new Date() },
+          data: { revokedAt: new Date(), scopes: [] },
         }),
       ]);
 

@@ -65,7 +65,8 @@ export default async function AdminDashboard() {
   // 服务端验证管理员身份，未登录直接重定向
   const admin = await getCurrentAdmin();
   if (!admin) {
-    redirect("/admin-login");
+    // reauth=1 让 middleware 放行登录页，避免失效 token 造成无限重定向
+    redirect("/admin-login?reauth=1");
   }
 
   // 无 dashboard:read 权限（个人覆盖可撤销）时不渲染统计数据
@@ -82,13 +83,13 @@ export default async function AdminDashboard() {
   let stats;
   let statsError = false;
   try {
-    stats = await getAdminStats();
+    stats = await getAdminStats(admin);
   } catch {
     statsError = true;
   }
 
   let ssoStats = null;
-  if (admin.role === "owner") {
+  if (hasAdminPermission(admin, "sso:read")) {
     try {
       ssoStats = await getSsoStats();
     } catch {
@@ -121,32 +122,40 @@ export default async function AdminDashboard() {
     <div className="flex flex-col gap-6">
       <PageHeader title="仪表盘" description="欢迎回来，查看网站概览数据" />
 
-      {/* 统计卡片 */}
+      {/* 统计卡片：按权限裁剪，没有权限的域不渲染 */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="用户总数"
-          value={stats.totalUsers}
-          icon={<Users className="h-6 w-6" />}
-          description="注册用户"
-        />
-        <StatsCard
-          title="未读留言"
-          value={stats.unreadMessages}
-          icon={<MessageSquare className="h-6 w-6" />}
-          description="待处理"
-        />
-        <StatsCard
-          title="产品总数"
-          value={stats.products}
-          icon={<Package className="h-6 w-6" />}
-          description={`${stats.categories} 个分类`}
-        />
-        <StatsCard
-          title="在招职位"
-          value={stats.jobs}
-          icon={<Briefcase className="h-6 w-6" />}
-          description="已发布职位"
-        />
+        {stats.totalUsers !== undefined && (
+          <StatsCard
+            title="用户总数"
+            value={stats.totalUsers}
+            icon={<Users className="h-6 w-6" />}
+            description="注册用户"
+          />
+        )}
+        {stats.unreadMessages !== undefined && (
+          <StatsCard
+            title="未读留言"
+            value={stats.unreadMessages}
+            icon={<MessageSquare className="h-6 w-6" />}
+            description="待处理"
+          />
+        )}
+        {stats.products !== undefined && (
+          <StatsCard
+            title="产品总数"
+            value={stats.products}
+            icon={<Package className="h-6 w-6" />}
+            description={stats.categories !== undefined ? `${stats.categories} 个分类` : "已发布产品"}
+          />
+        )}
+        {stats.jobs !== undefined && (
+          <StatsCard
+            title="在招职位"
+            value={stats.jobs}
+            icon={<Briefcase className="h-6 w-6" />}
+            description="已发布职位"
+          />
+        )}
       </div>
 
       {/* SSO 概览 */}
@@ -157,7 +166,7 @@ export default async function AdminDashboard() {
               <Shield className="h-4 w-4 text-brand-primary" />
               SSO 概览
             </h2>
-            <span className="text-xs text-brand-charcoal/50">仅超级管理员可见</span>
+            <span className="text-xs text-brand-charcoal/50">需要 SSO 权限</span>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard
@@ -190,7 +199,8 @@ export default async function AdminDashboard() {
 
       {/* 下方内容区域 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 最近留言 */}
+        {/* 最近留言：仅 messages:read 渲染 */}
+        {stats.recentMessages !== undefined && (
         <PanelCard
           title="最近留言"
           className="lg:col-span-2"
@@ -247,6 +257,7 @@ export default async function AdminDashboard() {
             <Empty title="暂无留言" />
           )}
         </PanelCard>
+        )}
 
         {/* 快捷操作 */}
         <PanelCard title="快捷操作">
@@ -271,7 +282,7 @@ export default async function AdminDashboard() {
             })}
           </div>
 
-          {admin.role === "owner" && (
+          {hasAdminPermission(admin, "sso:read") && (
             <>
               <div className="my-4 border-t border-brand-charcoal/10" />
               <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">SSO 管理</h3>

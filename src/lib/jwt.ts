@@ -242,7 +242,7 @@ export async function getPrevIdTokenPublicKey(): Promise<CryptoKey | null> {
 }
 
 // JWT 过期时间
-const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "1d";
+const adminExpiresInRaw = process.env.JWT_EXPIRES_IN || "12h";
 if (!/^\d+[smhd]$/.test(adminExpiresInRaw)) {
   throw new Error(
     `[JWT] JWT_EXPIRES_IN 格式非法：${adminExpiresInRaw}，应为数字+单位（如 1d、12h、60m、3600s）`
@@ -270,6 +270,7 @@ export async function signToken(payload: {
   email: string;
   name: string;
   role: AdminRole;
+  ver: number;
 }): Promise<string> {
   const token = await new SignJWT({ ...payload, type: "admin" as const })
     .setProtectedHeader({ alg: "HS256" })
@@ -708,26 +709,34 @@ const WECHAT_EXCHANGE_TOKEN_TTL_MS = 15 * 60 * 1000;
  * 停用/删除操作经 invalidateM2mClientCache 主动清除本实例缓存，做到同实例立即生效；
  * 多实例部署时其它实例最长 30s 后生效。
  */
-const m2mClientActiveCache = new LRUCache<string, boolean>({
+const m2mClientStateCache = new LRUCache<
+  string,
+  { active: boolean; scopeVersion: number }
+>({
   max: 1000,
   ttl: 30 * 1000,
 });
 
-/** 使指定 client 的 M2M 活跃状态缓存失效（停用/删除 client 时调用） */
+/** 使指定 client 的 M2M 活跃/scope 版本缓存失效（停用/缩权/删除 client 时调用） */
 export function invalidateM2mClientCache(clientId: string): void {
-  m2mClientActiveCache.delete(clientId);
+  m2mClientStateCache.delete(clientId);
 }
 
-async function isM2mClientActive(clientId: string): Promise<boolean> {
-  const cached = m2mClientActiveCache.get(clientId);
+async function getM2mClientState(
+  clientId: string
+): Promise<{ active: boolean; scopeVersion: number }> {
+  const cached = m2mClientStateCache.get(clientId);
   if (cached !== undefined) return cached;
   const client = await prisma.oAuthClient.findUnique({
     where: { clientId },
-    select: { isActive: true },
+    select: { isActive: true, scopeVersion: true },
   });
-  const active = client?.isActive === true;
-  m2mClientActiveCache.set(clientId, active);
-  return active;
+  const state = {
+    active: client?.isActive === true,
+    scopeVersion: client?.scopeVersion ?? 0,
+  };
+  m2mClientStateCache.set(clientId, state);
+  return state;
 }
 
 export async function isWechatExchangeTokenUsed(token: string): Promise<boolean> {
@@ -1268,6 +1277,8 @@ export async function signOAuthAccessToken(payload: {
   dpopJkt?: string;
   /** 关联的 OAuthSession.sessionId，验证时按 sid 查会话状态，撤销后即时失效 */
   sid?: string;
+  /** M2M token 的 client scope 版本；与 OAuthClient.scopeVersion 不匹配即失效 */
+  scopeVersion?: number;
 }): Promise<string> {
   const scopes = payload.scope.split(" ").filter(Boolean);
   const isM2m = payload.id.startsWith("client:");
@@ -1278,6 +1289,7 @@ export async function signOAuthAccessToken(payload: {
     type: "access_token" as const,
     // M2M（client_credentials）身份的显式标记；消费方优先据此识别，兼容旧的 client: 前缀判断
     client_type: isM2m ? "m2m" : "user",
+    ...(isM2m && payload.scopeVersion !== undefined ? { scv: payload.scopeVersion } : {}),
   };
 
   if (scopes.includes("phone")) {
@@ -1390,7 +1402,17 @@ export async function verifyOAuthAccessToken(
     const isM2m = clientType === "m2m" || (userId?.startsWith("client:") ?? false);
     if (isM2m) {
       const m2mClientId = (payload as { client_id?: string }).client_id;
-      if (!m2mClientId || !(await isM2mClientActive(m2mClientId))) {
+      if (!m2mClientId) return null;
+      const clientState = await getM2mClientState(m2mClientId);
+      if (!clientState.active) return null;
+
+      // scope 缩权后旧 M2M token 立即失效：
+      // - 新 token 携带 scv；不匹配即拒绝
+      // - 旧 token 无 scv；若 client 已发生过缩权（scopeVersion > 0）也拒绝
+      const tokenScopeVersion = (payload as { scv?: unknown }).scv;
+      if (typeof tokenScopeVersion === "number") {
+        if (tokenScopeVersion !== clientState.scopeVersion) return null;
+      } else if (clientState.scopeVersion > 0) {
         return null;
       }
     } else if (userId && (await isTokenBlacklisted(userId))) {

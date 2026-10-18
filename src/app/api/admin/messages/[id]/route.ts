@@ -145,6 +145,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       success: true,
       data: {
         ...message,
+        phone: maskPhone(message.phone),
         createdAt: message.createdAt.toISOString(),
       },
     });

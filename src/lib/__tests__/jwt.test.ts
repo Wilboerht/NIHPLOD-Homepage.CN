@@ -46,6 +46,7 @@ describe("JWT 工具", () => {
         email: "admin@example.com",
         name: "Admin",
         role: "owner",
+        ver: 0,
       });
 
       expect(token).toBeTruthy();
@@ -95,6 +96,7 @@ describe("JWT 工具", () => {
         email: "admin@example.com",
         name: "Admin",
         role: "owner",
+        ver: 0,
       });
       const result = await verifyUserToken(adminToken);
       expect(result).toBeNull();
@@ -406,7 +408,7 @@ describe("JWT 工具", () => {
       expect(payload).toMatchObject({ id: "client:client-m2m", client_type: "m2m" });
       expect(mockFindClient).toHaveBeenCalledWith({
         where: { clientId: "client-m2m" },
-        select: { isActive: true },
+        select: { isActive: true, scopeVersion: true },
       });
       // 第二次验证命中进程内缓存，不再查库
       mockFindClient.mockClear();

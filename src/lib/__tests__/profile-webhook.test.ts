@@ -349,6 +349,15 @@ describe("retryFailedWebhookDeliveries", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserFindUnique.mockResolvedValue({ status: "ACTIVE" });
+    mockConsentFindUnique.mockResolvedValue({
+      revokedAt: null,
+      scopes: ["profile", "birthday", "membership"],
+    });
+    mockClientFindUnique.mockResolvedValue({
+      isActive: true,
+      scopes: ["profile", "birthday", "membership"],
+    });
     mockFailureDelete.mockResolvedValue({});
     mockFailureUpdate.mockResolvedValue({});
     // 乐观锁认领默认成功（单实例语义），多实例竞争场景单独覆盖

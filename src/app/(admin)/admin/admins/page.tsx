@@ -197,6 +197,8 @@ export default function AdminAdminsPage() {
           delete body.role;
           delete body.permissions;
           delete body.password;
+          // 非 owner 自助编辑：服务端禁止任何 email 字段，未修改的 email 也要省略
+          if (!isOwnerActor) delete body.email;
         } else if (!isOwnerActor) {
           // 非 owner 不能修改他人邮箱/密码（服务端强制），提交时省略避免误报 403
           delete body.email;

@@ -62,6 +62,7 @@ export async function applyExternalSpentSync(params: {
 }): Promise<{
   totalSpent: number;
   membershipLevel: MembershipLevel;
+  appliedDelta: number;
   duplicated: boolean;
 } | null> {
   const { userId, spentDelta, reference, note } = params;
@@ -79,7 +80,7 @@ export async function applyExternalSpentSync(params: {
           select: { totalSpent: true, membershipLevel: true },
         });
         if (!current) return null;
-        return { ...current, duplicated: true, previous: undefined };
+        return { ...current, duplicated: true, previous: undefined, appliedDelta: 0 };
       }
 
       // 乐观并发控制（CAS）：以读取快照作为更新条件，快照被并发修改时 updateMany 命中 0 行，
@@ -99,6 +100,9 @@ export async function applyExternalSpentSync(params: {
 
         // 钳制下限 0：退款累计不得超过历史消费
         const newTotalSpent = Math.max(0, user.totalSpent + spentDelta);
+        // 实际生效 delta（负数被 0 下限钳制时可能小于请求的 |spentDelta|）。
+        // 积分、等级轨迹、导入批次与撤销都必须使用该值，避免撤销时放大消费额。
+        const appliedDelta = newTotalSpent - user.totalSpent;
         const newLevel = calculateLevel(newTotalSpent); // 按新消费额重算等级（可升可降）
 
         // 首次达档激活日（仅写入、不覆盖）
@@ -117,7 +121,7 @@ export async function applyExternalSpentSync(params: {
         if (cas.count === 0) continue; // 快照过期（并发修改），重读重试
 
         await tx.spentSyncRecord.create({
-          data: { userId, reference, spentDelta, note },
+          data: { userId, reference, spentDelta: appliedDelta, note },
         });
 
         // 等级变更轨迹（升/降档实时记录，幂等键与同步记录一致）
@@ -135,17 +139,17 @@ export async function applyExternalSpentSync(params: {
 
         // 积分联动（与消费额同事务，保证账实一致）
         // 所有等级均按 1:1 发放积分（普通档仅累积、不可兑礼，兑礼侧按兑礼率拦截）
-        if (spentDelta > 0) {
+        if (appliedDelta > 0) {
           await creditSpendPoints(tx, {
             userId,
-            amount: spentDelta,
+            amount: appliedDelta,
             reference: `points:${reference}`,
             note: note ?? "消费发放积分",
           });
-        } else if (spentDelta < 0) {
+        } else if (appliedDelta < 0) {
           await refundSpendPoints(tx, {
             userId,
-            amount: -spentDelta,
+            amount: -appliedDelta,
             reference: `points:${reference}`,
             note: note ?? "退款冲正积分",
           });
@@ -154,6 +158,7 @@ export async function applyExternalSpentSync(params: {
         return {
           totalSpent: newTotalSpent,
           membershipLevel: newLevel,
+          appliedDelta,
           duplicated: false,
           previous: { totalSpent: user.totalSpent, membershipLevel: user.membershipLevel },
         };
@@ -166,6 +171,7 @@ export async function applyExternalSpentSync(params: {
       const result = {
         totalSpent: txOutcome.totalSpent,
         membershipLevel: txOutcome.membershipLevel,
+        appliedDelta: txOutcome.appliedDelta,
         duplicated: txOutcome.duplicated,
       };
       apiConsole.info(
@@ -202,7 +208,7 @@ export async function applyExternalSpentSync(params: {
       });
       if (!user) return null;
       apiConsole.info(`[SpentSync] 外部同步重复上报（ref=${reference}），按幂等处理`);
-      return { ...user, duplicated: true };
+      return { ...user, duplicated: true, appliedDelta: 0 };
     }
     throw error;
   }

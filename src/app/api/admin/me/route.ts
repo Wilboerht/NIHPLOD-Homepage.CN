@@ -6,7 +6,6 @@ import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
-import { blacklistAdminTokens } from "@/lib/token-blacklist";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import {
   checkAccountLockout,
@@ -129,6 +128,8 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
       }
 
       updateData.password = await hashPassword(data.newPassword);
+      // 改密后递增会话版本：旧 token 立即永久失效（新登录不受影响）
+      updateData.tokenVersion = { increment: 1 };
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -156,9 +157,9 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
       request,
     }).catch(() => {});
 
-    // 修改密码后撤销全部会话（含当前会话）：要求重新登录，消除旧凭证窗口
+    // 修改密码后 tokenVersion 已递增，全部旧会话（含当前会话）失效。
+    // 清除当前 Cookie，要求重新登录；不要写用户级黑名单，否则新登录也会被误拦。
     if (updateData.password) {
-      await blacklistAdminTokens(admin.id, "admin_password_changed");
       const response = NextResponse.json({ success: true, data: updatedAdmin });
       response.cookies.set(AUTH_COOKIE_NAME, "", { ...COOKIE_OPTIONS, maxAge: 0 });
       return response;

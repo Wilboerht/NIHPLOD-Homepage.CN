@@ -30,6 +30,8 @@ export interface AdminSessionValue {
   name?: string;
   permissions: Set<string>;
   loading: boolean;
+  /** 会话已失效，正在跳转登录页 */
+  redirecting: boolean;
   error: boolean;
   can: (permission: AdminPermission) => boolean;
   refresh: () => void;
@@ -44,6 +46,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const [name, setName] = useState<string | undefined>(undefined);
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -62,8 +65,10 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         const status = (err as { status?: number })?.status;
         if (status === 401) {
-          // 管理员账号被删除/禁用或会话过期，统一回登录页
-          router.push("/admin-login");
+          // 管理员账号被删除/禁用、改密/改角色导致 tokenVersion 失效，或会话过期。
+          // reauth=1 让 middleware 放行登录页，避免与 /admin 的失效重定向死循环。
+          setRedirecting(true);
+          router.push("/admin-login?reauth=1");
           return;
         }
         setError(true);
@@ -78,6 +83,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => {
     setLoading(true);
+    setRedirecting(false);
     setError(false);
     setReloadKey((key) => key + 1);
   }, []);
@@ -88,8 +94,8 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AdminSessionValue>(
-    () => ({ id, role, name, permissions, loading, error, can, refresh }),
-    [id, role, name, permissions, loading, error, can, refresh]
+    () => ({ id, role, name, permissions, loading, redirecting, error, can, refresh }),
+    [id, role, name, permissions, loading, redirecting, error, can, refresh]
   );
 
   return <AdminSessionContext.Provider value={value}>{children}</AdminSessionContext.Provider>;

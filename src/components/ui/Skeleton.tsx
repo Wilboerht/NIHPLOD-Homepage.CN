@@ -56,14 +56,16 @@ export function Skeleton({
 export function TableRowSkeleton({
   columns = 4,
   className,
+  density = "default",
 }: {
   columns?: number;
   className?: string;
+  density?: "compact" | "default";
 }) {
   return (
     <tr className={className}>
       {Array.from({ length: columns }).map((_, i) => (
-        <td key={i} className="px-6 py-4">
+        <td key={i} className={density === "compact" ? "px-3 py-2" : "px-4 py-3"}>
           <Skeleton className="h-4 w-full" />
         </td>
       ))}

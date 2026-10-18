@@ -6,13 +6,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as XLSX from "xlsx";
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const prisma: Record<string, unknown> = {
     user: { findMany: vi.fn() },
-    spentImportBatch: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    spentSyncRecord: { deleteMany: vi.fn() },
-  },
-}));
+    spentImportBatch: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    spentImportRow: { update: vi.fn() },
+    spentSyncRecord: { updateMany: vi.fn(), deleteMany: vi.fn() },
+  };
+  prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
+  prisma.$executeRaw = vi.fn().mockResolvedValue([]);
+  return { prisma, default: prisma };
+});
 
 vi.mock("@/lib/points", () => ({
   applyExternalSpentSync: vi.fn(),
@@ -35,9 +39,11 @@ import {
 
 const mockUserFindMany = prisma.user.findMany as ReturnType<typeof vi.fn>;
 const mockBatchCreate = prisma.spentImportBatch.create as ReturnType<typeof vi.fn>;
+const mockBatchFindFirst = prisma.spentImportBatch.findFirst as ReturnType<typeof vi.fn>;
 const mockBatchFindUnique = prisma.spentImportBatch.findUnique as ReturnType<typeof vi.fn>;
 const mockBatchUpdate = prisma.spentImportBatch.update as ReturnType<typeof vi.fn>;
-const mockSyncRecordDeleteMany = prisma.spentSyncRecord.deleteMany as ReturnType<typeof vi.fn>;
+const mockRowUpdate = prisma.spentImportRow.update as ReturnType<typeof vi.fn>;
+const mockSyncRecordUpdateMany = prisma.spentSyncRecord.updateMany as ReturnType<typeof vi.fn>;
 const mockApplySync = applyExternalSpentSync as ReturnType<typeof vi.fn>;
 
 function buildWorkbook(aoa: unknown[][]): Buffer {
@@ -247,7 +253,14 @@ describe("executeImportBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000" }]);
-    mockBatchCreate.mockResolvedValue({ id: "batch-1" });
+    mockBatchFindFirst.mockResolvedValue(null);
+    mockBatchCreate.mockImplementation((args: { data: { rows: { create: Record<string, unknown>[] } } }) => ({
+      id: "batch-1",
+      rows: args.data.rows.create.map((row, index) => ({ ...row, id: `row-${index + 1}` })),
+    }));
+    mockRowUpdate.mockResolvedValue({});
+    mockBatchUpdate.mockResolvedValue({});
+    mockSyncRecordUpdateMany.mockResolvedValue({ count: 1 });
   });
 
   const okInput = {
@@ -260,7 +273,12 @@ describe("executeImportBatch", () => {
   };
 
   it("成功行入账：reference 内容哈希且幂等稳定", async () => {
-    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "SILVER", duplicated: false });
+    mockApplySync.mockResolvedValue({
+      totalSpent: 1000,
+      membershipLevel: "SILVER",
+      appliedDelta: 1000,
+      duplicated: false,
+    });
 
     const result = await executeImportBatch({
       rows: [okInput],
@@ -279,13 +297,14 @@ describe("executeImportBatch", () => {
     expect(mockApplySync).toHaveBeenCalledTimes(1);
     const call = mockApplySync.mock.calls[0][0];
     expect(call).toMatchObject({ userId: "user-1", spentDelta: 1000 });
-    expect(call.reference).toMatch(/^import:[0-9a-f]{32}$/);
+    expect(call.reference).toMatch(/^import:[0-9a-f]{32}:[0-9a-f-]+$/);
+
+    // 批次先创建，行初始为 PENDING；成功后批次更新为 COMPLETED
     expect(mockBatchCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         adminId: "admin-1",
         totalRows: 1,
-        successRows: 1,
-        totalAmount: 1000,
+        status: "PROCESSING",
         rows: {
           create: [
             expect.objectContaining({
@@ -293,28 +312,42 @@ describe("executeImportBatch", () => {
               amount: 1000,
               channel: "TMALL",
               orderNo: "TM001",
-              status: "SUCCESS",
+              status: "PENDING",
               userId: "user-1",
               reference: call.reference,
             }),
           ],
         },
       }),
+      include: { rows: true },
     });
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "batch-1" },
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          successRows: 1,
+          totalAmount: 1000,
+        }),
+      })
+    );
   });
 
-  it("相同行内容生成相同 reference（幂等键稳定）", async () => {
-    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "REGULAR", duplicated: false });
+  it("不同导入批次使用不同 version 的 reference（撤销后可重导）", async () => {
+    mockApplySync.mockResolvedValue({
+      totalSpent: 1000,
+      membershipLevel: "REGULAR",
+      appliedDelta: 1000,
+      duplicated: false,
+    });
     await executeImportBatch({ rows: [okInput], fileName: "a.xlsx", adminId: "admin-1" });
-    vi.clearAllMocks();
-    mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000" }]);
-    mockBatchCreate.mockResolvedValue({ id: "batch-2" });
-    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "REGULAR", duplicated: false });
     await executeImportBatch({ rows: [okInput], fileName: "b.xlsx", adminId: "admin-1" });
 
     const refs = mockApplySync.mock.calls.map((c) => c[0].reference);
-    expect(refs).toHaveLength(1);
+    expect(refs).toHaveLength(2);
     expect(refs[0]).toMatch(/^import:/);
+    expect(refs[1]).toMatch(/^import:/);
+    expect(refs[0]).not.toBe(refs[1]);
   });
 
   it("未注册手机号：行标记 ERROR，不调用入账", async () => {
@@ -332,7 +365,12 @@ describe("executeImportBatch", () => {
   });
 
   it("幂等命中：行标记 DUPLICATE，不重复入账", async () => {
-    mockApplySync.mockResolvedValue({ totalSpent: 1000, membershipLevel: "SILVER", duplicated: true });
+    mockApplySync.mockResolvedValue({
+      totalSpent: 1000,
+      membershipLevel: "SILVER",
+      appliedDelta: 0,
+      duplicated: true,
+    });
 
     const result = await executeImportBatch({
       rows: [okInput],
@@ -371,12 +409,32 @@ describe("undoImportBatch", () => {
       undoneAt: null,
       totalAmount: 1500,
       rows: [
-        { id: "row-1", userId: "user-1", amount: 1000, reference: "import:ref-1" },
-        { id: "row-2", userId: "user-2", amount: 500, reference: "import:ref-2" },
+        {
+          id: "row-1",
+          userId: "user-1",
+          amount: 1000,
+          appliedDelta: 1000,
+          revertedAt: null,
+          reference: "import:ref-1",
+        },
+        {
+          id: "row-2",
+          userId: "user-2",
+          amount: 500,
+          appliedDelta: 500,
+          revertedAt: null,
+          reference: "import:ref-2",
+        },
       ],
     });
-    mockApplySync.mockResolvedValue({ totalSpent: 0, membershipLevel: "REGULAR", duplicated: false });
-    mockSyncRecordDeleteMany.mockResolvedValue({ count: 1 });
+    mockApplySync.mockResolvedValue({
+      totalSpent: 0,
+      membershipLevel: "REGULAR",
+      appliedDelta: -1000,
+      duplicated: false,
+    });
+    mockSyncRecordUpdateMany.mockResolvedValue({ count: 1 });
+    mockRowUpdate.mockResolvedValue({});
     mockBatchUpdate.mockResolvedValue({});
 
     const result = await undoImportBatch("batch-1");
@@ -389,12 +447,14 @@ describe("undoImportBatch", () => {
       reference: "import-undo:batch-1:row-1",
       note: expect.stringContaining("batch-1"),
     });
-    // 删除原始正向幂等记录，保证撤销后重新导入相同行可再次入账
-    expect(mockSyncRecordDeleteMany).toHaveBeenCalledWith({
+    // 标记原始记录已撤销（保留审计，不物理删除）
+    expect(mockSyncRecordUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1", reference: "import:ref-1" },
+      data: { revertedAt: expect.any(Date) },
     });
-    expect(mockSyncRecordDeleteMany).toHaveBeenCalledWith({
+    expect(mockSyncRecordUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-2", reference: "import:ref-2" },
+      data: { revertedAt: expect.any(Date) },
     });
     expect(mockBatchUpdate).toHaveBeenCalledWith({
       where: { id: "batch-1" },
@@ -436,14 +496,33 @@ describe("undoImportBatch", () => {
       undoneAt: null,
       totalAmount: 1000,
       rows: [
-        { id: "row-1", userId: "user-1", amount: 1000, reference: "import:ref-1" },
-        { id: "row-2", userId: "user-2", amount: 500, reference: "import:ref-2" },
+        {
+          id: "row-1",
+          userId: "user-1",
+          amount: 1000,
+          appliedDelta: 1000,
+          revertedAt: null,
+          reference: "import:ref-1",
+        },
+        {
+          id: "row-2",
+          userId: "user-2",
+          amount: 500,
+          appliedDelta: 500,
+          revertedAt: null,
+          reference: "import:ref-2",
+        },
       ],
     });
     mockApplySync
-      .mockResolvedValueOnce({ totalSpent: 0, membershipLevel: "REGULAR", duplicated: false })
+      .mockResolvedValueOnce({
+        totalSpent: 0,
+        membershipLevel: "REGULAR",
+        appliedDelta: -1000,
+        duplicated: false,
+      })
       .mockRejectedValueOnce(new Error("boom"));
-    mockSyncRecordDeleteMany.mockResolvedValue({ count: 1 });
+    mockSyncRecordUpdateMany.mockResolvedValue({ count: 1 });
 
     const result = await undoImportBatch("batch-1");
 
@@ -456,10 +535,24 @@ describe("undoImportBatch", () => {
       id: "batch-1",
       undoneAt: null,
       totalAmount: 1000,
-      rows: [{ id: "row-1", userId: "user-1", amount: 1000, reference: "import:ref-1" }],
+      rows: [
+        {
+          id: "row-1",
+          userId: "user-1",
+          amount: 1000,
+          appliedDelta: 1000,
+          revertedAt: null,
+          reference: "import:ref-1",
+        },
+      ],
     });
-    mockApplySync.mockResolvedValue({ totalSpent: 0, membershipLevel: "REGULAR", duplicated: false });
-    mockSyncRecordDeleteMany.mockRejectedValue(new Error("db down"));
+    mockApplySync.mockResolvedValue({
+      totalSpent: 0,
+      membershipLevel: "REGULAR",
+      appliedDelta: -1000,
+      duplicated: false,
+    });
+    mockSyncRecordUpdateMany.mockRejectedValue(new Error("db down"));
 
     const result = await undoImportBatch("batch-1");
 

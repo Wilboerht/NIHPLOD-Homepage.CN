@@ -14,14 +14,7 @@ import { escapeCSV } from "@/lib/sso-audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
-
-/** 将 UTC 零点日期转换为 UTC+8 当天 23:59:59.999（含当天全部日志） */
-function toUtc8DayEnd(date: Date): Date {
-  const nextDayStart = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, -8, 0, 0, 0)
-  );
-  return new Date(nextDayStart.getTime() - 1);
-}
+import { parseUtc8DateBoundary } from "@/lib/timezone";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
@@ -29,8 +22,8 @@ const querySchema = z.object({
   action: z.enum(AUDIT_ACTIONS).optional(),
   targetType: z.enum(AUDIT_TARGET_TYPES).optional(),
   adminId: z.string().cuid().optional(),
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -72,9 +65,21 @@ export async function GET(request: NextRequest) {
     const sanitizeLog = (log: AuditLogRow): AuditLogRow =>
       canViewSensitive ? log : { ...log, detail: maskAuditDetail(log.detail) as AuditLogRow["detail"] };
 
-    const startDate = params.startDate ?? undefined;
-    // 结束日期按 UTC+8 当天 23:59:59.999 处理，避免默认 00:00 少算一整天
-    const endDate = params.endDate ? toUtc8DayEnd(params.endDate) : undefined;
+    // 仅日期字符串按 UTC+8 当天 00:00 / 23:59:59.999 解析；
+    // 不能直接 z.coerce.date()，否则 YYYY-MM-DD 会被当成 UTC 00:00（=北京时间 08:00）。
+    const startDate = params.startDate
+      ? parseUtc8DateBoundary(params.startDate, false) ?? undefined
+      : undefined;
+    const endDate = params.endDate
+      ? parseUtc8DateBoundary(params.endDate, true) ?? undefined
+      : undefined;
+
+    if ((params.startDate && !startDate) || (params.endDate && !endDate)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_DATE", message: "日期格式错误" } },
+        { status: 400 }
+      );
+    }
 
     // CSV 导出 — 分批拉取（每批 100 条），最多 5 万条并在截断时明确标注
     const isExport = searchParams.get("export") === "csv";

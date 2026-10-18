@@ -49,6 +49,12 @@ interface DataTableProps<T> {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   className?: string;
+  /** 行密度：compact 36px / default 44px 行高 */
+  density?: "compact" | "default";
+  /** 固定列宽布局；配合 Column.width 使用，避免宽屏下短列被拉宽 */
+  tableLayout?: "auto" | "fixed";
+  /** 表格最小宽度；空间不足时容器横向滚动，而不是压缩列 */
+  minWidth?: string;
 }
 
 /**
@@ -67,7 +73,11 @@ export function DataTable<T extends object>({
   sortBy,
   sortOrder,
   className,
+  density = "default",
+  tableLayout = "auto",
+  minWidth,
 }: DataTableProps<T>) {
+  const cellDensityCls = density === "compact" ? "px-3 py-2" : "px-4 py-3";
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(
     sortBy && sortOrder ? { key: sortBy, order: sortOrder } : null
   );
@@ -152,7 +162,14 @@ export function DataTable<T extends object>({
       )}
     >
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-brand-charcoal/10" aria-label="数据表格">
+        <table
+          className={cn(
+            "min-w-full divide-y divide-brand-charcoal/10",
+            tableLayout === "fixed" && "table-fixed"
+          )}
+          style={minWidth ? { minWidth } : undefined}
+          aria-label="数据表格"
+        >
           <thead className="sticky top-0 z-10 bg-brand-charcoal/[0.02]">
             <tr>
               {columns.map((column) => {
@@ -168,7 +185,8 @@ export function DataTable<T extends object>({
                     scope="col"
                     style={{ width: column.width }}
                     className={cn(
-                      "px-6 py-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/50",
+                      "text-xs font-medium uppercase tracking-wider text-brand-charcoal/50",
+                      cellDensityCls,
                       alignStyles[column.align || "left"],
                       column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
                     )}
@@ -201,14 +219,14 @@ export function DataTable<T extends object>({
             {loading ? (
               // 加载状态
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={columns.length} />
+                <TableRowSkeleton key={i} columns={columns.length} density={density} />
               ))
             ) : data.length === 0 ? (
               // 空状态
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-6 py-16 text-center text-brand-charcoal/50"
+                  className="px-4 py-12 text-center text-brand-charcoal/50"
                 >
                   <div className="flex flex-col items-center gap-3">
                     <Inbox className="h-10 w-10 text-brand-charcoal/25" />
@@ -252,7 +270,8 @@ export function DataTable<T extends object>({
                       <td
                         key={String(column.key)}
                         className={cn(
-                          "whitespace-nowrap px-6 py-3 text-sm text-brand-charcoal",
+                          "whitespace-nowrap text-sm text-brand-charcoal",
+                          cellDensityCls,
                           alignStyles[column.align || "left"]
                         )}
                       >
@@ -273,7 +292,7 @@ export function DataTable<T extends object>({
 
       {/* 分页：即使只有一页也展示总数/每页条数（Pagination 内部按需隐藏页码） */}
       {pagination && (pagination.total > 0 || pagination.onPageSizeChange) && (
-        <div className="border-t border-brand-charcoal/10 px-6 py-3">
+        <div className="border-t border-brand-charcoal/10 px-4 py-3">
           <Pagination
             page={pagination.page}
             pageSize={pagination.pageSize}

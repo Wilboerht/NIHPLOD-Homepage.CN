@@ -360,6 +360,7 @@ export function ProductsTable({
         data={products}
         loading={loading}
         rowKey="id"
+        minWidth="900px"
         emptyText="暂无产品数据"
         onSort={onSort}
         sortBy={sortBy}

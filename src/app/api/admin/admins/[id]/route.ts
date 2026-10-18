@@ -7,7 +7,6 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
-import { blacklistAdminTokens } from "@/lib/token-blacklist";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -52,10 +51,8 @@ export const DELETE = withAuth(
 
       const deletedAdmin = result.deleted[0];
 
-      // 立即吊销该管理员的 token（await + 捕获，避免未处理 rejection）
-      await blacklistAdminTokens(deletedAdmin.id, "admin_deleted").catch((err) =>
-        apiConsole.warn(`[AdminAdmins] 吊销管理员 ${deletedAdmin.id} token 失败:`, err)
-      );
+      // deleteAdminsSafely 已在事务内递增 tokenVersion 并置 DISABLED/deletedAt，
+      // 旧 token 立即永久失效；不再写用户级黑名单（避免新登录被误拦）。
 
       // 记录审计日志
       await createAuditLog({

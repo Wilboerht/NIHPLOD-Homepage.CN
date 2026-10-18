@@ -20,7 +20,6 @@ import {
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { createAuditLog } from "@/lib/audit";
-import { blacklistAdminTokens } from "@/lib/token-blacklist";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -186,12 +185,8 @@ export const POST = withAuth(async (request, admin) => {
           );
         }
 
-        // 吊销所有被删除管理员的 token（await + 捕获，避免未处理 rejection）
-        for (const target of result.deleted) {
-          await blacklistAdminTokens(target.id, "admin_deleted").catch((err) =>
-            apiConsole.warn(`[AdminAdmins] 吊销管理员 ${target.id} token 失败:`, err)
-          );
-        }
+        // 删除时 tokenVersion 已在 deleteAdminsSafely 事务内递增，
+        // 旧 token 立即失效；不再写用户级黑名单（避免新登录被误拦）。
 
         await createAuditLog({
           action: "delete_admin",
@@ -460,6 +455,14 @@ export const PUT = withAuth(async (request, admin) => {
     if (data.password) updateData.password = await hashPassword(data.password);
     if (permissionOverrides !== undefined) updateData.permissions = permissionOverrides;
 
+    const roleChanged = data.role !== undefined && data.role !== targetAdmin.role;
+    // 凭证/授权变化必须递增 tokenVersion：旧 token 立即永久失效，新登录不受影响
+    const invalidatesSessions =
+      roleChanged || Boolean(data.password) || Boolean(data.email) || permissionOverrides !== undefined;
+    if (invalidatesSessions) {
+      updateData.tokenVersion = { increment: 1 };
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { success: false, error: { code: "NO_CHANGES", message: "没有需要更新的字段" } },
@@ -475,7 +478,7 @@ export const PUT = withAuth(async (request, admin) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('nihplod_admin_owner_guard'))`;
         const [current, ownerCount] = await Promise.all([
           tx.admin.findUnique({ where: { id: data.id, deletedAt: null }, select: { role: true } }),
-          tx.admin.count({ where: { role: "owner", deletedAt: null } }),
+          tx.admin.count({ where: { role: "owner", status: "ACTIVE", deletedAt: null } }),
         ]);
         if (!current) {
           throw new AdminUpdateError("NOT_FOUND", "管理员不存在", 404);
@@ -499,14 +502,8 @@ export const PUT = withAuth(async (request, admin) => {
       });
     });
 
-    // 角色或密码变更：撤销该管理员全部会话，避免旧凭证继续有效
-    const roleChanged = data.role !== undefined && data.role !== targetAdmin.role;
-    if (roleChanged || data.password) {
-      await blacklistAdminTokens(
-        updatedAdmin.id,
-        roleChanged ? "admin_role_changed" : "admin_password_changed"
-      );
-    }
+    // 角色/密码/邮箱/权限变化已在事务内递增 tokenVersion，旧会话立即失效。
+    // 不再写用户级黑名单，避免目标管理员 24h 内无法重新登录。
 
     // 记录审计日志（含角色前后值，密码只记录是否变更）
     await createAuditLog({
@@ -520,7 +517,7 @@ export const PUT = withAuth(async (request, admin) => {
         permissionsChanged: permissionOverrides !== undefined,
         permissionOverrides: permissionOverrides ?? null,
         passwordChanged: Boolean(data.password),
-        tokensRevoked: roleChanged || Boolean(data.password),
+        tokensRevoked: invalidatesSessions,
       },
       adminId: admin.id,
       request,

@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     if (params.search) {
       where.OR = [
         { name: { contains: params.search, mode: "insensitive" } },
-        { phone: { contains: params.search, mode: "insensitive" } },
+        // 手机号仅精确匹配：contains 可被无敏感权限角色用于逐位枚举完整号码
+        { phone: { equals: params.search } },
         { content: { contains: params.search, mode: "insensitive" } },
       ];
     }

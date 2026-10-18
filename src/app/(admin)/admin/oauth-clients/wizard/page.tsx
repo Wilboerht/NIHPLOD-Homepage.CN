@@ -261,7 +261,7 @@ const userRes = await fetch("${baseUrl}/api/oauth/userinfo", {
 const user = await userRes.json();`;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader title="SSO 接入向导" />
 
       {/* Steps indicator */}

@@ -18,7 +18,11 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { maskPhone } from "@/lib/mask-phone";
-import { executeAccountDeletion, DELETION_STATUS } from "@/lib/account-deletion";
+import {
+  executeAccountDeletion,
+  DELETION_STATUS,
+  MAX_DELETION_ATTEMPTS,
+} from "@/lib/account-deletion";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -136,6 +140,8 @@ export async function GET(request: NextRequest) {
 
 const retrySchema = z.object({
   id: z.string().min(1),
+  /** 自动重试达到上限后，管理员显式重置 attempts 并立即执行（写审计） */
+  force: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -167,7 +173,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success || !validateCUID(parsed.data.id)) {
       return invalidIdResponse();
     }
-    const { id } = parsed.data;
+    const { id, force } = parsed.data;
 
     const deletionRequest = await prisma.accountDeletionRequest.findUnique({
       where: { id },
@@ -193,6 +199,27 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // 自动重试达到上限：默认拒绝，管理员可显式 force 重置 attempts（写审计）
+    if (deletionRequest.attempts >= MAX_DELETION_ATTEMPTS && !force) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ATTEMPTS_EXHAUSTED",
+            message: `该申请已自动重试 ${deletionRequest.attempts} 次仍失败，请勾选“强制重试”或联系技术排查`,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    if (force && deletionRequest.attempts >= MAX_DELETION_ATTEMPTS) {
+      await prisma.accountDeletionRequest.updateMany({
+        where: { id, status: DELETION_STATUS.FAILED },
+        data: { attempts: 0, lastError: null, lockedAt: null, leaseToken: null },
+      });
     }
 
     const result = await executeAccountDeletion(id);

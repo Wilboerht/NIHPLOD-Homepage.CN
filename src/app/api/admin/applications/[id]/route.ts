@@ -71,6 +71,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // 简历详情含姓名/手机号/简历文件，查看即写审计（PII 访问留痕）
+    await createAuditLog({
+      action: "application_detail_view",
+      targetType: "application",
+      targetId: id,
+      detail: { jobId: application.jobId, hasResume: !!application.resumePath },
+      adminId: admin.id,
+      request,
+    });
+
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
     apiConsole.error("获取申请详情失败:", error);
