@@ -83,6 +83,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   admin_sso_authorize: "授权测肤子站登录",
   admin_sso_token: "签发测肤子站断言",
   admin_sso_denied: "拒绝测肤子站登录",
+  break_glass_view: "查看测肤子站应急账号",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {

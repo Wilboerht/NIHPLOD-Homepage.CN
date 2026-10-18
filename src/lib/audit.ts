@@ -101,7 +101,8 @@ export type AuditAction =
   | "account_deletion_retry"
   | "admin_sso_authorize"
   | "admin_sso_token"
-  | "admin_sso_denied";
+  | "admin_sso_denied"
+  | "break_glass_view";
 
 export type AuditTargetType =
   | "order"
@@ -214,6 +215,7 @@ export const AUDIT_ACTIONS = [
   "admin_sso_authorize",
   "admin_sso_token",
   "admin_sso_denied",
+  "break_glass_view",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
