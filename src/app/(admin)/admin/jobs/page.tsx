@@ -17,6 +17,7 @@ import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client
 import { formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -205,8 +206,8 @@ export default function AdminJobsPage() {
 
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="flex items-center gap-4">
-          <div className="relative w-60">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-4">
+          <div className="relative w-full sm:w-60">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
             <Input
               placeholder="搜索职位..."
@@ -226,12 +227,12 @@ export default function AdminJobsPage() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="w-32"
+            className="w-full sm:w-32"
           />
         </div>
 
         {selection.selectedCount > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-brand-charcoal/50">
               已选 {selection.selectedCount} 项
             </span>
@@ -292,7 +293,7 @@ export default function AdminJobsPage() {
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-brand-charcoal/[0.03]"
+                className="flex flex-wrap items-start gap-3 px-4 py-4 hover:bg-brand-charcoal/[0.03] sm:flex-nowrap sm:items-center sm:gap-4 sm:px-6"
               >
                 {/* 选择框（无任何操作权限时不展示） */}
                 {(canWriteJobs || canDeleteJobs || canBatchDelete) && (
@@ -307,10 +308,11 @@ export default function AdminJobsPage() {
 
                 {/* 职位信息 */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Link
                       href={`/admin/jobs/${job.id}/edit`}
-                      className="font-medium text-brand-charcoal hover:text-brand-primary"
+                      className="min-w-0 truncate font-medium text-brand-charcoal hover:text-brand-primary"
+                      title={job.title}
                     >
                       {job.title}
                     </Link>
@@ -318,7 +320,7 @@ export default function AdminJobsPage() {
                       {job.published ? "已发布" : "草稿"}
                     </Badge>
                   </div>
-                  <div className="mt-1 flex items-center gap-4 text-sm text-brand-charcoal/50">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-brand-charcoal/50">
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" />
                       {job.location}
@@ -334,42 +336,37 @@ export default function AdminJobsPage() {
                 </div>
 
                 {/* 操作按钮 */}
-                <div className="relative flex items-center gap-1">
+                <div className="relative ml-auto flex shrink-0 items-center gap-1">
                   {canWriteJobs && (
                     <Tooltip content="编辑" side="top">
-                      <Link
-                        href={`/admin/jobs/${job.id}/edit`}
-                        aria-label={`编辑 ${job.title}`}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                      >
+                      <IconButton label={`编辑 ${job.title}`} href={`/admin/jobs/${job.id}/edit`}>
                         <Edit className="h-4 w-4" />
-                      </Link>
+                      </IconButton>
                     </Tooltip>
                   )}
                   {canWriteJobs && (
                     <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
-                      <button
+                      <IconButton
+                        label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
                         onClick={() => togglePublish(job)}
-                        aria-label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                       >
                         {job.published ? (
                           <EyeOff className="h-4 w-4" />
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
-                      </button>
+                      </IconButton>
                     </Tooltip>
                   )}
                   {canDeleteJobs && (
                     <Tooltip content="删除" side="top">
-                      <button
+                      <IconButton
+                        label={`删除 ${job.title}`}
+                        variant="danger"
                         onClick={() => setDeleteTarget(job)}
-                        aria-label={`删除 ${job.title}`}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
                       >
                         <Trash2 className="h-4 w-4" />
-                      </button>
+                      </IconButton>
                     </Tooltip>
                   )}
                 </div>

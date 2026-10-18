@@ -33,6 +33,20 @@ import {
 } from "@/lib/admin-permissions";
 import { cn } from "@/lib/utils";
 
+function getAdvisorAccess(admin: AdminItem): {
+  label: string;
+  variant: "warning" | "success" | "secondary";
+} {
+  const permissions = resolveAdminPermissions(admin.role, admin.permissions);
+  if (admin.role === "owner" || permissions.includes("advisor:admin")) {
+    return { label: "超级管理员", variant: "warning" };
+  }
+  if (permissions.includes("advisor:access")) {
+    return { label: "管理员", variant: "success" };
+  }
+  return { label: "无", variant: "secondary" };
+}
+
 interface AdminItem {
   id: string;
   email: string;
@@ -297,7 +311,7 @@ export default function AdminAdminsPage() {
         />
 
         {/* 搜索栏 */}
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
           <div className="relative max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
             <Input
@@ -334,8 +348,8 @@ export default function AdminAdminsPage() {
         </div>
 
         {/* 列表 */}
-        <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+          <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
                 {canManage && (
@@ -362,6 +376,9 @@ export default function AdminAdminsPage() {
                   角色
                 </th>
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                  测肤子站
+                </th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
                   创建时间
                 </th>
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
@@ -372,11 +389,11 @@ export default function AdminAdminsPage() {
             <tbody className="divide-y divide-brand-charcoal/[0.06]">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRowSkeleton key={i} columns={canManage ? 6 : 5} />
+                  <TableRowSkeleton key={i} columns={canManage ? 7 : 6} />
                 ))
               ) : admins.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="px-5 py-8">
+                  <td colSpan={canManage ? 7 : 6} className="px-5 py-8">
                     <Empty
                       title="暂无管理员"
                       className="py-6"
@@ -421,6 +438,12 @@ export default function AdminAdminsPage() {
                           </Badge>
                         )}
                       </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {(() => {
+                        const advisor = getAdvisorAccess(admin);
+                        return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
+                      })()}
                     </td>
                     <td className="px-5 py-3.5 text-brand-charcoal/50">
                       {new Date(admin.createdAt).toLocaleDateString("zh-CN")}

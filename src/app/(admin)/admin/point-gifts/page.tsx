@@ -321,12 +321,12 @@ function AdminPointGiftsContent() {
       {/* 可兑换产品（无 gifts:read 权限时不展示，避免必然 403） */}
       {canGiftRead && (
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
           <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
             <Gift className="h-5 w-5 text-gray-500" />
             可兑换产品（产品库）
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -339,7 +339,7 @@ function AdminPointGiftsContent() {
                     setSearch(searchInput.trim());
                   }
                 }}
-                className="w-48 pl-9"
+                className="w-full pl-9 sm:w-48"
               />
             </div>
             <select
@@ -348,7 +348,7 @@ function AdminPointGiftsContent() {
                 setProductPage(1);
                 setRedeemableFilter(e.target.value as "all" | "true" | "false");
               }}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600"
+              className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 sm:w-auto"
             >
               <option value="all">全部产品</option>
               <option value="true">仅可兑换</option>
@@ -525,7 +525,7 @@ function AdminPointGiftsContent() {
             兑换记录
           </h2>
         </div>
-        <div className="flex gap-2 border-b px-4 py-3">
+        <div className="flex flex-wrap gap-2 border-b px-4 py-3">
           {(
             [
               { key: "PENDING", label: "待履约" },

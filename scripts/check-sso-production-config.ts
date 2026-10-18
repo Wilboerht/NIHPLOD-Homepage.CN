@@ -714,6 +714,88 @@ if (auditRetention) {
 }
 
 // ============================================
+// 测肤子站管理员 SSO（主站 -> Skin-Advisor）
+// ============================================
+
+const advisorSsoVars = [
+  "ADVISOR_ADMIN_SSO_CLIENT_ID",
+  "ADVISOR_ADMIN_SSO_CLIENT_SECRET",
+  "ADVISOR_ADMIN_SSO_REDIRECT_URI",
+  "ADVISOR_ADMIN_SSO_SECRET",
+] as const;
+
+for (const name of advisorSsoVars) {
+  const value = process.env[name];
+  if (!value) {
+    check({
+      status: "FAIL",
+      name,
+      message: "未配置，测肤子站管理员将无法登录",
+      fix: "按 docs 配置主站 -> Skin-Advisor 管理员 SSO 变量后重启",
+    });
+  } else if (
+    (name === "ADVISOR_ADMIN_SSO_CLIENT_SECRET" || name === "ADVISOR_ADMIN_SSO_SECRET") &&
+    value.length < MIN_SECRET_LENGTH
+  ) {
+    check({
+      status: "FAIL",
+      name,
+      message: `长度不足（当前 ${value.length} 字符，要求 ≥ ${MIN_SECRET_LENGTH}）`,
+      fix: "使用 openssl rand -hex 32 生成不少于 32 字符的随机串",
+    });
+  } else {
+    check({ status: "PASS", name, message: "已配置" });
+  }
+}
+
+const advisorRedirect = process.env.ADVISOR_ADMIN_SSO_REDIRECT_URI;
+if (advisorRedirect) {
+  try {
+    const parsed = new URL(advisorRedirect);
+    if (parsed.protocol !== "https:") {
+      check({
+        status: "FAIL",
+        name: "ADVISOR_ADMIN_SSO_REDIRECT_URI",
+        message: "必须是 https 地址",
+        fix: "改为 https://smart.nihplod.cn/api/admin/auth/sso/callback",
+      });
+    }
+  } catch {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_ADMIN_SSO_REDIRECT_URI",
+      message: "不是合法 URL",
+      fix: "改为 https://smart.nihplod.cn/api/admin/auth/sso/callback",
+    });
+  }
+}
+
+const advisorGrace = process.env.ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL;
+if (advisorGrace) {
+  const parsed = new Date(advisorGrace);
+  if (Number.isNaN(parsed.getTime())) {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
+      message: `无法解析日期：${advisorGrace}`,
+      fix: "使用 ISO 8601，如 2027-11-01T00:00:00+08:00",
+    });
+  } else {
+    check({
+      status: "PASS",
+      name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
+      message: `宽限至 ${parsed.toISOString()}（到期后强制 TOTP）`,
+    });
+  }
+} else {
+  check({
+    status: "PASS",
+    name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
+    message: "未配置（立即强制 TOTP）",
+  });
+}
+
+// ============================================
 // 输出清单与退出码
 // ============================================
 

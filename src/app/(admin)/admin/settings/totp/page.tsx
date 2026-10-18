@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   Shield,
@@ -27,6 +28,10 @@ interface TOTPSetupData {
 
 export default function TOTPSettingsPage() {
   const toast = useToast();
+  const searchParams = useSearchParams();
+  const rawReturnTo = searchParams.get("return_to") || "";
+  // 只允许回到主站管理员 SSO 授权端点，避免开放重定向
+  const returnTo = rawReturnTo.startsWith("/admin/sso/authorize") ? rawReturnTo : "";
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [setupData, setSetupData] = useState<TOTPSetupData | null>(null);
@@ -149,6 +154,26 @@ export default function TOTPSettingsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="二次验证设置" />
 
+      {returnTo && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+          {totpEnabled ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>二次验证已开启，可以继续访问测肤子站后台。</span>
+              <button
+                onClick={() => {
+                  window.location.href = returnTo;
+                }}
+                className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+              >
+                返回测肤子站
+              </button>
+            </div>
+          ) : (
+            <span>测肤子站要求开启二次验证，开启后即可返回并继续登录。</span>
+          )}
+        </div>
+      )}
+
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
         <div className="flex items-start gap-4">
           <div className={cn("rounded-full p-3", totpEnabled ? "bg-emerald-100" : "bg-amber-100")}>
@@ -245,7 +270,7 @@ export default function TOTPSettingsPage() {
               <p className="text-sm font-medium text-brand-charcoal/80">
                 2. 备用码（仅显示一次，请保存）
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {setupData.backupCodes.map((code, index) => (
                   <div
                     key={index}

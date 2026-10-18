@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CategoryForm } from "@/components/admin/CategoryForm";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { IconButton } from "@/components/admin/IconButton";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
@@ -237,7 +238,91 @@ function AdminCategoriesContent() {
         {categories.length === 0 ? (
           <Empty className="h-48" title="暂无分类" description="点击上方按钮创建第一个分类" />
         ) : (
-          <div className="divide-brand-charcoal/8 min-w-[880px] divide-y">
+          <>
+            <div className="divide-brand-charcoal/8 divide-y md:hidden">
+              {categories.map((category, index) => (
+                <div key={category.id} className="px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/products?categoryId=${category.id}`}
+                        className="group inline-flex max-w-full items-center gap-1.5 font-medium text-brand-charcoal transition-colors hover:text-brand-primary"
+                        title="查看该分类下的产品"
+                      >
+                        <span className="truncate">{category.name}</span>
+                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/30 transition-colors group-hover:text-brand-primary" />
+                      </Link>
+                      <p className="truncate text-sm text-brand-charcoal/50">{category.nameEn}</p>
+                    </div>
+                    <Badge variant={category.productCount > 0 ? "secondary" : "default"}>
+                      {category.productCount} 个产品
+                    </Badge>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-xs text-brand-charcoal/60">
+                      {category.slug}
+                    </code>
+                    <button
+                      onClick={() => handleToggleVisible(category)}
+                      disabled={!canWrite || togglingId === category.id}
+                      aria-label={`${category.visible ? "隐藏" : "显示"}分类 ${category.name}`}
+                      className={cn(
+                        "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+                        category.visible
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-brand-charcoal/8 text-brand-charcoal/50"
+                      )}
+                    >
+                      {category.visible ? (
+                        <>
+                          <Eye className="h-3.5 w-3.5" /> 显示
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-3.5 w-3.5" /> 隐藏
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-end gap-1">
+                    {canWrite && (
+                      <>
+                        <IconButton
+                          label={`上移 ${category.name}`}
+                          onClick={() => moveCategory(index, -1)}
+                          disabled={index === 0 || savingOrder}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton
+                          label={`下移 ${category.name}`}
+                          onClick={() => moveCategory(index, 1)}
+                          disabled={index === categories.length - 1 || savingOrder}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </IconButton>
+                        <IconButton label={`编辑 ${category.name}`} onClick={() => handleEdit(category)}>
+                          <Pencil className="h-4 w-4" />
+                        </IconButton>
+                      </>
+                    )}
+                    {canDelete && (
+                      <IconButton
+                        label={`删除 ${category.name}`}
+                        variant="danger"
+                        onClick={() => setDeleteConfirm({ open: true, category })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </IconButton>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden min-w-[880px] md:block">
             {/* 表头 */}
             <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <div className="col-span-1"></div>
@@ -382,6 +467,7 @@ function AdminCategoriesContent() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
 

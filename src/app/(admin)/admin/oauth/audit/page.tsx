@@ -314,8 +314,8 @@ function OAuthAuditPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-        <table className="w-full">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+        <table className="w-full min-w-[900px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">

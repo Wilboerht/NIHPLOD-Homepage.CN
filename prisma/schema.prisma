@@ -974,10 +974,35 @@ model Admin {
   auditLogs AuditLog[] // 审计日志关联
   spentAdjustmentReviews SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
   spentImportBatches SpentImportBatch[]
+  adminSsoCodes AdminSsoCode[]
 
   @@index([status])
   @@index([deletedAt])
   @@index([role])
+}
+
+/**
+ * 主站 -> 测肤子站（Skin-Advisor）管理员 SSO 一次性授权码。
+ * 与 C 端 OAuthAuthorizationCode 完全隔离：管理员身份、权限、TOTP 体系不同。
+ */
+model AdminSsoCode {
+  id                  String    @id @default(cuid())
+  code                String    @unique // SHA-256 hash
+  adminId             String
+  clientId            String
+  redirectUri         String
+  codeChallenge       String?
+  codeChallengeMethod String?
+  adminTokenVersion   Int
+  mainSessionExp      Int // 主站管理员 JWT 的 exp（Unix 秒）
+  expiresAt           DateTime
+  used                Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([adminId, createdAt(sort: Desc)])
 }
 
 // ============================================

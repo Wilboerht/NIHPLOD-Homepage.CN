@@ -37,6 +37,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { IconButton } from "@/components/admin/IconButton";
 
 interface Job {
   id: string;
@@ -535,7 +536,78 @@ function AdminApplicationsContent() {
         ) : applications.length === 0 ? (
           <Empty className="h-64" title="暂无简历申请" />
         ) : (
-          <div className="min-w-[880px]">
+          <>
+            <div className="divide-brand-charcoal/8 divide-y md:hidden">
+              {applications.map((application) => {
+                const statusInfo = statusConfig[application.status] || statusConfig.pending;
+                return (
+                  <div key={application.id} className="px-4 py-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
+                        {application.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-medium text-brand-charcoal">
+                            {application.name}
+                          </p>
+                          <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">
+                          {application.phone}
+                        </p>
+                        <p className="mt-1 truncate text-sm text-brand-charcoal/80">
+                          {application.job.title}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/50">
+                          {application.folder && (
+                            <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5">
+                              <Tag className="h-3 w-3" />
+                              {application.folder.name}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(application.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end gap-1">
+                      <Tooltip content="查看详情" side="top">
+                        <IconButton
+                          label={`查看 ${application.name} 的简历`}
+                          onClick={() => viewDetail(application)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip content="下载简历" side="top">
+                        <IconButton
+                          label={`下载 ${application.name} 的简历`}
+                          onClick={() => downloadResume(application)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </IconButton>
+                      </Tooltip>
+                      {canDelete && (
+                        <Tooltip content="删除" side="top">
+                          <IconButton
+                            label={`删除 ${application.name} 的申请`}
+                            variant="danger"
+                            onClick={() => setDeleteTarget(application)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden min-w-[880px] md:block">
             {/* 表头 */}
             <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
               <span className="col-span-3">申请人</span>
@@ -638,6 +710,7 @@ function AdminApplicationsContent() {
               })}
             </div>
           </div>
+          </>
         )}
       </div>
 

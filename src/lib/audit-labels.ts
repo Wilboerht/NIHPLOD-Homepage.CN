@@ -80,6 +80,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   sso_audit_export: "导出 SSO 审计日志",
   user_export: "导出用户列表",
   audit_log_export: "导出审计日志",
+  admin_sso_authorize: "授权测肤子站登录",
+  admin_sso_token: "签发测肤子站断言",
+  admin_sso_denied: "拒绝测肤子站登录",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {

@@ -17,6 +17,7 @@ import { apiGet, apiPost } from "@/lib/api-client";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { IconButton } from "@/components/admin/IconButton";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -291,8 +292,8 @@ function OAuthConsentsPage() {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-        <table className="w-full">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+        <table className="w-full min-w-[860px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
               {canWrite && (
@@ -402,8 +403,9 @@ function OAuthConsentsPage() {
                     {c.status === "active" ? (
                       canWrite ? (
                         <Tooltip content="撤销授权" side="top">
-                          <button
-                            aria-label="撤销授权"
+                          <IconButton
+                            label="撤销授权"
+                            variant="danger"
                             onClick={() => {
                               setRevokeTarget({
                                 userId: c.userId,
@@ -413,10 +415,9 @@ function OAuthConsentsPage() {
                               });
                               setShowRevoke(true);
                             }}
-                            className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-red-600"
                           >
                             <XCircle className="h-4 w-4" />
-                          </button>
+                          </IconButton>
                         </Tooltip>
                       ) : (
                         <span className="text-xs text-brand-charcoal/40">只读</span>

@@ -22,6 +22,7 @@ import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { formatRelativeTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { IconButton } from "@/components/admin/IconButton";
 
 interface Message {
   id: string;
@@ -275,8 +276,8 @@ function AdminMessagesContent() {
 
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="flex items-center gap-4">
-          <div className="relative w-60">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-4">
+          <div className="relative w-full sm:w-60">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
             <Input
               placeholder="搜索留言..."
@@ -296,7 +297,7 @@ function AdminMessagesContent() {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="w-32"
+            className="w-full sm:w-32"
           />
           <Select
             options={[
@@ -313,12 +314,12 @@ function AdminMessagesContent() {
               setTypeFilter(e.target.value);
               setPage(1);
             }}
-            className="w-32"
+            className="w-full sm:w-32"
           />
         </div>
 
         {selection.selectedCount > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-brand-charcoal/50">
               已选 {selection.selectedCount} 项
             </span>
@@ -387,7 +388,7 @@ function AdminMessagesContent() {
         ) : (
           <>
             {/* 表头 */}
-            <div className="border-brand-charcoal/8 flex items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
+            <div className="border-brand-charcoal/8 flex items-center gap-3 border-b px-4 py-3 text-sm font-medium text-brand-charcoal/50 sm:gap-4 sm:px-6">
               {(canWriteMessages || canDeleteMessages) && (
                 <input
                   type="checkbox"
@@ -403,7 +404,7 @@ function AdminMessagesContent() {
               <span className="flex-1">留言内容</span>
               <span className="hidden w-32 sm:block">联系方式</span>
               <span className="hidden w-32 md:block">时间</span>
-              <span className="w-24">操作</span>
+              <span className="w-20 sm:w-24">操作</span>
             </div>
 
             {/* 列表 */}
@@ -412,7 +413,7 @@ function AdminMessagesContent() {
                 <div
                   key={message.id}
                   className={cn(
-                    "flex items-center gap-4 px-6 py-4 transition-colors hover:bg-brand-charcoal/[0.03]",
+                    "flex items-center gap-3 px-4 py-4 transition-colors hover:bg-brand-charcoal/[0.03] sm:gap-4 sm:px-6",
                     !message.read && "bg-brand-primary/5"
                   )}
                 >
@@ -444,7 +445,7 @@ function AdminMessagesContent() {
                         {message.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
                               "font-medium",
@@ -453,7 +454,9 @@ function AdminMessagesContent() {
                           >
                             {message.name}
                           </span>
-                          <span className="text-sm text-brand-charcoal/50">{message.phone}</span>
+                          <span className="hidden text-sm text-brand-charcoal/50 sm:inline">
+                            {message.phone}
+                          </span>
                           {message.type && (
                             <Badge variant="secondary" size="sm">
                               {MESSAGE_TYPE_LABELS[message.type] || message.type}
@@ -489,29 +492,30 @@ function AdminMessagesContent() {
                   </div>
 
                   {/* 操作按钮 */}
-                  <div className="flex w-24 items-center gap-1">
+                  <div className="flex w-20 shrink-0 items-center gap-1 sm:w-24">
                     {canWriteMessages && (
                       <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
-                        <button
+                        <IconButton
+                          label={message.read ? "标记为未读" : "标记为已读"}
                           onClick={() => toggleRead(message)}
-                          className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                         >
                           {message.read ? (
                             <Mail className="h-4 w-4" />
                           ) : (
                             <MailOpen className="h-4 w-4" />
                           )}
-                        </button>
+                        </IconButton>
                       </Tooltip>
                     )}
                     {canDeleteMessages && (
                       <Tooltip content="删除" side="top">
-                        <button
+                        <IconButton
+                          label="删除留言"
+                          variant="danger"
                           onClick={() => setDeleteTarget(message)}
-                          className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </IconButton>
                       </Tooltip>
                     )}
                   </div>

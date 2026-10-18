@@ -275,7 +275,9 @@ const user = await userRes.json();`;
             >
               {step > s ? <Check className="h-4 w-4" /> : s}
             </div>
-            {s < 5 && <div className={`h-0.5 w-12 ${step > s ? "bg-blue-600" : "bg-gray-200"}`} />}
+            {s < 5 && (
+              <div className={`h-0.5 w-6 sm:w-12 ${step > s ? "bg-blue-600" : "bg-gray-200"}`} />
+            )}
           </div>
         ))}
       </div>

@@ -251,7 +251,7 @@ export function SpentImportModal({
           </div>
 
           <div className="mt-4 max-h-[45vh] overflow-auto rounded-lg border">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[620px] text-sm">
               <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
                 <tr>
                   <th className="px-3 py-2 font-medium">行</th>
@@ -360,7 +360,7 @@ export function SpentImportModal({
                 </Button>
               </div>
               <div className="max-h-64 overflow-auto rounded-lg border">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[620px] text-sm">
                   <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
                     <tr>
                       <th className="px-3 py-2 font-medium">Excel 行号</th>
@@ -497,7 +497,7 @@ export function ImportHistoryModal({
           ) : batches.length === 0 ? (
             <p className="py-12 text-center text-sm text-gray-400">暂无导入记录</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[620px] text-sm">
               <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
                 <tr>
                   <th className="px-3 py-2 font-medium">文件名</th>

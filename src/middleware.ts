@@ -44,8 +44,16 @@ const SENSITIVE_API_PREFIXES = ["/api/admin/"];
  */
 const SECRET_API_PREFIXES = ["/api/cron/", "/api/baidu/"];
 
+/** 管理员 SSO 服务端到服务端端点：用 client_secret 鉴权，不走 admin Cookie/CSRF */
+const ADMIN_SSO_API_PATHS = new Set([
+  "/api/admin/sso/token",
+  "/api/admin/sso/status",
+]);
+
 const PUBLIC_API_PREFIXES = [
   "/api/admin/login",
+  "/api/admin/sso/token",
+  "/api/admin/sso/status",
   "/api/contact",
   "/api/careers/apply",
   "/api/oss/sign",
@@ -223,6 +231,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api/admin/") &&
     pathname !== "/api/admin/login" &&
+    !ADMIN_SSO_API_PATHS.has(pathname) &&
     !CSRF_SAFE_METHODS.has(method)
   ) {
     if (!hasValidCsrf(request)) {
@@ -255,7 +264,9 @@ export async function middleware(request: NextRequest) {
   if (matchesPath(pathname, PROTECTED_PATHS)) {
     if (!token || !(await checkAuth())) {
       const loginUrl = new URL("/admin-login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
+      // 保留 query：管理员 SSO authorize 的 client_id/state/PKCE 都在 query 上，
+      // 只传 pathname 会导致登录后被重定向到缺少参数的 authorize 端点。
+      loginUrl.searchParams.set("redirect", pathname + request.nextUrl.search);
       return applyCspNonce(request, NextResponse.redirect(loginUrl));
     }
     return applyCspNonce(request, NextResponse.next());

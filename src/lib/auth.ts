@@ -101,6 +101,27 @@ export async function getCurrentAdmin(): Promise<AdminUser | null> {
 }
 
 /**
+ * 获取当前管理员及其主站 JWT 的过期时间（Unix 秒）。
+ * 供管理员 SSO 授权端点把子站会话寿命封顶在主站会话剩余寿命内。
+ */
+export async function getCurrentAdminSession(): Promise<{
+  admin: AdminUser;
+  exp: number;
+} | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  const payload = await verifyToken(token);
+  if (!payload || typeof payload.exp !== "number") return null;
+
+  const admin = await getCurrentAdmin();
+  if (!admin) return null;
+
+  return { admin, exp: payload.exp };
+}
+
+/**
  * 从请求中获取管理员 Token
  * 支持 Cookie 和 Authorization Header
  */

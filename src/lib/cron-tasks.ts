@@ -12,6 +12,7 @@ import {
   cleanupRevokedUserConsents,
 } from "./auth-security";
 import { cleanupExpiredCodes } from "./oauth-code";
+import { cleanupExpiredAdminSsoCodes } from "./admin-sso";
 import { cleanupInternalApiNonces } from "./internal-api";
 import { cleanupOldSsoAuditEvents } from "./sso-audit";
 import { cleanupOldAuditLogs } from "./audit";
@@ -142,7 +143,10 @@ const tasks: ScheduledTask[] = [
       try {
         apiConsole.info("[Cron] 开始清理过期授权码...");
         const count = await cleanupExpiredCodes();
-        apiConsole.info(`[Cron] 过期授权码清理完成: ${count} 条`);
+        const adminSsoCount = await cleanupExpiredAdminSsoCodes();
+        apiConsole.info(
+          `[Cron] 过期授权码清理完成: ${count} 条（管理员 SSO ${adminSsoCount} 条）`
+        );
         markCleanupOk("过期授权码");
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);

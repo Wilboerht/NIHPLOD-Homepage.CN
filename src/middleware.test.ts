@@ -21,6 +21,22 @@ describe("middleware", () => {
     expect(res.headers.get("x-nonce")).toBeTruthy();
   });
 
+  it("未登录访问带 query 的 /admin/** 时保留 query（管理员 SSO authorize 依赖）", async () => {
+    const res = await middleware(
+      new NextRequest(
+        "https://nihplod.cn/admin/sso/authorize?client_id=skin-advisor-admin&state=abc&code_challenge=xyz"
+      )
+    );
+
+    expect(res.status).toBe(307);
+    const location = res.headers.get("location");
+    expect(location).toBeTruthy();
+    const redirect = new URL(location!).searchParams.get("redirect");
+    expect(redirect).toBe(
+      "/admin/sso/authorize?client_id=skin-advisor-admin&state=abc&code_challenge=xyz"
+    );
+  });
+
   it("普通页面 GET 返回 next 响应并注入 CSP nonce", async () => {
     const res = await middleware(new NextRequest("https://nihplod.cn/"));
 

@@ -22,6 +22,7 @@ import {
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatsCard } from "@/components/admin/StatsCard";
+import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -279,8 +280,8 @@ function OAuthSessionsPage() {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-        <table className="w-full">
+      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+        <table className="w-full min-w-[860px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
@@ -345,18 +346,15 @@ function OAuthSessionsPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Tooltip content="查看详情" side="top">
-                        <button
-                          aria-label="查看详情"
-                          onClick={() => setDetailSession(s)}
-                          className="inline-flex rounded p-1.5 text-gray-400 hover:text-blue-600"
-                        >
+                        <IconButton label="查看详情" onClick={() => setDetailSession(s)}>
                           <Eye className="h-4 w-4" />
-                        </button>
+                        </IconButton>
                       </Tooltip>
                       {canWrite && (
                         <Tooltip content="终止会话" side="top">
-                          <button
-                            aria-label="终止会话"
+                          <IconButton
+                            label="终止会话"
+                            variant="danger"
                             onClick={() => {
                               setTerminateTarget({
                                 id: s.id,
@@ -367,10 +365,9 @@ function OAuthSessionsPage() {
                               });
                               setShowTerminate(true);
                             }}
-                            className="inline-flex rounded p-1.5 text-gray-400 hover:text-red-600"
                           >
                             <LogOut className="h-4 w-4" />
-                          </button>
+                          </IconButton>
                         </Tooltip>
                       )}
                     </div>

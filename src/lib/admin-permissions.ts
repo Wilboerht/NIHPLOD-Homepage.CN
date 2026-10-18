@@ -69,6 +69,11 @@ export const ADMIN_PERMISSIONS = [
   "sso:write",
   "sso:clients:read",
   "sso:clients:write",
+
+  // 测肤子站（Skin-Advisor）访问授权：
+  // 子站管理员账号统一由主站管理，这两个权限点决定谁能进入子站后台。
+  "advisor:access",
+  "advisor:admin",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -146,6 +151,10 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
     group: "SSO",
     permissions: ["sso:read", "sso:write", "sso:clients:read", "sso:clients:write"],
   },
+  {
+    group: "测肤子站",
+    permissions: ["advisor:access", "advisor:admin"],
+  },
 ];
 
 export const PERMISSION_LABELS: Record<AdminPermission, string> = {
@@ -194,7 +203,27 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "sso:write": "SSO 授权撤销/会话终止",
   "sso:clients:read": "SSO 客户端查看",
   "sso:clients:write": "SSO 客户端管理/密钥轮换/测试",
+  "advisor:access": "测肤子站访问（子站管理员）",
+  "advisor:admin": "测肤子站超级管理员",
 };
+
+/**
+ * 解析管理员在测肤子站的有效角色。
+ * - owner 恒为子站超级管理员
+ * - advisor:admin -> super_admin
+ * - advisor:access -> admin
+ * - 其他 -> null（禁止访问子站）
+ */
+export function resolveAdvisorRole(
+  role: string,
+  overrides?: string[] | null
+): "super_admin" | "admin" | null {
+  if (role === "owner") return "super_admin";
+  const permissions = resolveAdminPermissions(role, overrides);
+  if (permissions.includes("advisor:admin")) return "super_admin";
+  if (permissions.includes("advisor:access")) return "admin";
+  return null;
+}
 
 /**
  * 角色模板权限集合（owner 由全量权限隐式获得，无需在此列出）

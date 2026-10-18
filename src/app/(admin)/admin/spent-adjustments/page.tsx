@@ -242,7 +242,7 @@ function AdminSpentAdjustmentsContent() {
       />
 
       {/* 状态筛选 */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {TABS.map((t) => {
           // “全部”为各状态计数之和；不能用当前筛选的 total（会随 tab 变化）
           const count =
@@ -392,7 +392,7 @@ function AdminSpentAdjustmentsContent() {
       {/* 详情 / 审核弹窗 */}
       <Modal open={!!detail} onClose={() => setDetail(null)}>
         {detail && (
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-4 sm:p-6">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-gray-500" />
               <h2 className="text-lg font-medium">
@@ -402,7 +402,7 @@ function AdminSpentAdjustmentsContent() {
 
             {/* 申请信息 */}
             <div className="mt-4 space-y-3 rounded-lg bg-gray-50 p-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-gray-400">用户</p>
                   <p className="mt-0.5 text-gray-700">
@@ -457,7 +457,7 @@ function AdminSpentAdjustmentsContent() {
                 </div>
               )}
               {detail.status !== "PENDING" && (
-                <div className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-3">
+                <div className="grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-gray-400">核实金额</p>
                     <p className="mt-0.5 text-gray-700">
