@@ -106,10 +106,10 @@ export async function cascadeUserStatusChange(params: {
 }
 
 /**
- * Ô­×Ó±ä¸üÓÃ»§×´Ì¬£º
- * - ×´Ì¬¸üĞÂ¡¢sessionsInvalidatedAt¡¢refresh token/OAuth session ³·ÏúÔÚÍ¬Ò»ÊÂÎñ£»
- * - ÊÂÎñÌá½»ºóÔÙÒì²½·¢ËÍ backchannel/status webhook£»
- * - ²¢·¢ÖØÊÔÊ±ÓÃ expectedStatus ×ö CAS£¬²»»á°ÑÒÑÍê³ÉµÄ×´Ì¬ÔÙ´Î¼¶Áª¡£
+ * åŸå­å˜æ›´ç”¨æˆ·çŠ¶æ€ï¼š
+ * - çŠ¶æ€æ›´æ–°ã€sessionsInvalidatedAtã€refresh token/OAuth session æ’¤é”€åœ¨åŒä¸€äº‹åŠ¡ï¼›
+ * - äº‹åŠ¡æäº¤åå†å¼‚æ­¥å‘é€ backchannel/status webhookï¼›
+ * - å¹¶å‘é‡è¯•æ—¶ç”¨ expectedStatus åš CASï¼Œä¸ä¼šæŠŠå·²å®Œæˆçš„çŠ¶æ€å†æ¬¡çº§è”ã€‚
  */
 export async function changeUserStatus(params: {
   userId: string;
@@ -173,8 +173,8 @@ export async function changeUserStatus(params: {
 }
 
 /**
- * ×¢Ïú/É¾³ıÇ°ÖÃ¾²Ä¬£ºÖ»³·Ïú»á»°²¢ÉèÖÃ sessionsInvalidatedAt£¬²»¸Ä×´Ì¬¡¢²»·¢×´Ì¬ webhook¡£
- * ÓÃÓÚ¡°purge Ê§°ÜÊ±ÓÃ»§±£³Ö ACTIVE¡¢¿ÉÖØĞÂµÇÂ¼¡±µÄ×¢ÏúÓïÒå¡£
+ * æ³¨é”€/åˆ é™¤å‰ç½®é™é»˜ï¼šåªæ’¤é”€ä¼šè¯å¹¶è®¾ç½® sessionsInvalidatedAtï¼Œä¸æ”¹çŠ¶æ€ã€ä¸å‘çŠ¶æ€ webhookã€‚
+ * ç”¨äºâ€œpurge å¤±è´¥æ—¶ç”¨æˆ·ä¿æŒ ACTIVEã€å¯é‡æ–°ç™»å½•â€çš„æ³¨é”€è¯­ä¹‰ã€‚
  */
 export async function quiesceUserSessions(userId: string): Promise<void> {
   const now = new Date();
