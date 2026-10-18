@@ -166,7 +166,7 @@ export default function AdminProductsPage() {
 
   return (
     <RequirePermission permission="products:read">
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* 页面头部 */}
       <PageHeader
         title="产品管理"
@@ -181,7 +181,7 @@ export default function AdminProductsPage() {
       />
 
       {/* 筛选栏 */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-2">
         {/* 搜索框 */}
         <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />

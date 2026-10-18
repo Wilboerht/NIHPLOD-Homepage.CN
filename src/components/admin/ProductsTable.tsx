@@ -2,9 +2,8 @@
 
 import { useState, useMemo, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
-import { DataTable, Column } from "@/components/admin";
+import { DataTable, Column, IconButton } from "@/components/admin";
 import { Badge, DotBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -171,7 +170,8 @@ export function ProductsTable({
           className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
         />
       ),
-      width: "50px",
+      width: "48px",
+      align: "center",
       render: (_, record) => (
         <input
           type="checkbox"
@@ -188,6 +188,7 @@ export function ProductsTable({
         key: "image",
         title: "图片",
         width: "80px",
+        align: "center",
         render: (_, record) => (
           <div className="bg-brand-charcoal/8 h-12 w-12 overflow-hidden rounded-lg">
             {record.image ? (
@@ -209,21 +210,34 @@ export function ProductsTable({
       {
         key: "name",
         title: "产品名称",
+        width: "280px",
         render: (_, record) => (
-          <div>
-            <p className="font-medium text-brand-charcoal">{record.name}</p>
-            <p className="text-xs text-brand-charcoal/50">{record.nameEn}</p>
+          <div className="min-w-0">
+            <p className="truncate font-medium text-brand-charcoal" title={record.name}>
+              {record.name}
+            </p>
+            <p className="truncate text-xs text-brand-charcoal/50" title={record.nameEn}>
+              {record.nameEn}
+            </p>
           </div>
         ),
       },
       {
         key: "category.name",
         title: "分类",
-        render: (_, record) => <Badge variant="secondary">{record.category.name}</Badge>,
+        width: "128px",
+        render: (_, record) => (
+          <span className="block max-w-full" title={record.category.name}>
+            <Badge variant="secondary" className="max-w-full">
+              <span className="min-w-0 truncate">{record.category.name}</span>
+            </Badge>
+          </span>
+        ),
       },
       {
         key: "price",
         title: "价格",
+        width: "100px",
         align: "right",
         sortable: true,
         render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
@@ -232,7 +246,7 @@ export function ProductsTable({
         key: "order",
         title: "排序",
         align: "right",
-        width: "70px",
+        width: "64px",
         render: (_, record) => (
           <span className="text-sm text-brand-charcoal/40">{record.order}</span>
         ),
@@ -240,6 +254,8 @@ export function ProductsTable({
       {
         key: "published",
         title: "状态",
+        width: "88px",
+        align: "center",
         render: (_, record) => (
           <DotBadge color={record.published ? "green" : "gray"}>
             {record.published ? "已发布" : "草稿"}
@@ -249,43 +265,38 @@ export function ProductsTable({
       {
         key: "actions",
         title: "操作",
-        width: "120px",
+        width: "152px",
         align: "right",
         render: (_, record) => (
           <div className="flex items-center justify-end gap-1">
             {canWrite && (
               <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
-                <button
+                <IconButton
+                  label={record.published ? `取消发布 ${record.name}` : `发布 ${record.name}`}
                   onClick={() => handleTogglePublish(record.id, record.published)}
                   disabled={actionLoading !== null}
-                  aria-label={record.published ? `取消发布 ${record.name}` : `发布 ${record.name}`}
-                  className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal disabled:opacity-40"
                 >
                   {record.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                </IconButton>
               </Tooltip>
             )}
             {canWrite && (
               <Tooltip content="编辑" side="top">
-                <Link
-                  href={`/admin/products/${record.id}/edit`}
-                  aria-label={`编辑 ${record.name}`}
-                  className="rounded p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                >
+                <IconButton label={`编辑 ${record.name}`} href={`/admin/products/${record.id}/edit`}>
                   <Pencil className="h-4 w-4" />
-                </Link>
+                </IconButton>
               </Tooltip>
             )}
             {canDelete && (
               <Tooltip content="删除" side="top">
-                <button
+                <IconButton
+                  label={`删除 ${record.name}`}
+                  variant="danger"
                   onClick={() => setDeleteConfirm({ open: true, id: record.id, name: record.name })}
                   disabled={actionLoading !== null}
-                  aria-label={`删除 ${record.name}`}
-                  className="rounded p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </IconButton>
               </Tooltip>
             )}
           </div>
@@ -304,7 +315,7 @@ export function ProductsTable({
   ]);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {/* 批量操作栏 */}
       {selection.selectedCount > 0 && (
         <div className="flex items-center gap-4 rounded-lg bg-brand-primary/5 px-4 py-3">
@@ -360,7 +371,8 @@ export function ProductsTable({
         data={products}
         loading={loading}
         rowKey="id"
-        minWidth="900px"
+        tableLayout="fixed"
+        minWidth="940px"
         emptyText="暂无产品数据"
         onSort={onSort}
         sortBy={sortBy}

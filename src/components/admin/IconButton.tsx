@@ -25,6 +25,7 @@ interface IconButtonProps {
   size?: IconButtonSize;
   title?: string;
   className?: string;
+  disabled?: boolean;
   children: ReactNode;
 }
 
@@ -37,23 +38,46 @@ export function IconButton({
   size = "md",
   title,
   className,
+  disabled = false,
   children,
 }: IconButtonProps) {
   const cls = cn(
     "inline-flex items-center justify-center rounded-lg transition-colors",
     variantCls[variant],
     sizeCls[size],
+    disabled && "pointer-events-none opacity-40",
     className
   );
   if (href) {
     return (
-      <Link href={href} aria-label={label} title={title} onClick={onClick} className={cls}>
+      <Link
+        href={href}
+        aria-label={label}
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
+        title={title}
+        onClick={(event) => {
+          if (disabled) {
+            event.preventDefault();
+            return;
+          }
+          onClick?.();
+        }}
+        className={cls}
+      >
         {children}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={title} className={cls}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={title}
+      className={cls}
+    >
       {children}
     </button>
   );
