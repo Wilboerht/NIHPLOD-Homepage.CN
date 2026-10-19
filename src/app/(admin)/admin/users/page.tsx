@@ -44,6 +44,7 @@ import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "DELETED";
@@ -297,6 +298,7 @@ function AdminUsersContent() {
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [tempPasswordSaved, setTempPasswordSaved] = useState(false);
 
   // 权限（导航与按钮按权限点收敛，服务端为最终权威）
   const { can: canAdmin } = useAdminPermissions();
@@ -314,6 +316,13 @@ function AdminUsersContent() {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+  const initialBirthday = detailUser?.birthday
+    ? new Date(detailUser.birthday).toISOString().slice(0, 10)
+    : "";
+  const isAdjustDirty = adjustOpen && (adjustAmount !== "" || adjustNote !== "");
+  const isBirthdayDirty = birthdayEditOpen && birthdayInput !== initialBirthday;
+  const { confirmClose: confirmCloseAdjust } = useUnsavedChanges(isAdjustDirty);
+  const { confirmClose: confirmCloseBirthday } = useUnsavedChanges(isBirthdayDirty);
   const [revealedPhone, setRevealedPhone] = useState("");
   const [revealingPhone, setRevealingPhone] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -413,9 +422,9 @@ function AdminUsersContent() {
         await submit();
       } catch (err) {
         if (!isTotpRequired(err)) throw err;
-        const code = await requireTotp(err instanceof ApiError ? err.code : undefined);
-        if (!code) return;
-        await submit(code);
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        await submit();
       }
 
       toast.success(
@@ -515,12 +524,13 @@ function AdminUsersContent() {
         data = await submit();
       } catch (err) {
         if (!isTotpRequired(err)) throw err;
-        const code = await requireTotp(err instanceof ApiError ? err.code : undefined);
-        if (!code) return;
-        data = await submit(code);
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        data = await submit();
       }
 
       setResetPasswordOpen(false);
+      setTempPasswordSaved(false);
       setTempPassword(data.tempPassword);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "重置密码失败");
@@ -1710,9 +1720,14 @@ function AdminUsersContent() {
       <Modal
         open={adjustOpen}
         onClose={() => {
-          if (!adjusting) setAdjustOpen(false);
+          if (adjusting) return;
+          setAdjustOpen(false);
+          setAdjustAmount("");
+          setAdjustNote("");
         }}
         title="调整用户积分"
+        closeOnBackdrop={false}
+        closeGuard={() => !adjusting && confirmCloseAdjust()}
       >
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/60">
@@ -1724,6 +1739,7 @@ function AdminUsersContent() {
             label="调整分值"
             required
             type="number"
+            data-autofocus
             value={adjustAmount}
             onChange={(e) => setAdjustAmount(e.target.value)}
             placeholder="如 100 或 -50"
@@ -1742,7 +1758,16 @@ function AdminUsersContent() {
             />
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setAdjustOpen(false)} disabled={adjusting}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!confirmCloseAdjust()) return;
+                setAdjustOpen(false);
+                setAdjustAmount("");
+                setAdjustNote("");
+              }}
+              disabled={adjusting}
+            >
               取消
             </Button>
             <Button onClick={handleAdjustPoints} loading={adjusting}>
@@ -1759,6 +1784,8 @@ function AdminUsersContent() {
           if (!birthdaySaving) setBirthdayEditOpen(false);
         }}
         title="修改用户生日"
+        closeOnBackdrop={false}
+        closeGuard={() => !birthdaySaving && confirmCloseBirthday()}
       >
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/60">
@@ -1768,6 +1795,7 @@ function AdminUsersContent() {
           <Input
             label="生日"
             type="date"
+            data-autofocus
             value={birthdayInput}
             min="1900-01-01"
             // 生日不能晚于今天，避免未来日期影响生日积分发放
@@ -1785,7 +1813,9 @@ function AdminUsersContent() {
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => setBirthdayEditOpen(false)}
+                onClick={() => {
+                  if (confirmCloseBirthday()) setBirthdayEditOpen(false);
+                }}
                 disabled={birthdaySaving}
               >
                 取消
@@ -1827,6 +1857,22 @@ function AdminUsersContent() {
         open={!!tempPassword}
         onClose={() => setTempPassword(null)}
         title="临时密码（仅显示一次）"
+        closeOnBackdrop={false}
+        closeOnEscape={false}
+        showCloseButton={false}
+        footer={
+          <div className="flex justify-end">
+            <Button
+              disabled={!tempPasswordSaved}
+              onClick={() => {
+                setTempPassword(null);
+                setTempPasswordSaved(false);
+              }}
+            >
+              我已保存
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/60">
@@ -1840,6 +1886,7 @@ function AdminUsersContent() {
             <Button
               variant="outline"
               size="sm"
+              data-autofocus
               onClick={async () => {
                 if (!tempPassword) return;
                 try {
@@ -1853,9 +1900,20 @@ function AdminUsersContent() {
               复制
             </Button>
           </div>
-          <div className="flex justify-end">
-            <Button onClick={() => setTempPassword(null)}>我已保存</Button>
-          </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <input
+              type="checkbox"
+              checked={tempPasswordSaved}
+              onChange={(e) => setTempPasswordSaved(e.target.checked)}
+              className="mt-0.5"
+            />
+            <div>
+              <p className="text-sm font-medium text-amber-800">我已安全保存临时密码</p>
+              <p className="mt-0.5 text-xs text-amber-600">
+                临时密码仅显示一次，关闭后无法再次查看。
+              </p>
+            </div>
+          </label>
         </div>
       </Modal>
 
@@ -1865,6 +1923,7 @@ function AdminUsersContent() {
         onClose={() => setStatusTarget(null)}
         onConfirm={confirmStatusChange}
         title="修改用户状态"
+        type={statusTarget?.status === "BANNED" ? "danger" : "warning"}
         description={
           statusTarget
             ? `确定要将该用户状态设置为「${userStatusMap[statusTarget.status].label}」吗？${userStatusMap[statusTarget.status].description}`
@@ -1880,6 +1939,7 @@ function AdminUsersContent() {
         onClose={() => setBatchTarget(null)}
         onConfirm={confirmBatchChange}
         title="批量修改用户状态"
+        type={batchTarget?.status === "BANNED" ? "danger" : "warning"}
         description={
           batchTarget
             ? `确定要将选中的 ${selectedCount} 个用户状态设置为「${userStatusMap[batchTarget.status].label}」吗？${userStatusMap[batchTarget.status].description}`

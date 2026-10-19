@@ -19,6 +19,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatRelativeTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -81,6 +82,8 @@ function AdminMessagesContent() {
   // 回复
   const [replyDraft, setReplyDraft] = useState("");
   const [replying, setReplying] = useState(false);
+  const isReplyDirty = !!detailMessage && replyDraft !== (detailMessage.reply ?? "");
+  const { confirmClose: confirmCloseReply } = useUnsavedChanges(isReplyDirty);
 
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -218,9 +221,7 @@ function AdminMessagesContent() {
   };
 
   // 批量操作（返回是否成功，供确认弹窗决定是否关闭）
-  const handleBatchAction = async (
-    action: "read" | "unread" | "delete"
-  ): Promise<boolean> => {
+  const handleBatchAction = async (action: "read" | "unread" | "delete"): Promise<boolean> => {
     if (selection.selectedCount === 0) return false;
     setBatchActionLoading(action);
 
@@ -551,6 +552,23 @@ function AdminMessagesContent() {
         onClose={() => setDetailMessage(null)}
         title="留言详情"
         size="lg"
+        closeOnBackdrop={false}
+        closeGuard={() => !replying && confirmCloseReply()}
+        footer={
+          detailMessage && canWriteMessages ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-brand-charcoal/40">{replyDraft.length}/5000</span>
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
+                  {detailMessage.read ? "标记为未读" : "标记为已读"}
+                </Button>
+                <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
+                  {detailMessage.reply ? "更新回复" : "发送回复"}
+                </Button>
+              </div>
+            </div>
+          ) : undefined
+        }
       >
         {detailMessage && (
           <div className="space-y-6">
@@ -613,21 +631,9 @@ function AdminMessagesContent() {
                 placeholder="输入回复内容（仅记录在后台用于回访跟进，用户端暂不展示）"
                 className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
               />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-brand-charcoal/40">
-                  {canWriteMessages ? `${replyDraft.length}/5000` : "只读查看（无回复权限）"}
-                </span>
-                {canWriteMessages && (
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
-                      {detailMessage.read ? "标记为未读" : "标记为已读"}
-                    </Button>
-                    <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
-                      {detailMessage.reply ? "更新回复" : "发送回复"}
-                    </Button>
-                  </div>
-                )}
-              </div>
+              {!canWriteMessages && (
+                <p className="text-xs text-brand-charcoal/40">只读查看（无回复权限）</p>
+              )}
             </div>
           </div>
         )}

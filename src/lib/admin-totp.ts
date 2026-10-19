@@ -6,13 +6,20 @@
  * - 可用环境变量 ADMIN_TOTP_ENFORCE=false 临时关闭（灰度/应急），关闭时不校验并输出告警
  * - 备用码使用后立即消费（消费失败 fail-closed 拒绝），避免重复可用
  */
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { apiConsole } from "@/lib/logger";
+import { verifyAdminStepUpGrant } from "@/lib/admin-step-up";
+import type { AdminJWTPayload } from "@/types/auth";
 
 export type AdminTotpErrorCode = "TOTP_NOT_ENABLED" | "TOTP_REQUIRED" | "TOTP_INVALID";
+
+export interface AdminStepUpContext {
+  request: NextRequest;
+  admin: Pick<AdminJWTPayload, "id" | "ver" | "jti">;
+}
 
 /**
  * 是否强制资金类操作二次验证（默认开启）
@@ -39,9 +46,18 @@ export function isMoneyOperationTotpEnforced(): boolean {
  */
 export async function requireMoneyOperationTotp(
   adminId: string,
-  code?: string | null
+  code?: string | null,
+  stepUp?: AdminStepUpContext
 ): Promise<NextResponse | null> {
   if (!isMoneyOperationTotpEnforced()) return null;
+
+  if (
+    stepUp &&
+    stepUp.admin.id === adminId &&
+    (await verifyAdminStepUpGrant(stepUp.request, stepUp.admin))
+  ) {
+    return null;
+  }
 
   const admin = await prisma.admin.findUnique({
     where: { id: adminId },

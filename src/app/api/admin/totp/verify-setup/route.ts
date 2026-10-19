@@ -13,6 +13,7 @@ import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { revokeAllAdminStepUpGrants } from "@/lib/admin-step-up";
 
 const verifySchema = z.object({
   code: z.string().length(6, "请输入6位验证码"),
@@ -82,6 +83,9 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       where: { id: admin.id },
       data: { totpEnabled: true },
     });
+    await revokeAllAdminStepUpGrants(admin.id).catch((err) =>
+      apiConsole.warn("[TOTP Verify Setup] step-up grant 清理失败:", err)
+    );
 
     await createAuditLog({
       action: "update_admin",

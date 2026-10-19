@@ -332,6 +332,12 @@
     /* Chrome, Safari, Opera */
   }
 
+  [data-modal-backdrop][data-behind="true"] {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
   /* 细滚动条样式 */
   .scrollbar-thin {
     scrollbar-width: thin;

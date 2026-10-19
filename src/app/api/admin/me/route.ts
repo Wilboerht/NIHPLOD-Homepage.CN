@@ -123,7 +123,10 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
 
       // 已启用二次验证：改密必须通过 TOTP/备用码（与关闭 2FA、资金操作同口径）
       if (adminRecord.totpEnabled) {
-        const totpResponse = await requireMoneyOperationTotp(admin.id, data.totpCode);
+        const totpResponse = await requireMoneyOperationTotp(admin.id, data.totpCode, {
+        request,
+        admin,
+      });
         if (totpResponse) return totpResponse;
       }
 

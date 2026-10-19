@@ -129,7 +129,10 @@ export default function OAuthStatsPage() {
           stats.events.thisMonth === 0 && (
             <div className="rounded-xl border border-dashed border-brand-charcoal/20 bg-white p-4 text-sm text-brand-charcoal/60">
               还没有任何 SSO 数据，
-              <Link href="/admin/oauth-clients/wizard" className="text-blue-600 hover:underline">
+              <Link
+                href="/admin/oauth-clients/wizard"
+                className="text-brand-primary hover:underline"
+              >
                 去创建第一个 Client
               </Link>
               开始接入。

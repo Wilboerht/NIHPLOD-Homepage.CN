@@ -166,7 +166,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { amount, note, requestId, totpCode } = parsed.data;
 
     // 资金类操作：二次验证（TOTP / 备用码）
-    const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode);
+    const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode, {
+      request,
+      admin,
+    });
     if (totpResponse) return totpResponse;
 
     const user = await prisma.user.findUnique({ where: { id }, select: { id: true } });

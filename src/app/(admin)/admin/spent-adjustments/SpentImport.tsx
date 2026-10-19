@@ -86,19 +86,14 @@ function formatDateTime(iso: string): string {
   if (Number.isNaN(d.getTime())) return "-";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate()
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes()
-  ).padStart(2, "0")}`;
+  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 /** 导入弹窗 */
-export function SpentImportModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function SpentImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { success, error: showError } = useToast();
   const { requireTotp, totpModal } = useTotpConfirm();
   const [step, setStep] = useState<"upload" | "preview" | "result">("upload");
@@ -175,9 +170,9 @@ export function SpentImportModal({
         data = await submit();
       } catch (e) {
         if (!isTotpRequired(e)) throw e;
-        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
-        if (!code) return;
-        data = await submit(code);
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        data = await submit();
       }
 
       if (generation !== generationRef.current) return;
@@ -195,230 +190,244 @@ export function SpentImportModal({
   // 需人工修正的行（重复/失败）：用于结果页逐行回看与 CSV 导出
   const needsAttentionRows = result?.rows ? pickNeedsAttentionRows(result.rows) : [];
 
+  const footer =
+    step === "preview" && preview ? (
+      <div className="flex flex-wrap justify-end gap-3">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setPreview(null);
+            setStep("upload");
+          }}
+          disabled={importing}
+        >
+          重新选择文件
+        </Button>
+        <Button onClick={handleExecute} loading={importing} disabled={preview.okCount === 0}>
+          {`确认导入（${preview.okCount} 行）`}
+        </Button>
+      </div>
+    ) : step === "result" ? (
+      <div className="flex justify-end">
+        <Button onClick={handleClose}>完成</Button>
+      </div>
+    ) : (
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={handleClose}>
+          取消
+        </Button>
+      </div>
+    );
+
   return (
     <>
-    <Modal open={open} onClose={handleClose} size="xl" title="Excel 批量导入消费记录">
-      {step === "upload" && (
-        <div>
-          <p className="text-sm text-gray-500">
-            请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 1000 行；
-            金额为整数（元），负数表示退款冲正；未注册手机号的行会标记错误并跳过。
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => window.open("/api/admin/spent-import/template", "_blank")}
-            >
-              <Download className="mr-1.5 h-4 w-4" />
-              下载模板
-            </Button>
-            <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              <Upload className="mr-1.5 h-4 w-4" />
-              {uploading ? "解析中..." : "选择文件上传"}
-            </Button>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
-          />
-          <div className="mt-6 rounded-lg bg-gray-50 p-4 text-xs text-gray-500">
-            <p className="font-medium text-gray-600">模板列说明</p>
-            <ul className="mt-2 space-y-1">
-              <li>手机号（必填）：11 位大陆手机号，须已注册官网账户</li>
-              <li>金额（元，必填）：非零整数，正数累加消费、负数冲正（退款）</li>
-              <li>消费日期（选填）：如 2026-01-15</li>
-              <li>渠道（选填）：天猫国际 / 抖音商城 / 小红书 / 线下专柜 / 经销渠道 / 其它</li>
-              <li>订单号/小票号（选填）：参与幂等去重，建议填写</li>
-              <li>备注（选填）</li>
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {step === "preview" && preview && (
-        <div>
-          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 p-3 text-sm">
-            <span className="truncate text-gray-600">{preview.fileName}</span>
-            <span className="text-gray-400">
-              共 {preview.rows.length} 行 · 可导入 {preview.okCount} 行 · 错误 {preview.errorCount} 行
-            </span>
-            <span className="text-gray-700">
-              合计金额 <span className="font-medium">¥{preview.totalAmount.toLocaleString()}</span>
-            </span>
-          </div>
-
-          <div className="mt-4 max-h-[45vh] overflow-auto rounded-lg border">
-            <table className="w-full min-w-[620px] text-sm">
-              <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
-                <tr>
-                  <th className="px-3 py-2 font-medium">行</th>
-                  <th className="px-3 py-2 font-medium">手机号</th>
-                  <th className="px-3 py-2 font-medium">金额</th>
-                  <th className="px-3 py-2 font-medium">渠道</th>
-                  <th className="px-3 py-2 font-medium">消费日期</th>
-                  <th className="px-3 py-2 font-medium">订单号</th>
-                  <th className="px-3 py-2 font-medium">状态</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {preview.rows.map((r) => (
-                  <tr key={r.rowIndex}>
-                    <td className="px-3 py-2 text-gray-400">{r.rowIndex}</td>
-                    <td className="px-3 py-2 text-gray-700">{r.maskedPhone ?? "-"}</td>
-                    <td className="px-3 py-2 text-gray-700">
-                      {r.amount != null ? `¥${r.amount.toLocaleString()}` : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-gray-600">{r.channelLabel ?? "-"}</td>
-                    <td className="px-3 py-2 text-gray-600">{r.purchasedAt ?? "-"}</td>
-                    <td className="max-w-[140px] truncate px-3 py-2 font-mono text-gray-600">
-                      {r.orderNo ?? "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {r.status === "ok" ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
-                          可导入
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
-                          {r.error}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-5 flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPreview(null);
-                setStep("upload");
-              }}
-              disabled={importing}
-            >
-              重新选择文件
-            </Button>
-            <Button onClick={handleExecute} disabled={importing || preview.okCount === 0}>
-              {importing ? "导入中..." : `确认导入（${preview.okCount} 行）`}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === "result" && result && (
-        <div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <p className="text-2xl font-medium text-gray-800">{result.successRows}</p>
-              <p className="mt-1 text-xs text-gray-500">成功入账</p>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <p className="text-2xl font-medium text-gray-800">{result.duplicateRows}</p>
-              <p className="mt-1 text-xs text-gray-500">重复跳过</p>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <p className="text-2xl font-medium text-gray-800">{result.errorRows}</p>
-              <p className="mt-1 text-xs text-gray-500">失败</p>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <p className="text-2xl font-medium text-gray-800">
-                ¥{result.totalAmount.toLocaleString()}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">净入账金额</p>
-            </div>
-          </div>
-          {(needsAttentionRows.length > 0 || result.errorRows > 0) && (
-            <p className="mt-3 text-xs text-gray-500">
-              重复/失败行未入账：请按下方行号修正或删除 Excel 中对应行后重新导入（已成功行因幂等不会重复入账）。
+      <Modal
+        open={open}
+        onClose={handleClose}
+        size="xl"
+        title="Excel 批量导入消费记录"
+        footer={footer}
+      >
+        {step === "upload" && (
+          <div>
+            <p className="text-sm text-brand-charcoal/50">
+              请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 1000 行；
+              金额为整数（元），负数表示退款冲正；未注册手机号的行会标记错误并跳过。
             </p>
-          )}
+            <div className="mt-4 flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => window.open("/api/admin/spent-import/template", "_blank")}
+              >
+                <Download className="mr-1.5 h-4 w-4" />
+                下载模板
+              </Button>
+              <Button onClick={() => fileInputRef.current?.click()} loading={uploading}>
+                <Upload className="mr-1.5 h-4 w-4" />
+                选择文件上传
+              </Button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
+            />
+            <div className="mt-6 rounded-lg bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/50">
+              <p className="font-medium text-brand-charcoal/60">模板列说明</p>
+              <ul className="mt-2 space-y-1">
+                <li>手机号（必填）：11 位大陆手机号，须已注册官网账户</li>
+                <li>金额（元，必填）：非零整数，正数累加消费、负数冲正（退款）</li>
+                <li>消费日期（选填）：如 2026-01-15</li>
+                <li>渠道（选填）：天猫国际 / 抖音商城 / 小红书 / 线下专柜 / 经销渠道 / 其它</li>
+                <li>订单号/小票号（选填）：参与幂等去重，建议填写</li>
+                <li>备注（选填）</li>
+              </ul>
+            </div>
+          </div>
+        )}
 
-          {needsAttentionRows.length > 0 && (
-            <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-700">
-                  需修正的行（{needsAttentionRows.length}）
-                </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Download className="h-3.5 w-3.5" />}
-                  onClick={() =>
-                    downloadCsv(
-                      `导入需修正行-${preview?.fileName ?? "result"}.csv`,
-                      buildNeedsAttentionCsv(needsAttentionRows)
-                    )
-                  }
-                >
-                  导出失败行 CSV
-                </Button>
-              </div>
-              <div className="max-h-64 overflow-auto rounded-lg border">
-                <table className="w-full min-w-[620px] text-sm">
-                  <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Excel 行号</th>
-                      <th className="px-3 py-2 font-medium">手机号</th>
-                      <th className="px-3 py-2 font-medium">金额（元）</th>
-                      <th className="px-3 py-2 font-medium">结果</th>
-                      <th className="px-3 py-2 font-medium">原因</th>
+        {step === "preview" && preview && (
+          <div>
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm">
+              <span className="truncate text-brand-charcoal/60">{preview.fileName}</span>
+              <span className="text-brand-charcoal/40">
+                共 {preview.rows.length} 行 · 可导入 {preview.okCount} 行 · 错误{" "}
+                {preview.errorCount} 行
+              </span>
+              <span className="text-brand-charcoal/70">
+                合计金额{" "}
+                <span className="font-medium">¥{preview.totalAmount.toLocaleString()}</span>
+              </span>
+            </div>
+
+            <div className="mt-4 overflow-x-auto rounded-lg border">
+              <table className="w-full min-w-[620px] text-sm">
+                <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/50">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">行</th>
+                    <th className="px-3 py-2 font-medium">手机号</th>
+                    <th className="px-3 py-2 font-medium">金额</th>
+                    <th className="px-3 py-2 font-medium">渠道</th>
+                    <th className="px-3 py-2 font-medium">消费日期</th>
+                    <th className="px-3 py-2 font-medium">订单号</th>
+                    <th className="px-3 py-2 font-medium">状态</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {preview.rows.map((r) => (
+                    <tr key={r.rowIndex}>
+                      <td className="px-3 py-2 text-brand-charcoal/40">{r.rowIndex}</td>
+                      <td className="px-3 py-2 text-brand-charcoal/70">{r.maskedPhone ?? "-"}</td>
+                      <td className="px-3 py-2 text-brand-charcoal/70">
+                        {r.amount != null ? `¥${r.amount.toLocaleString()}` : "-"}
+                      </td>
+                      <td className="px-3 py-2 text-brand-charcoal/60">{r.channelLabel ?? "-"}</td>
+                      <td className="px-3 py-2 text-brand-charcoal/60">{r.purchasedAt ?? "-"}</td>
+                      <td className="max-w-[140px] truncate px-3 py-2 font-mono text-brand-charcoal/60">
+                        {r.orderNo ?? "-"}
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.status === "ok" ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                            可导入
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                            {r.error}
+                          </span>
+                        )}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {needsAttentionRows.map((row) => (
-                      <tr key={row.rowIndex}>
-                        <td className="whitespace-nowrap px-3 py-2 text-gray-600">
-                          第 {row.rowIndex} 行
-                        </td>
-                        <td className="px-3 py-2 font-mono text-xs text-gray-600">
-                          {row.phone || "-"}
-                        </td>
-                        <td className="px-3 py-2 text-gray-600">{row.amount}</td>
-                        <td className="px-3 py-2">
-                          {row.status === "DUPLICATE" ? (
-                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                              重复跳过
-                            </span>
-                          ) : (
-                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
-                              失败
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-500">{row.error || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {step === "result" && result && (
+          <div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+                <p className="text-2xl font-medium text-brand-charcoal">{result.successRows}</p>
+                <p className="mt-1 text-xs text-brand-charcoal/50">成功入账</p>
+              </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+                <p className="text-2xl font-medium text-brand-charcoal">{result.duplicateRows}</p>
+                <p className="mt-1 text-xs text-brand-charcoal/50">重复跳过</p>
+              </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+                <p className="text-2xl font-medium text-brand-charcoal">{result.errorRows}</p>
+                <p className="mt-1 text-xs text-brand-charcoal/50">失败</p>
+              </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+                <p className="text-2xl font-medium text-brand-charcoal">
+                  ¥{result.totalAmount.toLocaleString()}
+                </p>
+                <p className="mt-1 text-xs text-brand-charcoal/50">净入账金额</p>
               </div>
             </div>
-          )}
+            {(needsAttentionRows.length > 0 || result.errorRows > 0) && (
+              <p className="mt-3 text-xs text-brand-charcoal/50">
+                重复/失败行未入账：请按下方行号修正或删除 Excel
+                中对应行后重新导入（已成功行因幂等不会重复入账）。
+              </p>
+            )}
 
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleClose}>完成</Button>
+            {needsAttentionRows.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-brand-charcoal/70">
+                    需修正的行（{needsAttentionRows.length}）
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Download className="h-3.5 w-3.5" />}
+                    onClick={() =>
+                      downloadCsv(
+                        `导入需修正行-${preview?.fileName ?? "result"}.csv`,
+                        buildNeedsAttentionCsv(needsAttentionRows)
+                      )
+                    }
+                  >
+                    导出失败行 CSV
+                  </Button>
+                </div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full min-w-[620px] text-sm">
+                    <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/50">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">Excel 行号</th>
+                        <th className="px-3 py-2 font-medium">手机号</th>
+                        <th className="px-3 py-2 font-medium">金额（元）</th>
+                        <th className="px-3 py-2 font-medium">结果</th>
+                        <th className="px-3 py-2 font-medium">原因</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {needsAttentionRows.map((row) => (
+                        <tr key={row.rowIndex}>
+                          <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/60">
+                            第 {row.rowIndex} 行
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs text-brand-charcoal/60">
+                            {row.phone || "-"}
+                          </td>
+                          <td className="px-3 py-2 text-brand-charcoal/60">{row.amount}</td>
+                          <td className="px-3 py-2">
+                            {row.status === "DUPLICATE" ? (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                                重复跳过
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                                失败
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-brand-charcoal/50">
+                            {row.error || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-    </Modal>
-    {totpModal}
+        )}
+      </Modal>
+      {totpModal}
     </>
   );
 }
 
 /** 导入历史弹窗（含整批撤销） */
-export function ImportHistoryModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { success, error: showError } = useToast();
   const { requireTotp, totpModal } = useTotpConfirm();
   const [batches, setBatches] = useState<ImportBatchItem[]>([]);
@@ -464,9 +473,9 @@ export function ImportHistoryModal({
         await submit();
       } catch (e) {
         if (!isTotpRequired(e)) throw e;
-        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
-        if (!code) return;
-        await submit(code);
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        await submit();
       }
 
       success("已撤销该批次，消费额已按行冲正");
@@ -482,10 +491,10 @@ export function ImportHistoryModal({
   return (
     <>
       <Modal open={open} onClose={onClose} size="xl" title="导入历史">
-        <div className="max-h-[55vh] overflow-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
+              <Loader2 className="h-6 w-6 animate-spin text-brand-charcoal/30" />
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12">
@@ -495,10 +504,10 @@ export function ImportHistoryModal({
               </Button>
             </div>
           ) : batches.length === 0 ? (
-            <p className="py-12 text-center text-sm text-gray-400">暂无导入记录</p>
+            <p className="py-12 text-center text-sm text-brand-charcoal/40">暂无导入记录</p>
           ) : (
             <table className="w-full min-w-[620px] text-sm">
-              <thead className="sticky top-0 bg-gray-50 text-left text-xs text-gray-500">
+              <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/50">
                 <tr>
                   <th className="px-3 py-2 font-medium">文件名</th>
                   <th className="px-3 py-2 font-medium">行数（总/成/重/错）</th>
@@ -511,20 +520,24 @@ export function ImportHistoryModal({
               <tbody className="divide-y">
                 {batches.map((b) => (
                   <tr key={b.id} className={b.undoneAt ? "opacity-60" : ""}>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-gray-700">
+                    <td className="max-w-[200px] truncate px-3 py-2 text-brand-charcoal/70">
                       {b.fileName}
                       {b.undoneAt && (
-                        <span className="ml-2 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
+                        <span className="ml-2 rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-xs text-brand-charcoal/60">
                           已撤销
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-gray-600">
+                    <td className="px-3 py-2 text-brand-charcoal/60">
                       {b.totalRows} / {b.successRows} / {b.duplicateRows} / {b.errorRows}
                     </td>
-                    <td className="px-3 py-2 text-gray-700">¥{b.totalAmount.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-gray-600">{b.adminName}</td>
-                    <td className="px-3 py-2 text-gray-500">{formatDateTime(b.createdAt)}</td>
+                    <td className="px-3 py-2 text-brand-charcoal/70">
+                      ¥{b.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2 text-brand-charcoal/60">{b.adminName}</td>
+                    <td className="px-3 py-2 text-brand-charcoal/50">
+                      {formatDateTime(b.createdAt)}
+                    </td>
                     <td className="px-3 py-2">
                       {!b.undoneAt && b.successRows > 0 && (
                         <Button
@@ -546,12 +559,17 @@ export function ImportHistoryModal({
         </div>
 
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <div className="mt-4 flex items-center justify-between text-sm text-brand-charcoal/50">
             <span>
               第 {page}/{totalPages} 页
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 上一页
               </Button>
               <Button

@@ -62,7 +62,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // 资金类操作：二次验证（TOTP / 备用码）
-    const totpResponse = await requireMoneyOperationTotp(admin.id, parsedBody.data.totpCode);
+    const totpResponse = await requireMoneyOperationTotp(admin.id, parsedBody.data.totpCode, {
+      request,
+      admin,
+    });
     if (totpResponse) return totpResponse;
 
     const result = await undoApplication({

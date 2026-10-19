@@ -216,7 +216,7 @@ function AdminWebhookFailuresContent() {
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-charcoal/8">
+            <tbody className="divide-brand-charcoal/8 divide-y">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3">
@@ -241,37 +241,37 @@ function AdminWebhookFailuresContent() {
                       {item.hasPayload ? "已隐藏（含用户资料）" : "—"}
                     </p>
                   </td>
-                    <td className="px-4 py-3">
-                      {canWrite ? (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            loading={actioningId === item.id}
-                            disabled={actioningId !== null && actioningId !== item.id}
-                            leftIcon={<RotateCw className="h-3.5 w-3.5" />}
-                            onClick={() => setRetryTarget(item)}
-                          >
-                            重投
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50"
-                            disabled={actioningId !== null}
-                            leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                            onClick={() => setDropTarget(item)}
-                          >
-                            丢弃
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-brand-charcoal/40">只读</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+                  <td className="px-4 py-3">
+                    {canWrite ? (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          loading={actioningId === item.id}
+                          disabled={actioningId !== null && actioningId !== item.id}
+                          leftIcon={<RotateCw className="h-3.5 w-3.5" />}
+                          onClick={() => setRetryTarget(item)}
+                        >
+                          重投
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50"
+                          disabled={actioningId !== null}
+                          leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                          onClick={() => setDropTarget(item)}
+                        >
+                          丢弃
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-brand-charcoal/40">只读</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         )}
       </div>
@@ -283,7 +283,12 @@ function AdminWebhookFailuresContent() {
             第 {page}/{totalPages} 页
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
               上一页
             </Button>
             <Button
@@ -306,6 +311,7 @@ function AdminWebhookFailuresContent() {
           if (retryTarget) return handleRetry(retryTarget);
         }}
         title="立即重投"
+        type="warning"
         description={`确定立即向「${retryTarget?.clientName || retryTarget?.clientId}」重投该通知吗？`}
         confirmText="立即重投"
         loading={actioningId === retryTarget?.id}
@@ -324,7 +330,6 @@ function AdminWebhookFailuresContent() {
         type="danger"
         loading={actioningId === dropTarget?.id}
       />
-
     </div>
   );
 }

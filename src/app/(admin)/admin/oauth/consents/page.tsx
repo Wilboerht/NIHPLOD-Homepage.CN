@@ -366,7 +366,7 @@ function OAuthConsentsPage() {
                     <Tooltip content="查看用户详情" side="top">
                       <Link
                         href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
-                        className="inline-flex text-blue-600 hover:underline"
+                        className="inline-flex text-brand-primary hover:underline"
                       >
                         {c.phone ? maskPhone(c.phone) : c.userId}
                       </Link>
@@ -376,7 +376,7 @@ function OAuthConsentsPage() {
                     <Tooltip content="查看 Client" side="top">
                       <Link
                         href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
-                        className="inline-flex font-mono text-blue-600 hover:underline"
+                        className="inline-flex font-mono text-brand-primary hover:underline"
                       >
                         {c.clientName || c.clientId}
                       </Link>

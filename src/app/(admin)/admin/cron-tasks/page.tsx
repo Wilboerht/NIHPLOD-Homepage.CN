@@ -176,7 +176,7 @@ function AdminCronTasksContent() {
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-charcoal/8">
+            <tbody className="divide-brand-charcoal/8 divide-y">
               {tasks.map((task) => (
                 <tr key={task.name} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3 font-medium text-brand-charcoal">{task.name}</td>
@@ -278,6 +278,7 @@ function AdminCronTasksContent() {
         onClose={() => setTriggerTarget(null)}
         onConfirm={handleTrigger}
         title="手动执行定时任务"
+        type="warning"
         description={`确定立即执行「${triggerTarget?.name}」吗？任务将在当前请求内同步执行，可能耗时较长。`}
         confirmText="确认执行"
         loading={triggering}

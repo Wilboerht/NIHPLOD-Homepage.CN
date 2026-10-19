@@ -189,7 +189,11 @@ describe("PUT /api/admin/me 自助改密限次", () => {
 
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("TOTP_REQUIRED");
-    expect(mockRequireTotp).toHaveBeenCalledWith(ADMIN.id, undefined);
+    expect(mockRequireTotp).toHaveBeenCalledWith(
+      ADMIN.id,
+      undefined,
+      expect.objectContaining({ admin: ADMIN })
+    );
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
@@ -210,7 +214,11 @@ describe("PUT /api/admin/me 自助改密限次", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(mockRequireTotp).toHaveBeenCalledWith(ADMIN.id, "123456");
+    expect(mockRequireTotp).toHaveBeenCalledWith(
+      ADMIN.id,
+      "123456",
+      expect.objectContaining({ admin: ADMIN })
+    );
     expect(mockUpdate).toHaveBeenCalled();
   });
 

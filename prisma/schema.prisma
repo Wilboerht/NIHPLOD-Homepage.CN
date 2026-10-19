@@ -975,6 +975,7 @@ model Admin {
   spentAdjustmentReviews SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
   spentImportBatches SpentImportBatch[]
   adminSsoCodes AdminSsoCode[]
+  adminStepUpGrants AdminStepUpGrant[]
 
   @@index([status])
   @@index([deletedAt])
@@ -1003,6 +1004,27 @@ model AdminSsoCode {
 
   @@index([expiresAt])
   @@index([adminId, createdAt(sort: Desc)])
+}
+
+/**
+ * 管理员敏感操作短时二次验证凭证（step-up / sudo mode）。
+ * Cookie 中只保存随机 token，本表只保存 SHA-256 hash；绑定管理员会话 jti 与 tokenVersion。
+ */
+model AdminStepUpGrant {
+  id           String   @id @default(cuid())
+  tokenHash    String   @unique
+  adminId      String
+  sessionJti   String?
+  tokenVersion Int
+  scope        String   @default("sensitive")
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, expiresAt])
+  @@index([sessionJti])
+  @@index([expiresAt])
 }
 
 // ============================================

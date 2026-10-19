@@ -21,6 +21,7 @@ import { BreakGlassCard } from "@/components/admin/BreakGlassCard";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import {
   ADMIN_ROLES,
   PERMISSION_GROUPS,
@@ -33,6 +34,10 @@ import {
   type AdminRoleValue,
 } from "@/lib/admin-permissions";
 import { cn } from "@/lib/utils";
+
+function permissionKey(permissions: Iterable<string>) {
+  return Array.from(permissions).sort().join("|");
+}
 
 function getAdvisorAccess(admin: AdminItem): {
   label: string;
@@ -85,8 +90,7 @@ export default function AdminAdminsPage() {
         myPermissions.has(p)
       )
   );
-  const canGrantPermission = (permission: string) =>
-    isOwnerActor || myPermissions.has(permission);
+  const canGrantPermission = (permission: string) => isOwnerActor || myPermissions.has(permission);
   const [form, setForm] = useState({
     email: "",
     name: "",
@@ -95,6 +99,16 @@ export default function AdminAdminsPage() {
   });
   // 权限编辑器勾选状态（含个人覆盖后的有效权限）
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
+  const [modalBaseline, setModalBaseline] = useState<{
+    form: { email: string; name: string; password: string; role: AdminRoleValue };
+    permissions: string;
+  } | null>(null);
+  const isModalDirty =
+    showModal &&
+    !!modalBaseline &&
+    (JSON.stringify(form) !== JSON.stringify(modalBaseline.form) ||
+      permissionKey(selectedPermissions) !== modalBaseline.permissions);
+  const { confirmClose } = useUnsavedChanges(isModalDirty);
   const isEditingSelf = !!editing && editing.id === currentAdminId;
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
@@ -104,10 +118,7 @@ export default function AdminAdminsPage() {
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
   const search = searchParams.get("search") || "";
   // 勾选状态：翻页/搜索变化时自动清空
-  const selection = useRowSelection<AdminItem>(
-    (admin) => admin.id,
-    `${page}|${search}`
-  );
+  const selection = useRowSelection<AdminItem>((admin) => admin.id, `${page}|${search}`);
   const { selectedIds } = selection;
   const [showBatchDelete, setShowBatchDelete] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -149,23 +160,29 @@ export default function AdminAdminsPage() {
   const openCreate = () => {
     // 默认选中第一个「可委派」角色并按自身权限取交集，避免预填必然被服务端拒绝的权限组合
     const role = (assignableRoles[0] ?? "admin") as AdminRoleValue;
-    setEditing(null);
-    setForm({ email: "", name: "", password: "", role });
-    setSelectedPermissions(
-      new Set(resolveAdminPermissions(role).filter((p) => canGrantPermission(p)))
+    const nextForm = { email: "", name: "", password: "", role };
+    const nextPermissions = new Set(
+      resolveAdminPermissions(role).filter((p) => canGrantPermission(p))
     );
+    setEditing(null);
+    setForm(nextForm);
+    setSelectedPermissions(nextPermissions);
+    setModalBaseline({ form: nextForm, permissions: permissionKey(nextPermissions) });
     setShowModal(true);
   };
 
   const openEdit = (admin: AdminItem) => {
-    setEditing(admin);
-    setForm({
+    const nextForm = {
       email: admin.email,
       name: admin.name,
       password: "",
       role: admin.role as AdminRoleValue,
-    });
-    setSelectedPermissions(new Set(resolveAdminPermissions(admin.role, admin.permissions)));
+    };
+    const nextPermissions = new Set(resolveAdminPermissions(admin.role, admin.permissions));
+    setEditing(admin);
+    setForm(nextForm);
+    setSelectedPermissions(nextPermissions);
+    setModalBaseline({ form: nextForm, permissions: permissionKey(nextPermissions) });
     setShowModal(true);
   };
 
@@ -189,10 +206,7 @@ export default function AdminAdminsPage() {
     setSubmitting(true);
     try {
       // 权限覆盖：相对角色模板的差异（追加授权 / "!权限点" 撤销）
-      const permissions = buildPermissionOverrides(
-        form.role,
-        Array.from(selectedPermissions)
-      );
+      const permissions = buildPermissionOverrides(form.role, Array.from(selectedPermissions));
       const base = {
         email: form.email,
         name: form.name,
@@ -501,12 +515,32 @@ export default function AdminAdminsPage() {
           onClose={() => setShowModal(false)}
           title={editing ? "编辑管理员" : "新增管理员"}
           size="lg"
+          closeOnBackdrop={false}
+          closeGuard={() => !submitting && confirmClose()}
+          footer={
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (confirmClose()) setShowModal(false);
+                }}
+                disabled={submitting}
+              >
+                取消
+              </Button>
+              <Button type="submit" form="admin-form" loading={submitting} disabled={submitting}>
+                保存
+              </Button>
+            </div>
+          }
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="admin-form" noValidate onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="姓名"
                 required
+                data-autofocus
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
@@ -621,15 +655,6 @@ export default function AdminAdminsPage() {
                 </div>
               </div>
             )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)}>
-                取消
-              </Button>
-              <Button type="submit" size="sm" loading={submitting} disabled={submitting}>
-                保存
-              </Button>
-            </div>
           </form>
         </Modal>
 

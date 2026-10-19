@@ -15,6 +15,11 @@ import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import {
+  ADMIN_STEP_UP_COOKIE_NAME,
+  ADMIN_STEP_UP_COOKIE_OPTIONS,
+  revokeAllAdminStepUpGrants,
+} from "@/lib/admin-step-up";
 
 const disableSchema = z.object({
   password: z.string().min(1, "请输入密码"),
@@ -149,6 +154,10 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       });
     });
 
+    await revokeAllAdminStepUpGrants(admin.id).catch((err) =>
+      apiConsole.warn("[TOTP Disable] step-up grant 清理失败:", err)
+    );
+
     await createAuditLog({
       action: "update_admin",
       targetType: "admin",
@@ -158,7 +167,12 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       request,
     });
 
-    return NextResponse.json({ success: true, data: { message: "二次验证已关闭" } });
+    const response = NextResponse.json({ success: true, data: { message: "二次验证已关闭" } });
+    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {
+      ...ADMIN_STEP_UP_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    return response;
   } catch (error) {
     apiConsole.error("[TOTP Disable] 异常:", error);
     return NextResponse.json(

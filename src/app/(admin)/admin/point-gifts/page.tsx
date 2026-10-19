@@ -18,6 +18,7 @@ import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -54,7 +55,7 @@ type StatusTab = "PENDING" | "FULFILLED" | "CANCELLED" | "ALL";
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
   FULFILLED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
+  CANCELLED: "bg-brand-charcoal/[0.06] text-brand-charcoal/50",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -97,6 +98,9 @@ function AdminPointGiftsContent() {
   } | null>(null);
   const [waybillInput, setWaybillInput] = useState("");
   const [submittingFulfill, setSubmittingFulfill] = useState(false);
+  const isFulfillDirty =
+    !!fulfillTarget && waybillInput !== (fulfillTarget.redemption.waybillNo ?? "");
+  const { confirmClose: confirmCloseFulfill } = useUnsavedChanges(isFulfillDirty);
   const [cancelTarget, setCancelTarget] = useState<RedemptionItem | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
@@ -263,9 +267,9 @@ function AdminPointGiftsContent() {
         data = await submit();
       } catch (e) {
         if (!isTotpRequired(e)) throw e;
-        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
-        if (!code) return;
-        data = await submit(code);
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        data = await submit();
       }
 
       success(data.message);
@@ -301,23 +305,23 @@ function AdminPointGiftsContent() {
       {/* 概览统计 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-          <p className="text-xs text-gray-500">全站可用积分总额</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-800">
+          <p className="text-xs text-brand-charcoal/50">全站可用积分总额</p>
+          <p className="mt-1 text-2xl font-semibold text-brand-charcoal">
             {pointsTotal.toLocaleString()}
           </p>
-          <p className="mt-1 text-[11px] text-gray-400">
+          <p className="mt-1 text-[11px] text-brand-charcoal/40">
             所有用户账户可用积分之和（可含退款冲正负值）
           </p>
         </div>
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-          <p className="text-xs text-gray-500">待履约兑换</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-800">{counts.PENDING ?? 0}</p>
-          <p className="mt-1 text-[11px] text-gray-400">待发货处理</p>
+          <p className="text-xs text-brand-charcoal/50">待履约兑换</p>
+          <p className="mt-1 text-2xl font-semibold text-brand-charcoal">{counts.PENDING ?? 0}</p>
+          <p className="mt-1 text-[11px] text-brand-charcoal/40">待发货处理</p>
         </div>
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-          <p className="text-xs text-gray-500">已履约兑换</p>
-          <p className="mt-1 text-2xl font-semibold text-gray-800">{counts.FULFILLED ?? 0}</p>
-          <p className="mt-1 text-[11px] text-gray-400">已发货</p>
+          <p className="text-xs text-brand-charcoal/50">已履约兑换</p>
+          <p className="mt-1 text-2xl font-semibold text-brand-charcoal">{counts.FULFILLED ?? 0}</p>
+          <p className="mt-1 text-[11px] text-brand-charcoal/40">已发货</p>
         </div>
       </div>
 
@@ -325,13 +329,13 @@ function AdminPointGiftsContent() {
       {canGiftRead && (
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-            <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
-              <Gift className="h-5 w-5 text-gray-500" />
+            <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
+              <Gift className="h-5 w-5 text-brand-charcoal/50" />
               可兑换产品（产品库）
             </h2>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
                 <Input
                   placeholder="搜索产品名..."
                   value={searchInput}
@@ -363,7 +367,7 @@ function AdminPointGiftsContent() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">
                   <th className="px-4 py-3 font-medium">产品</th>
                   <th className="px-4 py-3 font-medium">分类</th>
                   <th className="px-4 py-3 font-medium">参考价格</th>
@@ -377,7 +381,7 @@ function AdminPointGiftsContent() {
                 {productsLoading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center">
-                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
+                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/30" />
                     </td>
                   </tr>
                 ) : productsError ? (
@@ -391,16 +395,19 @@ function AdminPointGiftsContent() {
                   </tr>
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                    <td
+                      colSpan={7}
+                      className="px-4 py-10 text-center text-sm text-brand-charcoal/40"
+                    >
                       暂无匹配产品
                     </td>
                   </tr>
                 ) : (
                   products.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-700">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{p.categoryName}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                    <tr key={p.id} className="hover:bg-brand-charcoal/[0.03]">
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">{p.name}</td>
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/50">{p.categoryName}</td>
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/60">
                         ¥{p.priceYuan.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
@@ -408,7 +415,7 @@ function AdminPointGiftsContent() {
                           className={
                             p.published
                               ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-100 text-gray-500"
+                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
                           }
                         >
                           {p.published ? "已发布" : "草稿"}
@@ -419,13 +426,13 @@ function AdminPointGiftsContent() {
                           className={
                             p.pointRedeemable
                               ? "bg-amber-100 text-amber-700"
-                              : "bg-gray-100 text-gray-500"
+                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
                           }
                         >
                           {p.pointRedeemable ? "可兑换" : "未设置"}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/60">
                         {stockEdit?.id === p.id ? (
                           <div className="flex items-center gap-2">
                             <Input
@@ -487,7 +494,7 @@ function AdminPointGiftsContent() {
                                 : "设为可兑"}
                           </Button>
                         ) : (
-                          <span className="text-xs text-gray-400">仅超级管理员可设置</span>
+                          <span className="text-xs text-brand-charcoal/40">仅超级管理员可设置</span>
                         )}
                       </td>
                     </tr>
@@ -497,7 +504,7 @@ function AdminPointGiftsContent() {
             </table>
           </div>
           {productTotalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-brand-charcoal/50">
               <span>
                 第 {productPage}/{productTotalPages} 页
               </span>
@@ -527,8 +534,8 @@ function AdminPointGiftsContent() {
       {/* 兑换记录 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
         <div className="border-b px-4 py-3">
-          <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
-            <PackageCheck className="h-5 w-5 text-gray-500" />
+          <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
+            <PackageCheck className="h-5 w-5 text-brand-charcoal/50" />
             兑换记录
           </h2>
         </div>
@@ -550,14 +557,14 @@ function AdminPointGiftsContent() {
               }}
               className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors ${
                 tab === t.key
-                  ? "border-gray-800 bg-gray-800 text-white"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "border-brand-charcoal bg-brand-charcoal text-white"
+                  : "border-brand-charcoal/15 text-brand-charcoal/60 hover:border-brand-charcoal/30"
               }`}
             >
               {t.label}
               <span
                 className={`rounded-full px-1.5 text-xs ${
-                  tab === t.key ? "bg-white/20" : "bg-gray-100"
+                  tab === t.key ? "bg-white/20" : "bg-brand-charcoal/[0.06]"
                 }`}
               >
                 {t.key === "ALL"
@@ -570,7 +577,7 @@ function AdminPointGiftsContent() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
-              <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
+              <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">
                 <th className="px-4 py-3 font-medium">用户</th>
                 <th className="px-4 py-3 font-medium">产品</th>
                 <th className="px-4 py-3 font-medium">价格 / 扣分</th>
@@ -584,7 +591,7 @@ function AdminPointGiftsContent() {
               {redemptionLoading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center">
-                    <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
+                    <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/30" />
                   </td>
                 </tr>
               ) : redemptionsError ? (
@@ -598,37 +605,39 @@ function AdminPointGiftsContent() {
                 </tr>
               ) : redemptions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-brand-charcoal/40">
                     暂无兑换记录
                   </td>
                 </tr>
               ) : (
                 redemptions.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50">
+                  <tr key={r.id} className="hover:bg-brand-charcoal/[0.03]">
                     <td className="px-4 py-3">
-                      <p className="text-sm text-gray-700">{r.user.nickname || "未设置昵称"}</p>
-                      <p className="text-xs text-gray-400">{r.user.phone}</p>
+                      <p className="text-sm text-brand-charcoal/70">
+                        {r.user.nickname || "未设置昵称"}
+                      </p>
+                      <p className="text-xs text-brand-charcoal/40">{r.user.phone}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{r.productName}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-brand-charcoal/70">{r.productName}</td>
+                    <td className="px-4 py-3 text-sm text-brand-charcoal/60">
                       ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
                     </td>
                     <td className="px-4 py-3">
                       {r.recipient && r.address ? (
                         <>
-                          <p className="text-sm text-gray-700">
+                          <p className="text-sm text-brand-charcoal/70">
                             {r.recipient}
                             {r.phone && (
-                              <span className="ml-2 text-xs text-gray-400">{r.phone}</span>
+                              <span className="ml-2 text-xs text-brand-charcoal/40">{r.phone}</span>
                             )}
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-500">{r.address}</p>
+                          <p className="mt-0.5 text-xs text-brand-charcoal/50">{r.address}</p>
                         </>
                       ) : (
-                        <span className="text-xs text-gray-400">未填写</span>
+                        <span className="text-xs text-brand-charcoal/40">未填写</span>
                       )}
                       {r.waybillNo && (
-                        <p className="mt-0.5 text-xs text-blue-700">
+                        <p className="mt-0.5 text-xs text-brand-primary">
                           运单号：{r.waybillNo}
                           {r.carrier === "SF" ? "（顺丰）" : ""}
                         </p>
@@ -641,7 +650,7 @@ function AdminPointGiftsContent() {
                         {STATUS_LABELS[r.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <td className="px-4 py-3 text-sm text-brand-charcoal/50">
                       {formatDateTime(r.createdAt)}
                     </td>
                     <td className="px-4 py-3">
@@ -668,7 +677,7 @@ function AdminPointGiftsContent() {
                               </Button>
                             )}
                             {!canFulfill && !canCancelRedemption && (
-                              <span className="text-xs text-gray-400">只读</span>
+                              <span className="text-xs text-brand-charcoal/40">只读</span>
                             )}
                           </>
                         ) : r.status === "FULFILLED" ? (
@@ -687,7 +696,7 @@ function AdminPointGiftsContent() {
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-gray-500">
+          <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-brand-charcoal/50">
             <span>
               第 {page}/{totalPages} 页
             </span>
@@ -718,18 +727,33 @@ function AdminPointGiftsContent() {
         open={!!fulfillTarget}
         onClose={() => setFulfillTarget(null)}
         size="sm"
-        showCloseButton={false}
-      >
-        <h3 className="text-lg font-semibold text-gray-800">
-          {fulfillTarget?.mode === "fulfill" ? "标记履约" : "维护运单号"}
-        </h3>
-        <p className="mt-1 text-sm text-gray-500">
-          {fulfillTarget?.mode === "fulfill"
+        title={fulfillTarget?.mode === "fulfill" ? "标记履约" : "维护运单号"}
+        description={
+          fulfillTarget?.mode === "fulfill"
             ? "确认已发出该礼品？可选填顺丰运单号，填写后用户可查看物流轨迹。"
-            : "填写或更新顺丰运单号（留空并保存可清除）。"}
-        </p>
+            : "填写或更新顺丰运单号（留空并保存可清除）。"
+        }
+        closeOnBackdrop={false}
+        closeGuard={() => !submittingFulfill && confirmCloseFulfill()}
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmCloseFulfill()) setFulfillTarget(null);
+              }}
+              disabled={submittingFulfill}
+            >
+              取消
+            </Button>
+            <Button onClick={handleFulfillSubmit} loading={submittingFulfill}>
+              {fulfillTarget?.mode === "fulfill" ? "确认履约" : "保存"}
+            </Button>
+          </div>
+        }
+      >
         {fulfillTarget && (
-          <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+          <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-xs text-brand-charcoal/50">
             <p className="truncate">{fulfillTarget.redemption.productName}</p>
             <p className="mt-0.5">
               {fulfillTarget.redemption.recipient ?? "未填写收货人"}
@@ -738,23 +762,13 @@ function AdminPointGiftsContent() {
           </div>
         )}
         <Input
+          label="顺丰运单号"
           value={waybillInput}
           onChange={(e) => setWaybillInput(e.target.value)}
-          placeholder="顺丰运单号（如 SF1234567890123，选填）"
-          className="mt-4"
+          data-autofocus
+          placeholder="如 SF1234567890123（选填）"
+          className="mt-4 font-mono"
         />
-        <div className="mt-6 flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setFulfillTarget(null)}
-            disabled={submittingFulfill}
-          >
-            取消
-          </Button>
-          <Button onClick={handleFulfillSubmit} loading={submittingFulfill}>
-            {fulfillTarget?.mode === "fulfill" ? "确认履约" : "保存"}
-          </Button>
-        </div>
       </Modal>
 
       {/* 取消兑换确认（退还积分） */}

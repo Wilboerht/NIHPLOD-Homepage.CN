@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 import { AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
@@ -62,6 +62,8 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const Icon = iconMap[type];
   const { error: showError } = useToast();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   const handleConfirm = async () => {
     try {
@@ -82,6 +84,24 @@ export function ConfirmDialog({
       // 请求进行中禁止遮罩/Esc 关闭，避免操作结果丢失上下文
       closeOnBackdrop={!loading}
       closeOnEscape={!loading}
+      // 危险操作默认聚焦“取消”，避免直接按 Enter 执行不可逆操作
+      initialFocusRef={confirmDisabled ? undefined : type === "danger" ? cancelRef : confirmRef}
+      footer={
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button ref={cancelRef} variant="outline" onClick={onClose} disabled={loading}>
+            {cancelText}
+          </Button>
+          <Button
+            ref={confirmRef}
+            variant={confirmButtonVariant[type]}
+            onClick={handleConfirm}
+            loading={loading}
+            disabled={confirmDisabled}
+          >
+            {confirmText}
+          </Button>
+        </div>
+      }
     >
       <div className="flex gap-4">
         <div
@@ -97,21 +117,6 @@ export function ConfirmDialog({
           {description && <p className="mt-1 text-sm text-brand-charcoal/50">{description}</p>}
           {children && <div className="mt-3">{children}</div>}
         </div>
-      </div>
-
-      <div className="mt-6 flex justify-end gap-3">
-        <Button variant="outline" onClick={onClose} disabled={loading}>
-          {cancelText}
-        </Button>
-        <Button
-          variant={confirmButtonVariant[type]}
-          onClick={handleConfirm}
-          loading={loading}
-          disabled={confirmDisabled}
-          autoFocus
-        >
-          {confirmText}
-        </Button>
       </div>
     </Modal>
   );

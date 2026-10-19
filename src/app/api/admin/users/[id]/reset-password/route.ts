@@ -100,7 +100,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // 资金/安全类操作：二次验证（TOTP / 备用码），与积分调整同一口径
-    const totpResponse = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode);
+    const totpResponse = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode, {
+      request,
+      admin,
+    });
     if (totpResponse) return totpResponse;
 
     const user = await prisma.user.findUnique({

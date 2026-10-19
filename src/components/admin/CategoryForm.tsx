@@ -174,13 +174,27 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
   return (
     <Modal
       open={open}
-      onClose={() => guardClose(onClose)}
+      onClose={() => {
+        if (!saving) guardClose(onClose);
+      }}
       title={isEdit ? "编辑分类" : "新增分类"}
       size="md"
+      closeOnBackdrop={false}
+      footer={
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button variant="outline" onClick={() => guardClose(onClose)} disabled={saving}>
+            取消
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            {isEdit ? "保存" : "创建"}
+          </Button>
+        </div>
+      }
     >
       <div className="space-y-4">
         <Input
           label="分类名称（中文）"
+          data-autofocus
           value={formData.name}
           onChange={(e) => updateField("name", e.target.value)}
           error={errors.name}
@@ -255,15 +269,6 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
             />
           </button>
         </div>
-      </div>
-
-      <div className="mt-6 flex justify-end gap-3">
-        <Button variant="outline" onClick={() => guardClose(onClose)} disabled={saving}>
-          取消
-        </Button>
-        <Button onClick={handleSave} loading={saving}>
-          {isEdit ? "保存" : "创建"}
-        </Button>
       </div>
     </Modal>
   );

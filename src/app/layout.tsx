@@ -173,7 +173,9 @@ export default function RootLayout({
           <ChunkErrorBoundary>
             <MotionProvider>
               <AuthProvider>
-                <ToastProvider>{children}</ToastProvider>
+                <ToastProvider>
+                  <div id="app-root">{children}</div>
+                </ToastProvider>
               </AuthProvider>
             </MotionProvider>
           </ChunkErrorBoundary>

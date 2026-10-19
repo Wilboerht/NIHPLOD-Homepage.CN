@@ -167,9 +167,9 @@ function AdminSpentAdjustmentsContent() {
         await submit();
       } catch (e) {
         if (!isTotpRequired(e)) throw e;
-        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
-        if (!code) return;
-        await submit(code);
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        await submit();
       }
 
       success(decision === "approve" ? "已通过并完成入账" : "已驳回");
@@ -197,9 +197,9 @@ function AdminSpentAdjustmentsContent() {
         await submit();
       } catch (e) {
         if (!isTotpRequired(e)) throw e;
-        const code = await requireTotp(e instanceof ApiError ? e.code : undefined);
-        if (!code) return;
-        await submit(code);
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        await submit();
       }
 
       success("已撤销审核，申请回到待审核队列");
@@ -260,14 +260,14 @@ function AdminSpentAdjustmentsContent() {
               }}
               className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors ${
                 tab === t.key
-                  ? "border-gray-800 bg-gray-800 text-white"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  ? "border-brand-charcoal bg-brand-charcoal text-white"
+                  : "border-brand-charcoal/15 text-brand-charcoal/60 hover:border-brand-charcoal/30"
               }`}
             >
               {t.label}
               <span
                 className={`rounded-full px-1.5 text-xs ${
-                  tab === t.key ? "bg-white/20" : "bg-gray-100"
+                  tab === t.key ? "bg-white/20" : "bg-brand-charcoal/[0.06]"
                 }`}
               >
                 {count}
@@ -339,7 +339,7 @@ function AdminSpentAdjustmentsContent() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[960px]">
             <thead>
-              <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
+              <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">
                 <th className="px-3 py-2 font-medium">用户</th>
                 <th className="px-3 py-2 font-medium">渠道</th>
                 <th className="px-3 py-2 font-medium">订单号</th>
@@ -355,7 +355,7 @@ function AdminSpentAdjustmentsContent() {
               {loading ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center">
-                    <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
+                    <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/30" />
                   </td>
                 </tr>
               ) : loadError ? (
@@ -375,20 +375,24 @@ function AdminSpentAdjustmentsContent() {
                 </tr>
               ) : data && data.applications.length > 0 ? (
                 data.applications.map((a) => (
-                  <tr key={a.id} className="hover:bg-gray-50">
+                  <tr key={a.id} className="hover:bg-brand-charcoal/[0.03]">
                     <td className="px-3 py-2">
-                      <p className="text-sm text-gray-700">{a.user.nickname || "未设置昵称"}</p>
-                      <p className="text-xs text-gray-400">{a.user.phone}</p>
+                      <p className="text-sm text-brand-charcoal/70">
+                        {a.user.nickname || "未设置昵称"}
+                      </p>
+                      <p className="text-xs text-brand-charcoal/40">{a.user.phone}</p>
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-600">{a.channelLabel}</td>
-                    <td className="max-w-[180px] truncate px-3 py-2 font-mono text-sm text-gray-700">
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/60">{a.channelLabel}</td>
+                    <td className="max-w-[180px] truncate px-3 py-2 font-mono text-sm text-brand-charcoal/70">
                       {a.orderNo}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-600">
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/60">
                       {a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-600">{formatDate(a.purchasedAt)}</td>
-                    <td className="px-3 py-2 text-sm text-gray-600">
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/60">
+                      {formatDate(a.purchasedAt)}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/60">
                       {a.images.length > 0 ? `${a.images.length} 张` : "-"}
                     </td>
                     <td className="px-3 py-2">
@@ -398,7 +402,7 @@ function AdminSpentAdjustmentsContent() {
                         {a.statusLabel}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-500">
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/50">
                       {formatDateTime(a.createdAt)}
                     </td>
                     <td className="px-3 py-2">
@@ -410,7 +414,7 @@ function AdminSpentAdjustmentsContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-400">
+                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-brand-charcoal/40">
                     暂无申请
                   </td>
                 </tr>
@@ -434,6 +438,30 @@ function AdminSpentAdjustmentsContent() {
         open={!!detail}
         onClose={() => setDetail(null)}
         title={detail?.status === "PENDING" ? "审核申请" : "申请详情"}
+        size="lg"
+        footer={
+          detail?.status === "PENDING" && canReview ? (
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button variant="outline" onClick={() => setDetail(null)} disabled={saving}>
+                取消
+              </Button>
+              <Button
+                onClick={handleReview}
+                loading={saving}
+                className={decision === "reject" ? "bg-red-500 hover:bg-red-600" : undefined}
+              >
+                {decision === "approve" ? "确认通过并入账" : "确认驳回"}
+              </Button>
+            </div>
+          ) : detail?.status === "APPROVED" && canReview ? (
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setUndoTarget(detail)} disabled={undoing}>
+                <Undo2 className="mr-1.5 h-4 w-4" />
+                撤销审核
+              </Button>
+            </div>
+          ) : undefined
+        }
       >
         {detail && (
           <div className="space-y-4">
@@ -441,78 +469,82 @@ function AdminSpentAdjustmentsContent() {
             <div className="space-y-3 rounded-lg bg-brand-charcoal/[0.03] p-4 text-sm">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-gray-400">用户</p>
-                  <p className="mt-0.5 text-gray-700">
+                  <p className="text-xs text-brand-charcoal/40">用户</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">
                     {detail.user.nickname || "-"}（{detail.user.phone}）
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">当前等级</p>
-                  <p className="mt-0.5 text-gray-700">
+                  <p className="text-xs text-brand-charcoal/40">当前等级</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">
                     {levelDisplay(detail.user.membershipLevel)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">渠道</p>
-                  <p className="mt-0.5 text-gray-700">{detail.channelLabel}</p>
+                  <p className="text-xs text-brand-charcoal/40">渠道</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">{detail.channelLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">订单号 / 小票号</p>
-                  <p className="mt-0.5 font-mono text-gray-700">{detail.orderNo}</p>
+                  <p className="text-xs text-brand-charcoal/40">订单号 / 小票号</p>
+                  <p className="mt-0.5 font-mono text-brand-charcoal/70">{detail.orderNo}</p>
                 </div>
                 {detail.dealerName && (
                   <div>
-                    <p className="text-xs text-gray-400">经销商名称</p>
-                    <p className="mt-0.5 text-gray-700">{detail.dealerName}</p>
+                    <p className="text-xs text-brand-charcoal/40">经销商名称</p>
+                    <p className="mt-0.5 text-brand-charcoal/70">{detail.dealerName}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-gray-400">申报金额</p>
-                  <p className="mt-0.5 text-gray-700">
+                  <p className="text-xs text-brand-charcoal/40">申报金额</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">
                     {detail.amountClaimed != null
                       ? `¥${detail.amountClaimed.toLocaleString()}`
                       : "-"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">消费日期</p>
-                  <p className="mt-0.5 text-gray-700">{formatDate(detail.purchasedAt)}</p>
+                  <p className="text-xs text-brand-charcoal/40">消费日期</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">{formatDate(detail.purchasedAt)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">提交时间</p>
-                  <p className="mt-0.5 text-gray-700">{formatDateTime(detail.createdAt)}</p>
+                  <p className="text-xs text-brand-charcoal/40">提交时间</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">
+                    {formatDateTime(detail.createdAt)}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">状态</p>
-                  <p className="mt-0.5 text-gray-700">{detail.statusLabel}</p>
+                  <p className="text-xs text-brand-charcoal/40">状态</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">{detail.statusLabel}</p>
                 </div>
               </div>
               {detail.note && (
                 <div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-brand-charcoal/40">
                     {detail.channel === "OTHER" ? "用户说明" : "用户备注"}
                   </p>
-                  <p className="mt-0.5 whitespace-pre-wrap text-gray-700">{detail.note}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-brand-charcoal/70">{detail.note}</p>
                 </div>
               )}
               {detail.status !== "PENDING" && (
-                <div className="grid grid-cols-1 gap-3 border-t border-gray-200 pt-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 border-t border-brand-charcoal/15 pt-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs text-gray-400">核实金额</p>
-                    <p className="mt-0.5 text-gray-700">
+                    <p className="text-xs text-brand-charcoal/40">核实金额</p>
+                    <p className="mt-0.5 text-brand-charcoal/70">
                       {detail.reviewAmount != null
                         ? `¥${detail.reviewAmount.toLocaleString()}`
                         : "-"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">审核时间</p>
-                    <p className="mt-0.5 text-gray-700">{formatDateTime(detail.reviewedAt)}</p>
+                    <p className="text-xs text-brand-charcoal/40">审核时间</p>
+                    <p className="mt-0.5 text-brand-charcoal/70">
+                      {formatDateTime(detail.reviewedAt)}
+                    </p>
                   </div>
                   {detail.reviewNote && (
                     <div className="col-span-2">
-                      <p className="text-xs text-gray-400">审核备注</p>
-                      <p className="mt-0.5 whitespace-pre-wrap text-gray-700">
+                      <p className="text-xs text-brand-charcoal/40">审核备注</p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-brand-charcoal/70">
                         {detail.reviewNote}
                       </p>
                     </div>
@@ -524,7 +556,7 @@ function AdminSpentAdjustmentsContent() {
             {/* 凭证截图 */}
             {detail.images.length > 0 && (
               <div className="mt-4">
-                <p className="mb-2 flex items-center gap-1.5 text-sm text-gray-600">
+                <p className="mb-2 flex items-center gap-1.5 text-sm text-brand-charcoal/60">
                   <ImageIcon className="h-4 w-4" />
                   凭证截图
                 </p>
@@ -535,7 +567,7 @@ function AdminSpentAdjustmentsContent() {
                       href={receiptImageSrc(url, "admin")}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group relative block h-24 w-24 overflow-hidden rounded-lg border border-gray-200"
+                      className="group relative block h-24 w-24 overflow-hidden rounded-lg border border-brand-charcoal/15"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -552,35 +584,18 @@ function AdminSpentAdjustmentsContent() {
               </div>
             )}
 
-            {/* 撤销审核（仅已通过；需要 spent:review 权限） */}
-            {detail.status === "APPROVED" && (
-              <div className="mt-6 flex justify-end border-t border-gray-100 pt-4">
-                {canReview ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => setUndoTarget(detail)}
-                    disabled={undoing}
-                  >
-                    <Undo2 className="mr-1.5 h-4 w-4" />
-                    {undoing ? "撤销中..." : "撤销审核"}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-gray-400">只读查看（无审核权限）</span>
-                )}
-              </div>
-            )}
-
             {/* 审核操作（需要 spent:review 权限） */}
             {detail.status === "PENDING" && canReview && (
-              <div className="mt-6 border-t border-gray-100 pt-4">
+              <div className="mt-6 border-t border-brand-charcoal/10 pt-4">
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    aria-pressed={decision === "approve"}
                     onClick={() => setDecision("approve")}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
                       decision === "approve"
                         ? "bg-emerald-600 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/60 hover:bg-brand-charcoal/10"
                     }`}
                   >
                     <CheckCircle2 className="h-4 w-4" />
@@ -588,11 +603,12 @@ function AdminSpentAdjustmentsContent() {
                   </button>
                   <button
                     type="button"
+                    aria-pressed={decision === "reject"}
                     onClick={() => setDecision("reject")}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
                       decision === "reject"
                         ? "bg-red-500 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/60 hover:bg-brand-charcoal/10"
                     }`}
                   >
                     <XCircle className="h-4 w-4" />
@@ -607,6 +623,7 @@ function AdminSpentAdjustmentsContent() {
                       type="number"
                       min={1}
                       max={1000000}
+                      data-autofocus
                       value={reviewAmount}
                       onChange={(e) => setReviewAmount(e.target.value)}
                       placeholder="请输入核实后的消费金额"
@@ -634,23 +651,10 @@ function AdminSpentAdjustmentsContent() {
                     />
                   </div>
                 )}
-
-                <div className="mt-5 flex justify-end gap-3">
-                  <Button variant="outline" onClick={() => setDetail(null)}>
-                    取消
-                  </Button>
-                  <Button
-                    onClick={handleReview}
-                    disabled={saving}
-                    className={decision === "reject" ? "bg-red-500 hover:bg-red-600" : undefined}
-                  >
-                    {saving ? "提交中..." : decision === "approve" ? "确认通过并入账" : "确认驳回"}
-                  </Button>
-                </div>
               </div>
             )}
-            {detail.status === "PENDING" && !canReview && (
-              <div className="mt-6 border-t border-gray-100 pt-4 text-xs text-gray-400">
+            {!canReview && (
+              <div className="mt-6 border-t border-brand-charcoal/10 pt-4 text-xs text-brand-charcoal/40">
                 只读查看（无审核权限）
               </div>
             )}
@@ -663,6 +667,7 @@ function AdminSpentAdjustmentsContent() {
         open={!!undoTarget}
         onClose={() => setUndoTarget(null)}
         onConfirm={handleUndo}
+        type="warning"
         title="撤销审核"
         description="撤销后将按原核实金额扣减该用户的历史消费（会员等级同步重算），申请回到待审核队列，可重新审核。确认撤销？"
       />

@@ -163,7 +163,11 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
   it("权限校验通过后携带 totpCode 调用二次验证", async () => {
     const res = await POST(createRequest({ totpCode: "654321" }), context);
     expect(res.status).toBe(200);
-    expect(requireMoneyOperationTotp).toHaveBeenCalledWith("admin-1", "654321");
+    expect(requireMoneyOperationTotp).toHaveBeenCalledWith(
+      "admin-1",
+      "654321",
+      expect.objectContaining({ admin: expect.objectContaining({ id: "admin-1" }) })
+    );
   });
 
   it("重置成功后向被重置用户手机号发送安全提醒短信", async () => {

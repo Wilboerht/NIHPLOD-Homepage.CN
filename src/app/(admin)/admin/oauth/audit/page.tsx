@@ -56,8 +56,6 @@ const SUCCESS_OPTIONS = [
   { value: "false", label: "失败" },
 ];
 
-
-
 const formatEventType = (type: string): string => {
   const map: Record<string, string> = {
     authorize: "授权请求",
@@ -392,7 +390,7 @@ function OAuthAuditPage() {
                       {entry.detail ? (
                         <button
                           onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-                          className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                          className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
                         >
                           展开
                           <ChevronDown

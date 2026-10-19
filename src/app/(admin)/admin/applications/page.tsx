@@ -35,6 +35,7 @@ import { formatDateTime as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { IconButton } from "@/components/admin/IconButton";
@@ -211,6 +212,16 @@ function AdminApplicationsContent() {
 
   // 保存备注
   const [savingNotes, setSavingNotes] = useState(false);
+  const folderBaseline = editingFolder
+    ? { name: editingFolder.name, description: editingFolder.description || "" }
+    : { name: "", description: "" };
+  const isFolderDirty =
+    showFolderModal &&
+    (folderForm.name !== folderBaseline.name ||
+      folderForm.description !== folderBaseline.description);
+  const isNotesDirty = !!detailApplication && editingNotes !== (detailApplication.notes ?? "");
+  const { confirmClose: confirmCloseFolder } = useUnsavedChanges(isFolderDirty);
+  const { confirmClose: confirmCloseNotes } = useUnsavedChanges(isNotesDirty);
   const saveNotes = async () => {
     if (!detailApplication) return;
     if (editingNotes.length > 5000) {
@@ -725,6 +736,8 @@ function AdminApplicationsContent() {
         onClose={() => setDetailApplication(null)}
         title="简历详情"
         size="lg"
+        closeOnBackdrop={false}
+        closeGuard={() => !savingNotes && confirmCloseNotes()}
       >
         {detailApplication && (
           <div className="space-y-6">
@@ -879,10 +892,13 @@ function AdminApplicationsContent() {
         open={showFolderModal}
         onClose={() => setShowFolderModal(false)}
         title={editingFolder ? "编辑分类" : "新建分类"}
+        closeOnBackdrop={false}
+        closeGuard={() => !savingFolder && confirmCloseFolder()}
       >
         <div className="space-y-4">
           <Input
             label="分类名称"
+            data-autofocus
             value={folderForm.name}
             onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })}
             placeholder="如：优秀候选人、待面试等"
@@ -896,7 +912,13 @@ function AdminApplicationsContent() {
             rows={2}
           />
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" onClick={() => setShowFolderModal(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmCloseFolder()) setShowFolderModal(false);
+              }}
+              disabled={savingFolder}
+            >
               取消
             </Button>
             <Button onClick={saveFolder} loading={savingFolder}>

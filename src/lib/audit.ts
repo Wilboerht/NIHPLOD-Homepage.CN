@@ -60,6 +60,7 @@ export type AuditAction =
   | "user_detail_view"
   | "user_detail_sensitive_view"
   | "application_detail_view"
+  | "step_up_granted"
   | "user_birthday_update"
   | "user_password_reset"
   | "user_identity_unbind"
@@ -172,6 +173,7 @@ export const AUDIT_ACTIONS = [
   "user_detail_view",
   "user_detail_sensitive_view",
   "application_detail_view",
+  "step_up_granted",
   "user_birthday_update",
   "user_password_reset",
   "user_identity_unbind",

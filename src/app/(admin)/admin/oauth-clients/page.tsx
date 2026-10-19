@@ -33,6 +33,7 @@ import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { formatDate, formatDateTimeSeconds as formatDateTime } from "@/lib/format";
@@ -181,6 +182,7 @@ function ClientFormFields({
       <Input
         label="应用名称"
         required
+        data-autofocus
         value={formName}
         onChange={(e) => onFormNameChange(e.target.value)}
         error={errors.name}
@@ -385,6 +387,31 @@ function OAuthClientsPage() {
   const [sdkConfigClient, setSdkConfigClient] = useState<OAuthClient | null>(null);
   const [sdkConfigCode, setSdkConfigCode] = useState("");
   const [sdkClientType, setSdkClientType] = useState<ClientType>("confidential");
+
+  const isCreateDirty =
+    showCreate &&
+    !newSecret &&
+    (formName !== "" ||
+      formRedirectUris !== "" ||
+      formPostLogoutUris !== "" ||
+      formScopes !== "openid profile phone" ||
+      formIsPublic ||
+      formBackchannelUri !== "" ||
+      formWebhookUri !== "");
+
+  const isEditDirty =
+    showEdit &&
+    !!editClient &&
+    (formName !== editClient.name ||
+      formRedirectUris !== editClient.redirectUris.join("\n") ||
+      formPostLogoutUris !== (editClient.postLogoutRedirectUris || []).join("\n") ||
+      formScopes !== editClient.scopes.join(" ") ||
+      formIsPublic !== editClient.isPublic ||
+      formBackchannelUri !== (editClient.backchannelLogoutUri || "") ||
+      formWebhookUri !== (editClient.webhookUri || ""));
+
+  const { confirmClose: confirmCloseCreate } = useUnsavedChanges(isCreateDirty);
+  const { confirmClose: confirmCloseEdit } = useUnsavedChanges(isEditDirty);
 
   const takeLatestClients = useLatestRequest();
   const fetchClients = useCallback(async () => {
@@ -1013,10 +1040,43 @@ if (!payload) {
           setNewSecret(null);
         }}
         title="新建 OAuth Client"
+        size="lg"
         // 一次性 Secret 展示期间禁止 Esc/遮罩/关闭按钮误关（关闭按钮另有"已保存"勾选门控）
-        closeOnBackdrop={!newSecret}
+        closeOnBackdrop={false}
         closeOnEscape={!newSecret}
         showCloseButton={!newSecret}
+        closeGuard={newSecret ? undefined : () => !saving && confirmCloseCreate()}
+        footer={
+          newSecret ? (
+            <div className="flex justify-end">
+              <Button
+                disabled={!newSecretSaved}
+                onClick={() => {
+                  setShowCreate(false);
+                  setNewSecret(null);
+                  fetchClients();
+                }}
+              >
+                关闭
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (confirmCloseCreate()) setShowCreate(false);
+                }}
+                disabled={saving}
+              >
+                取消
+              </Button>
+              <Button onClick={handleCreate} loading={saving}>
+                创建
+              </Button>
+            </div>
+          )
+        }
       >
         {newSecret ? (
           <div className="space-y-4">
@@ -1066,18 +1126,6 @@ if (!payload) {
                 </div>
               </label>
             </div>
-            <div className="flex justify-end">
-              <Button
-                disabled={!newSecretSaved}
-                onClick={() => {
-                  setShowCreate(false);
-                  setNewSecret(null);
-                  fetchClients();
-                }}
-              >
-                关闭
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -1103,20 +1151,35 @@ if (!payload) {
               onFormWebhookUriChange={setFormWebhookUri}
               errors={formErrors}
             />
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowCreate(false)}>
-                取消
-              </Button>
-              <Button onClick={handleCreate} loading={saving}>
-                创建
-              </Button>
-            </div>
           </div>
         )}
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={showEdit} onClose={() => setShowEdit(false)} title="编辑 OAuth Client">
+      <Modal
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        title="编辑 OAuth Client"
+        size="lg"
+        closeOnBackdrop={false}
+        closeGuard={() => !saving && confirmCloseEdit()}
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmCloseEdit()) setShowEdit(false);
+              }}
+              disabled={saving}
+            >
+              取消
+            </Button>
+            <Button onClick={handleEdit} loading={saving}>
+              保存
+            </Button>
+          </div>
+        }
+      >
         <div className="space-y-4">
           {formError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -1140,14 +1203,6 @@ if (!payload) {
             onFormWebhookUriChange={setFormWebhookUri}
             errors={formErrors}
           />
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowEdit(false)}>
-              取消
-            </Button>
-            <Button onClick={handleEdit} loading={saving}>
-              保存
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1181,6 +1236,8 @@ if (!payload) {
         <Input
           value={deleteConfirmText}
           onChange={(e) => setDeleteConfirmText(e.target.value)}
+          aria-label="输入 Client 名称以确认删除"
+          data-autofocus
           placeholder={`输入 ${deleteClient?.name || "Client 名称"}`}
           className="mt-2"
         />
@@ -1287,6 +1344,7 @@ if (!payload) {
           setTestSecret("");
         }}
         title={`在线测试：${testClient?.name || ""}`}
+        size="lg"
       >
         <div className="space-y-4">
           <p className="text-xs text-brand-charcoal/50">
@@ -1377,7 +1435,12 @@ if (!payload) {
       </Modal>
 
       {/* SDK Config Modal */}
-      <Modal open={showSdkConfig} onClose={() => setShowSdkConfig(false)} title="接入配置代码">
+      <Modal
+        open={showSdkConfig}
+        onClose={() => setShowSdkConfig(false)}
+        title="接入配置代码"
+        size="lg"
+      >
         <div className="space-y-4">
           <div className="flex gap-2 rounded-lg bg-brand-charcoal/[0.06] p-1">
             <button

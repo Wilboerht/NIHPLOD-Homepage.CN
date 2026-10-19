@@ -23,6 +23,7 @@ import { grantBirthdayRewards } from "./points-ledger";
 import { expirePointsCron } from "./points-ledger";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
+import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
 import { acquireCronLock, releaseCronLock } from "./cron-lock";
@@ -151,6 +152,22 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);
         markCleanupFailed("过期授权码");
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Cleanup Expired Admin Step-Up Grants",
+    cronExpression: "15 5 * * *",
+    isCleanup: true,
+    handler: async () => {
+      try {
+        const count = await cleanupExpiredAdminStepUpGrants();
+        apiConsole.info(`[Cron] 过期管理员 step-up 凭证清理完成: ${count} 条`);
+        markCleanupOk("管理员 step-up 凭证");
+      } catch (error) {
+        apiConsole.error("[Cron] 管理员 step-up 凭证清理失败:", error);
+        markCleanupFailed("管理员 step-up 凭证");
         throw error;
       }
     },

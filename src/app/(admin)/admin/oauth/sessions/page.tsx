@@ -61,8 +61,6 @@ interface ClientOption {
   name: string;
 }
 
-
-
 function OAuthSessionsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -415,6 +413,8 @@ function OAuthSessionsPage() {
         <Input
           value={batchConfirmText}
           onChange={(e) => setBatchConfirmText(e.target.value)}
+          aria-label="输入 TERMINATE ALL 以确认批量终止"
+          data-autofocus
           placeholder="输入 TERMINATE ALL"
           className="mt-2"
         />
@@ -431,104 +431,102 @@ function OAuthSessionsPage() {
       >
         {detailSession && (
           <div className="space-y-6">
-              <div className="space-y-4">
-                <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">用户信息</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">用户 ID</span>
-                      <Link
-                        href={`/admin/users?search=${encodeURIComponent(detailSession.userId)}`}
-                        className="font-mono text-blue-600 hover:underline"
-                      >
-                        {detailSession.userId}
-                      </Link>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">手机号</span>
-                      <span>{detailSession.phone || "-"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">昵称</span>
-                      <span>{detailSession.nickname || "-"}</span>
-                    </div>
+            <div className="space-y-4">
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">用户信息</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">用户 ID</span>
+                    <Link
+                      href={`/admin/users?search=${encodeURIComponent(detailSession.userId)}`}
+                      className="font-mono text-brand-primary hover:underline"
+                    >
+                      {detailSession.userId}
+                    </Link>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">手机号</span>
+                    <span>{detailSession.phone || "-"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">昵称</span>
+                    <span>{detailSession.nickname || "-"}</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">Client 信息</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">Client ID</span>
-                      <span className="font-mono">{detailSession.clientId}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">Client 名称</span>
-                      <span>{detailSession.clientName || "-"}</span>
-                    </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">Client 信息</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">Client ID</span>
+                    <span className="font-mono">{detailSession.clientId}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">Client 名称</span>
+                    <span>{detailSession.clientName || "-"}</span>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
-                    权限范围（Scopes）
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {detailSession.scopes.map((s) => (
-                      <Badge key={s} variant="secondary">
-                        {s}
-                      </Badge>
-                    ))}
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-brand-charcoal">权限范围（Scopes）</h3>
+                <div className="flex flex-wrap gap-2">
+                  {detailSession.scopes.map((s) => (
+                    <Badge key={s} variant="secondary">
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal">时间信息</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">创建时间</span>
+                    <span>{formatFullDateTime(detailSession.createdAt)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">过期时间</span>
+                    <span>{formatFullDateTime(detailSession.expiresAt)}</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-                  <h3 className="mb-3 text-sm font-medium text-brand-charcoal">时间信息</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">创建时间</span>
-                      <span>{formatFullDateTime(detailSession.createdAt)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-brand-charcoal/50">过期时间</span>
-                      <span>{formatFullDateTime(detailSession.expiresAt)}</span>
-                    </div>
-                  </div>
-                </div>
+              <Link
+                href={`/admin/oauth/audit?userId=${detailSession.userId}&clientId=${detailSession.clientId}`}
+                className="flex items-center gap-2 text-sm text-brand-primary hover:underline"
+                onClick={() => setDetailSession(null)}
+              >
+                <ExternalLink className="h-4 w-4" />
+                查看该用户/Client 的审计日志
+              </Link>
+            </div>
 
-                <Link
-                  href={`/admin/oauth/audit?userId=${detailSession.userId}&clientId=${detailSession.clientId}`}
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                  onClick={() => setDetailSession(null)}
+            <div className="flex gap-2 border-t pt-4">
+              {canWrite ? (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setDetailSession(null);
+                    setTerminateTarget({
+                      id: detailSession.id,
+                      userId: detailSession.userId,
+                      phone: detailSession.phone,
+                      nickname: detailSession.nickname,
+                      clientId: detailSession.clientId,
+                    });
+                    setShowTerminate(true);
+                  }}
+                  leftIcon={<LogOut className="h-4 w-4" />}
                 >
-                  <ExternalLink className="h-4 w-4" />
-                  查看该用户/Client 的审计日志
-                </Link>
-              </div>
-
-              <div className="flex gap-2 border-t pt-4">
-                {canWrite ? (
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      setDetailSession(null);
-                      setTerminateTarget({
-                        id: detailSession.id,
-                        userId: detailSession.userId,
-                        phone: detailSession.phone,
-                        nickname: detailSession.nickname,
-                        clientId: detailSession.clientId,
-                      });
-                      setShowTerminate(true);
-                    }}
-                    leftIcon={<LogOut className="h-4 w-4" />}
-                  >
-                    终止会话
-                  </Button>
-                ) : (
-                  <span className="text-xs text-brand-charcoal/40">只读查看（无操作权限）</span>
-                )}
-              </div>
+                  终止会话
+                </Button>
+              ) : (
+                <span className="text-xs text-brand-charcoal/40">只读查看（无操作权限）</span>
+              )}
+            </div>
           </div>
         )}
       </Modal>

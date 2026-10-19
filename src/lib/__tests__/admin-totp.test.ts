@@ -31,12 +31,17 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
 
+vi.mock("@/lib/admin-step-up", () => ({
+  verifyAdminStepUpGrant: vi.fn(),
+}));
+
 import {
   isMoneyOperationTotpEnforced,
   requireMoneyOperationTotp,
 } from "@/lib/admin-totp";
 import { prisma } from "@/lib/prisma";
 import { verifyTOTP, verifyBackupCode } from "@/lib/totp";
+import { verifyAdminStepUpGrant } from "@/lib/admin-step-up";
 
 const ENFORCE_BACKUP = process.env.ADMIN_TOTP_ENFORCE;
 
@@ -63,6 +68,19 @@ describe("requireMoneyOperationTotp", () => {
     const result = await requireMoneyOperationTotp("admin-1", undefined);
 
     expect(result).toBeNull();
+    expect(prisma.admin.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("有效 step-up grant 可跳过逐次 TOTP", async () => {
+    vi.mocked(verifyAdminStepUpGrant).mockResolvedValue(true);
+
+    const result = await requireMoneyOperationTotp("admin-1", undefined, {
+      request: {} as never,
+      admin: { id: "admin-1", ver: 0, jti: "session-1" },
+    });
+
+    expect(result).toBeNull();
+    expect(verifyAdminStepUpGrant).toHaveBeenCalled();
     expect(prisma.admin.findUnique).not.toHaveBeenCalled();
   });
 

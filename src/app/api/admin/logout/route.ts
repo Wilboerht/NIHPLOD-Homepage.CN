@@ -6,6 +6,11 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import {
+  ADMIN_STEP_UP_COOKIE_NAME,
+  ADMIN_STEP_UP_COOKIE_OPTIONS,
+  revokeAdminStepUpGrantsForSession,
+} from "@/lib/admin-step-up";
 
 // POST /api/admin/logout - 管理员登出
 // 强制动态渲染，禁止静态预渲染
@@ -41,6 +46,9 @@ export async function POST(request: NextRequest) {
             payload.exp ? payload.exp * 1000 : undefined
           ).catch((err) => apiConsole.warn("[AdminLogout] token jti 撤销失败:", err));
         }
+        await revokeAdminStepUpGrantsForSession(payload.id, payload.jti ?? null).catch((err) =>
+          apiConsole.warn("[AdminLogout] step-up grant 撤销失败:", err)
+        );
       }
     }
 
@@ -65,6 +73,10 @@ export async function POST(request: NextRequest) {
       ...COOKIE_OPTIONS,
       maxAge: 0,
     });
+    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {
+      ...ADMIN_STEP_UP_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
 
     return response;
   } catch (error) {
@@ -77,6 +89,10 @@ export async function POST(request: NextRequest) {
     );
     response.cookies.set(AUTH_COOKIE_NAME, "", {
       ...COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {
+      ...ADMIN_STEP_UP_COOKIE_OPTIONS,
       maxAge: 0,
     });
     return response;
