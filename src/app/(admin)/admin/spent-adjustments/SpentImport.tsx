@@ -224,7 +224,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       <Modal
         open={open}
         onClose={handleClose}
-        size="xl"
+        size="xl" mobileFullScreen
         title="Excel 批量导入消费记录"
         footer={footer}
       >
@@ -490,7 +490,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size="xl" title="导入历史">
+      <Modal open={open} onClose={onClose} size="xl" mobileFullScreen title="导入历史">
         <div className="overflow-x-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">

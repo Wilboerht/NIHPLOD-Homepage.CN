@@ -551,7 +551,7 @@ function AdminMessagesContent() {
         open={!!detailMessage}
         onClose={() => setDetailMessage(null)}
         title="留言详情"
-        size="lg"
+        size="lg" mobileFullScreen
         closeOnBackdrop={false}
         closeGuard={() => !replying && confirmCloseReply()}
         footer={

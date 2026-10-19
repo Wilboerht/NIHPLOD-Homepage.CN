@@ -282,7 +282,10 @@ export function ProductsTable({
             )}
             {canWrite && (
               <Tooltip content="编辑" side="top">
-                <IconButton label={`编辑 ${record.name}`} href={`/admin/products/${record.id}/edit`}>
+                <IconButton
+                  label={`编辑 ${record.name}`}
+                  href={`/admin/products/${record.id}/edit`}
+                >
                   <Pencil className="h-4 w-4" />
                 </IconButton>
               </Tooltip>
@@ -374,6 +377,98 @@ export function ProductsTable({
         tableLayout="fixed"
         minWidth="940px"
         emptyText="暂无产品数据"
+        mobileCard={(record) => (
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              {canSelect && (
+                <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(record)}
+                    onChange={() => selection.toggle(record)}
+                    aria-label={`选择 ${record.name}`}
+                    className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+                  />
+                </label>
+              )}
+              <div className="bg-brand-charcoal/8 h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg">
+                {record.image ? (
+                  <Image
+                    src={record.image.url}
+                    alt={record.image.alt || record.name}
+                    width={48}
+                    height={48}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/50">
+                    无图
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-brand-charcoal">{record.name}</p>
+                <p className="truncate text-xs text-brand-charcoal/50">{record.nameEn}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <Badge variant="secondary" className="max-w-full">
+                    <span className="min-w-0 truncate">{record.category.name}</span>
+                  </Badge>
+                  <DotBadge color={record.published ? "green" : "gray"}>
+                    {record.published ? "已发布" : "草稿"}
+                  </DotBadge>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+              <div className="flex items-center gap-3 text-xs text-brand-charcoal/50">
+                <span className="font-medium text-brand-charcoal">{formatPrice(record.price)}</span>
+                <span>排序 {record.order}</span>
+              </div>
+              <div className="flex items-center justify-end gap-1">
+                {canWrite && (
+                  <Tooltip content={record.published ? "取消发布" : "发布"} side="top">
+                    <IconButton
+                      label={record.published ? `取消发布 ${record.name}` : `发布 ${record.name}`}
+                      onClick={() => handleTogglePublish(record.id, record.published)}
+                      disabled={actionLoading !== null}
+                    >
+                      {record.published ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {canWrite && (
+                  <Tooltip content="编辑" side="top">
+                    <IconButton
+                      label={`编辑 ${record.name}`}
+                      href={`/admin/products/${record.id}/edit`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {canDelete && (
+                  <Tooltip content="删除" side="top">
+                    <IconButton
+                      label={`删除 ${record.name}`}
+                      variant="danger"
+                      onClick={() =>
+                        setDeleteConfirm({ open: true, id: record.id, name: record.name })
+                      }
+                      disabled={actionLoading !== null}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         onSort={onSort}
         sortBy={sortBy}
         sortOrder={sortOrder}

@@ -15,6 +15,7 @@ import { apiGet } from "@/lib/api-client";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 
@@ -311,8 +312,53 @@ function OAuthAuditPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 移动端卡片 */}
+      <MobileList loading={loading} empty="暂无数据，请调整筛选条件后重试">
+        {entries.map((entry) => (
+          <MobileListCard key={entry.id}>
+            <div className="flex items-start justify-between gap-3">
+              <Badge variant={getEventBadgeVariant(entry.event)}>
+                {formatEventType(entry.event)}
+              </Badge>
+              <Badge variant={entry.success ? "success" : "danger"}>
+                {entry.success ? "成功" : "失败"}
+              </Badge>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+              <span className="col-span-2 truncate font-mono">用户：{entry.userPhone || "-"}</span>
+              <span className="col-span-2 truncate">
+                Client：{entry.clientName || entry.clientId}
+              </span>
+              <span>IP：{entry.ip}</span>
+              <span>{formatDate(entry.createdAt)}</span>
+            </div>
+            {entry.detail != null && (
+              <div className="mt-2 border-t border-brand-charcoal/10 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+                  className="flex items-center gap-1 text-xs text-brand-primary"
+                >
+                  {expandedId === entry.id ? "收起详情" : "展开详情"}
+                  <ChevronDown
+                    className={`h-3 w-3 transition-transform ${
+                      expandedId === entry.id ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {expandedId === entry.id && (
+                  <pre className="mt-2 max-h-40 overflow-x-auto rounded bg-brand-charcoal/[0.03] p-3 text-xs text-brand-charcoal/70">
+                    {JSON.stringify(entry.detail, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+          </MobileListCard>
+        ))}
+      </MobileList>
+
+      {/* 桌面端表格 */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         <table className="w-full min-w-[900px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>

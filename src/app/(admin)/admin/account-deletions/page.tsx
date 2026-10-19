@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -182,8 +183,67 @@ function AdminAccountDeletionsContent() {
         ))}
       </div>
 
-      {/* 列表 */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 列表（移动端卡片） */}
+      <MobileList
+        loading={loading}
+        empty={<Empty title="暂无记录" description="当前状态下没有注销申请" />}
+      >
+        {items.map((item) => (
+          <MobileListCard key={item.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-brand-charcoal">
+                  {item.userNickname || "未设置昵称"}
+                </p>
+                <p className="truncate font-mono text-xs text-brand-charcoal/40">
+                  {item.userPhone || item.userId}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-xs",
+                  STATUS_BADGES[item.status].className
+                )}
+              >
+                {STATUS_BADGES[item.status].label}
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+              <span>申请：{formatDateTime(item.requestedAt)}</span>
+              <span>执行：{formatDateTime(item.scheduledAt)}</span>
+              <span>已尝试：{item.attempts} 次</span>
+            </div>
+            {item.status === "FAILED" && item.lastError && (
+              <p className="mt-2 rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-600">
+                {item.lastError}
+              </p>
+            )}
+            <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+              {item.status === "FAILED" ? (
+                canRetry ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={actioningId === item.id}
+                    disabled={actioningId !== null && actioningId !== item.id}
+                    leftIcon={<RotateCw className="h-3.5 w-3.5" />}
+                    onClick={() => setRetryTarget(item)}
+                  >
+                    重试
+                  </Button>
+                ) : (
+                  <span className="text-xs text-brand-charcoal/40">只读</span>
+                )
+              ) : (
+                <span className="text-xs text-brand-charcoal/40">—</span>
+              )}
+            </div>
+          </MobileListCard>
+        ))}
+      </MobileList>
+
+      {/* 列表（桌面端表格） */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
@@ -203,7 +263,7 @@ function AdminAccountDeletionsContent() {
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-charcoal/8">
+            <tbody className="divide-brand-charcoal/8 divide-y">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3">
@@ -230,7 +290,10 @@ function AdminAccountDeletionsContent() {
                   </td>
                   <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
                   <td className="max-w-[16rem] px-4 py-3">
-                    <p className="truncate text-xs text-brand-charcoal/50" title={item.lastError ?? undefined}>
+                    <p
+                      className="truncate text-xs text-brand-charcoal/50"
+                      title={item.lastError ?? undefined}
+                    >
                       {item.lastError || "—"}
                     </p>
                   </td>
@@ -268,7 +331,12 @@ function AdminAccountDeletionsContent() {
             第 {page}/{totalPages} 页
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
               上一页
             </Button>
             <Button

@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { RequirePermission } from "@/components/admin";
@@ -364,8 +365,83 @@ export default function AdminAdminsPage() {
           )}
         </div>
 
-        {/* 列表 */}
-        <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+        {/* 列表（移动端卡片） */}
+        <MobileList
+          loading={loading}
+          skeletonCount={4}
+          empty={<Empty title="暂无管理员" description="当前还没有管理员账号" />}
+        >
+          {admins.map((admin) => {
+            const advisor = getAdvisorAccess(admin);
+            return (
+              <MobileListCard key={admin.id}>
+                <div className="flex items-start gap-3">
+                  {canManage && (
+                    <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(admin)}
+                        onChange={() => selection.toggle(admin)}
+                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        aria-label={`选择 ${admin.name}`}
+                      />
+                    </label>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate font-medium text-brand-charcoal">{admin.name}</p>
+                      <Badge variant={admin.role === "owner" ? "warning" : "default"}>
+                        {ROLE_LABELS[admin.role as AdminRoleValue] ?? admin.role}
+                      </Badge>
+                      {admin.role !== "owner" && admin.permissions?.length > 0 && (
+                        <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                          已自定义
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">{admin.email}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge variant={advisor.variant}>{advisor.label}</Badge>
+                      <span className="text-xs text-brand-charcoal/40">
+                        创建于 {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                  {canManage && (admin.role !== "owner" || isOwnerActor) ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`编辑 ${admin.name}`}
+                        onClick={() => openEdit(admin)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {admin.id !== currentAdminId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`删除 ${admin.name}`}
+                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => setDeleteTarget(admin)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-brand-charcoal/40">只读</span>
+                  )}
+                </div>
+              </MobileListCard>
+            );
+          })}
+        </MobileList>
+
+        {/* 列表（桌面端表格） */}
+        <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
@@ -515,6 +591,7 @@ export default function AdminAdminsPage() {
           onClose={() => setShowModal(false)}
           title={editing ? "编辑管理员" : "新增管理员"}
           size="lg"
+          mobileFullScreen
           closeOnBackdrop={false}
           closeGuard={() => !submitting && confirmClose()}
           footer={

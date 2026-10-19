@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Webhook, RefreshCw, RotateCw, Trash2, Info } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -195,8 +196,60 @@ function AdminWebhookFailuresContent() {
         ))}
       </div>
 
-      {/* 列表 */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 移动端卡片 */}
+      <MobileList loading={loading} empty="当前没有投递失败的记录">
+        {items.map((item) => (
+          <MobileListCard key={item.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-brand-charcoal">{item.clientName || "—"}</p>
+                <p className="truncate font-mono text-xs text-brand-charcoal/40">{item.clientId}</p>
+              </div>
+              <span className="shrink-0 text-xs text-brand-charcoal/50">{item.attempts} 次</span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+              <span className="col-span-2 truncate">
+                用户：{item.userNickname || item.userPhone || item.userId}
+              </span>
+              <span>下次：{formatDateTime(item.nextRetryAt)}</span>
+              <span>首次：{formatDateTime(item.createdAt)}</span>
+              <span className="col-span-2">
+                载荷：{item.hasPayload ? "已隐藏（含用户资料）" : "—"}
+              </span>
+            </div>
+            <div className="mt-2 flex justify-end gap-2 border-t border-brand-charcoal/10 pt-2">
+              {canWrite ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={actioningId === item.id}
+                    disabled={actioningId !== null && actioningId !== item.id}
+                    leftIcon={<RotateCw className="h-3.5 w-3.5" />}
+                    onClick={() => setRetryTarget(item)}
+                  >
+                    重投
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50"
+                    disabled={actioningId !== null}
+                    onClick={() => setDropTarget(item)}
+                  >
+                    丢弃
+                  </Button>
+                </>
+              ) : (
+                <span className="text-xs text-brand-charcoal/40">只读</span>
+              )}
+            </div>
+          </MobileListCard>
+        ))}
+      </MobileList>
+
+      {/* 桌面端表格 */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />

@@ -1041,6 +1041,7 @@ if (!payload) {
         }}
         title="新建 OAuth Client"
         size="lg"
+        mobileFullScreen
         // 一次性 Secret 展示期间禁止 Esc/遮罩/关闭按钮误关（关闭按钮另有"已保存"勾选门控）
         closeOnBackdrop={false}
         closeOnEscape={!newSecret}
@@ -1161,6 +1162,7 @@ if (!payload) {
         onClose={() => setShowEdit(false)}
         title="编辑 OAuth Client"
         size="lg"
+        mobileFullScreen
         closeOnBackdrop={false}
         closeGuard={() => !saving && confirmCloseEdit()}
         footer={
@@ -1267,6 +1269,20 @@ if (!payload) {
         closeOnBackdrop={!rotatedSecret}
         closeOnEscape={!rotatedSecret}
         showCloseButton={!rotatedSecret}
+        footer={
+          <div className="flex justify-end">
+            <Button
+              disabled={!rotatedSecretSaved}
+              onClick={() => {
+                setShowRotatedSecret(false);
+                setRotatedSecret(null);
+                fetchClients();
+              }}
+            >
+              关闭
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="rounded-lg border border-green-200 bg-green-50 p-4">
@@ -1320,18 +1336,6 @@ if (!payload) {
               </div>
             </label>
           </div>
-          <div className="flex justify-end">
-            <Button
-              disabled={!rotatedSecretSaved}
-              onClick={() => {
-                setShowRotatedSecret(false);
-                setRotatedSecret(null);
-                fetchClients();
-              }}
-            >
-              关闭
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1345,6 +1349,27 @@ if (!payload) {
         }}
         title={`在线测试：${testClient?.name || ""}`}
         size="lg"
+        mobileFullScreen
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTestClient(null);
+                setTestSecret("");
+              }}
+            >
+              关闭
+            </Button>
+            <Button
+              onClick={handleRunTest}
+              loading={testLoading}
+              leftIcon={<Shield className="h-4 w-4" />}
+            >
+              开始测试
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <p className="text-xs text-brand-charcoal/50">
@@ -1412,25 +1437,6 @@ if (!payload) {
               </div>
             </div>
           )}
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setTestClient(null);
-                setTestSecret("");
-              }}
-            >
-              关闭
-            </Button>
-            <Button
-              onClick={handleRunTest}
-              disabled={testLoading}
-              leftIcon={<Shield className="h-4 w-4" />}
-            >
-              {testLoading ? "测试中..." : "开始测试"}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1440,6 +1446,14 @@ if (!payload) {
         onClose={() => setShowSdkConfig(false)}
         title="接入配置代码"
         size="lg"
+        mobileFullScreen
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowSdkConfig(false)}>
+              关闭
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="flex gap-2 rounded-lg bg-brand-charcoal/[0.06] p-1">
@@ -1501,11 +1515,6 @@ if (!payload) {
             </a>
             。
           </p>
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setShowSdkConfig(false)}>
-              关闭
-            </Button>
-          </div>
         </div>
       </Modal>
 

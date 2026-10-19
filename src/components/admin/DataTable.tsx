@@ -55,6 +55,8 @@ interface DataTableProps<T> {
   tableLayout?: "auto" | "fixed";
   /** 表格最小宽度；空间不足时容器横向滚动，而不是压缩列 */
   minWidth?: string;
+  /** 移动端卡片渲染；提供后 md 以下使用卡片列表，表格仅桌面显示 */
+  mobileCard?: (record: T, index: number) => ReactNode;
 }
 
 /**
@@ -76,6 +78,7 @@ export function DataTable<T extends object>({
   density = "default",
   tableLayout = "auto",
   minWidth,
+  mobileCard,
 }: DataTableProps<T>) {
   const cellDensityCls = density === "compact" ? "px-3 py-2" : "px-4 py-3";
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(
@@ -161,7 +164,44 @@ export function DataTable<T extends object>({
         className
       )}
     >
-      <div className="overflow-x-auto">
+      {mobileCard && (
+        <div className="md:hidden">
+          {loading ? (
+            <div className="space-y-2 p-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-28 animate-pulse rounded-xl bg-brand-charcoal/[0.04]"
+                />
+              ))}
+            </div>
+          ) : data.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-12 text-center text-brand-charcoal/50">
+              <Inbox className="h-10 w-10 text-brand-charcoal/25" />
+              <span>{emptyText}</span>
+              {emptyAction && (
+                <Button
+                  size="sm"
+                  onClick={emptyAction.onClick}
+                  leftIcon={<Plus className="h-4 w-4" />}
+                >
+                  {emptyAction.label}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-brand-charcoal/10">
+              {data.map((record, index) => (
+                <div key={getRowKey(record, index)} className="p-4">
+                  {mobileCard(record, index)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={cn("overflow-x-auto", mobileCard && "hidden md:block")}>
         <table
           className={cn(
             "min-w-full divide-y divide-brand-charcoal/10",

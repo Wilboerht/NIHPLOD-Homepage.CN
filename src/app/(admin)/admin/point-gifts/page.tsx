@@ -364,7 +364,123 @@ function AdminPointGiftsContent() {
               />
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="md:hidden">
+            {productsLoading ? (
+              <div className="space-y-2 p-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-28 animate-pulse rounded-xl bg-brand-charcoal/[0.04]"
+                  />
+                ))}
+              </div>
+            ) : productsError ? (
+              <div className="px-4 py-10 text-center">
+                <p className="text-sm text-red-500">加载产品失败</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={fetchProducts}>
+                  重试
+                </Button>
+              </div>
+            ) : products.length === 0 ? (
+              <p className="px-4 py-10 text-center text-sm text-brand-charcoal/40">暂无匹配产品</p>
+            ) : (
+              <div className="divide-y divide-brand-charcoal/10">
+                {products.map((p) => (
+                  <div key={p.id} className="space-y-2 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="min-w-0 truncate font-medium text-brand-charcoal">{p.name}</p>
+                      <Badge
+                        className={
+                          p.published
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                        }
+                      >
+                        {p.published ? "已发布" : "草稿"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-brand-charcoal/50">
+                      {p.categoryName} · ¥{p.priceYuan.toLocaleString()}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <Badge
+                        className={
+                          p.pointRedeemable
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                        }
+                      >
+                        {p.pointRedeemable ? "可兑换" : "未设置"}
+                      </Badge>
+                      {stockEdit?.id === p.id ? (
+                        <div className="flex w-full items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={stockEdit.value}
+                            onChange={(e) => setStockEdit({ id: p.id, value: e.target.value })}
+                            placeholder="留空=不限量"
+                            className="w-28"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            loading={savingStock}
+                            onClick={() => handleStockSave(p)}
+                          >
+                            保存
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
+                            取消
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-brand-charcoal/60">
+                            库存：{p.redeemStock === null ? "不限量" : p.redeemStock}
+                          </span>
+                          {canGiftWrite && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setStockEdit({
+                                  id: p.id,
+                                  value: p.redeemStock === null ? "" : String(p.redeemStock),
+                                })
+                              }
+                            >
+                              编辑库存
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex justify-end border-t border-brand-charcoal/10 pt-2">
+                      {canGiftWrite ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={togglingId === p.id || (!p.pointRedeemable && !p.published)}
+                          onClick={() => handleToggle(p)}
+                        >
+                          {togglingId === p.id
+                            ? "处理中..."
+                            : p.pointRedeemable
+                              ? "取消可兑"
+                              : "设为可兑"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-brand-charcoal/40">仅超级管理员可设置</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">
@@ -574,7 +690,109 @@ function AdminPointGiftsContent() {
             </button>
           ))}
         </div>
-        <div className="overflow-x-auto">
+        <div className="md:hidden">
+          {redemptionLoading ? (
+            <div className="space-y-2 p-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-32 animate-pulse rounded-xl bg-brand-charcoal/[0.04]"
+                />
+              ))}
+            </div>
+          ) : redemptionsError ? (
+            <div className="px-4 py-10 text-center">
+              <p className="text-sm text-red-500">加载兑换记录失败</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchRedemptions}>
+                重试
+              </Button>
+            </div>
+          ) : redemptions.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-brand-charcoal/40">暂无兑换记录</p>
+          ) : (
+            <div className="divide-y divide-brand-charcoal/10">
+              {redemptions.map((r) => (
+                <div key={r.id} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-brand-charcoal">
+                        {r.user.nickname || "未设置昵称"}
+                      </p>
+                      <p className="truncate text-xs text-brand-charcoal/40">{r.user.phone}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}
+                    >
+                      {STATUS_LABELS[r.status]}
+                    </span>
+                  </div>
+                  <p className="truncate text-sm text-brand-charcoal/70">{r.productName}</p>
+                  <p className="text-xs text-brand-charcoal/50">
+                    ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
+                  </p>
+                  <div className="text-xs text-brand-charcoal/50">
+                    {r.recipient && r.address ? (
+                      <>
+                        <p>
+                          {r.recipient}
+                          {r.phone && (
+                            <span className="ml-2 text-brand-charcoal/40">{r.phone}</span>
+                          )}
+                        </p>
+                        <p className="mt-0.5">{r.address}</p>
+                      </>
+                    ) : (
+                      <span>未填写收货信息</span>
+                    )}
+                    {r.waybillNo && (
+                      <p className="mt-0.5 text-brand-primary">
+                        运单号：{r.waybillNo}
+                        {r.carrier === "SF" ? "（顺丰）" : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+                    <span className="text-xs text-brand-charcoal/40">
+                      {formatDateTime(r.createdAt)}
+                    </span>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {r.status === "PENDING" ? (
+                        <>
+                          {canFulfill && (
+                            <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                              标记履约
+                            </Button>
+                          )}
+                          {canCancelRedemption && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50"
+                              onClick={() => setCancelTarget(r)}
+                            >
+                              取消退分
+                            </Button>
+                          )}
+                          {!canFulfill && !canCancelRedemption && (
+                            <span className="text-xs text-brand-charcoal/40">只读</span>
+                          )}
+                        </>
+                      ) : r.status === "FULFILLED" ? (
+                        canFulfill ? (
+                          <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                            {r.waybillNo ? "修改运单号" : "补录运单号"}
+                          </Button>
+                        ) : null
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">

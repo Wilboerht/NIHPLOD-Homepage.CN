@@ -438,7 +438,7 @@ function AdminSpentAdjustmentsContent() {
         open={!!detail}
         onClose={() => setDetail(null)}
         title={detail?.status === "PENDING" ? "审核申请" : "申请详情"}
-        size="lg"
+        size="lg" mobileFullScreen
         footer={
           detail?.status === "PENDING" && canReview ? (
             <div className="flex flex-wrap justify-end gap-3">

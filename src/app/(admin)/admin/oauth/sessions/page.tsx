@@ -21,6 +21,7 @@ import {
 } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -277,8 +278,66 @@ function OAuthSessionsPage() {
         </p>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 移动端卡片 */}
+      <MobileList loading={loading} empty="暂无会话数据">
+        {sessions.map((s) => (
+          <MobileListCard key={s.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-brand-charcoal">
+                  {s.nickname || "未设置昵称"}
+                </p>
+                <p className="truncate font-mono text-xs text-brand-charcoal/50">
+                  {maskForList(s.phone) || s.userId}
+                </p>
+              </div>
+              <div className="flex flex-shrink-0 gap-1">
+                <IconButton label="查看会话详情" onClick={() => setDetailSession(s)}>
+                  <Eye className="h-4 w-4" />
+                </IconButton>
+                {canWrite && (
+                  <IconButton
+                    label="终止会话"
+                    variant="danger"
+                    onClick={() => {
+                      setTerminateTarget({
+                        id: s.id,
+                        userId: s.userId,
+                        phone: s.phone,
+                        nickname: s.nickname,
+                        clientId: s.clientId,
+                      });
+                      setShowTerminate(true);
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </IconButton>
+                )}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {s.scopes.slice(0, 3).map((scope) => (
+                <Badge key={scope} variant="secondary" className="text-xs">
+                  {scope}
+                </Badge>
+              ))}
+              {s.scopes.length > 3 && (
+                <span className="text-xs text-brand-charcoal/40">+{s.scopes.length - 3}</span>
+              )}
+            </div>
+            <p className="mt-1.5 truncate text-xs text-brand-charcoal/50">
+              Client：{s.clientName || s.clientId}
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-brand-charcoal/10 pt-2 text-xs text-brand-charcoal/50">
+              <span>创建：{formatDate(s.createdAt)}</span>
+              <span>过期：{formatDate(s.expiresAt)}</span>
+            </div>
+          </MobileListCard>
+        ))}
+      </MobileList>
+
+      {/* 桌面端表格 */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         <table className="w-full min-w-[860px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>

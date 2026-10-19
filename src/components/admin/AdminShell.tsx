@@ -103,7 +103,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 桌面端侧边栏 */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-brand-charcoal/10 bg-white transition-all duration-300 xl:flex",
+          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-brand-charcoal/10 bg-white transition-all duration-300 lg:flex",
           collapsed ? "w-16" : "w-60"
         )}
       >
@@ -121,7 +121,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* 移动端顶栏（sticky：汉堡 + 当前页标题） */}
-      <header className="sticky top-0 z-40 flex min-h-[calc(3.5rem_+_env(safe-area-inset-top,0px))] items-center gap-3 border-b border-brand-charcoal/10 bg-white/80 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur xl:hidden">
+      <header className="sticky top-0 z-40 flex min-h-[calc(3.5rem_+_env(safe-area-inset-top,0px))] items-center gap-3 border-b border-brand-charcoal/10 bg-white/80 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur lg:hidden">
         <IconButton label="打开导航菜单" onClick={() => setDrawerOpen(true)} className="-ml-2">
           <Menu className="h-5 w-5" />
         </IconButton>
@@ -131,7 +131,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 移动端抽屉 */}
       <div
         className={cn(
-          "fixed inset-0 z-[90] bg-black/50 transition-opacity duration-300 xl:hidden",
+          "fixed inset-0 z-[90] bg-black/50 transition-opacity duration-300 lg:hidden",
           drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={() => setDrawerOpen(false)}
@@ -139,7 +139,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[95] flex w-72 flex-col border-r border-brand-charcoal/10 bg-white transition-[transform,visibility] duration-300 ease-in-out xl:hidden",
+          "fixed inset-y-0 left-0 z-[95] flex w-72 flex-col border-r border-brand-charcoal/10 bg-white transition-[transform,visibility] duration-300 ease-in-out lg:hidden",
           drawerOpen ? "translate-x-0" : "invisible -translate-x-full"
         )}
       >
@@ -167,8 +167,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 主内容区：页面边距只由壳提供 */}
       <main
         className={cn(
-          "min-h-dvh px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 xl:pb-8 xl:pr-8 xl:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
-          collapsed ? "xl:pl-24" : "xl:pl-[17rem]"
+          "min-h-dvh px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
+          collapsed ? "lg:pl-24" : "lg:pl-[17rem]"
         )}
       >
         <div className={cn("mx-auto", contentWidthClass)} data-admin-content-width={contentWidth}>

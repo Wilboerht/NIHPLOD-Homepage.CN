@@ -87,6 +87,8 @@ interface ModalProps {
   closeGuard?: () => boolean;
   /** 打开后优先聚焦的元素 */
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /** 手机端全屏显示（适合长表单/批量导入） */
+  mobileFullScreen?: boolean;
 }
 
 /**
@@ -112,6 +114,7 @@ export function Modal({
   footer,
   closeGuard,
   initialFocusRef,
+  mobileFullScreen = false,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -232,8 +235,13 @@ export function Modal({
       return;
     }
 
+    const isCoarsePointer =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches;
+
     const autofocusEl = dialog.querySelector<HTMLElement>("[data-autofocus], [autofocus]");
-    if (autofocusEl && autofocusEl.getClientRects().length > 0) {
+    if (!isCoarsePointer && autofocusEl && autofocusEl.getClientRects().length > 0) {
       autofocusEl.focus();
       return;
     }
@@ -261,7 +269,8 @@ export function Modal({
     <div
       className={cn(
         "flex shrink-0 items-start justify-between border-b border-brand-charcoal/10 px-4 py-3 sm:px-6 sm:py-4",
-        variant === "drawer" && "pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-4"
+        (variant === "drawer" || mobileFullScreen) &&
+          "pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-4"
       )}
     >
       <div>
@@ -309,7 +318,8 @@ export function Modal({
           className={cn(
             "fixed inset-0 z-[9999]",
             variant === "center" &&
-              "flex items-center justify-center px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:p-6 md:p-8"
+              "flex items-center justify-center px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:p-6 md:p-8",
+            variant === "center" && mobileFullScreen && "max-sm:items-stretch max-sm:p-0"
           )}
         >
           {/* Backdrop（仅栈顶弹窗响应点击） */}
@@ -358,6 +368,7 @@ export function Modal({
               className={cn(
                 "relative z-10 w-full rounded-xl bg-white shadow-2xl",
                 "flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top,0px))] flex-col sm:max-h-[calc(100dvh-3rem-env(safe-area-inset-top,0px))] md:max-h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))]",
+                mobileFullScreen && "max-sm:h-dvh max-sm:max-h-dvh max-sm:rounded-none",
                 sizeStyles[size]
               )}
             >

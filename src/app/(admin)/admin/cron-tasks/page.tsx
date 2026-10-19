@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Timer, RefreshCw, Play, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -164,7 +165,7 @@ function AdminCronTasksContent() {
       ) : tasks.length === 0 ? (
         <Empty className="h-64" title="暂无定时任务" />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+        <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
           <table className="w-full min-w-[760px] text-sm">
             <thead>
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
@@ -233,6 +234,59 @@ function AdminCronTasksContent() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!loading && !loadError && tasks.length > 0 && (
+        <MobileList>
+          {tasks.map((task) => (
+            <MobileListCard key={task.name}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-brand-charcoal">{task.name}</p>
+                  <p className="mt-0.5 font-mono text-xs text-brand-charcoal/50">
+                    {task.cronExpression}
+                  </p>
+                </div>
+                {!task.lastRun ? (
+                  <span className="shrink-0 text-xs text-brand-charcoal/40">未运行</span>
+                ) : task.lastRun.success ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs text-emerald-600">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    成功
+                  </span>
+                ) : (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs text-red-500">
+                    <XCircle className="h-3.5 w-3.5" />
+                    失败
+                  </span>
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+                <span>最近：{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "—"}</span>
+                <span>
+                  耗时：
+                  {task.lastRun
+                    ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
+                    : "—"}
+                </span>
+              </div>
+              <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                {canRun ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Play className="h-3.5 w-3.5" />}
+                    onClick={() => setTriggerTarget(task)}
+                  >
+                    手动执行
+                  </Button>
+                ) : (
+                  <span className="text-xs text-brand-charcoal/40">只读</span>
+                )}
+              </div>
+            </MobileListCard>
+          ))}
+        </MobileList>
       )}
 
       {/* 最近运行记录 */}

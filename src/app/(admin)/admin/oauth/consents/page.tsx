@@ -17,6 +17,7 @@ import { apiGet, apiPost } from "@/lib/api-client";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { IconButton } from "@/components/admin/IconButton";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -291,8 +292,86 @@ function OAuthConsentsPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 移动端卡片 */}
+      <MobileList loading={loading} empty="暂无授权记录">
+        {consents.map((c) => (
+          <MobileListCard key={c.id}>
+            <div className="flex items-start gap-2">
+              {canWrite && c.status === "active" && (
+                <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(c)}
+                    onChange={() => selection.toggle(c)}
+                    aria-label={`选择 ${c.phone || c.userId} 的授权`}
+                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                  />
+                </label>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
+                      className="truncate font-medium text-brand-primary"
+                    >
+                      {c.phone ? maskPhone(c.phone) : c.userId}
+                    </Link>
+                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">
+                      Client：{c.clientName || c.clientId}
+                    </p>
+                  </div>
+                  <Badge variant={c.status === "active" ? "success" : "danger"}>
+                    {c.status === "active" ? "已授权" : "已撤销"}
+                  </Badge>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {c.scopes.slice(0, 3).map((scope) => (
+                    <Badge key={scope} variant="secondary" className="text-xs">
+                      {scope}
+                    </Badge>
+                  ))}
+                  {c.scopes.length > 3 && (
+                    <span className="text-xs text-brand-charcoal/40">+{c.scopes.length - 3}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+              <span className="text-xs text-brand-charcoal/50">
+                授权于 {formatDate(c.grantedAt)}
+              </span>
+              {c.status === "active" ? (
+                canWrite ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                      setRevokeTarget({
+                        userId: c.userId,
+                        phone: c.phone,
+                        clientId: c.clientId,
+                        clientName: c.clientName,
+                      });
+                      setShowRevoke(true);
+                    }}
+                  >
+                    撤销授权
+                  </Button>
+                ) : (
+                  <span className="text-xs text-brand-charcoal/40">只读</span>
+                )
+              ) : (
+                <span className="text-xs text-brand-charcoal/40">需重新授权</span>
+              )}
+            </div>
+          </MobileListCard>
+        ))}
+      </MobileList>
+
+      {/* 桌面端表格 */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         <table className="w-full min-w-[860px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>

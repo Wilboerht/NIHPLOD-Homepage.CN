@@ -1035,6 +1035,7 @@ function AdminUsersContent() {
         onClose={() => setDetailOpen(false)}
         title={detailUser?.nickname || detailUser?.phone || "用户详情"}
         size="lg"
+        mobileFullScreen
       >
         {detailLoading ? (
           <div className="flex h-64 items-center justify-center">
@@ -1728,6 +1729,25 @@ function AdminUsersContent() {
         title="调整用户积分"
         closeOnBackdrop={false}
         closeGuard={() => !adjusting && confirmCloseAdjust()}
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!confirmCloseAdjust()) return;
+                setAdjustOpen(false);
+                setAdjustAmount("");
+                setAdjustNote("");
+              }}
+              disabled={adjusting}
+            >
+              取消
+            </Button>
+            <Button onClick={handleAdjustPoints} loading={adjusting}>
+              确认调整
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/60">
@@ -1757,23 +1777,6 @@ function AdminUsersContent() {
               className="w-full resize-y rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!confirmCloseAdjust()) return;
-                setAdjustOpen(false);
-                setAdjustAmount("");
-                setAdjustNote("");
-              }}
-              disabled={adjusting}
-            >
-              取消
-            </Button>
-            <Button onClick={handleAdjustPoints} loading={adjusting}>
-              确认调整
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1786,6 +1789,31 @@ function AdminUsersContent() {
         title="修改用户生日"
         closeOnBackdrop={false}
         closeGuard={() => !birthdaySaving && confirmCloseBirthday()}
+        footer={
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button
+              variant="outline"
+              onClick={handleUnlockBirthday}
+              disabled={!detailUser?.birthdayLocked || birthdaySaving}
+            >
+              仅解锁（不改生日）
+            </Button>
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (confirmCloseBirthday()) setBirthdayEditOpen(false);
+                }}
+                disabled={birthdaySaving}
+              >
+                取消
+              </Button>
+              <Button onClick={handleSaveBirthday} loading={birthdaySaving}>
+                保存
+              </Button>
+            </div>
+          </div>
+        }
       >
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/60">
@@ -1802,29 +1830,6 @@ function AdminUsersContent() {
             max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setBirthdayInput(e.target.value)}
           />
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={handleUnlockBirthday}
-              disabled={!detailUser?.birthdayLocked || birthdaySaving}
-            >
-              仅解锁（不改生日）
-            </Button>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (confirmCloseBirthday()) setBirthdayEditOpen(false);
-                }}
-                disabled={birthdaySaving}
-              >
-                取消
-              </Button>
-              <Button onClick={handleSaveBirthday} loading={birthdaySaving}>
-                保存
-              </Button>
-            </div>
-          </div>
         </div>
       </Modal>
 

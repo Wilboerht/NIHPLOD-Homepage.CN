@@ -736,6 +736,7 @@ function AdminApplicationsContent() {
         onClose={() => setDetailApplication(null)}
         title="简历详情"
         size="lg"
+        mobileFullScreen
         closeOnBackdrop={false}
         closeGuard={() => !savingNotes && confirmCloseNotes()}
       >
@@ -894,6 +895,22 @@ function AdminApplicationsContent() {
         title={editingFolder ? "编辑分类" : "新建分类"}
         closeOnBackdrop={false}
         closeGuard={() => !savingFolder && confirmCloseFolder()}
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmCloseFolder()) setShowFolderModal(false);
+              }}
+              disabled={savingFolder}
+            >
+              取消
+            </Button>
+            <Button onClick={saveFolder} loading={savingFolder}>
+              {editingFolder ? "保存" : "创建"}
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <Input
@@ -911,20 +928,6 @@ function AdminApplicationsContent() {
             placeholder="添加分类说明..."
             rows={2}
           />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (confirmCloseFolder()) setShowFolderModal(false);
-              }}
-              disabled={savingFolder}
-            >
-              取消
-            </Button>
-            <Button onClick={saveFolder} loading={savingFolder}>
-              {editingFolder ? "保存" : "创建"}
-            </Button>
-          </div>
         </div>
       </Modal>
 

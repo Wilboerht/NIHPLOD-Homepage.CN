@@ -19,6 +19,7 @@ import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 
 interface AuditLogItem {
   id: string;
@@ -228,8 +229,53 @@ function AuditLogsContent() {
         </Button>
       </div>
 
-      {/* 日志列表 */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 日志列表（移动端卡片） */}
+      <MobileList
+        loading={loading}
+        error={
+          <>
+            <p className="text-red-500">加载失败</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={fetchLogs}>
+              重试
+            </Button>
+          </>
+        }
+        empty="暂无记录"
+      >
+        {logs.map((log) => (
+          <MobileListCard key={log.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-brand-charcoal">
+                  {ACTION_LABELS[log.action] || log.action}
+                </p>
+                <p className="mt-0.5 text-xs text-brand-charcoal/50">{formatDate(log.createdAt)}</p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  ACTION_COLORS[log.action] || "bg-brand-charcoal/8 text-brand-charcoal/80"
+                }`}
+              >
+                {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+              <span className="truncate">操作人：{log.admin?.name || "-"}</span>
+              <span className="truncate">IP：{log.ipAddress || "-"}</span>
+              <span className="col-span-2 truncate font-mono">目标：{log.targetId || "-"}</span>
+            </div>
+            <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+              <Button variant="ghost" size="sm" onClick={() => openDetail(log)}>
+                <Eye className="mr-1 h-4 w-4" />
+                查看详情
+              </Button>
+            </div>
+          </MobileListCard>
+        ))}
+      </MobileList>
+
+      {/* 日志列表（桌面端表格） */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         {loading ? (
           <table className="w-full min-w-[860px] text-sm">
             <thead>
@@ -415,7 +461,13 @@ function AuditLogsContent() {
       </div>
 
       {/* 详情模态框 */}
-      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title="审计日志详情" size="lg">
+      <Modal
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        title="审计日志详情"
+        size="lg"
+        mobileFullScreen
+      >
         {selectedLog ? (
           <div className="space-y-5">
             {/* 操作摘要 */}
