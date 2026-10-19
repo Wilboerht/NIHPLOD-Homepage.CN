@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   ShieldAlert,
   KeyRound,
@@ -10,6 +11,7 @@ import {
   Check,
   RefreshCw,
   Loader2,
+  QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -23,6 +25,7 @@ interface BreakGlassData {
   password?: string;
   totpSecret?: string;
   otpauthUrl?: string;
+  qrCode?: string;
 }
 
 export function BreakGlassCard() {
@@ -32,6 +35,7 @@ export function BreakGlassCard() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showTotp, setShowTotp] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   const load = async () => {
@@ -191,6 +195,45 @@ export function BreakGlassCard() {
               </div>
             </div>
           </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-amber-100 pt-4">
+            <div>
+              <p className="text-sm font-medium text-brand-charcoal">应急账号二维码</p>
+              <p className="mt-0.5 text-[11px] text-amber-800/80">
+                二维码包含 otpauth 链接与 TOTP Secret，仅 owner 可见，请勿截图外传。
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowQr((v) => !v)}
+              disabled={!data.qrCode}
+              aria-expanded={showQr}
+              leftIcon={
+                showQr ? <EyeOff className="h-4 w-4" /> : <QrCode className="h-4 w-4" />
+              }
+            >
+              {showQr ? "隐藏二维码" : "显示二维码"}
+            </Button>
+          </div>
+
+          {showQr && data.qrCode && (
+            <div className="flex justify-center rounded-xl border border-amber-200 bg-white p-4">
+              <Image
+                src={data.qrCode}
+                alt="应急账号 TOTP 二维码"
+                width={220}
+                height={220}
+                unoptimized
+              />
+            </div>
+          )}
+
+          {showQr && !data.qrCode && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              二维码生成失败，请使用上方的 otpauth 链接手动导入。
+            </p>
+          )}
 
           <p className="border-t border-amber-100 pt-3 text-[11px] leading-relaxed text-amber-800/80">
             请勿截图或外传。轮换应急凭据后，请同步更新主站

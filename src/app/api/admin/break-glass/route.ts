@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import QRCode from "qrcode";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,20 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
       ? `otpauth://totp/${encodeURIComponent(`NIHPLOD:${username}`)}?secret=${encodeURIComponent(totpSecret)}&issuer=NIHPLOD&algorithm=SHA1&digits=6&period=30`
       : "");
 
+  let qrCode = "";
+  if (configured && otpauthUrl) {
+    try {
+      qrCode = await QRCode.toDataURL(otpauthUrl, {
+        width: 220,
+        margin: 1,
+        errorCorrectionLevel: "M",
+        color: { dark: "#00263E", light: "#FFFFFF" },
+      });
+    } catch (error) {
+      apiConsole.error("[BreakGlass] 生成二维码失败:", error);
+    }
+  }
+
   await createAuditLog({
     action: "break_glass_view",
     targetType: "system",
@@ -53,6 +69,7 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
             password,
             totpSecret,
             otpauthUrl,
+            qrCode,
           }
         : { configured: false },
     },
