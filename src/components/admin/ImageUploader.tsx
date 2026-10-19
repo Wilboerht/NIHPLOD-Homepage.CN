@@ -2,7 +2,16 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { Upload, X, GripVertical, ImageIcon, AlertCircle, Loader2 } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  ImageIcon,
+  Loader2,
+  Upload,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiConsole } from "@/lib/logger";
 import imageCompression from "browser-image-compression";
@@ -87,7 +96,9 @@ export function ImageUploader({
       const remainingSlots = Math.max(0, maxImages - valueRef.current.length);
       const allFiles = Array.from(files);
       if (allFiles.length > remainingSlots) {
-        errors.push(`最多还能上传 ${remainingSlots} 张图片（当前已选 ${valueRef.current.length}/${maxImages}）`);
+        errors.push(
+          `最多还能上传 ${remainingSlots} 张图片（当前已选 ${valueRef.current.length}/${maxImages}）`
+        );
       }
       const fileArray = allFiles.slice(0, remainingSlots);
 
@@ -171,6 +182,15 @@ export function ImageUploader({
     handleChange(newImages.map((img, i) => ({ ...img, order: i })));
   };
 
+  const moveImage = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= value.length) return;
+    const newImages = [...value];
+    const [moved] = newImages.splice(index, 1);
+    newImages.splice(target, 0, moved);
+    handleChange(newImages.map((img, i) => ({ ...img, order: i })));
+  };
+
   // 组件卸载时清理所有 blob URL
   useEffect(() => {
     return () => {
@@ -250,8 +270,8 @@ export function ImageUploader({
                 className="object-cover"
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
               />
-              {/* 拖拽手柄 */}
-              <div className="absolute left-1 top-1 cursor-grab rounded bg-black/50 p-1 opacity-0 transition-opacity group-hover:opacity-100">
+              {/* 拖拽手柄（桌面端） */}
+              <div className="absolute left-1 top-1 hidden cursor-grab rounded bg-black/50 p-1 opacity-0 transition-opacity group-hover:opacity-100 sm:block">
                 <GripVertical className="h-4 w-4 text-white" />
               </div>
               {/* 删除按钮 */}
@@ -259,10 +279,31 @@ export function ImageUploader({
                 type="button"
                 onClick={() => removeImage(index)}
                 aria-label={`删除第 ${index + 1} 张图片`}
-                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 opacity-0 transition-opacity hover:bg-red-500 focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+                className="absolute right-1 top-1 rounded-full bg-black/50 p-1.5 opacity-100 transition-opacity hover:bg-red-500 focus:opacity-100 focus-visible:opacity-100 sm:p-1 sm:opacity-0 sm:group-hover:opacity-100"
               >
                 <X className="h-4 w-4 text-white" />
               </button>
+              {/* 移动端排序按钮 */}
+              <div className="absolute bottom-1 right-1 flex gap-1 sm:hidden">
+                <button
+                  type="button"
+                  onClick={() => moveImage(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`前移第 ${index + 1} 张图片`}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white disabled:opacity-30"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveImage(index, 1)}
+                  disabled={index === value.length - 1}
+                  aria-label={`后移第 ${index + 1} 张图片`}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white disabled:opacity-30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
               {/* 序号 */}
               <div className="absolute bottom-1 left-1 rounded bg-black/50 px-1.5 py-0.5 text-xs text-white">
                 {index + 1}

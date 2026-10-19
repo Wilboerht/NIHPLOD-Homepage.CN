@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, KeyboardEvent } from "react";
+import { useState, useId, KeyboardEvent } from "react";
 import { X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,10 @@ export function TagInput({
   className,
 }: TagInputProps) {
   const [input, setInput] = useState("");
+  const generatedId = useId();
+  const inputId = `${generatedId}-input`;
+  const errorId = `${generatedId}-error`;
+  const hintId = `${generatedId}-hint`;
 
   const addTag = () => {
     const trimmed = input.trim();
@@ -58,7 +62,9 @@ export function TagInput({
   return (
     <div className={className}>
       {label && (
-        <label className="mb-1.5 block text-sm font-medium text-brand-charcoal/80">{label}</label>
+        <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          {label}
+        </label>
       )}
 
       <div
@@ -89,12 +95,15 @@ export function TagInput({
         {value.length < maxTags && (
           <div className="flex flex-1 items-center gap-1">
             <input
+              id={inputId}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, maxLength))}
               onKeyDown={handleKeyDown}
               onBlur={addTag}
               placeholder={value.length === 0 ? placeholder : ""}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? errorId : hintId}
               className="min-w-[120px] flex-1 border-0 bg-transparent p-0 text-sm focus:outline-none focus:ring-0"
             />
             {input && (
@@ -113,9 +122,13 @@ export function TagInput({
       {/* 提示信息 */}
       <div className="mt-1 flex items-center justify-between text-xs">
         {error ? (
-          <span className="text-red-500">{error}</span>
+          <span id={errorId} className="text-red-500">
+            {error}
+          </span>
         ) : (
-          <span className="text-brand-charcoal/50">按回车添加标签</span>
+          <span id={hintId} className="text-brand-charcoal/50">
+            按回车添加标签
+          </span>
         )}
         <span className="text-brand-charcoal/50">
           {value.length}/{maxTags}

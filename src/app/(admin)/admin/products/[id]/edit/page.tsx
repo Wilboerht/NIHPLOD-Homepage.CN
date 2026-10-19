@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
@@ -133,7 +135,21 @@ function EditProductContent() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="编辑产品" />
+      <PageHeader
+        title={
+          <>
+            <Link
+              href="/admin/products"
+              aria-label="返回产品列表"
+              className="rounded-lg p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            编辑产品
+          </>
+        }
+        description={product.name}
+      />
       <ProductForm mode="edit" initialData={product} categories={categories} />
     </div>
   );

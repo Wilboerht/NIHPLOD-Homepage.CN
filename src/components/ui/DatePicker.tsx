@@ -23,19 +23,22 @@ import { cn } from "@/lib/utils";
 interface DatePickerProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange"> {
   label?: string;
   error?: string;
+  hint?: string;
   value?: string;
   onChange?: (value: string) => void;
 }
 
 export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
   (
-    { className, label, error, value, onChange, id, required, disabled, min, max, ...props },
+    { className, label, error, hint, value, onChange, id, required, disabled, min, max, ...props },
     ref
   ) => {
     // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
     const generatedId = useId();
     const dateId = id ?? generatedId;
     const errorId = `${dateId}-error`;
+    const hintId = `${dateId}-hint`;
+    const describedBy = error ? errorId : hint ? hintId : undefined;
 
     return (
       <div className="w-full">
@@ -61,7 +64,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             min={min}
             max={max}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
+            aria-describedby={describedBy}
             className={cn(
               "w-full rounded-lg border bg-white px-4 py-2.5 pr-10 text-brand-charcoal transition-colors",
               "focus:outline-none focus:ring-1",
@@ -89,11 +92,15 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40"
           />
         </div>
-        {error && (
+        {error ? (
           <p id={errorId} className="mt-1 text-sm text-red-500">
             {error}
           </p>
-        )}
+        ) : hint ? (
+          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/50">
+            {hint}
+          </p>
+        ) : null}
       </div>
     );
   }

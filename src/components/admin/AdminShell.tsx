@@ -4,15 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode, Suspense } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Globe,
-  Loader2,
-  LogOut,
-  Menu,
-  X,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Globe, Loader2, LogOut, Menu, X } from "lucide-react";
 import {
   adminNavItems,
   getAdminPageWidth,
@@ -151,7 +143,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
           drawerOpen ? "translate-x-0" : "invisible -translate-x-full"
         )}
       >
-        <div ref={drawerTrapRef} role="dialog" aria-modal="true" aria-label="导航菜单" className="h-full w-full">
+        <div
+          ref={drawerTrapRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="导航菜单"
+          className="h-full w-full"
+        >
           <SidebarContent
             pathname={pathname}
             permissions={permissionList}
@@ -241,7 +239,7 @@ function SidebarContent({
         <Link
           href="/admin"
           onClick={onNavigate}
-          className="flex items-center gap-2 text-base font-semibold tracking-tight text-brand-charcoal"
+          className="flex items-center gap-2 text-base tracking-tight text-brand-charcoal"
         >
           {collapsed ? (
             <span className="font-serif text-xl font-bold text-brand-primary">N</span>
@@ -255,7 +253,8 @@ function SidebarContent({
                 className="h-6 w-auto object-contain"
                 priority
               />
-              <span>管理面板</span>
+              <span aria-hidden="true" className="h-4 w-px bg-brand-charcoal/15" />
+              <span className="whitespace-nowrap">控制中台</span>
             </>
           )}
         </Link>
@@ -267,7 +266,7 @@ function SidebarContent({
       </div>
 
       {/* 导航（配置驱动 + 分组 + 权限过滤） */}
-      <nav className="flex-1 overflow-y-auto px-3 py-2">
+      <nav className="scrollbar-hide flex-1 overflow-y-auto px-3 py-2">
         {!permissions ? (
           // 权限加载中：显示骨架屏，避免权限菜单闪烁
           <div className="flex flex-col gap-0.5">

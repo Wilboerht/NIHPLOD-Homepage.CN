@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw, Eye, FileJson, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
@@ -179,7 +180,7 @@ function AuditLogsContent() {
           ]}
           value={action}
           onChange={(e) => updateParams({ action: e.target.value })}
-          className="w-40"
+          className="w-full sm:w-40"
         />
         <Select
           options={[
@@ -188,22 +189,26 @@ function AuditLogsContent() {
           ]}
           value={targetType}
           onChange={(e) => updateParams({ targetType: e.target.value })}
-          className="w-32"
+          className="w-full sm:w-32"
         />
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => updateParams({ startDate: e.target.value })}
-            className="h-9 rounded-lg border border-brand-charcoal/15 px-3 text-sm"
-          />
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="min-w-[10rem] flex-1 sm:w-40 sm:flex-none">
+            <DatePicker
+              aria-label="开始日期"
+              value={startDate}
+              onChange={(value) => updateParams({ startDate: value })}
+              placeholder="开始日期"
+            />
+          </div>
           <span className="text-sm text-brand-charcoal/50">至</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => updateParams({ endDate: e.target.value })}
-            className="h-9 rounded-lg border border-brand-charcoal/15 px-3 text-sm"
-          />
+          <div className="min-w-[10rem] flex-1 sm:w-40 sm:flex-none">
+            <DatePicker
+              aria-label="结束日期"
+              value={endDate}
+              onChange={(value) => updateParams({ endDate: value })}
+              placeholder="结束日期"
+            />
+          </div>
         </div>
         <Button
           variant="outline"

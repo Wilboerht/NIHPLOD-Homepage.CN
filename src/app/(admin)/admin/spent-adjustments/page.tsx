@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
-  ClipboardCheck,
   ExternalLink,
   FileSpreadsheet,
   History,
@@ -19,7 +18,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
@@ -276,8 +277,65 @@ function AdminSpentAdjustmentsContent() {
         })}
       </div>
 
-      {/* 列表 */}
-      <div className="rounded-xl border bg-white shadow-sm">
+      {/* 列表（移动端卡片） */}
+      <div className="space-y-3 md:hidden">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-32 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
+          ))
+        ) : loadError ? (
+          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center">
+            <p className="text-sm text-red-500">加载失败，请重试</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={fetchData}>
+              重试
+            </Button>
+          </div>
+        ) : data && data.applications.length > 0 ? (
+          data.applications.map((a) => (
+            <div key={a.id} className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-brand-charcoal">
+                    {a.user.nickname || "未设置昵称"}
+                  </p>
+                  <p className="truncate text-xs text-brand-charcoal/50">
+                    {a.user.phone} · {a.channelLabel}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[a.status]}`}
+                >
+                  {a.statusLabel}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+                <span className="col-span-2 truncate">
+                  订单：<span className="font-mono">{a.orderNo}</span>
+                </span>
+                <span>
+                  申报：{a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
+                </span>
+                <span>消费：{formatDate(a.purchasedAt)}</span>
+                <span className="col-span-2">
+                  凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
+                </span>
+              </div>
+              <div className="mt-3 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                <Button variant="outline" size="sm" onClick={() => openDetail(a)}>
+                  {a.status === "PENDING" ? "审核" : "查看"}
+                </Button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center text-sm text-brand-charcoal/50">
+            暂无申请
+          </div>
+        )}
+      </div>
+
+      {/* 列表（桌面端表格） */}
+      <div className="hidden rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[960px]">
             <thead>
@@ -360,48 +418,27 @@ function AdminSpentAdjustmentsContent() {
             </tbody>
           </table>
         </div>
-
-        {/* 分页 */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-3 py-2 text-sm text-gray-500">
-            <span>
-              共 {pagination.total} 条 · 第 {pagination.page}/{pagination.totalPages} 页
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                上一页
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                下一页
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* 详情 / 审核弹窗 */}
-      <Modal open={!!detail} onClose={() => setDetail(null)}>
-        {detail && (
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-4 sm:p-6">
-            <div className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-gray-500" />
-              <h2 className="text-lg font-medium">
-                {detail.status === "PENDING" ? "审核申请" : "申请详情"}
-              </h2>
-            </div>
+      {pagination && pagination.total > 0 && (
+        <Pagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onChange={setPage}
+        />
+      )}
 
+      {/* 详情 / 审核弹窗 */}
+      <Modal
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        title={detail?.status === "PENDING" ? "审核申请" : "申请详情"}
+      >
+        {detail && (
+          <div className="space-y-4">
             {/* 申请信息 */}
-            <div className="mt-4 space-y-3 rounded-lg bg-gray-50 p-4 text-sm">
+            <div className="space-y-3 rounded-lg bg-brand-charcoal/[0.03] p-4 text-sm">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-gray-400">用户</p>
@@ -411,7 +448,9 @@ function AdminSpentAdjustmentsContent() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">当前等级</p>
-                  <p className="mt-0.5 text-gray-700">{levelDisplay(detail.user.membershipLevel)}</p>
+                  <p className="mt-0.5 text-gray-700">
+                    {levelDisplay(detail.user.membershipLevel)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">渠道</p>
@@ -517,7 +556,11 @@ function AdminSpentAdjustmentsContent() {
             {detail.status === "APPROVED" && (
               <div className="mt-6 flex justify-end border-t border-gray-100 pt-4">
                 {canReview ? (
-                  <Button variant="outline" onClick={() => setUndoTarget(detail)} disabled={undoing}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setUndoTarget(detail)}
+                    disabled={undoing}
+                  >
                     <Undo2 className="mr-1.5 h-4 w-4" />
                     {undoing ? "撤销中..." : "撤销审核"}
                   </Button>
@@ -559,41 +602,35 @@ function AdminSpentAdjustmentsContent() {
 
                 {decision === "approve" ? (
                   <div className="mt-4 space-y-3">
-                    <div>
-                      <label className="mb-1 block text-xs text-gray-500">
-                        核实金额（元，以人工核实为准，可与申报金额不同）
-                      </label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={1000000}
-                        value={reviewAmount}
-                        onChange={(e) => setReviewAmount(e.target.value)}
-                        placeholder="请输入核实后的消费金额"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs text-gray-500">审核备注（选填）</label>
-                      <Input
-                        value={reviewNote}
-                        maxLength={500}
-                        onChange={(e) => setReviewNote(e.target.value)}
-                        placeholder="如：已在天猫商家后台核实订单"
-                      />
-                    </div>
+                    <Input
+                      label="核实金额（元）"
+                      type="number"
+                      min={1}
+                      max={1000000}
+                      value={reviewAmount}
+                      onChange={(e) => setReviewAmount(e.target.value)}
+                      placeholder="请输入核实后的消费金额"
+                      hint="以人工核实为准，可与申报金额不同"
+                    />
+                    <Input
+                      label="审核备注（选填）"
+                      value={reviewNote}
+                      maxLength={500}
+                      onChange={(e) => setReviewNote(e.target.value)}
+                      placeholder="如：已在天猫商家后台核实订单"
+                    />
                   </div>
                 ) : (
                   <div className="mt-4">
-                    <label className="mb-1 block text-xs text-gray-500">
-                      驳回原因（必填，展示给用户）
-                    </label>
-                    <textarea
+                    <Textarea
+                      label="驳回原因"
+                      required
                       rows={3}
                       maxLength={500}
                       value={reviewNote}
                       onChange={(e) => setReviewNote(e.target.value)}
                       placeholder="如：订单号无法在商家后台查询到，请核对后重新提交"
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-400"
+                      hint="必填，将展示给用户"
                     />
                   </div>
                 )}

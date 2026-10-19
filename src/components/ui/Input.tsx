@@ -6,18 +6,24 @@ import { cn } from "@/lib/utils";
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  hint?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, id, disabled, required, ...props }, ref) => {
+  ({ className, label, error, hint, id, disabled, required, ...props }, ref) => {
     // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const errorId = `${inputId}-error`;
+    const hintId = `${inputId}-hint`;
+    const describedBy = error ? errorId : hint ? hintId : undefined;
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          <label
+            htmlFor={inputId}
+            className="mb-1 block text-sm font-medium text-brand-charcoal/80"
+          >
             {label}
             {required && (
               <span className="ml-0.5 text-red-500" aria-hidden="true">
@@ -32,7 +38,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           disabled={disabled}
           required={required}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={describedBy}
           className={cn(
             "w-full rounded-lg border bg-white px-4 py-2.5 text-brand-charcoal transition-colors",
             "placeholder:text-brand-charcoal/40",
@@ -45,11 +51,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           {...props}
         />
-        {error && (
+        {error ? (
           <p id={errorId} className="mt-1 text-sm text-red-500">
             {error}
           </p>
-        )}
+        ) : hint ? (
+          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/50">
+            {hint}
+          </p>
+        ) : null}
       </div>
     );
   }

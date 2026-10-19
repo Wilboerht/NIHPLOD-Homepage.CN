@@ -13,6 +13,9 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { FormSection } from "@/components/admin/FormSection";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -197,35 +200,34 @@ export default function TOTPSettingsPage() {
       </div>
 
       {!totpEnabled && !setupData && (
-        <div className="space-y-3 rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
-              当前密码 <span className="text-red-500">*</span>
-            </label>
-            <input
+        <FormSection title="启用二次验证">
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void startSetup();
+            }}
+            className="max-w-sm space-y-3"
+          >
+            <Input
+              label="当前密码"
+              required
               type="password"
               value={setupPassword}
               onChange={(e) => setSetupPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && startSetup()}
-              className="w-full max-w-sm rounded-lg border border-brand-charcoal/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
               placeholder="请输入当前登录密码"
               autoComplete="current-password"
+              hint="出于安全考虑，启用前需验证当前密码"
             />
-            <p className="mt-1 text-xs text-brand-charcoal/40">出于安全考虑，启用前需验证当前密码</p>
-          </div>
-          <button
-            onClick={startSetup}
-            disabled={processing || !setupPassword}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50"
-          >
-            {processing && <Loader2 className="h-4 w-4 animate-spin" />}
-            启用二次验证
-          </button>
-        </div>
+            <Button type="submit" loading={processing} disabled={!setupPassword}>
+              启用二次验证
+            </Button>
+          </form>
+        </FormSection>
       )}
 
       {setupData && (
-        <div className="rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
+        <FormSection>
           <div className="mb-4 flex items-center gap-2 text-amber-600">
             <AlertTriangle className="h-5 w-5" />
             <span className="font-medium">请妥善保存以下信息</span>
@@ -289,76 +291,74 @@ export default function TOTPSettingsPage() {
             </div>
           </div>
 
-          <div className="mt-6 flex items-end gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
-                输入 6 位验证码完成绑定
-              </label>
-              <input
-                type="text"
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void verifySetup();
+            }}
+            className="mt-6 flex flex-wrap items-end gap-3"
+          >
+            <div className="min-w-[12rem] flex-1">
+              <Input
+                label="输入 6 位验证码完成绑定"
                 inputMode="numeric"
                 maxLength={6}
                 value={verifyCode}
                 onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full rounded-lg border border-brand-charcoal/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 placeholder="000000"
               />
             </div>
-            <button
-              onClick={verifySetup}
-              disabled={processing || verifyCode.length !== 6}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90 disabled:opacity-50"
-            >
-              {processing && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button type="submit" loading={processing} disabled={verifyCode.length !== 6}>
               确认启用
-            </button>
-          </div>
-        </div>
+            </Button>
+          </form>
+        </FormSection>
       )}
 
       {totpEnabled && (
-        <div className="rounded-lg border border-brand-charcoal/15 bg-white p-6 shadow-sm">
-          <h3 className="mb-3 text-base font-medium text-brand-charcoal">关闭二次验证</h3>
-          <p className="mb-4 text-sm text-brand-charcoal/50">
-            关闭后登录不再需要动态验证码，账号安全性将降低。
-          </p>
-          <div className="flex flex-wrap items-end gap-3">
+        <FormSection
+          title="关闭二次验证"
+          description="关闭后登录不再需要动态验证码，账号安全性将降低。"
+        >
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              requestDisable();
+            }}
+            className="flex flex-wrap items-end gap-3"
+          >
             <div className="min-w-[12rem] flex-1">
-              <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
-                当前密码
-              </label>
-              <input
+              <Input
+                label="当前密码"
                 type="password"
                 value={disablePassword}
                 onChange={(e) => setDisablePassword(e.target.value)}
-                className="w-full rounded-lg border border-brand-charcoal/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 placeholder="请输入当前密码"
                 autoComplete="current-password"
               />
             </div>
             <div className="min-w-[12rem] flex-1">
-              <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
-                动态验证码 / 备用码
-              </label>
-              <input
-                type="text"
+              <Input
+                label="动态验证码 / 备用码"
                 value={disableCode}
                 onChange={(e) => setDisableCode(e.target.value)}
-                className="w-full rounded-lg border border-brand-charcoal/20 px-3 py-2 font-mono text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 placeholder="6 位验证码或备用码"
                 autoComplete="one-time-code"
+                className="font-mono"
               />
             </div>
-            <button
-              onClick={requestDisable}
-              disabled={processing || !disablePassword || disableCode.trim().length < 6}
-              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            <Button
+              type="submit"
+              variant="danger"
+              loading={processing}
+              disabled={!disablePassword || disableCode.trim().length < 6}
             >
-              {processing && <Loader2 className="h-4 w-4 animate-spin" />}
               关闭二次验证
-            </button>
-          </div>
-        </div>
+            </Button>
+          </form>
+        </FormSection>
       )}
 
       {/* 关闭二次验证确认 */}

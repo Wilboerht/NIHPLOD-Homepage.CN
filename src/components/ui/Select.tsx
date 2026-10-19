@@ -13,6 +13,7 @@ export interface SelectOption {
 interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "children"> {
   label?: string;
   error?: string;
+  hint?: string;
   options: SelectOption[];
   placeholder?: string;
 }
@@ -21,15 +22,20 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "chi
  * 下拉选择组件
  */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, options, placeholder, id, required, ...props }, ref) => {
+  ({ className, label, error, hint, options, placeholder, id, required, ...props }, ref) => {
     // 未显式传 id 时自动生成，保证 label 与错误提示可正确关联
     const generatedId = useId();
     const selectId = id ?? generatedId;
     const errorId = `${selectId}-error`;
+    const hintId = `${selectId}-hint`;
+    const describedBy = error ? errorId : hint ? hintId : undefined;
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
+          <label
+            htmlFor={selectId}
+            className="mb-1 block text-sm font-medium text-brand-charcoal/80"
+          >
             {label}
             {required && (
               <span className="ml-0.5 text-red-500" aria-hidden="true">
@@ -44,7 +50,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             required={required}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
+            aria-describedby={describedBy}
             className={cn(
               "w-full appearance-none rounded-lg border border-brand-charcoal/20 bg-white px-4 py-2.5 pr-10 text-brand-charcoal transition-colors",
               "focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary",
@@ -67,11 +73,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
         </div>
-        {error && (
+        {error ? (
           <p id={errorId} className="mt-1 text-sm text-red-500">
             {error}
           </p>
-        )}
+        ) : hint ? (
+          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/50">
+            {hint}
+          </p>
+        ) : null}
       </div>
     );
   }

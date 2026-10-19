@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
@@ -36,7 +38,21 @@ function NewProductContent() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="新增产品" />
+      <PageHeader
+        title={
+          <>
+            <Link
+              href="/admin/products"
+              aria-label="返回产品列表"
+              className="rounded-lg p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            新增产品
+          </>
+        }
+        description="创建新的产品"
+      />
       <ProductForm mode="create" categories={categories} />
     </div>
   );

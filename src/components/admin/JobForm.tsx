@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
@@ -11,7 +11,10 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { AmapLocationPicker } from "@/components/admin/AmapLocationPicker";
+import { FormActions } from "@/components/admin/FormActions";
+import { FormSection } from "@/components/admin/FormSection";
 import { JobSchema } from "@/schemas/product";
+import { focusFirstInvalid } from "@/lib/form";
 import { z } from "zod";
 
 // 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
@@ -62,6 +65,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [formData, setFormData] = useState<Partial<Job>>({
     title: "",
@@ -79,10 +83,10 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   });
   // 初始快照（state 而非 ref，便于渲染期计算脏值）
   const [initialSnapshot] = useState(() => JSON.stringify(formData));
-  const isDirty = useMemo(() => JSON.stringify(formData) !== initialSnapshot, [
-    formData,
-    initialSnapshot,
-  ]);
+  const isDirty = useMemo(
+    () => JSON.stringify(formData) !== initialSnapshot,
+    [formData, initialSnapshot]
+  );
   const { guard: guardNavigation } = useUnsavedChanges(isDirty);
 
   const updateField = <K extends keyof Job>(field: K, value: Job[K]) => {
@@ -111,6 +115,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           }
         }
         setErrors(newErrors);
+        focusFirstInvalid(formRef.current);
       }
       return false;
     }
@@ -233,10 +238,9 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form ref={formRef} noValidate onSubmit={handleSubmit} className="space-y-6">
       {/* 基本信息 */}
-      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-        <h2 className="mb-6 text-lg font-medium text-brand-charcoal">基本信息</h2>
+      <FormSection title="基本信息">
         <div className="grid gap-6 md:grid-cols-2">
           <Input
             label="职位名称（中文）"
@@ -277,13 +281,6 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             onChange={(e) => updateField("salary", e.target.value)}
             placeholder="如：15K-25K"
           />
-          <div className="flex items-end">
-            <Switch
-              label="发布状态"
-              checked={formData.published || false}
-              onChange={(checked) => updateField("published", checked)}
-            />
-          </div>
           <Input
             label="经度（选填，可手动录入）"
             type="number"
@@ -319,11 +316,10 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             已定位坐标: {formData.longitude.toFixed(6)}, {formData.latitude.toFixed(6)}
           </p>
         )}
-      </section>
+      </FormSection>
 
       {/* 职责描述 */}
-      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-        <h2 className="mb-6 text-lg font-medium text-brand-charcoal">职责描述</h2>
+      <FormSection title="职责描述">
         <RichTextEditor
           value={formData.description || ""}
           onChange={(value) => updateField("description", value)}
@@ -331,11 +327,10 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           placeholder="请输入职位职责描述..."
           minHeight="200px"
         />
-      </section>
+      </FormSection>
 
       {/* 任职要求 */}
-      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-        <h2 className="mb-6 text-lg font-medium text-brand-charcoal">任职要求</h2>
+      <FormSection title="任职要求">
         <RichTextEditor
           value={formData.requirements || ""}
           onChange={(value) => updateField("requirements", value)}
@@ -343,33 +338,43 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           placeholder="请输入任职要求..."
           minHeight="200px"
         />
-      </section>
+      </FormSection>
 
-      {/* 排序与操作 */}
-      <section className="flex items-center justify-between rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-        <div className="w-32">
+      {/* 其他设置 */}
+      <FormSection title="其他设置">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="显示排序"
             type="number"
             value={formData.order || 0}
             onChange={(e) => updateField("order", parseInt(e.target.value) || 0)}
             placeholder="0"
+            hint="数字越小越靠前"
           />
+          <div className="flex items-end pb-1">
+            <Switch
+              label="发布状态"
+              description="关闭后前台不展示该职位"
+              checked={formData.published || false}
+              onChange={(checked) => updateField("published", checked)}
+            />
+          </div>
         </div>
-        <div className="flex gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => guardNavigation(() => router.back())}
-            disabled={loading}
-          >
-            取消
-          </Button>
-          <Button type="submit" loading={loading}>
-            {isEdit ? "更新职位" : "创建职位"}
-          </Button>
-        </div>
-      </section>
+      </FormSection>
+
+      <FormActions>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => guardNavigation(() => router.back())}
+          disabled={loading}
+        >
+          取消
+        </Button>
+        <Button type="submit" loading={loading}>
+          {isEdit ? "更新职位" : "创建职位"}
+        </Button>
+      </FormActions>
     </form>
   );
 }

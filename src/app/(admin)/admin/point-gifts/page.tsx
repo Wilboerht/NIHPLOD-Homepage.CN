@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Gift, PackageCheck, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -304,7 +305,9 @@ function AdminPointGiftsContent() {
           <p className="mt-1 text-2xl font-semibold text-gray-800">
             {pointsTotal.toLocaleString()}
           </p>
-          <p className="mt-1 text-[11px] text-gray-400">所有用户账户可用积分之和（可含退款冲正负值）</p>
+          <p className="mt-1 text-[11px] text-gray-400">
+            所有用户账户可用积分之和（可含退款冲正负值）
+          </p>
         </div>
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
           <p className="text-xs text-gray-500">待履约兑换</p>
@@ -320,201 +323,205 @@ function AdminPointGiftsContent() {
 
       {/* 可兑换产品（无 gifts:read 权限时不展示，避免必然 403） */}
       {canGiftRead && (
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-          <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
-            <Gift className="h-5 w-5 text-gray-500" />
-            可兑换产品（产品库）
-          </h2>
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="搜索产品名..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    setProductPage(1);
-                    setSearch(searchInput.trim());
-                  }
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+            <h2 className="flex items-center gap-2 text-lg font-medium text-gray-800">
+              <Gift className="h-5 w-5 text-gray-500" />
+              可兑换产品（产品库）
+            </h2>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="搜索产品名..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setProductPage(1);
+                      setSearch(searchInput.trim());
+                    }
+                  }}
+                  className="w-full pl-9 sm:w-48"
+                />
+              </div>
+              <Select
+                value={redeemableFilter}
+                onChange={(e) => {
+                  setProductPage(1);
+                  setRedeemableFilter(e.target.value as "all" | "true" | "false");
                 }}
-                className="w-full pl-9 sm:w-48"
+                options={[
+                  { value: "all", label: "全部产品" },
+                  { value: "true", label: "仅可兑换" },
+                  { value: "false", label: "未设可兑" },
+                ]}
+                className="w-full sm:w-32"
               />
             </div>
-            <select
-              value={redeemableFilter}
-              onChange={(e) => {
-                setProductPage(1);
-                setRedeemableFilter(e.target.value as "all" | "true" | "false");
-              }}
-              className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 sm:w-auto"
-            >
-              <option value="all">全部产品</option>
-              <option value="true">仅可兑换</option>
-              <option value="false">未设可兑</option>
-            </select>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
-                <th className="px-4 py-3 font-medium">产品</th>
-                <th className="px-4 py-3 font-medium">分类</th>
-                <th className="px-4 py-3 font-medium">参考价格</th>
-                <th className="px-4 py-3 font-medium">发布状态</th>
-                <th className="px-4 py-3 font-medium">积分可兑</th>
-                <th className="px-4 py-3 font-medium">兑换库存</th>
-                <th className="px-4 py-3 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {productsLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center">
-                    <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px]">
+              <thead>
+                <tr className="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
+                  <th className="px-4 py-3 font-medium">产品</th>
+                  <th className="px-4 py-3 font-medium">分类</th>
+                  <th className="px-4 py-3 font-medium">参考价格</th>
+                  <th className="px-4 py-3 font-medium">发布状态</th>
+                  <th className="px-4 py-3 font-medium">积分可兑</th>
+                  <th className="px-4 py-3 font-medium">兑换库存</th>
+                  <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
-              ) : productsError ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center">
-                    <p className="text-sm text-red-500">加载产品失败</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={fetchProducts}
-                    >
-                      重试
-                    </Button>
-                  </td>
-                </tr>
-              ) : products.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                    暂无匹配产品
-                  </td>
-                </tr>
-              ) : (
-                products.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-700">{p.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{p.categoryName}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      ¥{p.priceYuan.toLocaleString()}
+              </thead>
+              <tbody className="divide-y">
+                {productsLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center">
+                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-gray-300" />
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge className={p.published ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
-                        {p.published ? "已发布" : "草稿"}
-                      </Badge>
+                  </tr>
+                ) : productsError ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center">
+                      <p className="text-sm text-red-500">加载产品失败</p>
+                      <Button variant="outline" size="sm" className="mt-3" onClick={fetchProducts}>
+                        重试
+                      </Button>
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        className={
-                          p.pointRedeemable ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"
-                        }
-                      >
-                        {p.pointRedeemable ? "可兑换" : "未设置"}
-                      </Badge>
+                  </tr>
+                ) : products.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                      暂无匹配产品
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {stockEdit?.id === p.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            value={stockEdit.value}
-                            onChange={(e) => setStockEdit({ id: p.id, value: e.target.value })}
-                            placeholder="留空=不限量"
-                            className="w-28"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            loading={savingStock}
-                            onClick={() => handleStockSave(p)}
-                          >
-                            保存
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
-                            取消
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span>{p.redeemStock === null ? "不限量" : p.redeemStock}</span>
-                          {canGiftWrite && (
+                  </tr>
+                ) : (
+                  products.map((p) => (
+                    <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-700">{p.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{p.categoryName}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        ¥{p.priceYuan.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          className={
+                            p.published
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-500"
+                          }
+                        >
+                          {p.published ? "已发布" : "草稿"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          className={
+                            p.pointRedeemable
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-gray-100 text-gray-500"
+                          }
+                        >
+                          {p.pointRedeemable ? "可兑换" : "未设置"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {stockEdit?.id === p.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={stockEdit.value}
+                              onChange={(e) => setStockEdit({ id: p.id, value: e.target.value })}
+                              placeholder="留空=不限量"
+                              className="w-28"
+                            />
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                setStockEdit({
-                                  id: p.id,
-                                  value: p.redeemStock === null ? "" : String(p.redeemStock),
-                                })
-                              }
+                              loading={savingStock}
+                              onClick={() => handleStockSave(p)}
                             >
-                              编辑
+                              保存
                             </Button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {canGiftWrite ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={
-                            togglingId === p.id ||
-                            // 仅"设为可兑"要求已发布；未发布但已可兑的产品必须允许取消
-                            (!p.pointRedeemable && !p.published)
-                          }
-                          onClick={() => handleToggle(p)}
-                        >
-                          {togglingId === p.id
-                            ? "处理中..."
-                            : p.pointRedeemable
-                              ? "取消可兑"
-                              : "设为可兑"}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-gray-400">仅超级管理员可设置</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {productTotalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-gray-500">
-            <span>
-              第 {productPage}/{productTotalPages} 页
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={productPage <= 1}
-                onClick={() => setProductPage((p) => p - 1)}
-              >
-                上一页
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={productPage >= productTotalPages}
-                onClick={() => setProductPage((p) => p + 1)}
-              >
-                下一页
-              </Button>
-            </div>
+                            <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
+                              取消
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>{p.redeemStock === null ? "不限量" : p.redeemStock}</span>
+                            {canGiftWrite && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setStockEdit({
+                                    id: p.id,
+                                    value: p.redeemStock === null ? "" : String(p.redeemStock),
+                                  })
+                                }
+                              >
+                                编辑
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {canGiftWrite ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={
+                              togglingId === p.id ||
+                              // 仅"设为可兑"要求已发布；未发布但已可兑的产品必须允许取消
+                              (!p.pointRedeemable && !p.published)
+                            }
+                            onClick={() => handleToggle(p)}
+                          >
+                            {togglingId === p.id
+                              ? "处理中..."
+                              : p.pointRedeemable
+                                ? "取消可兑"
+                                : "设为可兑"}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-gray-400">仅超级管理员可设置</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+          {productTotalPages > 1 && (
+            <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-gray-500">
+              <span>
+                第 {productPage}/{productTotalPages} 页
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={productPage <= 1}
+                  onClick={() => setProductPage((p) => p - 1)}
+                >
+                  上一页
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={productPage >= productTotalPages}
+                  onClick={() => setProductPage((p) => p + 1)}
+                >
+                  下一页
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* 兑换记录 */}
@@ -584,12 +591,7 @@ function AdminPointGiftsContent() {
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center">
                     <p className="text-sm text-red-500">加载兑换记录失败</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={fetchRedemptions}
-                    >
+                    <Button variant="outline" size="sm" className="mt-3" onClick={fetchRedemptions}>
                       重试
                     </Button>
                   </td>
@@ -616,7 +618,9 @@ function AdminPointGiftsContent() {
                         <>
                           <p className="text-sm text-gray-700">
                             {r.recipient}
-                            {r.phone && <span className="ml-2 text-xs text-gray-400">{r.phone}</span>}
+                            {r.phone && (
+                              <span className="ml-2 text-xs text-gray-400">{r.phone}</span>
+                            )}
                           </p>
                           <p className="mt-0.5 text-xs text-gray-500">{r.address}</p>
                         </>
@@ -631,17 +635,25 @@ function AdminPointGiftsContent() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}
+                      >
                         {STATUS_LABELS[r.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{formatDateTime(r.createdAt)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {formatDateTime(r.createdAt)}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         {r.status === "PENDING" ? (
                           <>
                             {canFulfill && (
-                              <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openFulfillModal(r)}
+                              >
                                 标记履约
                               </Button>
                             )}
@@ -680,7 +692,12 @@ function AdminPointGiftsContent() {
               第 {page}/{totalPages} 页
             </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 上一页
               </Button>
               <Button
@@ -716,9 +733,7 @@ function AdminPointGiftsContent() {
             <p className="truncate">{fulfillTarget.redemption.productName}</p>
             <p className="mt-0.5">
               {fulfillTarget.redemption.recipient ?? "未填写收货人"}
-              {fulfillTarget.redemption.address
-                ? ` · ${fulfillTarget.redemption.address}`
-                : ""}
+              {fulfillTarget.redemption.address ? ` · ${fulfillTarget.redemption.address}` : ""}
             </p>
           </div>
         )}

@@ -11,7 +11,7 @@ const variantCls: Record<IconButtonVariant, string> = {
 };
 
 const sizeCls: Record<IconButtonSize, string> = {
-  md: "p-2 min-h-[36px] min-w-[36px]",
+  md: "p-2 min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px]",
   lg: "p-2 min-h-[44px] min-w-[44px]",
 };
 
@@ -29,7 +29,7 @@ interface IconButtonProps {
   children: ReactNode;
 }
 
-/** 管理端图标按钮：默认 36px 触控区 */
+/** 管理端图标按钮：移动端 44px、桌面端 36px 触控区 */
 export function IconButton({
   label,
   href,

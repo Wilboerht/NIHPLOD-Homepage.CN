@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { Save, Send, ArrowLeft, Plus, Trash2, GripVertical, Sparkles } from "lucide-react";
+import { Save, Send, Plus, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -13,11 +13,13 @@ import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
 import { TagInput } from "@/components/ui/TagInput";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { FormActions } from "@/components/admin/FormActions";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
 import { generateSlug } from "@/lib/utils";
+import { focusFirstInvalid } from "@/lib/form";
 import {
   usePurchaseLinks,
   createPurchaseLinkKey,
@@ -132,6 +134,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   // 初始快照用 state 保存：渲染期比较脏值时不触发 react-hooks/refs 限制
   const [initialFormSnapshot] = useState<FormData>(() => structuredClone(formData));
   const slugManuallySetRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // null=空闲；"draft"/"publish"=正在执行对应动作（双按钮互斥，防并发提交）
   const [submitting, setSubmitting] = useState<null | "draft" | "publish">(null);
@@ -207,8 +210,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       })),
     });
     return (
-      JSON.stringify(stripBlobUrls(formData)) !==
-      JSON.stringify(stripBlobUrls(initialFormSnapshot))
+      JSON.stringify(stripBlobUrls(formData)) !== JSON.stringify(stripBlobUrls(initialFormSnapshot))
     );
   }, [formData, initialFormSnapshot]);
   const { guard: guardNavigation } = useUnsavedChanges(isDirty);
@@ -252,6 +254,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           }
         });
         setErrors(fieldErrors);
+        focusFirstInvalid(formRef.current);
       }
       return false;
     }
@@ -339,356 +342,363 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
-      {/* 顶部操作栏 */}
-      <div className="mb-6 flex items-center justify-between">
-        <button
-          onClick={() => guardNavigation(() => router.back())}
-          className="flex items-center gap-2 text-brand-charcoal/60 hover:text-brand-charcoal"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          返回
-        </button>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => handleSave(false)}
-            loading={submitting === "draft"}
-            disabled={submitting !== null}
-            leftIcon={<Save className="h-4 w-4" />}
-          >
-            保存草稿
-          </Button>
-          <Button
-            onClick={() => handleSave(true)}
-            loading={submitting === "publish"}
-            disabled={submitting !== null}
-            leftIcon={<Send className="h-4 w-4" />}
-          >
-            保存并发布
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-8">
-        {/* 基本信息 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">基本信息</h2>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Input
-              label="产品名称（中文）"
-              value={formData.name}
-              onChange={(e) => updateField("name", e.target.value)}
-              error={errors.name}
-              required
-            />
-            <Input
-              label="产品名称（英文）"
-              value={formData.nameEn}
-              onChange={(e) => updateField("nameEn", e.target.value)}
-              error={errors.nameEn}
-              required
-            />
-            <Input
-              label="URL 别名"
-              value={formData.slug}
-              onChange={(e) => {
-                slugManuallySetRef.current = true;
-                updateField("slug", e.target.value);
+    <form
+      ref={formRef}
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+      }}
+      className="space-y-6"
+    >
+      {/* 基本信息 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">基本信息</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Input
+            label="产品名称（中文）"
+            value={formData.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            error={errors.name}
+            required
+          />
+          <Input
+            label="产品名称（英文）"
+            value={formData.nameEn}
+            onChange={(e) => updateField("nameEn", e.target.value)}
+            error={errors.nameEn}
+            required
+          />
+          <Input
+            label="URL 别名"
+            value={formData.slug}
+            onChange={(e) => {
+              slugManuallySetRef.current = true;
+              updateField("slug", e.target.value);
+            }}
+            error={errors.slug}
+            required
+            placeholder="自动生成，可修改"
+          />
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Select
+                label="产品分类"
+                options={categoryOptions}
+                value={formData.categoryId}
+                onChange={(e) => updateField("categoryId", e.target.value)}
+                error={errors.categoryId}
+                required
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setNewCategoryError("");
+                setNewCategoryOpen(true);
               }}
-              error={errors.slug}
-              required
-              placeholder="自动生成，可修改"
-            />
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Select
-                  label="产品分类"
-                  options={categoryOptions}
-                  value={formData.categoryId}
-                  onChange={(e) => updateField("categoryId", e.target.value)}
-                  error={errors.categoryId}
-                  required
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setNewCategoryError("");
-                  setNewCategoryOpen(true);
-                }}
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                新建
-              </Button>
-            </div>
-            <Input
-              label="价格（元）"
-              type="number"
-              value={formData.price}
-              onChange={(e) => updateField("price", Number(e.target.value))}
-              error={errors.price}
-              required
-            />
-            <Input
-              label="规格容量"
-              value={formData.capacity || ""}
-              onChange={(e) => updateField("capacity", e.target.value)}
-              error={errors.capacity}
-              placeholder="如：30ml、50g"
-            />
-            <Input
-              label="产地"
-              value={formData.origin || ""}
-              onChange={(e) => updateField("origin", e.target.value)}
-              error={errors.origin}
-              placeholder="如：摩纳哥"
-            />
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              新建
+            </Button>
           </div>
-        </section>
-
-        {/* 产品图片 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品图片</h2>
-          <ImageUploader
-            value={formData.images}
-            onChange={(images) => updateField("images", images)}
-            error={errors.images}
-            maxImages={10}
+          <Input
+            label="价格（元）"
+            type="number"
+            value={formData.price}
+            onChange={(e) => updateField("price", Number(e.target.value))}
+            error={errors.price}
+            required
           />
-        </section>
+          <Input
+            label="规格容量"
+            value={formData.capacity || ""}
+            onChange={(e) => updateField("capacity", e.target.value)}
+            error={errors.capacity}
+            placeholder="如：30ml、50g"
+          />
+          <Input
+            label="产地"
+            value={formData.origin || ""}
+            onChange={(e) => updateField("origin", e.target.value)}
+            error={errors.origin}
+            placeholder="如：摩纳哥"
+          />
+        </div>
+      </section>
 
-        {/* 产品描述 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品描述</h2>
+      {/* 产品图片 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品图片</h2>
+        <ImageUploader
+          value={formData.images}
+          onChange={(images) => updateField("images", images)}
+          error={errors.images}
+          maxImages={10}
+        />
+      </section>
+
+      {/* 产品描述 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">产品描述</h2>
+        <RichTextEditor
+          label="产品简介"
+          value={formData.description}
+          onChange={(value) => updateField("description", value)}
+          error={errors.description}
+          placeholder="请输入产品简介..."
+          minHeight="150px"
+        />
+        <div className="mt-6">
           <RichTextEditor
-            label="产品简介"
-            value={formData.description}
-            onChange={(value) => updateField("description", value)}
-            error={errors.description}
-            placeholder="请输入产品简介..."
-            minHeight="150px"
+            label="成分说明"
+            value={formData.ingredients || ""}
+            onChange={(value) => updateField("ingredients", value)}
+            error={errors.ingredients}
+            placeholder="请输入成分说明..."
+            minHeight="120px"
           />
-          <div className="mt-6">
-            <RichTextEditor
-              label="成分说明"
-              value={formData.ingredients || ""}
-              onChange={(value) => updateField("ingredients", value)}
-              error={errors.ingredients}
-              placeholder="请输入成分说明..."
-              minHeight="120px"
-            />
-          </div>
-          <div className="mt-6">
-            <RichTextEditor
-              label="使用方法"
-              value={formData.usage || ""}
-              onChange={(value) => updateField("usage", value)}
-              error={errors.usage}
-              placeholder="请输入使用方法..."
-              minHeight="120px"
-            />
-          </div>
-        </section>
-
-        {/* 功效标签 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">功效标签</h2>
-          <TagInput
-            label="产品功效"
-            value={formData.benefits}
-            onChange={(tags) => updateField("benefits", tags)}
-            error={errors.benefits}
-            maxTags={20}
-            placeholder="输入功效后按回车添加，如：保湿、抗皱"
+        </div>
+        <div className="mt-6">
+          <RichTextEditor
+            label="使用方法"
+            value={formData.usage || ""}
+            onChange={(value) => updateField("usage", value)}
+            error={errors.usage}
+            placeholder="请输入使用方法..."
+            minHeight="120px"
           />
-        </section>
+        </div>
+      </section>
 
-        {/* 购买设置 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">购买设置</h2>
+      {/* 功效标签 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">功效标签</h2>
+        <TagInput
+          label="产品功效"
+          value={formData.benefits}
+          onChange={(tags) => updateField("benefits", tags)}
+          error={errors.benefits}
+          maxTags={20}
+          placeholder="输入功效后按回车添加，如：保湿、抗皱"
+        />
+      </section>
 
-          {/* 第三方平台链接 */}
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge variant="primary">第三方平台</Badge>
-                <span className="text-xs text-brand-charcoal/50">天猫、小红书、抖音等平台链接</span>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addPurchaseLink}
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                添加平台
-              </Button>
+      {/* 购买设置 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">购买设置</h2>
+
+        {/* 第三方平台链接 */}
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="primary">第三方平台</Badge>
+              <span className="text-xs text-brand-charcoal/50">天猫、小红书、抖音等平台链接</span>
             </div>
-            {formData.purchaseLinks.length === 0 ? (
-              <p className="text-sm text-brand-charcoal/50">暂无第三方购买链接，点击右上角添加</p>
-            ) : (
-              <div className="space-y-3">
-                {formData.purchaseLinks.map((link, index) => (
-                  <div
-                    key={link.clientKey ?? `purchase-link-${index}`}
-                    className="flex items-center gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
-                  >
-                    <GripVertical className="h-4 w-4 flex-shrink-0 cursor-move text-brand-charcoal/50" />
-                    <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                      <Select
-                        options={platformOptions}
-                        value={link.platform}
-                        onChange={(e) => updatePurchaseLink(index, "platform", e.target.value)}
-                        placeholder="选择平台"
-                      />
-                      <Input
-                        value={link.url}
-                        onChange={(e) => updatePurchaseLink(index, "url", e.target.value)}
-                        placeholder="输入购买链接 URL"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removePurchaseLink(index)}
-                      className="flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {errors.purchaseLinks && (
-              <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addPurchaseLink}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              添加平台
+            </Button>
           </div>
-        </section>
-
-        {/* GEO FAQ 设置 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-medium text-brand-charcoal">GEO FAQ 优化 (SEO)</h2>
-              <p className="mt-1 text-xs text-brand-charcoal/50">
-                编写针对 AI 搜索（如 Perplexity, ChatGPT）优化的问答对，提升曝光权重
-              </p>
-            </div>
-            {!formData.geoFaqs && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => updateField("geoFaqs", [{ question: "", answer: "" }])}
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                添加问答
-              </Button>
-            )}
-          </div>
-
-          {!formData.geoFaqs ? (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-brand-charcoal/20 bg-brand-charcoal/[0.03] py-8">
-              <Sparkles className="mb-2 h-8 w-8 text-brand-charcoal/30" />
-              <p className="text-sm text-brand-charcoal/50">尚未生成 GEO 优化内容</p>
-            </div>
+          {formData.purchaseLinks.length === 0 ? (
+            <p className="text-sm text-brand-charcoal/50">暂无第三方购买链接，点击右上角添加</p>
           ) : (
-            <div className="space-y-4">
-              {formData.geoFaqs.map((faq, index) => (
+            <div className="space-y-3">
+              {formData.purchaseLinks.map((link, index) => (
                 <div
-                  key={index}
-                  className="border-brand-charcoal/8 space-y-2 rounded-lg border bg-brand-charcoal/[0.03] p-4"
+                  key={link.clientKey ?? `purchase-link-${index}`}
+                  className="flex items-center gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
                 >
-                  <div className="flex gap-2">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
-                      Q
-                    </span>
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
+                    {index + 1}
+                  </span>
+                  <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                    <Select
+                      options={platformOptions}
+                      value={link.platform}
+                      onChange={(e) => updatePurchaseLink(index, "platform", e.target.value)}
+                      placeholder="选择平台"
+                    />
                     <Input
-                      className="flex-1 border-none bg-transparent p-0 text-sm font-medium focus:ring-0"
-                      value={faq.question}
-                      onChange={(e) => {
-                        const newFaqs = [...(formData.geoFaqs || [])];
-                        newFaqs[index].question = e.target.value;
-                        updateField("geoFaqs", newFaqs);
-                      }}
+                      value={link.url}
+                      onChange={(e) => updatePurchaseLink(index, "url", e.target.value)}
+                      placeholder="输入购买链接 URL"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal text-xs font-bold text-white">
-                      A
-                    </span>
-                    <Textarea
-                      className="h-auto flex-1 resize-none border-none bg-transparent p-0 text-sm focus:ring-0"
-                      rows={2}
-                      value={faq.answer}
-                      onChange={(e) => {
-                        const newFaqs = [...(formData.geoFaqs || [])];
-                        newFaqs[index].answer = e.target.value;
-                        updateField("geoFaqs", newFaqs);
-                      }}
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newFaqs = formData.geoFaqs?.filter((_, i) => i !== index) || null;
-                        updateField("geoFaqs", newFaqs?.length ? newFaqs : null);
-                      }}
-                      className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-3 w-3" /> 删除这组
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePurchaseLink(index)}
+                    className="flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  const newFaqs = [...(formData.geoFaqs || [])];
-                  newFaqs.push({ question: "", answer: "" });
-                  updateField("geoFaqs", newFaqs);
-                }}
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                添加自定义问答
-              </Button>
             </div>
           )}
-        </section>
+          {errors.purchaseLinks && (
+            <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
+          )}
+        </div>
+      </section>
 
-        {/* 其他设置 */}
-        <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-lg font-medium text-brand-charcoal">其他设置</h2>
-          <div className="space-y-4">
-            <Input
-              label="排序"
-              type="number"
-              value={formData.order}
-              onChange={(e) => updateField("order", Number(e.target.value))}
-              error={errors.order}
-              placeholder="数字越小越靠前"
-            />
-            <div className="flex flex-wrap gap-8 pt-2">
-              <Switch
-                label="推荐产品"
-                description="在首页推荐位置展示"
-                checked={formData.featured}
-                onChange={(checked) => updateField("featured", checked)}
-              />
-              {/* 发布状态由底部“保存草稿 / 保存并发布”按钮显式决定，避免开关与按钮语义冲突 */}
-              {initialData?.published && (
-                <p className="self-center text-xs text-brand-charcoal/50">
-                  当前状态：已发布（点击“保存草稿”将转为未发布）
-                </p>
-              )}
-            </div>
+      {/* GEO FAQ 设置 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-medium text-brand-charcoal">GEO FAQ 优化 (SEO)</h2>
+            <p className="mt-1 text-xs text-brand-charcoal/50">
+              编写针对 AI 搜索（如 Perplexity, ChatGPT）优化的问答对，提升曝光权重
+            </p>
           </div>
-        </section>
-      </div>
+          {!formData.geoFaqs && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => updateField("geoFaqs", [{ question: "", answer: "" }])}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              添加问答
+            </Button>
+          )}
+        </div>
+
+        {!formData.geoFaqs ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-brand-charcoal/20 bg-brand-charcoal/[0.03] py-8">
+            <Sparkles className="mb-2 h-8 w-8 text-brand-charcoal/30" />
+            <p className="text-sm text-brand-charcoal/50">尚未生成 GEO 优化内容</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {formData.geoFaqs.map((faq, index) => (
+              <div
+                key={index}
+                className="border-brand-charcoal/8 space-y-2 rounded-lg border bg-brand-charcoal/[0.03] p-4"
+              >
+                <div className="flex gap-2">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
+                    Q
+                  </span>
+                  <Input
+                    className="flex-1 border-none bg-transparent p-0 text-sm font-medium focus:ring-0"
+                    value={faq.question}
+                    onChange={(e) => {
+                      const newFaqs = [...(formData.geoFaqs || [])];
+                      newFaqs[index].question = e.target.value;
+                      updateField("geoFaqs", newFaqs);
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal text-xs font-bold text-white">
+                    A
+                  </span>
+                  <Textarea
+                    className="h-auto flex-1 resize-none border-none bg-transparent p-0 text-sm focus:ring-0"
+                    rows={2}
+                    value={faq.answer}
+                    onChange={(e) => {
+                      const newFaqs = [...(formData.geoFaqs || [])];
+                      newFaqs[index].answer = e.target.value;
+                      updateField("geoFaqs", newFaqs);
+                    }}
+                  />
+                </div>
+                <div className="mt-1 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newFaqs = formData.geoFaqs?.filter((_, i) => i !== index) || null;
+                      updateField("geoFaqs", newFaqs?.length ? newFaqs : null);
+                    }}
+                    className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3 w-3" /> 删除这组
+                  </button>
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                const newFaqs = [...(formData.geoFaqs || [])];
+                newFaqs.push({ question: "", answer: "" });
+                updateField("geoFaqs", newFaqs);
+              }}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              添加自定义问答
+            </Button>
+          </div>
+        )}
+      </section>
+
+      {/* 其他设置 */}
+      <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">其他设置</h2>
+        <div className="space-y-4">
+          <Input
+            label="排序"
+            type="number"
+            value={formData.order}
+            onChange={(e) => updateField("order", Number(e.target.value))}
+            error={errors.order}
+            placeholder="数字越小越靠前"
+          />
+          <div className="flex flex-wrap gap-8 pt-2">
+            <Switch
+              label="推荐产品"
+              description="在首页推荐位置展示"
+              checked={formData.featured}
+              onChange={(checked) => updateField("featured", checked)}
+            />
+            {/* 发布状态由底部“保存草稿 / 保存并发布”按钮显式决定，避免开关与按钮语义冲突 */}
+            {initialData?.published && (
+              <p className="self-center text-xs text-brand-charcoal/50">
+                当前状态：已发布（点击“保存草稿”将转为未发布）
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <FormActions>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => guardNavigation(() => router.back())}
+          disabled={submitting !== null}
+        >
+          取消
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleSave(false)}
+          loading={submitting === "draft"}
+          disabled={submitting !== null}
+          leftIcon={<Save className="h-4 w-4" />}
+        >
+          保存草稿
+        </Button>
+        <Button
+          type="button"
+          onClick={() => void handleSave(true)}
+          loading={submitting === "publish"}
+          disabled={submitting !== null}
+          leftIcon={<Send className="h-4 w-4" />}
+        >
+          保存并发布
+        </Button>
+      </FormActions>
 
       {/* 快速新建分类弹窗（内联创建，创建后自动选中） */}
       <Modal
@@ -727,6 +737,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
         </div>
       </Modal>
-    </div>
+    </form>
   );
 }

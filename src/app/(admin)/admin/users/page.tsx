@@ -357,25 +357,28 @@ function AdminUsersContent() {
     deferInEffect(fetchUsers);
   }, [fetchUsers]);
 
-  const fetchLedger = useCallback(async (userId: string, targetPage: number) => {
-    setLedgerLoading(true);
-    try {
-      const data = await apiGet<{
-        available: number;
-        items: PointLedgerItem[];
-        pagination: { totalPages: number };
-      }>(`/api/admin/users/${userId}/points`, { page: targetPage, pageSize: 20 });
-      setLedgerItems(data.items);
-      setLedgerPage(targetPage);
-      setLedgerTotalPages(data.pagination.totalPages);
-      // 余额以流水接口物化结果为准（含过期处理）
-      setDetailPoints((prev) => (prev ? { ...prev, available: data.available } : prev));
-    } catch {
-      toast.error("加载积分流水失败");
-    } finally {
-      setLedgerLoading(false);
-    }
-  }, [toast]);
+  const fetchLedger = useCallback(
+    async (userId: string, targetPage: number) => {
+      setLedgerLoading(true);
+      try {
+        const data = await apiGet<{
+          available: number;
+          items: PointLedgerItem[];
+          pagination: { totalPages: number };
+        }>(`/api/admin/users/${userId}/points`, { page: targetPage, pageSize: 20 });
+        setLedgerItems(data.items);
+        setLedgerPage(targetPage);
+        setLedgerTotalPages(data.pagination.totalPages);
+        // 余额以流水接口物化结果为准（含过期处理）
+        setDetailPoints((prev) => (prev ? { ...prev, available: data.available } : prev));
+      } catch {
+        toast.error("加载积分流水失败");
+      } finally {
+        setLedgerLoading(false);
+      }
+    },
+    [toast]
+  );
 
   // 仅按用户 id 重置流水：详情对象因状态变更刷新时不重置当前翻页
   const detailUserId = detailUser?.id;
@@ -415,7 +418,9 @@ function AdminUsersContent() {
         await submit(code);
       }
 
-      toast.success(amount > 0 ? `已为该用户增加 ${amount} 积分` : `已为该用户扣减 ${-amount} 积分`);
+      toast.success(
+        amount > 0 ? `已为该用户增加 ${amount} 积分` : `已为该用户扣减 ${-amount} 积分`
+      );
       setAdjustOpen(false);
       setAdjustAmount("");
       setAdjustNote("");
@@ -475,9 +480,7 @@ function AdminUsersContent() {
     if (!detailUser || !identityUnbindTarget) return;
     setIdentityUnbinding(true);
     try {
-      await apiDelete(
-        `/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`
-      );
+      await apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`);
       toast.success("已解绑该外部身份");
       setDetailUser((prev) =>
         prev
@@ -723,7 +726,7 @@ function AdminUsersContent() {
             className="pl-10"
           />
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <Select
             options={[
               { value: "", label: "全部状态" },
@@ -733,10 +736,10 @@ function AdminUsersContent() {
             ]}
             value={status}
             onChange={(e) => updateParams({ status: e.target.value })}
-            className="w-32"
+            className="w-full sm:w-32"
           />
           {canWriteUsers && selectedIds.size > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <span className="text-sm text-brand-charcoal/50">已选 {selectedCount} 项</span>
               <Button
                 size="sm"
@@ -781,8 +784,103 @@ function AdminUsersContent() {
         </div>
       )}
 
-      {/* 用户列表 */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
+      {/* 用户列表（移动端卡片） */}
+      <div className="md:hidden">
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
+            ))}
+          </div>
+        ) : users.length === 0 ? (
+          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
+            <Empty title="暂无用户" />
+          </div>
+        ) : (
+          <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
+            {users.map((user) => (
+              <div key={user.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  {canWriteUsers && (
+                    <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => userSelection.toggle(user)}
+                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+                      />
+                    </label>
+                  )}
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-sm text-brand-charcoal/50">
+                    {user.avatar && user.avatar.startsWith("http") ? (
+                      <Image
+                        src={user.avatar}
+                        alt=""
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 rounded-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      user.nickname?.charAt(0) || "U"
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-brand-charcoal">
+                      {user.nickname || "未设置"}
+                    </p>
+                    <p className="truncate text-xs text-brand-charcoal/50">
+                      {user.phone || "未绑定手机号"}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge variant={userStatusMap[user.status].variant}>
+                        {userStatusMap[user.status].label}
+                      </Badge>
+                      {user.membershipLevel && membershipLevelMap[user.membershipLevel] && (
+                        <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
+                          {membershipLevelMap[user.membershipLevel].label}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+                  <span className="text-xs text-brand-charcoal/50">
+                    注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`查看 ${user.nickname || user.phone || "用户"} 详情`}
+                      onClick={() => openDetail(user.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {canDeleteUsers && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                        aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
+                        onClick={() =>
+                          requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 用户列表（桌面端表格） */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
@@ -1023,7 +1121,12 @@ function AdminUsersContent() {
                         </Badge>
                       )}
                       {canRevealPhone && !revealedPhone && detailUser.phone && (
-                        <Button size="sm" variant="ghost" loading={revealingPhone} onClick={revealPhone}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={revealingPhone}
+                          onClick={revealPhone}
+                        >
                           显示完整号码
                         </Button>
                       )}
@@ -1101,7 +1204,8 @@ function AdminUsersContent() {
                                   onClick={() =>
                                     setIdentityUnbindTarget({
                                       id: identity.id,
-                                      label: providerLabelMap[identity.provider] || identity.provider,
+                                      label:
+                                        providerLabelMap[identity.provider] || identity.provider,
                                     })
                                   }
                                   className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
@@ -1301,7 +1405,8 @@ function AdminUsersContent() {
                     积分兑换记录
                     {detailPoints && detailPoints.redemptionTotal > 0 && (
                       <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
-                        共 {detailPoints.redemptionTotal} 条，展示最近 {detailPoints.redemptions.length} 条
+                        共 {detailPoints.redemptionTotal} 条，展示最近{" "}
+                        {detailPoints.redemptions.length} 条
                       </span>
                     )}
                   </h3>
@@ -1396,7 +1501,10 @@ function AdminUsersContent() {
                           <span>{formatDate(a.createdAt)}</span>
                         </div>
                         {a.userAgent && (
-                          <p className="w-full truncate text-xs text-brand-charcoal/30" title={a.userAgent}>
+                          <p
+                            className="w-full truncate text-xs text-brand-charcoal/30"
+                            title={a.userAgent}
+                          >
                             {a.userAgent}
                           </p>
                         )}
@@ -1466,8 +1574,9 @@ function AdminUsersContent() {
                               {a.orderNo}
                             </p>
                             <span className="shrink-0 text-xs text-brand-charcoal/40">
-                              {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
-                                a.channel}
+                              {SPENT_CHANNEL_LABELS[
+                                a.channel as keyof typeof SPENT_CHANNEL_LABELS
+                              ] ?? a.channel}
                             </span>
                           </div>
                           <span
@@ -1533,16 +1642,24 @@ function AdminUsersContent() {
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-brand-charcoal/50">银卡激活时间</dt>
-                    <dd>{detailUser.silverActivatedAt ? formatDate(detailUser.silverActivatedAt) : "—"}</dd>
+                    <dd>
+                      {detailUser.silverActivatedAt
+                        ? formatDate(detailUser.silverActivatedAt)
+                        : "—"}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-brand-charcoal/50">金卡激活时间</dt>
-                    <dd>{detailUser.goldActivatedAt ? formatDate(detailUser.goldActivatedAt) : "—"}</dd>
+                    <dd>
+                      {detailUser.goldActivatedAt ? formatDate(detailUser.goldActivatedAt) : "—"}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-brand-charcoal/50">钻石卡激活时间</dt>
                     <dd>
-                      {detailUser.diamondActivatedAt ? formatDate(detailUser.diamondActivatedAt) : "—"}
+                      {detailUser.diamondActivatedAt
+                        ? formatDate(detailUser.diamondActivatedAt)
+                        : "—"}
                     </dd>
                   </div>
                 </dl>
@@ -1571,9 +1688,7 @@ function AdminUsersContent() {
                               {membershipLevelMap[c.fromLevel]?.label ?? c.fromLevel}
                             </Badge>
                             <span className="text-brand-charcoal/40">→</span>
-                            <Badge
-                              variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}
-                            >
+                            <Badge variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}>
                               {membershipLevelMap[c.toLevel]?.label ?? c.toLevel}
                             </Badge>
                           </div>
@@ -1601,7 +1716,8 @@ function AdminUsersContent() {
       >
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/60">
-            正数为增加（6 个月有效期，可参与兑礼与过期清理），负数为扣减（直接冲减可用积分，可为负）。
+            正数为增加（6
+            个月有效期，可参与兑礼与过期清理），负数为扣减（直接冲减可用积分，可为负）。
             操作将写入审计日志，请填写可追溯的原因。
           </p>
           <Input

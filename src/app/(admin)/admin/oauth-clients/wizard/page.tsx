@@ -20,7 +20,16 @@ import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiGet } from "@/lib/api-client";
 import { RequirePermission } from "@/components/admin/RequirePermission";
-import { Check, Copy, ArrowRight, ArrowLeft, ExternalLink, RefreshCw, Eye, EyeOff } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ArrowRight,
+  ArrowLeft,
+  ExternalLink,
+  RefreshCw,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 /** 校验回调 URL（https、无 hash）；通过返回 null，否则返回错误文案 */
 function validateRedirectUri(value: string): string | null {
@@ -270,13 +279,17 @@ const user = await userRes.json();`;
           <div key={s} className="flex items-center">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step >= s ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-500"
+                step >= s
+                  ? "bg-brand-primary text-white"
+                  : "bg-brand-charcoal/10 text-brand-charcoal/40"
               }`}
             >
               {step > s ? <Check className="h-4 w-4" /> : s}
             </div>
             {s < 5 && (
-              <div className={`h-0.5 w-6 sm:w-12 ${step > s ? "bg-blue-600" : "bg-gray-200"}`} />
+              <div
+                className={`h-0.5 w-6 sm:w-12 ${step > s ? "bg-brand-primary" : "bg-brand-charcoal/10"}`}
+              />
             )}
           </div>
         ))}
@@ -284,31 +297,31 @@ const user = await userRes.json();`;
 
       {/* Step 1: App Info */}
       {step === 1 && (
-        <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">① 填写应用信息</h2>
           <div className="max-w-md space-y-4">
+            <Input
+              label="应用名称"
+              required
+              value={appName}
+              onChange={(e) => setAppName(e.target.value)}
+              placeholder="如：Advisor 顾问系统"
+            />
+            <Input
+              label="回调 URL"
+              required
+              value={redirectUri}
+              onChange={(e) => setRedirectUri(e.target.value)}
+              placeholder="https://smart.nihplod.cn/api/auth/callback"
+              hint="用户授权后，主站将把授权码发送到此 URL。"
+            />
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">应用名称 *</label>
-              <Input
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                placeholder="如：Advisor 顾问系统"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">回调 URL *</label>
-              <Input
-                value={redirectUri}
-                onChange={(e) => setRedirectUri(e.target.value)}
-                placeholder="https://smart.nihplod.cn/api/auth/callback"
-              />
-              <p className="mt-1 text-xs text-gray-400">用户授权后，主站将把授权码发送到此 URL。</p>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">应用类型</label>
+              <label className="mb-2 block text-sm font-medium text-brand-charcoal/70">
+                应用类型
+              </label>
               <div className="space-y-2">
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${!isPublic ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${!isPublic ? "border-brand-primary bg-brand-primary/5" : "border-brand-charcoal/15 hover:border-brand-charcoal/30"}`}
                 >
                   <input
                     type="radio"
@@ -318,14 +331,14 @@ const user = await userRes.json();`;
                     className="mt-0.5"
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Confidential Client</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-brand-charcoal">Confidential Client</p>
+                    <p className="text-xs text-brand-charcoal/50">
                       Next.js / 服务端应用，后端保密 client_secret
                     </p>
                   </div>
                 </label>
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${isPublic ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${isPublic ? "border-brand-primary bg-brand-primary/5" : "border-brand-charcoal/15 hover:border-brand-charcoal/30"}`}
                 >
                   <input
                     type="radio"
@@ -335,8 +348,8 @@ const user = await userRes.json();`;
                     className="mt-0.5"
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Public Client</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-brand-charcoal">Public Client</p>
+                    <p className="text-xs text-brand-charcoal/50">
                       SPA / 移动端 / 桌面端，不传输 client_secret，必须使用 PKCE
                     </p>
                   </div>
@@ -370,9 +383,9 @@ const user = await userRes.json();`;
 
       {/* Step 2: Select Scopes */}
       {step === 2 && (
-        <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">② 选择数据权限</h2>
-          <p className="mb-4 text-sm text-gray-500">
+          <p className="mb-4 text-sm text-brand-charcoal/50">
             选择你的应用需要获取的用户信息权限。仅选择必需的最小权限。
           </p>
           <div className="mb-6 max-w-md space-y-3">
@@ -386,8 +399,8 @@ const user = await userRes.json();`;
                 key={s.value}
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                   selectedScopes.includes(s.value)
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    ? "border-brand-primary bg-brand-primary/5"
+                    : "border-brand-charcoal/15 hover:border-brand-charcoal/30"
                 } ${s.value === "openid" ? "opacity-70" : ""}`}
               >
                 <input
@@ -398,9 +411,9 @@ const user = await userRes.json();`;
                   className="mt-0.5"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-900">{s.label}</span>
-                  <span className="ml-2 font-mono text-xs text-gray-400">{s.value}</span>
-                  <p className="mt-0.5 text-xs text-gray-500">{s.desc}</p>
+                  <span className="text-sm font-medium text-brand-charcoal">{s.label}</span>
+                  <span className="ml-2 font-mono text-xs text-brand-charcoal/40">{s.value}</span>
+                  <p className="mt-0.5 text-xs text-brand-charcoal/50">{s.desc}</p>
                 </div>
               </label>
             ))}
@@ -422,26 +435,26 @@ const user = await userRes.json();`;
 
       {/* Step 3: Confirm */}
       {step === 3 && (
-        <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">③ 确认并创建</h2>
-          <div className="mb-6 max-w-md rounded-lg bg-gray-50 p-4">
+          <div className="mb-6 max-w-md rounded-lg bg-brand-charcoal/[0.03] p-4">
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-gray-500">应用名称：</span>
-                <span className="font-medium text-gray-900">{appName}</span>
+                <span className="text-brand-charcoal/50">应用名称：</span>
+                <span className="font-medium text-brand-charcoal">{appName}</span>
               </div>
               <div>
-                <span className="text-gray-500">应用类型：</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-brand-charcoal/50">应用类型：</span>
+                <span className="font-medium text-brand-charcoal">
                   {isPublic ? "Public Client" : "Confidential Client"}
                 </span>
               </div>
               <div>
-                <span className="text-gray-500">回调 URL：</span>
-                <span className="font-mono text-xs text-gray-900">{redirectUri}</span>
+                <span className="text-brand-charcoal/50">回调 URL：</span>
+                <span className="font-mono text-xs text-brand-charcoal">{redirectUri}</span>
               </div>
               <div>
-                <span className="text-gray-500">权限范围：</span>
+                <span className="text-brand-charcoal/50">权限范围：</span>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {selectedScopes.map((s) => (
                     <Badge key={s} variant="secondary" className="text-xs">
@@ -462,10 +475,10 @@ const user = await userRes.json();`;
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={loading}
+              loading={loading}
               leftIcon={<Check className="h-4 w-4" />}
             >
-              {loading ? "创建中..." : "创建 Client"}
+              创建 Client
             </Button>
           </div>
         </div>
@@ -473,7 +486,7 @@ const user = await userRes.json();`;
 
       {/* Step 4: Show Credentials + Code */}
       {step === 4 && (
-        <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">④ 接入凭据与代码</h2>
 
           {/* Credentials */}
@@ -485,37 +498,37 @@ const user = await userRes.json();`;
               以下凭据仅显示一次，关闭页面后无法再次查看 Secret。
             </p>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Client ID：</span>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-brand-charcoal/60">Client ID：</span>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <code className="rounded bg-green-100 px-2 py-1 font-mono text-xs">
                     {result.clientId}
                   </code>
                   <button
                     onClick={() => copyCode(result.clientId || "")}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-brand-charcoal/40 hover:text-brand-charcoal/60"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Client Secret：</span>
-                <div className="flex items-center gap-2">
-                  <code className="max-w-[280px] break-all rounded bg-green-100 px-2 py-1 font-mono text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-brand-charcoal/60">Client Secret：</span>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <code className="max-w-full break-all rounded bg-green-100 px-2 py-1 font-mono text-xs sm:max-w-[280px]">
                     {showSecret ? result.plainSecret : "••••••••••••••••••••"}
                   </code>
                   <button
                     onClick={() => setShowSecret((v) => !v)}
                     aria-label={showSecret ? "隐藏密钥" : "显示密钥"}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-brand-charcoal/40 hover:text-brand-charcoal/60"
                   >
                     {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => copyCode(result.plainSecret || "")}
                     aria-label="复制密钥"
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-brand-charcoal/40 hover:text-brand-charcoal/60"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -529,10 +542,10 @@ const user = await userRes.json();`;
 
           <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Node.js</span>
+              <span className="text-sm font-medium text-brand-charcoal/70">Node.js</span>
               <button
                 onClick={() => copyCode(nodeCode)}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
               >
                 <Copy className="h-3 w-3" /> 复制
               </button>
@@ -544,10 +557,10 @@ const user = await userRes.json();`;
 
           <div className="mb-6">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">React / 通用 HTTP</span>
+              <span className="text-sm font-medium text-brand-charcoal/70">React / 通用 HTTP</span>
               <button
                 onClick={() => copyCode(reactCode)}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
               >
                 <Copy className="h-3 w-3" /> 复制
               </button>
@@ -592,23 +605,20 @@ const user = await userRes.json();`;
 
       {/* Step 5: Connection Test */}
       {step === 5 && (
-        <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">⑤ 在线连接测试</h2>
-          <p className="mb-4 text-sm text-gray-500">模拟完整 SSO 流程，验证配置是否正确。</p>
+          <p className="mb-4 text-sm text-brand-charcoal/50">
+            模拟完整 SSO 流程，验证配置是否正确。
+          </p>
 
           <div className="mb-4">
             <Button
               onClick={handleTest}
-              disabled={testLoading || !result.clientId}
-              leftIcon={
-                testLoading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )
-              }
+              loading={testLoading}
+              disabled={!result.clientId}
+              leftIcon={<RefreshCw className="h-4 w-4" />}
             >
-              {testLoading ? "测试中..." : "运行测试"}
+              运行测试
             </Button>
           </div>
 
@@ -624,9 +634,9 @@ const user = await userRes.json();`;
                   : "⚠️ 测试未完全通过"}
               </p>
               {testResult.summary && (
-                <p className="mb-2 text-xs text-gray-600">{testResult.summary}</p>
+                <p className="mb-2 text-xs text-brand-charcoal/60">{testResult.summary}</p>
               )}
-              <pre className="max-h-60 overflow-x-auto rounded bg-white/50 p-3 text-xs text-gray-600">
+              <pre className="max-h-60 overflow-x-auto rounded bg-white/50 p-3 text-xs text-brand-charcoal/60">
                 {JSON.stringify(testResult.steps, null, 2)}
               </pre>
             </div>

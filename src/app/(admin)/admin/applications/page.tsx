@@ -222,9 +222,7 @@ function AdminApplicationsContent() {
     try {
       await apiPatch(`/api/admin/applications/${detailApplication.id}`, { notes: editingNotes });
       success("备注已保存");
-      setDetailApplication((prev) =>
-        prev ? { ...prev, notes: editingNotes } : prev
-      );
+      setDetailApplication((prev) => (prev ? { ...prev, notes: editingNotes } : prev));
       fetchApplications();
     } catch (err) {
       showError(err instanceof Error ? err.message : "保存失败");
@@ -443,7 +441,7 @@ function AdminApplicationsContent() {
                   {folder.applicationCount}
                 </span>
               </button>
-              <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 gap-0.5 group-hover:flex group-focus-within:flex">
+              <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 gap-0.5 group-focus-within:flex group-hover:flex max-md:flex">
                 {canWrite && (
                   <Tooltip content="编辑" side="top">
                     <button
@@ -608,108 +606,108 @@ function AdminApplicationsContent() {
             </div>
 
             <div className="hidden min-w-[880px] md:block">
-            {/* 表头 */}
-            <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
-              <span className="col-span-3">申请人</span>
-              <span className="col-span-3">应聘职位</span>
-              <span className="col-span-2">状态</span>
-              <span className="col-span-2">申请时间</span>
-              <span className="col-span-2 text-right">操作</span>
-            </div>
+              {/* 表头 */}
+              <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
+                <span className="col-span-3">申请人</span>
+                <span className="col-span-3">应聘职位</span>
+                <span className="col-span-2">状态</span>
+                <span className="col-span-2">申请时间</span>
+                <span className="col-span-2 text-right">操作</span>
+              </div>
 
-            {/* 列表 */}
-            <div className="divide-brand-charcoal/8 divide-y">
-              {applications.map((application) => {
-                const statusInfo = statusConfig[application.status] || statusConfig.pending;
-                return (
-                  <div
-                    key={application.id}
-                    className={cn(
-                      "grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-brand-charcoal/[0.03]",
-                      application.status === "pending" && "bg-brand-primary/5"
-                    )}
-                  >
-                    {/* 申请人信息 */}
-                    <div className="col-span-3 flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
-                        {application.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-brand-charcoal">
-                          {application.name}
-                        </p>
-                        <p className="truncate text-xs text-brand-charcoal/50">
-                          {application.phone}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 应聘职位 */}
-                    <div className="col-span-3 flex items-center">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-brand-charcoal/80">
-                          {application.job.title}
-                        </p>
-                        <p className="truncate text-xs text-brand-charcoal/50">
-                          {application.job.titleEn}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 状态 */}
-                    <div className="col-span-2 flex flex-col justify-center gap-1">
-                      <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
-                      {application.folder && (
-                        <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-brand-charcoal/60">
-                          <Tag className="h-3 w-3" />
-                          {application.folder.name}
-                        </span>
+              {/* 列表 */}
+              <div className="divide-brand-charcoal/8 divide-y">
+                {applications.map((application) => {
+                  const statusInfo = statusConfig[application.status] || statusConfig.pending;
+                  return (
+                    <div
+                      key={application.id}
+                      className={cn(
+                        "grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-brand-charcoal/[0.03]",
+                        application.status === "pending" && "bg-brand-primary/5"
                       )}
-                    </div>
+                    >
+                      {/* 申请人信息 */}
+                      <div className="col-span-3 flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
+                          {application.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-brand-charcoal">
+                            {application.name}
+                          </p>
+                          <p className="truncate text-xs text-brand-charcoal/50">
+                            {application.phone}
+                          </p>
+                        </div>
+                      </div>
 
-                    {/* 时间 */}
-                    <div className="col-span-2 flex items-center text-sm text-brand-charcoal/50">
-                      <Clock className="mr-1.5 h-3.5 w-3.5" />
-                      {formatDate(application.createdAt)}
-                    </div>
+                      {/* 应聘职位 */}
+                      <div className="col-span-3 flex items-center">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-brand-charcoal/80">
+                            {application.job.title}
+                          </p>
+                          <p className="truncate text-xs text-brand-charcoal/50">
+                            {application.job.titleEn}
+                          </p>
+                        </div>
+                      </div>
 
-                    {/* 操作 */}
-                    <div className="col-span-2 flex items-center justify-end gap-1">
-                      <Tooltip content="查看详情" side="top">
-                        <button
-                          onClick={() => viewDetail(application)}
-                          aria-label={`查看 ${application.name} 的简历`}
-                          className="hover:bg-brand-charcoal/8 rounded p-2 text-brand-charcoal/50 hover:text-brand-charcoal/60"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="下载简历" side="top">
-                        <button
-                          onClick={() => downloadResume(application)}
-                          aria-label={`下载 ${application.name} 的简历`}
-                          className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                      {canDelete && (
-                        <Tooltip content="删除" side="top">
+                      {/* 状态 */}
+                      <div className="col-span-2 flex flex-col justify-center gap-1">
+                        <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
+                        {application.folder && (
+                          <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-brand-charcoal/60">
+                            <Tag className="h-3 w-3" />
+                            {application.folder.name}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 时间 */}
+                      <div className="col-span-2 flex items-center text-sm text-brand-charcoal/50">
+                        <Clock className="mr-1.5 h-3.5 w-3.5" />
+                        {formatDate(application.createdAt)}
+                      </div>
+
+                      {/* 操作 */}
+                      <div className="col-span-2 flex items-center justify-end gap-1">
+                        <Tooltip content="查看详情" side="top">
                           <button
-                            onClick={() => setDeleteTarget(application)}
-                            aria-label={`删除 ${application.name} 的申请`}
-                            className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                            onClick={() => viewDetail(application)}
+                            aria-label={`查看 ${application.name} 的简历`}
+                            className="hover:bg-brand-charcoal/8 rounded p-2 text-brand-charcoal/50 hover:text-brand-charcoal/60"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </button>
                         </Tooltip>
-                      )}
+                        <Tooltip content="下载简历" side="top">
+                          <button
+                            onClick={() => downloadResume(application)}
+                            aria-label={`下载 ${application.name} 的简历`}
+                            className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                        {canDelete && (
+                          <Tooltip content="删除" side="top">
+                            <button
+                              onClick={() => setDeleteTarget(application)}
+                              aria-label={`删除 ${application.name} 的申请`}
+                              className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
           </>
         )}
       </div>
