@@ -16,6 +16,7 @@ vi.mock("@/lib/audit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/audit")>()),
   listAuditLogs: vi.fn(),
   createAuditLog: vi.fn().mockResolvedValue(true),
+  createAuditLogStrict: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/sso-audit", () => ({
@@ -36,7 +37,7 @@ vi.mock("@/lib/prisma", () => ({
 
 import { GET } from "../route";
 import { verifyAuth } from "@/lib/auth";
-import { listAuditLogs, createAuditLog } from "@/lib/audit";
+import { listAuditLogs, createAuditLog, createAuditLogStrict } from "@/lib/audit";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 
@@ -83,7 +84,7 @@ describe("GET /api/admin/audit-logs", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/csv");
 
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(createAuditLogStrict).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "audit_log_export",
         targetType: "system",

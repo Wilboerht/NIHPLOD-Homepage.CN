@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, createAuditLogStrict, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
@@ -384,7 +384,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    await createAuditLog({
+    await createAuditLogStrict({
       action: "user_detail_sensitive_view",
       targetType: "user",
       targetId: id,
@@ -449,6 +449,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { status: 403 }
       );
     }
+    const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
@@ -531,14 +532,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (Object.keys(birthdayData).length > 0) {
-      const saved = await prisma.user.update({
-        where: { id },
-        data: birthdayData,
-        select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
-      });
-      updatedUser = saved;
-
-      await createAuditLog({
+      const auditId = await beginAuditLog({
         action: "user_birthday_update",
         targetType: "user",
         targetId: user.id,
@@ -546,17 +540,72 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         adminId: admin.id,
         request,
       });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+
+      const saved = await prisma.user
+        .update({
+          where: { id },
+          data: birthdayData,
+          select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
+        })
+        .catch(async (error) => {
+          await finishAuditLog(auditId, "FAILURE", birthdayAudit);
+          throw error;
+        });
+      updatedUser = saved;
+
+      await finishAuditLog(auditId, "SUCCESS", {
+        ...birthdayAudit,
+        phone: maskPhone(user.phone),
+      });
     }
 
     // 2) 状态变更：状态、sessionsInvalidatedAt、refresh token/OAuth session 在同一事务内完成
     if (status !== undefined && status !== user.status) {
+      const auditId = await beginAuditLog({
+        action: "user_status_change",
+        targetType: "user",
+        targetId: user.id,
+        detail: { previousStatus: user.status, newStatus: status, phone: maskPhone(user.phone) },
+        adminId: admin.id,
+        request,
+      });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+
       const result = await changeUserStatus({
         userId: user.id,
         expectedStatus: user.status,
         newStatus: status,
+      }).catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", {
+          previousStatus: user.status,
+          requestedStatus: status,
+        });
+        throw error;
       });
 
       if (!result.changed) {
+        await finishAuditLog(auditId, "FAILURE", {
+          reason: "STATUS_NOT_CHANGED",
+          previousStatus: user.status,
+          requestedStatus: status,
+        });
         // 并发修改：重新读取最新状态返回，避免把旧快照当成成功结果
         const refreshed = await prisma.user.findUnique({
           where: { id },
@@ -583,13 +632,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
       updatedUser = refreshed;
 
-      await createAuditLog({
-        action: "user_status_change",
-        targetType: "user",
-        targetId: user.id,
-        detail: { previousStatus: user.status, newStatus: status, phone: maskPhone(user.phone) },
-        adminId: admin.id,
-        request,
+      await finishAuditLog(auditId, "SUCCESS", {
+        previousStatus: user.status,
+        newStatus: status,
+        phone: maskPhone(user.phone),
       });
 
       // SSO 审计：用户状态变更（合规敏感，同步等待写入）
@@ -612,7 +658,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       });
     }
 
-    return NextResponse.json({ success: true, data: { user: updatedUser } });
+    return NextResponse.json({
+      success: true,
+      data: {
+        user: {
+          ...updatedUser,
+          phone: canReadSensitive ? updatedUser.phone : maskPhone(updatedUser.phone),
+        },
+      },
+    });
   } catch (error) {
     apiConsole.error("[AdminUserUpdate] 异常:", error);
     return NextResponse.json(

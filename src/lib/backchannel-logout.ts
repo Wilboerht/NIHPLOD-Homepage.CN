@@ -13,6 +13,7 @@ import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
+import { postPublicHttps } from "@/lib/outbound-http";
 
 const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "::"]);
 const PRIVATE_IP_PATTERNS = [
@@ -130,12 +131,10 @@ export async function sendBackchannelLogout(
         let failureReason = "http_request_failed_after_retry";
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            const res = await fetch(client.backchannelLogoutUri, {
+            const res = await postPublicHttps(client.backchannelLogoutUri, {
               method: "POST",
               headers: { "Content-Type": "application/x-www-form-urlencoded" },
               body: new URLSearchParams({ logout_token: logoutToken }),
-              // 禁止跟随重定向：防止注册的 https 地址 302 到内网（SSRF 绕过主机黑名单）
-              redirect: "manual",
               signal: AbortSignal.timeout(5000),
             });
             if (res.ok) {
@@ -172,7 +171,10 @@ export async function sendBackchannelLogout(
               },
             })
             .catch((err) => {
-              apiConsole.warn(`[SLO] Backchannel logout 失败记录落库失败 (${client.clientId}):`, err);
+              apiConsole.warn(
+                `[SLO] Backchannel logout 失败记录落库失败 (${client.clientId}):`,
+                err
+              );
             });
         } else {
           // 成功投递也记录一条审计事件，便于核对通知过哪些 RP
@@ -267,9 +269,7 @@ export async function enqueueBackchannelLogoutForActiveSessions(params: {
     },
     select: { clientId: true, backchannelLogoutUri: true },
   });
-  const uriByClient = new Map(
-    clients.map((c) => [c.clientId, c.backchannelLogoutUri as string])
-  );
+  const uriByClient = new Map(clients.map((c) => [c.clientId, c.backchannelLogoutUri as string]));
   if (uriByClient.size === 0) {
     return { sessionCount: 0, userClientCount: 0 };
   }
@@ -284,9 +284,7 @@ export async function enqueueBackchannelLogoutForActiveSessions(params: {
       where: {
         revokedAt: null,
         expiresAt: { gt: new Date() },
-        clientId: params.clientId
-          ? params.clientId
-          : { in: [...uriByClient.keys()] },
+        clientId: params.clientId ? params.clientId : { in: [...uriByClient.keys()] },
         ...(params.userId ? { userId: params.userId } : {}),
       },
       select: { id: true, userId: true, clientId: true, sessionId: true },
@@ -386,7 +384,7 @@ export async function retryFailedBackchannelLogouts(
         where: { clientId: failure.clientId },
         select: { clientId: true, backchannelLogoutUri: true },
       });
-      const uri = client ? client.backchannelLogoutUri : payload.logoutUri ?? null;
+      const uri = client ? client.backchannelLogoutUri : (payload.logoutUri ?? null);
 
       // client 已删除且无 URI 快照 / 未配置 / 不安全：补偿无意义，直接丢弃
       if (!uri || !isSafeBackchannelUrl(uri)) {
@@ -404,12 +402,10 @@ export async function retryFailedBackchannelLogouts(
         sid: payload.sid ?? undefined,
       });
 
-      const res = await fetch(uri, {
+      const res = await postPublicHttps(uri, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ logout_token: logoutToken }),
-        // 禁止跟随重定向（SSRF 防护）
-        redirect: "manual",
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
@@ -439,10 +435,7 @@ export async function retryFailedBackchannelLogouts(
           detail: { reason: "max_retries_exceeded", attempts },
         });
       } else {
-        const backoff = Math.min(
-          REDELIVERY_BASE_DELAY_MS * 2 ** attempts,
-          REDELIVERY_MAX_DELAY_MS
-        );
+        const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
         await prisma.backchannelLogoutFailure.update({
           where: { id: failure.id },
           data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
@@ -460,16 +453,13 @@ export async function retryFailedBackchannelLogouts(
   // 同时避免对 RP 造成瞬时压力；计数与认领均在单线程事件循环内安全累加。
   const CONCURRENCY = 10;
   let nextIndex = 0;
-  const workers = Array.from(
-    { length: Math.min(CONCURRENCY, failures.length) },
-    async () => {
-      for (;;) {
-        const index = nextIndex++;
-        if (index >= failures.length) return;
-        await processFailure(failures[index]);
-      }
+  const workers = Array.from({ length: Math.min(CONCURRENCY, failures.length) }, async () => {
+    for (;;) {
+      const index = nextIndex++;
+      if (index >= failures.length) return;
+      await processFailure(failures[index]);
     }
-  );
+  });
   await Promise.all(workers);
 
   return { delivered, failed, dropped };
@@ -502,7 +492,7 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   });
   // 与自动重投一致：client 存在时以当前配置为准，URI 为空禁止投递
   // （client 已被删除时，用创建时的 URI 兜底）
-  const uri = client ? client.backchannelLogoutUri : payload.logoutUri ?? null;
+  const uri = client ? client.backchannelLogoutUri : (payload.logoutUri ?? null);
   if (!uri || !isSafeBackchannelUrl(uri)) {
     recordSsoEvent({
       event: "backchannel_logout",
@@ -523,12 +513,10 @@ export async function retryBackchannelFailureById(id: string): Promise<{
       sid: payload.sid ?? undefined,
     });
 
-    const res = await fetch(uri, {
+    const res = await postPublicHttps(uri, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ logout_token: logoutToken }),
-      // 禁止跟随重定向（SSRF 防护）
-      redirect: "manual",
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`http_${res.status}`);

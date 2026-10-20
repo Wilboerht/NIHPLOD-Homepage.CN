@@ -15,7 +15,6 @@ const config = {
   clientSecret: "c".repeat(32),
   redirectUri: "https://smart.nihplod.cn/api/admin/auth/sso/callback",
   secret: "s".repeat(32),
-  totpGraceUntil: new Date("2027-11-01T00:00:00+08:00"),
 };
 
 describe("admin-sso", () => {
@@ -34,14 +33,9 @@ describe("admin-sso", () => {
     expect(safeSecretEqual("same", "diff")).toBe(false);
   });
 
-  it("allows TOTP during grace, rejects after expiry", () => {
-    expect(isTotpSatisfied(true, config)).toBe(true);
-    expect(
-      isTotpSatisfied(false, config, new Date("2027-10-31T00:00:00+08:00"))
-    ).toBe(true);
-    expect(
-      isTotpSatisfied(false, config, new Date("2027-11-02T00:00:00+08:00"))
-    ).toBe(false);
+  it("requires TOTP to be enabled with no grace period", () => {
+    expect(isTotpSatisfied(true)).toBe(true);
+    expect(isTotpSatisfied(false)).toBe(false);
   });
 
   it("signs an assertion with the expected claims", async () => {
@@ -59,15 +53,11 @@ describe("admin-sso", () => {
       config
     );
 
-    const { payload } = await jwtVerify(
-      assertion,
-      new TextEncoder().encode(config.secret),
-      {
-        issuer: getIssuer(),
-        audience: ADMIN_SSO_AUDIENCE,
-        algorithms: ["HS256"],
-      }
-    );
+    const { payload } = await jwtVerify(assertion, new TextEncoder().encode(config.secret), {
+      issuer: getIssuer(),
+      audience: ADMIN_SSO_AUDIENCE,
+      algorithms: ["HS256"],
+    });
 
     expect(payload.sub).toBe("admin-1");
     expect(payload.email).toBe("admin@example.com");

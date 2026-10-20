@@ -24,6 +24,7 @@ import { expirePointsCron } from "./points-ledger";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
+import { cleanupExpiredAdminTotpRecoveries } from "./admin-totp-recovery";
 import { anchorAuditLogsForDay } from "./audit-integrity";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
@@ -146,9 +147,11 @@ const tasks: ScheduledTask[] = [
         apiConsole.info("[Cron] 开始清理过期授权码...");
         const count = await cleanupExpiredCodes();
         const adminSsoCount = await cleanupExpiredAdminSsoCodes();
+        const adminTotpRecoveryCount = await cleanupExpiredAdminTotpRecoveries();
         apiConsole.info(
-          `[Cron] 过期授权码清理完成: ${count} 条（管理员 SSO ${adminSsoCount} 条）`
+          `[Cron] expired admin TOTP recovery codes removed: ${adminTotpRecoveryCount}`
         );
+        apiConsole.info(`[Cron] 过期授权码清理完成: ${count} 条（管理员 SSO ${adminSsoCount} 条）`);
         markCleanupOk("过期授权码");
       } catch (error) {
         apiConsole.error("[Cron] 过期授权码清理失败:", error);
@@ -270,9 +273,7 @@ const tasks: ScheduledTask[] = [
     handler: async () => {
       try {
         const anchor = await anchorAuditLogsForDay();
-        apiConsole.info(
-          `[Cron] 审计摘要生成完成: ${anchor.day} (${anchor.count} 条)`
-        );
+        apiConsole.info(`[Cron] 审计摘要生成完成: ${anchor.day} (${anchor.count} 条)`);
       } catch (error) {
         apiConsole.error("[Cron] 审计摘要生成失败:", error);
         throw error;

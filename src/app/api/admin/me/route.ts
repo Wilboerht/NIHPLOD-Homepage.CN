@@ -3,15 +3,11 @@ import prisma from "@/lib/prisma";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
-import {
-  checkAccountLockout,
-  recordLoginAttempt,
-  clearLoginAttempts,
-} from "@/lib/auth-security";
+import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { z } from "zod";
 
@@ -124,9 +120,9 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
       // 已启用二次验证：改密必须通过 TOTP/备用码（与关闭 2FA、资金操作同口径）
       if (adminRecord.totpEnabled) {
         const totpResponse = await requireMoneyOperationTotp(admin.id, data.totpCode, {
-        request,
-        admin,
-      });
+          request,
+          admin,
+        });
         if (totpResponse) return totpResponse;
       }
 
@@ -142,23 +138,40 @@ export const PUT = withAuth(async (request: NextRequest, admin) => {
       );
     }
 
-    const updatedAdmin = await prisma.admin.update({
-      where: { id: admin.id },
-      data: updateData,
-      select: { id: true, email: true, name: true, role: true },
-    });
-
-    createAuditLog({
+    const auditDetail = {
+      updatedFields: Object.keys(updateData).filter((k) => k !== "password"),
+      passwordChanged: Boolean(updateData.password),
+    };
+    const auditId = await beginAuditLog({
       action: "update_admin",
       targetType: "admin",
       targetId: admin.id,
-      detail: {
-        updatedFields: Object.keys(updateData).filter((k) => k !== "password"),
-        passwordChanged: Boolean(updateData.password),
-      },
+      detail: auditDetail,
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const updatedAdmin = await prisma.admin
+      .update({
+        where: { id: admin.id },
+        data: updateData,
+        select: { id: true, email: true, name: true, role: true },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", auditDetail);
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", auditDetail);
 
     // 修改密码后 tokenVersion 已递增，全部旧会话（含当前会话）失效。
     // 清除当前 Cookie，要求重新登录；不要写用户级黑名单，否则新登录也会被误拦。

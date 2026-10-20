@@ -5,6 +5,7 @@
  * 手机号展示与导出统一走 maskPhone（幂等，已脱敏输入不变）。
  */
 import { maskPhone } from "./mask-phone";
+import { escapeCSV } from "./csv";
 
 export interface SpentImportRowResult {
   /** Excel 行号（首个数据行为第 2 行） */
@@ -29,12 +30,6 @@ export function pickNeedsAttentionRows(
   return rows.filter((row) => row.status !== "SUCCESS");
 }
 
-/** CSV 单元格转义：防公式注入 + 引号/换行包裹 */
-function escapeCsvCell(value: string): string {
-  const sanitized = /^[=+\-@]/.test(value) ? `'${value}` : value;
-  return /[",\n\r]/.test(sanitized) ? `"${sanitized.replace(/"/g, '""')}"` : sanitized;
-}
-
 /**
  * 生成需修正行的 CSV（带 BOM，Excel 直接打开不乱码）。
  * 列：Excel行号, 手机号(脱敏), 金额(元), 结果, 原因
@@ -49,7 +44,7 @@ export function buildNeedsAttentionCsv(rows: readonly SpentImportRowResult[]): s
       STATUS_LABELS[row.status],
       row.error ?? "",
     ]
-      .map(escapeCsvCell)
+      .map(escapeCSV)
       .join(",")
   );
   return `\uFEFF${[header.join(","), ...lines].join("\n")}`;

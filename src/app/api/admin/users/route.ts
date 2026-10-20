@@ -10,6 +10,8 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { escapeCSV } from "@/lib/csv";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
@@ -96,14 +98,6 @@ export async function GET(request: NextRequest) {
 
     // CSV 导出（按当前筛选条件）
     if (isExport) {
-      const escapeCSV = (val: string): string => {
-        const sanitized = /^[=+\-@]/.test(val) ? `'${val}` : val;
-        if (/[",\n\r]/.test(sanitized)) {
-          return `"${sanitized.replace(/"/g, '""')}"`;
-        }
-        return sanitized;
-      };
-
       const csvHeaders = "手机号,昵称,状态,会员等级,注册时间\n";
       const csvRows = users
         .map((user) =>
@@ -118,18 +112,28 @@ export async function GET(request: NextRequest) {
         .join("\n");
 
       // 导出审计：记录筛选条件与导出条数（search 可能为完整手机号，统一脱敏）
-      const { createAuditLog } = await import("@/lib/audit");
-      await createAuditLog({
+      const auditDetail = {
+        search: params.search ? maskPhone(params.search) : null,
+        status: params.status ?? null,
+        exportedCount: users.length,
+      };
+      const auditId = await beginAuditLog({
         action: "user_export",
         targetType: "user",
-        detail: {
-          search: params.search ? maskPhone(params.search) : null,
-          status: params.status ?? null,
-          exportedCount: users.length,
-        },
+        detail: auditDetail,
         adminId: admin.id,
         request,
       });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝导出" },
+          },
+          { status: 503 }
+        );
+      }
+      await finishAuditLog(auditId, "SUCCESS", auditDetail);
 
       return new NextResponse(csvHeaders + csvRows, {
         headers: {
@@ -158,7 +162,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -228,49 +235,73 @@ export async function POST(request: NextRequest) {
     const skippedDeleted = targets.filter((u) => u.status === "DELETED").length;
     const changedIds: string[] = [];
 
-    if (toChange.length > 0) {
-      const { changeUserStatus } = await import("@/lib/user-status");
-      const { recordSsoEvent } = await import("@/lib/sso-audit");
-      for (const u of toChange) {
-        // 每用户独立事务：状态 + token 撤销原子；单个失败不会留下半改状态
-        const result = await changeUserStatus({
-          userId: u.id,
-          expectedStatus: u.status,
-          newStatus: status,
-        });
-        if (!result.changed) continue; // 并发修改，跳过
-        changedIds.push(u.id);
-        // SSO 审计：每个实际变更的用户一条（合规敏感，与单个端点一致同步等待写入）
-        await recordSsoEvent({
-          event: "status_change",
-          userId: u.id,
-          ip: getClientIP(request),
-          success: true,
-          detail: {
-            action:
-              status === "ACTIVE"
-                ? "user_unbanned"
-                : status === "SUSPENDED"
-                  ? "user_suspended"
-                  : "user_banned",
-            previousStatus: u.status,
-            newStatus: status,
-            adminId: admin.id,
-            batch: true,
-          },
-        });
-      }
-    }
-
-    // 记录审计日志（批量操作写一条汇总审计，detail 携带全部目标 id）
-    const { createAuditLog } = await import("@/lib/audit");
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "user_status_change",
       targetType: "user",
       targetId: ids[0],
-      detail: { ids, status, count: changedIds.length, skippedDeleted },
+      detail: { ids, status, count: 0, skippedDeleted },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
       request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    if (toChange.length > 0) {
+      try {
+        const { changeUserStatus } = await import("@/lib/user-status");
+        const { recordSsoEvent } = await import("@/lib/sso-audit");
+        for (const u of toChange) {
+          // 每用户独立事务：状态 + token 撤销原子；单个失败不会留下半改状态
+          const result = await changeUserStatus({
+            userId: u.id,
+            expectedStatus: u.status,
+            newStatus: status,
+          });
+          if (!result.changed) continue; // 并发修改，跳过
+          changedIds.push(u.id);
+          // SSO 审计：每个实际变更的用户一条（合规敏感，与单个端点一致同步等待写入）
+          await recordSsoEvent({
+            event: "status_change",
+            userId: u.id,
+            ip: getClientIP(request),
+            success: true,
+            detail: {
+              action:
+                status === "ACTIVE"
+                  ? "user_unbanned"
+                  : status === "SUSPENDED"
+                    ? "user_suspended"
+                    : "user_banned",
+              previousStatus: u.status,
+              newStatus: status,
+              adminId: admin.id,
+              batch: true,
+            },
+          });
+        }
+      } catch (error) {
+        await finishAuditLog(auditId, "FAILURE", { ids, status });
+        throw error;
+      }
+    }
+
+    await finishAuditLog(auditId, "SUCCESS", {
+      ids,
+      status,
+      count: changedIds.length,
+      skippedDeleted,
     });
 
     return NextResponse.json({

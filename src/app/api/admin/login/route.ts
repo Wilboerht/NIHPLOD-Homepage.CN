@@ -5,14 +5,23 @@ import bcrypt from "bcryptjs";
 import { signToken } from "@/lib/jwt";
 import { AdminLoginSchema } from "@/schemas/api";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
-import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
+import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
+import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashIdentifier, clearLoginAttempts } from "@/lib/auth-security";
 import { consumeAccessTokenOnce, removeFromBlacklist } from "@/lib/token-blacklist";
 import { checkAdminLockout } from "@/lib/admin-lockout";
+import { revokeAllAdminStepUpGrants } from "@/lib/admin-step-up";
+import {
+  ADMIN_TOTP_SETUP_COOKIE_NAME,
+  ADMIN_TOTP_SETUP_COOKIE_OPTIONS,
+  consumeAdminTotpRecoveryAndReset,
+  isAdminTotpRecoveryCodeFormat,
+  signAdminTotpSetupToken,
+} from "@/lib/admin-totp-recovery";
 
 // 防时序攻击 dummy 哈希（与 password.ts 中 SALT_ROUNDS = 13 保持一致）
 // 懒加载生成，避免冷启动延迟，同时保证与真实密码哈希相同的盐轮数
@@ -72,6 +81,93 @@ async function auditAdminAuthFailure(
     request,
     detail: { email, reason },
   });
+}
+
+/**
+ * 消费 owner 签发的一次性恢复码。成功时只下发短时 setup cookie，
+ * 不建立正常后台会话；恢复码无效时返回 null，由调用方继续走普通错误分支。
+ */
+async function tryAdminTotpRecovery(
+  request: NextRequest,
+  admin: { id: string; email: string; name: string; role: string },
+  totpCode: string | undefined,
+  email: string
+): Promise<NextResponse | null> {
+  if (!totpCode || !isAdminTotpRecoveryCodeFormat(totpCode)) return null;
+
+  const recoveryAuditDetail = { email: admin.email, method: "recovery_code" };
+  const recoveryAuditId = await beginAuditLog({
+    action: "admin_totp_recovery_used",
+    targetType: "admin",
+    targetId: admin.id,
+    detail: recoveryAuditDetail,
+    actorType: "ADMIN",
+    actorEmail: admin.email,
+    actorName: admin.name,
+    actorRole: admin.role,
+    authMethod: "recovery_code",
+    adminId: admin.id,
+    request,
+  });
+  if (!recoveryAuditId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝恢复" },
+      },
+      { status: 503 }
+    );
+  }
+
+  try {
+    const reset = await consumeAdminTotpRecoveryAndReset(admin.id, totpCode);
+    if (!reset) {
+      await finishAuditLog(recoveryAuditId, "FAILURE", {
+        ...recoveryAuditDetail,
+        reason: "recovery_code_rejected",
+      });
+      return null;
+    }
+
+    await revokeAllAdminStepUpGrants(admin.id).catch((err) =>
+      apiConsole.warn("[AdminLogin] 恢复后清理 step-up 失败:", err)
+    );
+    const setupToken = await signAdminTotpSetupToken({
+      adminId: admin.id,
+      tokenVersion: reset.tokenVersion,
+    });
+
+    await clearLoginAttempts(email, "admin");
+    await recordAdminAttempt(email, true, request);
+    await finishAuditLog(recoveryAuditId, "SUCCESS", recoveryAuditDetail);
+
+    const recoveryResponse = NextResponse.json({
+      success: true,
+      data: {
+        totpSetupRequired: true,
+        user: {
+          id: admin.id,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role,
+        },
+      },
+    });
+    recoveryResponse.cookies.set(
+      ADMIN_TOTP_SETUP_COOKIE_NAME,
+      setupToken,
+      ADMIN_TOTP_SETUP_COOKIE_OPTIONS
+    );
+    recoveryResponse.headers.set("Cache-Control", "no-store, private");
+    recoveryResponse.headers.set("Pragma", "no-cache");
+    return recoveryResponse;
+  } catch (err) {
+    await finishAuditLog(recoveryAuditId, "FAILURE", {
+      ...recoveryAuditDetail,
+      reason: "recovery_failed",
+    });
+    throw err;
+  }
 }
 
 // POST /api/admin/login - 管理员登录
@@ -207,6 +303,26 @@ export async function POST(request: NextRequest) {
     }
 
     // 3.5 TOTP 二次验证
+    // 恢复码已消费但尚未重新绑定时，只允许继续用恢复码进入绑定流程，
+    // 绝不能仅凭密码建立正常后台会话。
+    if (admin.totpResetRequired) {
+      const recoveryResponse = await tryAdminTotpRecovery(request, admin, totpCode, email);
+      if (recoveryResponse) return recoveryResponse;
+
+      await auditAdminAuthFailure(request, email, "recovery_required", "admin_totp_failed", admin);
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "TOTP_RECOVERY_REQUIRED",
+            message: "请使用管理员签发的恢复码完成二次验证重新绑定",
+          },
+          data: { totpRequired: true, recoveryRequired: true },
+        },
+        { status: 401 }
+      );
+    }
+
     if (admin.totpEnabled) {
       // fail-closed：已启用 TOTP 但密钥缺失（迁移/人工清理异常）时禁止登录，
       // 绝不能静默跳过二次验证（与资金操作 requireMoneyOperationTotp 口径一致）
@@ -282,28 +398,29 @@ export async function POST(request: NextRequest) {
         totpValid = false;
       }
 
-      // 尝试备用码
+      // 尝试备用码：CAS 原子消费，并发请求不能复用同一码
       if (!totpValid && admin.totpBackupCodes) {
-        const backupResult = verifyBackupCode(totpCode, admin.totpBackupCodes);
-        if (backupResult) {
-          totpValid = true;
-          // 更新备用码（移除已使用的）
-          await prisma.admin.update({
-            where: { id: admin.id },
-            data: { totpBackupCodes: JSON.stringify(backupResult.remainingCodes) },
-          });
+        try {
+          const consumed = await consumeAdminBackupCode(admin.id, totpCode, admin.totpBackupCodes);
+          if (consumed.ok) {
+            totpValid = true;
+          } else if (consumed.reason === "conflict") {
+            apiConsole.warn("[AdminLogin] 备用码已被并发消费:", admin.id);
+          }
+        } catch (err) {
+          apiConsole.warn("[AdminLogin] 备用码消费失败（fail-closed）:", err);
         }
+      }
+
+      // 尝试 owner 签发的一次性恢复码：成功时进入重新绑定流程
+      if (!totpValid) {
+        const recoveryResponse = await tryAdminTotpRecovery(request, admin, totpCode, email);
+        if (recoveryResponse) return recoveryResponse;
       }
 
       if (!totpValid) {
         // 同上：TOTP/备用码错误不占用密码锁定配额，仅由 admin-totp 桶限流
-        await auditAdminAuthFailure(
-          request,
-          email,
-          "totp_invalid",
-          "admin_totp_failed",
-          admin
-        );
+        await auditAdminAuthFailure(request, email, "totp_invalid", "admin_totp_failed", admin);
         return NextResponse.json(
           {
             success: false,

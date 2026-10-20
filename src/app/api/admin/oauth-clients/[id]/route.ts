@@ -13,7 +13,7 @@ import {
   deleteOAuthClient,
   toSafeClientResponse,
 } from "@/lib/oauth-client";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
@@ -21,7 +21,10 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
-import { enqueueBackchannelLogoutForActiveSessions, scheduleBackchannelRedelivery } from "@/lib/backchannel-logout";
+import {
+  enqueueBackchannelLogoutForActiveSessions,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -144,9 +147,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "oauth_client_update",
+      targetType: "oauth_client",
+      targetId: id,
+      detail: { changes: sanitizeClientPatchForAudit(body) },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     const client = await updateOAuthClient(id, body);
 
     if (!client) {
+      await finishAuditLog(auditId, "FAILURE", { code: "NOT_FOUND" });
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
         { status: 404 }
@@ -181,14 +208,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
     });
 
-    await createAuditLog({
-      action: "oauth_client_update",
-      targetType: "oauth_client",
-      targetId: id,
-      // 只记录白名单字段，避免原始 body 中的敏感内容（如误粘贴的 secret）进入审计
-      detail: { changes: sanitizeClientPatchForAudit(body), clientId: client.clientId },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      changes: sanitizeClientPatchForAudit(body),
+      clientId: client.clientId,
     });
 
     return NextResponse.json({ success: true, data: { client: toSafeClientResponse(client) } });
@@ -243,6 +265,29 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "oauth_client_delete",
+      targetType: "oauth_client",
+      targetId: id,
+      detail: { clientId: client.clientId, name: client.name },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     // 级联撤销：分页扫描活跃会话入队 backchannel 通知，再撤销 session/token。
     // 分页 + 队列化避免大 client 删除时无界查询与逐用户同步 HTTP。
     // 注意：撤销必须无条件执行（与是否配置/入队 backchannel 通知无关），
@@ -264,6 +309,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const deleted = await deleteOAuthClient(id);
 
     if (!deleted) {
+      await finishAuditLog(auditId, "FAILURE", { code: "NOT_FOUND" });
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Client 不存在或已删除" } },
         { status: 404 }
@@ -283,13 +329,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       detail: { action: "client_deleted", affectedUserCount: enqueued.userClientCount },
     });
 
-    await createAuditLog({
-      action: "oauth_client_delete",
-      targetType: "oauth_client",
-      targetId: id,
-      detail: { clientId: client.clientId, name: client.name },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      clientId: client.clientId,
+      name: client.name,
     });
 
     return NextResponse.json({ success: true, data: { message: "Client 已删除" } });

@@ -4,7 +4,6 @@ import {
   consumeAdminSsoCode,
   getAdminSsoConfig,
   isAdminSsoEnabled,
-  isTotpGraceActive,
   isTotpSatisfied,
   safeSecretEqual,
   signAdminSsoAssertion,
@@ -12,7 +11,7 @@ import {
 import { resolveAdvisorRole } from "@/lib/admin-permissions";
 import { verifyPKCE } from "@/lib/oauth-code";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger";
 
@@ -78,10 +77,7 @@ export async function POST(request: NextRequest) {
 
   const { client_id, client_secret, code, redirect_uri, code_verifier } = parsed.data;
 
-  if (
-    client_id !== config.clientId ||
-    !safeSecretEqual(client_secret, config.clientSecret)
-  ) {
+  if (client_id !== config.clientId || !safeSecretEqual(client_secret, config.clientSecret)) {
     await createAuditLog({
       action: "admin_sso_denied",
       targetType: "admin",
@@ -122,11 +118,7 @@ export async function POST(request: NextRequest) {
   }
   if (
     !consumed.codeChallenge ||
-    !verifyPKCE(
-      code_verifier,
-      consumed.codeChallenge,
-      consumed.codeChallengeMethod || "S256"
-    )
+    !verifyPKCE(code_verifier, consumed.codeChallenge, consumed.codeChallengeMethod || "S256")
   ) {
     return deny("pkce_mismatch", "PKCE 校验失败");
   }
@@ -160,26 +152,12 @@ export async function POST(request: NextRequest) {
   if (!advisorRole) {
     return deny("no_advisor_access", "无测肤子站访问权限", 403);
   }
-  if (!isTotpSatisfied(admin.totpEnabled, config)) {
+  if (!isTotpSatisfied(admin.totpEnabled)) {
     return deny("totp_required", "请先开启二次验证", 403);
   }
 
   try {
-    const assertion = await signAdminSsoAssertion(
-      {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role,
-        permissionOverrides: admin.permissions,
-        tokenVersion: admin.tokenVersion,
-        totpEnabled: admin.totpEnabled,
-        mainSessionExp: consumed.mainSessionExp,
-      },
-      config
-    );
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "admin_sso_token",
       targetType: "admin",
       targetId: admin.id,
@@ -187,11 +165,44 @@ export async function POST(request: NextRequest) {
         clientId: config.clientId,
         advisorRole,
         totpEnabled: admin.totpEnabled,
-        totpGrace: isTotpGraceActive(config),
       },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "totp",
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    });
+    if (!auditId) {
+      return jsonError("AUDIT_UNAVAILABLE", "审计服务不可用，已拒绝签发", 503);
+    }
+
+    let assertion: string;
+    try {
+      assertion = await signAdminSsoAssertion(
+        {
+          id: admin.id,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role,
+          permissionOverrides: admin.permissions,
+          tokenVersion: admin.tokenVersion,
+          totpEnabled: admin.totpEnabled,
+          mainSessionExp: consumed.mainSessionExp,
+        },
+        config
+      );
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { clientId: config.clientId });
+      throw error;
+    }
+
+    await finishAuditLog(auditId, "SUCCESS", {
+      clientId: config.clientId,
+      advisorRole,
+      totpEnabled: admin.totpEnabled,
+    });
 
     return NextResponse.json(
       {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, Pencil, Trash2, Plus, X } from "lucide-react";
+import { Search, RefreshCw, Pencil, Trash2, Plus, X, KeyRound, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -60,6 +60,8 @@ interface AdminItem {
   name: string;
   role: string;
   permissions: string[];
+  totpEnabled: boolean;
+  totpResetRequired: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +116,15 @@ export default function AdminAdminsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [recoveryTarget, setRecoveryTarget] = useState<AdminItem | null>(null);
+  const [recoveryReason, setRecoveryReason] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [recoverySubmitting, setRecoverySubmitting] = useState(false);
+  const [recoveryResult, setRecoveryResult] = useState<{
+    code: string;
+    expiresAt: string;
+    targetEmail: string;
+  } | null>(null);
 
   const pageParam = Number(searchParams.get("page"));
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
@@ -273,6 +284,62 @@ export default function AdminAdminsPage() {
     }
   };
 
+  const openRecovery = (target: AdminItem) => {
+    setRecoveryTarget(target);
+    setRecoveryReason("");
+    setRecoveryCode("");
+    setRecoveryResult(null);
+  };
+
+  const closeRecovery = () => {
+    if (recoverySubmitting) return;
+    setRecoveryTarget(null);
+    setRecoveryResult(null);
+    setRecoveryCode("");
+    setRecoveryReason("");
+  };
+
+  const handleIssueRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryTarget) return;
+    if (recoveryReason.trim().length < 5) {
+      error("请填写至少 5 个字符的恢复原因");
+      return;
+    }
+    if (recoveryCode.trim().length < 6) {
+      error("请输入你的 TOTP 验证码");
+      return;
+    }
+
+    setRecoverySubmitting(true);
+    try {
+      const data = await apiPost<{
+        code: string;
+        expiresAt: string;
+        targetEmail: string;
+      }>(`/api/admin/admins/${recoveryTarget.id}/totp-recovery`, {
+        reason: recoveryReason.trim(),
+        totpCode: recoveryCode.trim(),
+      });
+      setRecoveryResult(data);
+      success("恢复码已生成");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "签发恢复码失败");
+    } finally {
+      setRecoverySubmitting(false);
+    }
+  };
+
+  const copyRecoveryCode = async () => {
+    if (!recoveryResult) return;
+    try {
+      await navigator.clipboard.writeText(recoveryResult.code);
+      success("恢复码已复制");
+    } catch {
+      error("复制失败，请手动选择复制");
+    }
+  };
+
   const handleBatchDelete = async () => {
     if (selection.selectedCount === 0) return;
     const ids = Array.from(selection.selectedIds);
@@ -419,6 +486,18 @@ export default function AdminAdminsPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      {isOwnerActor &&
+                        admin.id !== currentAdminId &&
+                        (admin.totpEnabled || admin.totpResetRequired) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`重置二次验证 ${admin.name}`}
+                            onClick={() => openRecovery(admin)}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                        )}
                       {admin.id !== currentAdminId && (
                         <Button
                           variant="ghost"
@@ -552,6 +631,18 @@ export default function AdminAdminsPage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          {isOwnerActor &&
+                            admin.id !== currentAdminId &&
+                            (admin.totpEnabled || admin.totpResetRequired) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`重置二次验证 ${admin.name}`}
+                                onClick={() => openRecovery(admin)}
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                            )}
                           {/* 不能删除自己（服务端禁止，前端不展示避免必然失败） */}
                           {admin.id !== currentAdminId && (
                             <Button
@@ -733,6 +824,88 @@ export default function AdminAdminsPage() {
               </div>
             )}
           </form>
+        </Modal>
+
+        {/* TOTP 恢复码 */}
+        <Modal
+          open={!!recoveryTarget}
+          onClose={closeRecovery}
+          title="签发 TOTP 恢复码"
+          size="md"
+          closeOnBackdrop={!recoverySubmitting}
+          footer={
+            recoveryResult ? (
+              <Button type="button" onClick={closeRecovery}>
+                完成
+              </Button>
+            ) : (
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeRecovery}
+                  disabled={recoverySubmitting}
+                >
+                  取消
+                </Button>
+                <Button
+                  type="submit"
+                  form="totp-recovery-form"
+                  loading={recoverySubmitting}
+                  disabled={recoverySubmitting}
+                >
+                  生成恢复码
+                </Button>
+              </div>
+            )
+          }
+        >
+          {recoveryResult ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                恢复码只显示一次。请通过安全渠道发送给 {recoveryResult.targetEmail}。 对方使用“密码
+                + 恢复码”登录后，必须重新绑定 TOTP。
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-lg bg-brand-charcoal/[0.05] px-3 py-2.5 font-mono text-sm">
+                  {recoveryResult.code}
+                </code>
+                <Button type="button" variant="outline" onClick={copyRecoveryCode}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-brand-charcoal/50">
+                有效期至：{new Date(recoveryResult.expiresAt).toLocaleString("zh-CN")}
+              </p>
+            </div>
+          ) : (
+            <form id="totp-recovery-form" onSubmit={handleIssueRecovery} className="space-y-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                仅用于目标管理员丢失验证器且备用码不可用的情况。恢复码有效 10 分钟，使用一次后失效。
+              </div>
+              <p className="text-sm text-brand-charcoal/60">
+                目标管理员：
+                <span className="font-medium text-brand-charcoal">{recoveryTarget?.email}</span>
+              </p>
+              <Input
+                label="恢复原因"
+                required
+                value={recoveryReason}
+                onChange={(e) => setRecoveryReason(e.target.value)}
+                placeholder="例如：手机丢失，备用码不可用"
+                maxLength={500}
+              />
+              <Input
+                label="你的 TOTP 验证码"
+                required
+                value={recoveryCode}
+                onChange={(e) => setRecoveryCode(e.target.value.replace(/[^0-9A-Za-z]/g, ""))}
+                placeholder="6 位动态验证码或备用码"
+                maxLength={20}
+                inputMode="text"
+              />
+            </form>
+          )}
         </Modal>
 
         {/* 删除确认 */}

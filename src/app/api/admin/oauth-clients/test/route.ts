@@ -14,7 +14,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { getOAuthClientByClientId, verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 
@@ -125,7 +125,10 @@ export async function POST(request: NextRequest) {
       }
     } catch {
       return NextResponse.json(
-        { success: false, error: { code: "SERVER_ERROR", message: "NEXT_PUBLIC_APP_URL 不是合法 URL" } },
+        {
+          success: false,
+          error: { code: "SERVER_ERROR", message: "NEXT_PUBLIC_APP_URL 不是合法 URL" },
+        },
         { status: 500 }
       );
     }
@@ -163,6 +166,29 @@ export async function POST(request: NextRequest) {
         success: true,
         data: { steps, summary: "客户端凭据无效", allPassed: false },
       });
+    }
+
+    const auditId = await beginAuditLog({
+      action: "oauth_client_test",
+      targetType: "oauth_client",
+      targetId: verifyResult.client.id,
+      detail: { clientId, redirectUri },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
     }
 
     // Step 2: JWKS 端点可达性
@@ -395,19 +421,12 @@ export async function POST(request: NextRequest) {
     const allPassed = steps.every((s) => s.status === "passed");
     const failedSteps = steps.filter((s) => s.status === "failed");
 
-    await createAuditLog({
-      action: "oauth_client_test",
-      targetType: "oauth_client",
-      targetId: client?.id || clientId,
-      detail: {
-        clientId,
-        redirectUri,
-        allPassed,
-        failedSteps: failedSteps.map((s) => s.step),
-        totalDurationMs: steps.reduce((sum, s) => sum + s.durationMs, 0),
-      },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, allPassed ? "SUCCESS" : "PARTIAL", {
+      clientId,
+      redirectUri,
+      allPassed,
+      failedSteps: failedSteps.map((s) => s.step),
+      totalDurationMs: steps.reduce((sum, s) => sum + s.durationMs, 0),
     });
 
     // 请求本身成功即 success:true（测试结果放进 data.allPassed）：

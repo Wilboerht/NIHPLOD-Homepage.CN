@@ -12,9 +12,11 @@ const mockFailureUpdate = vi.fn();
 const mockFailureUpdateMany = vi.fn();
 const mockSignProfileEventToken = vi.fn();
 const mockRecordSsoEvent = vi.fn();
-const globalFetch = vi.fn();
+const { globalFetch } = vi.hoisted(() => ({ globalFetch: vi.fn() }));
 
-global.fetch = globalFetch as unknown as typeof fetch;
+vi.mock("@/lib/outbound-http", () => ({
+  postPublicHttps: (...args: unknown[]) => globalFetch(...args),
+}));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {

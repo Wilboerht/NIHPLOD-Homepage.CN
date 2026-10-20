@@ -91,25 +91,7 @@ export function scheduleSsoEvent(context: SsoEventContext): void {
   }
 }
 
-/**
- * CSV 单元格转义（SSO 审计日志导出用）
- *
- * 顺序要求：先做公式注入防护（前置单引号），再做引号转义与包裹——
- * 若先包裹引号再判断开头字符，"=..."开头且含逗号的单元格会以引号开头而绕过防护。
- */
-export function escapeCSV(val: string): string {
-  // 1. 防公式注入：以 = + - @ 开头（允许前导空白）或以 tab/CR/LF 开头的单元格先加单引号前缀。
-  //    注意也要覆盖前导空白与 \r/\n：部分表格软件会忽略前导空白后仍按公式解析。
-  const formulaPrefix = /^[\s]*[=+\-@]|^[\t\r\n]/;
-  let escaped = formulaPrefix.test(val) ? `'${val}` : val;
-  // 2. 转义双引号（CSV 标准：用两个双引号表示一个引号字符）
-  escaped = escaped.replace(/"/g, '""');
-  // 3. 包含逗号、双引号、换行或制表符时用双引号包裹
-  if (/[",\n\r\t]/.test(escaped)) {
-    escaped = `"${escaped}"`;
-  }
-  return escaped;
-}
+export { escapeCSV } from "./csv";
 
 /**
  * 清理 90 天前的 SSO 审计事件

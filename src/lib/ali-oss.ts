@@ -219,3 +219,11 @@ export function signPrivateObjectUrl(objectName: string, expiresSec = 24 * 3600)
   if (!client) return null;
   return client.signatureUrl(objectName, { method: "GET", expires: expiresSec });
 }
+
+/** 删除私有 bucket 对象；未配置时返回 false。 */
+export async function deletePrivateOSSObject(objectName: string): Promise<boolean> {
+  const client = getPrivateOssClient();
+  if (!client) return false;
+  await client.delete(objectName);
+  return true;
+}

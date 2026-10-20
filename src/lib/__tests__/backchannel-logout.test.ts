@@ -11,9 +11,11 @@ const mockFailureUpdate = vi.fn();
 const mockFailureUpdateMany = vi.fn();
 const mockSignLogoutToken = vi.fn();
 const mockRecordSsoEvent = vi.fn();
-const globalFetch = vi.fn();
+const { globalFetch } = vi.hoisted(() => ({ globalFetch: vi.fn() }));
 
-global.fetch = globalFetch as unknown as typeof fetch;
+vi.mock("@/lib/outbound-http", () => ({
+  postPublicHttps: (...args: unknown[]) => globalFetch(...args),
+}));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -267,9 +269,7 @@ describe("backchannel-logout", () => {
         }),
       })
     );
-    expect(mockSignLogoutToken).toHaveBeenCalledWith(
-      expect.objectContaining({ sid: "sid-123" })
-    );
+    expect(mockSignLogoutToken).toHaveBeenCalledWith(expect.objectContaining({ sid: "sid-123" }));
   });
 
   it("调用方传入 sids 时不再回库查询，logout_token 直接携带 sid（撤销路径）", async () => {
@@ -282,7 +282,9 @@ describe("backchannel-logout", () => {
     mockSignLogoutToken.mockResolvedValue("logout-token-jwt");
 
     // 模拟"先撤销再通知"的调用点：撤销前查出的 sid 通过 options 传入
-    await sendBackchannelLogout("user-1", ["client-1"], { sids: { "client-1": "sid-before-revoke" } });
+    await sendBackchannelLogout("user-1", ["client-1"], {
+      sids: { "client-1": "sid-before-revoke" },
+    });
 
     expect(mockSessionFindMany).not.toHaveBeenCalled();
     expect(mockSignLogoutToken).toHaveBeenCalledWith(
@@ -547,9 +549,7 @@ describe("retryFailedBackchannelLogouts", () => {
     });
 
     it("无活跃会话时不入队", async () => {
-      mockFindMany.mockResolvedValue([
-        { clientId: "client-a", backchannelLogoutUri: clientUriA },
-      ]);
+      mockFindMany.mockResolvedValue([{ clientId: "client-a", backchannelLogoutUri: clientUriA }]);
       mockSessionFindMany.mockResolvedValue([]);
 
       const result = await enqueueBackchannelLogoutForActiveSessions({ clientId: "client-a" });

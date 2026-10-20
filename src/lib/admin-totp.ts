@@ -8,7 +8,8 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
-import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
+import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
+import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { apiConsole } from "@/lib/logger";
 import { verifyAdminStepUpGrant } from "@/lib/admin-step-up";
@@ -93,21 +94,18 @@ export async function requireMoneyOperationTotp(
     apiConsole.warn("[AdminTotp] 密钥解密失败:", err);
   }
 
-  // 2) 备用码（命中后消费，保证一次性）
+  // 2) 备用码：CAS 原子消费，命中后才算通过
   if (admin.totpBackupCodes) {
-    const backupResult = verifyBackupCode(trimmed, admin.totpBackupCodes);
-    if (backupResult) {
-      // fail-closed：消费失败不得放行，否则未消费的备用码可在故障窗口内反复使用
-      try {
-        await prisma.admin.update({
-          where: { id: adminId },
-          data: { totpBackupCodes: JSON.stringify(backupResult.remainingCodes) },
-        });
-      } catch (err) {
-        apiConsole.warn("[AdminTotp] 备用码消费失败（fail-closed）:", err);
-        return totpError("TOTP_INVALID", "验证码校验失败，请稍后重试");
+    try {
+      const consumed = await consumeAdminBackupCode(adminId, trimmed, admin.totpBackupCodes);
+      if (consumed.ok) return null;
+      if (consumed.reason === "conflict") {
+        apiConsole.warn("[AdminTotp] 备用码已被并发消费:", adminId);
+        return totpError("TOTP_INVALID", "验证码已被使用，请稍后重试");
       }
-      return null;
+    } catch (err) {
+      apiConsole.warn("[AdminTotp] 备用码消费失败（fail-closed）:", err);
+      return totpError("TOTP_INVALID", "验证码校验失败，请稍后重试");
     }
   }
 

@@ -12,6 +12,7 @@
  * 支持整批撤销（undoImportBatch）：对每行成功入账反向冲正，撤销本身幂等。
  */
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { Worker } from "node:worker_threads";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -102,8 +103,7 @@ export type ImportParseError = {
 };
 
 export type ImportParseResult =
-  | { ok: true; fileHash: string; rows: ParsedImportRow[] }
-  | ImportParseError;
+  { ok: true; fileHash: string; rows: ParsedImportRow[] } | ImportParseError;
 
 /**
  * 行级手机号令牌（PII 最小化）：
@@ -255,7 +255,12 @@ function parseNoteValue(value: unknown): string | null {
   return s.slice(0, IMPORT_MAX_NOTE_LENGTH);
 }
 
-function rowReference(phone: string, amount: number, orderNo: string | null, purchasedAt: string | null): string {
+function rowReference(
+  phone: string,
+  amount: number,
+  orderNo: string | null,
+  purchasedAt: string | null
+): string {
   const hash = createHash("sha256")
     .update(`${phone}|${amount}|${orderNo ?? ""}|${purchasedAt ?? ""}`)
     .digest("hex")
@@ -289,14 +294,7 @@ function cellText(cell: unknown): string {
   return String(cell).trim();
 }
 
-/**
- * 解析 Excel/CSV 文件（不落库），返回文件哈希与逐行解析结果。
- * 表头必须与 IMPORT_HEADERS 一致（仅校验前两列关键字，其余按列位读取）。
- */
-export function parseImportWorkbook(
-  buffer: Buffer,
-  fileName: string
-): ImportParseResult {
+function validateImportFile(buffer: Buffer, fileName: string): ImportParseError | null {
   const ext = fileName.toLowerCase().match(/\.[a-z0-9]+$/)?.[0] ?? "";
   if (!IMPORT_ALLOWED_EXTENSIONS.includes(ext)) {
     return {
@@ -312,6 +310,83 @@ export function parseImportWorkbook(
       message: `文件大小不能超过 ${IMPORT_MAX_FILE_SIZE / 1024 / 1024}MB`,
     };
   }
+  return null;
+}
+
+function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
+  const headerRowIndex = aoa.findIndex((row) => cellText(row?.[0]).includes("手机号"));
+  if (headerRowIndex === -1) {
+    return {
+      ok: false,
+      code: "INVALID_HEADER",
+      message: "表头不正确：第一列应为「手机号」，请使用下载的模板填写",
+    };
+  }
+  const header = aoa[headerRowIndex];
+  if (!cellText(header?.[1]).includes("金额")) {
+    return {
+      ok: false,
+      code: "INVALID_HEADER",
+      message: "表头不正确：第二列应为「金额（元）」，请使用下载的模板填写",
+    };
+  }
+
+  const dataRows = aoa
+    .slice(headerRowIndex + 1)
+    .filter((row) => row.some((cell) => cellText(cell) !== ""));
+  if (dataRows.length === 0) {
+    return { ok: false, code: "INVALID_FILE", message: "文件中没有数据行" };
+  }
+  if (dataRows.length > IMPORT_MAX_ROWS) {
+    return {
+      ok: false,
+      code: "TOO_MANY_ROWS",
+      message: `单次最多导入 ${IMPORT_MAX_ROWS} 行，当前 ${dataRows.length} 行`,
+    };
+  }
+
+  const rows: ParsedImportRow[] = dataRows.map((row, i) => {
+    const rowIndex = headerRowIndex + 2 + i;
+    const phone = parsePhoneValue(row[0]);
+    const amount = parseAmountValue(row[1]);
+    const purchasedAt = parseExcelDateValue(row[2]);
+    const channelResult = parseChannelValue(row[3]);
+    const orderNo = parseOrderNoValue(row[4]);
+    const note = parseNoteValue(row[5]);
+
+    const errors: string[] = [];
+    if (phone === null) errors.push("手机号格式不正确（应为 11 位大陆手机号）");
+    if (amount === null) errors.push("金额必须为非零整数（元），绝对值不超过 100 万");
+    if (cellText(row[2]) && purchasedAt === null)
+      errors.push("消费日期格式不正确（如 2026-01-15）");
+    if (channelResult.invalid) {
+      errors.push(
+        `渠道不正确（可选：${SPENT_CHANNELS.map((c) => SPENT_CHANNEL_LABELS[c]).join(" / ")}）`
+      );
+    }
+
+    return {
+      rowIndex,
+      phone,
+      amount,
+      channel: channelResult.channel,
+      orderNo,
+      purchasedAt,
+      note,
+      error: errors.length > 0 ? errors.join("；") : null,
+    };
+  });
+
+  return { ok: true, fileHash, rows };
+}
+
+/**
+ * 解析 Excel/CSV 文件（不落库），返回文件哈希与逐行解析结果。
+ * 表头必须与 IMPORT_HEADERS 一致（仅校验前两列关键字，其余按列位读取）。
+ */
+export function parseImportWorkbook(buffer: Buffer, fileName: string): ImportParseResult {
+  const validation = validateImportFile(buffer, fileName);
+  if (validation) return validation;
 
   let sheet: XLSX.WorkSheet;
   try {
@@ -364,70 +439,162 @@ export function parseImportWorkbook(
     range: readRange,
   });
 
-  const headerRowIndex = aoa.findIndex((row) => cellText(row?.[0]).includes("手机号"));
-  if (headerRowIndex === -1) {
-    return {
-      ok: false,
-      code: "INVALID_HEADER",
-      message: "表头不正确：第一列应为「手机号」，请使用下载的模板填写",
-    };
-  }
-  const header = aoa[headerRowIndex];
-  if (!cellText(header?.[1]).includes("金额")) {
-    return {
-      ok: false,
-      code: "INVALID_HEADER",
-      message: "表头不正确：第二列应为「金额（元）」，请使用下载的模板填写",
-    };
-  }
-
-  const dataRows = aoa.slice(headerRowIndex + 1).filter((row) =>
-    row.some((cell) => cellText(cell) !== "")
-  );
-  if (dataRows.length === 0) {
-    return { ok: false, code: "INVALID_FILE", message: "文件中没有数据行" };
-  }
-  if (dataRows.length > IMPORT_MAX_ROWS) {
-    return {
-      ok: false,
-      code: "TOO_MANY_ROWS",
-      message: `单次最多导入 ${IMPORT_MAX_ROWS} 行，当前 ${dataRows.length} 行`,
-    };
-  }
-
-  const rows: ParsedImportRow[] = dataRows.map((row, i) => {
-    const rowIndex = headerRowIndex + 2 + i;
-    const phone = parsePhoneValue(row[0]);
-    const amount = parseAmountValue(row[1]);
-    const purchasedAt = parseExcelDateValue(row[2]);
-    const channelResult = parseChannelValue(row[3]);
-    const orderNo = parseOrderNoValue(row[4]);
-    const note = parseNoteValue(row[5]);
-
-    const errors: string[] = [];
-    if (phone === null) errors.push("手机号格式不正确（应为 11 位大陆手机号）");
-    if (amount === null) errors.push("金额必须为非零整数（元），绝对值不超过 100 万");
-    if (cellText(row[2]) && purchasedAt === null) errors.push("消费日期格式不正确（如 2026-01-15）");
-    if (channelResult.invalid) {
-      errors.push(
-        `渠道不正确（可选：${SPENT_CHANNELS.map((c) => SPENT_CHANNEL_LABELS[c]).join(" / ")}）`
-      );
-    }
-
-    return {
-      rowIndex,
-      phone,
-      amount,
-      channel: channelResult.channel,
-      orderNo,
-      purchasedAt,
-      note,
-      error: errors.length > 0 ? errors.join("；") : null,
-    };
-  });
-
   const fileHash = createHash("md5").update(buffer).digest("hex");
-  return { ok: true, fileHash, rows };
+  return parseImportAoa(aoa, fileHash);
+}
+
+const SPENT_IMPORT_WORKER_SOURCE = `
+const { parentPort, workerData } = require("node:worker_threads");
+const XLSX = require("xlsx");
+
+try {
+  const workbook = XLSX.read(Buffer.from(workerData.buffer), {
+    type: "buffer",
+    cellDates: false,
+    codepage: 65001,
+  });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) {
+    parentPort.postMessage({ ok: false, code: "INVALID_FILE" });
+  } else {
+    const sheet = workbook.Sheets[firstSheetName];
+    const declaredRange = sheet["!ref"]
+      ? XLSX.utils.decode_range(sheet["!ref"])
+      : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
+    const maxReadRows = ${IMPORT_MAX_ROWS} + 200;
+    const maxReadCols = 20;
+    const rowLimit = declaredRange.s.r + maxReadRows - 1;
+
+    if (declaredRange.e.r > rowLimit) {
+      let tooMany = false;
+      for (const key of Object.keys(sheet)) {
+        if (key.startsWith("!")) continue;
+        const cell = XLSX.utils.decode_cell(key);
+        if (cell.r > rowLimit) {
+          tooMany = true;
+          break;
+        }
+      }
+      if (tooMany) {
+        parentPort.postMessage({ ok: false, code: "TOO_MANY_ROWS" });
+      } else {
+        const readRange = XLSX.utils.encode_range({
+          s: declaredRange.s,
+          e: {
+            r: Math.min(declaredRange.e.r, rowLimit),
+            c: Math.min(declaredRange.e.c, maxReadCols - 1),
+          },
+        });
+        const aoa = XLSX.utils.sheet_to_json(sheet, {
+          header: 1,
+          defval: "",
+          range: readRange,
+        });
+        parentPort.postMessage({ ok: true, aoa });
+      }
+    } else {
+      const readRange = XLSX.utils.encode_range({
+        s: declaredRange.s,
+        e: {
+          r: Math.min(declaredRange.e.r, rowLimit),
+          c: Math.min(declaredRange.e.c, maxReadCols - 1),
+        },
+      });
+      const aoa = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: "",
+        range: readRange,
+      });
+      parentPort.postMessage({ ok: true, aoa });
+    }
+  }
+} catch {
+  parentPort.postMessage({ ok: false, code: "INVALID_FILE" });
+}
+`;
+
+class ImportWorkerError extends Error {
+  constructor(public readonly code: "INVALID_FILE" | "TOO_MANY_ROWS") {
+    super(code);
+  }
+}
+
+function parseWorkbookInWorker(buffer: Buffer): Promise<unknown[][]> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const worker = new Worker(SPENT_IMPORT_WORKER_SOURCE, {
+      eval: true,
+      workerData: { buffer },
+      resourceLimits: { maxOldGenerationSizeMb: 128 },
+    });
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      void worker.terminate();
+      reject(new ImportWorkerError("INVALID_FILE"));
+    }, 15_000);
+
+    const finish = (task: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      void worker.terminate();
+      task();
+    };
+
+    worker.once("message", (message: { ok?: boolean; aoa?: unknown[][]; code?: string }) => {
+      finish(() => {
+        if (message.ok && Array.isArray(message.aoa)) {
+          resolve(message.aoa);
+        } else {
+          reject(
+            new ImportWorkerError(
+              message.code === "TOO_MANY_ROWS" ? "TOO_MANY_ROWS" : "INVALID_FILE"
+            )
+          );
+        }
+      });
+    });
+    worker.once("error", () => {
+      finish(() => reject(new ImportWorkerError("INVALID_FILE")));
+    });
+    worker.once("exit", (code) => {
+      if (!settled && code !== 0) {
+        finish(() => reject(new ImportWorkerError("INVALID_FILE")));
+      }
+    });
+  });
+}
+
+/**
+ * 生产路由使用：把不可信的 xlsx 解析放在独立 worker 中，限制内存并设置超时。
+ * 行级手机号/金额等纯业务校验仍在主进程执行。
+ */
+export async function parseImportWorkbookIsolated(
+  buffer: Buffer,
+  fileName: string
+): Promise<ImportParseResult> {
+  const validation = validateImportFile(buffer, fileName);
+  if (validation) return validation;
+
+  try {
+    const aoa = await parseWorkbookInWorker(buffer);
+    const fileHash = createHash("md5").update(buffer).digest("hex");
+    return parseImportAoa(aoa, fileHash);
+  } catch (error) {
+    if (error instanceof ImportWorkerError && error.code === "TOO_MANY_ROWS") {
+      return {
+        ok: false,
+        code: "TOO_MANY_ROWS",
+        message: `单次最多导入 ${IMPORT_MAX_ROWS} 行，请拆分文件后重试`,
+      };
+    }
+    return {
+      ok: false,
+      code: "INVALID_FILE",
+      message: "文件解析失败，请确认文件未损坏",
+    };
+  }
 }
 
 function maskPhoneValue(phone: string | null): string | null {
@@ -549,8 +716,7 @@ export async function executeImportBatch(params: {
 
   const version = randomUUID();
   const effectiveFileHash = (
-    fileHash?.trim() ||
-    createHash("sha256").update(JSON.stringify(inputs)).digest("hex")
+    fileHash?.trim() || createHash("sha256").update(JSON.stringify(inputs)).digest("hex")
   ).slice(0, 64);
   const now = new Date();
 
@@ -591,9 +757,7 @@ export async function executeImportBatch(params: {
             amount: row.amount ?? 0,
             channel: row.channel,
             orderNo: row.orderNo,
-            purchasedAt: row.purchasedAt
-              ? new Date(`${row.purchasedAt}T00:00:00.000Z`)
-              : null,
+            purchasedAt: row.purchasedAt ? new Date(`${row.purchasedAt}T00:00:00.000Z`) : null,
             note: row.note,
             reference: `${rowReference(
               row.phone ?? "",
@@ -735,7 +899,11 @@ export async function executeImportBatch(params: {
 
 export type UndoResult =
   | { ok: true; revertedRows: number; totalAmount: number }
-  | { ok: false; code: "NOT_FOUND" | "ALREADY_UNDONE" | "NOTHING_TO_UNDO" | "INTERNAL_ERROR"; message: string };
+  | {
+      ok: false;
+      code: "NOT_FOUND" | "ALREADY_UNDONE" | "NOTHING_TO_UNDO" | "INTERNAL_ERROR";
+      message: string;
+    };
 
 /**
  * 撤销整批导入：对每行 SUCCESS 反向冲正（reference 幂等，重试安全），
@@ -770,9 +938,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     return { ok: false, code: "ALREADY_UNDONE", message: "该批次已撤销，不能重复操作" };
   }
 
-  const successRows = batch.rows.filter(
-    (r) => r.userId && (r.appliedDelta ?? r.amount) !== 0
-  );
+  const successRows = batch.rows.filter((r) => r.userId && (r.appliedDelta ?? r.amount) !== 0);
   if (successRows.length === 0) {
     return { ok: false, code: "NOTHING_TO_UNDO", message: "该批次没有可撤销的入账记录" };
   }

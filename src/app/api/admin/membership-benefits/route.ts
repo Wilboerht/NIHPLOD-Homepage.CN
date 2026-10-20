@@ -11,10 +11,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { LEVEL_DEFAULT_BENEFITS, type LevelDefaultBenefit, type LevelBenefitItem } from "@/lib/membership";
+import {
+  LEVEL_DEFAULT_BENEFITS,
+  type LevelDefaultBenefit,
+  type LevelBenefitItem,
+} from "@/lib/membership";
 import type { MembershipLevel } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -156,42 +160,59 @@ export async function PUT(request: NextRequest) {
 
     const previous = await prisma.membershipBenefit.findUnique({ where: { level } });
 
-    const saved = await prisma.membershipBenefit.upsert({
-      where: { level },
-      create: {
-        level,
-        name,
-        nameEn: nameEn ?? null,
-        icon: icon ?? null,
-        benefits,
-        colorClass: colorClass ?? null,
-      },
-      update: {
-        name,
-        nameEn: nameEn ?? null,
-        icon: icon ?? null,
-        benefits,
-        colorClass: colorClass ?? null,
-      },
-    });
-
-    await createAuditLog({
+    const auditDetail = {
+      level,
+      before: previous
+        ? {
+            name: previous.name,
+            benefits: previous.benefits,
+          }
+        : null,
+      after: { name, benefits },
+    };
+    const auditId = await beginAuditLog({
       action: "update_vip_benefit",
       targetType: "vip",
       targetId: level,
-      detail: {
-        level,
-        before: previous
-          ? {
-              name: previous.name,
-              benefits: previous.benefits,
-            }
-          : null,
-        after: { name, benefits },
-      },
+      detail: auditDetail,
       adminId: admin.id,
       request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const saved = await prisma.membershipBenefit
+      .upsert({
+        where: { level },
+        create: {
+          level,
+          name,
+          nameEn: nameEn ?? null,
+          icon: icon ?? null,
+          benefits,
+          colorClass: colorClass ?? null,
+        },
+        update: {
+          name,
+          nameEn: nameEn ?? null,
+          icon: icon ?? null,
+          benefits,
+          colorClass: colorClass ?? null,
+        },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", auditDetail);
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", auditDetail);
 
     // 可空列回传归一化为字符串，保持与 GET 合并结果一致的契约（避免前端对 null 调 .trim()）
     return NextResponse.json({

@@ -5,11 +5,10 @@ import {
   createAdminSsoCode,
   getAdminSsoConfig,
   isAdminSsoEnabled,
-  isTotpGraceActive,
   isTotpSatisfied,
 } from "@/lib/admin-sso";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { getIssuer } from "@/lib/oauth-constants";
 import { logger } from "@/lib/logger";
@@ -81,10 +80,7 @@ export async function GET(request: NextRequest) {
   const session = await getCurrentAdminSession();
   if (!session) {
     const loginUrl = new URL("/admin-login", getIssuer());
-    loginUrl.searchParams.set(
-      "redirect",
-      request.nextUrl.pathname + request.nextUrl.search
-    );
+    loginUrl.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -110,27 +106,14 @@ export async function GET(request: NextRequest) {
     return redirectToDenied("not_found");
   }
 
-  if (!isTotpSatisfied(adminSecurity.totpEnabled, config)) {
+  if (!isTotpSatisfied(adminSecurity.totpEnabled)) {
     const totpUrl = new URL("/admin/settings/totp", getIssuer());
-    totpUrl.searchParams.set(
-      "return_to",
-      request.nextUrl.pathname + request.nextUrl.search
-    );
+    totpUrl.searchParams.set("return_to", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(totpUrl);
   }
 
   try {
-    const { code } = await createAdminSsoCode({
-      adminId: admin.id,
-      clientId: config.clientId,
-      redirectUri: config.redirectUri,
-      codeChallenge,
-      codeChallengeMethod,
-      adminTokenVersion: adminSecurity.tokenVersion,
-      mainSessionExp: exp,
-    });
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "admin_sso_authorize",
       targetType: "admin",
       targetId: admin.id,
@@ -139,12 +122,47 @@ export async function GET(request: NextRequest) {
         redirectUri: config.redirectUri,
         advisorRole,
         totpEnabled: adminSecurity.totpEnabled,
-        totpGrace: isTotpGraceActive(config),
         ip: getClientIP(request),
       },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "totp",
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    let code: string;
+    try {
+      ({ code } = await createAdminSsoCode({
+        adminId: admin.id,
+        clientId: config.clientId,
+        redirectUri: config.redirectUri,
+        codeChallenge,
+        codeChallengeMethod,
+        adminTokenVersion: adminSecurity.tokenVersion,
+        mainSessionExp: exp,
+      }));
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { clientId: config.clientId });
+      throw error;
+    }
+
+    await finishAuditLog(auditId, "SUCCESS", {
+      clientId: config.clientId,
+      redirectUri: config.redirectUri,
+      advisorRole,
+    });
 
     const target = new URL(config.redirectUri);
     target.searchParams.set("code", code);

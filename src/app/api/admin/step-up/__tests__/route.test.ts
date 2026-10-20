@@ -49,6 +49,7 @@ vi.mock("@/lib/admin-step-up", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: mocks.audit,
+  createAuditLogStrict: mocks.audit,
 }));
 
 vi.mock("@/lib/logger", () => ({

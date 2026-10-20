@@ -25,7 +25,6 @@ export interface AdminSsoConfig {
   clientSecret: string;
   redirectUri: string;
   secret: string;
-  totpGraceUntil: Date | null;
 }
 
 function readRequired(name: string): string {
@@ -37,14 +36,6 @@ function readRequired(name: string): string {
 }
 
 export function getAdminSsoConfig(): AdminSsoConfig {
-  const graceRaw = process.env.ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL;
-  let totpGraceUntil: Date | null = null;
-  if (graceRaw) {
-    const parsed = new Date(graceRaw);
-    if (!Number.isNaN(parsed.getTime())) {
-      totpGraceUntil = parsed;
-    }
-  }
   const clientSecret = readRequired("ADVISOR_ADMIN_SSO_CLIENT_SECRET");
   const secret = readRequired("ADVISOR_ADMIN_SSO_SECRET");
   if (clientSecret.length < 32) {
@@ -59,32 +50,16 @@ export function getAdminSsoConfig(): AdminSsoConfig {
     clientSecret,
     redirectUri: readRequired("ADVISOR_ADMIN_SSO_REDIRECT_URI"),
     secret,
-    totpGraceUntil,
   };
 }
 
 export function isAdminSsoEnabled(): boolean {
-  return process.env.ADVISOR_ADMIN_SSO_ENABLED !== "false";
+  return process.env.ADVISOR_ADMIN_SSO_ENABLED === "true";
 }
 
-/** 是否仍处于 TOTP 宽限期（仅用于提示/审计，安全判定见 isTotpSatisfied） */
-export function isTotpGraceActive(config: AdminSsoConfig, now = new Date()): boolean {
-  return Boolean(config.totpGraceUntil && now < config.totpGraceUntil);
-}
-
-/**
- * 子站访问是否满足 TOTP 要求：
- * - 已开启 TOTP：满足；
- * - 未开启但仍在宽限期：满足（审计会标记 totpGrace）；
- * - 其他：拒绝。
- */
-export function isTotpSatisfied(
-  totpEnabled: boolean,
-  config: AdminSsoConfig,
-  now = new Date()
-): boolean {
-  if (totpEnabled) return true;
-  return isTotpGraceActive(config, now);
+/** 子站访问必须已开启 TOTP，不再接受任何宽限期。 */
+export function isTotpSatisfied(totpEnabled: boolean): boolean {
+  return totpEnabled;
 }
 
 export function safeSecretEqual(a: string, b: string): boolean {
@@ -155,9 +130,7 @@ export interface ConsumedAdminSsoCode {
  * 原子消费一次性 code。先 updateMany 占位，再读取记录；
  * 即使后续 client/redirect/PKCE 校验失败，code 也已作废，防止重放。
  */
-export async function consumeAdminSsoCode(
-  rawCode: string
-): Promise<ConsumedAdminSsoCode | null> {
+export async function consumeAdminSsoCode(rawCode: string): Promise<ConsumedAdminSsoCode | null> {
   const codeHash = hashAdminSsoCode(rawCode);
 
   const record = await prisma.$transaction(async (tx) => {
@@ -239,5 +212,3 @@ export async function signAdminSsoAssertion(
     .setExpirationTime(`${ADMIN_SSO_ASSERTION_TTL_SECONDS}s`)
     .sign(new TextEncoder().encode(config.secret));
 }
-
-

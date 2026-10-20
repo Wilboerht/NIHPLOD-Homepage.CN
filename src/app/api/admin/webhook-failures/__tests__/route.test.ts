@@ -40,7 +40,8 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -58,7 +59,7 @@ vi.mock("@/lib/backchannel-logout", () => ({
 import { GET, POST } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { retryWebhookFailureById } from "@/lib/profile-webhook";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
@@ -140,8 +141,13 @@ describe("POST /api/admin/webhook-failures", () => {
 
     expect(res.status).toBe(200);
     expect(data.data.status).toBe("delivered");
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: "webhook_failure_retry", targetType: "system" })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ status: "delivered" })
     );
   });
 
@@ -154,6 +160,11 @@ describe("POST /api/admin/webhook-failures", () => {
       createRequest("POST", { kind: "webhook", id: "clx0000000000000000000001", action: "delete" })
     );
     expect(res.status).toBe(404);
-    expect(createAuditLog).not.toHaveBeenCalled();
+    expect(beginAuditLog).toHaveBeenCalledTimes(1);
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "FAILURE",
+      expect.objectContaining({ reason: "NOT_FOUND" })
+    );
   });
 });

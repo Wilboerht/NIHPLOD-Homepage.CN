@@ -4,12 +4,18 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { listAuditLogs, createAuditLog, AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
+import {
+  listAuditLogs,
+  createAuditLog,
+  createAuditLogStrict,
+  AUDIT_ACTIONS,
+  AUDIT_TARGET_TYPES,
+} from "@/lib/audit";
 import {
   AUDIT_ACTION_LABELS as ACTION_LABELS,
   AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
 } from "@/lib/audit-labels";
-import { maskAuditDetail } from "@/lib/audit-sanitize";
+import { maskAuditDetail, maskAuditText } from "@/lib/audit-sanitize";
 import { maskIdentifier, maskIp } from "@/lib/mask-phone";
 import { escapeCSV } from "@/lib/sso-audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -77,9 +83,11 @@ export async function GET(request: NextRequest) {
         ? log
         : {
             ...log,
+            targetLabel: log.targetLabel ? maskAuditText(log.targetLabel) : null,
             detail: maskAuditDetail(log.detail) as AuditLogRow["detail"],
             ipAddress: log.ipAddress ? maskIp(log.ipAddress) : null,
             userAgent: null,
+            actorEmail: log.actorEmail ? maskIdentifier(log.actorEmail) : null,
             admin: log.admin
               ? { ...log.admin, email: maskIdentifier(log.admin.email) ?? "-" }
               : null,
@@ -162,8 +170,8 @@ export async function GET(request: NextRequest) {
       }
       const csv = [headers.join(","), ...rows.map((r) => r.map(escapeCSV).join(","))].join("\n");
 
-      // 导出审计：记录筛选条件与导出条数
-      await createAuditLog({
+      // 导出审计：记录筛选条件与导出条数（审计不可用时拒绝导出）
+      await createAuditLogStrict({
         action: "audit_log_export",
         targetType: "system",
         detail: {

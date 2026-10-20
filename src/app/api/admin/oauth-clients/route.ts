@@ -11,7 +11,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { createOAuthClient, listOAuthClients, toSafeClientResponse } from "@/lib/oauth-client";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -107,9 +107,7 @@ export async function GET(request: NextRequest) {
     const rawPage = parseInt(searchParams.get("page") || "1", 10);
     const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
     const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
-    const pageSize = Number.isFinite(rawPageSize)
-      ? Math.min(Math.max(1, rawPageSize), 100)
-      : 20;
+    const pageSize = Number.isFinite(rawPageSize) ? Math.min(Math.max(1, rawPageSize), 100) : 20;
     const search = searchParams.get("search") || undefined;
 
     const result = await listOAuthClients({ page, pageSize, search });
@@ -161,7 +159,34 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
-    const result = await createOAuthClient(body);
+    const auditId = await beginAuditLog({
+      action: "oauth_client_create",
+      targetType: "oauth_client",
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof createOAuthClient>>;
+    try {
+      result = await createOAuthClient(body);
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "CREATE_FAILED" });
+      throw error;
+    }
 
     // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
     await recordSsoEvent({
@@ -173,14 +198,12 @@ export async function POST(request: NextRequest) {
       detail: { action: "client_created", scopes: result.client.scopes },
     });
 
-    await createAuditLog({
-      action: "oauth_client_create",
-      targetType: "oauth_client",
-      targetId: result.client.id,
-      detail: { name: result.client.name, clientId: result.client.clientId },
-      adminId: admin.id,
-      request,
-    });
+    await finishAuditLog(
+      auditId,
+      "SUCCESS",
+      { name: result.client.name, clientId: result.client.clientId },
+      result.client.id
+    );
 
     return NextResponse.json(
       {

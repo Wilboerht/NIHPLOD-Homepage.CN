@@ -9,7 +9,6 @@ import { Plus, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
-import { Breadcrumbs } from "@/components/website/Breadcrumbs";
 import { faqData } from "@/config/faq-data";
 
 /** Footer 版权信息组件 */
@@ -118,14 +117,6 @@ export function FAQContent() {
           </Link>
           <div className="texture-overlay absolute inset-0 z-[-1]" />
         </div>
-
-        <Breadcrumbs
-          items={[
-            { name: "首页", url: "/" },
-            { name: "常见问题", url: "/faq" },
-          ]}
-          className="shrink-0 pt-4"
-        />
 
         <div className="flex flex-1 flex-col overflow-hidden pb-6 sm:px-10 sm:pb-0 lg:px-[15%] xl:px-[20%]">
           {/* Scroll Area Wrapper - 承载顶部渐隐遮罩 */}

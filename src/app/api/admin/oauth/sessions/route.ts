@@ -11,7 +11,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import {
   sendBackchannelLogout,
   enqueueBackchannelLogoutForActiveSessions,
@@ -50,9 +50,7 @@ export async function GET(request: NextRequest) {
     const rawPage = parseInt(searchParams.get("page") || "1", 10);
     const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
     const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
-    const pageSize = Number.isFinite(rawPageSize)
-      ? Math.min(Math.max(1, rawPageSize), 100)
-      : 20;
+    const pageSize = Number.isFinite(rawPageSize) ? Math.min(Math.max(1, rawPageSize), 100) : 20;
     const userId = searchParams.get("userId") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const search = searchParams.get("search") || undefined;
@@ -286,6 +284,31 @@ export async function POST(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
 
+      const terminatedCount = activeSessions.length > 0 ? activeSessions.length : 1;
+      const auditId = await beginAuditLog({
+        action: "oauth_session_terminate",
+        targetType: "oauth_session",
+        targetId: sessionId,
+        detail: {
+          userId: session.userId,
+          clientId: session.clientId,
+          sessionId,
+          terminatedCount,
+          cascaded: terminatedCount > 1,
+        },
+        adminId: admin.id,
+        request,
+      });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+
       await prisma.oAuthSession.updateMany({
         where: { userId: session.userId, clientId: session.clientId, revokedAt: null },
         data: { revokedAt: new Date() },
@@ -303,8 +326,6 @@ export async function POST(request: NextRequest) {
         sids: activeSessions.length > 0 ? { [session.clientId]: activeSessions[0].sessionId } : {},
       });
 
-      const terminatedCount = activeSessions.length > 0 ? activeSessions.length : 1;
-
       await recordSsoEvent({
         event: "status_change",
         userId: session.userId,
@@ -319,19 +340,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await createAuditLog({
-        action: "oauth_session_terminate",
-        targetType: "oauth_session",
-        targetId: sessionId,
-        detail: {
-          userId: session.userId,
-          clientId: session.clientId,
-          sessionId,
-          terminatedCount,
-          cascaded: terminatedCount > 1,
-        },
-        adminId: admin.id,
-        request,
+      await finishAuditLog(auditId, "SUCCESS", {
+        userId: session.userId,
+        clientId: session.clientId,
+        sessionId,
+        terminatedCount,
+        cascaded: terminatedCount > 1,
       });
 
       return NextResponse.json({
@@ -363,6 +377,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "oauth_session_terminate",
+      targetType: "oauth_session",
+      targetId: userId,
+      detail: { userId, clientId, sessionCount: sessions.length },
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     await prisma.oAuthSession.updateMany({
       where: sessionWhere,
       data: { revokedAt: new Date() },
@@ -389,13 +421,10 @@ export async function POST(request: NextRequest) {
       detail: { action: "session_terminated", sessionCount: sessions.length, clientId },
     });
 
-    await createAuditLog({
-      action: "oauth_session_terminate",
-      targetType: "oauth_session",
-      targetId: userId,
-      detail: { userId, clientId, sessionCount: sessions.length },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      userId,
+      clientId,
+      sessionCount: sessions.length,
     });
 
     return NextResponse.json({
@@ -451,6 +480,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "oauth_session_terminate",
+      targetType: "oauth_session",
+      targetId: "all",
+      detail: { scope: "all", status: "PENDING" },
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     // 分页扫描活跃会话并写入 backchannel 补偿队列（撤销前扫描；由 cron 异步批量投递，
     // 避免全量会话读入内存 + 逐用户串行 HTTP 导致请求超时）
     const enqueued = await enqueueBackchannelLogoutForActiveSessions({});
@@ -487,17 +534,11 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
-    await createAuditLog({
-      action: "oauth_session_terminate",
-      targetType: "oauth_session",
-      targetId: "all",
-      detail: {
-        sessionsRevoked: sessionResult.count,
-        refreshTokensRevoked: refreshResult.count,
-        notificationsEnqueued: enqueued.userClientCount,
-      },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      scope: "all",
+      sessionsRevoked: sessionResult.count,
+      refreshTokensRevoked: refreshResult.count,
+      notificationsEnqueued: enqueued.userClientCount,
     });
 
     return NextResponse.json({

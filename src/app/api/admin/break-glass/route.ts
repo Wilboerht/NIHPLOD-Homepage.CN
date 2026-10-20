@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLogStrict } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -51,13 +51,13 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
     }
   }
 
-  await createAuditLog({
+  await createAuditLogStrict({
     action: "break_glass_view",
     targetType: "system",
     detail: { configured, username: configured ? username : undefined },
     adminId: admin.id,
     request,
-  }).catch(() => {});
+  });
 
   return NextResponse.json(
     {

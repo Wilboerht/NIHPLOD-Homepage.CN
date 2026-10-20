@@ -33,7 +33,8 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -43,7 +44,7 @@ vi.mock("@/lib/logger", () => ({
 import { GET, PUT } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 const ADMIN = { ...OWNER, role: "admin" };
@@ -134,9 +135,7 @@ describe("PUT /api/admin/membership-benefits", () => {
   });
 
   it("携带消费门槛（minSpent/maxSpent）应返回 400 且不写库", async () => {
-    const res = await PUT(
-      createRequest("PUT", { ...VALID_BODY, minSpent: 888, maxSpent: 4888 })
-    );
+    const res = await PUT(createRequest("PUT", { ...VALID_BODY, minSpent: 888, maxSpent: 4888 }));
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.error.code).toBe("THRESHOLD_IMMUTABLE");
@@ -158,12 +157,13 @@ describe("PUT /api/admin/membership-benefits", () => {
     };
     expect(upsertArgs.create).not.toHaveProperty("minSpent");
     expect(upsertArgs.create).not.toHaveProperty("maxSpent");
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "update_vip_benefit",
         targetType: "vip",
         targetId: "SILVER",
       })
     );
+    expect(finishAuditLog).toHaveBeenCalledWith("audit-1", "SUCCESS", expect.any(Object));
   });
 });

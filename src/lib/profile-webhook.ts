@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
+import { postPublicHttps } from "@/lib/outbound-http";
 import { resolveSsoAvatar } from "@/lib/default-avatar";
 
 /** profile_update 事件标识（events claim 的 key） */
@@ -132,12 +133,10 @@ export async function sendProfileUpdateWebhook(
         let failureReason = "http_request_failed_after_retry";
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            const res = await fetch(client.webhookUri, {
+            const res = await postPublicHttps(client.webhookUri, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ event_token: eventToken }),
-              // 禁止跟随重定向：防注册的 https 地址 302 到内网（SSRF 绕过主机校验）
-              redirect: "manual",
               signal: AbortSignal.timeout(5000),
             });
             if (res.ok) {
@@ -286,8 +285,8 @@ export async function retryFailedWebhookDeliveries(
 
       const client = await prisma.oAuthClient.findUnique({
         where: { clientId: failure.clientId },
-    select: { clientId: true, webhookUri: true, scopes: true },
-  });
+        select: { clientId: true, webhookUri: true, scopes: true },
+      });
       const uri = client?.webhookUri;
 
       // client 已删除或未配置 webhookUri：补偿无意义，直接丢弃
@@ -298,10 +297,7 @@ export async function retryFailedWebhookDeliveries(
       }
 
       // consent 已撤销 / 用户已注销：不得继续投递资料快照，直接丢弃并审计
-      const effectiveScopes = await getProfileDeliveryScopes(
-        failure.userId,
-        failure.clientId
-      );
+      const effectiveScopes = await getProfileDeliveryScopes(failure.userId, failure.clientId);
       if (!effectiveScopes) {
         await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
         dropped++;
@@ -348,11 +344,10 @@ export async function retryFailedWebhookDeliveries(
         ...(includeMembership && { membership: payload.membership }),
       });
 
-      const res = await fetch(uri, {
+      const res = await postPublicHttps(uri, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event_token: eventToken }),
-        redirect: "manual",
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error(`http_${res.status}`);
@@ -382,19 +377,13 @@ export async function retryFailedWebhookDeliveries(
           detail: { reason: "max_retries_exceeded", attempts },
         });
       } else {
-        const backoff = Math.min(
-          REDELIVERY_BASE_DELAY_MS * 2 ** attempts,
-          REDELIVERY_MAX_DELAY_MS
-        );
+        const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
         await prisma.webhookDeliveryFailure.update({
           where: { id: failure.id },
           data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
         });
         failed++;
-        apiConsole.warn(
-          `[ProfileWebhook] 重投失败 (${failure.clientId})，第 ${attempts} 次:`,
-          err
-        );
+        apiConsole.warn(`[ProfileWebhook] 重投失败 (${failure.clientId})，第 ${attempts} 次:`, err);
       }
     }
   }
@@ -460,8 +449,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
     const trimmedProfile = payload.profile
       ? trimProfileSnapshotByScopes(payload.profile, effectiveScopes)
       : null;
-    const includeMembership =
-      payload.membership !== undefined && effectiveScopes.has("membership");
+    const includeMembership = payload.membership !== undefined && effectiveScopes.has("membership");
     if (!trimmedProfile && !includeMembership) {
       recordSsoEvent({
         event: "profile_webhook",
@@ -481,11 +469,10 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       ...(includeMembership && { membership: payload.membership }),
     });
 
-    const res = await fetch(uri, {
+    const res = await postPublicHttps(uri, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_token: eventToken }),
-      redirect: "manual",
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`http_${res.status}`);

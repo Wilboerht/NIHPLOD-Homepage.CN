@@ -45,13 +45,11 @@ const SENSITIVE_API_PREFIXES = ["/api/admin/"];
 const SECRET_API_PREFIXES = ["/api/cron/", "/api/baidu/"];
 
 /** 管理员 SSO 服务端到服务端端点：用 client_secret 鉴权，不走 admin Cookie/CSRF */
-const ADMIN_SSO_API_PATHS = new Set([
-  "/api/admin/sso/token",
-  "/api/admin/sso/status",
-]);
+const ADMIN_SSO_API_PATHS = new Set(["/api/admin/sso/token", "/api/admin/sso/status"]);
 
 const PUBLIC_API_PREFIXES = [
   "/api/admin/login",
+  "/api/admin/totp/recovery/",
   "/api/admin/sso/token",
   "/api/admin/sso/status",
   "/api/contact",

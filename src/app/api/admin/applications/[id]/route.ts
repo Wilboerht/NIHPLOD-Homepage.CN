@@ -3,10 +3,11 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import prisma from "@/lib/prisma";
 import { deleteUploadedFile } from "@/lib/upload";
+import { deleteResumeFile, isPrivateResumeKey } from "@/lib/resume-files";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { createAuditLog, type AuditAction } from "@/lib/audit";
+import { beginAuditLog, createAuditLogStrict, finishAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 interface RouteParams {
@@ -71,12 +72,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 简历详情含姓名/手机号/简历文件，查看即写审计（PII 访问留痕）
-    await createAuditLog({
+    // 简历详情含姓名/手机号/简历文件，查看即写审计（PII 访问留痕，失败则拒绝返回）
+    await createAuditLogStrict({
       action: "application_detail_view",
       targetType: "application",
       targetId: id,
       detail: { jobId: application.jobId, hasResume: !!application.resumePath },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
       request,
     });
@@ -148,33 +154,55 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (notes !== undefined) updateData.notes = notes;
     if (folderId !== undefined) updateData.folderId = folderId; // null 表示移除分类
 
-    const application = await prisma.jobApplication.update({
-      where: { id },
-      data: updateData,
-      include: {
-        job: {
-          select: {
-            id: true,
-            title: true,
-            titleEn: true,
-          },
-        },
-        folder: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    const auditId = await beginAuditLog({
+      action: "update_application",
+      targetType: "application",
+      targetId: id,
+      detail: { status, notes, folderId },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
 
-    createApplicationAuditLog(
-      "update_application",
-      id,
-      { status, notes, folderId },
-      admin,
-      request
-    ).catch(() => {});
+    const application = await prisma.jobApplication
+      .update({
+        where: { id },
+        data: updateData,
+        include: {
+          job: {
+            select: {
+              id: true,
+              title: true,
+              titleEn: true,
+            },
+          },
+          folder: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", { status, folderId });
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", { status, folderId });
 
     return NextResponse.json({ success: true, data: application });
   } catch (error) {
@@ -190,27 +218,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       { success: false, error: { code: "INTERNAL_ERROR", message: "更新失败" } },
       { status: 500 }
     );
-  }
-}
-
-async function createApplicationAuditLog(
-  action: AuditAction,
-  targetId: string,
-  detail: Record<string, unknown>,
-  admin: { id: string },
-  request: NextRequest
-) {
-  try {
-    await createAuditLog({
-      action,
-      targetType: "application",
-      targetId,
-      detail,
-      adminId: admin.id,
-      request,
-    });
-  } catch {
-    // 审计日志失败不阻断业务
   }
 }
 
@@ -256,13 +263,42 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    await prisma.jobApplication.delete({ where: { id } });
-
-    if (application?.resumePath) {
-      await deleteUploadedFile(application.resumePath);
+    const auditId = await beginAuditLog({
+      action: "delete_application",
+      targetType: "application",
+      targetId: id,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
     }
 
-    createApplicationAuditLog("delete_application", id, {}, admin, request).catch(() => {});
+    await prisma.jobApplication.delete({ where: { id } }).catch(async (error) => {
+      await finishAuditLog(auditId, "FAILURE", {});
+      throw error;
+    });
+
+    if (application?.resumePath) {
+      if (isPrivateResumeKey(application.resumePath)) {
+        await deleteResumeFile(application.resumePath).catch(() => {});
+      } else {
+        await deleteUploadedFile(application.resumePath).catch(() => {});
+      }
+    }
+
+    await finishAuditLog(auditId, "SUCCESS", {});
 
     return NextResponse.json({ success: true, message: "删除成功" });
   } catch (error) {

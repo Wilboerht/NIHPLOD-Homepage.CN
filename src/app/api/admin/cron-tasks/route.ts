@@ -8,7 +8,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { isLocalCronEnabled, listCronTasks, runCronTask } from "@/lib/cron-tasks";
@@ -130,15 +130,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await runCronTask(taskName, "manual", admin.id);
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "run_cron_task",
       targetType: "system",
       targetId: taskName,
-      detail: { taskName, success: result.ok, error: result.error ?? null },
+      detail: { taskName, success: null, error: null },
       adminId: admin.id,
       request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const result = await runCronTask(taskName, "manual", admin.id).catch(async (error) => {
+      await finishAuditLog(auditId, "FAILURE", {
+        taskName,
+        success: false,
+        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+      });
+      throw error;
+    });
+
+    await finishAuditLog(auditId, result.ok ? "SUCCESS" : "FAILURE", {
+      taskName,
+      success: result.ok,
+      error: result.error ?? null,
     });
 
     if (!result.ok) {

@@ -33,6 +33,8 @@ const {
   mockBlacklistUserTokens,
   mockRecordSsoEvent,
   mockCreateAuditLog,
+  mockBeginAuditLog,
+  mockFinishAuditLog,
   mockSendBackchannelLogout,
   mockEnqueueBackchannelLogoutForActiveSessions,
   prismaMock,
@@ -67,6 +69,8 @@ const {
     mockBlacklistUserTokens: vi.fn(),
     mockRecordSsoEvent: vi.fn(),
     mockCreateAuditLog: vi.fn(),
+    mockBeginAuditLog: vi.fn(),
+    mockFinishAuditLog: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
     mockEnqueueBackchannelLogoutForActiveSessions: vi.fn(),
     prismaMock: prisma as Record<string, Record<string, ReturnType<typeof vi.fn>>> & {
@@ -103,6 +107,8 @@ vi.mock("@/lib/csrf", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
+  beginAuditLog: (...args: unknown[]) => mockBeginAuditLog(...args),
+  finishAuditLog: (...args: unknown[]) => mockFinishAuditLog(...args),
 }));
 
 vi.mock("@/lib/sso-audit", () => ({
@@ -214,6 +220,8 @@ describe("管理端 OAuth Client CRUD", () => {
     mockBlacklistUserTokens.mockResolvedValue(undefined);
     mockRecordSsoEvent.mockResolvedValue(undefined);
     mockCreateAuditLog.mockResolvedValue(true);
+    mockBeginAuditLog.mockResolvedValue("audit-1");
+    mockFinishAuditLog.mockResolvedValue(true);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
     mockEnqueueBackchannelLogoutForActiveSessions.mockResolvedValue({
       sessionCount: 0,
@@ -304,37 +312,46 @@ describe("管理端 OAuth Client CRUD", () => {
     it("CSRF 校验失败应返回 403", async () => {
       mockValidateCSRFToken.mockReturnValue(false);
       const { POST } = await import("@/app/api/admin/oauth-clients/route");
-      const res = await POST(createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody }));
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody })
+      );
       expect(res.status).toBe(403);
     });
 
     it("未认证应返回 401", async () => {
       mockVerifyAuth.mockResolvedValue(null);
       const { POST } = await import("@/app/api/admin/oauth-clients/route");
-      const res = await POST(createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody }));
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody })
+      );
       expect(res.status).toBe(401);
     });
 
     it("非 owner 角色应返回 403", async () => {
       mockVerifyAuth.mockResolvedValue(NORMAL_ADMIN);
       const { POST } = await import("@/app/api/admin/oauth-clients/route");
-      const res = await POST(createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody }));
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody })
+      );
       expect(res.status).toBe(403);
       expect(prismaMock.oAuthClient.create).not.toHaveBeenCalled();
     });
 
     it("创建成功应返回一次性明文 secret，且 client 字段不含 clientSecret", async () => {
-      prismaMock.oAuthClient.create.mockImplementation(async (args: { data: Record<string, unknown> }) =>
-        makeClientRecord({
-          clientId: args.data.clientId,
-          clientSecret: args.data.clientSecret,
-          name: args.data.name,
-          redirectUris: args.data.redirectUris,
-        })
+      prismaMock.oAuthClient.create.mockImplementation(
+        async (args: { data: Record<string, unknown> }) =>
+          makeClientRecord({
+            clientId: args.data.clientId,
+            clientSecret: args.data.clientSecret,
+            name: args.data.name,
+            redirectUris: args.data.redirectUris,
+          })
       );
 
       const { POST } = await import("@/app/api/admin/oauth-clients/route");
-      const res = await POST(createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody }));
+      const res = await POST(
+        createRequest("/api/admin/oauth-clients", { method: "POST", body: validBody })
+      );
       const data = await res.json();
 
       expect(res.status).toBe(200);
@@ -565,14 +582,20 @@ describe("管理端 OAuth Client CRUD", () => {
     it("非 owner 角色应返回 403", async () => {
       mockVerifyAuth.mockResolvedValue(NORMAL_ADMIN);
       const { GET } = await import("@/app/api/admin/oauth-clients/[id]/route");
-      const res = await GET(createRequest("/api/admin/oauth-clients/client-db-id-1"), routeContext("client-db-id-1"));
+      const res = await GET(
+        createRequest("/api/admin/oauth-clients/client-db-id-1"),
+        routeContext("client-db-id-1")
+      );
       expect(res.status).toBe(403);
     });
 
     it("Client 不存在应返回 404", async () => {
       prismaMock.oAuthClient.findUnique.mockResolvedValue(null);
       const { GET } = await import("@/app/api/admin/oauth-clients/[id]/route");
-      const res = await GET(createRequest("/api/admin/oauth-clients/missing"), routeContext("missing"));
+      const res = await GET(
+        createRequest("/api/admin/oauth-clients/missing"),
+        routeContext("missing")
+      );
       expect(res.status).toBe(404);
       expect((await res.json()).error.code).toBe("NOT_FOUND");
     });
@@ -580,7 +603,10 @@ describe("管理端 OAuth Client CRUD", () => {
     it("正常返回且不含 clientSecret", async () => {
       prismaMock.oAuthClient.findUnique.mockResolvedValue(makeClientRecord());
       const { GET } = await import("@/app/api/admin/oauth-clients/[id]/route");
-      const res = await GET(createRequest("/api/admin/oauth-clients/client-db-id-1"), routeContext("client-db-id-1"));
+      const res = await GET(
+        createRequest("/api/admin/oauth-clients/client-db-id-1"),
+        routeContext("client-db-id-1")
+      );
       const data = await res.json();
       expect(res.status).toBe(200);
       expect(data.data.client.clientId).toBe("abc123clientid");
@@ -593,7 +619,10 @@ describe("管理端 OAuth Client CRUD", () => {
         makeClientRecord({ postLogoutRedirectUris: postLogoutUris })
       );
       const { GET } = await import("@/app/api/admin/oauth-clients/[id]/route");
-      const res = await GET(createRequest("/api/admin/oauth-clients/client-db-id-1"), routeContext("client-db-id-1"));
+      const res = await GET(
+        createRequest("/api/admin/oauth-clients/client-db-id-1"),
+        routeContext("client-db-id-1")
+      );
       const data = await res.json();
       expect(res.status).toBe(200);
       expect(data.data.client.postLogoutRedirectUris).toEqual(postLogoutUris);
@@ -609,7 +638,10 @@ describe("管理端 OAuth Client CRUD", () => {
       mockVerifyAuth.mockResolvedValue(NORMAL_ADMIN);
       const { PATCH } = await import("@/app/api/admin/oauth-clients/[id]/route");
       const res = await PATCH(
-        createRequest("/api/admin/oauth-clients/client-db-id-1", { method: "PATCH", body: { name: "X" } }),
+        createRequest("/api/admin/oauth-clients/client-db-id-1", {
+          method: "PATCH",
+          body: { name: "X" },
+        }),
         routeContext("client-db-id-1")
       );
       expect(res.status).toBe(403);
@@ -664,7 +696,9 @@ describe("管理端 OAuth Client CRUD", () => {
 
     it("未变更 isActive 时不触发级联撤销", async () => {
       prismaMock.oAuthClient.findUnique.mockResolvedValue(makeClientRecord({ isActive: true }));
-      prismaMock.oAuthClient.update.mockResolvedValue(makeClientRecord({ isActive: true, name: "Renamed" }));
+      prismaMock.oAuthClient.update.mockResolvedValue(
+        makeClientRecord({ isActive: true, name: "Renamed" })
+      );
 
       const { PATCH } = await import("@/app/api/admin/oauth-clients/[id]/route");
       const res = await PATCH(

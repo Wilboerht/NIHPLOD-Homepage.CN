@@ -10,7 +10,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
@@ -46,9 +46,7 @@ export async function GET(request: NextRequest) {
     const rawPage = parseInt(searchParams.get("page") || "1", 10);
     const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
     const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
-    const pageSize = Number.isFinite(rawPageSize)
-      ? Math.min(Math.max(1, rawPageSize), 100)
-      : 20;
+    const pageSize = Number.isFinite(rawPageSize) ? Math.min(Math.max(1, rawPageSize), 100) : 20;
     const search = searchParams.get("search") || undefined;
     const clientId = searchParams.get("clientId") || undefined;
     const status = searchParams.get("status") || undefined; // active | revoked
@@ -212,6 +210,24 @@ export async function POST(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
 
+      const auditId = await beginAuditLog({
+        action: "oauth_consent_revoke",
+        targetType: "oauth_consent",
+        targetId: `${userId}:${clientId}`,
+        detail: { userId, clientId, sessionCount: 0, consentCount: 0 },
+        adminId: admin.id,
+        request,
+      });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+
       // 撤销所有活跃 session；同步撤销已有 UserConsent，确保授权状态一致性
       // （仅更新已存在的同意记录，避免为从未同意的用户创建 scopes:[] 空记录）
       // 两者任一存在即可执行撤销，都不存在则跳过该 client
@@ -226,7 +242,14 @@ export async function POST(request: NextRequest) {
         }),
       ]);
 
-      if (sessionResult.count === 0 && consentResult.count === 0) continue;
+      if (sessionResult.count === 0 && consentResult.count === 0) {
+        await finishAuditLog(auditId, "FAILURE", {
+          userId,
+          clientId,
+          reason: "NO_ACTIVE",
+        });
+        continue;
+      }
 
       // 同步撤销该用户在该 client 下的所有 Refresh Token
       await revokeRefreshToken(userId, undefined, clientId, "admin_revoke");
@@ -253,18 +276,11 @@ export async function POST(request: NextRequest) {
         sids: activeSessions.length > 0 ? { [clientId]: activeSessions[0].sessionId } : {},
       });
 
-      await createAuditLog({
-        action: "oauth_consent_revoke",
-        targetType: "oauth_consent",
-        targetId: `${userId}:${clientId}`,
-        detail: {
-          userId,
-          clientId,
-          sessionCount: sessionResult.count,
-          consentCount: consentResult.count,
-        },
-        adminId: admin.id,
-        request,
+      await finishAuditLog(auditId, "SUCCESS", {
+        userId,
+        clientId,
+        sessionCount: sessionResult.count,
+        consentCount: consentResult.count,
       });
 
       revokedCount += sessionResult.count + consentResult.count;

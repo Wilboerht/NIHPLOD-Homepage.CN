@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -57,6 +57,27 @@ export async function DELETE(
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "user_identity_unbind",
+      targetType: "user",
+      targetId: id,
+      detail: {
+        provider: identity.provider,
+        subjectId: identity.subjectId,
+      },
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     // 事务：删除身份 + 清理失去身份支撑的微信旧列（双写一致性）。
     // 若不清旧列，微信开放平台/服务号回调仅按旧列查找用户，会绕过解绑直接登录并重建身份。
     const clearedLegacy = await prisma.$transaction(async (tx) => {
@@ -96,17 +117,10 @@ export async function DELETE(
       return cleared;
     });
 
-    await createAuditLog({
-      action: "user_identity_unbind",
-      targetType: "user",
-      targetId: id,
-      detail: {
-        provider: identity.provider,
-        subjectId: identity.subjectId,
-        clearedLegacy,
-      },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      provider: identity.provider,
+      subjectId: identity.subjectId,
+      clearedLegacy,
     });
 
     return NextResponse.json({ success: true, data: { message: "已解绑该外部身份" } });

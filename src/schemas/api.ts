@@ -14,7 +14,7 @@ export const AdminLoginSchema = z.object({
     .string()
     .trim()
     .min(6, "验证码至少 6 位")
-    .max(20, "验证码过长")
+    .max(64, "验证码过长")
     .regex(/^[0-9A-Za-z]+$/, "验证码只能包含字母和数字")
     .optional(),
 });

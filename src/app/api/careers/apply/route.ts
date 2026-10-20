@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { uploadFile, deleteUploadedFile } from "@/lib/upload";
+import { deleteResumeFile, uploadResumeFile } from "@/lib/resume-files";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { fileTypeFromBuffer } from "file-type";
@@ -132,23 +132,25 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV === "development")
       apiConsole.debug("✅ [Apply API] Job found:", job.title);
 
-    // 上传文件到存储 (自动处理 Local/Supabase)，限制为 PDF
-    const uploadResult = await uploadFile(fileBuffer, resumeFile.name, resumeFile.type, "resumes", [
-      "application/pdf",
-    ]);
-
-    // 验证最终扩展名为 pdf
-    if (!uploadResult.filename.toLowerCase().endsWith(".pdf")) {
+    // 简历含 PII：只允许私有存储（OSS 私有 bucket 或服务器 private 目录）
+    let resumeKey: string;
+    try {
+      const uploadResult = await uploadResumeFile(fileBuffer);
+      resumeKey = uploadResult.key;
+    } catch (uploadError) {
       if (process.env.NODE_ENV === "development")
-        apiConsole.debug("❌ [Apply API] Uploaded file extension is not pdf");
+        apiConsole.debug("❌ [Apply API] Private resume upload failed:", uploadError);
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_FILE_EXT", message: "简历文件格式异常" } },
-        { status: 400 }
+        {
+          success: false,
+          error: { code: "STORAGE_UNAVAILABLE", message: "简历存储暂不可用，请稍后重试" },
+        },
+        { status: 503 }
       );
     }
 
     if (process.env.NODE_ENV === "development")
-      apiConsole.debug("✅ [Apply API] File uploaded:", uploadResult.url);
+      apiConsole.debug("✅ [Apply API] Resume stored privately:", resumeKey);
 
     // 保存申请记录到数据库
     if (process.env.NODE_ENV === "development")
@@ -159,14 +161,14 @@ export async function POST(request: NextRequest) {
           jobId,
           name,
           phone,
-          resumePath: uploadResult.url,
+          resumePath: resumeKey,
         },
       });
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("✅ [Apply API] DB record created");
     } catch (dbError) {
-      // 数据库写入失败，清理已上传的文件
-      deleteUploadedFile(uploadResult.url).catch(() => {});
+      // 数据库写入失败，清理已上传的私有文件
+      deleteResumeFile(resumeKey).catch(() => {});
       throw dbError;
     }
 
@@ -175,12 +177,18 @@ export async function POST(request: NextRequest) {
       apiConsole.debug("📢 [Apply API] Sending notifications");
     try {
       // 发送企业微信群机器人通知 (强制路由至招聘群)
+      const adminBaseUrl = (
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        "https://nihplod.cn"
+      ).replace(/\/$/, "");
       const wecomMsg = formatJobApplicationToWecom({
         name,
         phone,
         // 使用数据库中的职位标题，而非用户提交的 jobTitle（防篡改）
         position: job.title,
-        resumeUrl: uploadResult.url,
+        // 通知只给后台入口，不把私有简历 URL 外发给群机器人
+        resumeUrl: `${adminBaseUrl}/admin/applications`,
       });
       const result = await sendWecomNotification(wecomMsg, "job");
       if (result.success) {

@@ -54,7 +54,8 @@ vi.mock("@/lib/ratelimit", () => ({
 
 // === Mock 审计 ===
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 // === Mock SSO 审计 ===
@@ -93,7 +94,7 @@ vi.mock("@/lib/logger", () => ({
 import { POST } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { changeUserStatus } from "@/lib/user-status";
 
@@ -128,7 +129,9 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
       { id: "user-2", status: "BANNED" },
     ]);
 
-    const res = await POST(createRequest({ ids: ["user-1", "user-2", "user-3"], status: "BANNED" }));
+    const res = await POST(
+      createRequest({ ids: ["user-1", "user-2", "user-3"], status: "BANNED" })
+    );
     const data = await res.json();
 
     expect(res.status).toBe(200);
@@ -147,12 +150,17 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
         detail: expect.objectContaining({ action: "user_banned", batch: true }),
       })
     );
-    expect(createAuditLog).toHaveBeenCalledTimes(1);
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledTimes(1);
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "user_status_change",
-        detail: expect.objectContaining({ status: "BANNED", count: 1 }),
+        detail: expect.objectContaining({ status: "BANNED", count: 0 }),
       })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ status: "BANNED", count: 1 })
     );
   });
 
@@ -194,6 +202,7 @@ describe("POST /api/admin/users（批量修改用户状态）", () => {
     expect(prisma.user.updateMany).not.toHaveBeenCalled();
     expect(changeUserStatus).not.toHaveBeenCalled();
     // 仍保留一条汇总审计
-    expect(createAuditLog).toHaveBeenCalledTimes(1);
+    expect(beginAuditLog).toHaveBeenCalledTimes(1);
+    expect(finishAuditLog).toHaveBeenCalledTimes(1);
   });
 });

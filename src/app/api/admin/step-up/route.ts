@@ -8,7 +8,7 @@ import {
   ADMIN_STEP_UP_TTL_SECONDS,
   issueAdminStepUpGrant,
 } from "@/lib/admin-step-up";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLog, createAuditLogStrict } from "@/lib/audit";
 import { rateLimit } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -41,8 +41,16 @@ export const POST = withAuth(async (request, admin) => {
         detail: { reason: "rate_limited" },
       });
       return NextResponse.json(
-        { success: false, error: { code: "TOTP_RATE_LIMITED", message: "验证尝试过于频繁，请稍后再试" } },
-        { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000))) } }
+        {
+          success: false,
+          error: { code: "TOTP_RATE_LIMITED", message: "验证尝试过于频繁，请稍后再试" },
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000))),
+          },
+        }
       );
     }
 
@@ -88,19 +96,9 @@ export const POST = withAuth(async (request, admin) => {
     }
 
     const grant = await issueAdminStepUpGrant(admin);
-    const response = NextResponse.json(
-      {
-        success: true,
-        data: {
-          expiresAt: grant.expiresAt.toISOString(),
-          ttlSeconds: ADMIN_STEP_UP_TTL_SECONDS,
-        },
-      },
-      { headers: { "Cache-Control": "no-store, private" } }
-    );
-    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, grant.token, ADMIN_STEP_UP_COOKIE_OPTIONS);
 
-    createAuditLog({
+    // 凭证返回前强制留痕：审计不可用时拒绝签发（fail-closed）
+    await createAuditLogStrict({
       action: "step_up_granted",
       targetType: "admin",
       targetId: admin.id,
@@ -113,7 +111,19 @@ export const POST = withAuth(async (request, admin) => {
       detail: { expiresAt: grant.expiresAt.toISOString() },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    });
+
+    const response = NextResponse.json(
+      {
+        success: true,
+        data: {
+          expiresAt: grant.expiresAt.toISOString(),
+          ttlSeconds: ADMIN_STEP_UP_TTL_SECONDS,
+        },
+      },
+      { headers: { "Cache-Control": "no-store, private" } }
+    );
+    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, grant.token, ADMIN_STEP_UP_COOKIE_OPTIONS);
 
     return response;
   } catch (error) {

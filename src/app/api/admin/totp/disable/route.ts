@@ -9,7 +9,8 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
+import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
+import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
@@ -104,7 +105,6 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     }
 
     let totpValid = false;
-    let consumedBackupResult: { remainingCodes: string[] } | null = null;
     if (admin.totpSecret) {
       try {
         const secret = decryptTOTPSecret(admin.totpSecret);
@@ -123,10 +123,15 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     }
 
     if (!totpValid && admin.totpBackupCodes) {
-      const backupResult = verifyBackupCode(totpCode, admin.totpBackupCodes);
-      if (backupResult) {
-        totpValid = true;
-        consumedBackupResult = backupResult;
+      try {
+        const consumed = await consumeAdminBackupCode(admin.id, totpCode, admin.totpBackupCodes);
+        if (consumed.ok) {
+          totpValid = true;
+        } else if (consumed.reason === "conflict") {
+          apiConsole.warn("[TOTP Disable] 备用码已被并发消费:", admin.id);
+        }
+      } catch (err) {
+        apiConsole.warn("[TOTP Disable] 备用码消费失败（fail-closed）:", err);
       }
     }
 
@@ -162,12 +167,6 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     try {
       await prisma.$transaction(async (tx) => {
-        if (consumedBackupResult) {
-          await tx.admin.update({
-            where: { id: admin.id },
-            data: { totpBackupCodes: JSON.stringify(consumedBackupResult.remainingCodes) },
-          });
-        }
         await tx.admin.update({
           where: { id: admin.id },
           data: {

@@ -12,7 +12,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
@@ -173,17 +173,7 @@ export async function POST(request: NextRequest) {
     if (!validateCUID(id)) return invalidIdResponse();
 
     if (action === "delete") {
-      const result =
-        kind === "webhook"
-          ? await prisma.webhookDeliveryFailure.deleteMany({ where: { id } })
-          : await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
-      if (result.count === 0) {
-        return NextResponse.json(
-          { success: false, error: { code: "NOT_FOUND", message: "记录不存在" } },
-          { status: 404 }
-        );
-      }
-      await createAuditLog({
+      const auditId = await beginAuditLog({
         action: "webhook_failure_delete",
         targetType: "system",
         targetId: id,
@@ -191,28 +181,75 @@ export async function POST(request: NextRequest) {
         adminId: admin.id,
         request,
       });
-      return NextResponse.json({ success: true, data: { status: "deleted", message: "记录已丢弃" } });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+
+      const result =
+        kind === "webhook"
+          ? await prisma.webhookDeliveryFailure.deleteMany({ where: { id } })
+          : await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
+      if (result.count === 0) {
+        await finishAuditLog(auditId, "FAILURE", { kind, reason: "NOT_FOUND" });
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "记录不存在" } },
+          { status: 404 }
+        );
+      }
+      await finishAuditLog(auditId, "SUCCESS", { kind });
+      return NextResponse.json({
+        success: true,
+        data: { status: "deleted", message: "记录已丢弃" },
+      });
+    }
+
+    const auditId = await beginAuditLog({
+      action: "webhook_failure_retry",
+      targetType: "system",
+      targetId: id,
+      detail: { kind, status: "PENDING", attempts: null },
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
     }
 
     const result =
       kind === "webhook"
-        ? await retryWebhookFailureById(id)
-        : await retryBackchannelFailureById(id);
+        ? await retryWebhookFailureById(id).catch(async (error) => {
+            await finishAuditLog(auditId, "FAILURE", { kind, reason: "EXCEPTION" });
+            throw error;
+          })
+        : await retryBackchannelFailureById(id).catch(async (error) => {
+            await finishAuditLog(auditId, "FAILURE", { kind, reason: "EXCEPTION" });
+            throw error;
+          });
 
     if (result.status === "not_found") {
+      await finishAuditLog(auditId, "FAILURE", { kind, reason: "NOT_FOUND" });
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "记录不存在" } },
         { status: 404 }
       );
     }
 
-    await createAuditLog({
-      action: "webhook_failure_retry",
-      targetType: "system",
-      targetId: id,
-      detail: { kind, status: result.status, attempts: result.attempts ?? null },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      kind,
+      status: result.status,
+      attempts: result.attempts ?? null,
     });
 
     const messages: Record<string, string> = {
@@ -223,7 +260,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { status: result.status, message: messages[result.status], error: result.error ?? null },
+      data: {
+        status: result.status,
+        message: messages[result.status],
+        error: result.error ?? null,
+      },
     });
   } catch (error) {
     apiConsole.error("[AdminWebhookFailures] 操作失败:", error);

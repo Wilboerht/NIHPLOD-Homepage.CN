@@ -5,7 +5,7 @@
  *       "detail" 键不再被误当作地址脱敏、嵌套对象递归处理
  */
 import { describe, it, expect } from "vitest";
-import { maskAuditDetail } from "@/lib/audit-sanitize";
+import { maskAuditDetail, maskAuditText } from "@/lib/audit-sanitize";
 
 describe("maskAuditDetail", () => {
   it("手机号相关键脱敏", () => {
@@ -55,6 +55,27 @@ describe("maskAuditDetail", () => {
       list: [{ phone: "138****8000" }],
       nested: { birthday: "****-**-**" },
     });
+  });
+
+  it("邮箱相关键脱敏", () => {
+    const result = maskAuditDetail({
+      email: "admin@example.com",
+      actorEmail: "owner@example.com",
+    });
+    expect(result).toEqual({
+      email: "ad***@example.com",
+      actorEmail: "ow***@example.com",
+    });
+  });
+
+  it("自由文本中的手机号、邮箱、身份证号也脱敏", () => {
+    const result = maskAuditDetail({
+      note: "联系 13800138000 或 admin@example.com，证件 110101199001011234",
+    });
+    expect(result).toEqual({
+      note: "联系 138****8000 或 ad***@example.com，证件 **************",
+    });
+    expect(maskAuditText("13800138000")).toBe("138****8000");
   });
 
   it("null / undefined / 原始值原样返回", () => {

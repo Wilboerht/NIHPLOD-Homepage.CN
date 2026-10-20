@@ -110,6 +110,8 @@ export const GET = withAuth(async (request, admin) => {
           role: true,
           permissions: true,
           status: true,
+          totpEnabled: true,
+          totpResetRequired: true,
           createdAt: true,
           updatedAt: true,
         },

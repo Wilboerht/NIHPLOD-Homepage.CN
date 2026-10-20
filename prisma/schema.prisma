@@ -1012,6 +1012,7 @@ model Admin {
   deletedAt       DateTime?   // 软删除时间
   totpSecret      String?     // 加密后的 TOTP secret
   totpEnabled     Boolean     @default(false)
+  totpResetRequired Boolean   @default(false) // 恢复码已消费，必须重新绑定 TOTP
   totpBackupCodes String?     @db.Text // 加密存储的备用码 JSON 数组
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @default(now()) @updatedAt
@@ -1021,6 +1022,8 @@ model Admin {
   spentImportBatches SpentImportBatch[]
   adminSsoCodes AdminSsoCode[]
   adminStepUpGrants AdminStepUpGrant[]
+  totpRecoveryCodes AdminTotpRecovery[] @relation("AdminTotpRecoveryTarget")
+  createdTotpRecoveryCodes AdminTotpRecovery[] @relation("AdminTotpRecoveryCreator")
 
   @@index([status])
   @@index([deletedAt])
@@ -1072,6 +1075,32 @@ model AdminStepUpGrant {
   @@index([expiresAt])
 }
 
+/**
+ * 管理员 TOTP 一次性恢复码（owner 为丢失设备的管理员签发）
+ * - 只存 SHA-256 hash，明文只返回一次
+ * - 10 分钟有效、单次使用
+ * - 使用后清空目标 TOTP，并通过短时 setup cookie 强制重新绑定
+ */
+model AdminTotpRecovery {
+  id        String    @id @default(cuid())
+  adminId   String
+  createdBy String
+  tokenHash String    @unique
+  reason    String    @db.Text
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  admin   Admin @relation("AdminTotpRecoveryTarget", fields: [adminId], references: [id], onDelete: Cascade)
+  creator Admin @relation("AdminTotpRecoveryCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([adminId, expiresAt])
+  @@index([usedAt])
+  @@index([expiresAt])
+}
+
+// ============================================
+// Token 黑名单与限流实体（数据库存储）
 // ============================================
 // Token 黑名单（多实例共享）
 // ============================================

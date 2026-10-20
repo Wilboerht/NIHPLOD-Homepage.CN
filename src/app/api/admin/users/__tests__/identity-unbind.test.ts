@@ -47,6 +47,8 @@ vi.mock("@/lib/csrf", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -62,7 +64,7 @@ vi.mock("@/lib/validation", () => ({
 import { DELETE } from "../[id]/identities/[identityId]/route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 const ADMIN = { ...OWNER, role: "admin" };
@@ -125,12 +127,17 @@ describe("DELETE /api/admin/users/[id]/identities/[identityId]", () => {
       where: { id: "user-1" },
       data: { wechatOpenId: null, wechatUnionId: null },
     });
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "user_identity_unbind",
-        detail: expect.objectContaining({
-          clearedLegacy: { wechatOpenId: true, wechatUnionId: true },
-        }),
+        detail: expect.objectContaining({ provider: "wechat_open" }),
+      })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({
+        clearedLegacy: { wechatOpenId: true, wechatUnionId: true },
       })
     );
   });

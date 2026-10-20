@@ -11,7 +11,7 @@ import prisma from "@/lib/prisma";
 import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { z } from "zod";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { revokeAllAdminStepUpGrants } from "@/lib/admin-step-up";
 
@@ -74,27 +74,51 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     if (!(await consumeAccessTokenOnce(replayKey))) {
       apiConsole.warn("[TOTP Verify Setup] 检测到 TOTP 重放或存储不可用:", admin.id);
       return NextResponse.json(
-        { success: false, error: { code: "TOTP_INVALID", message: "验证码已被使用，请等待刷新后重试" } },
+        {
+          success: false,
+          error: { code: "TOTP_INVALID", message: "验证码已被使用，请等待刷新后重试" },
+        },
         { status: 400 }
       );
     }
 
-    await prisma.admin.update({
-      where: { id: admin.id },
-      data: { totpEnabled: true },
-    });
-    await revokeAllAdminStepUpGrants(admin.id).catch((err) =>
-      apiConsole.warn("[TOTP Verify Setup] step-up grant 清理失败:", err)
-    );
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "update_admin",
       targetType: "admin",
       targetId: admin.id,
       detail: { action: "totp_enabled" },
+      actorType: "ADMIN",
+      actorEmail: adminPayload.email,
+      actorName: adminPayload.name,
+      actorRole: adminPayload.role,
+      authMethod: "totp",
       adminId: admin.id,
       request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    await prisma.admin
+      .update({
+        where: { id: admin.id },
+        data: { totpEnabled: true },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", { action: "totp_enabled" });
+        throw error;
+      });
+    await revokeAllAdminStepUpGrants(admin.id).catch((err) =>
+      apiConsole.warn("[TOTP Verify Setup] step-up grant 清理失败:", err)
+    );
+
+    await finishAuditLog(auditId, "SUCCESS", { action: "totp_enabled" });
 
     return NextResponse.json({ success: true, data: { message: "二次验证已启用" } });
   } catch (error) {

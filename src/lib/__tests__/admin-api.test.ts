@@ -148,6 +148,7 @@ vi.mock("@/lib/csrf", () => ({
 // Mock audit
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  createAuditLogStrict: vi.fn().mockResolvedValue(undefined),
   beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
   finishAuditLog: vi.fn().mockResolvedValue(true),
   listAuditLogs: vi.fn().mockResolvedValue({
@@ -303,7 +304,13 @@ function createRequest(
 
 /** 设置管理员认证 mock（包括 token cookie） */
 function mockAdminAuth(
-  admin: { id: string; email: string; name: string; role: string } | null,
+  admin: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    permissionOverrides?: string[];
+  } | null,
   req?: NextRequest
 ) {
   if (admin) {
@@ -319,6 +326,7 @@ function mockAdminAuth(
       email: admin.email,
       name: admin.name,
       role: admin.role,
+      permissions: admin.permissionOverrides ?? [],
       status: "ACTIVE",
       deletedAt: null,
     });
@@ -930,14 +938,14 @@ describe("管理端 API 集成测试", () => {
       mockPrisma.user.findUnique.mockResolvedValue({ phone: "13800138000" });
 
       const { POST } = await import("@/app/api/admin/users/[id]/route");
-      const { createAuditLog } = await import("@/lib/audit");
+      const { createAuditLogStrict } = await import("@/lib/audit");
       const res = await POST(req, { params: Promise.resolve({ id: "user-1" }) });
       const data = await res.json();
 
       expect(res.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data.phone).toBe("13800138000");
-      expect(createAuditLog).toHaveBeenCalledWith(
+      expect(createAuditLogStrict).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "user_detail_sensitive_view",
           targetType: "user",
@@ -959,6 +967,42 @@ describe("管理端 API 集成测试", () => {
       });
       const res = await PATCH(req, { params: Promise.resolve({ id: "user-1" }) });
       expect(res.status).toBe(403);
+    });
+
+    it("无 users:sensitive:read 时 PATCH 响应手机号应脱敏", async () => {
+      const req = createRequest("/api/admin/users/user-1", {
+        method: "PATCH",
+        body: { status: "BANNED" },
+      });
+      mockAdminAuth(
+        {
+          id: "admin-2",
+          email: "ops@test.com",
+          name: "Ops",
+          role: "ops",
+          permissionOverrides: ["users:write"],
+        },
+        req
+      );
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        status: "ACTIVE",
+      });
+      mockPrisma.user.update.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        status: "BANNED",
+      });
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.oAuthSession.findMany.mockResolvedValue([]);
+
+      const { PATCH } = await import("@/app/api/admin/users/[id]/route");
+      const res = await PATCH(req, { params: Promise.resolve({ id: "user-1" }) });
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.data.user.phone).toBe("138****8000");
     });
 
     it("封禁用户应级联撤销 Token 并写入 SSO 审计事件", async () => {

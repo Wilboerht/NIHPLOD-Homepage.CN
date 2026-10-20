@@ -21,8 +21,8 @@ vi.mock("@/lib/prisma", () => {
 });
 
 vi.mock("@/lib/auth", () => ({
-  withAuth: (handler: (...args: unknown[]) => unknown) =>
-    (request: unknown, context: unknown) => handler(request, context),
+  withAuth: (handler: (...args: unknown[]) => unknown) => (request: unknown, context: unknown) =>
+    handler(request, context),
   checkAdminRateLimit: vi.fn().mockResolvedValue(null),
 }));
 
@@ -50,6 +50,8 @@ vi.mock("bcryptjs", () => {
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/admin-totp", () => ({
@@ -176,7 +178,10 @@ describe("PUT /api/admin/me 自助改密限次", () => {
     mockCompare.mockResolvedValue(true);
     mockRequireTotp.mockResolvedValue(
       NextResponse.json(
-        { success: false, error: { code: "TOTP_REQUIRED", message: "请输入二次验证码以确认该操作" } },
+        {
+          success: false,
+          error: { code: "TOTP_REQUIRED", message: "请输入二次验证码以确认该操作" },
+        },
         { status: 400 }
       )
     );

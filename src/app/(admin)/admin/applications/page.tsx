@@ -288,7 +288,7 @@ function AdminApplicationsContent() {
 
   // 下载简历
   const downloadResume = (application: Application) => {
-    window.open(application.resumePath, "_blank");
+    window.open(`/api/admin/applications/${application.id}/resume`, "_blank", "noopener");
   };
 
   // 打开分类夹编辑弹窗

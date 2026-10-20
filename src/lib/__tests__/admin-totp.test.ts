@@ -15,7 +15,7 @@ vi.mock("@/lib/prisma", () => {
   const prisma = {
     admin: {
       findUnique: vi.fn(),
-      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
   };
   return { prisma, default: prisma };
@@ -35,10 +35,7 @@ vi.mock("@/lib/admin-step-up", () => ({
   verifyAdminStepUpGrant: vi.fn(),
 }));
 
-import {
-  isMoneyOperationTotpEnforced,
-  requireMoneyOperationTotp,
-} from "@/lib/admin-totp";
+import { isMoneyOperationTotpEnforced, requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { prisma } from "@/lib/prisma";
 import { verifyTOTP, verifyBackupCode } from "@/lib/totp";
 import { verifyAdminStepUpGrant } from "@/lib/admin-step-up";
@@ -135,8 +132,8 @@ describe("requireMoneyOperationTotp", () => {
     const result = await requireMoneyOperationTotp("admin-1", "backup-code");
 
     expect(result).toBeNull();
-    expect(prisma.admin.update).toHaveBeenCalledWith({
-      where: { id: "admin-1" },
+    expect(prisma.admin.updateMany).toHaveBeenCalledWith({
+      where: { id: "admin-1", totpBackupCodes: "[]" },
       data: { totpBackupCodes: JSON.stringify(["hashed-2"]) },
     });
   });
@@ -146,7 +143,7 @@ describe("requireMoneyOperationTotp", () => {
     (verifyBackupCode as ReturnType<typeof vi.fn>).mockReturnValue({
       remainingCodes: ["hashed-2"],
     });
-    (prisma.admin.update as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+    (prisma.admin.updateMany as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("db down")
     );
 

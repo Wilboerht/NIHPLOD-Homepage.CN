@@ -83,6 +83,8 @@ vi.mock("@/lib/csrf", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/sso-audit", () => ({
@@ -263,7 +265,9 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(res.status).toBe(200);
       const userSearchCall = prismaMock.user.findMany.mock.calls[0][0] as { take?: number };
       expect(userSearchCall.take).toBe(500);
-      const clientSearchCall = prismaMock.oAuthClient.findMany.mock.calls[0][0] as { take?: number };
+      const clientSearchCall = prismaMock.oAuthClient.findMany.mock.calls[0][0] as {
+        take?: number;
+      };
       expect(clientSearchCall.take).toBe(500);
       expect(data.data.searchTruncated).toBe(true);
     });
@@ -297,7 +301,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       mockValidateCSRFToken.mockReturnValue(false);
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
-        createRequest("/api/admin/oauth/sessions", { method: "POST", body: { sessionId: "session-1" } })
+        createRequest("/api/admin/oauth/sessions", {
+          method: "POST",
+          body: { sessionId: "session-1" },
+        })
       );
       expect(res.status).toBe(403);
     });
@@ -306,7 +313,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       mockVerifyAuth.mockResolvedValue({ id: "a2", email: "a@t.com", name: "A", role: "admin" });
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
-        createRequest("/api/admin/oauth/sessions", { method: "POST", body: { sessionId: "session-1" } })
+        createRequest("/api/admin/oauth/sessions", {
+          method: "POST",
+          body: { sessionId: "session-1" },
+        })
       );
       expect(res.status).toBe(403);
     });
@@ -327,7 +337,9 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
 
     it("两种模式字段都缺失应返回 400", async () => {
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
-      const res = await POST(createRequest("/api/admin/oauth/sessions", { method: "POST", body: {} }));
+      const res = await POST(
+        createRequest("/api/admin/oauth/sessions", { method: "POST", body: {} })
+      );
       expect(res.status).toBe(400);
     });
 
@@ -347,7 +359,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       prismaMock.oAuthSession.findUnique.mockResolvedValue(null);
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
-        createRequest("/api/admin/oauth/sessions", { method: "POST", body: { sessionId: "missing" } })
+        createRequest("/api/admin/oauth/sessions", {
+          method: "POST",
+          body: { sessionId: "missing" },
+        })
       );
       expect(res.status).toBe(404);
       expect((await res.json()).error.code).toBe("NOT_FOUND");
@@ -359,7 +374,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       );
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
-        createRequest("/api/admin/oauth/sessions", { method: "POST", body: { sessionId: "session-1" } })
+        createRequest("/api/admin/oauth/sessions", {
+          method: "POST",
+          body: { sessionId: "session-1" },
+        })
       );
       expect(res.status).toBe(404);
       expect(prismaMock.oAuthSession.update).not.toHaveBeenCalled();
@@ -376,7 +394,10 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
 
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
-        createRequest("/api/admin/oauth/sessions", { method: "POST", body: { sessionId: "session-1" } })
+        createRequest("/api/admin/oauth/sessions", {
+          method: "POST",
+          body: { sessionId: "session-1" },
+        })
       );
       const data = await res.json();
 

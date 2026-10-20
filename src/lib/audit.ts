@@ -63,6 +63,7 @@ export type AuditAction =
   | "user_detail_view"
   | "user_detail_sensitive_view"
   | "application_detail_view"
+  | "resume_download"
   | "step_up_granted"
   | "user_birthday_update"
   | "user_password_reset"
@@ -95,6 +96,8 @@ export type AuditAction =
   | "user_set_password"
   | "admin_login"
   | "admin_logout"
+  | "admin_totp_recovery_issued"
+  | "admin_totp_recovery_used"
   | "refresh_token_reuse_detected"
   | "sso_audit_export"
   | "user_export"
@@ -185,6 +188,7 @@ export const AUDIT_ACTIONS = [
   "user_detail_view",
   "user_detail_sensitive_view",
   "application_detail_view",
+  "resume_download",
   "step_up_granted",
   "user_birthday_update",
   "user_password_reset",
@@ -218,6 +222,8 @@ export const AUDIT_ACTIONS = [
   "user_phone_changed",
   "admin_login",
   "admin_logout",
+  "admin_totp_recovery_issued",
+  "admin_totp_recovery_used",
   "refresh_token_reuse_detected",
   "sso_audit_export",
   "user_export",

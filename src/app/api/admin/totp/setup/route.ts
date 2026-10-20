@@ -18,7 +18,7 @@ import {
   hashBackupCode,
 } from "@/lib/totp";
 import QRCode from "qrcode";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -98,22 +98,43 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     // 这里直接更新到数据库但不设置 totpEnabled=true
     // 只有在 verify-setup 成功后才会真正启用
     // 注意：如果管理员放弃完成 setup，secret 会留在数据库中但不启用
-    await prisma.admin.update({
-      where: { id: admin.id },
-      data: {
-        totpSecret: encryptedSecret,
-        totpBackupCodes: JSON.stringify(hashedBackupCodes),
-      },
-    });
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "update_admin",
       targetType: "admin",
       targetId: admin.id,
       detail: { action: "totp_setup_initiated" },
+      actorType: "ADMIN",
+      actorEmail: adminPayload.email,
+      actorName: adminPayload.name,
+      actorRole: adminPayload.role,
+      authMethod: "password",
       adminId: admin.id,
       request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    await prisma.admin
+      .update({
+        where: { id: admin.id },
+        data: {
+          totpSecret: encryptedSecret,
+          totpBackupCodes: JSON.stringify(hashedBackupCodes),
+        },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", { action: "totp_setup_initiated" });
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", { action: "totp_setup_initiated" });
 
     const response = NextResponse.json({
       success: true,

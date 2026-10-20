@@ -30,6 +30,7 @@ import { prisma } from "@/lib/prisma";
 import { applyExternalSpentSync } from "@/lib/points";
 import {
   parseImportWorkbook,
+  parseImportWorkbookIsolated,
   previewImportRows,
   executeImportBatch,
   undoImportBatch,
@@ -120,7 +121,10 @@ describe("parseImportWorkbook", () => {
   });
 
   it("表头错误：返回 INVALID_HEADER", () => {
-    const buffer = buildWorkbook([["姓名", "金额"], ["13800138000", 100]]);
+    const buffer = buildWorkbook([
+      ["姓名", "金额"],
+      ["13800138000", 100],
+    ]);
     const result = parseImportWorkbook(buffer, "import.xlsx");
     expect(result).toMatchObject({ ok: false, code: "INVALID_HEADER" });
   });
@@ -138,7 +142,12 @@ describe("parseImportWorkbook", () => {
     expect(result.rows[0].error).toContain("金额必须为非零整数");
     expect(result.rows[0].error).toContain("消费日期格式不正确");
     expect(result.rows[0].error).toContain("渠道不正确");
-    expect(result.rows[1]).toMatchObject({ phone: "13800138000", amount: -200, channel: "MINIPROGRAM", error: null });
+    expect(result.rows[1]).toMatchObject({
+      phone: "13800138000",
+      amount: -200,
+      channel: "MINIPROGRAM",
+      error: null,
+    });
   });
 
   it("金额为零视为无效", () => {
@@ -161,7 +170,11 @@ describe("parseImportWorkbook", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]).toMatchObject({ phone: "13800138000", amount: 100, purchasedAt: "2026-01-15" });
+    expect(result.rows[0]).toMatchObject({
+      phone: "13800138000",
+      amount: 100,
+      purchasedAt: "2026-01-15",
+    });
   });
 
   it("虚高 !ref（整列格式化）无越界真实单元格：正常解析", () => {
@@ -189,6 +202,16 @@ describe("parseImportWorkbook", () => {
     const result = parseImportWorkbook(buffer, "import.xlsx");
     expect(result).toMatchObject({ ok: false, code: "TOO_MANY_ROWS" });
   });
+
+  it("worker 隔离解析正常 xlsx", async () => {
+    const buffer = buildWorkbook([HEADERS, ["13800138000", 100, "2026-01-15"]]);
+    const result = await parseImportWorkbookIsolated(buffer, "import.xlsx");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].phone).toBe("13800138000");
+  }, 20_000);
 });
 
 describe("previewImportRows", () => {
@@ -254,10 +277,12 @@ describe("executeImportBatch", () => {
     vi.clearAllMocks();
     mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000" }]);
     mockBatchFindFirst.mockResolvedValue(null);
-    mockBatchCreate.mockImplementation((args: { data: { rows: { create: Record<string, unknown>[] } } }) => ({
-      id: "batch-1",
-      rows: args.data.rows.create.map((row, index) => ({ ...row, id: `row-${index + 1}` })),
-    }));
+    mockBatchCreate.mockImplementation(
+      (args: { data: { rows: { create: Record<string, unknown>[] } } }) => ({
+        id: "batch-1",
+        rows: args.data.rows.create.map((row, index) => ({ ...row, id: `row-${index + 1}` })),
+      })
+    );
     mockRowUpdate.mockResolvedValue({});
     mockBatchUpdate.mockResolvedValue({});
     mockSyncRecordUpdateMany.mockResolvedValue({ count: 1 });

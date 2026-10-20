@@ -28,6 +28,8 @@ vi.mock("@/lib/ratelimit", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -37,7 +39,7 @@ vi.mock("@/lib/logger", () => ({
 import { GET } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 
@@ -104,7 +106,7 @@ describe("GET /api/admin/users", () => {
     expect(text).toContain("138****8000");
     expect(text).not.toContain("13800138000");
 
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "user_export",
         targetType: "user",
@@ -116,6 +118,7 @@ describe("GET /api/admin/users", () => {
         },
       })
     );
+    expect(finishAuditLog).toHaveBeenCalledWith("audit-1", "SUCCESS", expect.any(Object));
   });
 
   it("非导出请求不写导出审计日志", async () => {

@@ -430,7 +430,11 @@ if (exchangeTtl) {
       fix: "改为 30s–600s 范围内的值，或删除该变量使用默认 2m",
     });
   } else {
-    check({ status: "PASS", name: "WECHAT_EXCHANGE_SUCCESS_TTL", message: `已配置 ${exchangeTtl}` });
+    check({
+      status: "PASS",
+      name: "WECHAT_EXCHANGE_SUCCESS_TTL",
+      message: `已配置 ${exchangeTtl}`,
+    });
   }
 } else {
   check({ status: "PASS", name: "WECHAT_EXCHANGE_SUCCESS_TTL", message: "未配置（默认 2m）" });
@@ -534,9 +538,9 @@ if (internalKeysRaw) {
           // previousSecrets 为可选的轮换宽限字段（上一代 secret 数组），存在时必须是字符串数组
           ((item as { previousSecrets?: unknown }).previousSecrets === undefined ||
             (Array.isArray((item as { previousSecrets?: unknown }).previousSecrets) &&
-              ((item as { previousSecrets: unknown[] }).previousSecrets.every(
+              (item as { previousSecrets: unknown[] }).previousSecrets.every(
                 (s) => typeof s === "string"
-              ))))
+              )))
       );
     if (!valid) {
       check({
@@ -547,7 +551,11 @@ if (internalKeysRaw) {
         fix: "修正 INTERNAL_API_KEYS（参考 .env.example），错误格式会在运行时被静默忽略",
       });
     } else {
-      check({ status: "PASS", name: "INTERNAL_API_KEYS", message: `已配置 ${parsed.length} 个密钥` });
+      check({
+        status: "PASS",
+        name: "INTERNAL_API_KEYS",
+        message: `已配置 ${parsed.length} 个密钥`,
+      });
     }
   } catch {
     check({
@@ -558,7 +566,11 @@ if (internalKeysRaw) {
     });
   }
 } else {
-  check({ status: "PASS", name: "INTERNAL_API_KEYS", message: "未配置（使用旧版单一密钥或未启用）" });
+  check({
+    status: "PASS",
+    name: "INTERNAL_API_KEYS",
+    message: "未配置（使用旧版单一密钥或未启用）",
+  });
 }
 
 // 微信分渠道凭证：配置了 AppID 就必须有对应 Secret（否则该渠道授权失败）；
@@ -635,10 +647,7 @@ if (!mpClientsRaw || mpClientsRaw.trim() === "") {
 }
 
 // id_token_hint 验签公钥：配置了私钥（§2）但缺公钥时，需要验签的端点会失败
-if (
-  process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY &&
-  !process.env.JWT_LOGOUT_TOKEN_PUBLIC_KEY
-) {
+if (process.env.JWT_LOGOUT_TOKEN_PRIVATE_KEY && !process.env.JWT_LOGOUT_TOKEN_PUBLIC_KEY) {
   check({
     status: "FAIL",
     name: "JWT_LOGOUT_TOKEN_PUBLIC_KEY",
@@ -673,7 +682,10 @@ if (totpKey && totpKey.length < MIN_SECRET_LENGTH) {
 // 状态变更 webhook 地址格式（逗号分隔，必须 https）
 const webhookUrlsRaw = process.env.SSO_STATUS_CHANGE_WEBHOOK_URLS;
 if (webhookUrlsRaw) {
-  const urls = webhookUrlsRaw.split(",").map((s) => s.trim()).filter(Boolean);
+  const urls = webhookUrlsRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const invalid = urls.filter((u) => {
     try {
       return new URL(u).protocol !== "https:";
@@ -689,7 +701,11 @@ if (webhookUrlsRaw) {
       fix: "配置为逗号分隔的 https:// 地址列表",
     });
   } else {
-    check({ status: "PASS", name: "SSO_STATUS_CHANGE_WEBHOOK_URLS", message: `已配置 ${urls.length} 个 https 地址` });
+    check({
+      status: "PASS",
+      name: "SSO_STATUS_CHANGE_WEBHOOK_URLS",
+      message: `已配置 ${urls.length} 个 https 地址`,
+    });
   }
 } else {
   check({ status: "PASS", name: "SSO_STATUS_CHANGE_WEBHOOK_URLS", message: "未启用" });
@@ -770,28 +786,33 @@ if (advisorRedirect) {
   }
 }
 
-const advisorGrace = process.env.ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL;
-if (advisorGrace) {
-  const parsed = new Date(advisorGrace);
-  if (Number.isNaN(parsed.getTime())) {
-    check({
-      status: "FAIL",
-      name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
-      message: `无法解析日期：${advisorGrace}`,
-      fix: "使用 ISO 8601，如 2027-11-01T00:00:00+08:00",
-    });
-  } else {
-    check({
-      status: "PASS",
-      name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
-      message: `宽限至 ${parsed.toISOString()}（到期后强制 TOTP）`,
-    });
-  }
+const advisorSsoEnabled = process.env.ADVISOR_ADMIN_SSO_ENABLED;
+if (advisorSsoEnabled === "true") {
+  check({
+    status: "PASS",
+    name: "ADVISOR_ADMIN_SSO_ENABLED",
+    message: "已显式启用子站管理员 SSO",
+  });
+} else {
+  check({
+    status: "PASS",
+    name: "ADVISOR_ADMIN_SSO_ENABLED",
+    message: "未显式启用（默认关闭）",
+  });
+}
+
+if (process.env.ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL) {
+  check({
+    status: "FAIL",
+    name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
+    message: "TOTP 宽限期已移除，该变量不再生效",
+    fix: "从部署环境中删除 ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL；所有子站管理员必须先启用 TOTP",
+  });
 } else {
   check({
     status: "PASS",
     name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
-    message: "未配置（立即强制 TOTP）",
+    message: "未配置（强制 TOTP，无宽限期）",
   });
 }
 

@@ -10,7 +10,7 @@ import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { createAuditLogStrict } from "@/lib/audit";
 import {
-  parseImportWorkbook,
+  parseImportWorkbookIsolated,
   previewImportRows,
   signImportPhoneToken,
   IMPORT_MAX_FILE_SIZE,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const fileName = (file.name || "import.xlsx").replace(/\\/g, "/").replace(/^.*[\\/]/, "");
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = parseImportWorkbook(buffer, fileName);
+    const parsed = await parseImportWorkbookIsolated(buffer, fileName);
     if (!parsed.ok) {
       const statusMap: Record<string, number> = {
         INVALID_FILE: 400,

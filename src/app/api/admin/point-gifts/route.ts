@@ -8,7 +8,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 
@@ -23,7 +23,13 @@ const updateSchema = z.object({
   productId: z.string().cuid(),
   pointRedeemable: z.boolean(),
   // 兑换库存：null = 不限量；不传则保持不变
-  redeemStock: z.number().int("库存必须为整数").min(0, "库存不能为负数").max(999999).nullable().optional(),
+  redeemStock: z
+    .number()
+    .int("库存必须为整数")
+    .min(0, "库存不能为负数")
+    .max(999999)
+    .nullable()
+    .optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -66,9 +72,7 @@ export async function GET(request: NextRequest) {
     const where = {
       ...(redeemable === "true" ? { pointRedeemable: true } : {}),
       ...(redeemable === "false" ? { pointRedeemable: false } : {}),
-      ...(search
-        ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }] }
-        : {}),
+      ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }] } : {}),
     };
 
     const [products, total] = await Promise.all([
@@ -176,26 +180,46 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const product = await prisma.product.update({
-      where: { id: productId },
-      data: {
-        pointRedeemable,
-        ...(redeemStock !== undefined ? { redeemStock } : {}),
-      },
-      select: { id: true, name: true, pointRedeemable: true, redeemStock: true },
-    });
-
-    await createAuditLog({
+    const auditDetail = {
+      productName: existing.name,
+      pointRedeemable,
+      ...(redeemStock !== undefined ? { redeemStock } : {}),
+    };
+    const auditId = await beginAuditLog({
       action: "point_gift_update",
       targetType: "point_gift",
       targetId: productId,
-      detail: {
-        productName: product.name,
-        pointRedeemable,
-        ...(redeemStock !== undefined ? { redeemStock } : {}),
-      },
+      detail: auditDetail,
       adminId: admin.id,
       request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const product = await prisma.product
+      .update({
+        where: { id: productId },
+        data: {
+          pointRedeemable,
+          ...(redeemStock !== undefined ? { redeemStock } : {}),
+        },
+        select: { id: true, name: true, pointRedeemable: true, redeemStock: true },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", auditDetail);
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", {
+      ...auditDetail,
+      productName: product.name,
     });
 
     return NextResponse.json({ success: true, data: { product } });

@@ -31,7 +31,8 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -50,7 +51,7 @@ vi.mock("@/lib/cron-tasks", () => ({
 import { GET, POST } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { runCronTask } from "@/lib/cron-tasks";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
@@ -127,12 +128,17 @@ describe("POST /api/admin/cron-tasks（手动触发）", () => {
 
     expect(res.status).toBe(200);
     expect(runCronTask).toHaveBeenCalledWith("Expire Points", "manual", "admin-1");
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "run_cron_task",
         targetType: "system",
         targetId: "Expire Points",
       })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ success: true })
     );
   });
 
@@ -142,11 +148,10 @@ describe("POST /api/admin/cron-tasks（手动触发）", () => {
     const res = await POST(createRequest("POST", { taskName: "Expire Points" }));
 
     expect(res.status).toBe(500);
-    expect(createAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "run_cron_task",
-        detail: expect.objectContaining({ success: false, error: "boom" }),
-      })
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "FAILURE",
+      expect.objectContaining({ success: false, error: "boom" })
     );
   });
 });

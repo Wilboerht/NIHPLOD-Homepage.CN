@@ -118,13 +118,17 @@ export default function LoginPage() {
       setIsLoading(true);
 
       try {
-        await apiPost("/api/admin/login", {
+        const data = await apiPost<{ totpSetupRequired?: boolean }>("/api/admin/login", {
           email,
           password,
           ...(totpCode ? { totpCode } : {}),
         });
         submittedRef.current = true;
-        // 使用 window.location.href 而不是 router.push，确保是 top-level 导航，
+        if (data.totpSetupRequired) {
+          window.location.href = "/admin-login/totp-recovery";
+          return;
+        }
+        // 使用 window.location.href 而不用 router.push，确保是 top-level 导航；
         // 浏览器会带上 SameSite=Strict 的 admin_token Cookie，避免 middleware 拦截。
         window.location.href = redirectTo;
       } catch (err) {
@@ -175,7 +179,7 @@ export default function LoginPage() {
   const handleTOTPChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       // 允许字母数字：TOTP 为 6 位数字，备用码为 16 位 hex
-      const value = e.target.value.replace(/[^0-9A-Za-z]/g, "").slice(0, 20);
+      const value = e.target.value.replace(/[^0-9A-Za-z]/g, "").slice(0, 64);
       setTotpCode(value);
       if (fieldErrors.totpCode) {
         setFieldErrors((prev) => ({ ...prev, totpCode: undefined }));
@@ -252,7 +256,7 @@ export default function LoginPage() {
               <Input
                 id="totpCode"
                 ref={totpInputRef}
-                label="二次验证码"
+                label="二次验证码 / 恢复码"
                 type="text"
                 inputMode="text"
                 value={totpCode}
@@ -260,8 +264,8 @@ export default function LoginPage() {
                 required
                 autoComplete="one-time-code"
                 disabled={isLoading}
-                maxLength={20}
-                placeholder="6 位动态验证码或备用码"
+                maxLength={64}
+                placeholder="6 位动态验证码、备用码或恢复码"
                 error={fieldErrors.totpCode}
                 className="tracking-[0.3em] placeholder:tracking-normal"
               />
