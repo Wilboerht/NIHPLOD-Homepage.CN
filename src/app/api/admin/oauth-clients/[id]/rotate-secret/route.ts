@@ -12,7 +12,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { cacheOldSecret } from "@/lib/oauth-client";
@@ -83,19 +83,48 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // 生成新 secret（64 字节随机 base64url，~86 字符，远优于 UUID 格式）
-    const newPlainSecret = randomBytes(64).toString("base64url");
-    const bcrypt = await import("bcryptjs");
-    const newHash = await bcrypt.hash(newPlainSecret, 12);
-
-    // 缓存旧 hash（5 分钟过渡期）
-    cacheOldSecret(client.clientId, client.clientSecret);
-
-    // 写入新 hash
-    await prisma.oAuthClient.update({
-      where: { id },
-      data: { clientSecret: newHash },
+    const auditId = await beginAuditLog({
+      action: "oauth_client_rotate_secret",
+      targetType: "oauth_client",
+      targetId: client.id,
+      detail: { clientId: client.clientId, name: client.name },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let newPlainSecret: string;
+    try {
+      // 生成新 secret（64 字节随机 base64url，~86 字符，远优于 UUID 格式）
+      newPlainSecret = randomBytes(64).toString("base64url");
+      const bcrypt = await import("bcryptjs");
+      const newHash = await bcrypt.hash(newPlainSecret, 12);
+
+      // 缓存旧 hash（5 分钟过渡期）
+      cacheOldSecret(client.clientId, client.clientSecret);
+
+      // 写入新 hash
+      await prisma.oAuthClient.update({
+        where: { id },
+        data: { clientSecret: newHash },
+      });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "ROTATE_FAILED" });
+      throw error;
+    }
 
     // SSO 审计：client 生命周期变更（合规敏感，同步等待写入）
     await recordSsoEvent({
@@ -107,13 +136,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       detail: { action: "client_secret_rotated" },
     });
 
-    await createAuditLog({
-      action: "oauth_client_rotate_secret",
-      targetType: "oauth_client",
-      targetId: client.id,
-      detail: { clientId: client.clientId, name: client.name },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      clientId: client.clientId,
+      name: client.name,
     });
 
     return NextResponse.json(

@@ -34,12 +34,18 @@ export async function POST(request: NextRequest) {
     const token = getTokenFromRequest(request);
     let adminId: string | undefined;
     let adminEmail: string | undefined;
+    let adminName: string | undefined;
+    let adminRole: string | undefined;
+    let adminJti: string | undefined;
 
     if (token) {
       const payload = await verifyToken(token);
       if (payload) {
         adminId = payload.id;
         adminEmail = payload.email;
+        adminName = payload.name;
+        adminRole = payload.role;
+        adminJti = payload.jti;
         if (payload.jti) {
           await revokeAccessToken(
             payload.jti,
@@ -53,14 +59,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (adminId) {
-      createAuditLog({
-        action: "logout",
-        targetType: "system",
+      await createAuditLog({
+        action: "admin_logout",
+        targetType: "admin",
         targetId: adminId,
+        actorType: "ADMIN",
+        actorEmail: adminEmail,
+        actorName: adminName,
+        actorRole: adminRole,
+        authMethod: "session",
+        sessionJti: adminJti,
         detail: { email: adminEmail },
         adminId,
         request,
-      }).catch(() => {});
+      });
     }
 
     const response = NextResponse.json({

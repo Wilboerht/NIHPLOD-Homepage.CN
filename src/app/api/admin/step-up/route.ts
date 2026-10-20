@@ -26,6 +26,20 @@ export const POST = withAuth(async (request, admin) => {
   try {
     const limiter = await rateLimit(`step-up:${admin.id}`, "admin-totp");
     if (!limiter.success) {
+      await createAuditLog({
+        action: "step_up_failed",
+        targetType: "admin",
+        targetId: admin.id,
+        outcome: "FAILURE",
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "totp",
+        adminId: admin.id,
+        request,
+        detail: { reason: "rate_limited" },
+      });
       return NextResponse.json(
         { success: false, error: { code: "TOTP_RATE_LIMITED", message: "验证尝试过于频繁，请稍后再试" } },
         { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000))) } }
@@ -34,6 +48,20 @@ export const POST = withAuth(async (request, admin) => {
 
     const parsed = stepUpSchema.safeParse(await request.json());
     if (!parsed.success) {
+      await createAuditLog({
+        action: "step_up_failed",
+        targetType: "admin",
+        targetId: admin.id,
+        outcome: "FAILURE",
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "totp",
+        adminId: admin.id,
+        request,
+        detail: { reason: "invalid_params" },
+      });
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "验证码格式错误" } },
         { status: 400 }
@@ -41,7 +69,23 @@ export const POST = withAuth(async (request, admin) => {
     }
 
     const totpFailure = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode);
-    if (totpFailure) return totpFailure;
+    if (totpFailure) {
+      await createAuditLog({
+        action: "step_up_failed",
+        targetType: "admin",
+        targetId: admin.id,
+        outcome: "FAILURE",
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "totp",
+        adminId: admin.id,
+        request,
+        detail: { reason: "totp_rejected" },
+      });
+      return totpFailure;
+    }
 
     const grant = await issueAdminStepUpGrant(admin);
     const response = NextResponse.json(
@@ -60,6 +104,12 @@ export const POST = withAuth(async (request, admin) => {
       action: "step_up_granted",
       targetType: "admin",
       targetId: admin.id,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "totp",
+      sessionJti: admin.jti,
       detail: { expiresAt: grant.expiresAt.toISOString() },
       adminId: admin.id,
       request,

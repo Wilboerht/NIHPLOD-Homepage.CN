@@ -35,7 +35,8 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/account-deletion", () => ({
@@ -57,7 +58,7 @@ vi.mock("@/lib/logger", () => ({
 import { GET, POST } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { executeAccountDeletion } from "@/lib/account-deletion";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
@@ -206,14 +207,19 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
     expect(body.data.status).toBe("completed");
 
     expect(executeAccountDeletion).toHaveBeenCalledWith(failedItem.id);
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "account_deletion_retry",
         targetType: "user",
         targetId: "user-1",
         adminId: "admin-1",
-        detail: expect.objectContaining({ requestId: failedItem.id, result: "completed" }),
+        detail: expect.objectContaining({ requestId: failedItem.id }),
       })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ requestId: failedItem.id, result: "completed" })
     );
   });
 

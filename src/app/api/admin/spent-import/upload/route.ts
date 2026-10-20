@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { createAuditLogStrict } from "@/lib/audit";
 import {
   parseImportWorkbook,
   previewImportRows,
@@ -85,6 +86,26 @@ export async function POST(request: NextRequest) {
     }
 
     const preview = await previewImportRows(parsed.rows);
+
+    await createAuditLogStrict({
+      action: "spent_import_preview",
+      targetType: "spent_import",
+      targetLabel: fileName,
+      detail: {
+        fileName,
+        fileHash: parsed.fileHash,
+        totalRows: parsed.rows.length,
+        okCount: preview.okCount,
+        errorCount: preview.errorCount,
+      },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json({
       success: true,

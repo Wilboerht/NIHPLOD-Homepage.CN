@@ -36,7 +36,8 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -72,7 +73,7 @@ vi.mock("@/lib/sms", () => ({
 import { POST } from "../[id]/reset-password/route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { updateUserPassword } from "@/lib/password-policy";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
@@ -138,12 +139,17 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
       expect.objectContaining({ where: { userId: "user-1", revokedAt: null } })
     );
     expect(blacklistUserTokens).toHaveBeenCalledWith("user-1", expect.any(String));
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "user_password_reset",
         targetType: "user",
         targetId: "user-1",
       })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ revokedOAuthSessions: expect.any(Number) })
     );
   });
 

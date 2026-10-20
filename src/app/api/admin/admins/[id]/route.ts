@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -35,14 +35,43 @@ export const DELETE = withAuth(
         return invalidIdResponse();
       }
 
-      // 委派边界 + owner 保护 + 最后 owner 原子保护统一在 deleteAdminsSafely 内完成
-      const result = await deleteAdminsSafely({
-        actorId: admin.id,
+      const auditId = await beginAuditLog({
+        action: "delete_admin",
+        targetType: "admin",
+        targetId: id,
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
         actorRole: admin.role,
-        actorOverrides: admin.permissionOverrides ?? [],
-        targetIds: [id],
+        authMethod: "session",
+        adminId: admin.id,
+        request,
       });
+      if (!auditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+
+      // 委派边界 + owner 保护 + 最后 owner 原子保护统一在 deleteAdminsSafely 内完成
+      let result: Awaited<ReturnType<typeof deleteAdminsSafely>>;
+      try {
+        result = await deleteAdminsSafely({
+          actorId: admin.id,
+          actorRole: admin.role,
+          actorOverrides: admin.permissionOverrides ?? [],
+          targetIds: [id],
+        });
+      } catch (error) {
+        await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+        throw error;
+      }
       if (!result.ok) {
+        await finishAuditLog(auditId, "FAILURE", { code: result.code });
         return NextResponse.json(
           { success: false, error: { code: result.code, message: result.message } },
           { status: result.status }
@@ -54,14 +83,10 @@ export const DELETE = withAuth(
       // deleteAdminsSafely 已在事务内递增 tokenVersion 并置 DISABLED/deletedAt，
       // 旧 token 立即永久失效；不再写用户级黑名单（避免新登录被误拦）。
 
-      // 记录审计日志
-      await createAuditLog({
-        action: "delete_admin",
-        targetType: "admin",
-        targetId: deletedAdmin.id,
-        detail: { email: deletedAdmin.email, name: deletedAdmin.name, role: deletedAdmin.role },
-        adminId: admin.id,
-        request,
+      await finishAuditLog(auditId, "SUCCESS", {
+        email: deletedAdmin.email,
+        name: deletedAdmin.name,
+        role: deletedAdmin.role,
       });
 
       return NextResponse.json({ success: true });

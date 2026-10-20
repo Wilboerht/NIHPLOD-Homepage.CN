@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { createAuditLogStrict } from "@/lib/audit";
 
 const folderIdSchema = z.union([z.literal("uncategorized"), z.string().cuid()]);
 
@@ -119,6 +120,29 @@ export async function GET(request: NextRequest) {
       prisma.jobApplication.count({ where }),
       prisma.jobApplication.count({ where: { ...where, status: "pending" } }),
     ]);
+
+    await createAuditLogStrict({
+      action: "application_list_view",
+      targetType: "application",
+      detail: {
+        filters: {
+          status,
+          jobId: jobId ?? null,
+          folderId: folderId ?? null,
+          hasSearch: Boolean(search),
+        },
+        page,
+        pageSize,
+        total,
+      },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json({
       success: true,

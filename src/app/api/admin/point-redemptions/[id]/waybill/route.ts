@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -26,10 +26,7 @@ const waybillSchema = z.object({
     .or(z.literal("")),
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
   }
@@ -71,23 +68,46 @@ export async function PATCH(
 
     const waybillNo = parsed.data.waybillNo?.trim() || null;
 
-    const result = await updateRedemptionWaybill({ redemptionId: id, waybillNo });
+    const auditId = await beginAuditLog({
+      action: "point_redemption_waybill_update",
+      targetType: "point_redemption",
+      targetId: id,
+      detail: { waybillNo },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof updateRedemptionWaybill>>;
+    try {
+      result = await updateRedemptionWaybill({ redemptionId: id, waybillNo });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+      throw error;
+    }
 
     if (!result.ok) {
+      await finishAuditLog(auditId, "FAILURE", { code: "NOT_FOUND" });
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "兑换记录不存在" } },
         { status: 404 }
       );
     }
 
-    await createAuditLog({
-      action: "point_redemption_waybill_update",
-      targetType: "point_redemption",
-      targetId: id,
-      detail: { waybillNo },
-      adminId: admin.id,
-      request,
-    });
+    await finishAuditLog(auditId, "SUCCESS", { waybillNo });
 
     return NextResponse.json({ success: true, data: { message: "运单号已更新" } });
   } catch (error) {

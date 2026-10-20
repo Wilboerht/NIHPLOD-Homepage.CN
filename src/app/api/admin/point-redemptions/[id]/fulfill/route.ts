@@ -8,7 +8,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -27,10 +27,7 @@ const fulfillSchema = z.object({
     .or(z.literal("")),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!validateCSRFToken(request)) {
     return csrfForbiddenResponse();
   }
@@ -72,9 +69,39 @@ export async function POST(
 
     const waybillNo = parsed.data.waybillNo?.trim() || undefined;
 
-    const result = await fulfillRedemption({ redemptionId: id, adminId: admin.id, waybillNo });
+    const auditId = await beginAuditLog({
+      action: "point_redemption_fulfill",
+      targetType: "point_redemption",
+      targetId: id,
+      detail: { waybillNo: waybillNo ?? null },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof fulfillRedemption>>;
+    try {
+      result = await fulfillRedemption({ redemptionId: id, adminId: admin.id, waybillNo });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+      throw error;
+    }
 
     if (!result.ok) {
+      await finishAuditLog(auditId, "FAILURE", { code: result.code ?? "UNKNOWN" });
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
         ALREADY_PROCESSED: 409,
@@ -91,14 +118,7 @@ export async function POST(
       );
     }
 
-    await createAuditLog({
-      action: "point_redemption_fulfill",
-      targetType: "point_redemption",
-      targetId: id,
-      detail: { waybillNo: waybillNo ?? null },
-      adminId: admin.id,
-      request,
-    });
+    await finishAuditLog(auditId, "SUCCESS", { waybillNo: waybillNo ?? null });
 
     // 积分小程序订阅消息（发货通知）：尽力而为，不阻断响应
     // （模板未配置 / 用户未订阅 / 无小程序身份时在 notify 内静默跳过）

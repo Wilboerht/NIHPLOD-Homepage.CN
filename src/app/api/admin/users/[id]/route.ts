@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
@@ -19,11 +19,7 @@ import { changeUserStatus } from "@/lib/user-status";
 import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { hashIdentifier } from "@/lib/auth-security";
-import {
-  executeAccountDeletion,
-  DELETION_STATUS,
-  DELETION_LEASE_MS,
-} from "@/lib/account-deletion";
+import { executeAccountDeletion, DELETION_STATUS, DELETION_LEASE_MS } from "@/lib/account-deletion";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -115,82 +111,82 @@ export async function GET(request: NextRequest, context: RouteContext) {
       levelChanges,
       loginAttempts,
     ] = await Promise.all([
-        prisma.pointBalance.findUnique({
-          where: { userId: id },
-          select: { available: true, updatedAt: true },
-        }),
-        prisma.pointRedemption.findMany({
-          where: { userId: id },
-          orderBy: { createdAt: "desc" },
-          take: RECENT_LIMIT,
-          select: {
-            id: true,
-            productName: true,
-            priceYuan: true,
-            points: true,
-            status: true,
-            carrier: true,
-            waybillNo: true,
-            recipient: true,
-            phone: true,
-            address: true,
-            fulfilledAt: true,
-            createdAt: true,
-          },
-        }),
-        prisma.pointRedemption.count({ where: { userId: id } }),
-        prisma.userAddress.findMany({
-          where: { userId: id },
-          orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-          take: RECENT_LIMIT,
-          select: {
-            id: true,
-            recipient: true,
-            phone: true,
-            region: true,
-            detail: true,
-            isDefault: true,
-            createdAt: true,
-          },
-        }),
-        prisma.spentAdjustmentApplication.findMany({
-          where: { userId: id },
-          orderBy: { createdAt: "desc" },
-          take: RECENT_LIMIT,
-          select: {
-            id: true,
-            channel: true,
-            orderNo: true,
-            amountClaimed: true,
-            status: true,
-            reviewAmount: true,
-            reviewNote: true,
-            createdAt: true,
-          },
-        }),
-        prisma.spentAdjustmentApplication.count({ where: { userId: id } }),
-        prisma.membershipLevelChange.findMany({
-          where: { userId: id },
-          orderBy: { createdAt: "desc" },
-          take: RECENT_LIMIT,
-          select: { id: true, fromLevel: true, toLevel: true, note: true, createdAt: true },
-        }),
-        prisma.loginAttempt.findMany({
-          where: { userId: id },
-          orderBy: { createdAt: "desc" },
-          take: RECENT_LIMIT,
-          select: {
-            id: true,
-            type: true,
-            success: true,
-            reason: true,
-            ipAddress: true,
-            userAgent: true,
-            clientId: true,
-            createdAt: true,
-          },
-        }),
-      ]);
+      prisma.pointBalance.findUnique({
+        where: { userId: id },
+        select: { available: true, updatedAt: true },
+      }),
+      prisma.pointRedemption.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_LIMIT,
+        select: {
+          id: true,
+          productName: true,
+          priceYuan: true,
+          points: true,
+          status: true,
+          carrier: true,
+          waybillNo: true,
+          recipient: true,
+          phone: true,
+          address: true,
+          fulfilledAt: true,
+          createdAt: true,
+        },
+      }),
+      prisma.pointRedemption.count({ where: { userId: id } }),
+      prisma.userAddress.findMany({
+        where: { userId: id },
+        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+        take: RECENT_LIMIT,
+        select: {
+          id: true,
+          recipient: true,
+          phone: true,
+          region: true,
+          detail: true,
+          isDefault: true,
+          createdAt: true,
+        },
+      }),
+      prisma.spentAdjustmentApplication.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_LIMIT,
+        select: {
+          id: true,
+          channel: true,
+          orderNo: true,
+          amountClaimed: true,
+          status: true,
+          reviewAmount: true,
+          reviewNote: true,
+          createdAt: true,
+        },
+      }),
+      prisma.spentAdjustmentApplication.count({ where: { userId: id } }),
+      prisma.membershipLevelChange.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_LIMIT,
+        select: { id: true, fromLevel: true, toLevel: true, note: true, createdAt: true },
+      }),
+      prisma.loginAttempt.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_LIMIT,
+        select: {
+          id: true,
+          type: true,
+          success: true,
+          reason: true,
+          ipAddress: true,
+          userAgent: true,
+          clientId: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
     // 查看用户详情（含积分/地址等敏感档案）记审计——同一管理员 5 分钟内重复查看合并为一条。
     // 拥有 users:sensitive:read 时返回完整联系方式，审计动作升级为 user_detail_sensitive_view。
@@ -699,34 +695,75 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "user_deleted",
+      targetType: "user",
+      targetId: user.id,
+      detail: { previousStatus: user.status },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     // 建立/重置注销申请（到期时间为现在），随后同步执行——
     // 管理员能立即看到成败（与人工重试同口径），无需等待下一轮 cron
-    const deletionRequest = await prisma.accountDeletionRequest.upsert({
-      where: { userId: id },
-      create: {
-        userId: id,
-        reason: "管理端删除",
-        phoneHash: hashIdentifier(user.phone),
-        scheduledAt: now,
-      },
-      update: {
-        status: DELETION_STATUS.PENDING,
-        reason: "管理端删除",
-        phoneHash: hashIdentifier(user.phone),
-        requestedAt: now,
-        scheduledAt: now,
-        cancelledAt: null,
-        completedAt: null,
-        attempts: 0,
-        lastError: null,
-        lockedAt: null,
-        leaseToken: null,
-      },
-    });
+    const deletionRequest = await prisma.accountDeletionRequest
+      .upsert({
+        where: { userId: id },
+        create: {
+          userId: id,
+          reason: "管理端删除",
+          phoneHash: hashIdentifier(user.phone),
+          scheduledAt: now,
+        },
+        update: {
+          status: DELETION_STATUS.PENDING,
+          reason: "管理端删除",
+          phoneHash: hashIdentifier(user.phone),
+          requestedAt: now,
+          scheduledAt: now,
+          cancelledAt: null,
+          completedAt: null,
+          attempts: 0,
+          lastError: null,
+          lockedAt: null,
+          leaseToken: null,
+        },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", { error: "REQUEST_CREATE_FAILED" });
+        throw error;
+      });
 
-    const result = await executeAccountDeletion(deletionRequest.id, { notifyUser: false });
+    let result: Awaited<ReturnType<typeof executeAccountDeletion>>;
+    try {
+      result = await executeAccountDeletion(deletionRequest.id, { notifyUser: false });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", {
+        requestId: deletionRequest.id,
+        error: "EXCEPTION",
+      });
+      throw error;
+    }
 
     if (result !== "completed") {
+      await finishAuditLog(auditId, "FAILURE", {
+        requestId: deletionRequest.id,
+        result,
+      });
       // 执行失败（子站不可达/DB 异常等）：申请已置 FAILED 并记录 lastError，
       // 引导管理员到人工队列跟进，不静默吞错
       return NextResponse.json(
@@ -734,20 +771,17 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
           success: false,
           error: {
             code: "DELETION_EXECUTION_FAILED",
-            message: "注销执行失败，申请已转入人工处理（管理端 → 账号注销队列可查看失败原因并重试）",
+            message:
+              "注销执行失败，申请已转入人工处理（管理端 → 账号注销队列可查看失败原因并重试）",
           },
         },
         { status: 502 }
       );
     }
 
-    await createAuditLog({
-      action: "user_deleted",
-      targetType: "user",
-      targetId: user.id,
-      detail: { requestId: deletionRequest.id, previousStatus: user.status },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      requestId: deletionRequest.id,
+      previousStatus: user.status,
     });
 
     // SSO 审计：用户删除（合规敏感，同步等待写入）

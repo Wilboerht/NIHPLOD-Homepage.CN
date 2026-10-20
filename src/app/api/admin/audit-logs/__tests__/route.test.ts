@@ -26,6 +26,14 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    auditLog: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+  },
+}));
+
 import { GET } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { listAuditLogs, createAuditLog } from "@/lib/audit";
@@ -33,7 +41,9 @@ import { listAuditLogs, createAuditLog } from "@/lib/audit";
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 
 function createRequest(query = "") {
-  return new NextRequest(`http://localhost/api/admin/audit-logs${query}`, { method: "GET" } as never);
+  return new NextRequest(`http://localhost/api/admin/audit-logs${query}`, {
+    method: "GET",
+  } as never);
 }
 
 const mockListAuditLogs = listAuditLogs as ReturnType<typeof vi.fn>;
@@ -87,9 +97,20 @@ describe("GET /api/admin/audit-logs", () => {
     );
   });
 
-  it("非导出请求不写导出审计日志", async () => {
-    const res = await GET(createRequest());
+  it("普通查询写入合并后的查看审计，而非导出审计", async () => {
+    const res = await GET(createRequest("?outcome=FAILURE"));
     expect(res.status).toBe(200);
-    expect(createAuditLog).not.toHaveBeenCalled();
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "audit_log_view",
+        adminId: "admin-1",
+        detail: expect.objectContaining({
+          filters: expect.objectContaining({ outcome: "FAILURE" }),
+        }),
+      })
+    );
+    expect(createAuditLog).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "audit_log_export" })
+    );
   });
 });

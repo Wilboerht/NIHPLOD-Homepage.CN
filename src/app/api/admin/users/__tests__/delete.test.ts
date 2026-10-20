@@ -38,6 +38,8 @@ vi.mock("@/lib/validation", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/sso-audit", () => ({
@@ -70,7 +72,7 @@ vi.mock("@/lib/logger", () => ({
 import { DELETE } from "../[id]/route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { executeAccountDeletion } from "@/lib/account-deletion";
 
@@ -147,14 +149,19 @@ describe("DELETE /api/admin/users/:id", () => {
     expect(mockExecute).toHaveBeenCalledWith("req-1", { notifyUser: false });
 
     // 管理端审计 + SSO 事件（newStatus 与执行器匿名化口径一致为 DELETED）
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "user_deleted",
         targetType: "user",
         targetId: USER_ID,
         adminId: "admin-1",
-        detail: expect.objectContaining({ requestId: "req-1", previousStatus: "ACTIVE" }),
+        detail: expect.objectContaining({ previousStatus: "ACTIVE" }),
       })
+    );
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ requestId: "req-1" })
     );
     expect(recordSsoEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -179,7 +186,11 @@ describe("DELETE /api/admin/users/:id", () => {
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.error.code).toBe("DELETION_EXECUTION_FAILED");
-    expect(createAuditLog).not.toHaveBeenCalled();
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "FAILURE",
+      expect.objectContaining({ requestId: "req-1", result: "failed" })
+    );
   });
 
   it("执行器返回 skipped（并发被抢）：同样按失败处理 502", async () => {

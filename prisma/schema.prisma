@@ -600,25 +600,70 @@ model CaptchaChallenge {
 // 审计日志
 // ============================================
 
+enum AuditOutcome {
+  PENDING
+  SUCCESS
+  FAILURE
+  PARTIAL
+}
+
+enum AuditActorType {
+  ADMIN
+  USER
+  SYSTEM
+  INTEGRATION
+}
+
 model AuditLog {
-  id        String   @id @default(cuid())
-  action    String   // 操作类型: create_admin, update_admin, delete_admin, login, logout 等
-  targetType String  // 目标类型: admin, product, category, job, message, application 等
-  targetId  String?  // 目标记录ID
-  detail    Json?    // 操作详情（变更前后数据快照等）
-  ipAddress String?  // 操作者IP
-  userAgent String?  @db.Text // 浏览器UA
-  adminId   String?
-  userId    String?  // C 端用户事件使用
-  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
+  id          String          @id @default(cuid())
+  action      String // 操作类型: create_admin, update_admin, delete_admin, login, logout 等
+  targetType  String // 目标类型: admin, product, category, job, message, application 等
+  targetId    String? // 目标记录ID
+  targetLabel String? // 目标名称快照（目标记录删除后仍可读）
+  detail      Json? // 操作详情（变更前后数据快照等）
+  outcome     AuditOutcome    @default(SUCCESS)
+  requestId   String? // 同一次请求的关联 ID
+  actorType   AuditActorType  @default(ADMIN)
+  actorEmail  String? // 操作者邮箱快照
+  actorName   String? // 操作者姓名快照
+  actorRole   String? // 操作者角色快照
+  authMethod  String? // password | totp | step_up | system
+  sessionJti  String? // 管理员会话 jti
+  legalHold   Boolean         @default(false)
+  ipAddress   String? // 操作者IP
+  userAgent   String?         @db.Text // 浏览器UA
+  adminId     String?
+  userId      String? // C 端用户事件使用
+  // 审计记录必须保持不可变：管理员/用户删除时不得级联修改历史行。
+  admin       Admin?          @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  user        User?           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt   DateTime        @default(now())
 
   @@index([action, createdAt(sort: Desc)])
   @@index([targetType, targetId])
   @@index([targetType, createdAt(sort: Desc)])
   @@index([adminId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([outcome, createdAt(sort: Desc)])
+  @@index([requestId])
+  @@index([createdAt])
+}
+
+/**
+ * 每日审计摘要锚点（tamper-evident anchor）。
+ * DB 中保留用于校验；正式部署还应把签名摘要写入私有 OSS Object Lock。
+ */
+model AuditLogAnchor {
+  id         String   @id @default(cuid())
+  day        String   @unique // UTC+8 日期 YYYY-MM-DD
+  fromAt     DateTime
+  toAt       DateTime
+  count      Int
+  digest     String
+  signature  String
+  objectKey  String?
+  createdAt  DateTime @default(now())
+
   @@index([createdAt])
 }
 

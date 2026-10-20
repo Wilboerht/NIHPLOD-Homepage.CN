@@ -37,7 +37,8 @@ vi.mock("@/lib/spent-adjustments", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -53,7 +54,7 @@ vi.mock("@/lib/admin-totp", () => ({
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken } from "@/lib/csrf";
 import { reviewApplication } from "@/lib/spent-adjustments";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { POST } from "@/app/api/admin/spent-adjustments/[id]/review/route";
 
 const mockVerifyAuth = verifyAuth as ReturnType<typeof vi.fn>;
@@ -82,10 +83,9 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
   it("未登录返回 401", async () => {
     mockVerifyAuth.mockResolvedValue(null);
 
-    const res = await POST(
-      createRequest({ decision: "approve", reviewAmount: 1000 }),
-      { params: Promise.resolve({ id: "app-1" }) }
-    );
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 1000 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
 
     expect(res.status).toBe(401);
     expect(mockReview).not.toHaveBeenCalled();
@@ -94,10 +94,9 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
   it("CSRF 校验失败返回 403", async () => {
     mockValidateCSRF.mockReturnValue(false);
 
-    const res = await POST(
-      createRequest({ decision: "approve", reviewAmount: 1000 }),
-      { params: Promise.resolve({ id: "app-1" }) }
-    );
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 1000 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
 
     expect(res.status).toBe(403);
   });
@@ -118,21 +117,32 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
       reviewAmount: 1280,
       reviewNote: "已核实",
     });
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "approve_spent_adjustment",
         targetType: "spent_adjustment",
         targetId: "app-1",
       })
     );
+    expect(finishAuditLog).toHaveBeenCalledWith("audit-1", "SUCCESS", expect.anything());
     expect(checkAdminRateLimit).toHaveBeenCalled();
   });
 
+  it("审计预写失败时返回 503，且不执行业务审核", async () => {
+    vi.mocked(beginAuditLog).mockResolvedValueOnce(null);
+
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 100 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(mockReview).not.toHaveBeenCalled();
+  });
+
   it("通过但未填核实金额返回 400", async () => {
-    const res = await POST(
-      createRequest({ decision: "approve" }),
-      { params: Promise.resolve({ id: "app-1" }) }
-    );
+    const res = await POST(createRequest({ decision: "approve" }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
     const data = await res.json();
 
     expect(res.status).toBe(400);
@@ -141,10 +151,9 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
   });
 
   it("驳回但未填原因返回 400", async () => {
-    const res = await POST(
-      createRequest({ decision: "reject", reviewNote: " " }),
-      { params: Promise.resolve({ id: "app-1" }) }
-    );
+    const res = await POST(createRequest({ decision: "reject", reviewNote: " " }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
 
     expect(res.status).toBe(400);
     expect(mockReview).not.toHaveBeenCalled();
@@ -153,13 +162,12 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
   it("驳回审核：写 reject 审计日志", async () => {
     mockReview.mockResolvedValue({ ok: true, status: "REJECTED" });
 
-    const res = await POST(
-      createRequest({ decision: "reject", reviewNote: "订单号无法核实" }),
-      { params: Promise.resolve({ id: "app-1" }) }
-    );
+    const res = await POST(createRequest({ decision: "reject", reviewNote: "订单号无法核实" }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
 
     expect(res.status).toBe(200);
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: "reject_spent_adjustment" })
     );
   });
@@ -171,10 +179,9 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
       message: "该申请已处理",
     });
 
-    const res = await POST(
-      createRequest({ decision: "approve", reviewAmount: 100 }),
-      { params: Promise.resolve({ id: "app-1" }) }
-    );
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 100 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
 
     expect(res.status).toBe(409);
   });

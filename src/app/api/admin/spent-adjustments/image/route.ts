@@ -11,6 +11,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { apiConsole } from "@/lib/logger";
 import { signPrivateObjectUrl } from "@/lib/ali-oss";
+import { createAuditLogStrict } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,19 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    await createAuditLogStrict({
+      action: "spent_receipt_view",
+      targetType: "spent_adjustment",
+      targetId: application.id,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
 
     const signedUrl = signPrivateObjectUrl(key, 15 * 60);
     if (!signedUrl) {

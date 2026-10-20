@@ -36,7 +36,8 @@ vi.mock("@/lib/spent-adjustments", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -52,7 +53,7 @@ vi.mock("@/lib/admin-totp", () => ({
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken } from "@/lib/csrf";
 import { undoApplication } from "@/lib/spent-adjustments";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { POST } from "@/app/api/admin/spent-adjustments/[id]/undo/route";
 
 const mockVerifyAuth = verifyAuth as ReturnType<typeof vi.fn>;
@@ -101,13 +102,14 @@ describe("POST /api/admin/spent-adjustments/[id]/undo", () => {
       applicationId: "app-1",
       adminId: "admin-1",
     });
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "undo_spent_adjustment",
         targetType: "spent_adjustment",
         targetId: "app-1",
       })
     );
+    expect(finishAuditLog).toHaveBeenCalledWith("audit-1", "SUCCESS", expect.anything());
     expect(checkAdminRateLimit).toHaveBeenCalled();
   });
 

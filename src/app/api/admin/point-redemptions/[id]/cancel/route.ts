@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -70,9 +70,39 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
     if (totpResponse) return totpResponse;
 
-    const result = await cancelRedemption({ redemptionId: id, note: parsed.data.note });
+    const auditId = await beginAuditLog({
+      action: "point_redemption_cancel",
+      targetType: "point_redemption",
+      targetId: id,
+      detail: { note: parsed.data.note ?? null },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof cancelRedemption>>;
+    try {
+      result = await cancelRedemption({ redemptionId: id, note: parsed.data.note });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+      throw error;
+    }
 
     if (!result.ok) {
+      await finishAuditLog(auditId, "FAILURE", { code: result.code ?? "UNKNOWN" });
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
         ALREADY_PROCESSED: 409,
@@ -82,20 +112,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           success: false,
           error: {
             code: result.code,
-            message: result.code === "ALREADY_PROCESSED" ? "该兑换已处理，无法取消" : "兑换记录不存在",
+            message:
+              result.code === "ALREADY_PROCESSED" ? "该兑换已处理，无法取消" : "兑换记录不存在",
           },
         },
         { status: statusMap[result.code ?? ""] ?? 500 }
       );
     }
 
-    await createAuditLog({
-      action: "point_redemption_cancel",
-      targetType: "point_redemption",
-      targetId: id,
-      detail: { refundedPoints: result.points, note: parsed.data.note ?? null },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      refundedPoints: result.points,
+      note: parsed.data.note ?? null,
     });
 
     return NextResponse.json({

@@ -7,6 +7,7 @@
 import { after } from "next/server";
 import { prisma } from "./prisma";
 import { apiConsole } from "@/lib/logger";
+import { isAuditArchiveReady } from "./audit-integrity";
 
 export type SsoEventType =
   | "authorize"
@@ -113,11 +114,24 @@ export function escapeCSV(val: string): string {
 /**
  * 清理 90 天前的 SSO 审计事件
  */
+export function getSsoAuditRetentionDays(): number {
+  const raw = Number(process.env.SSO_AUDIT_RETENTION_DAYS ?? 730);
+  if (!Number.isFinite(raw)) return 730;
+  return Math.min(Math.max(Math.floor(raw), 30), 3650);
+}
+
 export async function cleanupOldSsoAuditEvents(): Promise<number> {
   try {
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const retentionDays = getSsoAuditRetentionDays();
+    if (!isAuditArchiveReady()) {
+      apiConsole.warn(
+        `[SsoAudit] 审计归档存储未就绪，跳过 ${retentionDays} 天前 SSO 审计的物理删除（fail-closed）`
+      );
+      return 0;
+    }
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
     const result = await prisma.ssoAuditEvent.deleteMany({
-      where: { createdAt: { lt: ninetyDaysAgo } },
+      where: { createdAt: { lt: cutoff } },
     });
     return result.count;
   } catch (error) {

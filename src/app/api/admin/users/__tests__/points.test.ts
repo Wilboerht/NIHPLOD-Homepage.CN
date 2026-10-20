@@ -42,7 +42,7 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: vi.fn().mockResolvedValue(true),
+  createAuditLogTx: vi.fn().mockResolvedValue("audit-1"),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -69,7 +69,7 @@ vi.mock("@/lib/points-ledger", () => ({
 import { GET, POST } from "../[id]/points/route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLogTx } from "@/lib/audit";
 import { adjustPoints } from "@/lib/points-ledger";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
@@ -165,13 +165,21 @@ describe("POST /api/admin/users/[id]/points（人工调整）", () => {
       expect.anything(),
       expect.objectContaining({ userId: "user-1", amount: 50, note: "客服补偿" })
     );
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(createAuditLogTx).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
         action: "user_points_adjust",
         targetType: "user",
         targetId: "user-1",
       })
     );
+  });
+
+  it("审计写入失败时返回 500，不返回调整成功", async () => {
+    vi.mocked(createAuditLogTx).mockRejectedValueOnce(new Error("audit unavailable"));
+
+    const res = await POST(createRequest("POST", { amount: 50, note: "客服补偿" }), context);
+    expect(res.status).toBe(500);
   });
 
   it("幂等重复（duplicated）不重复写审计", async () => {
@@ -185,6 +193,6 @@ describe("POST /api/admin/users/[id]/points（人工调整）", () => {
 
     expect(res.status).toBe(200);
     expect(data.data.duplicated).toBe(true);
-    expect(createAuditLog).not.toHaveBeenCalled();
+    expect(createAuditLogTx).not.toHaveBeenCalled();
   });
 });

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -22,10 +22,7 @@ const undoBodySchema = z
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -69,9 +66,38 @@ export async function POST(
     });
     if (totpResponse) return totpResponse;
 
-    const result = await undoImportBatch(id);
+    const auditId = await beginAuditLog({
+      action: "undo_spent_import",
+      targetType: "spent_import",
+      targetId: id,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝撤销" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof undoImportBatch>>;
+    try {
+      result = await undoImportBatch(id);
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+      throw error;
+    }
 
     if (!result.ok) {
+      await finishAuditLog(auditId, "FAILURE", { code: result.code });
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
         ALREADY_UNDONE: 409,
@@ -83,13 +109,9 @@ export async function POST(
       );
     }
 
-    await createAuditLog({
-      action: "undo_spent_import",
-      targetType: "spent_import",
-      targetId: id,
-      detail: { revertedRows: result.revertedRows, totalAmount: result.totalAmount },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      revertedRows: result.revertedRows,
+      totalAmount: result.totalAmount,
     });
 
     return NextResponse.json({

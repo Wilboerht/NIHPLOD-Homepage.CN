@@ -14,7 +14,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { reviewApplication, MAX_REVIEW_AMOUNT, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
@@ -96,15 +96,46 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
     if (totpResponse) return totpResponse;
 
-    const result = await reviewApplication({
-      applicationId: id,
-      decision,
+    const action = decision === "approve" ? "approve_spent_adjustment" : "reject_spent_adjustment";
+    const auditId = await beginAuditLog({
+      action,
+      targetType: "spent_adjustment",
+      targetId: id,
+      detail: { decision, reviewAmount, reviewNote },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
-      reviewAmount,
-      reviewNote: reviewNote || undefined,
+      request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof reviewApplication>>;
+    try {
+      result = await reviewApplication({
+        applicationId: id,
+        decision,
+        adminId: admin.id,
+        reviewAmount,
+        reviewNote: reviewNote || undefined,
+      });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { decision, error: "EXCEPTION" });
+      throw error;
+    }
 
     if (!result.ok) {
+      await finishAuditLog(auditId, "FAILURE", { decision, code: result.code });
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
         ALREADY_REVIEWED: 409,
@@ -116,14 +147,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // 审计日志（审核结果合规敏感，同步等待写入）
-    await createAuditLog({
-      action: decision === "approve" ? "approve_spent_adjustment" : "reject_spent_adjustment",
-      targetType: "spent_adjustment",
-      targetId: id,
-      detail: { decision, reviewAmount, reviewNote },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      decision,
+      reviewAmount,
+      reviewNote,
+      status: result.status,
     });
 
     return NextResponse.json({

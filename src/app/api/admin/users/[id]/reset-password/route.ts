@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { prisma } from "@/lib/prisma";
@@ -127,13 +127,48 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // 更新密码（含密码历史与过期时间），临时密码跳过历史重复检查
-    const updated = await updateUserPassword(user.id, tempPassword, { skipHistoryCheck: true });
-    if (!updated.success) {
+    const auditId = await beginAuditLog({
+      action: "user_password_reset",
+      targetType: "user",
+      targetId: user.id,
+      detail: { phone: maskPhone(user.phone) },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: updated.errorCode ?? "INTERNAL_ERROR", message: updated.errorMessage ?? "重置失败" },
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    // 更新密码（含密码历史与过期时间），临时密码跳过历史重复检查
+    let updated: Awaited<ReturnType<typeof updateUserPassword>>;
+    try {
+      updated = await updateUserPassword(user.id, tempPassword, { skipHistoryCheck: true });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { error: "UPDATE_FAILED" });
+      throw error;
+    }
+    if (!updated.success) {
+      await finishAuditLog(auditId, "FAILURE", {
+        code: updated.errorCode ?? "INTERNAL_ERROR",
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: updated.errorCode ?? "INTERNAL_ERROR",
+            message: updated.errorMessage ?? "重置失败",
+          },
         },
         { status: 500 }
       );
@@ -170,13 +205,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       apiConsole.warn("[AdminResetPassword] 会话撤销失败:", err);
     }
 
-    await createAuditLog({
-      action: "user_password_reset",
-      targetType: "user",
-      targetId: user.id,
-      detail: { phone: maskPhone(user.phone), revokedOAuthSessions },
-      adminId: admin.id,
-      request,
+    await finishAuditLog(auditId, "SUCCESS", {
+      phone: maskPhone(user.phone),
+      revokedOAuthSessions,
     });
 
     // 安全提醒短信（fail-soft：发送失败仅记日志，不影响重置结果）

@@ -23,7 +23,8 @@ const {
   mockCheckAdminRateLimit,
   mockValidateCSRFToken,
   mockRecordSsoEvent,
-  mockCreateAuditLog,
+  mockBeginAuditLog,
+  mockFinishAuditLog,
   prismaMock,
 } = vi.hoisted(() => {
   const createMockModel = () => ({
@@ -40,7 +41,8 @@ const {
     mockCheckAdminRateLimit: vi.fn(),
     mockValidateCSRFToken: vi.fn(),
     mockRecordSsoEvent: vi.fn(),
-    mockCreateAuditLog: vi.fn(),
+    mockBeginAuditLog: vi.fn(),
+    mockFinishAuditLog: vi.fn(),
     prismaMock: {
       oAuthClient: createMockModel(),
       oAuthSession: createMockModel(),
@@ -75,7 +77,8 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 vi.mock("@/lib/audit", () => ({
-  createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
+  beginAuditLog: (...args: unknown[]) => mockBeginAuditLog(...args),
+  finishAuditLog: (...args: unknown[]) => mockFinishAuditLog(...args),
 }));
 
 vi.mock("@/lib/sso-audit", () => ({
@@ -116,7 +119,10 @@ vi.mock("bcryptjs", () => ({
 // ============================================
 
 function createRequest(body?: unknown) {
-  const url = new URL("/api/admin/oauth-clients/client-db-id-1/rotate-secret", "http://localhost:3000");
+  const url = new URL(
+    "/api/admin/oauth-clients/client-db-id-1/rotate-secret",
+    "http://localhost:3000"
+  );
   const init: RequestInit = { method: "POST" };
   if (body !== undefined) {
     init.body = JSON.stringify(body);
@@ -160,7 +166,8 @@ describe("POST /api/admin/oauth-clients/[id]/rotate-secret", () => {
     mockCheckAdminRateLimit.mockResolvedValue(null);
     mockValidateCSRFToken.mockReturnValue(true);
     mockRecordSsoEvent.mockResolvedValue(undefined);
-    mockCreateAuditLog.mockResolvedValue(true);
+    mockBeginAuditLog.mockResolvedValue("audit-1");
+    mockFinishAuditLog.mockResolvedValue(true);
   });
 
   it("CSRF 校验失败应返回 403", async () => {
@@ -235,8 +242,13 @@ describe("POST /api/admin/oauth-clients/[id]/rotate-secret", () => {
         detail: expect.objectContaining({ action: "client_secret_rotated" }),
       })
     );
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+    expect(mockBeginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: "oauth_client_rotate_secret" })
+    );
+    expect(mockFinishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ clientId: "rotate-client-id" })
     );
   });
 
@@ -263,12 +275,18 @@ describe("POST /api/admin/oauth-clients/[id]/rotate-secret", () => {
 
     // lib 层真实校验：当前哈希不匹配 → 回退到过渡期缓存的旧哈希 → 通过
     const { verifyOAuthClientSecret } = await import("@/lib/oauth-client");
-    const result = await verifyOAuthClientSecret("rotate-transition-client", "transition-old-secret");
+    const result = await verifyOAuthClientSecret(
+      "rotate-transition-client",
+      "transition-old-secret"
+    );
     expect(result.reason).toBe("ok");
     expect(result.client?.clientId).toBe("rotate-transition-client");
 
     // 新 secret 当然也可用
-    const newResult = await verifyOAuthClientSecret("rotate-transition-client", data.data.plainSecret);
+    const newResult = await verifyOAuthClientSecret(
+      "rotate-transition-client",
+      data.data.plainSecret
+    );
     expect(newResult.reason).toBe("ok");
   });
 

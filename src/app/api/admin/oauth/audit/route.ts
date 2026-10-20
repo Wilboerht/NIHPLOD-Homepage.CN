@@ -11,8 +11,15 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { escapeCSV } from "@/lib/sso-audit";
-import { maskPhone } from "@/lib/mask-phone";
+import { maskIdentifier, maskIp, maskPhone } from "@/lib/mask-phone";
+import { maskAuditDetail } from "@/lib/audit-sanitize";
 import { apiConsole } from "@/lib/logger";
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, private",
+  Pragma: "no-cache",
+  "X-Content-Type-Options": "nosniff",
+} as const;
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +72,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const isExport = searchParams.get("export") === "csv";
+    const canViewSensitive = hasAdminPermission(admin, "audit:sensitive:read");
+    if (isExport && !hasAdminPermission(admin, "audit:export")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计日志导出" } },
+        { status: 403, headers: NO_STORE_HEADERS }
+      );
+    }
 
     // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
     // 必须先经 Number.isFinite 校验再钳制到合法范围
@@ -140,10 +154,10 @@ export async function GET(request: NextRequest) {
           [
             escapeCSV(item.id),
             escapeCSV(item.event),
-            escapeCSV(item.userId || ""),
+            escapeCSV(canViewSensitive ? item.userId || "" : maskIdentifier(item.userId) || ""),
             escapeCSV(item.clientId || ""),
             escapeCSV(item.clientName || ""),
-            escapeCSV(item.ip || ""),
+            escapeCSV(canViewSensitive ? item.ip || "" : item.ip ? maskIp(item.ip) : ""),
             String(item.success),
             item.createdAt.toISOString(),
           ].join(",")
@@ -204,12 +218,18 @@ export async function GET(request: NextRequest) {
       data: {
         items: items.map((item) => ({
           ...item,
+          userId: canViewSensitive ? item.userId : maskIdentifier(item.userId),
+          ip: canViewSensitive ? item.ip : item.ip ? maskIp(item.ip) : null,
+          userAgent: canViewSensitive ? item.userAgent : null,
+          detail: canViewSensitive
+            ? item.detail
+            : (maskAuditDetail(item.detail) as typeof item.detail),
           userPhone: (item.userId && phoneMap.get(item.userId)) || null,
           createdAt: item.createdAt.toISOString(),
         })),
         pagination: { page, pageSize, total },
       },
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     apiConsole.error("[AdminOAuthAudit] 异常:", error);
     return NextResponse.json(

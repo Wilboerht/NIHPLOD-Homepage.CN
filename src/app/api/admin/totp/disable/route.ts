@@ -13,7 +13,7 @@ import { verifyTOTP, decryptTOTPSecret, verifyBackupCode } from "@/lib/totp";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { rateLimit } from "@/lib/ratelimit";
 import { z } from "zod";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import {
   ADMIN_STEP_UP_COOKIE_NAME,
@@ -137,35 +137,56 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      if (consumedBackupResult) {
+    const auditId = await beginAuditLog({
+      action: "update_admin",
+      targetType: "admin",
+      targetId: admin.id,
+      detail: { action: "totp_disabled" },
+      actorType: "ADMIN",
+      actorEmail: adminPayload.email,
+      actorName: adminPayload.name,
+      actorRole: adminPayload.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (consumedBackupResult) {
+          await tx.admin.update({
+            where: { id: admin.id },
+            data: { totpBackupCodes: JSON.stringify(consumedBackupResult.remainingCodes) },
+          });
+        }
         await tx.admin.update({
           where: { id: admin.id },
-          data: { totpBackupCodes: JSON.stringify(consumedBackupResult.remainingCodes) },
+          data: {
+            totpEnabled: false,
+            totpSecret: null,
+            totpBackupCodes: null,
+          },
         });
-      }
-      await tx.admin.update({
-        where: { id: admin.id },
-        data: {
-          totpEnabled: false,
-          totpSecret: null,
-          totpBackupCodes: null,
-        },
       });
-    });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { action: "totp_disabled" });
+      throw error;
+    }
 
     await revokeAllAdminStepUpGrants(admin.id).catch((err) =>
       apiConsole.warn("[TOTP Disable] step-up grant 清理失败:", err)
     );
 
-    await createAuditLog({
-      action: "update_admin",
-      targetType: "admin",
-      targetId: admin.id,
-      detail: { action: "totp_disabled" },
-      adminId: admin.id,
-      request,
-    });
+    await finishAuditLog(auditId, "SUCCESS", { action: "totp_disabled" });
 
     const response = NextResponse.json({ success: true, data: { message: "二次验证已关闭" } });
     response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {

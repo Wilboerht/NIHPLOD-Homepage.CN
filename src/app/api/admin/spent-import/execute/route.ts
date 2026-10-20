@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { maskPhone } from "@/lib/mask-phone";
@@ -111,18 +111,52 @@ export async function POST(request: NextRequest) {
     });
     if (totpResponse) return totpResponse;
 
-    const result = await executeImportBatch({
-      rows: resolvedRows,
-      fileName,
-      fileHash,
-      adminId: admin.id,
-    });
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "import_spent_records",
       targetType: "spent_import",
-      targetId: result.batchId,
-      detail: {
+      detail: { fileName, fileHash: fileHash ?? null, rowCount: resolvedRows.length },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝导入" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof executeImportBatch>>;
+    try {
+      result = await executeImportBatch({
+        rows: resolvedRows,
+        fileName,
+        fileHash,
+        adminId: admin.id,
+      });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", {
+        fileName,
+        code:
+          error instanceof Error && error.message === "IMPORT_ALREADY_EXISTS"
+            ? "ALREADY_EXISTS"
+            : "EXCEPTION",
+      });
+      throw error;
+    }
+
+    await finishAuditLog(
+      auditId,
+      "SUCCESS",
+      {
+        batchId: result.batchId,
         fileName,
         totalRows: result.totalRows,
         successRows: result.successRows,
@@ -130,9 +164,8 @@ export async function POST(request: NextRequest) {
         errorRows: result.errorRows,
         totalAmount: result.totalAmount,
       },
-      adminId: admin.id,
-      request,
-    });
+      result.batchId
+    );
 
     // 逐行结果中的手机号脱敏后返回（前端展示/导出失败行用；明文只存在于服务端与原始 Excel）
     return NextResponse.json({

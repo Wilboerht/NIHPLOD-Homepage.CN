@@ -24,6 +24,7 @@ import { expirePointsCron } from "./points-ledger";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
+import { anchorAuditLogsForDay } from "./audit-integrity";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
 import { acquireCronLock, releaseCronLock } from "./cron-lock";
@@ -108,7 +109,7 @@ const tasks: ScheduledTask[] = [
       }
 
       try {
-        apiConsole.info("[Cron] 开始清理 90 天前的 SSO 审计日志...");
+        apiConsole.info("[Cron] 开始清理超过保留期的 SSO 审计日志...");
         const auditCount = await cleanupOldSsoAuditEvents();
         apiConsole.info(`[Cron] SSO 审计日志清理完成: ${auditCount} 条`);
         markCleanupOk("SSO 审计日志");
@@ -248,7 +249,7 @@ const tasks: ScheduledTask[] = [
   },
   {
     name: "Cleanup Old Audit Logs",
-    cronExpression: "30 5 * * *", // 每天凌晨 5:30 执行（保留期由 AUDIT_LOG_RETENTION_DAYS 控制，默认 365 天）
+    cronExpression: "30 5 * * *", // 每天凌晨 5:30 执行（保留期由 AUDIT_LOG_RETENTION_DAYS 控制，默认 1825 天）
     isCleanup: true,
     handler: async () => {
       try {
@@ -259,6 +260,21 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 审计日志清理失败:", error);
         markCleanupFailed("审计日志");
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Anchor Previous Day Audit Logs",
+    cronExpression: "15 1 * * *", // 每天 01:15（Asia/Shanghai）生成前一日审计摘要
+    handler: async () => {
+      try {
+        const anchor = await anchorAuditLogsForDay();
+        apiConsole.info(
+          `[Cron] 审计摘要生成完成: ${anchor.day} (${anchor.count} 条)`
+        );
+      } catch (error) {
+        apiConsole.error("[Cron] 审计摘要生成失败:", error);
         throw error;
       }
     },

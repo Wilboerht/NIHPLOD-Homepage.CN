@@ -17,6 +17,7 @@ import {
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
@@ -26,6 +27,10 @@ interface AuditLogItem {
   action: string;
   targetType: string;
   targetId: string | null;
+  targetLabel?: string | null;
+  outcome?: "PENDING" | "SUCCESS" | "FAILURE" | "PARTIAL";
+  requestId?: string | null;
+  authMethod?: string | null;
   detail: Record<string, unknown> | null;
   ipAddress: string | null;
   userAgent: string | null;
@@ -90,9 +95,26 @@ const ACTION_COLORS: Record<string, string> = {
   run_cron_task: "bg-purple-50 text-purple-700",
 };
 
+const OUTCOME_META: Record<string, { label: string; className: string }> = {
+  SUCCESS: { label: "成功", className: "bg-emerald-50 text-emerald-700" },
+  FAILURE: { label: "失败", className: "bg-red-50 text-red-700" },
+  PENDING: { label: "进行中", className: "bg-amber-50 text-amber-700" },
+  PARTIAL: { label: "部分成功", className: "bg-sky-50 text-sky-700" },
+};
+
+function OutcomeBadge({ outcome }: { outcome?: string | null }) {
+  const meta = OUTCOME_META[outcome ?? "SUCCESS"] ?? OUTCOME_META.SUCCESS;
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${meta.className}`}>
+      {meta.label}
+    </span>
+  );
+}
+
 function AuditLogsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { can: canAdmin } = useAdminPermissions();
 
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +124,7 @@ function AuditLogsContent() {
   const page = parseInt(searchParams.get("page") || "1");
   const action = searchParams.get("action") || "";
   const targetType = searchParams.get("targetType") || "";
+  const outcome = searchParams.get("outcome") || "";
   const startDate = searchParams.get("startDate") || "";
   const endDate = searchParams.get("endDate") || "";
 
@@ -116,6 +139,7 @@ function AuditLogsContent() {
         page,
         action: action || undefined,
         targetType: targetType || undefined,
+        outcome: outcome || undefined,
       };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
@@ -132,7 +156,7 @@ function AuditLogsContent() {
     } finally {
       setLoading(false);
     }
-  }, [page, action, targetType, startDate, endDate]);
+  }, [page, action, targetType, outcome, startDate, endDate]);
 
   useEffect(() => {
     deferInEffect(fetchLogs);
@@ -192,6 +216,18 @@ function AuditLogsContent() {
           onChange={(e) => updateParams({ targetType: e.target.value })}
           className="w-full sm:w-32"
         />
+        <Select
+          options={[
+            { value: "", label: "全部结果" },
+            { value: "SUCCESS", label: "成功" },
+            { value: "FAILURE", label: "失败" },
+            { value: "PENDING", label: "进行中" },
+            { value: "PARTIAL", label: "部分成功" },
+          ]}
+          value={outcome}
+          onChange={(e) => updateParams({ outcome: e.target.value })}
+          className="w-full sm:w-28"
+        />
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <div className="min-w-[10rem] flex-1 sm:w-40 sm:flex-none">
             <DatePicker
@@ -211,22 +247,25 @@ function AuditLogsContent() {
             />
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<Download className="h-4 w-4" />}
-          onClick={() => {
-            const params = new URLSearchParams();
-            if (action) params.set("action", action);
-            if (targetType) params.set("targetType", targetType);
-            if (startDate) params.set("startDate", startDate);
-            if (endDate) params.set("endDate", endDate);
-            params.set("export", "csv");
-            window.open(`/api/admin/audit-logs?${params.toString()}`, "_blank");
-          }}
-        >
-          导出 CSV
-        </Button>
+        {canAdmin("audit:export") && (
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Download className="h-4 w-4" />}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (action) params.set("action", action);
+              if (targetType) params.set("targetType", targetType);
+              if (outcome) params.set("outcome", outcome);
+              if (startDate) params.set("startDate", startDate);
+              if (endDate) params.set("endDate", endDate);
+              params.set("export", "csv");
+              window.open(`/api/admin/audit-logs?${params.toString()}`, "_blank");
+            }}
+          >
+            导出 CSV
+          </Button>
+        )}
       </div>
 
       {/* 日志列表（移动端卡片） */}
@@ -262,7 +301,11 @@ function AuditLogsContent() {
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
               <span className="truncate">操作人：{log.admin?.name || "-"}</span>
               <span className="truncate">IP：{log.ipAddress || "-"}</span>
-              <span className="col-span-2 truncate font-mono">目标：{log.targetId || "-"}</span>
+              <span className="flex items-center gap-1">
+                结果：
+                <OutcomeBadge outcome={log.outcome} />
+              </span>
+              <span className="truncate font-mono">目标：{log.targetId || "-"}</span>
             </div>
             <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
               <Button variant="ghost" size="sm" onClick={() => openDetail(log)}>
@@ -290,6 +333,9 @@ function AuditLogsContent() {
                   操作
                 </th>
                 <th scope="col" className="px-4 py-3">
+                  结果
+                </th>
+                <th scope="col" className="px-4 py-3">
                   目标类型
                 </th>
                 <th scope="col" className="px-4 py-3">
@@ -305,7 +351,7 @@ function AuditLogsContent() {
             </thead>
             <tbody className="divide-y">
               {Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={7} />
+                <TableRowSkeleton key={i} columns={8} />
               ))}
             </tbody>
           </table>
@@ -340,6 +386,9 @@ function AuditLogsContent() {
                   操作
                 </th>
                 <th scope="col" className="px-4 py-3">
+                  结果
+                </th>
+                <th scope="col" className="px-4 py-3">
                   目标类型
                 </th>
                 <th scope="col" className="px-4 py-3">
@@ -355,7 +404,7 @@ function AuditLogsContent() {
             </thead>
             <tbody>
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-brand-charcoal/50">
+                <td colSpan={8} className="px-4 py-8 text-center text-brand-charcoal/50">
                   暂无记录
                 </td>
               </tr>
@@ -373,6 +422,9 @@ function AuditLogsContent() {
                 </th>
                 <th scope="col" className="px-4 py-3">
                   操作
+                </th>
+                <th scope="col" className="px-4 py-3">
+                  结果
                 </th>
                 <th scope="col" className="px-4 py-3">
                   目标类型
@@ -423,6 +475,9 @@ function AuditLogsContent() {
                     >
                       {ACTION_LABELS[log.action] || log.action}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <OutcomeBadge outcome={log.outcome} />
                   </td>
                   <td className="px-4 py-3">
                     {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
@@ -479,6 +534,7 @@ function AuditLogsContent() {
               >
                 {ACTION_LABELS[selectedLog.action] || selectedLog.action}
               </span>
+              <OutcomeBadge outcome={selectedLog.outcome} />
               <span className="text-sm text-brand-charcoal/50">
                 {TARGET_TYPE_LABELS[selectedLog.targetType] || selectedLog.targetType}
                 {selectedLog.targetId && (
@@ -510,6 +566,16 @@ function AuditLogsContent() {
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
                 <dt className="mb-1 text-brand-charcoal/50">User-Agent</dt>
                 <dd className="break-all text-xs font-medium">{selectedLog.userAgent || "-"}</dd>
+              </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/50">请求 ID</dt>
+                <dd className="break-all font-mono text-xs font-medium">
+                  {selectedLog.requestId || "-"}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/50">认证方式</dt>
+                <dd className="font-medium">{selectedLog.authMethod || "-"}</dd>
               </div>
             </div>
 

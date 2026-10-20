@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { createAuditLogStrict } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,19 @@ export async function GET(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    await createAuditLogStrict({
+      action: "amap_config_view",
+      targetType: "system",
+      targetLabel: "AMAP",
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
 
     return NextResponse.json(
       {

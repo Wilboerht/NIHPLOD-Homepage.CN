@@ -33,10 +33,12 @@ vi.mock("@/lib/prisma", () => {
 });
 
 vi.mock("@/lib/auth", () => ({
-  withRole: (_roles: string[], handler: (...args: unknown[]) => unknown) =>
-    (request: unknown, context: unknown) => handler(request, context),
-  withAuth: (handler: (...args: unknown[]) => unknown) =>
-    (request: unknown, context: unknown) => handler(request, context),
+  withRole:
+    (_roles: string[], handler: (...args: unknown[]) => unknown) =>
+    (request: unknown, context: unknown) =>
+      handler(request, context),
+  withAuth: (handler: (...args: unknown[]) => unknown) => (request: unknown, context: unknown) =>
+    handler(request, context),
   checkAdminRateLimit: vi.fn().mockResolvedValue(null),
 }));
 
@@ -53,6 +55,8 @@ vi.mock("@/lib/password", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -61,7 +65,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { POST, PUT } from "../route";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { finishAuditLog } from "@/lib/audit";
 
 const OWNER = {
   id: "clx0000000000000000000001",
@@ -214,10 +218,7 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
       permissions: [],
     });
 
-    const res = await PUT(
-      createRequest({ id: TARGET_ID, role: "support" }),
-      DELEGATED as never
-    );
+    const res = await PUT(createRequest({ id: TARGET_ID, role: "support" }), DELEGATED as never);
 
     expect(res.status).toBe(403);
     expect(prisma.admin.update).not.toHaveBeenCalled();
@@ -280,10 +281,7 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
       permissions: ["!users:sensitive:read"],
     });
 
-    const res = await PUT(
-      createRequest({ id: TARGET_ID, permissions: [] }),
-      DELEGATED as never
-    );
+    const res = await PUT(createRequest({ id: TARGET_ID, permissions: [] }), DELEGATED as never);
 
     expect(res.status).toBe(403);
     expect(prisma.admin.update).not.toHaveBeenCalled();
@@ -323,10 +321,7 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
       updatedAt: new Date(),
     });
 
-    const res = await PUT(
-      createRequest({ id: TARGET_ID, permissions: [] }),
-      DELEGATED as never
-    );
+    const res = await PUT(createRequest({ id: TARGET_ID, permissions: [] }), DELEGATED as never);
 
     expect(res.status).toBe(200);
   });
@@ -497,10 +492,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
         data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
       })
     );
-    expect(createAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        detail: expect.objectContaining({ roleBefore: "admin", roleAfter: "ops" }),
-      })
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ roleBefore: "admin", roleAfter: "ops" }),
+      TARGET_ID
     );
   });
 
@@ -521,13 +517,14 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
         }),
       })
     );
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
       expect.objectContaining({
-        detail: expect.objectContaining({
-          permissionsChanged: true,
-          permissionOverrides: ["spent:review", "!products:write"],
-        }),
-      })
+        permissionsChanged: true,
+        permissionOverrides: ["spent:review", "!products:write"],
+      }),
+      TARGET_ID
     );
   });
 
@@ -579,15 +576,15 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
         data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
       })
     );
-    expect(createAuditLog).toHaveBeenCalledWith(
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
       expect.objectContaining({
-        action: "update_admin",
-        detail: expect.objectContaining({
-          roleBefore: "owner",
-          roleAfter: "admin",
-          tokensRevoked: true,
-        }),
-      })
+        roleBefore: "owner",
+        roleAfter: "admin",
+        tokensRevoked: true,
+      }),
+      TARGET_ID
     );
   });
 
@@ -603,10 +600,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
         data: expect.objectContaining({ tokenVersion: { increment: 1 } }),
       })
     );
-    expect(createAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        detail: expect.objectContaining({ passwordChanged: true, tokensRevoked: true }),
-      })
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ passwordChanged: true, tokensRevoked: true }),
+      TARGET_ID
     );
   });
 
@@ -619,10 +617,11 @@ describe("PUT /api/admin/admins（自锁与凭证安全）", () => {
         data: expect.objectContaining({ tokenVersion: expect.anything() }),
       })
     );
-    expect(createAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        detail: expect.objectContaining({ tokensRevoked: false, passwordChanged: false }),
-      })
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ tokensRevoked: false, passwordChanged: false }),
+      TARGET_ID
     );
   });
 });

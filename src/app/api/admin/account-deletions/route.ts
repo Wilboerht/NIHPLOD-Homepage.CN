@@ -15,7 +15,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { maskPhone } from "@/lib/mask-phone";
 import {
@@ -215,23 +215,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (force && deletionRequest.attempts >= MAX_DELETION_ATTEMPTS) {
-      await prisma.accountDeletionRequest.updateMany({
-        where: { id, status: DELETION_STATUS.FAILED },
-        data: { attempts: 0, lastError: null, lockedAt: null, leaseToken: null },
-      });
-    }
-
-    const result = await executeAccountDeletion(id);
-
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "account_deletion_retry",
       targetType: "user",
       targetId: deletionRequest.userId,
-      detail: { requestId: id, result, previousAttempts: deletionRequest.attempts },
+      detail: { requestId: id, force, previousAttempts: deletionRequest.attempts },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
       request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof executeAccountDeletion>>;
+    try {
+      if (force && deletionRequest.attempts >= MAX_DELETION_ATTEMPTS) {
+        await prisma.accountDeletionRequest.updateMany({
+          where: { id, status: DELETION_STATUS.FAILED },
+          data: { attempts: 0, lastError: null, lockedAt: null, leaseToken: null },
+        });
+      }
+
+      result = await executeAccountDeletion(id);
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { requestId: id, error: "EXCEPTION" });
+      throw error;
+    }
+
+    await finishAuditLog(
+      auditId,
+      result === "completed" ? "SUCCESS" : result === "skipped" ? "PARTIAL" : "FAILURE",
+      { requestId: id, result, previousAttempts: deletionRequest.attempts }
+    );
 
     const message =
       result === "completed"

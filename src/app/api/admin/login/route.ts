@@ -51,6 +51,29 @@ async function recordAdminAttempt(
   }
 }
 
+async function auditAdminAuthFailure(
+  request: NextRequest,
+  email: string,
+  reason: string,
+  action: "admin_login_failed" | "admin_totp_failed",
+  admin?: { id: string; email: string; name: string; role: string } | null
+): Promise<void> {
+  await createAuditLog({
+    action,
+    targetType: "admin",
+    targetId: admin?.id,
+    outcome: "FAILURE",
+    actorType: admin ? "ADMIN" : "SYSTEM",
+    actorEmail: admin?.email,
+    actorName: admin?.name,
+    actorRole: admin?.role,
+    authMethod: action === "admin_totp_failed" ? "totp" : "password",
+    adminId: admin?.id,
+    request,
+    detail: { email, reason },
+  });
+}
+
 // POST /api/admin/login - 管理员登录
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -164,17 +187,15 @@ export async function POST(request: NextRequest) {
     // 使用通用错误信息，避免泄露用户是否存在或是否被禁用
     if (!admin || adminDisabled || !isPasswordValid) {
       await recordAdminAttempt(email, false, request);
+      await auditAdminAuthFailure(
+        request,
+        email,
+        adminDisabled ? "account_disabled" : "invalid_credentials",
+        "admin_login_failed",
+        admin
+      );
       if (admin && adminDisabled) {
         apiConsole.warn(`[AdminLogin] 已禁用/已删除账号尝试登录: adminId=${admin.id}`);
-        // 审计失败不阻断响应（createAuditLog 内部已 try/catch）
-        await createAuditLog({
-          action: "login",
-          targetType: "admin",
-          targetId: admin.id,
-          detail: { email: admin.email, reason: "account_disabled" },
-          adminId: admin.id,
-          request,
-        });
       }
       return NextResponse.json(
         {
@@ -191,6 +212,13 @@ export async function POST(request: NextRequest) {
       // 绝不能静默跳过二次验证（与资金操作 requireMoneyOperationTotp 口径一致）
       if (!admin.totpSecret) {
         apiConsole.error(`[AdminLogin] 管理员 ${admin.id} 已启用 TOTP 但密钥缺失，拒绝登录`);
+        await auditAdminAuthFailure(
+          request,
+          email,
+          "totp_misconfigured",
+          "admin_totp_failed",
+          admin
+        );
         await recordAdminAttempt(email, false, request);
         return NextResponse.json(
           {
@@ -219,6 +247,13 @@ export async function POST(request: NextRequest) {
       // TOTP 专用速率限制：防止暴力猜测 6 位验证码
       const totpLimit = await rateLimit(`totp:${email}`, "admin-totp");
       if (!totpLimit.success) {
+        await auditAdminAuthFailure(
+          request,
+          email,
+          "totp_rate_limited",
+          "admin_totp_failed",
+          admin
+        );
         return NextResponse.json(
           {
             success: false,
@@ -262,6 +297,13 @@ export async function POST(request: NextRequest) {
 
       if (!totpValid) {
         // 同上：TOTP/备用码错误不占用密码锁定配额，仅由 admin-totp 桶限流
+        await auditAdminAuthFailure(
+          request,
+          email,
+          "totp_invalid",
+          "admin_totp_failed",
+          admin
+        );
         return NextResponse.json(
           {
             success: false,
@@ -312,9 +354,14 @@ export async function POST(request: NextRequest) {
 
     // 记录登录审计日志
     await createAuditLog({
-      action: "login",
-      targetType: "system",
+      action: "admin_login",
+      targetType: "admin",
       targetId: admin.id,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: admin.totpEnabled ? "totp" : "password",
       detail: { email: admin.email, role: admin.role },
       adminId: admin.id,
       request,

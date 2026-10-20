@@ -19,7 +19,7 @@ import {
 } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -136,7 +136,10 @@ export const GET = withAuth(async (request, admin) => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -171,14 +174,43 @@ export const POST = withAuth(async (request, admin) => {
     if (body.ids && body.action) {
       const batch = batchSchema.parse(body);
       if (batch.action === "delete") {
-        // 委派边界 + owner 保护 + 最后 owner 原子保护统一在 deleteAdminsSafely 内完成
-        const result = await deleteAdminsSafely({
-          actorId: admin.id,
+        const auditId = await beginAuditLog({
+          action: "delete_admin",
+          targetType: "admin",
+          detail: { ids: batch.ids, count: batch.ids.length },
+          actorType: "ADMIN",
+          actorEmail: admin.email,
+          actorName: admin.name,
           actorRole: admin.role,
-          actorOverrides: admin.permissionOverrides ?? [],
-          targetIds: batch.ids,
+          authMethod: "session",
+          adminId: admin.id,
+          request,
         });
+        if (!auditId) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+            },
+            { status: 503 }
+          );
+        }
+
+        // 委派边界 + owner 保护 + 最后 owner 原子保护统一在 deleteAdminsSafely 内完成
+        let result: Awaited<ReturnType<typeof deleteAdminsSafely>>;
+        try {
+          result = await deleteAdminsSafely({
+            actorId: admin.id,
+            actorRole: admin.role,
+            actorOverrides: admin.permissionOverrides ?? [],
+            targetIds: batch.ids,
+          });
+        } catch (error) {
+          await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+          throw error;
+        }
         if (!result.ok) {
+          await finishAuditLog(auditId, "FAILURE", { code: result.code });
           return NextResponse.json(
             { success: false, error: { code: result.code, message: result.message } },
             { status: result.status }
@@ -188,12 +220,10 @@ export const POST = withAuth(async (request, admin) => {
         // 删除时 tokenVersion 已在 deleteAdminsSafely 事务内递增，
         // 旧 token 立即失效；不再写用户级黑名单（避免新登录被误拦）。
 
-        await createAuditLog({
-          action: "delete_admin",
-          targetType: "admin",
-          detail: { ids: result.deleted.map((t) => t.id), count: result.deleted.length },
-          adminId: admin.id,
-          request,
+        await finishAuditLog(auditId, "SUCCESS", {
+          ids: result.deleted.map((t) => t.id),
+          count: result.deleted.length,
+          selfSkipped: result.selfSkipped,
         });
 
         return NextResponse.json({
@@ -242,38 +272,77 @@ export const POST = withAuth(async (request, admin) => {
       );
     }
 
-    const hashedPassword = await hashPassword(data.password);
-    const newAdmin = await prisma.admin.create({
-      data: {
-        email: data.email,
-        name: data.name,
-        password: hashedPassword,
-        role: data.role,
-        permissions: permissionOverrides,
-      },
-      select: { id: true, email: true, name: true, role: true, permissions: true, createdAt: true },
-    });
-
-    // 记录审计日志
-    await createAuditLog({
+    const auditId = await beginAuditLog({
       action: "create_admin",
       targetType: "admin",
-      targetId: newAdmin.id,
       detail: {
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        permissionOverrides,
+      },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const hashedPassword = await hashPassword(data.password);
+    const newAdmin = await prisma.admin
+      .create({
+        data: {
+          email: data.email,
+          name: data.name,
+          password: hashedPassword,
+          role: data.role,
+          permissions: permissionOverrides,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          permissions: true,
+          createdAt: true,
+        },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", { error: "CREATE_FAILED" });
+        throw error;
+      });
+
+    await finishAuditLog(
+      auditId,
+      "SUCCESS",
+      {
         email: newAdmin.email,
         name: newAdmin.name,
         role: newAdmin.role,
         permissionOverrides,
       },
-      adminId: admin.id,
-      request,
-    });
+      newAdmin.id
+    );
 
     return NextResponse.json({ success: true, data: newAdmin });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }
@@ -388,10 +457,7 @@ export const PUT = withAuth(async (request, admin) => {
     //    在操作者有效权限内。移除 `!撤销` 条目等价于授予模板权限，撤销他人权限
     //    属于削权，两者都必须拦截（此前只扫新增正向条目，可被"移除撤销"绕过）。
     //    既有且未变化的超范围授权（可能由 owner 授予）允许保留，避免改名被误拦。
-    if (
-      admin.role !== "owner" &&
-      (data.role !== undefined || permissionOverrides !== undefined)
-    ) {
+    if (admin.role !== "owner" && (data.role !== undefined || permissionOverrides !== undefined)) {
       const actorPerms = new Set<string>(
         resolveAdminPermissions(admin.role, admin.permissionOverrides)
       );
@@ -420,8 +486,7 @@ export const PUT = withAuth(async (request, admin) => {
       );
       const hasOutOfScopeChange = [...new Set([...beforePerms, ...afterPerms])].some(
         (permission) =>
-          beforePerms.has(permission) !== afterPerms.has(permission) &&
-          !actorPerms.has(permission)
+          beforePerms.has(permission) !== afterPerms.has(permission) && !actorPerms.has(permission)
       );
       if (hasOutOfScopeChange) {
         return NextResponse.json(
@@ -458,7 +523,10 @@ export const PUT = withAuth(async (request, admin) => {
     const roleChanged = data.role !== undefined && data.role !== targetAdmin.role;
     // 凭证/授权变化必须递增 tokenVersion：旧 token 立即永久失效，新登录不受影响
     const invalidatesSessions =
-      roleChanged || Boolean(data.password) || Boolean(data.email) || permissionOverrides !== undefined;
+      roleChanged ||
+      Boolean(data.password) ||
+      Boolean(data.email) ||
+      permissionOverrides !== undefined;
     if (invalidatesSessions) {
       updateData.tokenVersion = { increment: 1 };
     }
@@ -470,47 +538,85 @@ export const PUT = withAuth(async (request, admin) => {
       );
     }
 
+    const auditId = await beginAuditLog({
+      action: "update_admin",
+      targetType: "admin",
+      targetId: data.id,
+      detail: {
+        updatedFields: Object.keys(updateData).filter((k) => k !== "password"),
+        roleBefore: targetAdmin.role,
+        roleAfter: data.role ?? targetAdmin.role,
+        permissionsChanged: permissionOverrides !== undefined,
+        permissionOverrides: permissionOverrides ?? null,
+        passwordChanged: Boolean(data.password),
+        tokensRevoked: invalidatesSessions,
+      },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
     // owner 降级在事务内加 advisory lock 二次校验，避免并发降级不同 owner 导致零 owner
     // （与 admin-safety.ts 的删除路径使用同一锁名）
-    const demotingOwner = targetAdmin.role === "owner" && data.role !== undefined && data.role !== "owner";
-    const updatedAdmin = await prisma.$transaction(async (tx) => {
-      if (demotingOwner) {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('nihplod_admin_owner_guard'))`;
-        const [current, ownerCount] = await Promise.all([
-          tx.admin.findUnique({ where: { id: data.id, deletedAt: null }, select: { role: true } }),
-          tx.admin.count({ where: { role: "owner", status: "ACTIVE", deletedAt: null } }),
-        ]);
-        if (!current) {
-          throw new AdminUpdateError("NOT_FOUND", "管理员不存在", 404);
+    const demotingOwner =
+      targetAdmin.role === "owner" && data.role !== undefined && data.role !== "owner";
+    const updatedAdmin = await prisma
+      .$transaction(async (tx) => {
+        if (demotingOwner) {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('nihplod_admin_owner_guard'))`;
+          const [current, ownerCount] = await Promise.all([
+            tx.admin.findUnique({
+              where: { id: data.id, deletedAt: null },
+              select: { role: true },
+            }),
+            tx.admin.count({ where: { role: "owner", status: "ACTIVE", deletedAt: null } }),
+          ]);
+          if (!current) {
+            throw new AdminUpdateError("NOT_FOUND", "管理员不存在", 404);
+          }
+          if (current.role === "owner" && ownerCount <= 1) {
+            throw new AdminUpdateError("LAST_OWNER", "不能降级最后一个 owner 账号", 409);
+          }
         }
-        if (current.role === "owner" && ownerCount <= 1) {
-          throw new AdminUpdateError("LAST_OWNER", "不能降级最后一个 owner 账号", 409);
-        }
-      }
-      return tx.admin.update({
-        where: { id: data.id, deletedAt: null },
-        data: updateData,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          permissions: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        return tx.admin.update({
+          where: { id: data.id, deletedAt: null },
+          data: updateData,
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            permissions: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", { error: "UPDATE_FAILED" });
+        throw error;
       });
-    });
 
     // 角色/密码/邮箱/权限变化已在事务内递增 tokenVersion，旧会话立即失效。
     // 不再写用户级黑名单，避免目标管理员 24h 内无法重新登录。
 
-    // 记录审计日志（含角色前后值，密码只记录是否变更）
-    await createAuditLog({
-      action: "update_admin",
-      targetType: "admin",
-      targetId: updatedAdmin.id,
-      detail: {
+    await finishAuditLog(
+      auditId,
+      "SUCCESS",
+      {
         updatedFields: Object.keys(updateData).filter((k) => k !== "password"),
         roleBefore: targetAdmin.role,
         roleAfter: updatedAdmin.role,
@@ -519,9 +625,8 @@ export const PUT = withAuth(async (request, admin) => {
         passwordChanged: Boolean(data.password),
         tokensRevoked: invalidatesSessions,
       },
-      adminId: admin.id,
-      request,
-    });
+      updatedAdmin.id
+    );
 
     return NextResponse.json({ success: true, data: updatedAdmin });
   } catch (error) {
@@ -533,7 +638,10 @@ export const PUT = withAuth(async (request, admin) => {
     }
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }

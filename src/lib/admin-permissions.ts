@@ -53,6 +53,8 @@ export const ADMIN_PERMISSIONS = [
   "membership:write",
 
   "audit:read",
+  "audit:export",
+  "audit:sensitive:read",
 
   "admins:read",
   "admins:write",
@@ -138,6 +140,8 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
     group: "系统",
     permissions: [
       "audit:read",
+      "audit:export",
+      "audit:sensitive:read",
       "admins:read",
       "admins:write",
       "cron:read",
@@ -191,7 +195,9 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "redemptions:cancel": "取消兑换并退分（资金类）",
   "membership:read": "会员权益查看",
   "membership:write": "会员权益编辑",
-  "audit:read": "审计日志查看/导出",
+  "audit:read": "审计日志查看（脱敏）",
+  "audit:export": "审计日志导出",
+  "audit:sensitive:read": "查看审计敏感字段（IP/UA/操作者邮箱）",
   "admins:read": "管理员查看",
   "admins:write": "管理员新增/编辑/删除/权限分配",
   "cron:read": "定时任务查看",
@@ -305,6 +311,7 @@ export const ROLE_TEMPLATES: Record<Exclude<AdminRoleValue, "owner">, readonly A
       "redemptions:read",
       "membership:read",
       "audit:read",
+      "audit:export",
     ],
   };
 

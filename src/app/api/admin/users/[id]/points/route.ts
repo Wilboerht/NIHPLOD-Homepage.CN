@@ -9,7 +9,7 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLogTx } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { adjustPoints, getPointBalanceView } from "@/lib/points-ledger";
@@ -190,19 +190,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         where: { userId: id },
         select: { available: true },
       });
-      return { duplicated: false, available: balance?.available ?? 0 };
-    });
-
-    if (!result.duplicated) {
-      await createAuditLog({
+      const available = balance?.available ?? 0;
+      // 关键资金操作：审计与积分变动同事务，审计失败则整体回滚。
+      await createAuditLogTx(tx, {
         action: "user_points_adjust",
         targetType: "user",
         targetId: id,
-        detail: { amount, note, reference, balanceAfter: result.available },
+        detail: { amount, note, reference, balanceAfter: available },
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "session",
         adminId: admin.id,
         request,
       });
-    }
+      return { duplicated: false, available };
+    });
 
     return NextResponse.json({
       success: true,

@@ -78,6 +78,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   refresh_token_reuse_detected: "检测到 Refresh Token 复用",
   user_set_password: "用户设置密码",
   user_phone_changed: "用户换绑手机号",
+  account_deletion_request: "提交账号注销申请",
+  account_deletion_cancel: "撤回账号注销申请",
+  account_deletion_execute: "执行账号注销",
+  account_deletion_retry: "重试账号注销",
   sso_audit_export: "导出 SSO 审计日志",
   user_export: "导出用户列表",
   audit_log_export: "导出审计日志",
@@ -85,6 +89,19 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   admin_sso_token: "签发测肤子站断言",
   admin_sso_denied: "拒绝测肤子站登录",
   break_glass_view: "查看测肤子站应急账号",
+  device_force_logout: "强制下线设备",
+  admin_login_failed: "管理员登录失败",
+  admin_totp_failed: "管理员二次验证失败",
+  amap_config_view: "查看高德地图密钥",
+  spent_receipt_view: "查看消费凭证图片",
+  spent_import_preview: "预览消费记录导入",
+  application_list_view: "查看简历列表（PII）",
+  audit_log_view: "查看审计日志",
+  sso_audit_view: "查看 SSO 审计日志",
+  step_up_failed: "二次验证失败",
+  create_point_campaign: "创建积分活动",
+  update_point_campaign: "更新积分活动",
+  delete_point_campaign: "删除积分活动",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
@@ -107,4 +124,5 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   spent_import: "消费导入",
   point_gift: "积分礼品",
   point_redemption: "积分兑换",
+  point_campaign: "积分活动",
 };

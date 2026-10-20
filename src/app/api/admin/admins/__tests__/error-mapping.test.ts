@@ -52,7 +52,11 @@ vi.mock("@/lib/password", async () => {
   };
 });
 
-vi.mock("@/lib/audit", () => ({ createAuditLog: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/audit", () => ({
+  createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
+}));
 vi.mock("@/lib/token-blacklist", () => ({
   blacklistAdminTokens: vi.fn().mockResolvedValue(undefined),
 }));

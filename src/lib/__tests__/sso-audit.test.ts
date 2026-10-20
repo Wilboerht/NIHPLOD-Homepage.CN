@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockCreate = vi.fn();
 const mockDeleteMany = vi.fn();
@@ -22,11 +22,20 @@ vi.mock("next/server", () => ({
   after: (task: () => unknown) => mockAfter(task),
 }));
 
-import { recordSsoEvent, scheduleSsoEvent, cleanupOldSsoAuditEvents, escapeCSV } from "@/lib/sso-audit";
+import {
+  recordSsoEvent,
+  scheduleSsoEvent,
+  cleanupOldSsoAuditEvents,
+  escapeCSV,
+} from "@/lib/sso-audit";
 
 describe("sso-audit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("应创建 SSO 审计事件", async () => {
@@ -70,9 +79,23 @@ describe("sso-audit", () => {
     );
   });
 
-  it("cleanupOldSsoAuditEvents 应删除 90 天前的记录", async () => {
+  it("归档未就绪时 fail-closed，不物理删除 SSO 审计", async () => {
+    vi.stubEnv("AUDIT_ARCHIVE_READY", "false");
     mockDeleteMany.mockResolvedValue({ count: 5 });
+
     const result = await cleanupOldSsoAuditEvents();
+
+    expect(result).toBe(0);
+    expect(mockDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("归档就绪后删除 90 天前的记录", async () => {
+    vi.stubEnv("AUDIT_ARCHIVE_READY", "true");
+    vi.stubEnv("AUDIT_ARCHIVE_BUCKET", "audit-archive");
+    mockDeleteMany.mockResolvedValue({ count: 5 });
+
+    const result = await cleanupOldSsoAuditEvents();
+
     expect(result).toBe(5);
     expect(mockDeleteMany).toHaveBeenCalledWith(
       expect.objectContaining({

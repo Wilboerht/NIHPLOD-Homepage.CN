@@ -148,6 +148,8 @@ vi.mock("@/lib/csrf", () => ({
 // Mock audit
 vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
+  beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
+  finishAuditLog: vi.fn().mockResolvedValue(true),
   listAuditLogs: vi.fn().mockResolvedValue({
     items: [],
     pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
@@ -482,9 +484,10 @@ describe("管理端 API 集成测试", () => {
       // 禁用事实写入服务端审计日志
       expect(mockCreateAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: "login",
+          action: "admin_login_failed",
           targetType: "admin",
           targetId: "admin-1",
+          outcome: "FAILURE",
           detail: expect.objectContaining({ reason: "account_disabled" }),
         })
       );
