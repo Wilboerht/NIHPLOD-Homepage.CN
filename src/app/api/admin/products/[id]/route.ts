@@ -12,6 +12,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
@@ -229,6 +230,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       description: sanitizeHtml(validated.description),
       ingredients: sanitizeHtml(validated.ingredients),
       usage: sanitizeHtml(validated.usage),
+      purchaseLinks: validated.purchaseLinks?.map((link) => {
+        const normalized = normalizePurchaseLink(link);
+        return {
+          ...normalized,
+          platform: sanitizeHtml(normalized.platform),
+        };
+      }),
     };
 
     // 检查产品是否存在
@@ -268,7 +276,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       select: { id: true },
     });
     const existingLinkIds = existingLinks.map((l) => l.id);
-    const newLinkIds = (validated.purchaseLinks || []).filter((l) => l.id).map((l) => l.id);
+    const newLinkIds = (sanitized.purchaseLinks || []).filter((l) => l.id).map((l) => l.id!);
 
     // 删除不再使用的购买链接
     const linksToDelete = existingLinkIds.filter((linkId) => !newLinkIds.includes(linkId));
@@ -338,14 +346,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           // 更新已有链接
           await tx.purchaseLink.update({
             where: { id: link.id },
-            data: { platform: link.platform, url: link.url, order: link.order },
+            data: {
+              platform: link.platform,
+              platformKey: link.platformKey,
+              url: link.url,
+              miniProgramShortLink: link.miniProgramShortLink,
+              miniProgramPath: link.miniProgramPath,
+              order: link.order,
+            },
           });
         } else {
           // 创建新链接
           await tx.purchaseLink.create({
             data: {
               platform: link.platform,
+              platformKey: link.platformKey,
               url: link.url,
+              miniProgramShortLink: link.miniProgramShortLink,
+              miniProgramPath: link.miniProgramPath,
               order: link.order,
               productId: id,
             },

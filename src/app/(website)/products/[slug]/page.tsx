@@ -183,7 +183,8 @@ async function getProduct(slug: string) {
         select: { id: true, url: true, alt: true },
       },
       purchaseLinks: {
-        select: { id: true, platform: true, url: true },
+        orderBy: { order: "asc" },
+        select: { id: true, platform: true, platformKey: true, url: true },
       },
     },
   });

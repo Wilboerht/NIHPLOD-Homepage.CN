@@ -34,7 +34,7 @@ interface Product {
   description: string;
   price: number;
   capacity: string | null;
-  purchaseLinks: { id: string; platform: string; url: string }[];
+  purchaseLinks: { id: string; platform: string; platformKey?: string | null; url: string }[];
   category: Category;
   images: ProductImage[];
   ingredients: string | null;
@@ -386,27 +386,25 @@ export function ProductDetailContent({
   // 外部购买链接（第三方平台外链，桌面/移动端共用）
   const renderExternalPurchaseLinks = () =>
     product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-      product.purchaseLinks
-        .filter((link) => link.platform !== "官方商城")
-        .map((link) => (
-          <a
-            key={link.id}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`在${link.platform}购买`}
-            className="-m-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 transition-opacity hover:opacity-60"
-          >
-            <PlatformIcon platform={link.platform} />
-          </a>
-        ))
+      product.purchaseLinks.map((link) => (
+        <a
+          key={link.id}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`在${link.platform}购买`}
+          className="-m-2 inline-flex min-h-[44px] items-center justify-center gap-2 p-2 text-sm text-brand-charcoal transition-opacity hover:opacity-60"
+        >
+          <PlatformIcon platform={link.platform} platformKey={link.platformKey} />
+          <span>{link.platform}</span>
+        </a>
+      ))
     ) : (
       <span className="text-sm font-light text-brand-charcoal/50">暂无购买链接</span>
     );
 
   // 移动端是否展示外部购买链接区域
-  const showMobilePurchaseLinks =
-    product.purchaseLinks && product.purchaseLinks.length > 0;
+  const showMobilePurchaseLinks = product.purchaseLinks && product.purchaseLinks.length > 0;
 
   return (
     <m.div
@@ -706,22 +704,18 @@ export function ProductDetailContent({
                     </div>
 
                     {/* 产地/规格 */}
-                    {(product.origin || product.capacity) && (
-                      <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-brand-charcoal">
-                        {product.origin && (
-                          <div className="flex gap-0">
-                            <dt>产地：</dt>
-                            <dd>{product.origin}</dd>
-                          </div>
-                        )}
-                        {product.capacity && (
-                          <div className="flex gap-0">
-                            <dt>规格：</dt>
-                            <dd>{product.capacity}</dd>
-                          </div>
-                        )}
-                      </dl>
-                    )}
+                    <dl className="mt-2 flex items-center gap-3 text-xs font-light leading-relaxed tracking-[0.06em] text-brand-charcoal">
+                      <div className="flex gap-0">
+                        <dt>产地：</dt>
+                        <dd>{product.origin || "法国"}</dd>
+                      </div>
+                      {product.capacity && (
+                        <div className="flex gap-0">
+                          <dt>规格：</dt>
+                          <dd>{product.capacity}</dd>
+                        </div>
+                      )}
+                    </dl>
 
                     {/* 价格 */}
                     <div className="mt-4">
@@ -884,7 +878,6 @@ export function ProductDetailContent({
             </div>
           </div>
         </div>
-
       </div>
 
       {/* 底部版权信息 */}

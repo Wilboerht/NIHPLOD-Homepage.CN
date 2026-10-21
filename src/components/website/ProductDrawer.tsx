@@ -7,7 +7,7 @@ import { sanitizeHtml } from "@/lib/html-sanitize";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
-import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag, Store } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { XiaohongshuLink } from "@/components/website";
 import { getPlatformIcon } from "./PlatformIcons";
@@ -18,7 +18,12 @@ import { getPlatformIcon } from "./PlatformIcons";
 interface PurchaseLink {
   id: string;
   platform: string;
+  platformKey?: string | null;
   url: string;
+  miniProgramShortLink?: string | null;
+  miniProgramPath?: string | null;
+  jump?:
+    { type: "miniprogram"; shortLink?: string; appId?: string; path?: string } | { type: "copy" };
 }
 
 /**
@@ -32,6 +37,7 @@ interface ProductData {
   description: string;
   price: number;
   capacity?: string;
+  origin?: string | null;
   purchaseLinks?: PurchaseLink[];
   images: { url: string; alt?: string }[];
   category: { name: string };
@@ -68,12 +74,19 @@ interface ProductDrawerProps {
  * 平台图标组件
  * 每个平台 Logo 的视觉重量不同，需要单独调整大小以保持视觉平衡
  */
-export function PlatformIcon({ platform }: { platform: string }) {
+export function PlatformIcon({
+  platform,
+  platformKey,
+}: {
+  platform: string;
+  platformKey?: string | null;
+}) {
   const p = platform.trim();
-  if (p.includes("天猫") || p.toLowerCase().includes("tmall")) {
+  if (platformKey === "tmall" || p.includes("天猫") || p.toLowerCase().includes("tmall")) {
     return <>{getPlatformIcon("tmall")}</>;
   }
   if (
+    platformKey === "xiaohongshu" ||
     p.includes("小红书") ||
     p.toLowerCase().includes("xiaohongshu") ||
     p.toLowerCase().includes("xhs")
@@ -81,11 +94,15 @@ export function PlatformIcon({ platform }: { platform: string }) {
     return <>{getPlatformIcon("xiaohongshu")}</>;
   }
   if (
+    platformKey === "douyin" ||
     p.includes("抖音") ||
     p.toLowerCase().includes("douyin") ||
     p.toLowerCase().includes("tiktok")
   ) {
     return <>{getPlatformIcon("douyin")}</>;
+  }
+  if (platformKey === "wechat-shop" || p.includes("微信小店") || p.includes("微信小铺")) {
+    return <Store className="h-4 w-4" />;
   }
   return <ShoppingBag className="h-4 w-4" />;
 }
@@ -396,7 +413,7 @@ export function ProductDrawer({
                         {product.name}
                       </h2>
                       <div className="mb-3 text-xs tracking-wide text-brand-charcoal/50">
-                        规格: {product.capacity || "N/A"} | 产地: 法国
+                        规格: {product.capacity || "N/A"} | 产地: {product.origin || "法国"}
                       </div>
                       <div className="text-lg font-medium text-brand-charcoal">
                         {formatPrice(product.price)}
@@ -501,7 +518,7 @@ export function ProductDrawer({
                         {actionArea ?? (
                           <>
                             <div className="mb-4 text-[15px] font-semibold text-brand-charcoal">
-                              官方旗舰店
+                              购买渠道
                             </div>
 
                             <div className="flex flex-wrap items-center gap-4">
@@ -512,9 +529,13 @@ export function ProductDrawer({
                                     href={link.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="transition-opacity hover:opacity-60"
+                                    className="flex items-center gap-2 text-[14px] text-brand-charcoal transition-opacity hover:opacity-60"
                                   >
-                                    <PlatformIcon platform={link.platform} />
+                                    <PlatformIcon
+                                      platform={link.platform}
+                                      platformKey={link.platformKey}
+                                    />
+                                    <span>{link.platform}</span>
                                   </a>
                                 ))
                               ) : (
@@ -548,7 +569,9 @@ export function ProductDrawer({
                     <span className="text-lg font-medium text-brand-charcoal">
                       {formatPrice(product.price)}
                     </span>
-                    <span className="text-xs text-brand-charcoal/50">产地：法国</span>
+                    <span className="text-xs text-brand-charcoal/50">
+                      产地：{product.origin || "法国"}
+                    </span>
                   </div>
 
                   {/* Tab 切换 */}
@@ -700,7 +723,10 @@ export function ProductDrawer({
                               rel="noopener noreferrer"
                               className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
                             >
-                              <PlatformIcon platform={link.platform} />
+                              <PlatformIcon
+                                platform={link.platform}
+                                platformKey={link.platformKey}
+                              />
                               <span>{link.platform}</span>
                             </a>
                           ))}

@@ -49,15 +49,19 @@ model Product {
 
 // 购买链接（支持多平台）
 model PurchaseLink {
-  id        String   @id @default(cuid())
-  platform  String   // 平台名称（如：天猫、京东、小红书、官方商城）
-  url       String   // 购买链接
-  order     Int      @default(0) // 排序
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id                   String   @id @default(cuid())
+  platform             String   // 平台名称（如：天猫、京东、小红书、官方商城）
+  platformKey          String?
+  url                  String   // 购买链接
+  miniProgramShortLink String?
+  miniProgramPath      String?
+  order                Int      @default(0) // 排序
+  productId            String
+  product              Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @default(now()) @updatedAt
 
+  @@unique([productId, platformKey])
   @@index([productId])
 }
 

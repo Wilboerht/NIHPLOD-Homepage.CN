@@ -10,6 +10,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 
 // 查询参数 Schema
@@ -184,10 +185,13 @@ export async function POST(request: NextRequest) {
       description: sanitizeHtml(validated.description),
       ingredients: sanitizeHtml(validated.ingredients),
       usage: sanitizeHtml(validated.usage),
-      purchaseLinks: validated.purchaseLinks?.map((link) => ({
-        ...link,
-        platform: sanitizeHtml(link.platform),
-      })),
+      purchaseLinks: validated.purchaseLinks?.map((link) => {
+        const normalized = normalizePurchaseLink(link);
+        return {
+          ...normalized,
+          platform: sanitizeHtml(normalized.platform),
+        };
+      }),
     };
 
     // 检查 slug 是否重复
@@ -241,7 +245,10 @@ export async function POST(request: NextRequest) {
           ? {
               create: sanitized.purchaseLinks.map((link, index) => ({
                 platform: link.platform,
+                platformKey: link.platformKey,
                 url: link.url,
+                miniProgramShortLink: link.miniProgramShortLink,
+                miniProgramPath: link.miniProgramPath,
                 order: link.order ?? index,
               })),
             }

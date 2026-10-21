@@ -25,6 +25,7 @@ export async function listRedeemableProducts() {
       description: true,
       price: true,
       capacity: true,
+      origin: true,
       ingredients: true,
       usage: true,
       benefits: true,
@@ -34,7 +35,14 @@ export async function listRedeemableProducts() {
       },
       purchaseLinks: {
         orderBy: { order: "asc" },
-        select: { id: true, platform: true, url: true },
+        select: {
+          id: true,
+          platform: true,
+          platformKey: true,
+          url: true,
+          miniProgramShortLink: true,
+          miniProgramPath: true,
+        },
       },
       category: { select: { name: true } },
     },
@@ -119,7 +127,14 @@ export async function redeemGiftForUser(params: {
 
       const product = await tx.product.findUnique({
         where: { id: productId },
-        select: { id: true, name: true, price: true, pointRedeemable: true, published: true, redeemStock: true },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          pointRedeemable: true,
+          published: true,
+          redeemStock: true,
+        },
       });
       if (!product) {
         return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };

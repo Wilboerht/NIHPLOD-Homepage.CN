@@ -16,6 +16,8 @@ import { getPointBalanceView } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { MAX_ADDRESSES, addressFieldsSchema, type UserAddressView } from "@/lib/user-address";
 import { htmlToPlainText } from "@/lib/html-sanitize";
+import { buildPurchaseJump } from "@/lib/purchase-jump";
+import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
 import { querySfRoutes } from "@/lib/sf-express";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import type { ProductData } from "@/components/website/ProductDrawer";
@@ -188,7 +190,7 @@ export async function getPointsLedgerResponse(
  */
 export async function getPointGiftsResponse(
   userId: string,
-  options: { plainText?: boolean } = {}
+  options: { plainText?: boolean; canonicalPurchaseLinksOnly?: boolean } = {}
 ): Promise<NextResponse> {
   try {
     const data = await prisma.$transaction(async (tx) => {
@@ -223,11 +225,24 @@ export async function getPointGiftsResponse(
             description: toText(p.description) ?? "",
             price: priceYuan,
             capacity: p.capacity ?? undefined,
-            purchaseLinks: p.purchaseLinks.map((l) => ({
-              id: l.id,
-              platform: l.platform,
-              url: l.url,
-            })),
+            origin: p.origin || "法国",
+            purchaseLinks: p.purchaseLinks
+              .filter(
+                (l) => !options.canonicalPurchaseLinksOnly || isPurchasePlatformKey(l.platformKey)
+              )
+              .map((l) => ({
+                id: l.id,
+                platform: l.platform,
+                platformKey: l.platformKey,
+                url: l.url,
+                miniProgramShortLink: l.miniProgramShortLink ?? undefined,
+                miniProgramPath: l.miniProgramPath ?? undefined,
+                jump: buildPurchaseJump({
+                  platformKey: l.platformKey,
+                  miniProgramShortLink: l.miniProgramShortLink,
+                  miniProgramPath: l.miniProgramPath,
+                }),
+              })),
             images: p.images.map((img) => ({ url: img.url, alt: img.alt ?? undefined })),
             category: { name: p.category.name },
             ingredients: toText(p.ingredients) ?? undefined,
@@ -256,7 +271,10 @@ export async function getPointGiftsResponse(
 }
 
 /** 兑换礼品（requestId 幂等；地址快照入库） */
-export async function redeemPointsResponse(userId: string, request: Request): Promise<NextResponse> {
+export async function redeemPointsResponse(
+  userId: string,
+  request: Request
+): Promise<NextResponse> {
   try {
     const body = await request.json().catch(() => null);
     const parsed = redeemSchema.safeParse(body);
@@ -325,7 +343,10 @@ export async function redeemPointsResponse(userId: string, request: Request): Pr
 }
 
 /** 我的兑换记录（offset 分页，多取 1 条判断 hasMore） */
-export async function getRedemptionsResponse(userId: string, request: Request): Promise<NextResponse> {
+export async function getRedemptionsResponse(
+  userId: string,
+  request: Request
+): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const parsed = redemptionQuerySchema.safeParse({ offset: searchParams.get("offset") });
@@ -491,7 +512,10 @@ export async function getAddressesResponse(userId: string): Promise<NextResponse
 }
 
 /** 新增地址（第一条自动默认；isDefault=true 取消其他默认；上限 MAX_ADDRESSES） */
-export async function createAddressResponse(userId: string, request: Request): Promise<NextResponse> {
+export async function createAddressResponse(
+  userId: string,
+  request: Request
+): Promise<NextResponse> {
   try {
     const parsed = addressFieldsSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {

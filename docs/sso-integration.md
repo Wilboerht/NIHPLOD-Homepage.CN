@@ -740,6 +740,8 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | GET/POST | `/api/oauth/addresses` | 收货地址列表 / 新增（第一条自动默认，上限 20 条） |
 | PATCH（兼容 PUT）/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址（删除或取消默认后自动顺延一条默认） |
 
+礼品 `detail` 额外包含 `origin`（可能为空，客户端按“法国”兜底）与 `purchaseLinks[].jump`（固定四类渠道：天猫国际/小红书/抖音/微信小店；短链优先，其次 appId+path，最后复制网页链接）。
+
 消费补录（凭证含个人信息，私有 bucket 优先存储）：
 
 | 方法 | 端点 | 说明 |

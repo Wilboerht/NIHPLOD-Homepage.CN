@@ -148,20 +148,24 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
     expect((await pointsGET(req("GET", "/api/oauth/points"))).status).toBe(200);
     expect(mall.getPointsOverviewResponse).toHaveBeenCalledWith("user-1");
 
-    expect(
-      (await ledgerGET(req("GET", "/api/oauth/points/ledger?offset=0"))).status
-    ).toBe(200);
+    expect((await ledgerGET(req("GET", "/api/oauth/points/ledger?offset=0"))).status).toBe(200);
     expect(mall.getPointsLedgerResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
 
     expect((await giftsGET(req("GET", "/api/oauth/points/gifts"))).status).toBe(200);
     // 小程序通道以纯文本下发展示字段（无富文本渲染能力）
-    expect(mall.getPointGiftsResponse).toHaveBeenCalledWith("user-1", { plainText: true });
+    expect(mall.getPointGiftsResponse).toHaveBeenCalledWith("user-1", {
+      plainText: true,
+      canonicalPurchaseLinksOnly: true,
+    });
 
-    expect((await redemptionsGET(req("GET", "/api/oauth/points/redemptions?offset=0"))).status).toBe(200);
+    expect(
+      (await redemptionsGET(req("GET", "/api/oauth/points/redemptions?offset=0"))).status
+    ).toBe(200);
     expect(mall.getRedemptionsResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
 
     expect(
-      (await trackingGET(req("GET", "/api/oauth/points/redemptions/rid-1/tracking"), ctx("rid-1"))).status
+      (await trackingGET(req("GET", "/api/oauth/points/redemptions/rid-1/tracking"), ctx("rid-1")))
+        .status
     ).toBe(200);
     expect(mall.getRedemptionTrackingResponse).toHaveBeenCalledWith("user-1", "rid-1");
 
@@ -173,7 +177,15 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
     authedToken();
 
     expect(
-      (await redeemPOST(req("POST", "/api/oauth/points/redeem", { productId: "p", addressId: "a", requestId: "r" }))).status
+      (
+        await redeemPOST(
+          req("POST", "/api/oauth/points/redeem", {
+            productId: "p",
+            addressId: "a",
+            requestId: "r",
+          })
+        )
+      ).status
     ).toBe(200);
     expect(mall.redeemPointsResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
 
@@ -183,7 +195,12 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
     expect(mall.createAddressResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
 
     expect(
-      (await addressPATCH(req("PATCH", "/api/oauth/addresses/aid-1", { recipient: "x" }), ctx("aid-1"))).status
+      (
+        await addressPATCH(
+          req("PATCH", "/api/oauth/addresses/aid-1", { recipient: "x" }),
+          ctx("aid-1")
+        )
+      ).status
     ).toBe(200);
     expect(mall.updateAddressResponse).toHaveBeenCalledWith("user-1", "aid-1", expect.any(Request));
 

@@ -7,8 +7,7 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
 }));
 
@@ -71,11 +70,21 @@ describe("GET /api/user/points/gifts", () => {
         description: "温和洁面",
         price: new Prisma.Decimal("199.00"),
         capacity: "100ml",
+        origin: "法国",
         ingredients: "氨基酸表活",
         usage: "早晚取适量",
         benefits: ["温和清洁"],
         images: [{ url: "https://cdn.example.com/cleanser.png", alt: "洁面乳" }],
-        purchaseLinks: [{ id: "pl1", platform: "天猫", url: "https://tmall.example.com/cleanser" }],
+        purchaseLinks: [
+          {
+            id: "pl1",
+            platform: "天猫国际",
+            platformKey: "tmall",
+            url: "https://tmall.example.com/cleanser",
+            miniProgramShortLink: "#小程序://tmall/cleanser",
+            miniProgramPath: null,
+          },
+        ],
         category: { name: "洁面" },
       },
       {
@@ -90,7 +99,16 @@ describe("GET /api/user/points/gifts", () => {
         usage: null,
         benefits: [],
         images: [],
-        purchaseLinks: [],
+        purchaseLinks: [
+          {
+            id: "pl2",
+            platform: "京东",
+            platformKey: null,
+            url: "https://jd.example.com/serum",
+            miniProgramShortLink: null,
+            miniProgramPath: null,
+          },
+        ],
         category: { name: "精华" },
       },
     ]);
@@ -124,8 +142,16 @@ describe("GET /api/user/points/gifts", () => {
           description: "温和洁面",
           price: 199,
           capacity: "100ml",
+          origin: "法国",
           purchaseLinks: [
-            { id: "pl1", platform: "天猫", url: "https://tmall.example.com/cleanser" },
+            {
+              id: "pl1",
+              platform: "天猫国际",
+              platformKey: "tmall",
+              url: "https://tmall.example.com/cleanser",
+              miniProgramShortLink: "#小程序://tmall/cleanser",
+              jump: { type: "miniprogram", shortLink: "#小程序://tmall/cleanser" },
+            },
           ],
           images: [{ url: "https://cdn.example.com/cleanser.png", alt: "洁面乳" }],
           category: { name: "洁面" },
@@ -149,7 +175,16 @@ describe("GET /api/user/points/gifts", () => {
           slug: "serum",
           description: "修护精华",
           price: 599,
-          purchaseLinks: [],
+          origin: "法国",
+          purchaseLinks: [
+            {
+              id: "pl2",
+              platform: "京东",
+              platformKey: null,
+              url: "https://jd.example.com/serum",
+              jump: { type: "copy" },
+            },
+          ],
           images: [],
           category: { name: "精华" },
           benefits: [],

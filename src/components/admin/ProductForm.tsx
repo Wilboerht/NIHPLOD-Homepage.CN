@@ -20,11 +20,16 @@ import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
 import { generateSlug } from "@/lib/utils";
 import { focusFirstInvalid } from "@/lib/form";
+import { createPurchaseLinkKey, type PurchaseLinkItem } from "@/lib/purchase-link-form";
 import {
-  usePurchaseLinks,
-  createPurchaseLinkKey,
-  type PurchaseLinkItem,
-} from "@/hooks/usePurchaseLinks";
+  PURCHASE_PLATFORM_OPTIONS,
+  getPurchasePlatformLabel,
+  isOfficialPurchasePlatform,
+  isPurchasePlatformKey,
+  normalizePurchaseLink,
+  resolvePurchasePlatformKey,
+  type PurchasePlatformKey,
+} from "@/lib/purchase-platforms";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 
 // 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
@@ -108,12 +113,22 @@ const defaultFormData: FormData = {
   geoFaqs: null,
 };
 
-// 购买平台选项
-const platformOptions: SelectOption[] = [
-  { value: "小红书", label: "小红书" },
-  { value: "抖音", label: "抖音" },
-  { value: "天猫", label: "天猫" },
-];
+function getPurchaseLinkKey(link: PurchaseLinkItem): PurchasePlatformKey | null {
+  return isPurchasePlatformKey(link.platformKey)
+    ? link.platformKey
+    : resolvePurchasePlatformKey(link.platform);
+}
+
+function getStoredPurchaseLinkKey(link: PurchaseLinkItem): PurchasePlatformKey | null {
+  return isPurchasePlatformKey(link.platformKey) ? link.platformKey : null;
+}
+
+function hasPurchaseLinkContent(link: PurchaseLinkItem): boolean {
+  if (getStoredPurchaseLinkKey(link)) {
+    return !!(link.url.trim() || link.miniProgramShortLink?.trim() || link.miniProgramPath?.trim());
+  }
+  return !!(link.platform?.trim() || link.url.trim());
+}
 
 export function ProductForm({ mode, initialData, categories }: ProductFormProps) {
   const router = useRouter();
@@ -123,10 +138,17 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       return {
         ...defaultFormData,
         ...initialData,
-        purchaseLinks: (initialData.purchaseLinks || []).map((link) => ({
-          ...link,
-          clientKey: link.clientKey ?? createPurchaseLinkKey(),
-        })),
+        purchaseLinks: (initialData.purchaseLinks || []).map((link) => {
+          const platformKey = link.platformKey ?? resolvePurchasePlatformKey(link.platform);
+          return {
+            ...link,
+            platformKey,
+            platform: platformKey ? getPurchasePlatformLabel(platformKey) : link.platform,
+            clientKey:
+              link.clientKey ??
+              (platformKey ? `canonical:${platformKey}` : createPurchaseLinkKey()),
+          };
+        }),
       };
     }
     return defaultFormData;
@@ -228,16 +250,121 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     }
   };
 
-  const { addPurchaseLink, removePurchaseLink, updatePurchaseLink } = usePurchaseLinks(
-    formData.purchaseLinks,
-    (links) => updateField("purchaseLinks", links)
+  const clearPurchaseLinkErrors = () => {
+    setErrors((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const key of Object.keys(next)) {
+        if (key === "purchaseLinks" || key.startsWith("purchaseLinks.")) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  };
+
+  const canonicalLinkMap = useMemo(() => {
+    const map = new Map<PurchasePlatformKey, { link: PurchaseLinkItem; index: number }>();
+    formData.purchaseLinks.forEach((link, index) => {
+      const key = getStoredPurchaseLinkKey(link);
+      if (key && !map.has(key)) map.set(key, { link, index });
+    });
+    return map;
+  }, [formData.purchaseLinks]);
+
+  const otherPurchaseLinks = useMemo(
+    () =>
+      formData.purchaseLinks
+        .map((link, index) => ({ link, index }))
+        .filter(({ link }) => getStoredPurchaseLinkKey(link) === null),
+    [formData.purchaseLinks]
   );
+
+  const updatePurchaseLinkAt = (index: number, patch: Partial<PurchaseLinkItem>) => {
+    setFormData((prev) => {
+      const next = [...prev.purchaseLinks];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, purchaseLinks: next };
+    });
+    clearPurchaseLinkErrors();
+  };
+
+  const upsertCanonicalPurchaseLink = (
+    key: PurchasePlatformKey,
+    patch: Partial<PurchaseLinkItem> = {}
+  ) => {
+    setFormData((prev) => {
+      const index = prev.purchaseLinks.findIndex((link) => getStoredPurchaseLinkKey(link) === key);
+      if (index >= 0) {
+        const next = [...prev.purchaseLinks];
+        next[index] = { ...next[index], ...patch };
+        return { ...prev, purchaseLinks: next };
+      }
+      const order = PURCHASE_PLATFORM_OPTIONS.findIndex((option) => option.value === key);
+      return {
+        ...prev,
+        purchaseLinks: [
+          ...prev.purchaseLinks,
+          {
+            platformKey: key,
+            platform: getPurchasePlatformLabel(key),
+            url: "",
+            miniProgramShortLink: "",
+            miniProgramPath: "",
+            order: order >= 0 ? order : 0,
+            clientKey: `canonical:${key}`,
+            ...patch,
+          },
+        ],
+      };
+    });
+    clearPurchaseLinkErrors();
+  };
+
+  const removeCanonicalPurchaseLink = (key: PurchasePlatformKey) => {
+    setFormData((prev) => ({
+      ...prev,
+      purchaseLinks: prev.purchaseLinks.filter((link) => getStoredPurchaseLinkKey(link) !== key),
+    }));
+    clearPurchaseLinkErrors();
+  };
+
+  const addOtherPurchaseLink = () => {
+    setFormData((prev) => ({
+      ...prev,
+      purchaseLinks: [
+        ...prev.purchaseLinks,
+        {
+          platformKey: null,
+          platform: "",
+          url: "",
+          order: 100 + prev.purchaseLinks.length,
+          clientKey: createPurchaseLinkKey(),
+        },
+      ],
+    }));
+    clearPurchaseLinkErrors();
+  };
+
+  const removePurchaseLinkAt = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      purchaseLinks: prev.purchaseLinks.filter((_, i) => i !== index),
+    }));
+    clearPurchaseLinkErrors();
+  };
 
   // 验证表单
   const validateForm = (): boolean => {
+    const purchaseLinkIndexes = formData.purchaseLinks
+      .map((link, index) => ({ link, index }))
+      .filter(({ link }) => hasPurchaseLinkContent(link));
     try {
       ProductSchema.parse({
         ...formData,
+        purchaseLinks: purchaseLinkIndexes.map(({ link }) => link),
         capacity: formData.capacity || null,
         origin: formData.origin || null,
         ingredients: formData.ingredients || null,
@@ -249,6 +376,14 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       if (err instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
         err.issues.forEach((e) => {
+          const path = e.path.map(String);
+          if (path[0] === "purchaseLinks" && path[1] !== undefined) {
+            const actualIndex = purchaseLinkIndexes[Number(path[1])]?.index;
+            if (actualIndex === undefined) return;
+            const suffix = path.slice(2).join(".");
+            fieldErrors[`purchaseLinks.${actualIndex}${suffix ? `.${suffix}` : ""}`] = e.message;
+            return;
+          }
           if (e.path[0]) {
             fieldErrors[String(e.path[0])] = e.message;
           }
@@ -307,12 +442,20 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       const uploadedImages = await uploadImages(formData.images);
 
       // 过滤掉没有填写完整的购买链接，并剥离仅前端使用的行 key
+      let otherLinkOrder = 0;
       const validPurchaseLinks = formData.purchaseLinks
-        .filter((link) => link.platform && link.url)
+        .filter(hasPurchaseLinkContent)
         .map((link) => {
-          const item = { ...link };
-          delete item.clientKey;
-          return item;
+          const key = getPurchaseLinkKey(link);
+          const normalized = normalizePurchaseLink({ ...link, platformKey: key });
+          const canonicalIndex = key
+            ? PURCHASE_PLATFORM_OPTIONS.findIndex((option) => option.value === key)
+            : -1;
+          return {
+            ...normalized,
+            platform: key ? getPurchasePlatformLabel(key) : normalized.platform,
+            order: key ? Math.max(0, canonicalIndex) : 100 + otherLinkOrder++,
+          };
         });
 
       const payload = {
@@ -339,6 +482,21 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     } finally {
       setSubmitting(null);
     }
+  };
+
+  const purchaseLinkError = (index: number | undefined, field: string) =>
+    index === undefined ? undefined : errors[`purchaseLinks.${index}.${field}`];
+
+  const purchaseLinkRowError = (index: number | undefined) => {
+    if (index === undefined) return undefined;
+    return errors[`purchaseLinks.${index}.platformKey`] ?? errors[`purchaseLinks.${index}`];
+  };
+
+  const otherPurchasePlatformError = (value: string) => {
+    if (!value.trim()) return undefined;
+    if (isOfficialPurchasePlatform(value)) return "官方商城已停用";
+    const key = resolvePurchasePlatformKey(value);
+    return key ? `请使用上方「${getPurchasePlatformLabel(key)}」固定渠道` : undefined;
   };
 
   return (
@@ -484,61 +642,147 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         />
       </section>
 
-      {/* 购买设置 */}
+      {/* 购买渠道 */}
       <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
-        <h2 className="mb-4 text-lg font-medium text-brand-charcoal">购买设置</h2>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-medium text-brand-charcoal">购买渠道</h2>
+            <p className="mt-1 text-xs text-brand-charcoal/50">
+              网页链接用于官网展示和复制兜底；小程序短链优先用于微信内跳转；路径仅在短链不可用时使用。
+            </p>
+          </div>
+          <Badge variant="primary">固定四类</Badge>
+        </div>
 
-        {/* 第三方平台链接 */}
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant="primary">第三方平台</Badge>
-              <span className="text-xs text-brand-charcoal/50">天猫、小红书、抖音等平台链接</span>
+        <div className="space-y-3">
+          {PURCHASE_PLATFORM_OPTIONS.map((option) => {
+            const entry = canonicalLinkMap.get(option.value);
+            const link = entry?.link;
+            const index = entry?.index;
+            const rowError = purchaseLinkRowError(index);
+            return (
+              <div
+                key={option.value}
+                className="rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
+              >
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-brand-charcoal">{option.label}</span>
+                    {link && hasPurchaseLinkContent(link) && (
+                      <Badge variant="secondary">已配置</Badge>
+                    )}
+                  </div>
+                  {link && (
+                    <button
+                      type="button"
+                      onClick={() => removeCanonicalPurchaseLink(option.value)}
+                      className="flex items-center gap-1 text-xs text-brand-charcoal/50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-3 w-3" /> 清空
+                    </button>
+                  )}
+                </div>
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <Input
+                    label="网页链接"
+                    value={link?.url ?? ""}
+                    onChange={(e) =>
+                      upsertCanonicalPurchaseLink(option.value, { url: e.target.value })
+                    }
+                    error={purchaseLinkError(index, "url")}
+                    placeholder="https://"
+                  />
+                  <Input
+                    label="小程序短链"
+                    value={link?.miniProgramShortLink ?? ""}
+                    onChange={(e) =>
+                      upsertCanonicalPurchaseLink(option.value, {
+                        miniProgramShortLink: e.target.value,
+                      })
+                    }
+                    error={purchaseLinkError(index, "miniProgramShortLink")}
+                    placeholder="可选，#小程序://..."
+                  />
+                  <Input
+                    label="小程序路径（兜底）"
+                    value={link?.miniProgramPath ?? ""}
+                    onChange={(e) =>
+                      upsertCanonicalPurchaseLink(option.value, {
+                        miniProgramPath: e.target.value,
+                      })
+                    }
+                    error={purchaseLinkError(index, "miniProgramPath")}
+                    placeholder="可选，pages/..."
+                  />
+                </div>
+                {rowError && <p className="mt-2 text-sm text-red-500">{rowError}</p>}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-6 border-t border-brand-charcoal/10 pt-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-brand-charcoal">其他平台（保留）</h3>
+              <p className="mt-1 text-xs text-brand-charcoal/50">
+                仅官网展示，不进入小程序固定四类。
+              </p>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={addPurchaseLink}
+              onClick={addOtherPurchaseLink}
               leftIcon={<Plus className="h-4 w-4" />}
             >
-              添加平台
+              添加其他平台
             </Button>
           </div>
-          {formData.purchaseLinks.length === 0 ? (
-            <p className="text-sm text-brand-charcoal/50">暂无第三方购买链接，点击右上角添加</p>
+          {otherPurchaseLinks.length === 0 ? (
+            <p className="text-sm text-brand-charcoal/50">暂无其他平台链接</p>
           ) : (
             <div className="space-y-3">
-              {formData.purchaseLinks.map((link, index) => (
-                <div
-                  key={link.clientKey ?? `purchase-link-${index}`}
-                  className="flex items-center gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
-                >
-                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
-                    {index + 1}
-                  </span>
-                  <div className="grid flex-1 gap-3 sm:grid-cols-2">
-                    <Select
-                      options={platformOptions}
-                      value={link.platform}
-                      onChange={(e) => updatePurchaseLink(index, "platform", e.target.value)}
-                      placeholder="选择平台"
-                    />
-                    <Input
-                      value={link.url}
-                      onChange={(e) => updatePurchaseLink(index, "url", e.target.value)}
-                      placeholder="输入购买链接 URL"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removePurchaseLink(index)}
-                    className="flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+              {otherPurchaseLinks.map(({ link, index }) => {
+                const platformError =
+                  purchaseLinkError(index, "platform") || otherPurchasePlatformError(link.platform);
+                return (
+                  <div
+                    key={link.clientKey ?? `purchase-link-${index}`}
+                    className="flex items-start gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] p-3"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                    <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                      <Input
+                        label="平台名称"
+                        value={link.platform ?? ""}
+                        onChange={(e) =>
+                          updatePurchaseLinkAt(index, {
+                            platform: e.target.value,
+                            platformKey: null,
+                          })
+                        }
+                        error={platformError}
+                        placeholder="如：京东"
+                      />
+                      <Input
+                        label="网页链接"
+                        value={link.url}
+                        onChange={(e) => updatePurchaseLinkAt(index, { url: e.target.value })}
+                        error={purchaseLinkError(index, "url")}
+                        placeholder="https://"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePurchaseLinkAt(index)}
+                      aria-label={`删除${link.platform || "其他"}平台链接`}
+                      className="mt-6 flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
           {errors.purchaseLinks && (

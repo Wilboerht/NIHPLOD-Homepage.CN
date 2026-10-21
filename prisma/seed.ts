@@ -374,8 +374,13 @@ async function main() {
     { productSlug: "treatment-oil", platform: "天猫国际", url: "https://nihplod.tmall.hk", order: 1 },
     { productSlug: "treatment-oil", platform: "小红书", url: "https://xiaohongshu.com/nihplod", order: 2 },
     { productSlug: "treatment-oil", platform: "抖音", url: "https://v.douyin.com/nihplod", order: 3 },
-    { productSlug: "gift-box", platform: "官方商城", url: "https://nihplod.cn/products/gift-box", order: 1 },
   ];
+  const platformKeys: Record<string, string> = {
+    天猫国际: "tmall",
+    小红书: "xiaohongshu",
+    抖音: "douyin",
+    微信小店: "wechat-shop",
+  };
   await prisma.purchaseLink.deleteMany({});
   for (const link of purchaseLinks) {
     if (productMap[link.productSlug]) {
@@ -383,6 +388,7 @@ async function main() {
         data: {
           productId: productMap[link.productSlug],
           platform: link.platform,
+          platformKey: platformKeys[link.platform] ?? null,
           url: link.url,
           order: link.order,
         },

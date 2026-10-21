@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
     });
     if (!auth.ok) return auth.response;
     return decorateOAuthResponse(
-      await getPointGiftsResponse(auth.payload.id, { plainText: true }),
+      await getPointGiftsResponse(auth.payload.id, {
+        plainText: true,
+        canonicalPurchaseLinksOnly: true,
+      }),
       auth.corsHeaders
     );
   } catch (error) {

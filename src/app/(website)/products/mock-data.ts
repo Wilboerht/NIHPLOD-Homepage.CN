@@ -146,7 +146,6 @@ const purchaseLinks = [
   { id: plid(1), platform: "天猫国际", url: "https://www.tmall.com" },
   { id: plid(2), platform: "小红书", url: "https://www.xiaohongshu.com" },
   { id: plid(3), platform: "抖音", url: "https://www.douyin.com" },
-  { id: plid(4), platform: "官方商城", url: "#" },
 ];
 
 export const mockProducts: MockProduct[] = [

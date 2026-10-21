@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { apiGet } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
+import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
+import type { PurchaseLinkItem } from "@/lib/purchase-link-form";
 
 interface Category {
   id: string;
@@ -20,13 +22,6 @@ interface ImageItem {
   id: string;
   url: string;
   alt: string | null;
-  order: number;
-}
-
-interface PurchaseLinkItem {
-  id: string;
-  platform: string;
-  url: string;
   order: number;
 }
 
@@ -84,7 +79,10 @@ function EditProductContent() {
             (link: PurchaseLinkItem, index: number) => ({
               id: link.id,
               platform: link.platform,
+              platformKey: isPurchasePlatformKey(link.platformKey) ? link.platformKey : null,
               url: link.url,
+              miniProgramShortLink: link.miniProgramShortLink ?? "",
+              miniProgramPath: link.miniProgramPath ?? "",
               order: link.order ?? index,
             })
           ),

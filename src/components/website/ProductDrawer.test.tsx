@@ -40,9 +40,9 @@ describe("ProductDrawer", () => {
   it("默认展示三方购买入口，Logo 链接首页", () => {
     render(<ProductDrawer isOpen onClose={vi.fn()} product={PRODUCT} />);
 
-    // 桌面「官方旗舰店」+ 移动端平台胶囊均渲染
-    expect(screen.getByText("官方旗舰店")).toBeInTheDocument();
-    expect(screen.getByText("天猫")).toBeInTheDocument();
+    // 桌面与移动端购买渠道均渲染
+    expect(screen.getByText("购买渠道")).toBeInTheDocument();
+    expect(screen.getAllByText("天猫").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /NIHPLOD Logo/ })).toHaveAttribute("href", "/");
   });
 
@@ -109,5 +109,13 @@ describe("ProductDrawer", () => {
 
     rerender(<ProductDrawer isOpen={false} onClose={vi.fn()} product={null} />);
     expect(document.body.style.overflow).toBe("hidden");
+  });
+
+  it("产地优先使用产品值，缺省回退法国", () => {
+    const { rerender } = render(<ProductDrawer isOpen onClose={vi.fn()} product={PRODUCT} />);
+    expect(screen.getAllByText(/产地[:：]\s*法国/).length).toBeGreaterThan(0);
+
+    rerender(<ProductDrawer isOpen onClose={vi.fn()} product={{ ...PRODUCT, origin: "摩纳哥" }} />);
+    expect(screen.getAllByText(/产地[:：]\s*摩纳哥/).length).toBeGreaterThan(0);
   });
 });

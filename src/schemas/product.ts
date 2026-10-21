@@ -2,6 +2,13 @@
  * 作品相关验证 Schema
  */
 import { z } from "zod";
+import {
+  PURCHASE_PLATFORM_KEYS,
+  getPurchasePlatformLabel,
+  isOfficialPurchasePlatform,
+  isPurchasePlatformKey,
+  resolvePurchasePlatformKey,
+} from "@/lib/purchase-platforms";
 
 // 产品图片 Schema
 export const ProductImageSchema = z.object({
@@ -23,55 +30,114 @@ export const ProductImageSchema = z.object({
 });
 
 // 购买链接 Schema
-export const PurchaseLinkSchema = z.object({
-  id: z.string().optional(), // 已有链接的 ID
-  platform: z.string().min(1, "平台名称不能为空").max(50, "平台名称不能超过50个字符"),
-  url: z
-    .string()
-    .url("请输入有效的URL")
-    .refine((val) => {
-      const v = val.trim().toLowerCase();
-      return v.startsWith("http://") || v.startsWith("https://");
-    }, "购买链接仅支持 http/https 协议"),
-  order: z.number().int().min(0).default(0),
-});
+export const PurchaseLinkSchema = z
+  .object({
+    id: z.string().optional(), // 已有链接的 ID
+    platformKey: z.enum([...PURCHASE_PLATFORM_KEYS]).nullish(),
+    platform: z.string().max(50, "平台名称不能超过50个字符").nullish(),
+    url: z
+      .string()
+      .url("请输入有效的URL")
+      .max(2000, "购买链接不能超过2000个字符")
+      .refine((val) => {
+        const v = val.trim().toLowerCase();
+        return v.startsWith("http://") || v.startsWith("https://");
+      }, "购买链接仅支持 http/https 协议"),
+    miniProgramShortLink: z.string().max(500, "小程序短链不能超过500个字符").nullish(),
+    miniProgramPath: z.string().max(500, "小程序路径不能超过500个字符").nullish(),
+    order: z.number().int().min(0).default(0),
+  })
+  .superRefine((link, ctx) => {
+    if (!link.platformKey && !link.platform?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "平台名称不能为空",
+        path: ["platform"],
+      });
+    }
+    if (!link.platformKey && isOfficialPurchasePlatform(link.platform)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "官方商城已停用，请使用固定四类渠道",
+        path: ["platform"],
+      });
+    }
+    if (link.miniProgramShortLink && /[\u0000-\u001f\u007f]/.test(link.miniProgramShortLink)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "小程序短链包含非法字符",
+        path: ["miniProgramShortLink"],
+      });
+    }
+    if (link.miniProgramPath?.trim()) {
+      const path = link.miniProgramPath.trim();
+      const validPath =
+        (path.startsWith("/") && !path.startsWith("//")) || path.startsWith("pages/");
+      if (!validPath) {
+        ctx.addIssue({
+          code: "custom",
+          message: "小程序路径需以 / 或 pages/ 开头",
+          path: ["miniProgramPath"],
+        });
+      }
+    }
+  });
 
 // 产品创建/更新 Schema
-export const ProductSchema = z.object({
-  name: z.string().min(1, "产品名称不能为空").max(100, "产品名称不能超过100个字符"),
-  nameEn: z.string().min(1, "英文名称不能为空").max(100, "英文名称不能超过100个字符"),
-  slug: z
-    .string()
-    .min(1, "URL别名不能为空")
-    .max(100, "URL别名不能超过100个字符")
-    .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
-  categoryId: z.string().min(1, "请选择分类"),
-  price: z.coerce.number().min(0, "价格不能为负数"),
-  capacity: z.string().max(50, "规格容量不能超过50个字符").optional().nullable(),
-  origin: z.string().max(100, "产地不能超过100个字符").optional().nullable(),
-  purchaseLinks: z.array(PurchaseLinkSchema).optional(), // 多平台购买链接
-  description: z.string().min(1, "产品描述不能为空").max(5000, "描述不能超过5000个字符"),
-  ingredients: z.string().max(5000, "成分说明不能超过5000个字符").optional().nullable(),
-  usage: z.string().max(5000, "使用方法不能超过5000个字符").optional().nullable(),
-  benefits: z
-    .array(z.string().min(1, "功效标签不能为空").max(50))
-    .max(20, "最多添加20个功效标签")
-    .optional(),
-  images: z.array(ProductImageSchema).min(1, "请至少上传一张产品图片"),
-  order: z.number().int().min(0).default(0),
-  featured: z.boolean().default(false),
-  published: z.boolean().default(false),
-  // GEO FAQ 数据
-  geoFaqs: z
-    .array(
-      z.object({
-        question: z.string().min(1, "FAQ问题不能为空"),
-        answer: z.string().min(1, "FAQ答案不能为空"),
-      })
-    )
-    .optional()
-    .nullable(),
-});
+export const ProductSchema = z
+  .object({
+    name: z.string().min(1, "产品名称不能为空").max(100, "产品名称不能超过100个字符"),
+    nameEn: z.string().min(1, "英文名称不能为空").max(100, "英文名称不能超过100个字符"),
+    slug: z
+      .string()
+      .min(1, "URL别名不能为空")
+      .max(100, "URL别名不能超过100个字符")
+      .regex(/^[a-z0-9-]+$/, "URL别名只能包含小写字母、数字和连字符"),
+    categoryId: z.string().min(1, "请选择分类"),
+    price: z.coerce.number().min(0, "价格不能为负数"),
+    capacity: z.string().max(50, "规格容量不能超过50个字符").optional().nullable(),
+    origin: z.string().max(100, "产地不能超过100个字符").optional().nullable(),
+    purchaseLinks: z.array(PurchaseLinkSchema).max(20, "最多添加20个购买链接").optional(), // 多平台购买链接
+    description: z.string().min(1, "产品描述不能为空").max(5000, "描述不能超过5000个字符"),
+    ingredients: z.string().max(5000, "成分说明不能超过5000个字符").optional().nullable(),
+    usage: z.string().max(5000, "使用方法不能超过5000个字符").optional().nullable(),
+    benefits: z
+      .array(z.string().min(1, "功效标签不能为空").max(50))
+      .max(20, "最多添加20个功效标签")
+      .optional(),
+    images: z.array(ProductImageSchema).min(1, "请至少上传一张产品图片"),
+    order: z.number().int().min(0).default(0),
+    featured: z.boolean().default(false),
+    published: z.boolean().default(false),
+    // GEO FAQ 数据
+    geoFaqs: z
+      .array(
+        z.object({
+          question: z.string().min(1, "FAQ问题不能为空"),
+          answer: z.string().min(1, "FAQ答案不能为空"),
+        })
+      )
+      .optional()
+      .nullable(),
+  })
+  .superRefine((data, ctx) => {
+    const seen = new Map<string, number>();
+    data.purchaseLinks?.forEach((link, index) => {
+      const key = isPurchasePlatformKey(link.platformKey)
+        ? link.platformKey
+        : resolvePurchasePlatformKey(link.platform);
+      if (!key) return;
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${getPurchasePlatformLabel(key)} 渠道重复`,
+          path: ["purchaseLinks", index, "platformKey"],
+        });
+        return;
+      }
+      seen.set(key, index);
+    });
+  });
 
 // 产品查询参数 Schema
 export const ProductQuerySchema = z.object({
