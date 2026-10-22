@@ -56,6 +56,7 @@ interface ApplicationItem {
   reviewAmount: number | null;
   reviewNote: string | null;
   reviewedAt: string | null;
+  reviewedBy: { name: string; email: string } | null;
   createdAt: string;
   user: {
     id: string;
@@ -539,6 +540,14 @@ function AdminSpentAdjustmentsContent() {
                     <p className="text-xs text-brand-charcoal/40">审核时间</p>
                     <p className="mt-0.5 text-brand-charcoal/70">
                       {formatDateTime(detail.reviewedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-brand-charcoal/40">审核人</p>
+                    <p className="mt-0.5 text-brand-charcoal/70">
+                      {detail.reviewedBy
+                        ? `${detail.reviewedBy.name}（${detail.reviewedBy.email}）`
+                        : "-"}
                     </p>
                   </div>
                   {detail.reviewNote && (

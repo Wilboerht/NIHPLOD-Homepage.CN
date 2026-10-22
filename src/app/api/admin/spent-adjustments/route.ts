@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
           reviewedAt: true,
           createdAt: true,
           user: { select: { id: true, phone: true, nickname: true, membershipLevel: true } },
+          reviewedBy: { select: { name: true, email: true } },
         },
       }),
       prisma.spentAdjustmentApplication.count({ where }),
