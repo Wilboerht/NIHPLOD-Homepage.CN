@@ -402,8 +402,10 @@ describe("createBackchannelLogoutRouteHandler", () => {
     it("onLogout 失败时调用 store.remove 释放 jti，IdP 重投被接受", async () => {
       installFetchRouter();
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const removeSpy = vi.fn(() => void 0);
       const backing = new Map<string, number>();
+      const removeSpy = vi.fn((key: string) => {
+        backing.delete(key);
+      });
       const jtiStore = {
         has: (key: string) => backing.has(key),
         add: (key: string, ttl: number) => void backing.set(key, ttl),
@@ -412,10 +414,7 @@ describe("createBackchannelLogoutRouteHandler", () => {
           backing.set(key, ttl);
           return true;
         },
-        remove: (key: string) => {
-          removeSpy(key);
-          backing.delete(key);
-        },
+        remove: removeSpy,
       };
       const failing = createBackchannelLogoutRouteHandler({
         ...config,
