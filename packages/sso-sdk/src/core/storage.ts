@@ -62,34 +62,6 @@ function buildKey(base: string, clientId?: string): string {
 }
 
 /**
- * 内存存储适配器
- *
- * 仅作为 sessionStorage 不可用（SSR / 隐私模式写入失败）时的降级方案，
- * 或显式注入使用。页面刷新后用户需重新登录。
- *
- * 代价：多 Tab 间不会自动同步 token；SDK 内部已用锁机制避免并发刷新。
- */
-function createMemoryStorageAdapter(): TokenStorage {
-  const store = new Map<string, string>();
-  return {
-    get(key: string) {
-      return store.get(key) ?? null;
-    },
-    set(key: string, value: string) {
-      store.set(key, value);
-    },
-    remove(key: string) {
-      store.delete(key);
-    },
-    keys() {
-      return [...store.keys()];
-    },
-  };
-}
-
-const memoryStorageAdapter = createMemoryStorageAdapter();
-
-/**
  * 浏览器 localStorage 实现
  *
  * 适用于：

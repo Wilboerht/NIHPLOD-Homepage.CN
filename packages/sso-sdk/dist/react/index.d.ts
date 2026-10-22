@@ -456,6 +456,11 @@ interface RequireAuthProps {
      */
     renderLoginError?: (error: unknown, retry: () => void) => React.ReactNode;
 }
+interface LoginErrorContentProps {
+    loginError: unknown;
+    retry: () => void;
+    renderLoginError?: RequireAuthProps["renderLoginError"];
+}
 /**
  * 路由保护组件
  *
@@ -470,7 +475,7 @@ interface RequireAuthProps {
  * </RequireAuth>
  * ```
  */
-declare function RequireAuth({ children, fallback, autoLogin, usePopup, onError, renderLoginError, }: RequireAuthProps): string | number | bigint | true | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | React.FunctionComponentElement<React.FragmentProps>;
+declare function RequireAuth({ children, fallback, autoLogin, usePopup, onError, renderLoginError, }: RequireAuthProps): string | number | bigint | true | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | React.FunctionComponentElement<React.FragmentProps> | React.FunctionComponentElement<LoginErrorContentProps>;
 /**
  * 高阶组件：包装页面组件，要求认证后才能访问
  *

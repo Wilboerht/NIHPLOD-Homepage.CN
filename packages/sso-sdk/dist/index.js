@@ -143,24 +143,6 @@ var SILENT_PROBE_KEY = "silent_probe";
 function buildKey(base, clientId) {
   return clientId ? `${base}:${clientId}` : base;
 }
-function createMemoryStorageAdapter() {
-  const store = /* @__PURE__ */ new Map();
-  return {
-    get(key) {
-      return store.get(key) ?? null;
-    },
-    set(key, value) {
-      store.set(key, value);
-    },
-    remove(key) {
-      store.delete(key);
-    },
-    keys() {
-      return [...store.keys()];
-    }
-  };
-}
-var memoryStorageAdapter = createMemoryStorageAdapter();
 var localStorageAdapter = {
   get(key) {
     try {

@@ -124,24 +124,6 @@ var SILENT_PROBE_KEY = "silent_probe";
 function buildKey(base, clientId) {
   return clientId ? `${base}:${clientId}` : base;
 }
-function createMemoryStorageAdapter() {
-  const store = /* @__PURE__ */ new Map();
-  return {
-    get(key) {
-      return store.get(key) ?? null;
-    },
-    set(key, value) {
-      store.set(key, value);
-    },
-    remove(key) {
-      store.delete(key);
-    },
-    keys() {
-      return [...store.keys()];
-    }
-  };
-}
-var memoryStorageAdapter = createMemoryStorageAdapter();
 function createSessionStorageAdapter() {
   const fallback = /* @__PURE__ */ new Map();
   return {
@@ -1696,6 +1678,26 @@ function useSso() {
 
 // src/react/RequireAuth.tsx
 var import_react2 = __toESM(require("react"));
+function LoginErrorContent({
+  loginError,
+  retry,
+  renderLoginError
+}) {
+  if (renderLoginError) {
+    return import_react2.default.createElement(
+      import_react2.default.Fragment,
+      null,
+      renderLoginError(loginError, retry)
+    );
+  }
+  const message = loginError instanceof Error ? loginError.message : "\u767B\u5F55\u5931\u8D25";
+  return import_react2.default.createElement(
+    "div",
+    null,
+    import_react2.default.createElement("p", null, `\u767B\u5F55\u672A\u5B8C\u6210\uFF1A${message}`),
+    import_react2.default.createElement("button", { onClick: retry }, "\u91CD\u8BD5\u767B\u5F55")
+  );
+}
 function RequireAuth({
   children,
   fallback,
@@ -1741,20 +1743,11 @@ function RequireAuth({
   }
   if (!isAuthenticated) {
     if (loginError) {
-      if (renderLoginError) {
-        return import_react2.default.createElement(
-          import_react2.default.Fragment,
-          null,
-          renderLoginError(loginError, retry)
-        );
-      }
-      const message = loginError instanceof Error ? loginError.message : "\u767B\u5F55\u5931\u8D25";
-      return import_react2.default.createElement(
-        "div",
-        null,
-        import_react2.default.createElement("p", null, `\u767B\u5F55\u672A\u5B8C\u6210\uFF1A${message}`),
-        import_react2.default.createElement("button", { onClick: retry }, "\u91CD\u8BD5\u767B\u5F55")
-      );
+      return import_react2.default.createElement(LoginErrorContent, {
+        loginError,
+        retry,
+        renderLoginError
+      });
     }
     if (fallback) return import_react2.default.createElement(import_react2.default.Fragment, null, fallback);
     return import_react2.default.createElement("div", null, "\u8BF7\u5148\u767B\u5F55");

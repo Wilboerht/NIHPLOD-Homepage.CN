@@ -45,6 +45,34 @@ export interface RequireAuthProps {
   renderLoginError?: (error: unknown, retry: () => void) => React.ReactNode;
 }
 
+interface LoginErrorContentProps {
+  loginError: unknown;
+  retry: () => void;
+  renderLoginError?: RequireAuthProps["renderLoginError"];
+}
+
+function LoginErrorContent({
+  loginError,
+  retry,
+  renderLoginError,
+}: LoginErrorContentProps) {
+  if (renderLoginError) {
+    return React.createElement(
+      React.Fragment,
+      null,
+      renderLoginError(loginError, retry)
+    );
+  }
+
+  const message = loginError instanceof Error ? loginError.message : "登录失败";
+  return React.createElement(
+    "div",
+    null,
+    React.createElement("p", null, `登录未完成：${message}`),
+    React.createElement("button", { onClick: retry }, "重试登录")
+  );
+}
+
 /**
  * 路由保护组件
  *
@@ -117,21 +145,11 @@ export function RequireAuth({
 
   if (!isAuthenticated) {
     if (loginError) {
-      if (renderLoginError) {
-        return React.createElement(
-          React.Fragment,
-          null,
-          renderLoginError(loginError, retry)
-        );
-      }
-      const message =
-        loginError instanceof Error ? loginError.message : "登录失败";
-      return React.createElement(
-        "div",
-        null,
-        React.createElement("p", null, `登录未完成：${message}`),
-        React.createElement("button", { onClick: retry }, "重试登录")
-      );
+      return React.createElement(LoginErrorContent, {
+        loginError,
+        retry,
+        renderLoginError,
+      });
     }
     if (fallback) return React.createElement(React.Fragment, null, fallback);
     return React.createElement("div", null, "请先登录");
