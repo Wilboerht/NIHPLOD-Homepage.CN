@@ -171,6 +171,7 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
           where: { id: admin.id },
           data: {
             totpEnabled: false,
+            totpEnabledAt: null,
             totpSecret: null,
             totpBackupCodes: null,
           },

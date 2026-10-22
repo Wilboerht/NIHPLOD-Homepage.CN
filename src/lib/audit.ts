@@ -45,6 +45,7 @@ export type AuditAction =
   | "update_message"
   | "delete_message"
   | "batch_message"
+  | "message_sensitive_view"
   | "create_coupon"
   | "update_coupon"
   | "delete_coupon"
@@ -99,6 +100,7 @@ export type AuditAction =
   | "admin_logout"
   | "admin_totp_recovery_issued"
   | "admin_totp_recovery_used"
+  | "admin_totp_backup_regenerate"
   | "refresh_token_reuse_detected"
   | "sso_audit_export"
   | "user_export"
@@ -173,6 +175,7 @@ export const AUDIT_ACTIONS = [
   "update_message",
   "delete_message",
   "batch_message",
+  "message_sensitive_view",
   "create_coupon",
   "update_coupon",
   "delete_coupon",
@@ -226,6 +229,7 @@ export const AUDIT_ACTIONS = [
   "admin_logout",
   "admin_totp_recovery_issued",
   "admin_totp_recovery_used",
+  "admin_totp_backup_regenerate",
   "refresh_token_reuse_detected",
   "sso_audit_export",
   "user_export",

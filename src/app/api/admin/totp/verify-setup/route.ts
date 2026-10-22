@@ -108,7 +108,7 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
     await prisma.admin
       .update({
         where: { id: admin.id },
-        data: { totpEnabled: true },
+        data: { totpEnabled: true, totpEnabledAt: new Date() },
       })
       .catch(async (error) => {
         await finishAuditLog(auditId, "FAILURE", { action: "totp_enabled" });

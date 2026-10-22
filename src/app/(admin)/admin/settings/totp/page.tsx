@@ -12,21 +12,30 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
 import { FormSection } from "@/components/admin/FormSection";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { formatDateTimeNumeric } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface TOTPSetupData {
   qrCode: string;
   secret: string;
   backupCodes: string[];
+}
+
+interface TOTPStatusData {
+  totpEnabled: boolean;
+  totpEnabledAt: string | null;
+  backupCodesRemaining: number;
 }
 
 export default function TOTPSettingsPage() {
@@ -36,6 +45,8 @@ export default function TOTPSettingsPage() {
   // 只允许回到主站管理员 SSO 授权端点，避免开放重定向
   const returnTo = rawReturnTo.startsWith("/admin/sso/authorize") ? rawReturnTo : "";
   const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpEnabledAt, setTotpEnabledAt] = useState<string | null>(null);
+  const [backupCodesRemaining, setBackupCodesRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
   const [setupData, setSetupData] = useState<TOTPSetupData | null>(null);
   const [setupPassword, setSetupPassword] = useState("");
@@ -47,12 +58,20 @@ export default function TOTPSettingsPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
   const [backupSaved, setBackupSaved] = useState(false);
+  // 重新生成备用码弹窗
+  const [showRegenerate, setShowRegenerate] = useState(false);
+  const [regenPassword, setRegenPassword] = useState("");
+  const [regenCode, setRegenCode] = useState("");
+  const [regenCodes, setRegenCodes] = useState<string[] | null>(null);
+  const [regenSaved, setRegenSaved] = useState(false);
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const data = await apiGet<{ totpEnabled: boolean }>("/api/admin/totp/status");
+        const data = await apiGet<TOTPStatusData>("/api/admin/totp/status");
         setTotpEnabled(data.totpEnabled);
+        setTotpEnabledAt(data.totpEnabledAt);
+        setBackupCodesRemaining(data.backupCodesRemaining);
       } catch {
         toast.error("获取二次验证状态失败");
       } finally {
@@ -98,6 +117,8 @@ export default function TOTPSettingsPage() {
       await apiPost("/api/admin/totp/verify-setup", { code: verifyCode });
       toast.success("二次验证已启用");
       setTotpEnabled(true);
+      setTotpEnabledAt(new Date().toISOString());
+      setBackupCodesRemaining(setupData?.backupCodes.length ?? 0);
       setSetupData(null);
       setVerifyCode("");
       setBackupSaved(false);
@@ -130,12 +151,57 @@ export default function TOTPSettingsPage() {
       });
       toast.success("二次验证已关闭");
       setTotpEnabled(false);
+      setTotpEnabledAt(null);
+      setBackupCodesRemaining(0);
       setDisablePassword("");
       setDisableCode("");
       return true;
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "关闭失败");
       return false;
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  /** 打开重新生成备用码弹窗（重置表单状态） */
+  const openRegenerate = () => {
+    setRegenPassword("");
+    setRegenCode("");
+    setRegenCodes(null);
+    setRegenSaved(false);
+    setShowRegenerate(true);
+  };
+
+  const closeRegenerate = () => {
+    setShowRegenerate(false);
+    setRegenCodes(null);
+    setRegenSaved(false);
+  };
+
+  const regenerateBackupCodes = async () => {
+    if (processing) return;
+    if (!regenPassword) {
+      toast.error("请输入密码");
+      return;
+    }
+    if (regenCode.trim().length < 6) {
+      toast.error("请输入 6 位动态验证码或备用码");
+      return;
+    }
+    setProcessing(true);
+    try {
+      const data = await apiPost<{ backupCodes: string[] }>("/api/admin/totp/backup-codes", {
+        password: regenPassword,
+        totpCode: regenCode.trim(),
+      });
+      setRegenCodes(data.backupCodes);
+      setBackupCodesRemaining(data.backupCodes.length);
+      setRegenPassword("");
+      setRegenCode("");
+      toast.success("备用码已重新生成，旧备用码已失效");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "重新生成失败");
     } finally {
       setProcessing(false);
     }
@@ -201,6 +267,21 @@ export default function TOTPSettingsPage() {
                 ? "您的账号已启用基于 TOTP 的二次验证，登录时需要输入动态验证码。"
                 : "启用二次验证后，登录时除了密码还需要输入 Authenticator 应用生成的 6 位动态验证码，大幅提升账号安全性。"}
             </p>
+            {totpEnabled && (
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-brand-charcoal/70">
+                <span>
+                  绑定时间：
+                  <span className="font-medium text-brand-charcoal">
+                    {formatDateTimeNumeric(totpEnabledAt)}
+                  </span>
+                </span>
+                <span>
+                  剩余备用码：
+                  <span className="font-medium text-brand-charcoal">{backupCodesRemaining}</span>
+                  <span className="text-brand-charcoal/50"> 个</span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -341,6 +422,26 @@ export default function TOTPSettingsPage() {
 
       {totpEnabled && (
         <FormSection
+          title="备用码"
+          description="备用码用于验证器不可用时登录，每个仅可使用一次。重新生成后旧备用码立即失效。"
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+              onClick={openRegenerate}
+            >
+              重新生成备用码
+            </Button>
+            <span className="text-sm text-brand-charcoal/50">
+              当前剩余 {backupCodesRemaining} 个备用码
+            </span>
+          </div>
+        </FormSection>
+      )}
+
+      {totpEnabled && (
+        <FormSection
           title="关闭二次验证"
           description="关闭后登录不再需要动态验证码，账号安全性将降低。"
         >
@@ -383,6 +484,110 @@ export default function TOTPSettingsPage() {
           </form>
         </FormSection>
       )}
+
+      {/* 重新生成备用码（一次性密钥弹窗：展示期间禁止遮罩/Esc/X 关闭） */}
+      <Modal
+        open={showRegenerate}
+        onClose={closeRegenerate}
+        title="重新生成备用码"
+        size="lg"
+        closeOnBackdrop={false}
+        closeOnEscape={!regenCodes}
+        showCloseButton={!regenCodes}
+        footer={
+          regenCodes ? (
+            <div className="flex justify-end">
+              <Button disabled={!regenSaved} onClick={closeRegenerate}>
+                关闭
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button variant="outline" onClick={closeRegenerate} disabled={processing}>
+                取消
+              </Button>
+              <Button
+                onClick={() => void regenerateBackupCodes()}
+                loading={processing}
+                disabled={!regenPassword || regenCode.trim().length < 6}
+              >
+                确认重新生成
+              </Button>
+            </div>
+          )
+        }
+      >
+        {regenCodes ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              <span className="font-medium">新备用码仅显示一次，旧备用码已失效</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {regenCodes.map((code, index) => (
+                <div
+                  key={index}
+                  onClick={() => copyToClipboard(code, `regen-${index}`)}
+                  className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 font-mono text-xs text-brand-charcoal/80"
+                >
+                  <span>{code}</span>
+                  {copied === `regen-${index}` ? (
+                    <Check className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <Copy className="h-3 w-3 text-brand-charcoal/50" />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={regenSaved}
+                  onChange={(e) => setRegenSaved(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <p className="text-sm font-medium text-amber-800">我已安全保存以上备用码</p>
+                  <p className="mt-0.5 text-xs text-amber-600">
+                    备用码仅显示一次，关闭后无法再次查看。未完成保存前请勿关闭。
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        ) : (
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void regenerateBackupCodes();
+            }}
+            className="space-y-3"
+          >
+            <Input
+              label="当前密码"
+              required
+              type="password"
+              value={regenPassword}
+              onChange={(e) => setRegenPassword(e.target.value)}
+              placeholder="请输入当前密码"
+              autoComplete="current-password"
+              data-autofocus
+            />
+            <Input
+              label="动态验证码 / 备用码"
+              required
+              value={regenCode}
+              onChange={(e) => setRegenCode(e.target.value)}
+              placeholder="6 位验证码或备用码"
+              autoComplete="one-time-code"
+              className="font-mono"
+              hint="重新生成后旧备用码立即失效，请谨慎操作"
+            />
+          </form>
+        )}
+      </Modal>
 
       {/* 关闭二次验证确认 */}
       <ConfirmDialog

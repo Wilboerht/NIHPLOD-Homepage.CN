@@ -163,7 +163,12 @@ describe("TOTP recovery setup routes", () => {
     expect(res.status).toBe(200);
     expect(mocks.tx.admin.update).toHaveBeenCalledWith({
       where: { id: "admin-1" },
-      data: { totpEnabled: true, totpResetRequired: false, tokenVersion: { increment: 1 } },
+      data: {
+        totpEnabled: true,
+        totpEnabledAt: expect.any(Date),
+        totpResetRequired: false,
+        tokenVersion: { increment: 1 },
+      },
     });
     expect(res.headers.get("set-cookie") || "").toContain("__Host-admin_totp_setup=;");
   });

@@ -1016,6 +1016,7 @@ model Admin {
   deletedAt       DateTime?   // 软删除时间
   totpSecret      String?     // 加密后的 TOTP secret
   totpEnabled     Boolean     @default(false)
+  totpEnabledAt   DateTime?   // TOTP 绑定时间（启用/重绑时写入，关闭后置空）
   totpResetRequired Boolean   @default(false) // 恢复码已消费，必须重新绑定 TOTP
   totpBackupCodes String?     @db.Text // 加密存储的备用码 JSON 数组
   createdAt       DateTime    @default(now())

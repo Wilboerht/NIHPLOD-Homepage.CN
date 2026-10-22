@@ -155,7 +155,12 @@ export async function POST(request: NextRequest) {
     await prisma.$transaction(async (tx) => {
       await tx.admin.update({
         where: { id: admin.id },
-        data: { totpEnabled: true, totpResetRequired: false, tokenVersion: { increment: 1 } },
+        data: {
+          totpEnabled: true,
+          totpEnabledAt: new Date(),
+          totpResetRequired: false,
+          tokenVersion: { increment: 1 },
+        },
       });
       await tx.adminTotpRecovery.deleteMany({
         where: { adminId: admin.id, usedAt: null },

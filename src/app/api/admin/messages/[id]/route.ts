@@ -20,6 +20,9 @@ const UpdateSchema = z.object({
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
 
+// 敏感查看审计合并窗口：同一管理员 5 分钟内重复查看同一留言只记一条
+const SENSITIVE_VIEW_AUDIT_WINDOW_MS = 5 * 60 * 1000;
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
@@ -59,6 +62,31 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // 持有 messages:sensitive:read 时返回完整手机号，否则保持脱敏
     const canReadSensitive = hasAdminPermission(admin, "messages:sensitive:read");
+
+    // 敏感查看审计：仅在实际返回完整手机号时记录（不记完整号码，只记脱敏号）；
+    // 列表 GET 不写，口径与用户列表一致（逐页审计太吵，AdminShell 未读 badge 也走列表）
+    if (canReadSensitive) {
+      const recentView = await prisma.auditLog.findFirst({
+        where: {
+          action: "message_sensitive_view",
+          targetType: "message",
+          targetId: id,
+          adminId: admin.id,
+          createdAt: { gte: new Date(Date.now() - SENSITIVE_VIEW_AUDIT_WINDOW_MS) },
+        },
+        select: { id: true },
+      });
+      if (!recentView) {
+        await createAuditLog({
+          action: "message_sensitive_view",
+          targetType: "message",
+          targetId: id,
+          detail: { messageId: id, phone: maskPhone(message.phone) },
+          adminId: admin.id,
+          request,
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,
