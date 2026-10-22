@@ -14,6 +14,7 @@ import {
   mobileBtnClass,
 } from "./auth-styles";
 import { PASSWORD_MIN_LENGTH } from "./auth-utils";
+import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { AuthFieldError, type AuthFieldErrors } from "./AuthFieldError";
 import { AuthFormNotice } from "./AuthFormNotice";
 
@@ -127,6 +128,7 @@ export function ForgotPasswordForm({
                 </button>
               </div>
               <AuthFieldError message={errors?.password} />
+              <PasswordRulesChecklist password={resetNewPassword} className="mt-1.5" />
             </div>
             <div>
               <div className="relative">
@@ -352,6 +354,7 @@ export function ForgotPasswordForm({
                 </button>
               </div>
               <AuthFieldError message={errors?.password} />
+              <PasswordRulesChecklist password={resetNewPassword} className="mt-1.5" />
             </div>
             <div>
               <div className="relative">

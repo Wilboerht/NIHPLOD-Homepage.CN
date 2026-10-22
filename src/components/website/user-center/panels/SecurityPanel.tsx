@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { validatePasswordStrength } from "@/components/website/auth/auth-utils";
+import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400 md:text-sm";
@@ -190,6 +191,7 @@ export function SecurityPanel({ initialMode = "change" }: SecurityPanelProps) {
           onChange={(e) => setNewPassword(e.target.value)}
           className={inputClass}
         />
+        <PasswordRulesChecklist password={newPassword} className="mt-1.5" />
       </div>
       <div>
         <label htmlFor="confirm-password" className="mb-1 block text-xs text-stone-400">

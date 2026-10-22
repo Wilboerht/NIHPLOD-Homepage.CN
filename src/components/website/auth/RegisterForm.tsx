@@ -14,6 +14,7 @@ import {
 } from "./auth-styles";
 import { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from "./auth-utils";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { AuthFieldError, type AuthFieldErrors } from "./AuthFieldError";
 import { AuthFormNotice } from "./AuthFormNotice";
 
@@ -195,6 +196,7 @@ export function RegisterForm({
               </button>
             </div>
             <AuthFieldError message={errors?.password} />
+            <PasswordRulesChecklist password={regPassword} className="mt-1.5" />
           </div>
           <div>
             <div className="relative">
@@ -327,6 +329,7 @@ export function RegisterForm({
             </button>
           </div>
           <AuthFieldError message={errors?.password} />
+          <PasswordRulesChecklist password={regPassword} className="mt-1.5" />
         </div>
         <div>
           <div className="relative">

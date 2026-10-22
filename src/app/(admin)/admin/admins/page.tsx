@@ -16,6 +16,7 @@ import { Empty } from "@/components/ui/Empty";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
+import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { BreakGlassCard } from "@/components/admin/BreakGlassCard";
@@ -720,15 +721,20 @@ export default function AdminAdminsPage() {
                 disabled={!!editing && !isEditingSelf && !isOwnerActor}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
-              <Input
-                label={`密码${editing ? "（留空则不修改）" : ""}`}
-                type="password"
-                required={!editing}
-                minLength={8}
-                disabled={isEditingSelf || (!!editing && !isOwnerActor)}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
+              <div>
+                <Input
+                  label={`密码${editing ? "（留空则不修改）" : ""}`}
+                  type="password"
+                  required={!editing}
+                  minLength={8}
+                  disabled={isEditingSelf || (!!editing && !isOwnerActor)}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
+                {(form.password.length > 0 || !editing) && (
+                  <PasswordRulesChecklist password={form.password} className="mt-1.5" />
+                )}
+              </div>
               <Select
                 label="角色"
                 options={(() => {

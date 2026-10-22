@@ -12,6 +12,7 @@ import {
   mobileBtnClass,
 } from "./auth-styles";
 import { PASSWORD_MAX_LENGTH } from "./auth-utils";
+import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { AgreementCheckbox } from "./LoginForm";
 import { AuthFieldError, type AuthFieldErrors } from "./AuthFieldError";
 import { AuthFormNotice } from "./AuthFormNotice";
@@ -133,6 +134,9 @@ export function WechatBindForm({
               </button>
             </div>
             <AuthFieldError message={errors?.password} />
+            {regPassword.length > 0 && (
+              <PasswordRulesChecklist password={regPassword} className="mt-1.5" />
+            )}
           </div>
           <AgreementCheckbox
             checked={mobileAgreed}
@@ -234,6 +238,9 @@ export function WechatBindForm({
             </button>
           </div>
           <AuthFieldError message={errors?.password} />
+          {regPassword.length > 0 && (
+            <PasswordRulesChecklist password={regPassword} className="mt-1.5" />
+          )}
         </div>
         <AgreementCheckbox
           checked={mobileAgreed}
