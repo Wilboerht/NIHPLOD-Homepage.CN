@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode, Suspense } from "react";
@@ -207,6 +207,23 @@ interface SidebarContentProps {
   loggingOut: boolean;
 }
 
+function SidebarLinkPending({ className }: { className?: string }) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <span
+      role={pending ? "status" : undefined}
+      aria-label={pending ? "页面加载中" : undefined}
+      className={cn("inline-flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center", className)}
+    >
+      <Loader2
+        aria-hidden="true"
+        className={cn("h-3.5 w-3.5", pending ? "animate-spin opacity-60" : "opacity-0")}
+      />
+    </span>
+  );
+}
+
 function isActive(item: NavItem, pathname: string): boolean {
   if (item.href === "/admin") return pathname === "/admin";
   return pathname.startsWith(item.href);
@@ -328,6 +345,9 @@ function SidebarContent({
                         <span className="ml-auto rounded-full bg-red-400 px-1.5 py-0.5 text-[10px] leading-none text-white">
                           {badge > 99 ? "99+" : badge}
                         </span>
+                      )}
+                      {!collapsed && (
+                        <SidebarLinkPending className={badge !== undefined ? "ml-1" : "ml-auto"} />
                       )}
                     </Link>
                   );
