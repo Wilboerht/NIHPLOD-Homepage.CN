@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -17,6 +18,7 @@ const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+  search: z.string().max(100).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -46,6 +48,7 @@ export async function GET(request: NextRequest) {
       page: searchParams.get("page"),
       pageSize: searchParams.get("pageSize"),
       status: searchParams.get("status") || undefined,
+      search: searchParams.get("search")?.trim() || undefined,
     });
     if (!parsed.success) {
       return NextResponse.json(
@@ -54,9 +57,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, pageSize, status } = parsed.data;
+    const { page, pageSize, status, search } = parsed.data;
 
-    const where = status ? { status } : {};
+    const where: Prisma.SpentAdjustmentApplicationWhereInput = status ? { status } : {};
+    if (search) {
+      where.OR = [
+        { orderNo: { contains: search, mode: "insensitive" } },
+        { user: { phone: { contains: search } } },
+        { user: { nickname: { contains: search, mode: "insensitive" } } },
+      ];
+    }
 
     const [applications, total, statusCounts] = await Promise.all([
       prisma.spentAdjustmentApplication.findMany({

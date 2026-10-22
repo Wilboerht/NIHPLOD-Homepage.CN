@@ -17,7 +17,8 @@ const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   search: z.string().max(100).nullish(),
-  status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]).nullish(),
+  status: z.enum(["ACTIVE", "SUSPENDED", "BANNED", "DELETED"]).nullish(),
+  level: z.enum(["REGULAR", "SILVER", "GOLD", "DIAMOND"]).nullish(),
 });
 
 // 强制动态渲染，禁止静态预渲染
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
       pageSize: searchParams.get("pageSize"),
       search: searchParams.get("search"),
       status: searchParams.get("status"),
+      level: searchParams.get("level"),
     });
     const isExport = searchParams.get("export") === "csv";
 
@@ -73,6 +75,10 @@ export async function GET(request: NextRequest) {
 
     if (params.status) {
       where.status = params.status;
+    }
+
+    if (params.level) {
+      where.membershipLevel = params.level;
     }
 
     // 查询用户
@@ -115,6 +121,7 @@ export async function GET(request: NextRequest) {
       const auditDetail = {
         search: params.search ? maskPhone(params.search) : null,
         status: params.status ?? null,
+        level: params.level ?? null,
         exportedCount: users.length,
       };
       const auditId = await beginAuditLog({

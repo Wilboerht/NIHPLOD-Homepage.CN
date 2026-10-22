@@ -61,6 +61,7 @@ export default function AdminProductsPage() {
   const pageSize = Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
+  const featured = searchParams.get("featured") || "all";
   const search = searchParams.get("search") || "";
   const sortBy = searchParams.get("sortBy") || "";
   const sortOrder = searchParams.get("sortOrder") || "desc";
@@ -94,6 +95,7 @@ export default function AdminProductsPage() {
           pageSize,
           categoryId,
           status: status === "all" ? undefined : status,
+          featured: featured === "all" ? undefined : featured,
           search,
           sortBy: sortBy || undefined,
           sortOrder: sortOrder || undefined,
@@ -113,7 +115,7 @@ export default function AdminProductsPage() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, categoryId, status, search, sortBy, sortOrder, router, takeLatestProducts]);
+  }, [page, pageSize, categoryId, status, featured, search, sortBy, sortOrder, router, takeLatestProducts]);
 
   useEffect(() => {
     deferInEffect(fetchProducts);
@@ -156,6 +158,12 @@ export default function AdminProductsPage() {
     { value: "all", label: "全部状态" },
     { value: "published", label: "已发布" },
     { value: "draft", label: "草稿" },
+  ];
+
+  // 推荐筛选选项
+  const featuredOptions: SelectOption[] = [
+    { value: "all", label: "全部产品" },
+    { value: "true", label: "仅看推荐" },
   ];
 
   // 分类筛选选项
@@ -220,6 +228,16 @@ export default function AdminProductsPage() {
             options={statusOptions}
             value={status}
             onChange={(e) => updateParams({ status: e.target.value })}
+          />
+        </div>
+
+        {/* 推荐筛选 */}
+        <div className="w-32">
+          <Select
+            aria-label="按推荐筛选"
+            options={featuredOptions}
+            value={featured}
+            onChange={(e) => updateParams({ featured: e.target.value })}
           />
         </div>
       </div>

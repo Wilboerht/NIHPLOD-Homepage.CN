@@ -70,6 +70,7 @@ export type AuditAction =
   | "user_identity_unbind"
   | "user_points_adjust"
   | "update_vip_benefit"
+  | "reset_vip_benefit"
   | "submit_spent_adjustment"
   | "approve_spent_adjustment"
   | "reject_spent_adjustment"
@@ -195,6 +196,7 @@ export const AUDIT_ACTIONS = [
   "user_identity_unbind",
   "user_points_adjust",
   "update_vip_benefit",
+  "reset_vip_benefit",
   "submit_spent_adjustment",
   "approve_spent_adjustment",
   "reject_spent_adjustment",

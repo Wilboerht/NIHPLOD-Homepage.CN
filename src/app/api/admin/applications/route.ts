@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
               id: true,
               title: true,
               titleEn: true,
+              location: true,
+              type: true,
             },
           },
           folder: {

@@ -36,6 +36,7 @@ export const ADMIN_PERMISSIONS = [
   "applications:delete",
 
   "messages:read",
+  "messages:sensitive:read",
   "messages:write",
   "messages:delete",
 
@@ -119,7 +120,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
   },
   {
     group: "留言",
-    permissions: ["messages:read", "messages:write", "messages:delete"],
+    permissions: ["messages:read", "messages:sensitive:read", "messages:write", "messages:delete"],
   },
   {
     group: "消费与积分",
@@ -183,6 +184,7 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "applications:write": "简历状态/备注/文件夹",
   "applications:delete": "简历删除",
   "messages:read": "留言查看",
+  "messages:sensitive:read": "查看留言完整手机号（敏感）",
   "messages:write": "留言回复/标记",
   "messages:delete": "留言删除",
   "spent:read": "消费补录查看（含凭证）",
@@ -254,6 +256,7 @@ export const ROLE_TEMPLATES: Record<Exclude<AdminRoleValue, "owner">, readonly A
       "applications:write",
       "applications:delete",
       "messages:read",
+      "messages:sensitive:read",
       "messages:write",
       "messages:delete",
       "spent:read",

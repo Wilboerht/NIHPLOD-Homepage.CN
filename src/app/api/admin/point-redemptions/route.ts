@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
@@ -14,6 +15,7 @@ const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   status: z.enum(["PENDING", "FULFILLED", "CANCELLED"]).optional(),
+  search: z.string().max(100).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
       page: searchParams.get("page"),
       pageSize: searchParams.get("pageSize"),
       status: searchParams.get("status") || undefined,
+      search: searchParams.get("search")?.trim() || undefined,
     });
     if (!parsed.success) {
       return NextResponse.json(
@@ -51,8 +54,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, pageSize, status } = parsed.data;
-    const where = status ? { status } : {};
+    const { page, pageSize, status, search } = parsed.data;
+    const where: Prisma.PointRedemptionWhereInput = status ? { status } : {};
+    if (search) {
+      where.OR = [
+        { productName: { contains: search, mode: "insensitive" } },
+        // 手机号仅精确匹配：模糊匹配会让无敏感权限的角色逐位穷举还原完整手机号
+        { user: { phone: { equals: search } } },
+        { user: { nickname: { contains: search, mode: "insensitive" } } },
+      ];
+    }
     // PII 最小化：仅具备"兑换履约"权限的管理员可见完整收件人手机号/地址，
     // 仅查看权限（redemptions:read）时脱敏，减少数据导出面。
     const canFulfill = hasAdminPermission(admin, "redemptions:fulfill");

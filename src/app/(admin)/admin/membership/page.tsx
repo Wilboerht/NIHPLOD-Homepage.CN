@@ -6,13 +6,14 @@
  * - 消费门槛（判级与展示同源）由代码常量提供，本页不可修改
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Crown, Plus, Trash2, Info } from "lucide-react";
+import { Crown, Plus, Trash2, Info, RotateCcw } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPut } from "@/lib/api-client";
+import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { LEVEL_THRESHOLDS } from "@/lib/membership";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -62,6 +63,9 @@ function AdminMembershipContent() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 恢复默认确认
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
   // 当前编辑档位的基线快照（未保存更改检测）
   const [baseline, setBaseline] = useState("");
   const activeRef = useRef<LevelKey>("REGULAR");
@@ -180,6 +184,26 @@ function AdminMembershipContent() {
       showError(e instanceof Error ? e.message : "保存失败");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetToDefault = async () => {
+    if (!form) return;
+    setResetting(true);
+    try {
+      const data = await apiDelete<LevelBenefit>(
+        `/api/admin/membership-benefits?level=${form.level}`
+      );
+      success(`已恢复为默认配置`);
+      setShowResetConfirm(false);
+      setLevels((prev) => prev.map((l) => (l.level === data.level ? { ...data } : l)));
+      const next = cloneLevel(data);
+      setForm(next);
+      setBaseline(JSON.stringify(next));
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "恢复默认失败");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -369,12 +393,33 @@ function AdminMembershipContent() {
             >
               重置
             </Button>
+            <Button
+              variant="outline"
+              leftIcon={<RotateCcw className="h-4 w-4" />}
+              onClick={() => setShowResetConfirm(true)}
+              disabled={!canWrite || saving || form.source !== "db"}
+              title={form.source !== "db" ? "当前档位使用默认配置，无需恢复" : undefined}
+            >
+              恢复默认
+            </Button>
             <Button onClick={handleSave} loading={saving} disabled={!canWrite}>
               保存配置
             </Button>
           </div>
         </div>
       )}
+
+      {/* 恢复默认确认 */}
+      <ConfirmDialog
+        open={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        onConfirm={handleResetToDefault}
+        title="恢复默认配置"
+        description={`确定要将「${LEVEL_TABS.find((t) => t.key === form?.level)?.label ?? ""}」恢复为系统默认配置吗？当前自定义内容将被删除，此操作无法撤销。`}
+        confirmText="恢复默认"
+        loading={resetting}
+        type="danger"
+      />
     </div>
   );
 }

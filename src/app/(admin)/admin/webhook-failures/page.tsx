@@ -6,7 +6,7 @@
  * - 支持立即重投（忽略退避时间）与丢弃单条记录
  */
 import { useCallback, useEffect, useState } from "react";
-import { Webhook, RefreshCw, RotateCw, Trash2, Info } from "lucide-react";
+import { Webhook, RefreshCw, RotateCw, Trash2, Info, AlertCircle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
@@ -63,34 +63,33 @@ function AdminWebhookFailuresContent() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [retryTarget, setRetryTarget] = useState<FailureItem | null>(null);
   const [dropTarget, setDropTarget] = useState<FailureItem | null>(null);
 
-  const fetchItems = useCallback(
-    async (targetKind: Kind, targetPage: number) => {
-      setLoading(true);
-      try {
-        const data = await apiGet<{
-          items: FailureItem[];
-          pagination: { totalPages: number };
-          counts: Record<Kind, number>;
-        }>("/api/admin/webhook-failures", {
-          kind: targetKind,
-          page: targetPage,
-          pageSize: 20,
-        });
-        setItems(data.items);
-        setTotalPages(data.pagination.totalPages);
-        setCounts(data.counts);
-      } catch {
-        showError("加载失败队列失败");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [showError]
-  );
+  const fetchItems = useCallback(async (targetKind: Kind, targetPage: number) => {
+    setLoading(true);
+    try {
+      const data = await apiGet<{
+        items: FailureItem[];
+        pagination: { totalPages: number };
+        counts: Record<Kind, number>;
+      }>("/api/admin/webhook-failures", {
+        kind: targetKind,
+        page: targetPage,
+        pageSize: 20,
+      });
+      setItems(data.items);
+      setTotalPages(data.pagination.totalPages);
+      setCounts(data.counts);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     deferInEffect(() => fetchItems(kind, page));
@@ -99,12 +98,13 @@ function AdminWebhookFailuresContent() {
   const handleRetry = async (item: FailureItem) => {
     setActioningId(item.id);
     try {
-      const data = await apiPost<{ status: string; message: string }>(
+      const data = await apiPost<{ status: string; message: string; error: string | null }>(
         "/api/admin/webhook-failures",
         { kind, id: item.id, action: "retry" }
       );
       if (data.status === "failed") {
-        showError(data.message);
+        // 附带目标端返回的具体错误（HTTP 状态/错误内容），便于定位失败原因
+        showError(data.error ? `${data.message}：${data.error}` : data.message);
       } else {
         success(data.message);
       }
@@ -197,7 +197,25 @@ function AdminWebhookFailuresContent() {
       </div>
 
       {/* 移动端卡片 */}
-      <MobileList loading={loading} empty="当前没有投递失败的记录">
+      <MobileList
+        loading={loading}
+        error={
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => fetchItems(kind, page)}
+              >
+                重试
+              </Button>
+            </>
+          ) : undefined
+        }
+        empty="当前没有投递失败的记录"
+      >
         {items.map((item) => (
           <MobileListCard key={item.id}>
             <div className="flex items-start justify-between gap-3">
@@ -253,6 +271,23 @@ function AdminWebhookFailuresContent() {
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-red-50 p-4">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
+            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取失败队列，请检查网络连接</p>
+            <button
+              onClick={() => {
+                setLoadError(false);
+                fetchItems(kind, page);
+              }}
+              className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+            >
+              重试
+            </button>
           </div>
         ) : items.length === 0 ? (
           <Empty className="h-64" title="队列为空" description="当前没有投递失败的记录" />

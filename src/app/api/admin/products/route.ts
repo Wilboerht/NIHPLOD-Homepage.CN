@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
@@ -19,6 +20,7 @@ const QuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   categoryId: z.string().optional(),
   status: z.enum(["all", "published", "draft"]).default("all"),
+  featured: z.enum(["all", "true", "false"]).default("all"),
   search: z.string().max(100).optional(),
   sortBy: z.enum(["createdAt", "updatedAt", "name", "order", "price"]).default("order"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
@@ -56,17 +58,14 @@ export async function GET(request: NextRequest) {
       pageSize: searchParams.get("pageSize") || 10,
       categoryId: searchParams.get("categoryId") || undefined,
       status: searchParams.get("status") || "all",
+      featured: searchParams.get("featured") || "all",
       search: searchParams.get("search") || undefined,
       sortBy: searchParams.get("sortBy") || "order",
       sortOrder: searchParams.get("sortOrder") || "asc",
     });
 
     // 构建查询条件
-    const where: {
-      categoryId?: string;
-      published?: boolean;
-      OR?: { name: { contains: string; mode: "insensitive" } }[];
-    } = {};
+    const where: Prisma.ProductWhereInput = {};
 
     if (query.categoryId) {
       where.categoryId = query.categoryId;
@@ -78,8 +77,18 @@ export async function GET(request: NextRequest) {
       where.published = false;
     }
 
+    if (query.featured === "true") {
+      where.featured = true;
+    } else if (query.featured === "false") {
+      where.featured = false;
+    }
+
     if (query.search) {
-      where.OR = [{ name: { contains: query.search, mode: "insensitive" } }];
+      where.OR = [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { nameEn: { contains: query.search, mode: "insensitive" } },
+        { slug: { contains: query.search, mode: "insensitive" } },
+      ];
     }
 
     // 并行查询数据和总数

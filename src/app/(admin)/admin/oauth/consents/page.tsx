@@ -32,10 +32,12 @@ interface Consent {
   id: string;
   userId: string;
   phone: string;
+  nickname: string | null;
   clientId: string;
   clientName: string;
   scopes: string[];
   grantedAt: string;
+  revokedAt: string | null;
   status: "active" | "revoked";
 }
 
@@ -317,6 +319,11 @@ function OAuthConsentsPage() {
                     >
                       {c.phone ? maskPhone(c.phone) : c.userId}
                     </Link>
+                    {c.nickname && (
+                      <p className="mt-0.5 truncate text-xs text-brand-charcoal/70">
+                        昵称：{c.nickname}
+                      </p>
+                    )}
                     <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">
                       Client：{c.clientName || c.clientId}
                     </p>
@@ -340,6 +347,7 @@ function OAuthConsentsPage() {
             <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
               <span className="text-xs text-brand-charcoal/50">
                 授权于 {formatDate(c.grantedAt)}
+                {c.status === "revoked" && c.revokedAt && <> · 撤销于 {formatDate(c.revokedAt)}</>}
               </span>
               {c.status === "active" ? (
                 canWrite ? (
@@ -395,6 +403,9 @@ function OAuthConsentsPage() {
                 用户手机号
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                用户昵称
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
                 Client ID
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
@@ -402,6 +413,9 @@ function OAuthConsentsPage() {
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
                 授权时间
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+                撤销时间
               </th>
               <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
                 状态
@@ -414,11 +428,11 @@ function OAuthConsentsPage() {
           <tbody>
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={canWrite ? 7 : 6} />
+                <TableRowSkeleton key={i} columns={canWrite ? 9 : 8} />
               ))
             ) : consents.length === 0 ? (
               <tr>
-                <td colSpan={canWrite ? 7 : 6} className="py-8 text-center text-brand-charcoal/50">
+                <td colSpan={canWrite ? 9 : 8} className="py-8 text-center text-brand-charcoal/50">
                   暂无数据
                 </td>
               </tr>
@@ -451,6 +465,7 @@ function OAuthConsentsPage() {
                       </Link>
                     </Tooltip>
                   </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/80">{c.nickname || "-"}</td>
                   <td className="px-4 py-3 text-sm text-brand-charcoal/80">
                     <Tooltip content="查看 Client" side="top">
                       <Link
@@ -472,6 +487,9 @@ function OAuthConsentsPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-brand-charcoal/50">
                     {formatDate(c.grantedAt)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                    {c.revokedAt ? formatDate(c.revokedAt) : "-"}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={c.status === "active" ? "success" : "danger"}>

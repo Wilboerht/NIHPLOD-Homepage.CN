@@ -57,11 +57,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    // 持有 messages:sensitive:read 时返回完整手机号，否则保持脱敏
+    const canReadSensitive = hasAdminPermission(admin, "messages:sensitive:read");
+
     return NextResponse.json({
       success: true,
       data: {
         ...message,
-        phone: maskPhone(message.phone),
+        phone: canReadSensitive ? message.phone : maskPhone(message.phone),
+        repliedAt: message.repliedAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
       },
     });
@@ -141,11 +145,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       request,
     }).catch(() => {});
 
+    // PATCH 响应同样按 messages:sensitive:read 决定是否返回完整手机号
+    const canReadSensitive = hasAdminPermission(admin, "messages:sensitive:read");
+
     return NextResponse.json({
       success: true,
       data: {
         ...message,
-        phone: maskPhone(message.phone),
+        phone: canReadSensitive ? message.phone : maskPhone(message.phone),
+        repliedAt: message.repliedAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
       },
     });

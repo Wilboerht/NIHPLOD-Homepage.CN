@@ -114,6 +114,7 @@ describe("GET /api/admin/users", () => {
         detail: {
           search: "138****8000",
           status: "ACTIVE",
+          level: null,
           exportedCount: 1,
         },
       })

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
@@ -74,7 +75,7 @@ function AdminPointGiftsContent() {
   const { requireTotp, totpModal } = useTotpConfirm();
   const [products, setProducts] = useState<RedeemableProductItem[]>([]);
   const [productPage, setProductPage] = useState(1);
-  const [productTotalPages, setProductTotalPages] = useState(0);
+  const [productTotal, setProductTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [redeemableFilter, setRedeemableFilter] = useState<"all" | "true" | "false">("all");
@@ -91,7 +92,9 @@ function AdminPointGiftsContent() {
   const [redemptionsError, setRedemptionsError] = useState(false);
   const [tab, setTab] = useState<StatusTab>("PENDING");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
+  const [redemptionsTotal, setRedemptionsTotal] = useState(0);
+  const [redemptionSearch, setRedemptionSearch] = useState("");
+  const [debouncedRedemptionSearch, setDebouncedRedemptionSearch] = useState("");
   const [fulfillTarget, setFulfillTarget] = useState<{
     redemption: RedemptionItem;
     mode: "fulfill" | "waybill";
@@ -102,6 +105,7 @@ function AdminPointGiftsContent() {
     !!fulfillTarget && waybillInput !== (fulfillTarget.redemption.waybillNo ?? "");
   const { confirmClose: confirmCloseFulfill } = useUnsavedChanges(isFulfillDirty);
   const [cancelTarget, setCancelTarget] = useState<RedemptionItem | null>(null);
+  const [cancelNote, setCancelNote] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
   const takeLatestProducts = useLatestRequest();
@@ -116,7 +120,7 @@ function AdminPointGiftsContent() {
     try {
       const data = await apiGet<{
         products: RedeemableProductItem[];
-        pagination: { page: number; totalPages: number };
+        pagination: { page: number; total: number };
       }>("/api/admin/point-gifts", {
         page: productPage,
         pageSize: 20,
@@ -125,7 +129,7 @@ function AdminPointGiftsContent() {
       });
       if (!isLatest()) return;
       setProducts(data.products);
-      setProductTotalPages(data.pagination.totalPages);
+      setProductTotal(data.pagination.total);
       setProductsError(false);
     } catch {
       if (!isLatest()) return;
@@ -145,17 +149,18 @@ function AdminPointGiftsContent() {
         redemptions: RedemptionItem[];
         counts: Record<string, number>;
         pointsTotal: number;
-        pagination: { page: number; totalPages: number };
+        pagination: { page: number; total: number };
       }>("/api/admin/point-redemptions", {
         page,
         pageSize: 10,
         status: tab === "ALL" ? undefined : tab,
+        search: debouncedRedemptionSearch || undefined,
       });
       if (!isLatest()) return;
       setRedemptions(data.redemptions);
       setCounts(data.counts);
       setPointsTotal(data.pointsTotal);
-      setTotalPages(data.pagination.totalPages);
+      setRedemptionsTotal(data.pagination.total);
       setRedemptionsError(false);
     } catch {
       if (!isLatest()) return;
@@ -164,7 +169,7 @@ function AdminPointGiftsContent() {
     } finally {
       if (isLatest()) setRedemptionLoading(false);
     }
-  }, [page, tab, showError, takeLatestRedemptions]);
+  }, [page, tab, debouncedRedemptionSearch, showError, takeLatestRedemptions]);
 
   // 两个数据集独立请求，避免任一筛选变化重复拉取全部数据
   useEffect(() => {
@@ -174,6 +179,15 @@ function AdminPointGiftsContent() {
   useEffect(() => {
     deferInEffect(fetchRedemptions);
   }, [fetchRedemptions]);
+
+  // 兑换记录搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedRedemptionSearch(redemptionSearch.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [redemptionSearch]);
 
   const handleToggle = async (p: RedeemableProductItem) => {
     setTogglingId(p.id);
@@ -230,6 +244,10 @@ function AdminPointGiftsContent() {
     if (!fulfillTarget) return;
     const { redemption, mode } = fulfillTarget;
     const waybillNo = waybillInput.trim();
+    if (waybillNo && !/^[A-Za-z0-9-]{8,32}$/.test(waybillNo)) {
+      showError("运单号须为 8-32 位字母、数字或短横线");
+      return;
+    }
     setSubmittingFulfill(true);
     try {
       if (mode === "fulfill") {
@@ -259,6 +277,7 @@ function AdminPointGiftsContent() {
     try {
       const submit = (totpCode?: string) =>
         apiPost<{ message: string }>(`/api/admin/point-redemptions/${cancelTarget.id}/cancel`, {
+          note: cancelNote.trim() || undefined,
           totpCode,
         });
 
@@ -274,6 +293,7 @@ function AdminPointGiftsContent() {
 
       success(data.message);
       setCancelTarget(null);
+      setCancelNote("");
       fetchRedemptions();
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "取消失败");
@@ -412,6 +432,9 @@ function AdminPointGiftsContent() {
                       >
                         {p.pointRedeemable ? "可兑换" : "未设置"}
                       </Badge>
+                      {p.pointRedeemable && p.redeemStock === 0 && (
+                        <Badge className="bg-red-100 text-red-600">已兑完</Badge>
+                      )}
                       {stockEdit?.id === p.id ? (
                         <div className="flex w-full items-center gap-2">
                           <Input
@@ -538,15 +561,20 @@ function AdminPointGiftsContent() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          className={
-                            p.pointRedeemable
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
-                          }
-                        >
-                          {p.pointRedeemable ? "可兑换" : "未设置"}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge
+                            className={
+                              p.pointRedeemable
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                            }
+                          >
+                            {p.pointRedeemable ? "可兑换" : "未设置"}
+                          </Badge>
+                          {p.pointRedeemable && p.redeemStock === 0 && (
+                            <Badge className="bg-red-100 text-red-600">已兑完</Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-brand-charcoal/60">
                         {stockEdit?.id === p.id ? (
@@ -619,41 +647,33 @@ function AdminPointGiftsContent() {
               </tbody>
             </table>
           </div>
-          {productTotalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-brand-charcoal/50">
-              <span>
-                第 {productPage}/{productTotalPages} 页
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={productPage <= 1}
-                  onClick={() => setProductPage((p) => p - 1)}
-                >
-                  上一页
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={productPage >= productTotalPages}
-                  onClick={() => setProductPage((p) => p + 1)}
-                >
-                  下一页
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="border-t px-4 py-3">
+            <Pagination
+              page={productPage}
+              pageSize={20}
+              total={productTotal}
+              onChange={setProductPage}
+            />
+          </div>
         </div>
       )}
 
       {/* 兑换记录 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
-        <div className="border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
           <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
             <PackageCheck className="h-5 w-5 text-brand-charcoal/50" />
             兑换记录
           </h2>
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+            <Input
+              placeholder="搜索手机号 / 昵称 / 产品名"
+              value={redemptionSearch}
+              onChange={(e) => setRedemptionSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 border-b px-4 py-3">
           {(
@@ -753,7 +773,9 @@ function AdminPointGiftsContent() {
                   </div>
                   <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
                     <span className="text-xs text-brand-charcoal/40">
-                      {formatDateTime(r.createdAt)}
+                      {r.status === "FULFILLED" && r.fulfilledAt
+                        ? `履约：${formatDateTime(r.fulfilledAt)}`
+                        : formatDateTime(r.createdAt)}
                     </span>
                     <div className="flex flex-wrap justify-end gap-2">
                       {r.status === "PENDING" ? (
@@ -869,7 +891,12 @@ function AdminPointGiftsContent() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-brand-charcoal/50">
-                      {formatDateTime(r.createdAt)}
+                      <p>{formatDateTime(r.createdAt)}</p>
+                      {r.status === "FULFILLED" && r.fulfilledAt && (
+                        <p className="mt-0.5 text-xs text-brand-charcoal/40">
+                          履约：{formatDateTime(r.fulfilledAt)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
@@ -913,31 +940,9 @@ function AdminPointGiftsContent() {
             </tbody>
           </table>
         </div>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-brand-charcoal/50">
-            <span>
-              第 {page}/{totalPages} 页
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                上一页
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                下一页
-              </Button>
-            </div>
-          </div>
-        )}
+        <div className="border-t px-4 py-3">
+          <Pagination page={page} pageSize={10} total={redemptionsTotal} onChange={setPage} />
+        </div>
       </div>
 
       {/* 履约 / 运单号维护弹窗 */}
@@ -985,6 +990,7 @@ function AdminPointGiftsContent() {
           onChange={(e) => setWaybillInput(e.target.value)}
           data-autofocus
           placeholder="如 SF1234567890123（选填）"
+          hint="8-32 位字母、数字或短横线"
           className="mt-4 font-mono"
         />
       </Modal>
@@ -992,7 +998,10 @@ function AdminPointGiftsContent() {
       {/* 取消兑换确认（退还积分） */}
       <ConfirmDialog
         open={!!cancelTarget}
-        onClose={() => setCancelTarget(null)}
+        onClose={() => {
+          setCancelTarget(null);
+          setCancelNote("");
+        }}
         onConfirm={handleCancelRedemption}
         title="取消兑换并退还积分"
         description={
@@ -1003,7 +1012,16 @@ function AdminPointGiftsContent() {
         confirmText="确认取消并退分"
         type="danger"
         loading={cancelling}
-      />
+      >
+        <Input
+          label="取消原因（选填）"
+          value={cancelNote}
+          maxLength={200}
+          onChange={(e) => setCancelNote(e.target.value)}
+          placeholder="如：用户申请取消 / 礼品缺货"
+          hint="将写入退还流水备注与审计日志"
+        />
+      </ConfirmDialog>
 
       {/* 资金类操作二次验证 */}
       {totpModal}

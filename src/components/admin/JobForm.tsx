@@ -3,12 +3,12 @@
 import { useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { Save, Send } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { apiPost, apiPatch } from "@/lib/api-client";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Switch } from "@/components/ui/Switch";
 import { Button } from "@/components/ui/Button";
 import { AmapLocationPicker } from "@/components/admin/AmapLocationPicker";
 import { FormActions } from "@/components/admin/FormActions";
@@ -63,7 +63,8 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   const { success, error: showError } = useToast();
   const isEdit = !!jobId;
 
-  const [loading, setLoading] = useState(false);
+  // null=空闲；"draft"/"publish"=正在执行对应动作（双按钮互斥，防并发提交）
+  const [submitting, setSubmitting] = useState<null | "draft" | "publish">(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -179,12 +180,13 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     });
   };
 
-  const doSave = async (publishedState?: boolean) => {
-    setLoading(true);
+  // 保存职位（publish=false 明确保存为草稿；=true 发布，两者互斥防并发提交）
+  const doSave = async (publish: boolean) => {
+    setSubmitting(publish ? "publish" : "draft");
     try {
       const finalData = {
         ...formData,
-        published: publishedState !== undefined ? publishedState : formData.published,
+        published: publish,
       };
 
       // 如果没有坐标，尝试自动解析一次（带 10 秒超时）。
@@ -215,30 +217,34 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         await apiPost("/api/admin/jobs", finalData);
       }
 
-      success(isEdit ? "职位已更新" : "职位已创建");
+      success(publish ? (isEdit ? "职位已发布" : "职位已创建并发布") : "职位已保存为草稿");
       router.push("/admin/jobs");
       router.refresh();
     } catch (err) {
       showError(err instanceof Error ? err.message : "保存失败");
     } finally {
-      setLoading(false);
+      setSubmitting(null);
     }
   };
 
-  // 提交表单
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSave = async (publish: boolean) => {
+    if (submitting) return;
     if (!validateForm()) {
       showError("请检查表单填写");
       return;
     }
-
-    await doSave();
+    await doSave(publish);
   };
 
   return (
-    <form ref={formRef} noValidate onSubmit={handleSubmit} className="space-y-6">
+    <form
+      ref={formRef}
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+      }}
+      className="space-y-6"
+    >
       {/* 基本信息 */}
       <FormSection title="基本信息">
         <div className="grid gap-6 md:grid-cols-2">
@@ -281,41 +287,8 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             onChange={(e) => updateField("salary", e.target.value)}
             placeholder="如：15K-25K"
           />
-          <Input
-            label="经度（选填，可手动录入）"
-            type="number"
-            step="0.000001"
-            value={formData.longitude ?? ""}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              updateField(
-                "longitude",
-                e.target.value === "" || !Number.isFinite(value) ? null : value
-              );
-            }}
-            placeholder="如：121.472000"
-          />
-          <Input
-            label="纬度（选填，可手动录入）"
-            type="number"
-            step="0.000001"
-            value={formData.latitude ?? ""}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              updateField(
-                "latitude",
-                e.target.value === "" || !Number.isFinite(value) ? null : value
-              );
-            }}
-            placeholder="如：31.232000"
-          />
+          {/* 坐标不开放手动录入：由上方高德选址/地址自动解析写入 */}
         </div>
-        {/* 显示经纬度调试 */}
-        {formData.longitude != null && formData.latitude != null && (
-          <p className="mt-2 text-xs text-brand-charcoal/50">
-            已定位坐标: {formData.longitude.toFixed(6)}, {formData.latitude.toFixed(6)}
-          </p>
-        )}
       </FormSection>
 
       {/* 职责描述 */}
@@ -351,14 +324,14 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
             placeholder="0"
             hint="数字越小越靠前"
           />
-          <div className="flex items-end pb-1">
-            <Switch
-              label="发布状态"
-              description="关闭后前台不展示该职位"
-              checked={formData.published || false}
-              onChange={(checked) => updateField("published", checked)}
-            />
-          </div>
+          {/* 发布状态由底部「保存草稿 / 保存并发布」按钮显式决定，避免开关与按钮语义冲突 */}
+          {isEdit && (
+            <p className="self-end pb-2 text-xs text-brand-charcoal/50">
+              {formData.published
+                ? "当前状态：已发布（点击「保存草稿」将转为未发布）"
+                : "当前状态：草稿（点击「保存并发布」将上线）"}
+            </p>
+          )}
         </div>
       </FormSection>
 
@@ -367,12 +340,28 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           type="button"
           variant="outline"
           onClick={() => guardNavigation(() => router.back())}
-          disabled={loading}
+          disabled={submitting !== null}
         >
           取消
         </Button>
-        <Button type="submit" loading={loading}>
-          {isEdit ? "更新职位" : "创建职位"}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleSave(false)}
+          loading={submitting === "draft"}
+          disabled={submitting !== null}
+          leftIcon={<Save className="h-4 w-4" />}
+        >
+          保存草稿
+        </Button>
+        <Button
+          type="button"
+          onClick={() => void handleSave(true)}
+          loading={submitting === "publish"}
+          disabled={submitting !== null}
+          leftIcon={<Send className="h-4 w-4" />}
+        >
+          保存并发布
         </Button>
       </FormActions>
     </form>

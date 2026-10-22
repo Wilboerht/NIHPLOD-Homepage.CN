@@ -13,6 +13,7 @@ import {
   History,
   Image as ImageIcon,
   RefreshCw,
+  Search,
   Undo2,
   XCircle,
 } from "lucide-react";
@@ -91,6 +92,8 @@ function AdminSpentAdjustmentsContent() {
   const [loadError, setLoadError] = useState(false);
   const [tab, setTab] = useState<StatusFilter>("PENDING");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [detail, setDetail] = useState<ApplicationItem | null>(null);
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [reviewAmount, setReviewAmount] = useState("");
@@ -117,6 +120,7 @@ function AdminSpentAdjustmentsContent() {
         page,
         pageSize: 20,
         status: tab === "ALL" ? undefined : tab,
+        search: debouncedSearch || undefined,
       });
       if (!isLatest()) return;
       setData(result);
@@ -128,11 +132,20 @@ function AdminSpentAdjustmentsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, tab, showError, takeLatestSpent]);
+  }, [page, tab, debouncedSearch, showError, takeLatestSpent]);
 
   useEffect(() => {
     deferInEffect(fetchData);
   }, [fetchData]);
+
+  // 搜索防抖
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const openDetail = (item: ApplicationItem) => {
     setDetail(item);
@@ -243,8 +256,8 @@ function AdminSpentAdjustmentsContent() {
         }
       />
 
-      {/* 状态筛选 */}
-      <div className="flex flex-wrap gap-2">
+      {/* 状态筛选 + 搜索 */}
+      <div className="flex flex-wrap items-center gap-2">
         {TABS.map((t) => {
           // “全部”为各状态计数之和；不能用当前筛选的 total（会随 tab 变化）
           const count =
@@ -276,6 +289,15 @@ function AdminSpentAdjustmentsContent() {
             </button>
           );
         })}
+        <div className="relative w-full sm:ml-auto sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Input
+            placeholder="搜索手机号 / 订单号 / 昵称"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
 
       {/* 列表（移动端卡片） */}
@@ -317,6 +339,17 @@ function AdminSpentAdjustmentsContent() {
                   申报：{a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
                 </span>
                 <span>消费：{formatDate(a.purchasedAt)}</span>
+                {a.status !== "PENDING" && (
+                  <>
+                    <span>
+                      核实：{a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
+                    </span>
+                    <span>审核人：{a.reviewedBy?.name ?? "-"}</span>
+                    <span className="col-span-2">
+                      审核时间：{a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
+                    </span>
+                  </>
+                )}
                 <span className="col-span-2">
                   凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
                 </span>
@@ -345,9 +378,12 @@ function AdminSpentAdjustmentsContent() {
                 <th className="px-3 py-2 font-medium">渠道</th>
                 <th className="px-3 py-2 font-medium">订单号</th>
                 <th className="px-3 py-2 font-medium">申报金额</th>
+                <th className="px-3 py-2 font-medium">核实金额</th>
                 <th className="px-3 py-2 font-medium">消费日期</th>
                 <th className="px-3 py-2 font-medium">凭证</th>
                 <th className="px-3 py-2 font-medium">状态</th>
+                <th className="px-3 py-2 font-medium">审核人</th>
+                <th className="px-3 py-2 font-medium">审核时间</th>
                 <th className="px-3 py-2 font-medium">提交时间</th>
                 <th className="px-3 py-2 font-medium">操作</th>
               </tr>
@@ -355,13 +391,13 @@ function AdminSpentAdjustmentsContent() {
             <tbody className="divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center">
+                  <td colSpan={12} className="px-4 py-10 text-center">
                     <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/30" />
                   </td>
                 </tr>
               ) : loadError ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center">
+                  <td colSpan={12} className="px-4 py-10 text-center">
                     <p className="text-sm text-red-500">加载失败，请重试</p>
                     <Button
                       variant="outline"
@@ -391,6 +427,9 @@ function AdminSpentAdjustmentsContent() {
                       {a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-brand-charcoal/60">
+                      {a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/60">
                       {formatDate(a.purchasedAt)}
                     </td>
                     <td className="px-3 py-2 text-sm text-brand-charcoal/60">
@@ -404,6 +443,12 @@ function AdminSpentAdjustmentsContent() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-sm text-brand-charcoal/50">
+                      {a.reviewedBy?.name ?? "-"}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/50">
+                      {a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-brand-charcoal/50">
                       {formatDateTime(a.createdAt)}
                     </td>
                     <td className="px-3 py-2">
@@ -415,7 +460,7 @@ function AdminSpentAdjustmentsContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-brand-charcoal/40">
+                  <td colSpan={12} className="px-4 py-10 text-center text-sm text-brand-charcoal/40">
                     暂无申请
                   </td>
                 </tr>

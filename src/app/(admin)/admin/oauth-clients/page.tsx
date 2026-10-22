@@ -52,6 +52,9 @@ interface OAuthClient {
   isPublic: boolean;
   backchannelLogoutUri: string | null;
   webhookUri: string | null;
+  codeTtlSeconds: number;
+  accessTokenTtlSeconds: number;
+  secretRotatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   activeUserCount?: number;
@@ -157,6 +160,10 @@ interface ClientFormFieldsProps {
   onFormBackchannelUriChange: (value: string) => void;
   formWebhookUri: string;
   onFormWebhookUriChange: (value: string) => void;
+  formCodeTtl: string;
+  onFormCodeTtlChange: (value: string) => void;
+  formAccessTokenTtl: string;
+  onFormAccessTokenTtlChange: (value: string) => void;
   errors: Record<string, string>;
 }
 
@@ -175,6 +182,10 @@ function ClientFormFields({
   onFormBackchannelUriChange,
   formWebhookUri,
   onFormWebhookUriChange,
+  formCodeTtl,
+  onFormCodeTtlChange,
+  formAccessTokenTtl,
+  onFormAccessTokenTtlChange,
   errors,
 }: ClientFormFieldsProps) {
   return (
@@ -241,6 +252,28 @@ function ClientFormFields({
         placeholder="https://smart.nihplod.cn/api/sso/webhook"
         hint="用户昵称/头像/生日变更时推送签名事件，须为 https:// 公网地址"
       />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Input
+          label="授权码有效期（秒）"
+          type="number"
+          min={60}
+          max={600}
+          value={formCodeTtl}
+          onChange={(e) => onFormCodeTtlChange(e.target.value)}
+          error={errors.codeTtlSeconds}
+          hint="授权码换取 Token 的有效时间，默认 300 秒（60–600）"
+        />
+        <Input
+          label="Access Token 有效期（秒）"
+          type="number"
+          min={60}
+          max={86400}
+          value={formAccessTokenTtl}
+          onChange={(e) => onFormAccessTokenTtlChange(e.target.value)}
+          error={errors.accessTokenTtlSeconds}
+          hint="访问令牌的有效时间，默认 28800 秒（8 小时，60–86400）"
+        />
+      </div>
     </div>
   );
 }
@@ -318,6 +351,12 @@ function ClientActions({
   );
 }
 
+/** 判断密钥是否处于轮换过渡期（5 分钟内旧 secret 仍可用）；仅在事件处理器中调用 */
+function isInRotationGrace(secretRotatedAt: string | null | undefined): boolean {
+  if (!secretRotatedAt) return false;
+  return Date.now() - new Date(secretRotatedAt).getTime() <= 5 * 60 * 1000;
+}
+
 function OAuthClientsPage() {
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -357,6 +396,13 @@ function OAuthClientsPage() {
 
   // Detail drawer
   const [detailClient, setDetailClient] = useState<OAuthClient | null>(null);
+  // 密钥轮换过渡期标记：打开抽屉时计算一次（渲染期禁止调用 Date.now）
+  const [detailInRotationGrace, setDetailInRotationGrace] = useState(false);
+
+  const openDetailDrawer = (client: OAuthClient) => {
+    setDetailInRotationGrace(isInRotationGrace(client.secretRotatedAt));
+    setDetailClient(client);
+  };
 
   // Online test modal
   const [testClient, setTestClient] = useState<OAuthClient | null>(null);
@@ -373,9 +419,14 @@ function OAuthClientsPage() {
   const [formIsPublic, setFormIsPublic] = useState(false);
   const [formBackchannelUri, setFormBackchannelUri] = useState("");
   const [formWebhookUri, setFormWebhookUri] = useState("");
+  const [formCodeTtl, setFormCodeTtl] = useState("300");
+  const [formAccessTokenTtl, setFormAccessTokenTtl] = useState("28800");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // 编辑时缩减 scopes 的二次确认（缩权会立即撤销该 Client 全部会话）
+  const [showScopeShrinkConfirm, setShowScopeShrinkConfirm] = useState(false);
 
   // Newly created secret
   const [newSecret, setNewSecret] = useState<string | null>(null);
@@ -397,7 +448,9 @@ function OAuthClientsPage() {
       formScopes !== "openid profile phone" ||
       formIsPublic ||
       formBackchannelUri !== "" ||
-      formWebhookUri !== "");
+      formWebhookUri !== "" ||
+      formCodeTtl !== "300" ||
+      formAccessTokenTtl !== "28800");
 
   const isEditDirty =
     showEdit &&
@@ -408,7 +461,9 @@ function OAuthClientsPage() {
       formScopes !== editClient.scopes.join(" ") ||
       formIsPublic !== editClient.isPublic ||
       formBackchannelUri !== (editClient.backchannelLogoutUri || "") ||
-      formWebhookUri !== (editClient.webhookUri || ""));
+      formWebhookUri !== (editClient.webhookUri || "") ||
+      formCodeTtl !== String(editClient.codeTtlSeconds ?? 300) ||
+      formAccessTokenTtl !== String(editClient.accessTokenTtlSeconds ?? 28800));
 
   const { confirmClose: confirmCloseCreate } = useUnsavedChanges(isCreateDirty);
   const { confirmClose: confirmCloseEdit } = useUnsavedChanges(isEditDirty);
@@ -472,7 +527,21 @@ function OAuthClientsPage() {
     setFormIsPublic(false);
     setFormBackchannelUri("");
     setFormWebhookUri("");
+    setFormCodeTtl("300");
+    setFormAccessTokenTtl("28800");
     setFormErrors({});
+  };
+
+  /** TTL 安全参数校验：与服务端 zod 范围一致（60–600 / 60–86400 秒） */
+  const validateTtlFields = (nextErrors: Record<string, string>) => {
+    const codeTtl = Number(formCodeTtl);
+    if (!Number.isInteger(codeTtl) || codeTtl < 60 || codeTtl > 600) {
+      nextErrors.codeTtlSeconds = "授权码有效期须为 60–600 秒的整数";
+    }
+    const accessTokenTtl = Number(formAccessTokenTtl);
+    if (!Number.isInteger(accessTokenTtl) || accessTokenTtl < 60 || accessTokenTtl > 86400) {
+      nextErrors.accessTokenTtlSeconds = "Access Token 有效期须为 60–86400 秒的整数";
+    }
   };
 
   const handleCreate = async () => {
@@ -489,6 +558,7 @@ function OAuthClientsPage() {
     if (scopes.length === 0 || !scopes.includes("openid")) {
       nextErrors.scopes = "Scopes 必须包含 openid";
     }
+    validateTtlFields(nextErrors);
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -502,6 +572,8 @@ function OAuthClientsPage() {
         isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || undefined,
         webhookUri: formWebhookUri.trim() || undefined,
+        codeTtlSeconds: Number(formCodeTtl),
+        accessTokenTtlSeconds: Number(formAccessTokenTtl),
       });
       setNewSecret(data.plainSecret);
       setShowNewSecret(false);
@@ -532,9 +604,24 @@ function OAuthClientsPage() {
     if (scopes.length === 0 || !scopes.includes("openid")) {
       nextErrors.scopes = "Scopes 必须包含 openid";
     }
+    validateTtlFields(nextErrors);
     setFormErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    // 缩减 scopes 会立即撤销该 Client 全部会话与 Refresh Token，必须二次确认
+    const removedScopes = editClient.scopes.filter((s) => !scopes.includes(s));
+    if (removedScopes.length > 0) {
+      setShowScopeShrinkConfirm(true);
+      return;
+    }
+    await submitEdit();
+  };
+
+  const submitEdit = async () => {
+    if (!editClient) return;
+    const uriValidation = validateRedirectUris(formRedirectUris);
+    const postLogoutValidation = validatePostLogoutUris(formPostLogoutUris);
+    const scopes = formScopes.split(" ").filter(Boolean);
     setSaving(true);
     try {
       await apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${editClient.id}`, {
@@ -545,9 +632,12 @@ function OAuthClientsPage() {
         isPublic: formIsPublic,
         backchannelLogoutUri: formBackchannelUri.trim() || null,
         webhookUri: formWebhookUri.trim() || null,
+        codeTtlSeconds: Number(formCodeTtl),
+        accessTokenTtlSeconds: Number(formAccessTokenTtl),
       });
       toast.success("Client 更新成功");
       setShowEdit(false);
+      setShowScopeShrinkConfirm(false);
       fetchClients();
     } catch (err) {
       const message = err instanceof Error ? err.message : "更新 Client 失败";
@@ -628,6 +718,8 @@ function OAuthClientsPage() {
     setFormIsPublic(client.isPublic);
     setFormBackchannelUri(client.backchannelLogoutUri || "");
     setFormWebhookUri(client.webhookUri || "");
+    setFormCodeTtl(String(client.codeTtlSeconds ?? 300));
+    setFormAccessTokenTtl(String(client.accessTokenTtlSeconds ?? 28800));
     setShowEdit(true);
   };
 
@@ -816,7 +908,7 @@ if (!payload) {
             <div key={c.id} className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <button
-                  onClick={() => setDetailClient(c)}
+                  onClick={() => openDetailDrawer(c)}
                   className="min-w-0 text-left"
                   aria-label={`查看 ${c.name} 详情`}
                 >
@@ -870,7 +962,7 @@ if (!payload) {
                 <ClientActions
                   client={c}
                   canWrite={canWrite}
-                  onView={() => setDetailClient(c)}
+                  onView={() => openDetailDrawer(c)}
                   onSdkConfig={() => openSdkConfig(c)}
                   onTest={() => openTest(c)}
                   onEdit={() => openEdit(c)}
@@ -944,7 +1036,7 @@ if (!payload) {
                 >
                   <td className="min-w-[10rem] px-3 py-2 text-sm font-medium">
                     <button
-                      onClick={() => setDetailClient(c)}
+                      onClick={() => openDetailDrawer(c)}
                       className="text-left text-brand-charcoal hover:text-brand-primary hover:underline"
                     >
                       {c.name}
@@ -1007,7 +1099,7 @@ if (!payload) {
                     <ClientActions
                       client={c}
                       canWrite={canWrite}
-                      onView={() => setDetailClient(c)}
+                      onView={() => openDetailDrawer(c)}
                       onSdkConfig={() => openSdkConfig(c)}
                       onTest={() => openTest(c)}
                       onEdit={() => openEdit(c)}
@@ -1150,6 +1242,10 @@ if (!payload) {
               onFormBackchannelUriChange={setFormBackchannelUri}
               formWebhookUri={formWebhookUri}
               onFormWebhookUriChange={setFormWebhookUri}
+              formCodeTtl={formCodeTtl}
+              onFormCodeTtlChange={setFormCodeTtl}
+              formAccessTokenTtl={formAccessTokenTtl}
+              onFormAccessTokenTtlChange={setFormAccessTokenTtl}
               errors={formErrors}
             />
           </div>
@@ -1203,10 +1299,32 @@ if (!payload) {
             onFormBackchannelUriChange={setFormBackchannelUri}
             formWebhookUri={formWebhookUri}
             onFormWebhookUriChange={setFormWebhookUri}
+            formCodeTtl={formCodeTtl}
+            onFormCodeTtlChange={setFormCodeTtl}
+            formAccessTokenTtl={formAccessTokenTtl}
+            onFormAccessTokenTtlChange={setFormAccessTokenTtl}
             errors={formErrors}
           />
         </div>
       </Modal>
+
+      {/* 缩减 Scopes 二次确认：缩权会立即使该应用所有已登录用户下线 */}
+      <ConfirmDialog
+        open={showScopeShrinkConfirm}
+        onClose={() => setShowScopeShrinkConfirm(false)}
+        onConfirm={submitEdit}
+        type="danger"
+        title="确认缩减权限范围"
+        description={`本次修改移除了 scope：${
+          editClient
+            ? editClient.scopes
+                .filter((s) => !formScopes.split(" ").filter(Boolean).includes(s))
+                .join(", ")
+            : ""
+        }。减少权限范围将立即使该应用所有已登录用户下线（撤销全部会话与 Refresh Token，并通过 Backchannel Logout 通知子站登出），确定继续吗？`}
+        confirmText="确认缩权并保存"
+        loading={saving}
+      />
 
       {/* Rotate Secret Confirm */}
       <ConfirmDialog
@@ -1562,6 +1680,37 @@ if (!payload) {
                   <div className="flex justify-between">
                     <span className="text-brand-charcoal/50">更新时间</span>
                     <span>{formatDateTime(detailClient.updatedAt)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+                <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">安全参数</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">授权码有效期</span>
+                    <span>{detailClient.codeTtlSeconds ?? 300} 秒</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">Access Token 有效期</span>
+                    <span>{detailClient.accessTokenTtlSeconds ?? 28800} 秒</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-charcoal/50">最近密钥轮换</span>
+                    <span className="text-right">
+                      {detailClient.secretRotatedAt ? (
+                        <>
+                          {formatDateTime(detailClient.secretRotatedAt)}
+                          {detailInRotationGrace && (
+                            <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                              过渡期内（旧密钥 5 分钟内仍可用）
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "从未轮换"
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>

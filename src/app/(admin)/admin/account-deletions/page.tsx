@@ -7,7 +7,7 @@
  *   （重试为不可逆操作，需 users:security:write 权限 + 二次确认）
  */
 import { useCallback, useEffect, useState } from "react";
-import { UserX, RefreshCw, RotateCw, Info } from "lucide-react";
+import { UserX, RefreshCw, RotateCw, Info, AlertCircle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -78,54 +78,56 @@ function AdminAccountDeletionsContent() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [retryTarget, setRetryTarget] = useState<DeletionItem | null>(null);
+  const [forceRetry, setForceRetry] = useState(false);
 
-  const fetchItems = useCallback(
-    async (targetStatus: DeletionStatus, targetPage: number) => {
-      setLoading(true);
-      try {
-        const data = await apiGet<{
-          items: DeletionItem[];
-          pagination: { totalPages: number };
-        }>("/api/admin/account-deletions", {
-          status: targetStatus,
-          page: targetPage,
-          pageSize: 20,
-        });
-        setItems(data.items);
-        setTotalPages(data.pagination.totalPages);
-      } catch {
-        showError("加载注销申请列表失败");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [showError]
-  );
+  const fetchItems = useCallback(async (targetStatus: DeletionStatus, targetPage: number) => {
+    setLoading(true);
+    try {
+      const data = await apiGet<{
+        items: DeletionItem[];
+        pagination: { totalPages: number };
+      }>("/api/admin/account-deletions", {
+        status: targetStatus,
+        page: targetPage,
+        pageSize: 20,
+      });
+      setItems(data.items);
+      setTotalPages(data.pagination.totalPages);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     deferInEffect(() => fetchItems(status, page));
   }, [status, page, fetchItems]);
 
-  const handleRetry = async (item: DeletionItem) => {
+  const handleRetry = async (item: DeletionItem, force: boolean) => {
     setActioningId(item.id);
     try {
       const data = await apiPost<{ status: string; message: string }>(
         "/api/admin/account-deletions",
-        { id: item.id }
+        { id: item.id, ...(force ? { force: true } : {}) }
       );
       if (data.status === "completed") {
         success(data.message);
       } else {
         showError(data.message);
       }
+      setRetryTarget(null);
+      setForceRetry(false);
       fetchItems(status, page);
     } catch (e) {
+      // 失败（如达到重试上限返回 409）时保留弹窗，便于勾选「强制重试」后再次提交
       showError(e instanceof ApiError ? e.message : "重试失败");
     } finally {
       setActioningId(null);
-      setRetryTarget(null);
     }
   };
 
@@ -186,6 +188,21 @@ function AdminAccountDeletionsContent() {
       {/* 列表（移动端卡片） */}
       <MobileList
         loading={loading}
+        error={
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => fetchItems(status, page)}
+              >
+                重试
+              </Button>
+            </>
+          ) : undefined
+        }
         empty={<Empty title="暂无记录" description="当前状态下没有注销申请" />}
       >
         {items.map((item) => (
@@ -212,6 +229,13 @@ function AdminAccountDeletionsContent() {
               <span>申请：{formatDateTime(item.requestedAt)}</span>
               <span>执行：{formatDateTime(item.scheduledAt)}</span>
               <span>已尝试：{item.attempts} 次</span>
+              {item.status === "CANCELLED" && item.cancelledAt && (
+                <span>撤回：{formatDateTime(item.cancelledAt)}</span>
+              )}
+              {item.status === "COMPLETED" && item.completedAt && (
+                <span>完成：{formatDateTime(item.completedAt)}</span>
+              )}
+              {item.reason && <span className="col-span-2">注销原因：{item.reason}</span>}
             </div>
             {item.status === "FAILED" && item.lastError && (
               <p className="mt-2 rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-600">
@@ -248,6 +272,25 @@ function AdminAccountDeletionsContent() {
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-red-50 p-4">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
+            <p className="mt-1 text-sm text-brand-charcoal/50">
+              无法获取注销申请列表，请检查网络连接
+            </p>
+            <button
+              onClick={() => {
+                setLoadError(false);
+                fetchItems(status, page);
+              }}
+              className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+            >
+              重试
+            </button>
+          </div>
         ) : items.length === 0 ? (
           <Empty className="h-64" title="暂无记录" description="当前状态下没有注销申请" />
         ) : (
@@ -256,8 +299,11 @@ function AdminAccountDeletionsContent() {
               <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
                 <th className="px-4 py-3 font-medium">用户</th>
                 <th className="px-4 py-3 font-medium">状态</th>
+                <th className="px-4 py-3 font-medium">注销原因</th>
                 <th className="px-4 py-3 font-medium">申请时间</th>
                 <th className="px-4 py-3 font-medium">预定执行</th>
+                {status === "CANCELLED" && <th className="px-4 py-3 font-medium">撤回时间</th>}
+                {status === "COMPLETED" && <th className="px-4 py-3 font-medium">完成时间</th>}
                 <th className="px-4 py-3 font-medium">已尝试</th>
                 <th className="px-4 py-3 font-medium">失败原因</th>
                 <th className="px-4 py-3 font-medium">操作</th>
@@ -282,12 +328,30 @@ function AdminAccountDeletionsContent() {
                       {STATUS_BADGES[item.status].label}
                     </span>
                   </td>
+                  <td className="max-w-[12rem] px-4 py-3">
+                    <p
+                      className="truncate text-xs text-brand-charcoal/50"
+                      title={item.reason ?? undefined}
+                    >
+                      {item.reason || "—"}
+                    </p>
+                  </td>
                   <td className="px-4 py-3 text-brand-charcoal/70">
                     {formatDateTime(item.requestedAt)}
                   </td>
                   <td className="px-4 py-3 text-brand-charcoal/70">
                     {formatDateTime(item.scheduledAt)}
                   </td>
+                  {status === "CANCELLED" && (
+                    <td className="px-4 py-3 text-brand-charcoal/70">
+                      {formatDateTime(item.cancelledAt)}
+                    </td>
+                  )}
+                  {status === "COMPLETED" && (
+                    <td className="px-4 py-3 text-brand-charcoal/70">
+                      {formatDateTime(item.completedAt)}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
                   <td className="max-w-[16rem] px-4 py-3">
                     <p
@@ -354,16 +418,37 @@ function AdminAccountDeletionsContent() {
       {/* 重试确认 */}
       <ConfirmDialog
         open={!!retryTarget}
-        onClose={() => setRetryTarget(null)}
+        onClose={() => {
+          setRetryTarget(null);
+          setForceRetry(false);
+        }}
         onConfirm={() => {
-          if (retryTarget) return handleRetry(retryTarget);
+          if (retryTarget) return handleRetry(retryTarget, forceRetry);
         }}
         title="人工重试注销"
         description={`确定立即对用户「${retryTarget?.userNickname || retryTarget?.userPhone || retryTarget?.userId}」重新执行注销吗？该操作将匿名化其个人数据且不可恢复。`}
         confirmText="立即执行"
         type="danger"
         loading={actioningId === retryTarget?.id}
-      />
+      >
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <input
+            type="checkbox"
+            checked={forceRetry}
+            onChange={(e) => setForceRetry(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="block text-sm font-medium text-amber-800">
+              强制重试（忽略重试次数上限）
+            </span>
+            <span className="mt-0.5 block text-xs text-amber-600">
+              该申请已自动重试 {retryTarget?.attempts ?? 0}{" "}
+              次。勾选后将重置重试计数并立即执行，请先排查失败原因。
+            </span>
+          </span>
+        </label>
+      </ConfirmDialog>
     </div>
   );
 }

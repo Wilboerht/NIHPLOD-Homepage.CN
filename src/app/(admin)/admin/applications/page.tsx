@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
   Download,
   Eye,
   Trash2,
   Clock,
+  AlertCircle,
   FileText,
   User,
   Briefcase,
@@ -82,8 +83,15 @@ const statusConfig: Record<
   hired: { label: "已录用", color: "success" },
 };
 
+const JOB_TYPE_LABELS: Record<string, string> = {
+  fulltime: "全职",
+  parttime: "兼职",
+  intern: "实习",
+};
+
 function AdminApplicationsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("applications:write");
@@ -92,13 +100,24 @@ function AdminApplicationsContent() {
   // 状态
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [jobFilter, setJobFilter] = useState("all");
+  // 职位筛选同步到 URL（?jobId=），职位列表的申请数链接直接落在该筛选上
+  const jobFilter = searchParams.get("jobId") || "all";
+  const setJobFilter = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "all") {
+      params.delete("jobId");
+    } else {
+      params.set("jobId", value);
+    }
+    router.push(`/admin/applications?${params.toString()}`);
+  };
   const [folderFilter, setFolderFilter] = useState("all");
   const [jobs, setJobs] = useState<Job[]>([]);
 
@@ -148,6 +167,7 @@ function AdminApplicationsContent() {
   // 获取申请列表
   const fetchApplications = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -178,6 +198,7 @@ function AdminApplicationsContent() {
       setApplications([]);
       setTotal(0);
       setPendingCount(0);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -542,6 +563,19 @@ function AdminApplicationsContent() {
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
+        ) : loadError ? (
+          <div className="flex h-64 flex-col items-center justify-center">
+            <div className="rounded-full bg-red-50 p-4">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
+            <p className="mt-1 text-sm text-brand-charcoal/50">
+              无法获取简历列表，请检查网络连接
+            </p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={fetchApplications}>
+              重试
+            </Button>
+          </div>
         ) : applications.length === 0 ? (
           <Empty className="h-64" title="暂无简历申请" />
         ) : (
@@ -577,7 +611,10 @@ function AdminApplicationsContent() {
                           )}
                           <span className="inline-flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {formatDate(application.createdAt)}
+                            申请 {formatDate(application.createdAt)}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            最近处理 {formatDate(application.updatedAt)}
                           </span>
                         </div>
                       </div>
@@ -622,7 +659,7 @@ function AdminApplicationsContent() {
                 <span className="col-span-3">申请人</span>
                 <span className="col-span-3">应聘职位</span>
                 <span className="col-span-2">状态</span>
-                <span className="col-span-2">申请时间</span>
+                <span className="col-span-2">申请 / 处理时间</span>
                 <span className="col-span-2 text-right">操作</span>
               </div>
 
@@ -677,9 +714,14 @@ function AdminApplicationsContent() {
                       </div>
 
                       {/* 时间 */}
-                      <div className="col-span-2 flex items-center text-sm text-brand-charcoal/50">
-                        <Clock className="mr-1.5 h-3.5 w-3.5" />
-                        {formatDate(application.createdAt)}
+                      <div className="col-span-2 flex flex-col justify-center gap-0.5 text-sm text-brand-charcoal/50">
+                        <span className="flex items-center">
+                          <Clock className="mr-1.5 h-3.5 w-3.5" />
+                          {formatDate(application.createdAt)}
+                        </span>
+                        <span className="text-xs text-brand-charcoal/40">
+                          最近处理 {formatDate(application.updatedAt)}
+                        </span>
                       </div>
 
                       {/* 操作 */}
@@ -773,6 +815,17 @@ function AdminApplicationsContent() {
               </div>
               <p className="font-medium text-brand-charcoal">{detailApplication.job.title}</p>
               <p className="text-sm text-brand-charcoal/50">{detailApplication.job.titleEn}</p>
+              {(detailApplication.job.location || detailApplication.job.type) && (
+                <p className="mt-1 text-sm text-brand-charcoal/50">
+                  {[
+                    detailApplication.job.location,
+                    detailApplication.job.type &&
+                      (JOB_TYPE_LABELS[detailApplication.job.type] ?? detailApplication.job.type),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
             </div>
 
             {/* 申请时间 */}

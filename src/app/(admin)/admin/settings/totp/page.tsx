@@ -46,6 +46,7 @@ export default function TOTPSettingsPage() {
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
+  const [backupSaved, setBackupSaved] = useState(false);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -84,6 +85,10 @@ export default function TOTPSettingsPage() {
   };
 
   const verifySetup = async () => {
+    if (!backupSaved) {
+      toast.error("请先确认已安全保存备用码");
+      return;
+    }
     if (verifyCode.length !== 6) {
       toast.error("请输入6位验证码");
       return;
@@ -95,6 +100,7 @@ export default function TOTPSettingsPage() {
       setTotpEnabled(true);
       setSetupData(null);
       setVerifyCode("");
+      setBackupSaved(false);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "验证失败");
     } finally {
@@ -297,21 +303,38 @@ export default function TOTPSettingsPage() {
               e.preventDefault();
               void verifySetup();
             }}
-            className="mt-6 flex flex-wrap items-end gap-3"
+            className="mt-6 space-y-4"
           >
-            <div className="min-w-[12rem] flex-1">
-              <Input
-                label="输入 6 位验证码完成绑定"
-                inputMode="numeric"
-                maxLength={6}
-                value={verifyCode}
-                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-brand-charcoal/80">
+              <input
+                type="checkbox"
+                checked={backupSaved}
+                onChange={(e) => setBackupSaved(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand-primary"
               />
+              <span>
+                我已安全保存以上备用码（备用码仅显示一次，丢失后无法找回，未保存将无法在验证器不可用时登录）
+              </span>
+            </label>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[12rem] flex-1">
+                <Input
+                  label="输入 6 位验证码完成绑定"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                />
+              </div>
+              <Button
+                type="submit"
+                loading={processing}
+                disabled={verifyCode.length !== 6 || !backupSaved}
+              >
+                确认启用
+              </Button>
             </div>
-            <Button type="submit" loading={processing} disabled={verifyCode.length !== 6}>
-              确认启用
-            </Button>
           </form>
         </FormSection>
       )}

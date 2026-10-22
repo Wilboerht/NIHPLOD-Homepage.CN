@@ -36,7 +36,9 @@ const uriSchema = z
   .string()
   .url()
   .max(500)
-  .refine((u) => isPublicHttpsUrl(u, true), { message: "必须是 https:// 公网地址，且不允许带 fragment" });
+  .refine((u) => isPublicHttpsUrl(u, true), {
+    message: "必须是 https:// 公网地址，且不允许带 fragment",
+  });
 
 /** scope 白名单收敛：仅允许系统支持的 scope */
 const scopesSchema = z
@@ -104,6 +106,7 @@ export function toSafeClientResponse(
     webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+    secretRotatedAt: client.secretRotatedAt ?? null,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };
@@ -127,6 +130,8 @@ export interface OAuthClientData {
   webhookUri: string | null;
   codeTtlSeconds: number;
   accessTokenTtlSeconds: number;
+  /** 最近一次密钥轮换时间（判断密钥是否处于轮换过渡期） */
+  secretRotatedAt?: Date | null;
   /** 本次更新是否发生 scope 缩权（调用方据此触发队列投递） */
   scopesChanged?: boolean;
   createdAt: Date;
@@ -229,10 +234,7 @@ export function cacheOldSecret(clientId: string, oldHash: string): void {
       data: { previousSecretHash: oldHash, secretRotatedAt: new Date() },
     })
     .catch((err) =>
-      apiConsole.error(
-        "[OAuthClient] 旧 secret hash 持久化失败，过渡期降级为单实例内存缓存:",
-        err
-      )
+      apiConsole.error("[OAuthClient] 旧 secret hash 持久化失败，过渡期降级为单实例内存缓存:", err)
     );
 }
 
@@ -279,9 +281,10 @@ export async function createOAuthClient(
       isActive: client.isActive,
       isPublic: client.isPublic,
       backchannelLogoutUri: client.backchannelLogoutUri,
-    webhookUri: client.webhookUri,
+      webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+      secretRotatedAt: client.secretRotatedAt ?? null,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     },
@@ -310,6 +313,7 @@ export async function getOAuthClientByClientId(clientId: string): Promise<OAuthC
     webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+    secretRotatedAt: client.secretRotatedAt ?? null,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };
@@ -400,9 +404,10 @@ export async function verifyOAuthClientSecret(
       sessionsInvalidatedAt: client.sessionsInvalidatedAt,
       scopeVersion: client.scopeVersion,
       backchannelLogoutUri: client.backchannelLogoutUri,
-    webhookUri: client.webhookUri,
+      webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+      secretRotatedAt: client.secretRotatedAt ?? null,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     },
@@ -429,6 +434,7 @@ export async function getOAuthClientById(id: string): Promise<OAuthClientData | 
     webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+    secretRotatedAt: client.secretRotatedAt ?? null,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };
@@ -531,6 +537,7 @@ export async function updateOAuthClient(
       webhookUri: client.webhookUri,
       codeTtlSeconds: client.codeTtlSeconds,
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+      secretRotatedAt: client.secretRotatedAt ?? null,
       scopesChanged,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
@@ -619,6 +626,7 @@ export async function listOAuthClients(params?: {
       webhookUri: c.webhookUri,
       codeTtlSeconds: c.codeTtlSeconds,
       accessTokenTtlSeconds: c.accessTokenTtlSeconds,
+      secretRotatedAt: c.secretRotatedAt,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     })),
@@ -670,6 +678,7 @@ export async function findClientByName(name: string): Promise<OAuthClientData | 
     webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
     accessTokenTtlSeconds: client.accessTokenTtlSeconds,
+    secretRotatedAt: client.secretRotatedAt ?? null,
     createdAt: client.createdAt,
     updatedAt: client.updatedAt,
   };

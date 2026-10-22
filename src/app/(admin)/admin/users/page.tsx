@@ -28,6 +28,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -92,6 +93,7 @@ interface UserDetail {
   phoneVerified: boolean;
   nickname: string | null;
   avatar: string | null;
+  gender: string | null;
   status: UserStatus;
   membershipLevel: string | null;
   totalSpent: number | null;
@@ -99,6 +101,7 @@ interface UserDetail {
   goldActivatedAt: string | null;
   diamondActivatedAt: string | null;
   wechatOpenId: string | null;
+  wechatUnionId: string | null;
   birthday: string | null;
   birthdayLocked: boolean;
   // 多平台外部身份（聚合框架单一数据源）
@@ -256,12 +259,13 @@ function AdminUsersContent() {
   const pageSize = parseInt(searchParams.get("pageSize") || "20");
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status") || "";
+  const level = searchParams.get("level") || "";
   const [searchInput, setSearchInput] = useState(search);
 
   // 批量操作状态（翻页/筛选/搜索变化时自动清空勾选）
   const userSelection = useRowSelection<UserItem>(
     (u) => u.id,
-    `${page}|${pageSize}|${search}|${status}`
+    `${page}|${pageSize}|${search}|${status}|${level}`
   );
   const { selectedIds, selectedCount } = userSelection;
   const [batchTarget, setBatchTarget] = useState<{ status: UserStatus } | null>(null);
@@ -281,6 +285,8 @@ function AdminUsersContent() {
     "basic" | "points" | "address" | "spent" | "growth" | "login"
   >("basic");
   const [detailLoginAttempts, setDetailLoginAttempts] = useState<LoginAttemptItem[]>([]);
+  // 登录历史：仅看失败（在最近返回的数据内前端筛选）
+  const [loginFailedOnly, setLoginFailedOnly] = useState(false);
 
   // 生日修改 / 解锁
   const [birthdayEditOpen, setBirthdayEditOpen] = useState(false);
@@ -342,6 +348,7 @@ function AdminUsersContent() {
           pageSize,
           search,
           status: status || undefined,
+          level: level || undefined,
         }
       );
       // 丢弃过期响应：快速切换分页/筛选时只接受最新一次请求
@@ -360,7 +367,7 @@ function AdminUsersContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, search, status, router, takeLatestUsers]);
+  }, [page, pageSize, search, status, level, router, takeLatestUsers]);
 
   useEffect(() => {
     deferInEffect(fetchUsers);
@@ -635,6 +642,7 @@ function AdminUsersContent() {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (status) params.set("status", status);
+    if (level) params.set("level", level);
     window.open(`/api/admin/users?export=csv&${params.toString()}`, "_blank");
   };
 
@@ -729,7 +737,7 @@ function AdminUsersContent() {
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
           <Input
-            placeholder="搜索完整手机号/昵称..."
+            placeholder="搜索用户 ID/完整手机号/昵称..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
@@ -743,10 +751,24 @@ function AdminUsersContent() {
               { value: "ACTIVE", label: "正常" },
               { value: "SUSPENDED", label: "冻结" },
               { value: "BANNED", label: "封禁" },
+              { value: "DELETED", label: "已注销" },
             ]}
             value={status}
             onChange={(e) => updateParams({ status: e.target.value })}
             className="w-full sm:w-32"
+          />
+          <Select
+            options={[
+              { value: "", label: "全部等级" },
+              { value: "REGULAR", label: membershipLevelMap.REGULAR.label },
+              { value: "SILVER", label: membershipLevelMap.SILVER.label },
+              { value: "GOLD", label: membershipLevelMap.GOLD.label },
+              { value: "DIAMOND", label: membershipLevelMap.DIAMOND.label },
+            ]}
+            value={level}
+            onChange={(e) => updateParams({ level: e.target.value })}
+            className="w-full sm:w-32"
+            aria-label="按会员等级筛选"
           />
           {canWriteUsers && selectedIds.size > 0 && (
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -1143,6 +1165,16 @@ function AdminUsersContent() {
                       )}
                     </dd>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <dt className="text-brand-charcoal/50">性别</dt>
+                    <dd>
+                      {detailUser.gender === "male"
+                        ? "男"
+                        : detailUser.gender === "female"
+                          ? "女"
+                          : "未设置"}
+                    </dd>
+                  </div>
                   <div className="flex items-start justify-between gap-3">
                     <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
                       <CalendarDays className="h-3.5 w-3.5" />
@@ -1232,6 +1264,24 @@ function AdminUsersContent() {
                         <Badge variant="success" className="px-1.5 py-0 text-xs">
                           微信已绑定（历史数据）
                         </Badge>
+                      ) : (
+                        <span className="text-brand-charcoal/50">未绑定</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
+                      <Link2 className="h-3.5 w-3.5" />
+                      微信 UnionID
+                    </dt>
+                    <dd>
+                      {detailUser.wechatUnionId ? (
+                        <code
+                          className="font-mono text-[11px] text-brand-charcoal/60"
+                          title={detailUser.wechatUnionId}
+                        >
+                          {detailUser.wechatUnionId}
+                        </code>
                       ) : (
                         <span className="text-brand-charcoal/50">未绑定</span>
                       )}
@@ -1472,19 +1522,37 @@ function AdminUsersContent() {
             {/* 登录历史 */}
             {activeDetailTab === "login" && (
               <div>
-                <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
-                  登录历史
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-medium text-brand-charcoal">
+                    登录历史
+                    {detailLoginAttempts.length > 0 && (
+                      <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                        展示最近 {detailLoginAttempts.length} 条
+                      </span>
+                    )}
+                  </h3>
                   {detailLoginAttempts.length > 0 && (
-                    <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
-                      展示最近 {detailLoginAttempts.length} 条
-                    </span>
+                    <Switch
+                      label="仅看失败"
+                      checked={loginFailedOnly}
+                      onChange={setLoginFailedOnly}
+                    />
                   )}
-                </h3>
+                </div>
                 {detailLoginAttempts.length === 0 ? (
                   <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无登录记录</p>
                 ) : (
-                  <div className="space-y-2">
-                    {detailLoginAttempts.map((a) => (
+                  (() => {
+                    const visibleAttempts = loginFailedOnly
+                      ? detailLoginAttempts.filter((a) => !a.success)
+                      : detailLoginAttempts;
+                    return visibleAttempts.length === 0 ? (
+                      <p className="py-4 text-center text-sm text-brand-charcoal/40">
+                        最近记录中没有失败登录
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {visibleAttempts.map((a) => (
                       <div
                         key={a.id}
                         className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-charcoal/10 bg-white px-4 py-2.5"
@@ -1520,8 +1588,10 @@ function AdminUsersContent() {
                           </p>
                         )}
                       </div>
-                    ))}
-                  </div>
+                        ))}
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             )}
@@ -1702,6 +1772,14 @@ function AdminUsersContent() {
                             <Badge variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}>
                               {membershipLevelMap[c.toLevel]?.label ?? c.toLevel}
                             </Badge>
+                            {c.note && (
+                              <span
+                                className="max-w-[16rem] truncate text-xs text-brand-charcoal/50"
+                                title={c.note}
+                              >
+                                {c.note}
+                              </span>
+                            )}
                           </div>
                           <span className="shrink-0 text-xs text-brand-charcoal/40">
                             {formatDate(c.createdAt)}

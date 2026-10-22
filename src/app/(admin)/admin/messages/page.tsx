@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Mail, MailOpen, Trash2, Clock } from "lucide-react";
+import { Search, Mail, MailOpen, Trash2, Clock, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -53,6 +53,7 @@ function AdminMessagesContent() {
   const { can: canAdmin } = useAdminPermissions();
   const canDeleteMessages = canAdmin("messages:delete");
   const canWriteMessages = canAdmin("messages:write");
+  const canReadSensitivePhone = canAdmin("messages:sensitive:read");
 
   // 状态
   const [messages, setMessages] = useState<Message[]>([]);
@@ -68,11 +69,12 @@ function AdminMessagesContent() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [repliedFilter, setRepliedFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("");
   // 勾选状态：翻页/搜索/筛选变化时自动清空
   const selection = useRowSelection<Message>(
     (m) => m.id,
-    `${page}|${pageSize}|${debouncedSearch}|${statusFilter}|${typeFilter}`
+    `${page}|${pageSize}|${debouncedSearch}|${statusFilter}|${repliedFilter}|${typeFilter}`
   );
   const [batchActionLoading, setBatchActionLoading] = useState<string | null>(null);
 
@@ -105,6 +107,7 @@ function AdminMessagesContent() {
         pageSize,
         search: debouncedSearch,
         status: statusFilter === "all" ? undefined : statusFilter,
+        replied: repliedFilter === "all" ? undefined : repliedFilter,
         type: typeFilter || undefined,
       });
       if (!isLatest()) return;
@@ -118,7 +121,7 @@ function AdminMessagesContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, statusFilter, typeFilter, takeLatestMessages]);
+  }, [page, pageSize, debouncedSearch, statusFilter, repliedFilter, typeFilter, takeLatestMessages]);
 
   useEffect(() => {
     deferInEffect(fetchMessages);
@@ -152,6 +155,16 @@ function AdminMessagesContent() {
     setReplyDraft(message.reply ?? "");
     if (!message.read) {
       await markAsRead(message);
+    }
+  };
+
+  // 复制完整手机号（仅持有 messages:sensitive:read 时入口可见）
+  const copyPhone = async (phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone);
+      success("手机号已复制");
+    } catch {
+      showError("复制失败，请手动选择复制");
     }
   };
 
@@ -299,6 +312,19 @@ function AdminMessagesContent() {
               setPage(1);
             }}
             className="w-full sm:w-32"
+          />
+          <Select
+            options={[
+              { value: "all", label: "全部回复状态" },
+              { value: "unreplied", label: "未回复" },
+              { value: "replied", label: "已回复" },
+            ]}
+            value={repliedFilter}
+            onChange={(e) => {
+              setRepliedFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-full sm:w-36"
           />
           <Select
             options={[
@@ -473,6 +499,11 @@ function AdminMessagesContent() {
                               已回复
                             </Badge>
                           )}
+                          {message.reply && message.repliedAt && (
+                            <span className="text-xs text-brand-charcoal/40">
+                              回复于 {formatRelativeTime(message.repliedAt)}
+                            </span>
+                          )}
                         </div>
                         <p className="mt-1 truncate text-sm text-brand-charcoal/50">
                           {message.content}
@@ -590,7 +621,19 @@ function AdminMessagesContent() {
                     </Badge>
                   )}
                 </div>
-                <span className="text-sm text-brand-charcoal/50">{detailMessage.phone}</span>
+                <span className="flex items-center gap-1.5 text-sm text-brand-charcoal/50">
+                  {detailMessage.phone}
+                  {canReadSensitivePhone && (
+                    <Tooltip content="复制手机号" side="top">
+                      <IconButton
+                        label="复制手机号"
+                        onClick={() => copyPhone(detailMessage.phone)}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </span>
               </div>
             </div>
 

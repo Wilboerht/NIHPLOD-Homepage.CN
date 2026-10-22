@@ -15,6 +15,7 @@ import { TagInput } from "@/components/ui/TagInput";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { FormActions } from "@/components/admin/FormActions";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema } from "@/schemas/product";
@@ -160,6 +161,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   // null=空闲；"draft"/"publish"=正在执行对应动作（双按钮互斥，防并发提交）
   const [submitting, setSubmitting] = useState<null | "draft" | "publish">(null);
+  // 已发布产品点"保存草稿"前的下架确认
+  const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
 
   // 分类列表（本地状态：支持表单内快速新建分类后即建即选）
   const [categoryList, setCategoryList] = useState<Category[]>(categories);
@@ -926,7 +929,14 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         <Button
           type="button"
           variant="outline"
-          onClick={() => void handleSave(false)}
+          onClick={() => {
+            // 已发布产品保存草稿会从前台下架，需显式确认
+            if (initialData?.published) {
+              setDraftConfirmOpen(true);
+            } else {
+              void handleSave(false);
+            }
+          }}
           loading={submitting === "draft"}
           disabled={submitting !== null}
           leftIcon={<Save className="h-4 w-4" />}
@@ -943,6 +953,20 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           保存并发布
         </Button>
       </FormActions>
+
+      {/* 已发布产品保存草稿的下架确认 */}
+      <ConfirmDialog
+        open={draftConfirmOpen}
+        onClose={() => setDraftConfirmOpen(false)}
+        onConfirm={() => {
+          setDraftConfirmOpen(false);
+          void handleSave(false);
+        }}
+        type="warning"
+        title="保存为草稿"
+        description="保存草稿将把该产品从前台下架，用户将无法再访问该产品页面。确认保存为草稿？"
+        confirmText="确认保存草稿"
+      />
 
       {/* 快速新建分类弹窗（内联创建，创建后自动选中） */}
       <Modal

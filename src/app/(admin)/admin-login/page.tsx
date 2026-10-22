@@ -38,26 +38,30 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // 账户锁定/限流冷却倒计时（秒），大于 0 时禁止再次提交
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   // 挂载动画（useMounted 提供 hydration 守卫，避免 effect 内同步 setState）
   const mounted = useMounted();
   const [breadcrumbOpen, setBreadcrumbOpen] = useState(false);
   const breadcrumbRef = useRef<HTMLDivElement>(null);
   const totpInputRef = useRef<HTMLInputElement>(null);
-  // 登录成功跳转时不再触发离开确认
-  const submittedRef = useRef(false);
-  const formTouched = email || password || (totpRequired && totpCode);
 
-  // 防止意外离开导致表单数据丢失
+  // 冷却倒计时
   useEffect(() => {
-    if (!formTouched) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      if (submittedRef.current) return;
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [formTouched]);
+    if (cooldownSeconds <= 0) return;
+    const timer = setTimeout(() => {
+      setCooldownSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [cooldownSeconds]);
+
+  /** 从服务端错误信息中解析"请 N 分钟后再试"，命中则启动冷却 */
+  const startCooldownFromMessage = (message: string) => {
+    const match = message.match(/(\d+)\s*分钟后再试/);
+    if (match) {
+      setCooldownSeconds(Number(match[1]) * 60);
+    }
+  };
 
   // 面包屑下拉：点击外部关闭 + Escape 关闭
   useEffect(() => {
@@ -123,7 +127,6 @@ export default function LoginPage() {
           password,
           ...(totpCode ? { totpCode } : {}),
         });
-        submittedRef.current = true;
         if (data.totpSetupRequired) {
           window.location.href = "/admin-login/totp-recovery";
           return;
@@ -132,6 +135,9 @@ export default function LoginPage() {
         // 浏览器会带上 SameSite=Strict 的 admin_token Cookie，避免 middleware 拦截。
         window.location.href = redirectTo;
       } catch (err) {
+        const message = err instanceof Error ? err.message : "网络错误，请检查网络连接";
+        // ACCOUNT_LOCKED / 限流时服务端会返回"请 N 分钟后再试"，启动按钮冷却
+        startCooldownFromMessage(message);
         // TOTP_REQUIRED / TOTP_INVALID / TOTP_RATE_LIMITED 均保持验证码输入框展开，
         // 否则用户输错一次就要重填邮箱密码；清空输入并聚焦便于重试。
         const needsTotp =
@@ -143,12 +149,12 @@ export default function LoginPage() {
         if (needsTotp) {
           setTotpRequired(true);
           setTotpCode("");
-          setError(err instanceof Error ? err.message : "请输入二次验证码");
+          setError(message);
           requestAnimationFrame(() => totpInputRef.current?.focus());
           return;
         }
         setTotpRequired(false);
-        setError(err instanceof Error ? err.message : "网络错误，请检查网络连接");
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -284,9 +290,23 @@ export default function LoginPage() {
             )}
 
             {/* 登录按钮 */}
-            <Button type="submit" loading={isLoading} className="w-full">
-              {isLoading ? "登录中..." : "登录"}
+            <Button
+              type="submit"
+              loading={isLoading}
+              disabled={cooldownSeconds > 0}
+              className="w-full"
+            >
+              {isLoading
+                ? "登录中..."
+                : cooldownSeconds > 0
+                  ? `请 ${Math.ceil(cooldownSeconds / 60)} 分钟后再试（${String(Math.floor(cooldownSeconds / 60)).padStart(2, "0")}:${String(cooldownSeconds % 60).padStart(2, "0")}）`
+                  : "登录"}
             </Button>
+
+            {/* 找回指引 */}
+            <p className="text-center text-xs text-brand-charcoal/40">
+              忘记密码或丢失验证器？请联系超级管理员重置
+            </p>
           </form>
 
           {/* 子站切换（面包屑下拉） */}

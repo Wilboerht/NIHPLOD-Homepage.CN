@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { Switch } from "@/components/ui/Switch";
+import { apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { formatPrice } from "@/lib/utils";
+import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 
 // 产品类型
 interface ProductItem {
@@ -102,8 +104,24 @@ export function ProductsTable({
       try {
         await apiPatch(`/api/admin/products/${id}`, { published: !published });
         onRefresh();
-      } catch {
-        showError("操作失败，请重试");
+      } catch (err) {
+        showError(err instanceof ApiError ? err.message : "操作失败，请重试");
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [onRefresh, showError]
+  );
+
+  // 切换推荐状态
+  const handleToggleFeatured = useCallback(
+    async (id: string, featured: boolean) => {
+      setActionLoading(id);
+      try {
+        await apiPatch(`/api/admin/products/${id}`, { featured: !featured });
+        onRefresh();
+      } catch (err) {
+        showError(err instanceof ApiError ? err.message : "操作失败，请重试");
       } finally {
         setActionLoading(null);
       }
@@ -211,6 +229,7 @@ export function ProductsTable({
         key: "name",
         title: "产品名称",
         width: "280px",
+        sortable: true,
         render: (_, record) => (
           <div className="min-w-0">
             <p className="truncate font-medium text-brand-charcoal" title={record.name}>
@@ -247,9 +266,29 @@ export function ProductsTable({
         title: "排序",
         align: "right",
         width: "64px",
+        sortable: true,
         render: (_, record) => (
           <span className="text-sm text-brand-charcoal/40">{record.order}</span>
         ),
+      },
+      {
+        key: "featured",
+        title: "推荐",
+        width: "72px",
+        align: "center",
+        render: (_, record) =>
+          canWrite ? (
+            <Switch
+              label={`${record.featured ? "取消推荐" : "设为推荐"} ${record.name}`}
+              checked={record.featured}
+              disabled={actionLoading !== null}
+              onChange={() => handleToggleFeatured(record.id, record.featured)}
+            />
+          ) : (
+            <DotBadge color={record.featured ? "green" : "gray"}>
+              {record.featured ? "推荐" : "-"}
+            </DotBadge>
+          ),
       },
       {
         key: "published",
@@ -260,6 +299,17 @@ export function ProductsTable({
           <DotBadge color={record.published ? "green" : "gray"}>
             {record.published ? "已发布" : "草稿"}
           </DotBadge>
+        ),
+      },
+      {
+        key: "updatedAt",
+        title: "更新时间",
+        width: "150px",
+        sortable: true,
+        render: (_, record) => (
+          <span className="text-sm text-brand-charcoal/50">
+            {formatDateTime(record.updatedAt)}
+          </span>
         ),
       },
       {
@@ -315,6 +365,7 @@ export function ProductsTable({
     canDelete,
     canWrite,
     handleTogglePublish,
+    handleToggleFeatured,
   ]);
 
   return (
@@ -375,7 +426,7 @@ export function ProductsTable({
         loading={loading}
         rowKey="id"
         tableLayout="fixed"
-        minWidth="940px"
+        minWidth="1160px"
         emptyText="暂无产品数据"
         mobileCard={(record) => (
           <div className="space-y-3">
@@ -416,6 +467,7 @@ export function ProductsTable({
                   <DotBadge color={record.published ? "green" : "gray"}>
                     {record.published ? "已发布" : "草稿"}
                   </DotBadge>
+                  {record.featured && <DotBadge color="green">推荐</DotBadge>}
                 </div>
               </div>
             </div>

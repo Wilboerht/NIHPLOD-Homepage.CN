@@ -22,7 +22,8 @@ export default function TOTPRecoveryPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [backupSaved, setBackupSaved] = useState(false);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -43,6 +44,10 @@ export default function TOTPRecoveryPage() {
   }, []);
 
   const verify = async () => {
+    if (!backupSaved) {
+      setError("请先确认已安全保存备用码");
+      return;
+    }
     if (verifyCode.length !== 6) {
       setError("请输入 6 位验证码");
       return;
@@ -60,11 +65,14 @@ export default function TOTPRecoveryPage() {
     }
   };
 
-  const copySecret = async () => {
-    if (!setupData) return;
-    await navigator.clipboard.writeText(setupData.secret);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyText = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      setError("复制失败，请手动复制");
+    }
   };
 
   return (
@@ -128,20 +136,55 @@ export default function TOTPRecoveryPage() {
                 <code className="min-w-0 flex-1 break-all rounded bg-brand-charcoal/[0.04] px-2 py-1.5 text-xs">
                   {setupData.secret}
                 </code>
-                <Button type="button" size="sm" variant="outline" onClick={copySecret}>
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => copyText(setupData.secret, "secret")}
+                  aria-label="复制密钥"
+                >
+                  {copied === "secret" ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-brand-charcoal/60">备用码（请保存）</p>
+              <p className="mb-2 text-xs font-medium text-brand-charcoal/60">
+                备用码（仅显示一次，请逐个保存）
+              </p>
               <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs">
                 {setupData.backupCodes.map((code) => (
-                  <code key={code}>{code}</code>
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => copyText(code, `backup-${code}`)}
+                    aria-label={`复制备用码 ${code}`}
+                    className="hover:bg-brand-charcoal/8 flex min-h-[32px] cursor-pointer items-center justify-between gap-1 rounded px-2 py-1 font-mono transition-colors"
+                  >
+                    <span>{code}</span>
+                    {copied === `backup-${code}` ? (
+                      <Check className="h-3 w-3 flex-shrink-0 text-green-500" />
+                    ) : (
+                      <Copy className="h-3 w-3 flex-shrink-0 text-brand-charcoal/40" />
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
+
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-brand-charcoal/80">
+              <input
+                type="checkbox"
+                checked={backupSaved}
+                onChange={(e) => setBackupSaved(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand-primary"
+              />
+              <span>我已安全保存以上备用码（仅显示一次，丢失后无法找回）</span>
+            </label>
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
@@ -158,7 +201,7 @@ export default function TOTPRecoveryPage() {
                 type="button"
                 onClick={verify}
                 loading={processing}
-                disabled={processing || verifyCode.length !== 6}
+                disabled={processing || verifyCode.length !== 6 || !backupSaved}
               >
                 确认启用
               </Button>

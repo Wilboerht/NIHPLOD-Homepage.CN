@@ -33,6 +33,7 @@ interface Job {
   published: boolean;
   createdAt: string;
   updatedAt: string;
+  _count: { applications: number };
 }
 
 const JOB_TYPE_LABELS: Record<string, string> = {
@@ -49,19 +50,57 @@ export default function AdminJobsPage() {
   // 状态
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() => {
-    const size = Number(searchParams.get("pageSize"));
-    return Number.isFinite(size) && size >= 1 ? Math.floor(size) : 10;
-  });
   const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(search);
-  const [statusFilter, setStatusFilter] = useState("all");
+
+  // page/pageSize/status/search 同步到 URL（与产品列表一致，刷新/分享后保留筛选；非法值回退默认）
+  const pageParam = Number(searchParams.get("page"));
+  const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
+  const pageSizeParam = Number(searchParams.get("pageSize"));
+  const pageSize =
+    Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
+  const statusFilter = searchParams.get("status") || "all";
+  const searchParam = searchParams.get("search") || "";
+  const [searchInput, setSearchInput] = useState(searchParam);
+  // URL 中的 search 变化（前进/后退）时在渲染期同步输入框（同 useRowSelection 的调整模式）
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
+  if (prevSearchParam !== searchParam) {
+    setPrevSearchParam(searchParam);
+    setSearchInput(searchParam);
+  }
+
+  const updateParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === "" || value === "all") {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      });
+      // 更改筛选条件时重置页码
+      if (!("page" in updates)) {
+        params.delete("page");
+      }
+      router.push(`/admin/jobs?${params.toString()}`);
+    },
+    [searchParams, router]
+  );
+
+  // 搜索防抖：停止输入 300ms 后提交到 URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput !== searchParam) {
+        updateParams({ search: searchInput });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchParam, updateParams]);
+
   // 勾选状态：翻页/搜索/筛选变化时自动清空
   const selection = useRowSelection<Job>(
     (job) => job.id,
-    `${page}|${pageSize}|${debouncedSearch}|${statusFilter}`
+    `${page}|${pageSize}|${searchParam}|${statusFilter}`
   );
   // 删除确认
   const [loadError, setLoadError] = useState(false);
@@ -69,12 +108,16 @@ export default function AdminJobsPage() {
   const [deleting, setDeleting] = useState(false);
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [batchActionLoading, setBatchActionLoading] = useState<string | null>(null);
+  // 行内发布/下架防抖：进行中禁用按钮，避免连点发出多个 PATCH
+  const [publishLoadingId, setPublishLoadingId] = useState<string | null>(null);
 
   // 权限：发布需要 jobs:write，删除需要 jobs:delete，批量删除需要 jobs:batch-delete
   const { can: canAdmin } = useAdminPermissions();
   const canWriteJobs = canAdmin("jobs:write");
   const canDeleteJobs = canAdmin("jobs:delete");
   const canBatchDelete = canAdmin("jobs:batch-delete");
+  // 无任何操作权限时不展示勾选列
+  const canSelect = canWriteJobs || canDeleteJobs || canBatchDelete;
 
   // 获取职位列表
   const takeLatestJobs = useLatestRequest();
@@ -87,7 +130,7 @@ export default function AdminJobsPage() {
         {
           page,
           pageSize,
-          search: debouncedSearch,
+          search: searchParam,
           status: statusFilter === "all" ? undefined : statusFilter,
         }
       );
@@ -106,29 +149,24 @@ export default function AdminJobsPage() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, statusFilter, router, showError, takeLatestJobs]);
+  }, [page, pageSize, searchParam, statusFilter, router, showError, takeLatestJobs]);
 
   useEffect(() => {
     deferInEffect(fetchJobs);
   }, [fetchJobs]);
 
-  // 搜索防抖
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  // 切换发布状态
+  // 切换发布状态（publishLoadingId 防连点）
   const togglePublish = async (job: Job) => {
+    if (publishLoadingId) return;
+    setPublishLoadingId(job.id);
     try {
       await apiPatch(`/api/admin/jobs/${job.id}`, { published: !job.published });
       success(job.published ? "已取消发布" : "已发布");
       fetchJobs();
     } catch {
       showError("操作失败");
+    } finally {
+      setPublishLoadingId(null);
     }
   };
 
@@ -143,7 +181,7 @@ export default function AdminJobsPage() {
       setDeleteTarget(null);
       // 删光当前页最后一条时回退一页
       if (jobs.length === 1 && page > 1) {
-        setPage(page - 1);
+        updateParams({ page: String(page - 1) });
       } else {
         fetchJobs();
       }
@@ -175,7 +213,7 @@ export default function AdminJobsPage() {
         jobs.every((job) => selection.selectedIds.has(job.id));
       selection.clear();
       if (deletesWholePage && page > 1) {
-        setPage(page - 1);
+        updateParams({ page: String(page - 1) });
       } else {
         await fetchJobs();
       }
@@ -211,8 +249,8 @@ export default function AdminJobsPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
             <Input
               placeholder="搜索职位..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -223,10 +261,7 @@ export default function AdminJobsPage() {
               { value: "draft", label: "草稿" },
             ]}
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => updateParams({ status: e.target.value })}
             className="w-full sm:w-32"
           />
         </div>
@@ -289,6 +324,25 @@ export default function AdminJobsPage() {
         ) : jobs.length === 0 ? (
           <Empty className="h-64" title="暂无职位" />
         ) : (
+          <>
+            {/* 表头：全选本页（无任何操作权限时不展示） */}
+            {canSelect && (
+              <div className="border-brand-charcoal/8 hidden items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50 md:flex">
+                <input
+                  type="checkbox"
+                  checked={selection.isAllSelected(jobs)}
+                  ref={(el) => {
+                    if (el) el.indeterminate = selection.isIndeterminate(jobs);
+                  }}
+                  onChange={() => selection.toggleAll(jobs, !selection.isAllSelected(jobs))}
+                  aria-label="全选本页职位"
+                  className="h-4 w-4 rounded border-brand-charcoal/20"
+                />
+                <span className="flex-1">职位</span>
+                <span>更新时间</span>
+                <span>操作</span>
+              </div>
+            )}
           <div className="divide-brand-charcoal/8 divide-y">
             {jobs.map((job) => (
               <div
@@ -296,7 +350,7 @@ export default function AdminJobsPage() {
                 className="flex flex-wrap items-start gap-3 px-4 py-4 hover:bg-brand-charcoal/[0.03] sm:flex-nowrap sm:items-center sm:gap-4 sm:px-6"
               >
                 {/* 选择框（无任何操作权限时不展示） */}
-                {(canWriteJobs || canDeleteJobs || canBatchDelete) && (
+                {canSelect && (
                   <input
                     type="checkbox"
                     checked={selection.isSelected(job)}
@@ -327,11 +381,17 @@ export default function AdminJobsPage() {
                     </span>
                     <span>{JOB_TYPE_LABELS[job.type] || job.type}</span>
                     {job.salary && <span>{job.salary}</span>}
+                    <Link
+                      href={`/admin/applications?jobId=${job.id}`}
+                      className="hover:text-brand-primary hover:underline"
+                    >
+                      {job._count.applications} 份申请
+                    </Link>
                   </div>
                 </div>
 
-                {/* 更新时间 */}
-                <div className="hidden text-sm text-brand-charcoal/50 md:block">
+                {/* 更新时间（移动端同样展示） */}
+                <div className="text-xs text-brand-charcoal/50 sm:text-sm">
                   {formatDate(job.updatedAt)}
                 </div>
 
@@ -349,6 +409,7 @@ export default function AdminJobsPage() {
                       <IconButton
                         label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
                         onClick={() => togglePublish(job)}
+                        disabled={publishLoadingId !== null}
                       >
                         {job.published ? (
                           <EyeOff className="h-4 w-4" />
@@ -373,6 +434,7 @@ export default function AdminJobsPage() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
 
@@ -383,25 +445,23 @@ export default function AdminJobsPage() {
             page={page}
             pageSize={pageSize}
             total={total}
-            onChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-              const params = new URLSearchParams(searchParams.toString());
-              params.set("pageSize", String(size));
-              router.push(`/admin/jobs?${params.toString()}`);
-            }}
+            onChange={(p) => updateParams({ page: String(p) })}
+            onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
           />
         </div>
       )}
 
-      {/* 删除确认 */}
+      {/* 删除确认（有申请时提示删除会被 API 拒绝，与后端行为一致） */}
       <ConfirmDialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="确认删除"
-        description={`确定要删除职位「${deleteTarget?.title}」吗？此操作无法撤销。`}
+        description={
+          deleteTarget && deleteTarget._count.applications > 0
+            ? `该职位已有 ${deleteTarget._count.applications} 份申请，删除将被拒绝。建议改为下架以保留候选人数据。`
+            : `确定要删除职位「${deleteTarget?.title}」吗？此操作无法撤销。`
+        }
         confirmText="删除"
         loading={deleting}
         type="danger"

@@ -32,6 +32,7 @@ describe("角色模板", () => {
     expect(admin).toContain("products:write");
     expect(admin).toContain("applications:delete");
     expect(admin).toContain("spent:review");
+    expect(admin).toContain("messages:sensitive:read");
     expect(admin).not.toContain("spent:import");
     expect(admin).not.toContain("sso:read");
     expect(admin).not.toContain("admins:write");
@@ -52,6 +53,14 @@ describe("角色模板", () => {
     expect(support).toContain("redemptions:fulfill");
     expect(support).not.toContain("users:write");
     expect(support).not.toContain("products:write");
+    // 客服默认不含留言完整号码权限，但可通过个人覆盖勾选
+    expect(support).not.toContain("messages:sensitive:read");
+    expect(
+      hasAdminPermission(
+        { role: "support", permissionOverrides: ["messages:sensitive:read"] },
+        "messages:sensitive:read"
+      )
+    ).toBe(true);
 
     const hr = resolveAdminPermissions("hr");
     expect(hr).toContain("applications:write");

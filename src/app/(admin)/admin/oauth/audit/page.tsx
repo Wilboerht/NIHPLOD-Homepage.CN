@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 interface AuditEntry {
   id: string;
@@ -96,6 +97,9 @@ function OAuthAuditPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
+  const { can: canAdmin } = useAdminPermissions();
+  // 导出接口单独要求 audit:export 权限，无权限时不渲染入口（避免 window.open 打开 403）
+  const canExport = canAdmin("audit:export");
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
@@ -225,14 +229,16 @@ function OAuthAuditPage() {
         title="SSO 审计日志"
         description="记录 SSO 系统所有关键事件"
         actions={
-          <Button
-            variant="outline"
-            onClick={handleExportCsv}
-            disabled={exporting}
-            leftIcon={<Download className="h-4 w-4" />}
-          >
-            {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
-          </Button>
+          canExport ? (
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              disabled={exporting}
+              leftIcon={<Download className="h-4 w-4" />}
+            >
+              {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
+            </Button>
+          ) : undefined
         }
       />
 

@@ -2,6 +2,7 @@
  * 会员权益配置 API（管理端，仅超级管理员）
  * GET /api/admin/membership-benefits - 四档权益配置（DB 覆盖 + 代码默认值兜底）
  * PUT /api/admin/membership-benefits - 更新指定档位权益配置（upsert）
+ * DELETE /api/admin/membership-benefits?level=XXX - 删除指定档位的 DB 覆盖（恢复代码默认值）
  *
  * 注意：等级判级与前台展示的消费门槛统一由 lib/membership.ts LEVEL_THRESHOLDS 提供
  * （唯一权威，随代码发布），本接口不提供门槛编辑（携带门槛字段将被拒绝）。
@@ -102,6 +103,107 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data: { levels } });
   } catch (error) {
     apiConsole.error("[AdminMembershipBenefits] 查询失败:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!validateCSRFToken(request)) {
+    return csrfForbiddenResponse();
+  }
+
+  try {
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+    if (!hasAdminPermission(admin, "membership:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：会员权益编辑" } },
+        { status: 403 }
+      );
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "membership:write");
+    if (rateLimitResponse) return rateLimitResponse;
+
+    const { searchParams } = new URL(request.url);
+    const parsed = z.object({ level: z.enum(LEVELS) }).safeParse({
+      level: searchParams.get("level"),
+    });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+        { status: 400 }
+      );
+    }
+    const { level } = parsed.data;
+
+    const previous = await prisma.membershipBenefit.findUnique({ where: { level } });
+    if (!previous) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: "该档位当前使用默认配置，无需恢复" },
+        },
+        { status: 404 }
+      );
+    }
+
+    const auditDetail = {
+      level,
+      before: {
+        name: previous.name,
+        benefits: previous.benefits,
+      },
+      after: null,
+    };
+    const auditId = await beginAuditLog({
+      action: "reset_vip_benefit",
+      targetType: "vip",
+      targetId: level,
+      detail: auditDetail,
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    await prisma.membershipBenefit.delete({ where: { level } }).catch(async (error) => {
+      await finishAuditLog(auditId, "FAILURE", auditDetail);
+      throw error;
+    });
+
+    await finishAuditLog(auditId, "SUCCESS", auditDetail);
+
+    const defaults = LEVEL_DEFAULT_BENEFITS[level as MembershipLevel];
+    return NextResponse.json({
+      success: true,
+      data: {
+        level: defaults.level,
+        name: defaults.name,
+        nameEn: defaults.nameEn,
+        icon: defaults.icon,
+        benefits: defaults.benefits,
+        colorClass: defaults.colorClass,
+        source: "default" as const,
+      },
+    });
+  } catch (error) {
+    apiConsole.error("[AdminMembershipBenefits] 恢复默认失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

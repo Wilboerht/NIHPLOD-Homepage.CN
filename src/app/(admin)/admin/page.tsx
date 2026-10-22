@@ -13,6 +13,11 @@ import {
   Shield,
   Users,
   TrendingUp,
+  ClipboardCheck,
+  Gift,
+  UserX,
+  Webhook,
+  CheckCircle2,
 } from "lucide-react";
 import { StatsCard, PageHeader, PanelCard } from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
@@ -50,6 +55,18 @@ const quickActions = [
     href: "/admin/jobs/new",
     icon: Briefcase,
     permission: "jobs:write" as const,
+  },
+  {
+    title: "处理未读留言",
+    href: "/admin/messages",
+    icon: MessageSquare,
+    permission: "messages:read" as const,
+  },
+  {
+    title: "审核消费补录",
+    href: "/admin/spent-adjustments",
+    icon: ClipboardCheck,
+    permission: "spent:read" as const,
   },
   { title: "查看网站", href: "/", icon: Eye, external: true },
 ];
@@ -97,15 +114,47 @@ export default async function AdminDashboard() {
     }
   }
 
-  if (statsError || !stats) {
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader title="仪表盘" />
+  // 待处理事项：按权限裁剪（admin-stats 已按权限裁剪字段，无权限的项为 undefined 不渲染）
+  const pendingItems = stats
+    ? [
+        {
+          title: "待审核消费补录",
+          count: stats.pendingSpentAdjustments,
+          href: "/admin/spent-adjustments",
+          icon: ClipboardCheck,
+        },
+        {
+          title: "待履约积分兑换",
+          count: stats.pendingRedemptions,
+          href: "/admin/point-gifts",
+          icon: Gift,
+        },
+        {
+          title: "注销失败人工队列",
+          count: stats.failedAccountDeletions,
+          href: "/admin/account-deletions",
+          icon: UserX,
+        },
+        {
+          title: "Webhook 失败队列",
+          count: stats.webhookFailures,
+          href: "/admin/webhook-failures",
+          icon: Webhook,
+        },
+      ].filter((item): item is typeof item & { count: number } => item.count !== undefined)
+    : [];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="仪表盘" description="欢迎回来，查看网站概览数据" />
+
+      {/* 业务统计：独立降级，失败不影响 SSO 统计与快捷操作 */}
+      {statsError || !stats ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-16">
           <div className="rounded-full bg-red-50 p-4">
             <TrendingUp className="h-8 w-8 text-red-400" />
           </div>
-          <h2 className="mt-4 text-base font-medium text-brand-charcoal">数据加载失败</h2>
+          <h2 className="mt-4 text-base font-medium text-brand-charcoal">业务统计加载失败</h2>
           <p className="mt-1 text-sm text-brand-charcoal/50">无法获取仪表盘统计数据，请稍后重试</p>
           <a
             href="/admin"
@@ -114,49 +163,103 @@ export default async function AdminDashboard() {
             重新加载
           </a>
         </div>
-      </div>
-    );
-  }
+      ) : (
+        <>
+          {/* 统计卡片：按权限裁剪，没有权限的域不渲染 */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.totalUsers !== undefined && (
+              <StatsCard
+                title="用户总数"
+                value={stats.totalUsers}
+                icon={<Users className="h-6 w-6" />}
+                description="注册用户"
+              />
+            )}
+            {stats.unreadMessages !== undefined && (
+              <StatsCard
+                title="未读留言"
+                value={stats.unreadMessages}
+                icon={<MessageSquare className="h-6 w-6" />}
+                description="待处理"
+              />
+            )}
+            {stats.products !== undefined && (
+              <StatsCard
+                title="产品总数"
+                value={stats.products}
+                icon={<Package className="h-6 w-6" />}
+                description={stats.categories !== undefined ? `${stats.categories} 个分类` : "已发布产品"}
+              />
+            )}
+            {stats.jobs !== undefined && (
+              <StatsCard
+                title="在招职位"
+                value={stats.jobs}
+                icon={<Briefcase className="h-6 w-6" />}
+                description="已发布职位"
+              />
+            )}
+          </div>
+          <p className="-mt-2 text-right text-xs text-brand-charcoal/40">统计数据每 5 分钟更新</p>
 
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="仪表盘" description="欢迎回来，查看网站概览数据" />
-
-      {/* 统计卡片：按权限裁剪，没有权限的域不渲染 */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.totalUsers !== undefined && (
-          <StatsCard
-            title="用户总数"
-            value={stats.totalUsers}
-            icon={<Users className="h-6 w-6" />}
-            description="注册用户"
-          />
-        )}
-        {stats.unreadMessages !== undefined && (
-          <StatsCard
-            title="未读留言"
-            value={stats.unreadMessages}
-            icon={<MessageSquare className="h-6 w-6" />}
-            description="待处理"
-          />
-        )}
-        {stats.products !== undefined && (
-          <StatsCard
-            title="产品总数"
-            value={stats.products}
-            icon={<Package className="h-6 w-6" />}
-            description={stats.categories !== undefined ? `${stats.categories} 个分类` : "已发布产品"}
-          />
-        )}
-        {stats.jobs !== undefined && (
-          <StatsCard
-            title="在招职位"
-            value={stats.jobs}
-            icon={<Briefcase className="h-6 w-6" />}
-            description="已发布职位"
-          />
-        )}
-      </div>
+          {/* 待处理事项：按权限裁剪，计数为 0 时置灰显示勾号 */}
+          {pendingItems.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
+                <Clock className="h-4 w-4 text-brand-primary" />
+                待处理
+              </h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {pendingItems.map((item) => {
+                  const Icon = item.icon;
+                  const hasPending = item.count > 0;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "rounded-2xl border border-brand-charcoal/10 bg-white p-5 transition-colors",
+                        hasPending ? "hover:border-brand-primary/30" : "opacity-60"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-sm text-brand-charcoal/50">{item.title}</p>
+                          <p
+                            className={cn(
+                              "mt-1 text-2xl font-semibold tracking-tight",
+                              hasPending ? "text-brand-primary" : "text-brand-charcoal/40"
+                            )}
+                          >
+                            {item.count}
+                          </p>
+                          <p className="mt-1 text-xs text-brand-charcoal/50">
+                            {hasPending ? "点击查看处理" : "暂无待办"}
+                          </p>
+                        </div>
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-lg",
+                            hasPending
+                              ? "bg-brand-primary/10 text-brand-primary"
+                              : "bg-brand-charcoal/8 text-brand-charcoal/40"
+                          )}
+                        >
+                          {hasPending ? (
+                            <Icon className="h-6 w-6" />
+                          ) : (
+                            <CheckCircle2 className="h-6 w-6" />
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* SSO 概览 */}
       {ssoStats && (
@@ -199,8 +302,8 @@ export default async function AdminDashboard() {
 
       {/* 下方内容区域 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 最近留言：仅 messages:read 渲染 */}
-        {stats.recentMessages !== undefined && (
+        {/* 最近留言：仅 messages:read 渲染（业务统计降级时不渲染） */}
+        {stats?.recentMessages !== undefined && (
         <PanelCard
           title="最近留言"
           className="lg:col-span-2"

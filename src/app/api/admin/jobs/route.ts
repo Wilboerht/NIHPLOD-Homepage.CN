@@ -91,12 +91,13 @@ export async function GET(request: NextRequest) {
     // 查询总数
     const total = await prisma.job.count({ where });
 
-    // 查询列表
+    // 查询列表（附带申请数，列表页展示并链接到简历管理）
     const items = await prisma.job.findMany({
       where,
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
+      include: { _count: { select: { applications: true } } },
     });
 
     return NextResponse.json({

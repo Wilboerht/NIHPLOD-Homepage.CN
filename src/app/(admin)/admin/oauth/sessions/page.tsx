@@ -108,6 +108,13 @@ function OAuthSessionsPage() {
   const [batchTerminating, setBatchTerminating] = useState(false);
   const [batchConfirmText, setBatchConfirmText] = useState("");
 
+  // 按用户终止会话（API 模式 B：{ userId, clientId? }）
+  const [showUserTerminate, setShowUserTerminate] = useState(false);
+  const [userTerminateId, setUserTerminateId] = useState("");
+  const [userTerminateClientId, setUserTerminateClientId] = useState("");
+  const [showUserTerminateConfirm, setShowUserTerminateConfirm] = useState(false);
+  const [userTerminating, setUserTerminating] = useState(false);
+
   const takeLatestSessions = useLatestRequest();
   const fetchSessions = useCallback(async () => {
     const isLatest = takeLatestSessions();
@@ -206,6 +213,37 @@ function OAuthSessionsPage() {
     }
   };
 
+  const openUserTerminate = (userId = "") => {
+    setUserTerminateId(userId);
+    setUserTerminateClientId("");
+    setShowUserTerminate(true);
+  };
+
+  const handleUserTerminate = async () => {
+    const userId = userTerminateId.trim();
+    if (!userId) {
+      toast.error("请输入用户 ID");
+      return;
+    }
+    setUserTerminating(true);
+    try {
+      const data = await apiPost<{ terminatedCount: number }>("/api/admin/oauth/sessions", {
+        userId,
+        ...(userTerminateClientId ? { clientId: userTerminateClientId } : {}),
+      });
+      toast.success(`已终止该用户 ${data.terminatedCount} 个活跃会话`);
+      setShowUserTerminateConfirm(false);
+      setShowUserTerminate(false);
+      setUserTerminateId("");
+      setUserTerminateClientId("");
+      fetchSessions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "按用户终止会话失败");
+    } finally {
+      setUserTerminating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="SSO 会话管理" />
@@ -213,8 +251,8 @@ function OAuthSessionsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <StatsCard
-          title="活跃会话数"
-          value={stats.activeSessions}
+          title="活跃会话数（全站）"
+          value={stats.globalActiveSessions}
           icon={<Key className="h-5 w-5" />}
         />
         <StatsCard
@@ -261,13 +299,22 @@ function OAuthSessionsPage() {
             </Button>
           </div>
           {canWrite && (
-            <Button
-              variant="danger"
-              onClick={() => setShowBatchTerminate(true)}
-              leftIcon={<Trash2 className="h-4 w-4" />}
-            >
-              批量终止全部会话
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => openUserTerminate()}
+                leftIcon={<LogOut className="h-4 w-4" />}
+              >
+                按用户终止会话
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => setShowBatchTerminate(true)}
+                leftIcon={<Trash2 className="h-4 w-4" />}
+              >
+                批量终止全部会话
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -479,6 +526,71 @@ function OAuthSessionsPage() {
         />
       </ConfirmDialog>
 
+      {/* 按用户终止会话：输入用户标识（可从会话详情抽屉带入） */}
+      <Modal
+        open={showUserTerminate}
+        onClose={() => setShowUserTerminate(false)}
+        title="按用户终止会话"
+        size="sm"
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowUserTerminate(false)}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              disabled={!userTerminateId.trim()}
+              onClick={() => setShowUserTerminateConfirm(true)}
+            >
+              下一步
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="用户 ID"
+            required
+            data-autofocus
+            value={userTerminateId}
+            onChange={(e) => setUserTerminateId(e.target.value)}
+            placeholder="输入要踢下线的用户 ID"
+            hint="可在用户管理或会话详情中复制用户 ID"
+          />
+          <Select
+            label="限定应用（可选）"
+            value={userTerminateClientId}
+            onChange={(e) => setUserTerminateClientId(e.target.value)}
+            options={[
+              { value: "", label: "全部应用" },
+              ...clientOptions.map((c) => ({
+                value: c.clientId,
+                label: `${c.name} (${c.clientId})`,
+              })),
+            ]}
+          />
+        </div>
+      </Modal>
+
+      {/* 按用户终止确认：说明影响范围 */}
+      <ConfirmDialog
+        open={showUserTerminateConfirm}
+        onClose={() => setShowUserTerminateConfirm(false)}
+        onConfirm={handleUserTerminate}
+        type="danger"
+        title="按用户终止会话"
+        description={
+          userTerminateClientId
+            ? `确定终止用户 ${userTerminateId.trim()} 在应用「${
+                clientOptions.find((c) => c.clientId === userTerminateClientId)?.name ||
+                userTerminateClientId
+              }」的全部会话吗？该用户在该应用将立即被登出（含 Refresh Token 撤销），无法撤销。`
+            : `确定终止用户 ${userTerminateId.trim()} 在全部应用的所有会话吗？该用户将在所有已登录应用中立即被登出（含 Refresh Token 撤销），无法撤销。`
+        }
+        confirmText="确定终止"
+        loading={userTerminating}
+      />
+
       {/* Detail Drawer（复用 Modal 的焦点陷阱/Esc/滚动锁/aria 语义） */}
       <Modal
         open={!!detailSession}
@@ -563,25 +675,37 @@ function OAuthSessionsPage() {
               </Link>
             </div>
 
-            <div className="flex gap-2 border-t pt-4">
+            <div className="flex flex-wrap gap-2 border-t pt-4">
               {canWrite ? (
-                <Button
-                  variant="danger"
-                  onClick={() => {
-                    setDetailSession(null);
-                    setTerminateTarget({
-                      id: detailSession.id,
-                      userId: detailSession.userId,
-                      phone: detailSession.phone,
-                      nickname: detailSession.nickname,
-                      clientId: detailSession.clientId,
-                    });
-                    setShowTerminate(true);
-                  }}
-                  leftIcon={<LogOut className="h-4 w-4" />}
-                >
-                  终止会话
-                </Button>
+                <>
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setDetailSession(null);
+                      setTerminateTarget({
+                        id: detailSession.id,
+                        userId: detailSession.userId,
+                        phone: detailSession.phone,
+                        nickname: detailSession.nickname,
+                        clientId: detailSession.clientId,
+                      });
+                      setShowTerminate(true);
+                    }}
+                    leftIcon={<LogOut className="h-4 w-4" />}
+                  >
+                    终止会话
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDetailSession(null);
+                      openUserTerminate(detailSession.userId);
+                    }}
+                    leftIcon={<LogOut className="h-4 w-4" />}
+                  >
+                    终止该用户全部会话
+                  </Button>
+                </>
               ) : (
                 <span className="text-xs text-brand-charcoal/40">只读查看（无操作权限）</span>
               )}

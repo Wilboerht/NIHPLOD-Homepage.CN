@@ -29,6 +29,14 @@ export interface AdminStatsData {
     read: boolean;
     createdAt: string;
   }[];
+  /** 待审核消费补录数（spent:read 可见） */
+  pendingSpentAdjustments?: number;
+  /** 待履约积分兑换数（redemptions:read 可见） */
+  pendingRedemptions?: number;
+  /** 注销失败人工队列数（users:read 可见） */
+  failedAccountDeletions?: number;
+  /** Webhook 失败队列条数（webhooks:read 可见） */
+  webhookFailures?: number;
 }
 
 export interface SsoStatsData {
@@ -44,18 +52,41 @@ const STATS_CACHE_TAGS = ["admin-stats"];
 /** 仅缓存聚合计数（不含留言内容等 PII） */
 const getCachedCounts = unstable_cache(
   async (_: string) => {
-    const [productsCount, categoriesCount, unreadMessagesCount, jobsCount, totalUsers] =
-      await Promise.all([
-        prisma.product.count(),
-        prisma.category.count(),
-        prisma.contactMessage.count({ where: { read: false } }),
-        prisma.job.count({ where: { published: true } }),
-        prisma.user.count(),
-      ]);
+    const [
+      productsCount,
+      categoriesCount,
+      unreadMessagesCount,
+      jobsCount,
+      totalUsers,
+      pendingSpentAdjustmentsCount,
+      pendingRedemptionsCount,
+      failedAccountDeletionsCount,
+      webhookFailuresCount,
+    ] = await Promise.all([
+      prisma.product.count(),
+      prisma.category.count(),
+      prisma.contactMessage.count({ where: { read: false } }),
+      prisma.job.count({ where: { published: true } }),
+      prisma.user.count(),
+      prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } }),
+      prisma.pointRedemption.count({ where: { status: "PENDING" } }),
+      prisma.accountDeletionRequest.count({ where: { status: "FAILED" } }),
+      prisma.webhookDeliveryFailure.count(),
+    ]);
 
-    return { productsCount, categoriesCount, unreadMessagesCount, jobsCount, totalUsers };
+    return {
+      productsCount,
+      categoriesCount,
+      unreadMessagesCount,
+      jobsCount,
+      totalUsers,
+      pendingSpentAdjustmentsCount,
+      pendingRedemptionsCount,
+      failedAccountDeletionsCount,
+      webhookFailuresCount,
+    };
   },
-  ["admin-stats-counts-v2"],
+  ["admin-stats-counts-v3"],
   { revalidate: STATS_REVALIDATE, tags: [...STATS_CACHE_TAGS] }
 );
 
@@ -96,10 +127,16 @@ export async function getAdminStats(admin: AdminUser): Promise<AdminStatsData> {
 
   const data: AdminStatsData = {};
 
-  if (can("users:read")) data.totalUsers = counts.totalUsers;
+  if (can("users:read")) {
+    data.totalUsers = counts.totalUsers;
+    data.failedAccountDeletions = counts.failedAccountDeletionsCount;
+  }
   if (can("products:read")) data.products = counts.productsCount;
   if (can("categories:read")) data.categories = counts.categoriesCount;
   if (can("jobs:read")) data.jobs = counts.jobsCount;
+  if (can("spent:read")) data.pendingSpentAdjustments = counts.pendingSpentAdjustmentsCount;
+  if (can("redemptions:read")) data.pendingRedemptions = counts.pendingRedemptionsCount;
+  if (can("webhooks:read")) data.webhookFailures = counts.webhookFailuresCount;
 
   if (can("messages:read")) {
     data.unreadMessages = counts.unreadMessagesCount;

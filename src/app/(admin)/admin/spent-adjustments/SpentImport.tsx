@@ -292,6 +292,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                     <th className="px-3 py-2 font-medium">渠道</th>
                     <th className="px-3 py-2 font-medium">消费日期</th>
                     <th className="px-3 py-2 font-medium">订单号</th>
+                    <th className="px-3 py-2 font-medium">备注</th>
                     <th className="px-3 py-2 font-medium">状态</th>
                   </tr>
                 </thead>
@@ -307,6 +308,9 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                       <td className="px-3 py-2 text-brand-charcoal/60">{r.purchasedAt ?? "-"}</td>
                       <td className="max-w-[140px] truncate px-3 py-2 font-mono text-brand-charcoal/60">
                         {r.orderNo ?? "-"}
+                      </td>
+                      <td className="max-w-[160px] truncate px-3 py-2 text-brand-charcoal/60">
+                        {r.note ?? "-"}
                       </td>
                       <td className="px-3 py-2">
                         {r.status === "ok" ? (
