@@ -84,7 +84,7 @@ export default function TOTPRecoveryPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-brand-charcoal">重新绑定二次验证</h1>
-            <p className="text-xs text-brand-charcoal/50">
+            <p className="text-xs text-brand-charcoal/65">
               使用恢复码登录成功，请绑定新的验证器后重新登录。
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function TOTPRecoveryPage() {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-brand-charcoal/60">
+              <p className="mb-2 text-xs font-medium text-brand-charcoal/70">
                 备用码（仅显示一次，请逐个保存）
               </p>
               <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs">
@@ -169,7 +169,7 @@ export default function TOTPRecoveryPage() {
                     {copied === `backup-${code}` ? (
                       <Check className="h-3 w-3 flex-shrink-0 text-green-500" />
                     ) : (
-                      <Copy className="h-3 w-3 flex-shrink-0 text-brand-charcoal/40" />
+                      <Copy className="h-3 w-3 flex-shrink-0 text-brand-charcoal/65" />
                     )}
                   </button>
                 ))}

@@ -334,7 +334,7 @@ function AdminMembershipContent() {
             </div>
 
             {form.benefits.length === 0 ? (
-              <p className="rounded-lg bg-brand-charcoal/[0.03] px-4 py-6 text-center text-sm text-brand-charcoal/40">
+              <p className="rounded-lg bg-brand-charcoal/[0.03] px-4 py-6 text-center text-sm text-brand-charcoal/65">
                 暂无权益项，点击「添加权益」新增
               </p>
             ) : (
@@ -369,7 +369,7 @@ function AdminMembershipContent() {
                       type="button"
                       onClick={() => removeBenefit(index)}
                       disabled={!canWrite}
-                      className="flex items-center justify-center rounded-lg p-2 text-brand-charcoal/40 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex items-center justify-center rounded-lg p-2 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="删除权益"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -382,7 +382,7 @@ function AdminMembershipContent() {
 
           <div className="flex items-center justify-end gap-3 border-t border-brand-charcoal/8 pt-4">
             {!canWrite && (
-              <span className="mr-auto text-xs text-brand-charcoal/40">
+              <span className="mr-auto text-xs text-brand-charcoal/65">
                 只读模式：修改会员权益需要 membership:write 权限
               </span>
             )}

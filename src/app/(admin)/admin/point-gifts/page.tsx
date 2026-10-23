@@ -57,7 +57,7 @@ type StatusTab = "PENDING" | "FULFILLED" | "CANCELLED" | "ALL";
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
   FULFILLED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-brand-charcoal/[0.06] text-brand-charcoal/50",
+  CANCELLED: "bg-brand-charcoal/[0.06] text-brand-charcoal/65",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -389,25 +389,25 @@ function AdminPointGiftsContent() {
       {canRedeemRead && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-            <p className="text-xs text-brand-charcoal/50">全站可用积分总额</p>
+            <p className="text-xs text-brand-charcoal/65">全站可用积分总额</p>
             <p className="mt-1 text-2xl font-semibold text-brand-charcoal">
               {pointsTotal.toLocaleString()}
             </p>
-            <p className="mt-1 text-[11px] text-brand-charcoal/40">
+            <p className="mt-1 text-[11px] text-brand-charcoal/65">
               所有用户账户可用积分之和（可含退款冲正负值）
             </p>
           </div>
           <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-            <p className="text-xs text-brand-charcoal/50">待履约兑换</p>
+            <p className="text-xs text-brand-charcoal/65">待履约兑换</p>
             <p className="mt-1 text-2xl font-semibold text-brand-charcoal">{counts.PENDING ?? 0}</p>
-            <p className="mt-1 text-[11px] text-brand-charcoal/40">待发货处理</p>
+            <p className="mt-1 text-[11px] text-brand-charcoal/65">待发货处理</p>
           </div>
           <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-            <p className="text-xs text-brand-charcoal/50">已履约兑换</p>
+            <p className="text-xs text-brand-charcoal/65">已履约兑换</p>
             <p className="mt-1 text-2xl font-semibold text-brand-charcoal">
               {counts.FULFILLED ?? 0}
             </p>
-            <p className="mt-1 text-[11px] text-brand-charcoal/40">已发货</p>
+            <p className="mt-1 text-[11px] text-brand-charcoal/65">已发货</p>
           </div>
         </div>
       )}
@@ -417,12 +417,12 @@ function AdminPointGiftsContent() {
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
             <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
-              <Gift className="h-5 w-5 text-brand-charcoal/50" />
+              <Gift className="h-5 w-5 text-brand-charcoal/65" />
               可兑换产品（产品库）
             </h2>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
                 <Input
                   placeholder="搜索产品名..."
                   value={searchInput}
@@ -465,7 +465,7 @@ function AdminPointGiftsContent() {
                 </Button>
               </div>
             ) : products.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-brand-charcoal/40">暂无匹配产品</p>
+              <p className="px-4 py-10 text-center text-sm text-brand-charcoal/65">暂无匹配产品</p>
             ) : (
               <div className="divide-y divide-brand-charcoal/10">
                 {products.map((p) => (
@@ -476,13 +476,13 @@ function AdminPointGiftsContent() {
                         className={
                           p.published
                             ? "bg-emerald-100 text-emerald-700"
-                            : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                            : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
                         }
                       >
                         {p.published ? "已发布" : "草稿"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-brand-charcoal/50">
+                    <p className="text-xs text-brand-charcoal/65">
                       {p.categoryName} · ¥{p.priceYuan.toLocaleString()}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -490,7 +490,7 @@ function AdminPointGiftsContent() {
                         className={
                           p.pointRedeemable
                             ? "bg-amber-100 text-amber-700"
-                            : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                            : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
                         }
                       >
                         {p.pointRedeemable ? "可兑换" : "未设置"}
@@ -522,7 +522,7 @@ function AdminPointGiftsContent() {
                         </div>
                       ) : (
                         <>
-                          <span className="text-brand-charcoal/60">
+                          <span className="text-brand-charcoal/70">
                             库存：{p.redeemStock === null ? "不限量" : p.redeemStock}
                           </span>
                           {canGiftWrite && (
@@ -557,7 +557,7 @@ function AdminPointGiftsContent() {
                               : "设为可兑"}
                         </Button>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/40">仅超级管理员可设置</span>
+                        <span className="text-xs text-brand-charcoal/65">仅超级管理员可设置</span>
                       )}
                     </div>
                   </div>
@@ -569,7 +569,7 @@ function AdminPointGiftsContent() {
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">
+                <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/65">
                   <th className="px-4 py-3 font-medium">产品</th>
                   <th className="px-4 py-3 font-medium">分类</th>
                   <th className="px-4 py-3 font-medium">参考价格</th>
@@ -583,7 +583,7 @@ function AdminPointGiftsContent() {
                 {productsLoading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center">
-                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/30" />
+                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/65" />
                     </td>
                   </tr>
                 ) : productsError ? (
@@ -599,7 +599,7 @@ function AdminPointGiftsContent() {
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-4 py-10 text-center text-sm text-brand-charcoal/40"
+                      className="px-4 py-10 text-center text-sm text-brand-charcoal/65"
                     >
                       暂无匹配产品
                     </td>
@@ -608,8 +608,8 @@ function AdminPointGiftsContent() {
                   products.map((p) => (
                     <tr key={p.id} className="hover:bg-brand-charcoal/[0.03]">
                       <td className="px-4 py-3 text-sm text-brand-charcoal/70">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/50">{p.categoryName}</td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/60">
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/65">{p.categoryName}</td>
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
                         ¥{p.priceYuan.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
@@ -617,7 +617,7 @@ function AdminPointGiftsContent() {
                           className={
                             p.published
                               ? "bg-emerald-100 text-emerald-700"
-                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
                           }
                         >
                           {p.published ? "已发布" : "草稿"}
@@ -629,7 +629,7 @@ function AdminPointGiftsContent() {
                             className={
                               p.pointRedeemable
                                 ? "bg-amber-100 text-amber-700"
-                                : "bg-brand-charcoal/[0.06] text-brand-charcoal/50"
+                                : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
                             }
                           >
                             {p.pointRedeemable ? "可兑换" : "未设置"}
@@ -639,7 +639,7 @@ function AdminPointGiftsContent() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/60">
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
                         {stockEdit?.id === p.id ? (
                           <div className="flex items-center gap-2">
                             <Input
@@ -701,7 +701,7 @@ function AdminPointGiftsContent() {
                                 : "设为可兑"}
                           </Button>
                         ) : (
-                          <span className="text-xs text-brand-charcoal/40">
+                          <span className="text-xs text-brand-charcoal/65">
                             需要积分可兑设置权限
                           </span>
                         )}
@@ -730,11 +730,11 @@ function AdminPointGiftsContent() {
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
             <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
-              <PackageCheck className="h-5 w-5 text-brand-charcoal/50" />
+              <PackageCheck className="h-5 w-5 text-brand-charcoal/65" />
               兑换记录
             </h2>
             <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
                 placeholder="搜索手机号 / 昵称 / 产品名"
                 value={redemptionSearch}
@@ -760,7 +760,7 @@ function AdminPointGiftsContent() {
                 className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors ${
                   tab === t.key
                     ? "border-brand-charcoal bg-brand-charcoal text-white"
-                    : "border-brand-charcoal/15 text-brand-charcoal/60 hover:border-brand-charcoal/30"
+                    : "border-brand-charcoal/15 text-brand-charcoal/70 hover:border-brand-charcoal/30"
                 }`}
               >
                 {t.label}
@@ -794,7 +794,7 @@ function AdminPointGiftsContent() {
                 </Button>
               </div>
             ) : redemptions.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-brand-charcoal/40">暂无兑换记录</p>
+              <p className="px-4 py-10 text-center text-sm text-brand-charcoal/65">暂无兑换记录</p>
             ) : (
               <div className="divide-y divide-brand-charcoal/10">
                 {redemptions.map((r) => (
@@ -804,7 +804,7 @@ function AdminPointGiftsContent() {
                         <p className="truncate font-medium text-brand-charcoal">
                           {r.user.nickname || "未设置昵称"}
                         </p>
-                        <p className="truncate text-xs text-brand-charcoal/40">{r.user.phone}</p>
+                        <p className="truncate text-xs text-brand-charcoal/65">{r.user.phone}</p>
                       </div>
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}
@@ -813,16 +813,16 @@ function AdminPointGiftsContent() {
                       </span>
                     </div>
                     <p className="truncate text-sm text-brand-charcoal/70">{r.productName}</p>
-                    <p className="text-xs text-brand-charcoal/50">
+                    <p className="text-xs text-brand-charcoal/65">
                       ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
                     </p>
-                    <div className="text-xs text-brand-charcoal/50">
+                    <div className="text-xs text-brand-charcoal/65">
                       {r.recipient && r.address ? (
                         <>
                           <p>
                             {r.recipient}
                             {r.phone && (
-                              <span className="ml-2 text-brand-charcoal/40">{r.phone}</span>
+                              <span className="ml-2 text-brand-charcoal/65">{r.phone}</span>
                             )}
                           </p>
                           <p className="mt-0.5">{r.address}</p>
@@ -838,7 +838,7 @@ function AdminPointGiftsContent() {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                      <span className="text-xs text-brand-charcoal/40">
+                      <span className="text-xs text-brand-charcoal/65">
                         {r.status === "FULFILLED" && r.fulfilledAt
                           ? `履约：${formatDateTime(r.fulfilledAt)}`
                           : formatDateTime(r.createdAt)}
@@ -866,7 +866,7 @@ function AdminPointGiftsContent() {
                               </Button>
                             )}
                             {!canFulfill && !canCancelRedemption && (
-                              <span className="text-xs text-brand-charcoal/40">只读</span>
+                              <span className="text-xs text-brand-charcoal/65">只读</span>
                             )}
                           </>
                         ) : r.status === "FULFILLED" ? (
@@ -887,7 +887,7 @@ function AdminPointGiftsContent() {
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/50">
+                <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/65">
                   <th className="px-4 py-3 font-medium">用户</th>
                   <th className="px-4 py-3 font-medium">产品</th>
                   <th className="px-4 py-3 font-medium">价格 / 扣分</th>
@@ -901,7 +901,7 @@ function AdminPointGiftsContent() {
                 {redemptionLoading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center">
-                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/30" />
+                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/65" />
                     </td>
                   </tr>
                 ) : redemptionsError ? (
@@ -922,7 +922,7 @@ function AdminPointGiftsContent() {
                   <tr>
                     <td
                       colSpan={7}
-                      className="px-4 py-10 text-center text-sm text-brand-charcoal/40"
+                      className="px-4 py-10 text-center text-sm text-brand-charcoal/65"
                     >
                       暂无兑换记录
                     </td>
@@ -934,10 +934,10 @@ function AdminPointGiftsContent() {
                         <p className="text-sm text-brand-charcoal/70">
                           {r.user.nickname || "未设置昵称"}
                         </p>
-                        <p className="text-xs text-brand-charcoal/40">{r.user.phone}</p>
+                        <p className="text-xs text-brand-charcoal/65">{r.user.phone}</p>
                       </td>
                       <td className="px-4 py-3 text-sm text-brand-charcoal/70">{r.productName}</td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/60">
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
                         ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
                       </td>
                       <td className="px-4 py-3">
@@ -946,15 +946,15 @@ function AdminPointGiftsContent() {
                             <p className="text-sm text-brand-charcoal/70">
                               {r.recipient}
                               {r.phone && (
-                                <span className="ml-2 text-xs text-brand-charcoal/40">
+                                <span className="ml-2 text-xs text-brand-charcoal/65">
                                   {r.phone}
                                 </span>
                               )}
                             </p>
-                            <p className="mt-0.5 text-xs text-brand-charcoal/50">{r.address}</p>
+                            <p className="mt-0.5 text-xs text-brand-charcoal/65">{r.address}</p>
                           </>
                         ) : (
-                          <span className="text-xs text-brand-charcoal/40">未填写</span>
+                          <span className="text-xs text-brand-charcoal/65">未填写</span>
                         )}
                         {r.waybillNo && (
                           <p className="mt-0.5 text-xs text-brand-primary">
@@ -970,10 +970,10 @@ function AdminPointGiftsContent() {
                           {STATUS_LABELS[r.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/65">
                         <p>{formatDateTime(r.createdAt)}</p>
                         {r.status === "FULFILLED" && r.fulfilledAt && (
-                          <p className="mt-0.5 text-xs text-brand-charcoal/40">
+                          <p className="mt-0.5 text-xs text-brand-charcoal/65">
                             履约：{formatDateTime(r.fulfilledAt)}
                           </p>
                         )}
@@ -1002,7 +1002,7 @@ function AdminPointGiftsContent() {
                                 </Button>
                               )}
                               {!canFulfill && !canCancelRedemption && (
-                                <span className="text-xs text-brand-charcoal/40">只读</span>
+                                <span className="text-xs text-brand-charcoal/65">只读</span>
                               )}
                             </>
                           ) : r.status === "FULFILLED" ? (
@@ -1066,7 +1066,7 @@ function AdminPointGiftsContent() {
         }
       >
         {fulfillTarget && (
-          <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-xs text-brand-charcoal/50">
+          <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-xs text-brand-charcoal/65">
             <p className="truncate">{fulfillTarget.redemption.productName}</p>
             <p className="mt-0.5">
               {fulfillTarget.redemption.recipient ?? "未填写收货人"}

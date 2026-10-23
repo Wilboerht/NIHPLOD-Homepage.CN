@@ -6,8 +6,8 @@ type IconButtonVariant = "ghost" | "danger";
 type IconButtonSize = "md" | "lg";
 
 const variantCls: Record<IconButtonVariant, string> = {
-  ghost: "text-brand-charcoal/50 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.06]",
-  danger: "text-brand-charcoal/50 hover:text-red-500 hover:bg-red-500/10",
+  ghost: "text-brand-charcoal/65 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.06]",
+  danger: "text-brand-charcoal/65 hover:text-red-500 hover:bg-red-500/10",
 };
 
 const sizeCls: Record<IconButtonSize, string> = {

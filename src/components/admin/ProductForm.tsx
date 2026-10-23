@@ -659,7 +659,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-medium text-brand-charcoal">购买渠道</h2>
-            <p className="mt-1 text-xs text-brand-charcoal/50">
+            <p className="mt-1 text-xs text-brand-charcoal/65">
               网页链接用于官网展示和复制兜底；小程序短链优先用于微信内跳转；路径仅在短链不可用时使用。
             </p>
           </div>
@@ -688,7 +688,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     <button
                       type="button"
                       onClick={() => removeCanonicalPurchaseLink(option.value)}
-                      className="flex items-center gap-1 text-xs text-brand-charcoal/50 hover:text-red-500"
+                      className="flex items-center gap-1 text-xs text-brand-charcoal/65 hover:text-red-500"
                     >
                       <Trash2 className="h-3 w-3" /> 清空
                     </button>
@@ -737,7 +737,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-medium text-brand-charcoal">其他平台（保留）</h3>
-              <p className="mt-1 text-xs text-brand-charcoal/50">
+              <p className="mt-1 text-xs text-brand-charcoal/65">
                 仅官网展示，不进入小程序固定四类。
               </p>
             </div>
@@ -752,7 +752,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
             </Button>
           </div>
           {otherPurchaseLinks.length === 0 ? (
-            <p className="text-sm text-brand-charcoal/50">暂无其他平台链接</p>
+            <p className="text-sm text-brand-charcoal/65">暂无其他平台链接</p>
           ) : (
             <div className="space-y-3">
               {otherPurchaseLinks.map(({ link, index }) => {
@@ -788,7 +788,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                       type="button"
                       onClick={() => removePurchaseLinkAt(index)}
                       aria-label={`删除${link.platform || "其他"}平台链接`}
-                      className="mt-6 flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                      className="mt-6 flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -808,7 +808,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-medium text-brand-charcoal">GEO FAQ 优化 (SEO)</h2>
-            <p className="mt-1 text-xs text-brand-charcoal/50">
+            <p className="mt-1 text-xs text-brand-charcoal/65">
               编写针对 AI 搜索（如 Perplexity, ChatGPT）优化的问答对，提升曝光权重
             </p>
           </div>
@@ -827,8 +827,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
 
         {!formData.geoFaqs ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-brand-charcoal/20 bg-brand-charcoal/[0.03] py-8">
-            <Sparkles className="mb-2 h-8 w-8 text-brand-charcoal/30" />
-            <p className="text-sm text-brand-charcoal/50">尚未生成 GEO 优化内容</p>
+            <Sparkles className="mb-2 h-8 w-8 text-brand-charcoal/65" />
+            <p className="text-sm text-brand-charcoal/65">尚未生成 GEO 优化内容</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -918,7 +918,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
             />
             {/* 发布状态由底部“保存草稿 / 保存并发布”按钮显式决定，避免开关与按钮语义冲突 */}
             {initialData?.published && (
-              <p className="self-center text-xs text-brand-charcoal/50">
+              <p className="self-center text-xs text-brand-charcoal/65">
                 当前状态：已发布（点击“保存草稿”将转为未发布）
               </p>
             )}

@@ -12,6 +12,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -98,7 +99,7 @@ function OAuthAuditPage() {
   const router = useRouter();
   const toast = useToast();
   const { can: canAdmin } = useAdminPermissions();
-  // 导出接口单独要求 audit:export 权限，无权限时不渲染入口（避免 window.open 打开 403）
+  // 导出接口单独要求 audit:export 权限，无权限时不渲染入口；失败由 fetch 响应统一提示。
   const canExport = canAdmin("audit:export");
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -207,7 +208,7 @@ function OAuthAuditPage() {
     setPage(1);
   };
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     const params = new URLSearchParams();
     params.set("export", "csv");
     if (eventType) params.set("event", eventType);
@@ -216,14 +217,17 @@ function OAuthAuditPage() {
     if (dateFrom) params.set("startDate", dateFrom);
     if (dateTo) params.set("endDate", dateTo);
     if (successFilter) params.set("success", successFilter);
-    const w = window.open(`/api/admin/oauth/audit?${params.toString()}`, "_blank");
-    if (!w) {
-      toast.error("导出被浏览器拦截，请允许弹出窗口");
-      return;
-    }
-    // 下载在新标签页进行，短暂展示按钮反馈（无法感知实际完成时间）
     setExporting(true);
-    setTimeout(() => setExporting(false), 1500);
+    try {
+      await downloadFromUrl(
+        `/api/admin/oauth/audit?${params.toString()}`,
+        `sso-audit-${new Date().toISOString().slice(0, 10)}.csv`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -347,7 +351,7 @@ function OAuthAuditPage() {
                 {entry.success ? "成功" : "失败"}
               </Badge>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
               <span className="col-span-2 truncate font-mono">用户：{entry.userPhone || "-"}</span>
               <span className="col-span-2 truncate">
                 Client：{entry.clientName || entry.clientId}
@@ -385,26 +389,26 @@ function OAuthAuditPage() {
         <table className="w-full min-w-[900px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 事件类型
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 用户
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 Client ID
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 Client Name
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">IP</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">IP</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 状态
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 详情
               </th>
             </tr>
@@ -414,7 +418,7 @@ function OAuthAuditPage() {
               Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-brand-charcoal/50">
+                <td colSpan={8} className="py-8 text-center text-brand-charcoal/65">
                   暂无数据
                   {(eventType ||
                     debouncedClientId ||
@@ -444,7 +448,7 @@ function OAuthAuditPage() {
                       {entry.clientId}
                     </td>
                     <td className="px-4 py-3 text-sm">{entry.clientName || "-"}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/50">
+                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/65">
                       {entry.ip}
                     </td>
                     <td className="px-4 py-3">
@@ -452,7 +456,7 @@ function OAuthAuditPage() {
                         {entry.success ? "成功" : "失败"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                    <td className="px-4 py-3 text-sm text-brand-charcoal/65">
                       {formatDate(entry.createdAt)}
                     </td>
                     <td className="px-4 py-3">
@@ -467,7 +471,7 @@ function OAuthAuditPage() {
                           />
                         </button>
                       ) : (
-                        <span className="text-xs text-gray-400">-</span>
+                        <span className="text-xs text-gray-600">-</span>
                       )}
                     </td>
                   </tr>
@@ -502,7 +506,7 @@ function OAuthAuditPage() {
 export default function OAuthAuditPageWrapper() {
   return (
     <RequirePermission permission="sso:read">
-      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
         <OAuthAuditPage />
       </Suspense>
     </RequirePermission>

@@ -41,7 +41,7 @@ export function RequirePermission({ permission, permissions, children }: Require
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-        {redirecting && <p className="text-sm text-brand-charcoal/50">登录已过期，正在跳转...</p>}
+        {redirecting && <p className="text-sm text-brand-charcoal/65">登录已过期，正在跳转...</p>}
       </div>
     );
   }
@@ -49,9 +49,9 @@ export function RequirePermission({ permission, permissions, children }: Require
   if (error) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
-        <WifiOff className="h-12 w-12 text-brand-charcoal/30" />
+        <WifiOff className="h-12 w-12 text-brand-charcoal/65" />
         <p className="text-lg font-medium text-brand-charcoal/70">网络错误</p>
-        <p className="text-sm text-brand-charcoal/50">无法验证管理员权限，请检查网络连接</p>
+        <p className="text-sm text-brand-charcoal/65">无法验证管理员权限，请检查网络连接</p>
         <Button variant="outline" onClick={refresh} leftIcon={<RefreshCw className="h-4 w-4" />}>
           重试
         </Button>
@@ -63,9 +63,9 @@ export function RequirePermission({ permission, permissions, children }: Require
     const labels = required.map((item) => PERMISSION_LABELS[item]).join("」或「");
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
-        <ShieldAlert className="h-12 w-12 text-brand-charcoal/30" />
+        <ShieldAlert className="h-12 w-12 text-brand-charcoal/65" />
         <p className="text-lg font-medium text-brand-charcoal/70">无权访问</p>
-        <p className="text-sm text-brand-charcoal/50">
+        <p className="text-sm text-brand-charcoal/65">
           该页面需要「{labels}」权限，请联系超级管理员开通
         </p>
       </div>

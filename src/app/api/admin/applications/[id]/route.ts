@@ -154,11 +154,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (notes !== undefined) updateData.notes = notes;
     if (folderId !== undefined) updateData.folderId = folderId; // null 表示移除分类
 
+    // 候选人备注属于 HR 敏感文本，不写入通用审计明细；
+    // 只记录是否变更及长度，满足追溯需要又避免审计日志越权留存原文。
+    const auditDetail = {
+      status,
+      folderId,
+      notesChanged: notes !== undefined,
+      notesLength: notes?.length ?? null,
+    };
     const auditId = await beginAuditLog({
       action: "update_application",
       targetType: "application",
       targetId: id,
-      detail: { status, notes, folderId },
+      detail: auditDetail,
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -198,11 +206,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       })
       .catch(async (error) => {
-        await finishAuditLog(auditId, "FAILURE", { status, folderId });
+        await finishAuditLog(auditId, "FAILURE", auditDetail);
         throw error;
       });
 
-    await finishAuditLog(auditId, "SUCCESS", { status, folderId });
+    await finishAuditLog(auditId, "SUCCESS", auditDetail);
 
     return NextResponse.json({ success: true, data: application });
   } catch (error) {

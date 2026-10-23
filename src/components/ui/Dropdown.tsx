@@ -161,7 +161,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
               <div key={`divider-${index}`}>
                 {/* divider 带 label 时渲染为菜单头部信息块 */}
                 {item.label !== undefined && item.label !== null && (
-                  <div className="px-3 py-2 text-xs text-brand-charcoal/50">{item.label}</div>
+                  <div className="px-3 py-2 text-xs text-brand-charcoal/65">{item.label}</div>
                 )}
                 <div role="separator" className="my-1 border-t border-brand-charcoal/10" />
               </div>

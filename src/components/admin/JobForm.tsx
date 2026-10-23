@@ -331,7 +331,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           />
           {/* 发布状态由底部「保存草稿 / 保存并发布」按钮显式决定，避免开关与按钮语义冲突 */}
           {isEdit && (
-            <p className="self-end pb-2 text-xs text-brand-charcoal/50">
+            <p className="self-end pb-2 text-xs text-brand-charcoal/65">
               {formData.published
                 ? "当前状态：已发布（点击「保存草稿」将转为未发布）"
                 : "当前状态：草稿（点击「保存并发布」将上线）"}

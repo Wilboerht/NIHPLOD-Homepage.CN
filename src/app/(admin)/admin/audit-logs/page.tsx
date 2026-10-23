@@ -16,6 +16,8 @@ import {
 } from "@/lib/audit-labels";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
+import { downloadFromUrl } from "@/lib/client-download";
+import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -116,9 +118,11 @@ function AuditLogsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can: canAdmin } = useAdminPermissions();
+  const toast = useToast();
 
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
@@ -189,6 +193,27 @@ function AuditLogsContent() {
     setDetailOpen(true);
   };
 
+  const exportCsv = async () => {
+    const params = new URLSearchParams();
+    if (action) params.set("action", action);
+    if (targetType) params.set("targetType", targetType);
+    if (outcome) params.set("outcome", outcome);
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    params.set("export", "csv");
+    setExporting(true);
+    try {
+      await downloadFromUrl(
+        `/api/admin/audit-logs?${params.toString()}`,
+        `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -249,7 +274,7 @@ function AuditLogsContent() {
               placeholder="开始日期"
             />
           </div>
-          <span className="text-sm text-brand-charcoal/50">至</span>
+          <span className="text-sm text-brand-charcoal/65">至</span>
           <div className="min-w-[10rem] flex-1 sm:w-40 sm:flex-none">
             <DatePicker
               aria-label="结束日期"
@@ -264,18 +289,10 @@ function AuditLogsContent() {
             variant="outline"
             size="sm"
             leftIcon={<Download className="h-4 w-4" />}
-            onClick={() => {
-              const params = new URLSearchParams();
-              if (action) params.set("action", action);
-              if (targetType) params.set("targetType", targetType);
-              if (outcome) params.set("outcome", outcome);
-              if (startDate) params.set("startDate", startDate);
-              if (endDate) params.set("endDate", endDate);
-              params.set("export", "csv");
-              window.open(`/api/admin/audit-logs?${params.toString()}`, "_blank");
-            }}
+            onClick={exportCsv}
+            loading={exporting}
           >
-            导出 CSV
+            {exporting ? "导出中..." : "导出 CSV"}
           </Button>
         )}
       </div>
@@ -303,7 +320,7 @@ function AuditLogsContent() {
                 <p className="truncate font-medium text-brand-charcoal">
                   {ACTION_LABELS[log.action] || log.action}
                 </p>
-                <p className="mt-0.5 text-xs text-brand-charcoal/50">{formatDate(log.createdAt)}</p>
+                <p className="mt-0.5 text-xs text-brand-charcoal/65">{formatDate(log.createdAt)}</p>
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -313,7 +330,7 @@ function AuditLogsContent() {
                 {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
               <span className="truncate">操作人：{log.admin?.name || "-"}</span>
               <span className="truncate">IP：{log.ipAddress || "-"}</span>
               <span className="flex items-center gap-1">
@@ -376,7 +393,7 @@ function AuditLogsContent() {
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取审计日志，请检查网络连接</p>
+            <p className="mt-1 text-sm text-brand-charcoal/65">无法获取审计日志，请检查网络连接</p>
             <button
               onClick={() => {
                 setLoadError(false);
@@ -419,7 +436,7 @@ function AuditLogsContent() {
             </thead>
             <tbody>
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-brand-charcoal/50">
+                <td colSpan={8} className="px-4 py-8 text-center text-brand-charcoal/65">
                   暂无记录
                 </td>
               </tr>
@@ -469,17 +486,17 @@ function AuditLogsContent() {
                     }
                   }}
                 >
-                  <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/50">
+                  <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/65">
                     {formatDate(log.createdAt)}
                   </td>
                   <td className="px-4 py-3">
                     {log.admin ? (
                       <div>
                         <div className="font-medium">{log.admin.name}</div>
-                        <div className="text-xs text-brand-charcoal/50">{log.admin.email}</div>
+                        <div className="text-xs text-brand-charcoal/65">{log.admin.email}</div>
                       </div>
                     ) : (
-                      <span className="text-brand-charcoal/50">-</span>
+                      <span className="text-brand-charcoal/65">-</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -497,10 +514,10 @@ function AuditLogsContent() {
                   <td className="px-4 py-3">
                     {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-brand-charcoal/50">
+                  <td className="px-4 py-3 font-mono text-xs text-brand-charcoal/65">
                     {log.targetId || "-"}
                   </td>
-                  <td className="px-4 py-3 text-brand-charcoal/50">{log.ipAddress || "-"}</td>
+                  <td className="px-4 py-3 text-brand-charcoal/65">{log.ipAddress || "-"}</td>
                   <td className="px-4 py-3 text-right">
                     <Button
                       variant="ghost"
@@ -550,10 +567,10 @@ function AuditLogsContent() {
                 {ACTION_LABELS[selectedLog.action] || selectedLog.action}
               </span>
               <OutcomeBadge outcome={selectedLog.outcome} />
-              <span className="text-sm text-brand-charcoal/50">
+              <span className="text-sm text-brand-charcoal/65">
                 {TARGET_TYPE_LABELS[selectedLog.targetType] || selectedLog.targetType}
                 {selectedLog.targetId && (
-                  <span className="ml-1 font-mono text-xs text-brand-charcoal/50">
+                  <span className="ml-1 font-mono text-xs text-brand-charcoal/65">
                     ({selectedLog.targetId})
                   </span>
                 )}
@@ -563,7 +580,7 @@ function AuditLogsContent() {
             {/* 基本信息 */}
             <div className="grid gap-3 text-sm md:grid-cols-2">
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <dt className="mb-1 text-brand-charcoal/50">操作人</dt>
+                <dt className="mb-1 text-brand-charcoal/65">操作人</dt>
                 <dd className="font-medium">
                   {selectedLog.admin
                     ? `${selectedLog.admin.name} (${selectedLog.admin.email})`
@@ -571,25 +588,25 @@ function AuditLogsContent() {
                 </dd>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <dt className="mb-1 text-brand-charcoal/50">操作时间</dt>
+                <dt className="mb-1 text-brand-charcoal/65">操作时间</dt>
                 <dd className="font-medium">{formatDate(selectedLog.createdAt)}</dd>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <dt className="mb-1 text-brand-charcoal/50">IP 地址</dt>
+                <dt className="mb-1 text-brand-charcoal/65">IP 地址</dt>
                 <dd className="font-mono font-medium">{selectedLog.ipAddress || "-"}</dd>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <dt className="mb-1 text-brand-charcoal/50">User-Agent</dt>
+                <dt className="mb-1 text-brand-charcoal/65">User-Agent</dt>
                 <dd className="break-all text-xs font-medium">{selectedLog.userAgent || "-"}</dd>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <dt className="mb-1 text-brand-charcoal/50">请求 ID</dt>
+                <dt className="mb-1 text-brand-charcoal/65">请求 ID</dt>
                 <dd className="break-all font-mono text-xs font-medium">
                   {selectedLog.requestId || "-"}
                 </dd>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <dt className="mb-1 text-brand-charcoal/50">认证方式</dt>
+                <dt className="mb-1 text-brand-charcoal/65">认证方式</dt>
                 <dd className="font-medium">{selectedLog.authMethod || "-"}</dd>
               </div>
             </div>
@@ -601,12 +618,12 @@ function AuditLogsContent() {
                   <FileJson className="h-4 w-4" />
                   操作详情
                 </h4>
-                <pre className="border-brand-charcoal/8 max-h-80 overflow-auto rounded-lg border bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/60">
+                <pre className="border-brand-charcoal/8 max-h-80 overflow-auto rounded-lg border bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/70">
                   {JSON.stringify(selectedLog.detail, null, 2)}
                 </pre>
               </div>
             ) : (
-              <div className="text-sm text-brand-charcoal/50">无详细记录</div>
+              <div className="text-sm text-brand-charcoal/65">无详细记录</div>
             )}
           </div>
         ) : null}

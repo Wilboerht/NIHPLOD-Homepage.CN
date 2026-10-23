@@ -357,16 +357,16 @@ export function ImageUploader({
             ) : dragActive ? (
               <Upload className="h-6 w-6 text-brand-primary" />
             ) : (
-              <ImageIcon className="h-6 w-6 text-brand-charcoal/50" />
+              <ImageIcon className="h-6 w-6 text-brand-charcoal/65" />
             )}
           </div>
           <p className="mb-1 text-sm font-medium text-brand-charcoal/80">
             {isCompressing ? "正在处理图片..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
           </p>
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-brand-charcoal/65">
             支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB
           </p>
-          <p className="mt-1 text-xs text-brand-charcoal/50">
+          <p className="mt-1 text-xs text-brand-charcoal/65">
             已上传 {value.length}/{maxImages} 张
           </p>
         </div>

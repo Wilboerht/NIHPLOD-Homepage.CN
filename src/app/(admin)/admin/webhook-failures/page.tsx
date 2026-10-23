@@ -175,8 +175,8 @@ function AdminWebhookFailuresContent() {
       />
 
       {/* 说明 */}
-      <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/60">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-charcoal/40" />
+      <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/70">
+        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-charcoal/65" />
         <p>
           重投会立即向目标地址发起一次投递（忽略退避时间）；失败则按指数退避安排下次自动重试。
           达到上限或目标已不可用时记录会被丢弃。
@@ -237,11 +237,11 @@ function AdminWebhookFailuresContent() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate font-medium text-brand-charcoal">{item.clientName || "—"}</p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/40">{item.clientId}</p>
+                <p className="truncate font-mono text-xs text-brand-charcoal/65">{item.clientId}</p>
               </div>
-              <span className="shrink-0 text-xs text-brand-charcoal/50">{item.attempts} 次</span>
+              <span className="shrink-0 text-xs text-brand-charcoal/65">{item.attempts} 次</span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
               <span className="col-span-2 truncate">
                 用户：{item.userNickname || item.userPhone || item.userId}
               </span>
@@ -275,7 +275,7 @@ function AdminWebhookFailuresContent() {
                   </Button>
                 </>
               ) : (
-                <span className="text-xs text-brand-charcoal/40">只读</span>
+                <span className="text-xs text-brand-charcoal/65">只读</span>
               )}
             </div>
           </MobileListCard>
@@ -294,7 +294,7 @@ function AdminWebhookFailuresContent() {
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取失败队列，请检查网络连接</p>
+            <p className="mt-1 text-sm text-brand-charcoal/65">无法获取失败队列，请检查网络连接</p>
             <button
               onClick={() => {
                 setLoadError(false);
@@ -310,7 +310,7 @@ function AdminWebhookFailuresContent() {
         ) : (
           <table className="w-full min-w-[860px] text-sm">
             <thead>
-              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/65">
                 <th className="px-4 py-3 font-medium">目标 Client</th>
                 <th className="px-4 py-3 font-medium">用户</th>
                 <th className="px-4 py-3 font-medium">已重试</th>
@@ -325,11 +325,11 @@ function AdminWebhookFailuresContent() {
                 <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3">
                     <p className="font-medium text-brand-charcoal">{item.clientName || "—"}</p>
-                    <p className="font-mono text-xs text-brand-charcoal/40">{item.clientId}</p>
+                    <p className="font-mono text-xs text-brand-charcoal/65">{item.clientId}</p>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
-                    <p className="font-mono text-xs text-brand-charcoal/40">
+                    <p className="font-mono text-xs text-brand-charcoal/65">
                       {item.userPhone || item.userId}
                     </p>
                   </td>
@@ -341,7 +341,7 @@ function AdminWebhookFailuresContent() {
                     {formatDateTime(item.createdAt)}
                   </td>
                   <td className="max-w-[16rem] px-4 py-3">
-                    <p className="truncate text-xs text-brand-charcoal/50">
+                    <p className="truncate text-xs text-brand-charcoal/65">
                       {item.hasPayload ? "已隐藏（含用户资料）" : "—"}
                     </p>
                   </td>
@@ -370,7 +370,7 @@ function AdminWebhookFailuresContent() {
                         </Button>
                       </div>
                     ) : (
-                      <span className="text-xs text-brand-charcoal/40">只读</span>
+                      <span className="text-xs text-brand-charcoal/65">只读</span>
                     )}
                   </td>
                 </tr>
@@ -382,7 +382,7 @@ function AdminWebhookFailuresContent() {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-brand-charcoal/50">
+        <div className="flex items-center justify-between text-sm text-brand-charcoal/65">
           <span>
             第 {page}/{totalPages} 页
           </span>

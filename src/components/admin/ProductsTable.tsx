@@ -227,7 +227,7 @@ export function ProductsTable({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/50">
+              <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/65">
                 无图
               </div>
             )}
@@ -244,7 +244,7 @@ export function ProductsTable({
             <p className="truncate font-medium text-brand-charcoal" title={record.name}>
               {record.name}
             </p>
-            <p className="truncate text-xs text-brand-charcoal/50" title={record.nameEn}>
+            <p className="truncate text-xs text-brand-charcoal/65" title={record.nameEn}>
               {record.nameEn}
             </p>
           </div>
@@ -277,7 +277,7 @@ export function ProductsTable({
         width: "64px",
         sortable: true,
         render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/40">{record.order}</span>
+          <span className="text-sm text-brand-charcoal/65">{record.order}</span>
         ),
       },
       {
@@ -316,7 +316,7 @@ export function ProductsTable({
         width: "150px",
         sortable: true,
         render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/50">{formatDateTime(record.updatedAt)}</span>
+          <span className="text-sm text-brand-charcoal/65">{formatDateTime(record.updatedAt)}</span>
         ),
       },
       {
@@ -417,7 +417,7 @@ export function ProductsTable({
           </div>
           <button
             onClick={selection.clear}
-            className="ml-auto text-sm text-brand-charcoal/50 hover:text-brand-charcoal/80"
+            className="ml-auto text-sm text-brand-charcoal/65 hover:text-brand-charcoal/80"
           >
             取消选择
           </button>
@@ -457,14 +457,14 @@ export function ProductsTable({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/50">
+                  <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/65">
                     无图
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-brand-charcoal">{record.name}</p>
-                <p className="truncate text-xs text-brand-charcoal/50">{record.nameEn}</p>
+                <p className="truncate text-xs text-brand-charcoal/65">{record.nameEn}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <Badge variant="secondary" className="max-w-full">
                     <span className="min-w-0 truncate">{record.category.name}</span>
@@ -478,7 +478,7 @@ export function ProductsTable({
             </div>
 
             <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-              <div className="flex items-center gap-3 text-xs text-brand-charcoal/50">
+              <div className="flex items-center gap-3 text-xs text-brand-charcoal/65">
                 <span className="font-medium text-brand-charcoal">{formatPrice(record.price)}</span>
                 <span>排序 {record.order}</span>
               </div>

@@ -79,7 +79,7 @@ function AdminSsoDeniedContent() {
 
 export default function AdminSsoDeniedPage() {
   return (
-    <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
+    <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
       <AdminSsoDeniedContent />
     </Suspense>
   );

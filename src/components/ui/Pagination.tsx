@@ -35,9 +35,9 @@ export function Pagination({
     if (!onPageSizeChange && !showTotal) return null;
     return (
       <div className={cn("flex flex-wrap items-center gap-2", className)}>
-        {showTotal && <span className="mr-2 text-sm text-brand-charcoal/50">共 {total} 条</span>}
+        {showTotal && <span className="mr-2 text-sm text-brand-charcoal/65">共 {total} 条</span>}
         {onPageSizeChange && (
-          <label className="mr-2 flex items-center gap-1 text-sm text-brand-charcoal/50">
+          <label className="mr-2 flex items-center gap-1 text-sm text-brand-charcoal/65">
             每页
             <select
               value={pageSize}
@@ -103,7 +103,7 @@ export function Pagination({
     "flex h-11 min-w-[44px] items-center justify-center rounded-lg border border-brand-charcoal/20 bg-white text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-[36px]";
 
   const pageSizeSelector = onPageSizeChange ? (
-    <label className="flex items-center gap-1 text-sm text-brand-charcoal/50">
+    <label className="flex items-center gap-1 text-sm text-brand-charcoal/65">
       每页
       <select
         value={pageSize}
@@ -123,7 +123,7 @@ export function Pagination({
   return (
     <div className={cn("flex flex-wrap items-center justify-between gap-2", className)}>
       <div className="flex flex-wrap items-center gap-2">
-        {showTotal && <span className="text-sm text-brand-charcoal/50">共 {total} 条</span>}
+        {showTotal && <span className="text-sm text-brand-charcoal/65">共 {total} 条</span>}
         {pageSizeSelector}
       </div>
 
@@ -173,7 +173,7 @@ export function Pagination({
                   <span
                     key={`ellipsis-${index}`}
                     aria-hidden="true"
-                    className="flex h-9 w-9 items-center justify-center text-brand-charcoal/50"
+                    className="flex h-9 w-9 items-center justify-center text-brand-charcoal/65"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </span>

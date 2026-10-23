@@ -96,7 +96,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
-        <p className="text-sm text-brand-charcoal/50">登录已过期，正在跳转...</p>
+        <p className="text-sm text-brand-charcoal/65">登录已过期，正在跳转...</p>
       </div>
     );
   }
@@ -205,7 +205,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
         <footer
           className={cn(
-            "mx-auto pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/40",
+            "mx-auto pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/65",
             contentWidthClass
           )}
         >
@@ -271,7 +271,7 @@ function SidebarContent({
   const activeCls = cn(itemCls, "bg-brand-primary/10 text-brand-primary font-medium");
   const inactiveCls = cn(
     itemCls,
-    "text-brand-charcoal/60 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.04]"
+    "text-brand-charcoal/70 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.04]"
   );
 
   return (
@@ -340,7 +340,7 @@ function SidebarContent({
             return groups.map((group, gi) => (
               <div key={group.label || `group-${gi}`} className="flex flex-col gap-0.5">
                 {group.label && !collapsed && (
-                  <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/40">
+                  <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/65">
                     {group.label}
                   </p>
                 )}
@@ -393,7 +393,7 @@ function SidebarContent({
             <p className="truncate text-sm font-medium text-brand-charcoal">
               {userName || "管理员"}
             </p>
-            <p className="text-xs text-brand-charcoal/50">
+            <p className="text-xs text-brand-charcoal/65">
               {userRole ? (ROLE_LABELS[userRole as AdminRoleValue] ?? "管理员") : "管理员"}
             </p>
           </div>

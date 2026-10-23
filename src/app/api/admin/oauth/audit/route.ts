@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { escapeCSV } from "@/lib/sso-audit";
 import { maskIdentifier, maskIp, maskPhone } from "@/lib/mask-phone";
-import { maskAuditDetail } from "@/lib/audit-sanitize";
+import { maskAuditDetail, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
 import { apiConsole } from "@/lib/logger";
 
 const NO_STORE_HEADERS = {
@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
           ip: canViewSensitive ? item.ip : item.ip ? maskIp(item.ip) : null,
           userAgent: canViewSensitive ? item.userAgent : null,
           detail: canViewSensitive
-            ? item.detail
+            ? (redactSensitiveAuditDetail(item.detail) as typeof item.detail)
             : (maskAuditDetail(item.detail) as typeof item.detail),
           userPhone: (item.userId && phoneMap.get(item.userId)) || null,
           createdAt: item.createdAt.toISOString(),

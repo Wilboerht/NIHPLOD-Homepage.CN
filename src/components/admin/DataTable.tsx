@@ -142,7 +142,7 @@ export function DataTable<T extends object>({
 
     const key = String(column.key);
     if (sortConfig?.key !== key) {
-      return <ArrowUpDown className="h-4 w-4 text-brand-charcoal/50" />;
+      return <ArrowUpDown className="h-4 w-4 text-brand-charcoal/65" />;
     }
     return sortConfig.order === "asc" ? (
       <ArrowUp className="h-4 w-4 text-brand-primary" />
@@ -176,8 +176,8 @@ export function DataTable<T extends object>({
               ))}
             </div>
           ) : data.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 px-4 py-12 text-center text-brand-charcoal/50">
-              <Inbox className="h-10 w-10 text-brand-charcoal/25" />
+            <div className="flex flex-col items-center gap-3 px-4 py-12 text-center text-brand-charcoal/65">
+              <Inbox className="h-10 w-10 text-brand-charcoal/65" />
               <span>{emptyText}</span>
               {emptyAction && (
                 <Button
@@ -225,7 +225,7 @@ export function DataTable<T extends object>({
                     scope="col"
                     style={{ width: column.width }}
                     className={cn(
-                      "text-xs font-medium uppercase tracking-wider text-brand-charcoal/50",
+                      "text-xs font-medium uppercase tracking-wider text-brand-charcoal/65",
                       cellDensityCls,
                       alignStyles[column.align || "left"],
                       column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
@@ -266,10 +266,10 @@ export function DataTable<T extends object>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-12 text-center text-brand-charcoal/50"
+                  className="px-4 py-12 text-center text-brand-charcoal/65"
                 >
                   <div className="flex flex-col items-center gap-3">
-                    <Inbox className="h-10 w-10 text-brand-charcoal/25" />
+                    <Inbox className="h-10 w-10 text-brand-charcoal/65" />
                     <span>{emptyText}</span>
                     {emptyAction && (
                       <Button

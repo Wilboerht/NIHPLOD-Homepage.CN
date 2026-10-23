@@ -75,7 +75,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
                 {label}
               </label>
             )}
-            {description && <p className="text-sm text-brand-charcoal/50">{description}</p>}
+            {description && <p className="text-sm text-brand-charcoal/65">{description}</p>}
           </div>
         )}
       </div>

@@ -18,7 +18,7 @@ export function FormSection({ title, description, children, className }: FormSec
           {title && (
             <h2 className="text-base font-medium text-brand-charcoal sm:text-lg">{title}</h2>
           )}
-          {description && <p className="mt-1 text-sm text-brand-charcoal/50">{description}</p>}
+          {description && <p className="mt-1 text-sm text-brand-charcoal/65">{description}</p>}
         </div>
       )}
       {children}

@@ -52,7 +52,7 @@ const STATUS_BADGES: Record<DeletionStatus, { label: string; className: string }
   PENDING: { label: "冷静期", className: "bg-amber-50 text-amber-700" },
   RUNNING: { label: "执行中", className: "bg-blue-50 text-blue-600" },
   COMPLETED: { label: "已完成", className: "bg-emerald-50 text-emerald-600" },
-  CANCELLED: { label: "已撤回", className: "bg-brand-charcoal/5 text-brand-charcoal/50" },
+  CANCELLED: { label: "已撤回", className: "bg-brand-charcoal/5 text-brand-charcoal/65" },
 };
 
 function formatDateTime(iso: string | null): string {
@@ -170,8 +170,8 @@ function AdminAccountDeletionsContent() {
       />
 
       {/* 说明 */}
-      <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/60">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-charcoal/40" />
+      <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/70">
+        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-charcoal/65" />
         <p>
           重试会立即同步执行注销任务（撤销全部会话与子站授权、解绑第三方身份、匿名化个人数据），
           操作不可逆。连续失败达到上限的申请不会自动重试，需排查失败原因后在此人工处理。
@@ -226,7 +226,7 @@ function AdminAccountDeletionsContent() {
                 <p className="truncate font-medium text-brand-charcoal">
                   {item.userNickname || "未设置昵称"}
                 </p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/40">
+                <p className="truncate font-mono text-xs text-brand-charcoal/65">
                   {item.userPhone || item.userId}
                 </p>
               </div>
@@ -239,7 +239,7 @@ function AdminAccountDeletionsContent() {
                 {STATUS_BADGES[item.status].label}
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/60">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
               <span>申请：{formatDateTime(item.requestedAt)}</span>
               <span>执行：{formatDateTime(item.scheduledAt)}</span>
               <span>已尝试：{item.attempts} 次</span>
@@ -270,10 +270,10 @@ function AdminAccountDeletionsContent() {
                     重试
                   </Button>
                 ) : (
-                  <span className="text-xs text-brand-charcoal/40">只读</span>
+                  <span className="text-xs text-brand-charcoal/65">只读</span>
                 )
               ) : (
-                <span className="text-xs text-brand-charcoal/40">—</span>
+                <span className="text-xs text-brand-charcoal/65">—</span>
               )}
             </div>
           </MobileListCard>
@@ -292,7 +292,7 @@ function AdminAccountDeletionsContent() {
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">
+            <p className="mt-1 text-sm text-brand-charcoal/65">
               无法获取注销申请列表，请检查网络连接
             </p>
             <button
@@ -310,7 +310,7 @@ function AdminAccountDeletionsContent() {
         ) : (
           <table className="w-full min-w-[860px] text-sm">
             <thead>
-              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/50">
+              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/65">
                 <th className="px-4 py-3 font-medium">用户</th>
                 <th className="px-4 py-3 font-medium">状态</th>
                 <th className="px-4 py-3 font-medium">注销原因</th>
@@ -328,7 +328,7 @@ function AdminAccountDeletionsContent() {
                 <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3">
                     <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
-                    <p className="font-mono text-xs text-brand-charcoal/40">
+                    <p className="font-mono text-xs text-brand-charcoal/65">
                       {item.userPhone || item.userId}
                     </p>
                   </td>
@@ -344,7 +344,7 @@ function AdminAccountDeletionsContent() {
                   </td>
                   <td className="max-w-[12rem] px-4 py-3">
                     <p
-                      className="truncate text-xs text-brand-charcoal/50"
+                      className="truncate text-xs text-brand-charcoal/65"
                       title={item.reason ?? undefined}
                     >
                       {item.reason || "—"}
@@ -369,7 +369,7 @@ function AdminAccountDeletionsContent() {
                   <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
                   <td className="max-w-[16rem] px-4 py-3">
                     <p
-                      className="truncate text-xs text-brand-charcoal/50"
+                      className="truncate text-xs text-brand-charcoal/65"
                       title={item.lastError ?? undefined}
                     >
                       {item.lastError || "—"}
@@ -389,10 +389,10 @@ function AdminAccountDeletionsContent() {
                           重试
                         </Button>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/40">只读</span>
+                        <span className="text-xs text-brand-charcoal/65">只读</span>
                       )
                     ) : (
-                      <span className="text-xs text-brand-charcoal/40">—</span>
+                      <span className="text-xs text-brand-charcoal/65">—</span>
                     )}
                   </td>
                 </tr>
@@ -404,7 +404,7 @@ function AdminAccountDeletionsContent() {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-brand-charcoal/50">
+        <div className="flex items-center justify-between text-sm text-brand-charcoal/65">
           <span>
             第 {page}/{totalPages} 页
           </span>

@@ -235,7 +235,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       >
         {step === "upload" && (
           <div>
-            <p className="text-sm text-brand-charcoal/50">
+            <p className="text-sm text-brand-charcoal/65">
               请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 1000 行；
               金额为整数（元），负数表示退款冲正；未注册手机号的行会标记错误并跳过。
             </p>
@@ -259,8 +259,8 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
               className="hidden"
               onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
             />
-            <div className="mt-6 rounded-lg bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/50">
-              <p className="font-medium text-brand-charcoal/60">模板列说明</p>
+            <div className="mt-6 rounded-lg bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/65">
+              <p className="font-medium text-brand-charcoal/70">模板列说明</p>
               <ul className="mt-2 space-y-1">
                 <li>手机号（必填）：11 位大陆手机号，须已注册官网账户</li>
                 <li>金额（元，必填）：非零整数，正数累加消费、负数冲正（退款）</li>
@@ -276,8 +276,8 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
         {step === "preview" && preview && (
           <div>
             <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm">
-              <span className="truncate text-brand-charcoal/60">{preview.fileName}</span>
-              <span className="text-brand-charcoal/40">
+              <span className="truncate text-brand-charcoal/70">{preview.fileName}</span>
+              <span className="text-brand-charcoal/65">
                 共 {preview.rows.length} 行 · 可导入 {preview.okCount} 行 · 错误{" "}
                 {preview.errorCount} 行
               </span>
@@ -289,7 +289,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
 
             <div className="mt-4 overflow-x-auto rounded-lg border">
               <table className="w-full min-w-[620px] text-sm">
-                <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/50">
+                <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/65">
                   <tr>
                     <th className="px-3 py-2 font-medium">行</th>
                     <th className="px-3 py-2 font-medium">手机号</th>
@@ -304,17 +304,17 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                 <tbody className="divide-y">
                   {preview.rows.map((r) => (
                     <tr key={r.rowIndex}>
-                      <td className="px-3 py-2 text-brand-charcoal/40">{r.rowIndex}</td>
+                      <td className="px-3 py-2 text-brand-charcoal/65">{r.rowIndex}</td>
                       <td className="px-3 py-2 text-brand-charcoal/70">{r.maskedPhone ?? "-"}</td>
                       <td className="px-3 py-2 text-brand-charcoal/70">
                         {r.amount != null ? `¥${r.amount.toLocaleString()}` : "-"}
                       </td>
-                      <td className="px-3 py-2 text-brand-charcoal/60">{r.channelLabel ?? "-"}</td>
-                      <td className="px-3 py-2 text-brand-charcoal/60">{r.purchasedAt ?? "-"}</td>
-                      <td className="max-w-[140px] truncate px-3 py-2 font-mono text-brand-charcoal/60">
+                      <td className="px-3 py-2 text-brand-charcoal/70">{r.channelLabel ?? "-"}</td>
+                      <td className="px-3 py-2 text-brand-charcoal/70">{r.purchasedAt ?? "-"}</td>
+                      <td className="max-w-[140px] truncate px-3 py-2 font-mono text-brand-charcoal/70">
                         {r.orderNo ?? "-"}
                       </td>
-                      <td className="max-w-[160px] truncate px-3 py-2 text-brand-charcoal/60">
+                      <td className="max-w-[160px] truncate px-3 py-2 text-brand-charcoal/70">
                         {r.note ?? "-"}
                       </td>
                       <td className="px-3 py-2">
@@ -341,25 +341,25 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">{result.successRows}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/50">成功入账</p>
+                <p className="mt-1 text-xs text-brand-charcoal/65">成功入账</p>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">{result.duplicateRows}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/50">重复跳过</p>
+                <p className="mt-1 text-xs text-brand-charcoal/65">重复跳过</p>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">{result.errorRows}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/50">失败</p>
+                <p className="mt-1 text-xs text-brand-charcoal/65">失败</p>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">
                   ¥{result.totalAmount.toLocaleString()}
                 </p>
-                <p className="mt-1 text-xs text-brand-charcoal/50">净入账金额</p>
+                <p className="mt-1 text-xs text-brand-charcoal/65">净入账金额</p>
               </div>
             </div>
             {(needsAttentionRows.length > 0 || result.errorRows > 0) && (
-              <p className="mt-3 text-xs text-brand-charcoal/50">
+              <p className="mt-3 text-xs text-brand-charcoal/65">
                 重复/失败行未入账：请按下方行号修正或删除 Excel
                 中对应行后重新导入（已成功行因幂等不会重复入账）。
               </p>
@@ -387,7 +387,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                 </div>
                 <div className="overflow-x-auto rounded-lg border">
                   <table className="w-full min-w-[620px] text-sm">
-                    <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/50">
+                    <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/65">
                       <tr>
                         <th className="px-3 py-2 font-medium">Excel 行号</th>
                         <th className="px-3 py-2 font-medium">手机号</th>
@@ -399,13 +399,13 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                     <tbody className="divide-y">
                       {needsAttentionRows.map((row) => (
                         <tr key={row.rowIndex}>
-                          <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/60">
+                          <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/70">
                             第 {row.rowIndex} 行
                           </td>
-                          <td className="px-3 py-2 font-mono text-xs text-brand-charcoal/60">
+                          <td className="px-3 py-2 font-mono text-xs text-brand-charcoal/70">
                             {row.phone || "-"}
                           </td>
-                          <td className="px-3 py-2 text-brand-charcoal/60">{row.amount}</td>
+                          <td className="px-3 py-2 text-brand-charcoal/70">{row.amount}</td>
                           <td className="px-3 py-2">
                             {row.status === "DUPLICATE" ? (
                               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
@@ -417,7 +417,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-xs text-brand-charcoal/50">
+                          <td className="px-3 py-2 text-xs text-brand-charcoal/65">
                             {row.error || "-"}
                           </td>
                         </tr>
@@ -511,7 +511,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         <div className="overflow-x-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-brand-charcoal/30" />
+              <Loader2 className="h-6 w-6 animate-spin text-brand-charcoal/65" />
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12">
@@ -521,10 +521,10 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
               </Button>
             </div>
           ) : batches.length === 0 ? (
-            <p className="py-12 text-center text-sm text-brand-charcoal/40">暂无导入记录</p>
+            <p className="py-12 text-center text-sm text-brand-charcoal/65">暂无导入记录</p>
           ) : (
             <table className="w-full min-w-[620px] text-sm">
-              <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/50">
+              <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/65">
                 <tr>
                   <th className="px-3 py-2 font-medium">文件名</th>
                   <th className="px-3 py-2 font-medium">行数（总/成/重/错）</th>
@@ -540,19 +540,19 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                     <td className="max-w-[200px] truncate px-3 py-2 text-brand-charcoal/70">
                       {b.fileName}
                       {b.undoneAt && (
-                        <span className="ml-2 rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-xs text-brand-charcoal/60">
+                        <span className="ml-2 rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-xs text-brand-charcoal/70">
                           已撤销
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-brand-charcoal/60">
+                    <td className="px-3 py-2 text-brand-charcoal/70">
                       {b.totalRows} / {b.successRows} / {b.duplicateRows} / {b.errorRows}
                     </td>
                     <td className="px-3 py-2 text-brand-charcoal/70">
                       ¥{b.totalAmount.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2 text-brand-charcoal/60">{b.adminName}</td>
-                    <td className="px-3 py-2 text-brand-charcoal/50">
+                    <td className="px-3 py-2 text-brand-charcoal/70">{b.adminName}</td>
+                    <td className="px-3 py-2 text-brand-charcoal/65">
                       {formatDateTime(b.createdAt)}
                     </td>
                     <td className="px-3 py-2">
@@ -576,7 +576,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         </div>
 
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between text-sm text-brand-charcoal/50">
+          <div className="mt-4 flex items-center justify-between text-sm text-brand-charcoal/65">
             <span>
               第 {page}/{totalPages} 页
             </span>

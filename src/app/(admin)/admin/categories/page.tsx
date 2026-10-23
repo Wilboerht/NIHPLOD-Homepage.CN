@@ -250,9 +250,9 @@ function AdminCategoriesContent() {
                         title="查看该分类下的产品"
                       >
                         <span className="truncate">{category.name}</span>
-                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/30 transition-colors group-hover:text-brand-primary" />
+                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65 transition-colors group-hover:text-brand-primary" />
                       </Link>
-                      <p className="truncate text-sm text-brand-charcoal/50">{category.nameEn}</p>
+                      <p className="truncate text-sm text-brand-charcoal/65">{category.nameEn}</p>
                     </div>
                     <Badge variant={category.productCount > 0 ? "secondary" : "default"}>
                       {category.productCount} 个产品
@@ -260,7 +260,7 @@ function AdminCategoriesContent() {
                   </div>
 
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-xs text-brand-charcoal/60">
+                    <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-xs text-brand-charcoal/70">
                       {category.slug}
                     </code>
                     <button
@@ -271,7 +271,7 @@ function AdminCategoriesContent() {
                         "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50",
                         category.visible
                           ? "bg-emerald-50 text-emerald-700"
-                          : "bg-brand-charcoal/8 text-brand-charcoal/50"
+                          : "bg-brand-charcoal/8 text-brand-charcoal/65"
                       )}
                     >
                       {category.visible ? (
@@ -324,7 +324,7 @@ function AdminCategoriesContent() {
 
             <div className="hidden min-w-[880px] md:block">
             {/* 表头 */}
-            <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/50">
+            <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/65">
               <div className="col-span-1"></div>
               <div className="col-span-3">分类名称</div>
               <div className="col-span-2">URL 别名</div>
@@ -351,7 +351,7 @@ function AdminCategoriesContent() {
                 <div className="col-span-1 flex items-center gap-1">
                   {canWrite && (
                     <button
-                      className="hidden cursor-grab text-brand-charcoal/50 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-30 md:block"
+                      className="hidden cursor-grab text-brand-charcoal/65 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-30 md:block"
                       title="拖拽排序"
                       disabled={savingOrder}
                       aria-label={`拖拽排序 ${category.name}`}
@@ -366,7 +366,7 @@ function AdminCategoriesContent() {
                         onClick={() => moveCategory(index, -1)}
                         disabled={index === 0 || savingOrder}
                         aria-label={`上移 ${category.name}`}
-                        className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-30"
+                        className="rounded p-1 text-brand-charcoal/65 hover:text-brand-charcoal disabled:opacity-30"
                       >
                         <ChevronUp className="h-4 w-4" />
                       </button>
@@ -376,7 +376,7 @@ function AdminCategoriesContent() {
                         onClick={() => moveCategory(index, 1)}
                         disabled={index === categories.length - 1 || savingOrder}
                         aria-label={`下移 ${category.name}`}
-                        className="rounded p-1 text-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-30"
+                        className="rounded p-1 text-brand-charcoal/65 hover:text-brand-charcoal disabled:opacity-30"
                       >
                         <ChevronDown className="h-4 w-4" />
                       </button>
@@ -393,14 +393,14 @@ function AdminCategoriesContent() {
                     title="查看该分类下的产品"
                   >
                     {category.name}
-                    <ExternalLink className="h-3.5 w-3.5 text-brand-charcoal/30 transition-colors group-hover:text-brand-primary" />
+                    <ExternalLink className="h-3.5 w-3.5 text-brand-charcoal/65 transition-colors group-hover:text-brand-primary" />
                   </Link>
-                  <span className="text-sm text-brand-charcoal/50">{category.nameEn}</span>
+                  <span className="text-sm text-brand-charcoal/65">{category.nameEn}</span>
                 </div>
 
                 {/* Slug */}
                 <div className="col-span-2 flex items-center">
-                  <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-sm text-brand-charcoal/60">
+                  <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-sm text-brand-charcoal/70">
                     {category.slug}
                   </code>
                 </div>
@@ -423,7 +423,7 @@ function AdminCategoriesContent() {
                         "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
                         category.visible
                           ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                          : "bg-brand-charcoal/8 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06]"
+                          : "bg-brand-charcoal/8 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06]"
                       )}
                     >
                       {category.visible ? (
@@ -446,7 +446,7 @@ function AdminCategoriesContent() {
                       <button
                         onClick={() => handleEdit(category)}
                         aria-label={`编辑 ${category.name}`}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                        className="rounded p-2 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
@@ -457,7 +457,7 @@ function AdminCategoriesContent() {
                       <button
                         onClick={() => setDeleteConfirm({ open: true, category })}
                         aria-label={`删除 ${category.name}`}
-                        className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-600"
+                        className="rounded p-2 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

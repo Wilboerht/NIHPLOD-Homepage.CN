@@ -281,7 +281,7 @@ const user = await userRes.json();`;
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 step >= s
                   ? "bg-brand-primary text-white"
-                  : "bg-brand-charcoal/10 text-brand-charcoal/40"
+                  : "bg-brand-charcoal/10 text-brand-charcoal/65"
               }`}
             >
               {step > s ? <Check className="h-4 w-4" /> : s}
@@ -332,7 +332,7 @@ const user = await userRes.json();`;
                   />
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">Confidential Client</p>
-                    <p className="text-xs text-brand-charcoal/50">
+                    <p className="text-xs text-brand-charcoal/65">
                       Next.js / 服务端应用，后端保密 client_secret
                     </p>
                   </div>
@@ -349,7 +349,7 @@ const user = await userRes.json();`;
                   />
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">Public Client</p>
-                    <p className="text-xs text-brand-charcoal/50">
+                    <p className="text-xs text-brand-charcoal/65">
                       SPA / 移动端 / 桌面端，不传输 client_secret，必须使用 PKCE
                     </p>
                   </div>
@@ -385,7 +385,7 @@ const user = await userRes.json();`;
       {step === 2 && (
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">② 选择数据权限</h2>
-          <p className="mb-4 text-sm text-brand-charcoal/50">
+          <p className="mb-4 text-sm text-brand-charcoal/65">
             选择你的应用需要获取的用户信息权限。仅选择必需的最小权限。
           </p>
           <div className="mb-6 max-w-md space-y-3">
@@ -412,8 +412,8 @@ const user = await userRes.json();`;
                 />
                 <div>
                   <span className="text-sm font-medium text-brand-charcoal">{s.label}</span>
-                  <span className="ml-2 font-mono text-xs text-brand-charcoal/40">{s.value}</span>
-                  <p className="mt-0.5 text-xs text-brand-charcoal/50">{s.desc}</p>
+                  <span className="ml-2 font-mono text-xs text-brand-charcoal/65">{s.value}</span>
+                  <p className="mt-0.5 text-xs text-brand-charcoal/65">{s.desc}</p>
                 </div>
               </label>
             ))}
@@ -440,21 +440,21 @@ const user = await userRes.json();`;
           <div className="mb-6 max-w-md rounded-lg bg-brand-charcoal/[0.03] p-4">
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-brand-charcoal/50">应用名称：</span>
+                <span className="text-brand-charcoal/65">应用名称：</span>
                 <span className="font-medium text-brand-charcoal">{appName}</span>
               </div>
               <div>
-                <span className="text-brand-charcoal/50">应用类型：</span>
+                <span className="text-brand-charcoal/65">应用类型：</span>
                 <span className="font-medium text-brand-charcoal">
                   {isPublic ? "Public Client" : "Confidential Client"}
                 </span>
               </div>
               <div>
-                <span className="text-brand-charcoal/50">回调 URL：</span>
+                <span className="text-brand-charcoal/65">回调 URL：</span>
                 <span className="font-mono text-xs text-brand-charcoal">{redirectUri}</span>
               </div>
               <div>
-                <span className="text-brand-charcoal/50">权限范围：</span>
+                <span className="text-brand-charcoal/65">权限范围：</span>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {selectedScopes.map((s) => (
                     <Badge key={s} variant="secondary" className="text-xs">
@@ -499,21 +499,21 @@ const user = await userRes.json();`;
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-brand-charcoal/60">Client ID：</span>
+                <span className="text-brand-charcoal/70">Client ID：</span>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <code className="rounded bg-green-100 px-2 py-1 font-mono text-xs">
                     {result.clientId}
                   </code>
                   <button
                     onClick={() => copyCode(result.clientId || "")}
-                    className="text-brand-charcoal/40 hover:text-brand-charcoal/60"
+                    className="text-brand-charcoal/65 hover:text-brand-charcoal/70"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-brand-charcoal/60">Client Secret：</span>
+                <span className="text-brand-charcoal/70">Client Secret：</span>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <code className="max-w-full break-all rounded bg-green-100 px-2 py-1 font-mono text-xs sm:max-w-[280px]">
                     {showSecret ? result.plainSecret : "••••••••••••••••••••"}
@@ -521,14 +521,14 @@ const user = await userRes.json();`;
                   <button
                     onClick={() => setShowSecret((v) => !v)}
                     aria-label={showSecret ? "隐藏密钥" : "显示密钥"}
-                    className="text-brand-charcoal/40 hover:text-brand-charcoal/60"
+                    className="text-brand-charcoal/65 hover:text-brand-charcoal/70"
                   >
                     {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => copyCode(result.plainSecret || "")}
                     aria-label="复制密钥"
-                    className="text-brand-charcoal/40 hover:text-brand-charcoal/60"
+                    className="text-brand-charcoal/65 hover:text-brand-charcoal/70"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -607,7 +607,7 @@ const user = await userRes.json();`;
       {step === 5 && (
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-semibold">⑤ 在线连接测试</h2>
-          <p className="mb-4 text-sm text-brand-charcoal/50">
+          <p className="mb-4 text-sm text-brand-charcoal/65">
             模拟完整 SSO 流程，验证配置是否正确。
           </p>
 
@@ -634,9 +634,9 @@ const user = await userRes.json();`;
                   : "⚠️ 测试未完全通过"}
               </p>
               {testResult.summary && (
-                <p className="mb-2 text-xs text-brand-charcoal/60">{testResult.summary}</p>
+                <p className="mb-2 text-xs text-brand-charcoal/70">{testResult.summary}</p>
               )}
-              <pre className="max-h-60 overflow-x-auto rounded bg-white/50 p-3 text-xs text-brand-charcoal/60">
+              <pre className="max-h-60 overflow-x-auto rounded bg-white/50 p-3 text-xs text-brand-charcoal/70">
                 {JSON.stringify(testResult.steps, null, 2)}
               </pre>
             </div>

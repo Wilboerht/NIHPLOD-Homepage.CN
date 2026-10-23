@@ -258,7 +258,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-4 py-3">
           <div>
             <label className="text-sm font-medium text-brand-charcoal/80">前台展示</label>
-            <p className="text-xs text-brand-charcoal/50">关闭后该分类不会在产品页显示</p>
+            <p className="text-xs text-brand-charcoal/65">关闭后该分类不会在产品页显示</p>
           </div>
           <button
             type="button"

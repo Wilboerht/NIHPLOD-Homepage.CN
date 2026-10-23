@@ -336,7 +336,7 @@ export default function TOTPSettingsPage() {
             <h2 className="text-lg font-medium text-brand-charcoal">
               {totpEnabled ? "二次验证已启用" : "二次验证未启用"}
             </h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">
+            <p className="mt-1 text-sm text-brand-charcoal/65">
               {totpEnabled
                 ? "您的账号已启用基于 TOTP 的二次验证，登录时需要输入动态验证码。"
                 : "启用二次验证后，登录时除了密码还需要输入 Authenticator 应用生成的 6 位动态验证码，大幅提升账号安全性。"}
@@ -352,7 +352,7 @@ export default function TOTPSettingsPage() {
                 <span>
                   剩余备用码：
                   <span className="font-medium text-brand-charcoal">{backupCodesRemaining}</span>
-                  <span className="text-brand-charcoal/50"> 个</span>
+                  <span className="text-brand-charcoal/65"> 个</span>
                 </span>
               </div>
             )}
@@ -474,7 +474,7 @@ export default function TOTPSettingsPage() {
                     type="button"
                     onClick={() => setShowTotpSecret(!showTotpSecret)}
                     aria-label={showTotpSecret ? "隐藏密钥" : "显示密钥"}
-                    className="inline-flex text-brand-charcoal/50 hover:text-brand-charcoal"
+                    className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
                   >
                     {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -484,7 +484,7 @@ export default function TOTPSettingsPage() {
                     type="button"
                     onClick={() => copyToClipboard(setupData.secret, "secret")}
                     aria-label="复制密钥"
-                    className="inline-flex text-brand-charcoal/50 hover:text-brand-charcoal"
+                    className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
                   >
                     {copied === "secret" ? (
                       <Check className="h-4 w-4 text-green-500" />
@@ -513,7 +513,7 @@ export default function TOTPSettingsPage() {
                     {copied === `backup-${index}` ? (
                       <Check className="h-3 w-3 text-green-500" />
                     ) : (
-                      <Copy className="h-3 w-3 text-brand-charcoal/50" />
+                      <Copy className="h-3 w-3 text-brand-charcoal/65" />
                     )}
                   </button>
                 ))}
@@ -576,7 +576,7 @@ export default function TOTPSettingsPage() {
             >
               重新生成备用码
             </Button>
-            <span className="text-sm text-brand-charcoal/50">
+            <span className="text-sm text-brand-charcoal/65">
               当前剩余 {backupCodesRemaining} 个备用码
             </span>
           </div>
@@ -679,7 +679,7 @@ export default function TOTPSettingsPage() {
                   {copied === `regen-${index}` ? (
                     <Check className="h-3 w-3 text-green-500" />
                   ) : (
-                    <Copy className="h-3 w-3 text-brand-charcoal/50" />
+                    <Copy className="h-3 w-3 text-brand-charcoal/65" />
                   )}
                 </button>
               ))}

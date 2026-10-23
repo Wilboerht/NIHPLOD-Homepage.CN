@@ -8,7 +8,7 @@ export default function AdminLoading() {
       aria-label="页面加载中"
     >
       <Loader2 className="h-7 w-7 animate-spin text-brand-primary" aria-hidden="true" />
-      <p className="text-sm text-brand-charcoal/50">页面加载中...</p>
+      <p className="text-sm text-brand-charcoal/65">页面加载中...</p>
     </div>
   );
 }

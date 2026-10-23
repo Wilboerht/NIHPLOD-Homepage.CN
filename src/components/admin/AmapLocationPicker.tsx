@@ -165,7 +165,7 @@ export function AmapLocationPicker({
         工作地点 <span className="text-red-500">*</span>
       </label>
       <div className="relative">
-        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/50" />
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
         <input
           id="amap-location-input"
           type="text"
@@ -212,7 +212,7 @@ export function AmapLocationPicker({
       </div>
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       {amapUnavailable && !error && (
-        <p className="mt-1 text-xs text-brand-charcoal/40">
+        <p className="mt-1 text-xs text-brand-charcoal/65">
           地图搜索仅超级管理员可用，可直接填写地点，并在下方手动录入经纬度（选填）
         </p>
       )}
@@ -240,10 +240,10 @@ export function AmapLocationPicker({
               }`}
             >
               <div className="flex items-center gap-2 text-sm font-medium text-brand-charcoal">
-                <Search className="h-3.5 w-3.5 text-brand-charcoal/50" />
+                <Search className="h-3.5 w-3.5 text-brand-charcoal/65" />
                 {tip.name}
               </div>
-              <div className="ml-5 text-xs text-brand-charcoal/50">
+              <div className="ml-5 text-xs text-brand-charcoal/65">
                 {tip.district}
                 {tip.address || ""}
               </div>

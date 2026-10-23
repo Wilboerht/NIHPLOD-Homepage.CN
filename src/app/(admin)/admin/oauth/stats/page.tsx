@@ -127,7 +127,7 @@ export default function OAuthStatsPage() {
           stats.activeSessions === 0 &&
           stats.activeRefreshTokens === 0 &&
           stats.events.thisMonth === 0 && (
-            <div className="rounded-xl border border-dashed border-brand-charcoal/20 bg-white p-4 text-sm text-brand-charcoal/60">
+            <div className="rounded-xl border border-dashed border-brand-charcoal/20 bg-white p-4 text-sm text-brand-charcoal/70">
               还没有任何 SSO 数据，
               <Link
                 href="/admin/oauth-clients/wizard"
@@ -171,7 +171,7 @@ export default function OAuthStatsPage() {
               ))}
             </div>
           ) : !stats || Object.keys(stats.eventsByType).length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-brand-charcoal/40">
+            <div className="flex items-center justify-center py-8 text-sm text-brand-charcoal/65">
               本月暂无 SSO 事件
             </div>
           ) : (
@@ -181,7 +181,7 @@ export default function OAuthStatsPage() {
                 .map(([type, count]) => (
                   <div key={type} className="flex items-center gap-3">
                     <div className="flex w-32 items-center gap-1.5 text-sm text-brand-charcoal/70">
-                      <ShieldAlert className="h-3.5 w-3.5 text-brand-charcoal/40" />
+                      <ShieldAlert className="h-3.5 w-3.5 text-brand-charcoal/65" />
                       {EVENT_LABELS[type] || type}
                     </div>
                     <div className="h-5 flex-1 overflow-hidden rounded bg-brand-charcoal/5">
@@ -190,7 +190,7 @@ export default function OAuthStatsPage() {
                         style={{ width: `${(count / maxEventCount) * 100}%` }}
                       />
                     </div>
-                    <span className="w-12 text-right text-sm text-brand-charcoal/60">{count}</span>
+                    <span className="w-12 text-right text-sm text-brand-charcoal/70">{count}</span>
                   </div>
                 ))}
             </div>

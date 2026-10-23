@@ -130,7 +130,7 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
                 className={`text-sm font-light tracking-[0.12em] transition-colors ${
                   activeId === section.id
                     ? "text-brand-charcoal"
-                    : "text-brand-charcoal/50 group-hover:text-brand-charcoal"
+                    : "text-brand-charcoal/65 group-hover:text-brand-charcoal"
                 }`}
               >
                 {section.title}

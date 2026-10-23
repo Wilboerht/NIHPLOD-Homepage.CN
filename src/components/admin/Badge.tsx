@@ -8,7 +8,7 @@ const variantCls: Record<BadgeVariant, string> = {
   success: "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20",
   warning: "bg-amber-500/10 text-amber-600 border border-amber-500/20",
   danger: "bg-red-500/10 text-red-600 border border-red-500/20",
-  outline: "border border-brand-charcoal/10 text-brand-charcoal/50",
+  outline: "border border-brand-charcoal/10 text-brand-charcoal/65",
 };
 
 interface BadgeProps {

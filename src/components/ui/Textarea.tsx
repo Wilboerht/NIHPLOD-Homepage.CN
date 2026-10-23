@@ -41,7 +41,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-describedby={describedBy}
           className={cn(
             "w-full rounded-lg border bg-white px-4 py-2.5 text-brand-charcoal transition-colors",
-            "placeholder:text-brand-charcoal/40",
+            "placeholder:text-brand-charcoal/65",
             "focus:outline-none focus:ring-1",
             error
               ? "border-red-500 focus:border-red-500 focus:ring-red-500"
@@ -56,7 +56,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             {error}
           </p>
         ) : hint ? (
-          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/50">
+          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/65">
             {hint}
           </p>
         ) : null}

@@ -77,7 +77,7 @@ function LogoutConfirmContent({
         >
           退出登录
         </h3>
-        <p className="mb-4 text-[13px] font-light leading-relaxed text-brand-charcoal/60">
+        <p className="mb-4 text-[13px] font-light leading-relaxed text-brand-charcoal/70">
           默认仅退出当前设备；勾选后将同时退出所有设备和已授权的平台。
         </p>
         <label className="mb-6 flex cursor-pointer select-none items-center gap-2 text-[13px] tracking-[0.03em] text-brand-charcoal/70">

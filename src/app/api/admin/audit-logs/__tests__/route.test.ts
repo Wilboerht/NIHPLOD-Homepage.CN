@@ -68,7 +68,7 @@ describe("GET /api/admin/audit-logs", () => {
           action: "login",
           targetType: "admin",
           targetId: null,
-          detail: {},
+          detail: { notes: "候选人张三，期望薪资 30k", status: "reviewed" },
           ipAddress: "127.0.0.1",
           admin: { name: "Owner", email: "owner@test.com" },
           createdAt: "2024-01-01T00:00:00.000Z",
@@ -83,6 +83,10 @@ describe("GET /api/admin/audit-logs", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/csv");
+    const csv = await res.text();
+    expect(csv).not.toContain("候选人张三");
+    expect(csv).not.toContain("30k");
+    expect(csv).toContain("[已脱敏]");
 
     expect(createAuditLogStrict).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -441,7 +441,7 @@ export default function AdminAdminsPage() {
         {/* 搜索栏 */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
           <div className="relative max-w-md flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
               placeholder="搜索邮箱/姓名..."
               value={searchInput}
@@ -452,7 +452,7 @@ export default function AdminAdminsPage() {
           </div>
           {canManage && selection.selectedCount > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-brand-charcoal/50">
+              <span className="text-sm text-brand-charcoal/65">
                 已选 {selection.selectedCount} 项
               </span>
               <Button
@@ -467,7 +467,7 @@ export default function AdminAdminsPage() {
               <button
                 onClick={selection.clear}
                 aria-label="取消选择"
-                className="inline-flex rounded p-1.5 text-brand-charcoal/50 hover:text-brand-charcoal/80"
+                className="inline-flex rounded p-1.5 text-brand-charcoal/65 hover:text-brand-charcoal/80"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -520,10 +520,10 @@ export default function AdminAdminsPage() {
                         </Badge>
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">{admin.email}</p>
+                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">{admin.email}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <Badge variant={advisor.variant}>{advisor.label}</Badge>
-                      <span className="text-xs text-brand-charcoal/40">
+                      <span className="text-xs text-brand-charcoal/65">
                         创建于 {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                       </span>
                     </div>
@@ -565,7 +565,7 @@ export default function AdminAdminsPage() {
                       )}
                     </div>
                   ) : (
-                    <span className="text-xs text-brand-charcoal/40">只读</span>
+                    <span className="text-xs text-brand-charcoal/65">只读</span>
                   )}
                 </div>
               </MobileListCard>
@@ -592,22 +592,22 @@ export default function AdminAdminsPage() {
                     />
                   </th>
                 )}
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   姓名
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   邮箱
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   角色
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   测肤子站
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   创建时间
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/60">
+                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   操作
                 </th>
               </tr>
@@ -671,7 +671,7 @@ export default function AdminAdminsPage() {
                         return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
                       })()}
                     </td>
-                    <td className="px-5 py-3.5 text-brand-charcoal/50">
+                    <td className="px-5 py-3.5 text-brand-charcoal/65">
                       {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                     </td>
                     <td className="px-5 py-3.5">
@@ -710,7 +710,7 @@ export default function AdminAdminsPage() {
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/40">只读</span>
+                        <span className="text-xs text-brand-charcoal/65">只读</span>
                       )}
                     </td>
                   </tr>
@@ -821,7 +821,7 @@ export default function AdminAdminsPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">权限（个人覆盖）</p>
-                    <p className="mt-0.5 text-xs text-brand-charcoal/50">
+                    <p className="mt-0.5 text-xs text-brand-charcoal/65">
                       默认继承「{ROLE_LABELS[form.role]}」模板，可单独增减；保存时自动生成覆盖差异
                     </p>
                   </div>
@@ -840,7 +840,7 @@ export default function AdminAdminsPage() {
                 <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                   {PERMISSION_GROUPS.map((group) => (
                     <div key={group.group}>
-                      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-brand-charcoal/40">
+                      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-brand-charcoal/65">
                         {group.group}
                       </p>
                       <div className="grid gap-1.5 sm:grid-cols-2">
@@ -936,7 +936,7 @@ export default function AdminAdminsPage() {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-brand-charcoal/50">
+              <p className="text-xs text-brand-charcoal/65">
                 有效期至：{new Date(recoveryResult.expiresAt).toLocaleString("zh-CN")}
               </p>
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -956,7 +956,7 @@ export default function AdminAdminsPage() {
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                 仅用于目标管理员丢失验证器且备用码不可用的情况。恢复码有效 10 分钟，使用一次后失效。
               </div>
-              <p className="text-sm text-brand-charcoal/60">
+              <p className="text-sm text-brand-charcoal/70">
                 目标管理员：
                 <span className="font-medium text-brand-charcoal">{recoveryTarget?.email}</span>
               </p>

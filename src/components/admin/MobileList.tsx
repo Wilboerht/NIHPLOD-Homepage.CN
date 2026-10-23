@@ -40,7 +40,7 @@ export function MobileList({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-10 text-center text-sm text-brand-charcoal/50 md:hidden",
+          "rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-10 text-center text-sm text-brand-charcoal/65 md:hidden",
           className
         )}
       >
@@ -53,7 +53,7 @@ export function MobileList({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-10 text-center text-sm text-brand-charcoal/50 md:hidden",
+          "rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-10 text-center text-sm text-brand-charcoal/65 md:hidden",
           className
         )}
       >

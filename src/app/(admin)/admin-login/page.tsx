@@ -209,11 +209,11 @@ export default function LoginPage() {
           {/* 标题区：锁形徽章 + 管理面板 */}
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.04]">
-              <Lock className="h-5 w-5 text-brand-charcoal/50" />
+              <Lock className="h-5 w-5 text-brand-charcoal/65" />
             </div>
             <div className="flex flex-col gap-1">
               <h1 className="text-xl font-semibold tracking-tight text-brand-charcoal">管理面板</h1>
-              <p className="text-sm text-brand-charcoal/50">请输入您的管理账号</p>
+              <p className="text-sm text-brand-charcoal/65">请输入您的管理账号</p>
             </div>
           </div>
 
@@ -261,7 +261,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -315,21 +315,21 @@ export default function LoginPage() {
             </Button>
 
             {/* 找回指引 */}
-            <p className="text-center text-xs text-brand-charcoal/40">
+            <p className="text-center text-xs text-brand-charcoal/65">
               忘记密码或丢失验证器？请联系超级管理员重置
             </p>
           </form>
 
           {/* 子站切换（面包屑下拉） */}
-          <div className="flex items-center justify-center gap-2 text-xs text-brand-charcoal/40">
+          <div className="flex items-center justify-center gap-2 text-xs text-brand-charcoal/65">
             <Link href="/" className="transition-colors hover:text-brand-charcoal/70">
               首页
             </Link>
-            <span className="text-brand-charcoal/25">/</span>
+            <span className="text-brand-charcoal/65">/</span>
             <div className="relative" ref={breadcrumbRef}>
               <button
                 onClick={() => setBreadcrumbOpen((v) => !v)}
-                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 font-medium text-brand-charcoal/70 transition-colors hover:text-brand-charcoal"
               >
                 后台登录（官网）
                 <ChevronDown
@@ -342,29 +342,29 @@ export default function LoginPage() {
               {breadcrumbOpen && (
                 <div className="absolute bottom-full left-1/2 z-30 mb-2 flex -translate-x-1/2 flex-col gap-2 whitespace-nowrap rounded-xl border border-brand-charcoal/10 bg-white p-3 text-xs shadow-lg">
                   <div className="flex items-center gap-2">
-                    <span className="select-none text-brand-charcoal/25">/</span>
+                    <span className="select-none text-brand-charcoal/65">/</span>
                     <a
                       href="https://smart.nihplod.cn/admin"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"
+                      className="inline-flex items-center gap-1 font-medium text-brand-charcoal/70 transition-colors hover:text-brand-primary"
                       onClick={() => setBreadcrumbOpen(false)}
                     >
                       后台登录（AI 护肤顾问）
-                      <ExternalLink className="h-3 w-3 text-brand-charcoal/40" />
+                      <ExternalLink className="h-3 w-3 text-brand-charcoal/65" />
                     </a>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="select-none text-brand-charcoal/25">/</span>
+                    <span className="select-none text-brand-charcoal/65">/</span>
                     <a
                       href="https://ba.nihplod.cn/admin"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-brand-charcoal/60 transition-colors hover:text-brand-primary"
+                      className="inline-flex items-center gap-1 font-medium text-brand-charcoal/70 transition-colors hover:text-brand-primary"
                       onClick={() => setBreadcrumbOpen(false)}
                     >
                       后台登录（授权管理）
-                      <ExternalLink className="h-3 w-3 text-brand-charcoal/40" />
+                      <ExternalLink className="h-3 w-3 text-brand-charcoal/65" />
                     </a>
                   </div>
                 </div>
@@ -376,10 +376,10 @@ export default function LoginPage() {
 
       {/* 页脚 */}
       <footer className="flex flex-col items-center gap-1 px-6 pb-6">
-        <p className="text-[11px] font-light tracking-widest text-brand-charcoal/40">
+        <p className="text-[11px] font-light tracking-widest text-brand-charcoal/65">
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
-        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[11px] font-light tracking-normal text-brand-charcoal/40">
+        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[11px] font-light tracking-normal text-brand-charcoal/65">
           <Link
             href="https://beian.miit.gov.cn/"
             target="_blank"

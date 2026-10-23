@@ -82,14 +82,14 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           {!value && !disabled && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-charcoal/40"
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-charcoal/65"
             >
               {props.placeholder || "选择日期"}
             </span>
           )}
           <Calendar
             aria-hidden="true"
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40"
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65"
           />
         </div>
         {error ? (
@@ -97,7 +97,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             {error}
           </p>
         ) : hint ? (
-          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/50">
+          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/65">
             {hint}
           </p>
         ) : null}

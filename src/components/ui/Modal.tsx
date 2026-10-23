@@ -280,7 +280,7 @@ export function Modal({
           </h2>
         )}
         {description && (
-          <p id={descriptionId} className="mt-1 text-sm text-brand-charcoal/50">
+          <p id={descriptionId} className="mt-1 text-sm text-brand-charcoal/65">
             {description}
           </p>
         )}
@@ -289,7 +289,7 @@ export function Modal({
         <button
           type="button"
           onClick={requestClose}
-          className="-mr-2 -mt-2 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-brand-charcoal/50 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal sm:h-9 sm:w-9"
+          className="-mr-2 -mt-2 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal sm:h-9 sm:w-9"
           aria-label="关闭"
         >
           <X className="h-5 w-5" />

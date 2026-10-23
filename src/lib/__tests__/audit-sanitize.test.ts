@@ -5,7 +5,11 @@
  *       "detail" 键不再被误当作地址脱敏、嵌套对象递归处理
  */
 import { describe, it, expect } from "vitest";
-import { maskAuditDetail, maskAuditText } from "@/lib/audit-sanitize";
+import {
+  maskAuditDetail,
+  maskAuditText,
+  redactSensitiveAuditDetail,
+} from "@/lib/audit-sanitize";
 
 describe("maskAuditDetail", () => {
   it("手机号相关键脱敏", () => {
@@ -76,6 +80,44 @@ describe("maskAuditDetail", () => {
       note: "联系 138****8000 或 ad***@example.com，证件 **************",
     });
     expect(maskAuditText("13800138000")).toBe("138****8000");
+  });
+
+  it("留言正文、备注和简历路径对非敏感查看者整体隐藏", () => {
+    const result = maskAuditDetail({
+      content: "我的手机号是 13800138000，想咨询产品",
+      reply: "内部跟进：已回电",
+      notes: "候选人姓名张三，期望薪资 30k",
+      resumePath: "resumes/2026/张三个人简历.pdf",
+      nested: { messageContent: "嵌套留言内容", resumeFileName: "张三.pdf", fileName: "spent.xlsx" },
+    });
+    expect(result).toEqual({
+      content: "[已脱敏]",
+      reply: "[已脱敏]",
+      notes: "[已脱敏]",
+      resumePath: "[已脱敏]",
+      nested: { messageContent: "[已脱敏]", resumeFileName: "[已脱敏]", fileName: "spent.xlsx" },
+    });
+  });
+
+  it("redactSensitiveAuditDetail 对所有查看者隐藏高敏自由文本，但保留普通文件名", () => {
+    const detail = {
+      notes: "候选人备注",
+      content: "留言正文",
+      reply: "内部备注",
+      resumePath: "private:resumes/a.pdf",
+      resumeFileName: "a.pdf",
+      fileName: "spent-import.xlsx",
+      ipAddress: "127.0.0.1",
+    };
+    expect(redactSensitiveAuditDetail(detail)).toEqual({
+      notes: "[已脱敏]",
+      content: "[已脱敏]",
+      reply: "[已脱敏]",
+      resumePath: "[已脱敏]",
+      resumeFileName: "[已脱敏]",
+      fileName: "spent-import.xlsx",
+      ipAddress: "127.0.0.1",
+    });
   });
 
   it("null / undefined / 原始值原样返回", () => {

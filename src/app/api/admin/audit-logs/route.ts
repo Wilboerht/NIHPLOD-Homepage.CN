@@ -15,7 +15,11 @@ import {
   AUDIT_ACTION_LABELS as ACTION_LABELS,
   AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
 } from "@/lib/audit-labels";
-import { maskAuditDetail, maskAuditText } from "@/lib/audit-sanitize";
+import {
+  maskAuditDetail,
+  maskAuditText,
+  redactSensitiveAuditDetail,
+} from "@/lib/audit-sanitize";
 import { maskIdentifier, maskIp } from "@/lib/mask-phone";
 import { escapeCSV } from "@/lib/sso-audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -78,20 +82,26 @@ export async function GET(request: NextRequest) {
     // 审计详情脱敏：无 audit:sensitive:read 时遮盖 PII、IP、UA 与操作者邮箱
     type AuditLogRow = Awaited<ReturnType<typeof listAuditLogs>>["items"][number];
     const canViewSensitive = hasAdminPermission(admin, "audit:sensitive:read");
-    const sanitizeLog = (log: AuditLogRow): AuditLogRow =>
-      canViewSensitive
-        ? log
-        : {
-            ...log,
-            targetLabel: log.targetLabel ? maskAuditText(log.targetLabel) : null,
-            detail: maskAuditDetail(log.detail) as AuditLogRow["detail"],
-            ipAddress: log.ipAddress ? maskIp(log.ipAddress) : null,
-            userAgent: null,
-            actorEmail: log.actorEmail ? maskIdentifier(log.actorEmail) : null,
-            admin: log.admin
-              ? { ...log.admin, email: maskIdentifier(log.admin.email) ?? "-" }
-              : null,
-          };
+    // 高敏自由文本（留言/备注/简历）对所有人隐藏；敏感权限只影响 PII/IP/UA。
+    const scrubLog = (log: AuditLogRow): AuditLogRow => ({
+      ...log,
+      detail: redactSensitiveAuditDetail(log.detail) as AuditLogRow["detail"],
+    });
+    const sanitizeLog = (log: AuditLogRow): AuditLogRow => {
+      const scrubbed = scrubLog(log);
+      if (canViewSensitive) return scrubbed;
+      return {
+        ...scrubbed,
+        targetLabel: scrubbed.targetLabel ? maskAuditText(scrubbed.targetLabel) : null,
+        detail: maskAuditDetail(scrubbed.detail) as AuditLogRow["detail"],
+        ipAddress: scrubbed.ipAddress ? maskIp(scrubbed.ipAddress) : null,
+        userAgent: null,
+        actorEmail: scrubbed.actorEmail ? maskIdentifier(scrubbed.actorEmail) : null,
+        admin: scrubbed.admin
+          ? { ...scrubbed.admin, email: maskIdentifier(scrubbed.admin.email) ?? "-" }
+          : null,
+      };
+    };
 
     // 仅日期字符串按 UTC+8 当天 00:00 / 23:59:59.999 解析；
     // 不能直接 z.coerce.date()，否则 YYYY-MM-DD 会被当成 UTC 00:00（=北京时间 08:00）。

@@ -16,7 +16,7 @@ interface BadgeProps {
 const variantStyles: Record<BadgeVariant, string> = {
   default: "bg-brand-charcoal/8 text-brand-charcoal/80",
   primary: "bg-brand-primary/10 text-brand-primary",
-  secondary: "bg-brand-charcoal/8 text-brand-charcoal/60",
+  secondary: "bg-brand-charcoal/8 text-brand-charcoal/70",
   success: "bg-emerald-50 text-emerald-700",
   warning: "bg-amber-50 text-amber-700",
   danger: "bg-red-50 text-red-700",

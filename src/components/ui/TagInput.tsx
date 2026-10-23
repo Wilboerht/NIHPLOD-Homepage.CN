@@ -110,7 +110,7 @@ export function TagInput({
               <button
                 type="button"
                 onClick={addTag}
-                className="rounded p-1 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                className="rounded p-1 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -126,11 +126,11 @@ export function TagInput({
             {error}
           </span>
         ) : (
-          <span id={hintId} className="text-brand-charcoal/50">
+          <span id={hintId} className="text-brand-charcoal/65">
             按回车添加标签
           </span>
         )}
-        <span className="text-brand-charcoal/50">
+        <span className="text-brand-charcoal/65">
           {value.length}/{maxTags}
         </span>
       </div>

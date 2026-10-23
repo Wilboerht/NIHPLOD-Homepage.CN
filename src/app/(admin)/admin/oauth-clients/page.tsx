@@ -912,7 +912,7 @@ if (!payload) {
         actions={
           <>
             <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -948,7 +948,7 @@ if (!payload) {
             </Button>
           </div>
         ) : clients.length === 0 ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center text-sm text-brand-charcoal/50">
+          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center text-sm text-brand-charcoal/65">
             暂无数据
             {debouncedSearch && "，请调整筛选条件后重试"}
           </div>
@@ -962,7 +962,7 @@ if (!payload) {
                   aria-label={`查看 ${c.name} 详情`}
                 >
                   <p className="truncate font-medium text-brand-charcoal">{c.name}</p>
-                  <p className="mt-0.5 truncate font-mono text-xs text-brand-charcoal/50">
+                  <p className="mt-0.5 truncate font-mono text-xs text-brand-charcoal/65">
                     {c.clientId}
                   </p>
                 </button>
@@ -981,11 +981,11 @@ if (!payload) {
                   </Badge>
                 ))}
                 {c.scopes.length > 3 && (
-                  <span className="text-xs text-brand-charcoal/40">+{c.scopes.length - 3}</span>
+                  <span className="text-xs text-brand-charcoal/65">+{c.scopes.length - 3}</span>
                 )}
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/50">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/65">
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5" />
                   {c.activeUserCount ?? 0} 个活跃会话
@@ -1003,7 +1003,7 @@ if (!payload) {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
                 <button
                   onClick={() => copyToClipboard(c.clientId)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
                 >
                   <Copy className="h-3.5 w-3.5" />
                   复制 Client ID
@@ -1033,34 +1033,34 @@ if (!payload) {
         <table className="w-full min-w-[960px]">
           <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
             <tr>
-              <th className="min-w-[10rem] px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="min-w-[10rem] px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 名称
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 Client ID
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 类型
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 回调 URL
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 Scopes
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 活跃会话
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 最近活跃
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 状态
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
                 创建时间
               </th>
-              <th className="sticky right-0 bg-brand-charcoal/[0.02] px-3 py-2 text-right text-sm font-medium text-brand-charcoal/60">
+              <th className="sticky right-0 bg-brand-charcoal/[0.02] px-3 py-2 text-right text-sm font-medium text-brand-charcoal/70">
                 操作
               </th>
             </tr>
@@ -1081,7 +1081,7 @@ if (!payload) {
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-8 text-center text-brand-charcoal/50">
+                <td colSpan={10} className="py-8 text-center text-brand-charcoal/65">
                   暂无数据
                   {debouncedSearch && "，请调整筛选条件后重试"}
                 </td>
@@ -1109,7 +1109,7 @@ if (!payload) {
                         <button
                           aria-label="复制 Client ID"
                           onClick={() => copyToClipboard(c.clientId)}
-                          className="inline-flex text-brand-charcoal/40 hover:text-brand-charcoal/70"
+                          className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal/70"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
@@ -1121,7 +1121,7 @@ if (!payload) {
                       {c.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </td>
-                  <td className="max-w-[200px] truncate px-3 py-2 text-sm text-brand-charcoal/60">
+                  <td className="max-w-[200px] truncate px-3 py-2 text-sm text-brand-charcoal/70">
                     {c.redirectUris.join(", ")}
                   </td>
                   <td className="px-3 py-2">
@@ -1133,13 +1133,13 @@ if (!payload) {
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-sm text-brand-charcoal/60">
+                  <td className="px-3 py-2 text-sm text-brand-charcoal/70">
                     <div className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" />
                       {c.activeUserCount ?? "-"}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-sm text-brand-charcoal/50">
+                  <td className="px-3 py-2 text-sm text-brand-charcoal/65">
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
                       {c.lastActiveAt ? formatDate(c.lastActiveAt) : "-"}
@@ -1150,7 +1150,7 @@ if (!payload) {
                       {c.isActive ? "启用" : "禁用"}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-sm text-brand-charcoal/50">
+                  <td className="px-3 py-2 text-sm text-brand-charcoal/65">
                     {formatDate(c.createdAt)}
                   </td>
                   <td className="sticky right-0 bg-white px-3 py-2 text-right">
@@ -1548,7 +1548,7 @@ if (!payload) {
         }
       >
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-brand-charcoal/65">
             输入 Client Secret 与回调地址，验证凭据、JWKS、authorize、token、userinfo、introspect
             全链路连通性。
           </p>
@@ -1557,7 +1557,7 @@ if (!payload) {
           </p>
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-brand-charcoal/60">
+              <label className="mb-1 block text-xs font-medium text-brand-charcoal/70">
                 Client Secret
               </label>
               <Input
@@ -1570,7 +1570,7 @@ if (!payload) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-brand-charcoal/60">
+              <label className="mb-1 block text-xs font-medium text-brand-charcoal/70">
                 回调地址
               </label>
               <Input
@@ -1602,10 +1602,10 @@ if (!payload) {
                     <span className="text-brand-charcoal/70">
                       {s.step}
                       {s.durationMs !== undefined && (
-                        <span className="ml-1 text-brand-charcoal/40">({s.durationMs}ms)</span>
+                        <span className="ml-1 text-brand-charcoal/65">({s.durationMs}ms)</span>
                       )}
                       {s.detail && (
-                        <span className="ml-1 text-brand-charcoal/50">— {s.detail}</span>
+                        <span className="ml-1 text-brand-charcoal/65">— {s.detail}</span>
                       )}
                     </span>
                   </div>
@@ -1639,7 +1639,7 @@ if (!payload) {
                 "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 sdkClientType === "confidential"
                   ? "bg-white text-brand-charcoal shadow-sm"
-                  : "text-brand-charcoal/50 hover:text-brand-charcoal/70"
+                  : "text-brand-charcoal/65 hover:text-brand-charcoal/70"
               )}
             >
               <Shield className="h-4 w-4" />
@@ -1651,14 +1651,14 @@ if (!payload) {
                 "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 sdkClientType === "public"
                   ? "bg-white text-brand-charcoal shadow-sm"
-                  : "text-brand-charcoal/50 hover:text-brand-charcoal/70"
+                  : "text-brand-charcoal/65 hover:text-brand-charcoal/70"
               )}
             >
               <Smartphone className="h-4 w-4" />
               Public（SPA/移动端）
             </button>
           </div>
-          <p className="text-sm text-brand-charcoal/60">
+          <p className="text-sm text-brand-charcoal/70">
             {sdkClientType === "confidential"
               ? "适用于 Next.js / 服务端应用，后端通过 introspection 验证 token。client_secret 必须保密。"
               : "适用于 SPA、移动端、桌面端，不传输 client_secret，必须使用 PKCE。"}
@@ -1679,7 +1679,7 @@ if (!payload) {
               </Tooltip>
             </span>
           </div>
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-brand-charcoal/65">
             将代码复制到子项目中即可快速接入。详情请参考{" "}
             <a
               href={`${process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn"}/api/oauth/docs`}
@@ -1710,33 +1710,33 @@ if (!payload) {
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">基本信息</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">状态</span>
+                    <span className="text-brand-charcoal/65">状态</span>
                     <Badge variant={detailClient.isActive ? "success" : "danger"}>
                       {detailClient.isActive ? "启用" : "禁用"}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">类型</span>
+                    <span className="text-brand-charcoal/65">类型</span>
                     <Badge variant={detailClient.isPublic ? "warning" : "secondary"}>
                       {detailClient.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">活跃会话</span>
+                    <span className="text-brand-charcoal/65">活跃会话</span>
                     <span>{detailClient.activeUserCount ?? 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">最近活跃</span>
+                    <span className="text-brand-charcoal/65">最近活跃</span>
                     <span>
                       {detailClient.lastActiveAt ? formatDateTime(detailClient.lastActiveAt) : "-"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">创建时间</span>
+                    <span className="text-brand-charcoal/65">创建时间</span>
                     <span>{formatDateTime(detailClient.createdAt)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">更新时间</span>
+                    <span className="text-brand-charcoal/65">更新时间</span>
                     <span>{formatDateTime(detailClient.updatedAt)}</span>
                   </div>
                 </div>
@@ -1746,15 +1746,15 @@ if (!payload) {
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">安全参数</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">授权码有效期</span>
+                    <span className="text-brand-charcoal/65">授权码有效期</span>
                     <span>{detailClient.codeTtlSeconds ?? 300} 秒</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">Access Token 有效期</span>
+                    <span className="text-brand-charcoal/65">Access Token 有效期</span>
                     <span>{detailClient.accessTokenTtlSeconds ?? 28800} 秒</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/50">最近密钥轮换</span>
+                    <span className="text-brand-charcoal/65">最近密钥轮换</span>
                     <span className="text-right">
                       {detailClient.secretRotatedAt ? (
                         <>
@@ -1877,7 +1877,7 @@ if (!payload) {
 export default function OAuthClientsPageWrapper() {
   return (
     <RequirePermission permission="sso:clients:read">
-      <Suspense fallback={<div className="p-6 text-center text-brand-charcoal/50">加载中...</div>}>
+      <Suspense fallback={<div className="p-6 text-center text-brand-charcoal/65">加载中...</div>}>
         <OAuthClientsPage />
       </Suspense>
     </RequirePermission>

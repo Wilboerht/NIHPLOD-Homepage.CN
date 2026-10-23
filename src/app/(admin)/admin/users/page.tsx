@@ -42,6 +42,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { apiConsole } from "@/lib/logger";
+import { downloadFromUrl } from "@/lib/client-download";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -253,6 +254,7 @@ function AdminUsersContent() {
 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
@@ -662,12 +664,23 @@ function AdminUsersContent() {
     }
   };
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (status) params.set("status", status);
     if (level) params.set("level", level);
-    window.open(`/api/admin/users?export=csv&${params.toString()}`, "_blank");
+    const qs = params.toString();
+    setExporting(true);
+    try {
+      await downloadFromUrl(
+        `/api/admin/users?export=csv${qs ? `&${qs}` : ""}`,
+        `users-${new Date().toISOString().slice(0, 10)}.csv`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const openDetail = async (id: string) => {
@@ -744,8 +757,9 @@ function AdminUsersContent() {
               size="sm"
               leftIcon={<Download className="h-4 w-4" />}
               onClick={exportCsv}
+              loading={exporting}
             >
-              导出 CSV
+              {exporting ? "导出中..." : "导出 CSV"}
             </Button>
             <Button
               variant="outline"
@@ -762,7 +776,7 @@ function AdminUsersContent() {
       {/* 搜索栏 */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
           <Input
             placeholder="搜索用户 ID/完整手机号/昵称..."
             value={searchInput}
@@ -778,7 +792,7 @@ function AdminUsersContent() {
                 updateParams({ search: "" });
               }}
               aria-label="清除搜索"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 hover:text-brand-charcoal"
             >
               <X className="h-4 w-4" />
             </button>
@@ -812,7 +826,7 @@ function AdminUsersContent() {
           />
           {canWriteUsers && selectedIds.size > 0 && (
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <span className="text-sm text-brand-charcoal/50">已选 {selectedCount} 项</span>
+              <span className="text-sm text-brand-charcoal/65">已选 {selectedCount} 项</span>
               <Button
                 size="sm"
                 variant="outline"
@@ -890,7 +904,7 @@ function AdminUsersContent() {
                           />
                         </label>
                       )}
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-sm text-brand-charcoal/50">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-sm text-brand-charcoal/65">
                         {user.avatar && user.avatar.startsWith("http") ? (
                           <Image
                             src={user.avatar}
@@ -908,7 +922,7 @@ function AdminUsersContent() {
                         <p className="truncate font-medium text-brand-charcoal">
                           {user.nickname || "未设置"}
                         </p>
-                        <p className="truncate text-xs text-brand-charcoal/50">
+                        <p className="truncate text-xs text-brand-charcoal/65">
                           {user.phone || "未绑定手机号"}
                         </p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -924,7 +938,7 @@ function AdminUsersContent() {
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                      <span className="text-xs text-brand-charcoal/50">
+                      <span className="text-xs text-brand-charcoal/65">
                         注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                       </span>
                       <div className="flex items-center gap-1">
@@ -1025,7 +1039,7 @@ function AdminUsersContent() {
                       )}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
+                          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/65">
                             {user.avatar && user.avatar.startsWith("http") ? (
                               <Image
                                 src={user.avatar}
@@ -1049,7 +1063,7 @@ function AdminUsersContent() {
                             {membershipLevelMap[user.membershipLevel].label}
                           </Badge>
                         ) : (
-                          <span className="text-brand-charcoal/40">—</span>
+                          <span className="text-brand-charcoal/65">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1057,7 +1071,7 @@ function AdminUsersContent() {
                           {userStatusMap[user.status].label}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-brand-charcoal/50">
+                      <td className="px-4 py-3 text-brand-charcoal/65">
                         {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                       </td>
                       <td className="px-4 py-3">
@@ -1112,7 +1126,7 @@ function AdminUsersContent() {
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
           </div>
         ) : !detailUser ? (
-          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/50">
+          <div className="flex h-64 flex-col items-center justify-center text-brand-charcoal/65">
             <User className="mb-2 h-12 w-12" />
             <p>{detailError || "用户不存在"}</p>
           </div>
@@ -1120,7 +1134,7 @@ function AdminUsersContent() {
           <div className="space-y-5">
             {/* 顶部：头像 + ID */}
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xl text-brand-charcoal/50">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xl text-brand-charcoal/65">
                 {detailUser.avatar && detailUser.avatar.startsWith("http") ? (
                   <Image
                     src={detailUser.avatar}
@@ -1138,7 +1152,7 @@ function AdminUsersContent() {
                 <p className="truncate text-lg font-medium text-brand-charcoal">
                   {detailUser.nickname || "未设置昵称"}
                 </p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/50">
+                <p className="truncate font-mono text-xs text-brand-charcoal/65">
                   ID: {detailUser.id}
                 </p>
               </div>
@@ -1163,7 +1177,7 @@ function AdminUsersContent() {
                   className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
                     activeDetailTab === t.key
                       ? "bg-brand-charcoal text-white"
-                      : "text-brand-charcoal/60 hover:bg-brand-charcoal/5"
+                      : "text-brand-charcoal/70 hover:bg-brand-charcoal/5"
                   }`}
                 >
                   {t.label}
@@ -1177,7 +1191,7 @@ function AdminUsersContent() {
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">基本信息</h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/65">
                       <Shield className="h-3.5 w-3.5" />
                       账号状态
                     </dt>
@@ -1188,7 +1202,7 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/65">
                       <Smartphone className="h-3.5 w-3.5" />
                       手机号
                     </dt>
@@ -1214,7 +1228,7 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="text-brand-charcoal/50">性别</dt>
+                    <dt className="text-brand-charcoal/65">性别</dt>
                     <dd>
                       {detailUser.gender === "male"
                         ? "男"
@@ -1224,7 +1238,7 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/65">
                       <CalendarDays className="h-3.5 w-3.5" />
                       生日
                     </dt>
@@ -1258,7 +1272,7 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/65">
                       <Link2 className="h-3.5 w-3.5" />
                       第三方平台绑定
                     </dt>
@@ -1281,12 +1295,12 @@ function AdminUsersContent() {
                               )}
                               {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
                               <code
-                                className="max-w-[11rem] truncate font-mono text-[11px] text-brand-charcoal/40"
+                                className="max-w-[11rem] truncate font-mono text-[11px] text-brand-charcoal/65"
                                 title={`OpenID: ${identity.subjectId}`}
                               >
                                 {identity.subjectId}
                               </code>
-                              <span className="text-xs text-brand-charcoal/40">
+                              <span className="text-xs text-brand-charcoal/65">
                                 {formatDate(identity.createdAt)}
                               </span>
                               {canWriteUsers && (
@@ -1313,34 +1327,34 @@ function AdminUsersContent() {
                           微信已绑定（历史数据）
                         </Badge>
                       ) : (
-                        <span className="text-brand-charcoal/50">未绑定</span>
+                        <span className="text-brand-charcoal/65">未绑定</span>
                       )}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex shrink-0 items-center gap-1.5 text-brand-charcoal/65">
                       <Link2 className="h-3.5 w-3.5" />
                       微信 UnionID
                     </dt>
                     <dd>
                       {detailUser.wechatUnionId ? (
                         <code
-                          className="font-mono text-[11px] text-brand-charcoal/60"
+                          className="font-mono text-[11px] text-brand-charcoal/70"
                           title={detailUser.wechatUnionId}
                         >
                           {detailUser.wechatUnionId}
                         </code>
                       ) : (
-                        <span className="text-brand-charcoal/50">未绑定</span>
+                        <span className="text-brand-charcoal/65">未绑定</span>
                       )}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">注册时间</dt>
+                    <dt className="text-brand-charcoal/65">注册时间</dt>
                     <dd>{formatDate(detailUser.createdAt)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">最后更新</dt>
+                    <dt className="text-brand-charcoal/65">最后更新</dt>
                     <dd>{formatDate(detailUser.updatedAt)}</dd>
                   </div>
                 </dl>
@@ -1410,7 +1424,7 @@ function AdminUsersContent() {
                     </Button>
                   )}
                   {!canWriteUsers && !canSecurityWrite && !canDeleteUsers && (
-                    <p className="text-xs text-brand-charcoal/40">
+                    <p className="text-xs text-brand-charcoal/65">
                       账号状态变更、密码重置与删除需要更高权限
                     </p>
                   )}
@@ -1423,7 +1437,7 @@ function AdminUsersContent() {
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="flex-1 rounded-xl bg-brand-charcoal/[0.03] p-4">
-                    <p className="text-xs text-brand-charcoal/50">可用积分</p>
+                    <p className="text-xs text-brand-charcoal/65">可用积分</p>
                     <p className="mt-1 font-mono text-2xl font-semibold text-brand-charcoal">
                       {detailPoints ? detailPoints.available.toLocaleString() : "-"}
                     </p>
@@ -1445,10 +1459,10 @@ function AdminUsersContent() {
                   <h3 className="mb-2 text-sm font-medium text-brand-charcoal">积分流水</h3>
                   {ledgerLoading ? (
                     <div className="flex justify-center py-6">
-                      <Loader2 className="h-5 w-5 animate-spin text-brand-charcoal/30" />
+                      <Loader2 className="h-5 w-5 animate-spin text-brand-charcoal/65" />
                     </div>
                   ) : ledgerItems.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无积分流水</p>
+                    <p className="py-4 text-center text-sm text-brand-charcoal/65">暂无积分流水</p>
                   ) : (
                     <>
                       <div className="space-y-2">
@@ -1458,11 +1472,11 @@ function AdminUsersContent() {
                             className="flex items-center justify-between gap-3 rounded-lg border border-brand-charcoal/10 bg-white px-4 py-2.5"
                           >
                             <div className="flex min-w-0 items-center gap-2">
-                              <span className="shrink-0 text-xs text-brand-charcoal/60">
+                              <span className="shrink-0 text-xs text-brand-charcoal/70">
                                 {POINT_TYPE_LABELS[item.type] || item.type}
                               </span>
                               {item.note && (
-                                <span className="truncate text-xs text-brand-charcoal/40">
+                                <span className="truncate text-xs text-brand-charcoal/65">
                                   {item.note}
                                 </span>
                               )}
@@ -1475,7 +1489,7 @@ function AdminUsersContent() {
                               >
                                 {item.amount > 0 ? `+${item.amount}` : item.amount}
                               </span>
-                              <span className="text-xs text-brand-charcoal/40">
+                              <span className="text-xs text-brand-charcoal/65">
                                 {formatDate(item.createdAt)}
                               </span>
                             </div>
@@ -1483,7 +1497,7 @@ function AdminUsersContent() {
                         ))}
                       </div>
                       {ledgerTotalPages > 1 && (
-                        <div className="mt-2 flex items-center justify-end gap-2 text-xs text-brand-charcoal/50">
+                        <div className="mt-2 flex items-center justify-end gap-2 text-xs text-brand-charcoal/65">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -1513,14 +1527,14 @@ function AdminUsersContent() {
                   <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
                     积分兑换记录
                     {detailPoints && detailPoints.redemptionTotal > 0 && (
-                      <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                      <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
                         共 {detailPoints.redemptionTotal} 条，展示最近{" "}
                         {detailPoints.redemptions.length} 条
                       </span>
                     )}
                   </h3>
                   {!detailPoints || detailPoints.redemptions.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无兑换记录</p>
+                    <p className="py-4 text-center text-sm text-brand-charcoal/65">暂无兑换记录</p>
                   ) : (
                     <div className="space-y-2">
                       {detailPoints.redemptions.map((r) => (
@@ -1533,7 +1547,7 @@ function AdminUsersContent() {
                               <p className="truncate text-sm font-medium text-brand-charcoal">
                                 {r.productName}
                               </p>
-                              <span className="shrink-0 text-xs text-brand-charcoal/40">
+                              <span className="shrink-0 text-xs text-brand-charcoal/65">
                                 {r.points.toLocaleString()} 分
                               </span>
                             </div>
@@ -1545,7 +1559,7 @@ function AdminUsersContent() {
                               {REDEMPTION_STATUS_LABELS[r.status]}
                             </span>
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/50">
+                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
                             <span>{formatDate(r.createdAt)}</span>
                             <span>参考价 ¥{r.priceYuan.toLocaleString()}</span>
                             {r.waybillNo && (
@@ -1555,7 +1569,7 @@ function AdminUsersContent() {
                             )}
                           </div>
                           {r.address && (
-                            <p className="mt-1 text-xs text-brand-charcoal/50">
+                            <p className="mt-1 text-xs text-brand-charcoal/65">
                               快照收货：{r.recipient} {r.phone} {r.address}
                             </p>
                           )}
@@ -1574,7 +1588,7 @@ function AdminUsersContent() {
                   <h3 className="text-sm font-medium text-brand-charcoal">
                     登录历史
                     {detailLoginAttempts.length > 0 && (
-                      <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                      <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
                         展示最近 {detailLoginAttempts.length} 条
                       </span>
                     )}
@@ -1588,14 +1602,14 @@ function AdminUsersContent() {
                   )}
                 </div>
                 {detailLoginAttempts.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无登录记录</p>
+                  <p className="py-4 text-center text-sm text-brand-charcoal/65">暂无登录记录</p>
                 ) : (
                   (() => {
                     const visibleAttempts = loginFailedOnly
                       ? detailLoginAttempts.filter((a) => !a.success)
                       : detailLoginAttempts;
                     return visibleAttempts.length === 0 ? (
-                      <p className="py-4 text-center text-sm text-brand-charcoal/40">
+                      <p className="py-4 text-center text-sm text-brand-charcoal/65">
                         最近记录中没有失败登录
                       </p>
                     ) : (
@@ -1620,16 +1634,16 @@ function AdminUsersContent() {
                                 </span>
                               )}
                               {a.clientId && (
-                                <span className="text-xs text-brand-charcoal/40">{a.clientId}</span>
+                                <span className="text-xs text-brand-charcoal/65">{a.clientId}</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-brand-charcoal/40">
+                            <div className="flex items-center gap-3 text-xs text-brand-charcoal/65">
                               {a.ipAddress && <span className="font-mono">{a.ipAddress}</span>}
                               <span>{formatDate(a.createdAt)}</span>
                             </div>
                             {a.userAgent && (
                               <p
-                                className="w-full truncate text-xs text-brand-charcoal/30"
+                                className="w-full truncate text-xs text-brand-charcoal/65"
                                 title={a.userAgent}
                               >
                                 {a.userAgent}
@@ -1648,7 +1662,7 @@ function AdminUsersContent() {
             {activeDetailTab === "address" && (
               <div>
                 {detailAddresses.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无收货地址</p>
+                  <p className="py-4 text-center text-sm text-brand-charcoal/65">暂无收货地址</p>
                 ) : (
                   <div className="space-y-2">
                     {detailAddresses.map((a) => (
@@ -1658,7 +1672,7 @@ function AdminUsersContent() {
                       >
                         <p className="text-sm font-medium text-brand-charcoal">
                           {a.recipient}
-                          <span className="ml-2 text-xs font-normal text-brand-charcoal/50">
+                          <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
                             {a.phone}
                           </span>
                           {a.isDefault && (
@@ -1667,7 +1681,7 @@ function AdminUsersContent() {
                             </span>
                           )}
                         </p>
-                        <p className="mt-1 text-xs text-brand-charcoal/60">
+                        <p className="mt-1 text-xs text-brand-charcoal/70">
                           {a.region} {a.detail}
                         </p>
                       </div>
@@ -1683,13 +1697,13 @@ function AdminUsersContent() {
                 <h3 className="mb-2 text-sm font-medium text-brand-charcoal">
                   消费补录记录
                   {detailAdjustmentTotal > 0 && (
-                    <span className="ml-2 text-xs font-normal text-brand-charcoal/40">
+                    <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
                       共 {detailAdjustmentTotal} 条，展示最近 {detailAdjustments.length} 条
                     </span>
                   )}
                 </h3>
                 {detailAdjustments.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-brand-charcoal/40">暂无消费记录</p>
+                  <p className="py-4 text-center text-sm text-brand-charcoal/65">暂无消费记录</p>
                 ) : (
                   <div className="space-y-2">
                     {detailAdjustments.map((a) => (
@@ -1702,7 +1716,7 @@ function AdminUsersContent() {
                             <p className="truncate font-mono text-sm text-brand-charcoal">
                               {a.orderNo}
                             </p>
-                            <span className="shrink-0 text-xs text-brand-charcoal/40">
+                            <span className="shrink-0 text-xs text-brand-charcoal/65">
                               {SPENT_CHANNEL_LABELS[
                                 a.channel as keyof typeof SPENT_CHANNEL_LABELS
                               ] ?? a.channel}
@@ -1716,7 +1730,7 @@ function AdminUsersContent() {
                             {SPENT_STATUS_LABELS[a.status]}
                           </span>
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/50">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
                           <span>{formatDate(a.createdAt)}</span>
                           {a.amountClaimed != null && (
                             <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
@@ -1743,7 +1757,7 @@ function AdminUsersContent() {
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">等级成长</h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/65">
                       <Award className="h-3.5 w-3.5" />
                       会员等级
                     </dt>
@@ -1754,12 +1768,12 @@ function AdminUsersContent() {
                           {membershipLevelMap[detailUser.membershipLevel].label}
                         </Badge>
                       ) : (
-                        <span className="text-brand-charcoal/40">未设置</span>
+                        <span className="text-brand-charcoal/65">未设置</span>
                       )}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="flex items-center gap-1.5 text-brand-charcoal/50">
+                    <dt className="flex items-center gap-1.5 text-brand-charcoal/65">
                       <Wallet className="h-3.5 w-3.5" />
                       累计消费
                     </dt>
@@ -1770,7 +1784,7 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">银卡激活时间</dt>
+                    <dt className="text-brand-charcoal/65">银卡激活时间</dt>
                     <dd>
                       {detailUser.silverActivatedAt
                         ? formatDate(detailUser.silverActivatedAt)
@@ -1778,13 +1792,13 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">金卡激活时间</dt>
+                    <dt className="text-brand-charcoal/65">金卡激活时间</dt>
                     <dd>
                       {detailUser.goldActivatedAt ? formatDate(detailUser.goldActivatedAt) : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-brand-charcoal/50">钻石卡激活时间</dt>
+                    <dt className="text-brand-charcoal/65">钻石卡激活时间</dt>
                     <dd>
                       {detailUser.diamondActivatedAt
                         ? formatDate(detailUser.diamondActivatedAt)
@@ -1792,7 +1806,7 @@ function AdminUsersContent() {
                     </dd>
                   </div>
                 </dl>
-                <p className="mt-4 border-t border-brand-charcoal/15 pt-3 text-xs text-brand-charcoal/40">
+                <p className="mt-4 border-t border-brand-charcoal/15 pt-3 text-xs text-brand-charcoal/65">
                   激活时间为首次达到该等级的时间（等级按累计消费实时判定，可升可降）
                 </p>
 
@@ -1800,7 +1814,7 @@ function AdminUsersContent() {
                 <div className="mt-4 border-t border-brand-charcoal/15 pt-4">
                   <h4 className="mb-2 text-sm font-medium text-brand-charcoal">等级变更轨迹</h4>
                   {detailLevelChanges.length === 0 ? (
-                    <p className="py-2 text-sm text-brand-charcoal/40">
+                    <p className="py-2 text-sm text-brand-charcoal/65">
                       暂无等级变更记录（注册即为当前等级）
                     </p>
                   ) : (
@@ -1816,20 +1830,20 @@ function AdminUsersContent() {
                             >
                               {membershipLevelMap[c.fromLevel]?.label ?? c.fromLevel}
                             </Badge>
-                            <span className="text-brand-charcoal/40">→</span>
+                            <span className="text-brand-charcoal/65">→</span>
                             <Badge variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}>
                               {membershipLevelMap[c.toLevel]?.label ?? c.toLevel}
                             </Badge>
                             {c.note && (
                               <span
-                                className="max-w-[16rem] truncate text-xs text-brand-charcoal/50"
+                                className="max-w-[16rem] truncate text-xs text-brand-charcoal/65"
                                 title={c.note}
                               >
                                 {c.note}
                               </span>
                             )}
                           </div>
-                          <span className="shrink-0 text-xs text-brand-charcoal/40">
+                          <span className="shrink-0 text-xs text-brand-charcoal/65">
                             {formatDate(c.createdAt)}
                           </span>
                         </div>
@@ -1876,7 +1890,7 @@ function AdminUsersContent() {
         }
       >
         <div className="space-y-4">
-          <p className="text-sm text-brand-charcoal/60">
+          <p className="text-sm text-brand-charcoal/70">
             正数为增加（6
             个月有效期，可参与兑礼与过期清理），负数为扣减（直接冲减可用积分，可为负）。
             操作将写入审计日志，请填写可追溯的原因。
@@ -1900,7 +1914,7 @@ function AdminUsersContent() {
               rows={3}
               maxLength={200}
               placeholder="如：客服补偿 / 退款冲正 / 活动奖励"
-              className="w-full resize-y rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="w-full resize-y rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/65 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
         </div>
@@ -1942,7 +1956,7 @@ function AdminUsersContent() {
         }
       >
         <div className="space-y-4">
-          <p className="text-sm text-brand-charcoal/60">
+          <p className="text-sm text-brand-charcoal/70">
             生日用于生日积分发放（每年一次）。保存后会自动锁定；留空保存将清除生日并解锁，
             用户可自行重新设置。操作将写入审计日志。
           </p>
@@ -2006,7 +2020,7 @@ function AdminUsersContent() {
         }
       >
         <div className="space-y-4">
-          <p className="text-sm text-brand-charcoal/60">
+          <p className="text-sm text-brand-charcoal/70">
             请立即通过安全渠道将临时密码告知用户，关闭本窗口后无法再次查看。
             用户所有会话已被强制下线，需使用该密码重新登录并尽快修改密码。
           </p>

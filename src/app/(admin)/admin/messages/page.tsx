@@ -307,7 +307,7 @@ function AdminMessagesContent() {
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-4">
           <div className="relative w-full sm:w-60">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
               placeholder="搜索留言..."
               value={search}
@@ -322,7 +322,7 @@ function AdminMessagesContent() {
                   update({ search: null }, { replace: true });
                 }}
                 aria-label="清除搜索"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 hover:text-brand-charcoal"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -366,7 +366,7 @@ function AdminMessagesContent() {
 
         {selection.selectedCount > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-brand-charcoal/50">
+            <span className="text-sm text-brand-charcoal/65">
               已选 {selection.selectedCount} 项
             </span>
             {canWriteMessages && (
@@ -418,7 +418,7 @@ function AdminMessagesContent() {
               <Mail className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取留言列表，请检查网络连接</p>
+            <p className="mt-1 text-sm text-brand-charcoal/65">无法获取留言列表，请检查网络连接</p>
             <button
               onClick={() => {
                 setLoadError(false);
@@ -434,7 +434,7 @@ function AdminMessagesContent() {
         ) : (
           <>
             {/* 表头 */}
-            <div className="border-brand-charcoal/8 flex items-center gap-3 border-b px-4 py-3 text-sm font-medium text-brand-charcoal/50 sm:gap-4 sm:px-6">
+            <div className="border-brand-charcoal/8 flex items-center gap-3 border-b px-4 py-3 text-sm font-medium text-brand-charcoal/65 sm:gap-4 sm:px-6">
               {(canWriteMessages || canDeleteMessages) && (
                 <input
                   type="checkbox"
@@ -486,7 +486,7 @@ function AdminMessagesContent() {
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
                           message.read
-                            ? "bg-brand-charcoal/8 text-brand-charcoal/60"
+                            ? "bg-brand-charcoal/8 text-brand-charcoal/70"
                             : "bg-brand-primary/10 text-brand-primary"
                         )}
                       >
@@ -497,12 +497,12 @@ function AdminMessagesContent() {
                           <span
                             className={cn(
                               "font-medium",
-                              message.read ? "text-brand-charcoal/60" : "text-brand-charcoal"
+                              message.read ? "text-brand-charcoal/70" : "text-brand-charcoal"
                             )}
                           >
                             {message.name}
                           </span>
-                          <span className="hidden text-sm text-brand-charcoal/50 sm:inline">
+                          <span className="hidden text-sm text-brand-charcoal/65 sm:inline">
                             {message.phone}
                           </span>
                           {message.type && (
@@ -521,12 +521,12 @@ function AdminMessagesContent() {
                             </Badge>
                           )}
                           {message.reply && message.repliedAt && (
-                            <span className="text-xs text-brand-charcoal/40">
+                            <span className="text-xs text-brand-charcoal/65">
                               备注于 {formatRelativeTime(message.repliedAt)}
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 truncate text-sm text-brand-charcoal/50">
+                        <p className="mt-1 truncate text-sm text-brand-charcoal/65">
                           {message.content}
                         </p>
                       </div>
@@ -534,12 +534,12 @@ function AdminMessagesContent() {
                   </button>
 
                   {/* 联系方式 */}
-                  <div className="hidden w-32 items-center text-sm text-brand-charcoal/50 sm:flex">
+                  <div className="hidden w-32 items-center text-sm text-brand-charcoal/65 sm:flex">
                     {message.phone}
                   </div>
 
                   {/* 时间 */}
-                  <div className="hidden w-32 items-center gap-1 text-sm text-brand-charcoal/50 md:flex">
+                  <div className="hidden w-32 items-center gap-1 text-sm text-brand-charcoal/65 md:flex">
                     <Clock className="h-3.5 w-3.5" />
                     {formatRelativeTime(message.createdAt)}
                   </div>
@@ -604,7 +604,7 @@ function AdminMessagesContent() {
         footer={
           detailMessage && canWriteMessages ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-brand-charcoal/40">{replyDraft.length}/5000</span>
+              <span className="text-xs text-brand-charcoal/65">{replyDraft.length}/5000</span>
               <div className="flex flex-wrap justify-end gap-3">
                 <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
                   {detailMessage.read ? "标记为未读" : "标记为已读"}
@@ -637,7 +637,7 @@ function AdminMessagesContent() {
                     </Badge>
                   )}
                 </div>
-                <span className="flex items-center gap-1.5 text-sm text-brand-charcoal/50">
+                <span className="flex items-center gap-1.5 text-sm text-brand-charcoal/65">
                   {detailMessage.phone}
                   {canReadSensitivePhone && (
                     <Tooltip content="复制手机号" side="top">
@@ -651,7 +651,7 @@ function AdminMessagesContent() {
             </div>
 
             {/* 时间与类型 */}
-            <div className="flex items-center gap-4 text-sm text-brand-charcoal/50">
+            <div className="flex items-center gap-4 text-sm text-brand-charcoal/65">
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 {new Date(detailMessage.createdAt).toLocaleString("zh-CN")}
@@ -673,7 +673,7 @@ function AdminMessagesContent() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-brand-charcoal">内部备注</h3>
                 {detailMessage.repliedAt && (
-                  <span className="text-xs text-brand-charcoal/40">
+                  <span className="text-xs text-brand-charcoal/65">
                     上次备注：{new Date(detailMessage.repliedAt).toLocaleString("zh-CN")}
                   </span>
                 )}
@@ -685,10 +685,10 @@ function AdminMessagesContent() {
                 maxLength={5000}
                 disabled={!canWriteMessages}
                 placeholder="仅供后台回访跟进，不会发送给用户"
-                className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/65 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
               />
               {!canWriteMessages && (
-                <p className="text-xs text-brand-charcoal/40">只读查看（无备注权限）</p>
+                <p className="text-xs text-brand-charcoal/65">只读查看（无备注权限）</p>
               )}
             </div>
           </div>

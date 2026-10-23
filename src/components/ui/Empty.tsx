@@ -38,11 +38,11 @@ export function Empty({ title = "暂无数据", description, icon, action, class
       )}
     >
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-charcoal/[0.04]">
-        {icon || <Inbox className="h-8 w-8 text-brand-charcoal/25" />}
+        {icon || <Inbox className="h-8 w-8 text-brand-charcoal/65" />}
       </div>
       <div>
         <p className="text-sm font-medium text-brand-charcoal/70">{title}</p>
-        {description && <p className="mt-1 text-sm text-brand-charcoal/50">{description}</p>}
+        {description && <p className="mt-1 text-sm text-brand-charcoal/65">{description}</p>}
       </div>
       {action && <div className="mt-2">{action}</div>}
     </div>

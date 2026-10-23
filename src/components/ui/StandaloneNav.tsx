@@ -80,7 +80,7 @@ export function StandaloneNav({ title, links = [], leftButton }: StandaloneNavPr
             {title && (
               <>
                 <div className="h-5 w-px bg-brand-charcoal/20 md:h-6" />
-                <span className="text-[13px] font-light tracking-[0.15em] text-brand-charcoal/60 md:text-[15px]">
+                <span className="text-[13px] font-light tracking-[0.15em] text-brand-charcoal/70 md:text-[15px]">
                   {title}
                 </span>
               </>

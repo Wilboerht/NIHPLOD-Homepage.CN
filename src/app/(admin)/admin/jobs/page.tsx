@@ -251,7 +251,7 @@ export default function AdminJobsPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-4">
             <div className="relative w-full sm:w-60">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
                 placeholder="搜索职位..."
                 value={searchInput}
@@ -273,7 +273,7 @@ export default function AdminJobsPage() {
 
           {selection.selectedCount > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-brand-charcoal/50">
+              <span className="text-sm text-brand-charcoal/65">
                 已选 {selection.selectedCount} 项
               </span>
               {canWriteJobs && (
@@ -332,7 +332,7 @@ export default function AdminJobsPage() {
             <>
               {/* 表头：全选本页（无任何操作权限时不展示） */}
               {canSelect && (
-                <div className="border-brand-charcoal/8 hidden items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50 md:flex">
+                <div className="border-brand-charcoal/8 hidden items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/65 md:flex">
                   <input
                     type="checkbox"
                     checked={selection.isAllSelected(jobs)}
@@ -379,7 +379,7 @@ export default function AdminJobsPage() {
                           {job.published ? "已发布" : "草稿"}
                         </Badge>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-brand-charcoal/50">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-brand-charcoal/65">
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3.5 w-3.5" />
                           {job.location}
@@ -396,7 +396,7 @@ export default function AdminJobsPage() {
                     </div>
 
                     {/* 更新时间（移动端同样展示） */}
-                    <div className="text-xs text-brand-charcoal/50 sm:text-sm">
+                    <div className="text-xs text-brand-charcoal/65 sm:text-sm">
                       {formatDate(job.updatedAt)}
                     </div>
 

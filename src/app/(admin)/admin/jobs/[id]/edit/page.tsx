@@ -72,7 +72,7 @@ function EditJobContent() {
           <AlertTriangle className="h-8 w-8 text-amber-500" />
         </div>
         <h2 className="mt-4 text-lg font-medium text-brand-charcoal">职位未找到</h2>
-        <p className="mt-1 text-sm text-brand-charcoal/50">该职位可能已被删除或不存在</p>
+        <p className="mt-1 text-sm text-brand-charcoal/65">该职位可能已被删除或不存在</p>
         <Link
           href="/admin/jobs"
           className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
@@ -92,7 +92,7 @@ function EditJobContent() {
             <Link
               href="/admin/jobs"
               aria-label="返回职位列表"
-              className="rounded-lg p-1.5 text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+              className="rounded-lg p-1.5 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>

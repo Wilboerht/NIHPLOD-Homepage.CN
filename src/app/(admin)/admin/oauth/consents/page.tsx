@@ -290,7 +290,7 @@ function OAuthConsentsPage() {
           </Button>
           <button
             onClick={selection.clear}
-            className="ml-auto text-sm text-brand-charcoal/50 hover:text-brand-charcoal/80"
+            className="ml-auto text-sm text-brand-charcoal/65 hover:text-brand-charcoal/80"
           >
             取消选择
           </button>
@@ -341,7 +341,7 @@ function OAuthConsentsPage() {
                         昵称：{c.nickname}
                       </p>
                     )}
-                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">
+                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
                       Client：{c.clientName || c.clientId}
                     </p>
                   </div>
@@ -356,13 +356,13 @@ function OAuthConsentsPage() {
                     </Badge>
                   ))}
                   {c.scopes.length > 3 && (
-                    <span className="text-xs text-brand-charcoal/40">+{c.scopes.length - 3}</span>
+                    <span className="text-xs text-brand-charcoal/65">+{c.scopes.length - 3}</span>
                   )}
                 </div>
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-              <span className="text-xs text-brand-charcoal/50">
+              <span className="text-xs text-brand-charcoal/65">
                 授权于 {formatDate(c.grantedAt)}
                 {c.status === "revoked" && c.revokedAt && <> · 撤销于 {formatDate(c.revokedAt)}</>}
               </span>
@@ -385,10 +385,10 @@ function OAuthConsentsPage() {
                     撤销授权
                   </Button>
                 ) : (
-                  <span className="text-xs text-brand-charcoal/40">只读</span>
+                  <span className="text-xs text-brand-charcoal/65">只读</span>
                 )
               ) : (
-                <span className="text-xs text-brand-charcoal/40">需重新授权</span>
+                <span className="text-xs text-brand-charcoal/65">需重新授权</span>
               )}
             </div>
           </MobileListCard>
@@ -416,28 +416,28 @@ function OAuthConsentsPage() {
                   />
                 </th>
               )}
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 用户手机号
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 用户昵称
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 Client ID
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 Scopes
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 授权时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 撤销时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
                 状态
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-brand-charcoal/60">
+              <th className="px-4 py-3 text-right text-sm font-medium text-brand-charcoal/70">
                 操作
               </th>
             </tr>
@@ -449,7 +449,7 @@ function OAuthConsentsPage() {
               ))
             ) : consents.length === 0 ? (
               <tr>
-                <td colSpan={canWrite ? 9 : 8} className="py-8 text-center text-brand-charcoal/50">
+                <td colSpan={canWrite ? 9 : 8} className="py-8 text-center text-brand-charcoal/65">
                   暂无数据
                 </td>
               </tr>
@@ -502,10 +502,10 @@ function OAuthConsentsPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
                     {formatDate(c.grantedAt)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/50">
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
                     {c.revokedAt ? formatDate(c.revokedAt) : "-"}
                   </td>
                   <td className="px-4 py-3">
@@ -534,11 +534,11 @@ function OAuthConsentsPage() {
                           </IconButton>
                         </Tooltip>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/40">只读</span>
+                        <span className="text-xs text-brand-charcoal/65">只读</span>
                       )
                     ) : (
                       <span
-                        className="text-xs text-brand-charcoal/40"
+                        className="text-xs text-brand-charcoal/65"
                         title="用户下次访问该 Client 时需要重新授权"
                       >
                         需重新授权
@@ -588,7 +588,7 @@ function OAuthConsentsPage() {
 export default function OAuthConsentsPageWrapper() {
   return (
     <RequirePermission permission="sso:read">
-      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/50">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
         <OAuthConsentsPage />
       </Suspense>
     </RequirePermission>

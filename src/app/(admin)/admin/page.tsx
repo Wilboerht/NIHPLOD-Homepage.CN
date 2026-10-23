@@ -105,9 +105,9 @@ export default async function AdminDashboard() {
   if (!hasAdminPermission(admin, "dashboard:read")) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2">
-        <Shield className="h-10 w-10 text-brand-charcoal/25" />
+        <Shield className="h-10 w-10 text-brand-charcoal/65" />
         <p className="text-lg font-medium text-brand-charcoal/70">无权访问仪表盘</p>
-        <p className="text-sm text-brand-charcoal/50">请联系超级管理员开通 dashboard:read 权限</p>
+        <p className="text-sm text-brand-charcoal/65">请联系超级管理员开通 dashboard:read 权限</p>
       </div>
     );
   }
@@ -170,7 +170,7 @@ export default async function AdminDashboard() {
             <TrendingUp className="h-8 w-8 text-red-400" />
           </div>
           <h2 className="mt-4 text-base font-medium text-brand-charcoal">业务统计加载失败</h2>
-          <p className="mt-1 text-sm text-brand-charcoal/50">无法获取仪表盘统计数据，请稍后重试</p>
+          <p className="mt-1 text-sm text-brand-charcoal/65">无法获取仪表盘统计数据，请稍后重试</p>
           <a
             href="/admin"
             className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
@@ -219,7 +219,7 @@ export default async function AdminDashboard() {
               />
             )}
           </div>
-          <p className="-mt-2 text-right text-xs text-brand-charcoal/40">统计数据每 5 分钟更新</p>
+          <p className="-mt-2 text-right text-xs text-brand-charcoal/65">统计数据每 5 分钟更新</p>
 
           {/* 待处理事项：按权限裁剪，计数为 0 时置灰显示勾号 */}
           {pendingItems.length > 0 && (
@@ -243,16 +243,16 @@ export default async function AdminDashboard() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <p className="text-sm text-brand-charcoal/50">{item.title}</p>
+                          <p className="text-sm text-brand-charcoal/65">{item.title}</p>
                           <p
                             className={cn(
                               "mt-1 text-2xl font-semibold tracking-tight",
-                              hasPending ? "text-brand-primary" : "text-brand-charcoal/40"
+                              hasPending ? "text-brand-primary" : "text-brand-charcoal/65"
                             )}
                           >
                             {item.count}
                           </p>
-                          <p className="mt-1 text-xs text-brand-charcoal/50">
+                          <p className="mt-1 text-xs text-brand-charcoal/65">
                             {hasPending ? "点击查看处理" : "暂无待办"}
                           </p>
                         </div>
@@ -261,7 +261,7 @@ export default async function AdminDashboard() {
                             "flex h-10 w-10 items-center justify-center rounded-lg",
                             hasPending
                               ? "bg-brand-primary/10 text-brand-primary"
-                              : "bg-brand-charcoal/8 text-brand-charcoal/40"
+                              : "bg-brand-charcoal/8 text-brand-charcoal/65"
                           )}
                         >
                           {hasPending ? (
@@ -288,7 +288,7 @@ export default async function AdminDashboard() {
               <Shield className="h-4 w-4 text-brand-primary" />
               SSO 概览
             </h2>
-            <span className="text-xs text-brand-charcoal/50">需要 SSO 权限</span>
+            <span className="text-xs text-brand-charcoal/65">需要 SSO 权限</span>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatsCard
@@ -345,7 +345,7 @@ export default async function AdminDashboard() {
                         className={cn(
                           "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
                           message.read
-                            ? "bg-brand-charcoal/8 text-brand-charcoal/60"
+                            ? "bg-brand-charcoal/8 text-brand-charcoal/70"
                             : "bg-brand-primary/10 text-brand-primary"
                         )}
                       >
@@ -356,17 +356,17 @@ export default async function AdminDashboard() {
                           <span
                             className={cn(
                               "font-medium",
-                              message.read ? "text-brand-charcoal/60" : "text-brand-charcoal"
+                              message.read ? "text-brand-charcoal/70" : "text-brand-charcoal"
                             )}
                           >
                             {message.name}
                           </span>
-                          <span className="flex items-center gap-1 text-xs text-brand-charcoal/50">
+                          <span className="flex items-center gap-1 text-xs text-brand-charcoal/65">
                             <Clock className="h-3 w-3" />
                             {formatRelativeTime(message.createdAt)}
                           </span>
                         </div>
-                        <p className="mt-1 truncate text-sm text-brand-charcoal/50">
+                        <p className="mt-1 truncate text-sm text-brand-charcoal/65">
                           {message.content}
                         </p>
                       </div>

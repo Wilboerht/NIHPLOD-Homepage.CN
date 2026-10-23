@@ -436,7 +436,7 @@ function AdminApplicationsContent() {
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               folderFilter === "all"
                 ? "bg-brand-primary text-white"
-                : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/60"
+                : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/70"
             )}
           >
             <Folder className="h-4 w-4" />
@@ -448,7 +448,7 @@ function AdminApplicationsContent() {
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               folderFilter === "uncategorized"
                 ? "bg-brand-charcoal text-white"
-                : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/60"
+                : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/70"
             )}
           >
             <FileText className="h-4 w-4" />
@@ -462,7 +462,7 @@ function AdminApplicationsContent() {
                   "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   folderFilter === folder.id
                     ? "bg-brand-primary text-white"
-                    : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/60"
+                    : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/70"
                 )}
               >
                 {folder.name}
@@ -471,7 +471,7 @@ function AdminApplicationsContent() {
                     "rounded-full px-1.5 py-0.5 text-xs",
                     folderFilter === folder.id
                       ? "bg-white/20 text-white"
-                      : "bg-brand-charcoal/8 text-brand-charcoal/50"
+                      : "bg-brand-charcoal/8 text-brand-charcoal/65"
                   )}
                 >
                   {folder.applicationCount}
@@ -486,7 +486,7 @@ function AdminApplicationsContent() {
                         openFolderModal(folder);
                       }}
                       aria-label={`编辑分类 ${folder.name}`}
-                      className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-brand-charcoal/60"
+                      className="rounded bg-white p-1 text-brand-charcoal/65 shadow hover:text-brand-charcoal/70"
                     >
                       <Edit2 className="h-3 w-3" />
                     </button>
@@ -500,7 +500,7 @@ function AdminApplicationsContent() {
                         setDeleteFolderTarget(folder);
                       }}
                       aria-label={`删除分类 ${folder.name}`}
-                      className="rounded bg-white p-1 text-brand-charcoal/50 shadow hover:text-red-500"
+                      className="rounded bg-white p-1 text-brand-charcoal/65 shadow hover:text-red-500"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -515,7 +515,7 @@ function AdminApplicationsContent() {
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
           <Input
             placeholder="搜索姓名、手机号..."
             value={search}
@@ -525,7 +525,7 @@ function AdminApplicationsContent() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-brand-charcoal/50" />
+          <Filter className="h-4 w-4 text-brand-charcoal/65" />
           <Select
             options={[
               { value: "all", label: "全部状态" },
@@ -542,7 +542,7 @@ function AdminApplicationsContent() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Briefcase className="h-4 w-4 text-brand-charcoal/50" />
+          <Briefcase className="h-4 w-4 text-brand-charcoal/65" />
           <Select
             options={[
               { value: "all", label: "全部职位" },
@@ -567,7 +567,7 @@ function AdminApplicationsContent() {
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取简历列表，请检查网络连接</p>
+            <p className="mt-1 text-sm text-brand-charcoal/65">无法获取简历列表，请检查网络连接</p>
             <Button variant="outline" size="sm" className="mt-4" onClick={fetchApplications}>
               重试
             </Button>
@@ -592,13 +592,13 @@ function AdminApplicationsContent() {
                           </p>
                           <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-brand-charcoal/50">
+                        <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
                           {application.phone}
                         </p>
                         <p className="mt-1 truncate text-sm text-brand-charcoal/80">
                           {application.job.title}
                         </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/50">
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/65">
                           {application.folder && (
                             <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5">
                               <Tag className="h-3 w-3" />
@@ -651,7 +651,7 @@ function AdminApplicationsContent() {
 
             <div className="hidden min-w-[880px] md:block">
               {/* 表头 */}
-              <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/50">
+              <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/65">
                 <span className="col-span-3">申请人</span>
                 <span className="col-span-3">应聘职位</span>
                 <span className="col-span-2">状态</span>
@@ -680,7 +680,7 @@ function AdminApplicationsContent() {
                           <p className="truncate font-medium text-brand-charcoal">
                             {application.name}
                           </p>
-                          <p className="truncate text-xs text-brand-charcoal/50">
+                          <p className="truncate text-xs text-brand-charcoal/65">
                             {application.phone}
                           </p>
                         </div>
@@ -692,7 +692,7 @@ function AdminApplicationsContent() {
                           <p className="truncate font-medium text-brand-charcoal/80">
                             {application.job.title}
                           </p>
-                          <p className="truncate text-xs text-brand-charcoal/50">
+                          <p className="truncate text-xs text-brand-charcoal/65">
                             {application.job.titleEn}
                           </p>
                         </div>
@@ -702,7 +702,7 @@ function AdminApplicationsContent() {
                       <div className="col-span-2 flex flex-col justify-center gap-1">
                         <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
                         {application.folder && (
-                          <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-brand-charcoal/60">
+                          <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-brand-charcoal/70">
                             <Tag className="h-3 w-3" />
                             {application.folder.name}
                           </span>
@@ -710,12 +710,12 @@ function AdminApplicationsContent() {
                       </div>
 
                       {/* 时间 */}
-                      <div className="col-span-2 flex flex-col justify-center gap-0.5 text-sm text-brand-charcoal/50">
+                      <div className="col-span-2 flex flex-col justify-center gap-0.5 text-sm text-brand-charcoal/65">
                         <span className="flex items-center">
                           <Clock className="mr-1.5 h-3.5 w-3.5" />
                           {formatDate(application.createdAt)}
                         </span>
-                        <span className="text-xs text-brand-charcoal/40">
+                        <span className="text-xs text-brand-charcoal/65">
                           最近处理 {formatDate(application.updatedAt)}
                         </span>
                       </div>
@@ -726,7 +726,7 @@ function AdminApplicationsContent() {
                           <button
                             onClick={() => viewDetail(application)}
                             aria-label={`查看 ${application.name} 的简历`}
-                            className="hover:bg-brand-charcoal/8 rounded p-2 text-brand-charcoal/50 hover:text-brand-charcoal/60"
+                            className="hover:bg-brand-charcoal/8 rounded p-2 text-brand-charcoal/65 hover:text-brand-charcoal/70"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -735,7 +735,7 @@ function AdminApplicationsContent() {
                           <button
                             onClick={() => downloadResume(application)}
                             aria-label={`下载 ${application.name} 的简历`}
-                            className="rounded p-2 text-brand-charcoal/50 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
+                            className="rounded p-2 text-brand-charcoal/65 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
                           >
                             <Download className="h-4 w-4" />
                           </button>
@@ -745,7 +745,7 @@ function AdminApplicationsContent() {
                             <button
                               onClick={() => setDeleteTarget(application)}
                               aria-label={`删除 ${application.name} 的申请`}
-                              className="rounded p-2 text-brand-charcoal/50 hover:bg-red-50 hover:text-red-500"
+                              className="rounded p-2 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -799,7 +799,7 @@ function AdminApplicationsContent() {
                     {statusConfig[detailApplication.status]?.label || "未知"}
                   </Badge>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-brand-charcoal/50">
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-brand-charcoal/65">
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     {detailApplication.phone}
@@ -810,14 +810,14 @@ function AdminApplicationsContent() {
 
             {/* 应聘职位 */}
             <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-brand-charcoal/50">
+              <div className="mb-2 flex items-center gap-2 text-sm text-brand-charcoal/65">
                 <Briefcase className="h-4 w-4" />
                 应聘职位
               </div>
               <p className="font-medium text-brand-charcoal">{detailApplication.job.title}</p>
-              <p className="text-sm text-brand-charcoal/50">{detailApplication.job.titleEn}</p>
+              <p className="text-sm text-brand-charcoal/65">{detailApplication.job.titleEn}</p>
               {(detailApplication.job.location || detailApplication.job.type) && (
-                <p className="mt-1 text-sm text-brand-charcoal/50">
+                <p className="mt-1 text-sm text-brand-charcoal/65">
                   {[
                     detailApplication.job.location,
                     detailApplication.job.type &&
@@ -830,7 +830,7 @@ function AdminApplicationsContent() {
             </div>
 
             {/* 申请时间 */}
-            <div className="flex items-center gap-2 text-sm text-brand-charcoal/50">
+            <div className="flex items-center gap-2 text-sm text-brand-charcoal/65">
               <Clock className="h-4 w-4" />
               申请时间：{formatDate(detailApplication.createdAt)}
             </div>
@@ -861,7 +861,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.status === key
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                     )}
                   >
                     {config.label}
@@ -881,7 +881,7 @@ function AdminApplicationsContent() {
                     "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                     !detailApplication.folderId
                       ? "bg-brand-charcoal text-white"
-                      : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                      : "bg-brand-charcoal/8 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                   )}
                 >
                   未分类
@@ -895,7 +895,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.folderId === folder.id
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/60 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                        : "bg-brand-charcoal/8 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                     )}
                   >
                     {folder.name}

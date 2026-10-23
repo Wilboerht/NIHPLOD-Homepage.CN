@@ -56,7 +56,7 @@ function ToolbarButton({
         "rounded p-1.5 transition-colors",
         active
           ? "bg-brand-primary/20 text-brand-primary"
-          : "text-brand-charcoal/50 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80",
+          : "text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80",
         disabled && "cursor-not-allowed opacity-50"
       )}
     >
@@ -319,7 +319,7 @@ export function RichTextEditor({
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
-              "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-brand-charcoal/50",
+              "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-brand-charcoal/65",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]"
             )}
           />

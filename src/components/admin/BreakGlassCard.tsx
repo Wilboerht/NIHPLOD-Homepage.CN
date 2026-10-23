@@ -77,7 +77,7 @@ export function BreakGlassCard() {
     <button
       type="button"
       onClick={() => copy(text, label)}
-      className="rounded p-1 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal"
+      className="rounded p-1 text-brand-charcoal/65 transition-colors hover:text-brand-charcoal"
       aria-label={`复制${label}`}
     >
       {copied === label ? (
@@ -144,7 +144,7 @@ export function BreakGlassCard() {
         <div className="mt-4 space-y-3 rounded-xl border border-amber-200/70 bg-white p-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/40">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/65">
                 用户名
               </p>
               <div className="mt-1 flex items-center gap-2">
@@ -154,7 +154,7 @@ export function BreakGlassCard() {
             </div>
 
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/40">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/65">
                 密码
               </p>
               <div className="mt-1 flex items-center gap-2">
@@ -169,7 +169,7 @@ export function BreakGlassCard() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="rounded p-1 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal"
+                  className="rounded p-1 text-brand-charcoal/65 transition-colors hover:text-brand-charcoal"
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 >
                   {showPassword ? (
@@ -183,7 +183,7 @@ export function BreakGlassCard() {
             </div>
 
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/40">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/65">
                 TOTP Secret
               </p>
               <div className="mt-1 flex items-center gap-2">
@@ -198,7 +198,7 @@ export function BreakGlassCard() {
                 <button
                   type="button"
                   onClick={() => setShowTotp((v) => !v)}
-                  className="rounded p-1 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal"
+                  className="rounded p-1 text-brand-charcoal/65 transition-colors hover:text-brand-charcoal"
                   aria-label={showTotp ? "隐藏 TOTP Secret" : "显示 TOTP Secret"}
                 >
                   {showTotp ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -208,7 +208,7 @@ export function BreakGlassCard() {
             </div>
 
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/40">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-brand-charcoal/65">
                 otpauth 链接
               </p>
               <div className="mt-1 flex items-center gap-2">
