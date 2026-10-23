@@ -60,7 +60,15 @@ describe("KineticBackground 便当盒", () => {
     const { container } = render(<KineticBackground />);
     const classes = Array.from(container.querySelectorAll(".kinetic-cell")).map((el) =>
       Array.from(el.classList).find((c) =>
-        ["kinetic-cell-boxes", "kinetic-cell-skin", "kinetic-cell-less", "kinetic-cell-advisor", "kinetic-cell-steps", "kinetic-cell-reverse", "kinetic-cell-login"].includes(c)
+        [
+          "kinetic-cell-boxes",
+          "kinetic-cell-skin",
+          "kinetic-cell-less",
+          "kinetic-cell-advisor",
+          "kinetic-cell-steps",
+          "kinetic-cell-reverse",
+          "kinetic-cell-login",
+        ].includes(c)
       )
     );
     expect(classes).toEqual([
@@ -77,6 +85,11 @@ describe("KineticBackground 便当盒", () => {
   it("未登录时登录卡显示「会员登录」", () => {
     render(<KineticBackground />);
     expect(screen.getByText("会员登录")).toBeInTheDocument();
+  });
+
+  it("每张便当盒图片都带模糊占位层（5 张）", () => {
+    const { container } = render(<KineticBackground />);
+    expect(container.querySelectorAll('[data-testid="bento-image-placeholder"]')).toHaveLength(5);
   });
 
   it("非白名单页面不渲染卡片容器", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,92 @@ import { Link } from "next-view-transitions";
  * 其他页面仅保留背景底色/点阵/水印，避免非首页页面也加载卡片大图。
  */
 const CARD_RENDER_PATHS = ["/", "/about", "/products", "/guide", "/faq"];
+
+const BENTO_IMAGE_PLACEHOLDERS = {
+  productHero: {
+    dominantColor: "#d8c8b8",
+    blurDataURL:
+      "data:image/webp;base64,UklGRoYAAABXRUJQVlA4IHoAAADwAwCdASoQABgAPu1iqU2ppaOiMAgBMB2JYwCdACP63wzd02z3Pv0AAP7HVpxeQM3uXdhYTMy4z99em4a16syH9gU7LofCr1jXp+Pk1mX4yWLV2epcWsfOMpIg830JSKyu3DY99fIEwDKhB6mdW77uFJsw36pIsKAAAA==",
+  },
+  storyDesktop: {
+    dominantColor: "#e8d8c8",
+    blurDataURL:
+      "data:image/webp;base64,UklGRjgAAABXRUJQVlA4ICwAAABwAQCdASoQABAAA4BaJYwCdAFAAAD+8GKY4V9eQ6vc0510hc8AchyfjUigAA==",
+  },
+  storyMobile: {
+    dominantColor: "#e8d8c8",
+    blurDataURL:
+      "data:image/webp;base64,UklGRi4AAABXRUJQVlA4ICIAAABwAQCdASoQAAgAA4BaJYwCdAF1AAD+8GOpW1XIV+IV1QAA",
+  },
+  advisor: {
+    dominantColor: "#f8f8e8",
+    blurDataURL:
+      "data:image/webp;base64,UklGRk4AAABXRUJQVlA4IEIAAADQAQCdASoQAAgAA4BaJQBOgCG/Y1IsgAD+9xA2pmnzDzwb0vG/1bSMMdROQ8MhtQzUwrIePDKnxPoV0e//jFlAAAA=",
+  },
+  guide: {
+    dominantColor: "#c8b8a8",
+    blurDataURL:
+      "data:image/webp;base64,UklGRmYAAABXRUJQVlA4IFoAAAAQBACdASoQABUAPu1iqU2ppaQiMAgBMB2JQBYdhDvRBgg5f8JX4UKGMAD+rpN0mmRKP5I/e/hPC5Gtg5Qygxh8IYcwhuQPYTISQMSk/rAuYSCdJHSQzFJAAAA=",
+  },
+} as const;
+
+interface BentoImageProps {
+  src: string;
+  alt: string;
+  sizes: string;
+  blurDataURL: string;
+  dominantColor: string;
+  objectPosition?: string;
+}
+
+function BentoImage({
+  src,
+  alt,
+  sizes,
+  blurDataURL,
+  dominantColor,
+  objectPosition,
+}: BentoImageProps) {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [isLoaded, setIsLoaded] = useState(true);
+
+  useEffect(() => {
+    const image = imageRef.current;
+    if (image && !image.complete) {
+      setIsLoaded(false);
+    }
+  }, []);
+
+  return (
+    <>
+      <div
+        aria-hidden
+        data-testid="bento-image-placeholder"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundColor: dominantColor,
+          backgroundImage: `url("${blurDataURL}")`,
+          backgroundPosition: objectPosition ?? "center",
+          backgroundSize: "cover",
+          filter: "blur(18px)",
+          transform: "scale(1.08)",
+        }}
+      />
+      <Image
+        ref={imageRef}
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        onLoad={() => setIsLoaded(true)}
+        className={`kinetic-cell-image transition-opacity duration-500 ease-out motion-reduce:transition-none ${
+          isLoaded ? "opacity-100" : "opacity-0"
+        }`}
+        style={{ objectPosition }}
+      />
+    </>
+  );
+}
 
 /**
  * Kinetic Grid 全局背景组件
@@ -136,13 +222,12 @@ export function KineticBackground() {
               className="absolute inset-0 z-20"
               aria-label="了解产品"
             />
-            <Image
+            <BentoImage
               src="/images/kinetic-product-hero.webp"
               alt="NIHPLOD 产品系列"
-              fill
-              className="kinetic-cell-image"
-              style={{ objectPosition: "center 30%" }}
               sizes="(max-width: 819px) 40vw, (max-width: 1024px) 25vw, 22vw"
+              objectPosition="center 30%"
+              {...BENTO_IMAGE_PLACEHOLDERS.productHero}
             />
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#D4C4A8]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
               <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
@@ -160,21 +245,19 @@ export function KineticBackground() {
               aria-label="关于旎柏"
             />
             <div className="kinetic-image-desktop absolute inset-0">
-              <Image
+              <BentoImage
                 src="/images/kinetic-desktop.webp?v=2"
                 alt="旎柏品牌故事 - 桌面端展示"
-                fill
-                className="kinetic-cell-image"
                 sizes="22vw"
+                {...BENTO_IMAGE_PLACEHOLDERS.storyDesktop}
               />
             </div>
             <div className="kinetic-image-mobile absolute inset-0">
-              <Image
+              <BentoImage
                 src="/images/kinetic-mobile.webp?v=2"
                 alt="旎柏品牌故事 - 移动端展示"
-                fill
-                className="kinetic-cell-image"
                 sizes="(max-width: 1024px) 82vw"
+                {...BENTO_IMAGE_PLACEHOLDERS.storyMobile}
               />
             </div>
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#DECCB0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
@@ -196,12 +279,11 @@ export function KineticBackground() {
               className="absolute inset-0 z-20"
               aria-label="肌智派在线测肤"
             />
-            <Image
+            <BentoImage
               src="/images/kinetic-advisor.webp"
               alt="肌智派 - 在线测肤，专属顾问"
-              fill
-              className="kinetic-cell-image"
               sizes="(max-width: 1024px) 0px, 36vw"
+              {...BENTO_IMAGE_PLACEHOLDERS.advisor}
             />
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
               <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
@@ -221,13 +303,12 @@ export function KineticBackground() {
               className="absolute inset-0 z-20"
               aria-label="官方指南"
             />
-            <Image
+            <BentoImage
               src="/images/kinetic-guide.webp"
               alt="NIHPLOD 官方护肤指南"
-              fill
-              className="kinetic-cell-image"
-              style={{ objectPosition: "center 40%" }}
+              objectPosition="center 40%"
               sizes="(max-width: 819px) 82vw, (max-width: 1024px) 80vw, 36vw"
+              {...BENTO_IMAGE_PLACEHOLDERS.guide}
             />
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#E8D5B0]/95 opacity-0 transition-opacity duration-500 md:group-hover:opacity-100">
               <span className="border-b border-white/40 pb-1.5 text-2xl font-light tracking-[0.15em] text-brand-charcoal">
