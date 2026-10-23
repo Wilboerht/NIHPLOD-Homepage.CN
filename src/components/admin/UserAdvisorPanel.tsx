@@ -12,7 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { apiGet, apiPatch, ApiError } from "@/lib/api-client";
-import { ADVISOR_URL } from "@/lib/diary-utils";
+import { buildAdvisorAdminLink } from "@/lib/advisor-admin-link";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { Badge } from "@/components/ui/Badge";
@@ -447,9 +447,7 @@ export function UserAdvisorPanel({
         action={
           canOpenAdvisor ? (
             <a
-              href={`${ADVISOR_URL}/api/admin/auth/sso/start?return_to=${encodeURIComponent(
-                `/admin/users?userId=${userId}`
-              )}`}
+              href={buildAdvisorAdminLink(`/admin/users?userId=${userId}`)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:underline"
@@ -464,9 +462,7 @@ export function UserAdvisorPanel({
     );
   }
 
-  const advisorDeepLink = `${ADVISOR_URL}/api/admin/auth/sso/start?return_to=${encodeURIComponent(
-    `/admin/users?userId=${userId}`
-  )}`;
+  const advisorDeepLink = buildAdvisorAdminLink(`/admin/users?userId=${userId}`);
   const account = payload.overview.account;
 
   const actions =

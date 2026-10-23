@@ -219,7 +219,7 @@ export function ProductsTable({
       {
         key: "name",
         title: "产品名称",
-        width: "280px",
+        width: "240px",
         sortable: true,
         render: (_, record) => (
           <div className="min-w-0">
@@ -256,7 +256,7 @@ export function ProductsTable({
         key: "order",
         title: "排序",
         align: "right",
-        width: "60px",
+        width: "88px",
         sortable: true,
         render: (_, record) => (
           <span className="text-sm text-brand-charcoal/65">{record.order}</span>

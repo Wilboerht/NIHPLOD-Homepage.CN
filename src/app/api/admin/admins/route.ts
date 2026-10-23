@@ -403,7 +403,7 @@ export const PUT = withAuth(async (request, admin) => {
           error: {
             code: "SELF_ROLE_PASSWORD_FORBIDDEN",
             message:
-              "不能在本页修改自己的角色/权限或密码，请前往「二次验证设置」页面的账号密码区域修改密码",
+              "不能在本页修改自己的角色/权限或密码，请前往「管理员安全中心」的账号密码区域修改密码",
           },
         },
         { status: 400 }

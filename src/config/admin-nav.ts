@@ -22,6 +22,7 @@ import {
   Gift,
   Webhook,
   Timer,
+  ScanFace,
   LucideIcon,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin-permissions";
@@ -31,7 +32,7 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   badge?: number; // 可选徽章数字（如未读消息数）
-  /** 访问所需权限点（不填表示所有管理员可见，如个人二次验证设置） */
+  /** 访问所需权限点（不填表示所有管理员可见，如管理员安全中心） */
   permission?: AdminPermission;
   /** 任一权限点满足即可访问（用于同时支持多个权限域的页面） */
   permissionsAny?: AdminPermission[];
@@ -83,6 +84,14 @@ export const adminNavItems: NavItem[] = [
     permissionsAny: ["redemptions:read", "gifts:read"],
     group: "商城管理",
   },
+  // 子项目
+  {
+    title: "测肤子站",
+    href: "/admin/subsites/advisor",
+    icon: ScanFace,
+    permissionsAny: ["advisor:stats:read", "advisor:access"],
+    group: "子项目",
+  },
   // 招聘管理
   {
     title: "职位管理",
@@ -113,8 +122,8 @@ export const adminNavItems: NavItem[] = [
     permission: "admins:read",
     group: "系统管理",
   },
-  // 个人二次验证设置对所有管理员开放
-  { title: "二次验证设置", href: "/admin/settings/totp", icon: ShieldCheck, group: "系统管理" },
+  // 个人安全管理（二次验证、改密）对所有管理员开放
+  { title: "管理员安全中心", href: "/admin/settings/totp", icon: ShieldCheck, group: "系统管理" },
   {
     title: "审计日志",
     href: "/admin/audit-logs",
@@ -210,9 +219,9 @@ function parseDeepPath(pathname: string): { title: string; href: string } | null
   if (pathname === "/admin/oauth-clients/wizard") {
     return { title: "创建客户端", href: "/admin/oauth-clients/wizard" };
   }
-  // TOTP 设置: /admin/settings/totp
+  // 管理员安全中心: /admin/settings/totp
   if (pathname === "/admin/settings/totp") {
-    return { title: "二次验证设置", href: "/admin/settings/totp" };
+    return { title: "管理员安全中心", href: "/admin/settings/totp" };
   }
   return null;
 }

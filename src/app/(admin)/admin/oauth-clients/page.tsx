@@ -307,7 +307,7 @@ function ClientActions({
   onDelete,
 }: ClientActionsProps) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1">
+    <div className="flex flex-wrap items-center justify-end gap-0.5 sm:flex-nowrap">
       <Tooltip content="查看详情" side="top">
         <IconButton label={`查看 ${client.name} 详情`} onClick={onView}>
           <Eye className="h-4 w-4" />
@@ -1061,47 +1061,51 @@ if (!payload) {
 
       {/* 桌面端表格 */}
       <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <table className="w-full min-w-[1040px] text-sm">
+        <table className="w-full min-w-[1392px] table-fixed text-sm">
+          <colgroup>
+            <col className="w-[240px]" />
+            <col className="w-[128px]" />
+            <col className="w-[180px]" />
+            <col className="w-[220px]" />
+            <col className="w-[124px]" />
+            <col className="w-[88px]" />
+            <col className="w-[104px]" />
+            <col className="w-[308px]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-              <th scope="col" className="min-w-[10rem] px-4 py-3 font-normal">
-                名称
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
+                应用
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                Client ID
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
                 类型
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
                 回调 URL
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
                 Scopes
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                活跃会话
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
+                活跃情况
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                最近活跃
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
                 状态
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
                 创建时间
               </th>
-              <th scope="col" className="px-4 py-3 text-right font-normal">
+              <th scope="col" className="whitespace-nowrap px-4 py-3 text-right font-normal">
                 操作
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={10} />)
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
             ) : loadError ? (
               <tr>
-                <td colSpan={10} className="px-4 py-10 text-center">
+                <td colSpan={8} className="px-4 py-10 text-center">
                   <p className="text-sm text-red-500">加载失败</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
                     重试
@@ -1110,7 +1114,7 @@ if (!payload) {
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={8}>
                   <div className="flex justify-center py-8">
                     <Empty
                       title="暂无 Client"
@@ -1126,24 +1130,23 @@ if (!payload) {
             ) : (
               clients.map((c) => (
                 <tr key={c.id} className="hover:bg-brand-charcoal/[0.03]">
-                  <td className="min-w-[10rem] px-4 py-3 font-medium">
+                  <td className="px-4 py-3">
                     <button
                       onClick={() => openDetailDrawer(c)}
-                      className="text-left text-brand-charcoal hover:text-brand-primary hover:underline"
+                      className="block w-full truncate text-left font-medium text-brand-charcoal hover:text-brand-primary hover:underline"
+                      title={c.name}
                     >
                       {c.name}
                     </button>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/70">
-                    <div className="flex items-center gap-2">
-                      <span className="max-w-[120px] truncate" title={c.clientId}>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-xs text-brand-charcoal/65">
+                      <span className="min-w-0 truncate" title={c.clientId}>
                         {c.clientId}
                       </span>
                       <Tooltip content="复制 Client ID" side="top">
                         <button
                           aria-label="复制 Client ID"
                           onClick={() => copyToClipboard(c.clientId)}
-                          className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                          className="inline-flex shrink-0 text-brand-charcoal/65 hover:text-brand-charcoal/70"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
@@ -1151,43 +1154,60 @@ if (!payload) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
+                    <Badge
+                      variant={c.isPublic ? "warning" : "secondary"}
+                      className="whitespace-nowrap text-xs"
+                    >
                       {c.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-sm text-brand-charcoal/70">
-                    {c.redirectUris.join(", ")}
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
+                    <span className="block truncate" title={c.redirectUris.join(", ")}>
+                      {c.redirectUris[0] || "-"}
+                      {c.redirectUris.length > 1 && (
+                        <span className="text-brand-charcoal/50"> +{c.redirectUris.length - 1}</span>
+                      )}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {c.scopes.map((s) => (
-                        <Badge key={s} variant="secondary" className="text-xs">
+                    <div className="flex flex-nowrap items-center gap-1 overflow-hidden">
+                      {c.scopes.slice(0, 2).map((s) => (
+                        <Badge key={s} variant="secondary" className="whitespace-nowrap text-xs">
                           {s}
                         </Badge>
                       ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />
-                      {c.activeUserCount ?? "-"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {c.lastActiveAt ? formatDate(c.lastActiveAt) : "-"}
+                      {c.scopes.length > 2 && (
+                        <span
+                          className="shrink-0 cursor-default text-xs text-brand-charcoal/65"
+                          title={c.scopes.slice(2).join(", ")}
+                        >
+                          +{c.scopes.length - 2}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={c.isActive ? "success" : "danger"}>
+                    <span className="flex items-center gap-1 whitespace-nowrap text-sm text-brand-charcoal/70">
+                      <Users className="h-3.5 w-3.5 text-brand-charcoal/65" />
+                      {c.activeUserCount ?? "-"}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-xs text-brand-charcoal/55">
+                      <Clock className="h-3.5 w-3.5 text-brand-charcoal/65" />
+                      {c.lastActiveAt ? formatDate(c.lastActiveAt) : "从未活跃"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant={c.isActive ? "success" : "danger"}
+                      className="whitespace-nowrap"
+                    >
                       {c.isActive ? "启用" : "禁用"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-brand-charcoal/65">
                     {formatDate(c.createdAt)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3">
                     <ClientActions
                       client={c}
                       canWrite={canWrite}

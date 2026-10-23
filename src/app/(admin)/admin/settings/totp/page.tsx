@@ -308,7 +308,7 @@ export default function TOTPSettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="二次验证设置"
+        title="管理员安全中心"
         description="使用 TOTP 验证器保护管理员账号；启用后登录和高风险操作都需要动态验证码。"
       />
 

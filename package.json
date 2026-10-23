@@ -23,7 +23,8 @@
     "check:sso-config": "tsx scripts/check-sso-production-config.ts",
     "generate:oauth-rs256-keys": "tsx scripts/generate-oauth-rs256-keys.ts",
     "generate:internal-api-keys": "tsx scripts/generate-internal-api-keys.ts",
-    "oauth:add-client-scopes": "tsx scripts/add-oauth-client-scopes.ts"
+    "oauth:add-client-scopes": "tsx scripts/add-oauth-client-scopes.ts",
+    "compare:advisor-products": "tsx scripts/compare-advisor-products.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

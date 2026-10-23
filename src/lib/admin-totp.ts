@@ -69,7 +69,7 @@ export async function requireMoneyOperationTotp(
     return totpError("TOTP_INVALID", "管理员不存在");
   }
   if (!admin.totpEnabled || !admin.totpSecret) {
-    return totpError("TOTP_NOT_ENABLED", "请先在「二次验证设置」启用二次验证后再执行该操作");
+    return totpError("TOTP_NOT_ENABLED", "请先在「管理员安全中心」启用二次验证后再执行该操作");
   }
 
   const trimmed = code?.trim();

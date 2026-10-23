@@ -304,9 +304,12 @@ export default function AdminJobsPage() {
       title: "工作地点",
       width: "140px",
       render: (_, job) => (
-        <span className="inline-flex items-center gap-1 text-sm text-brand-charcoal/70">
+        <span
+          className="flex min-w-0 items-center gap-1 text-sm text-brand-charcoal/70"
+          title={job.location || undefined}
+        >
           <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65" />
-          {job.location || "-"}
+          <span className="min-w-0 truncate">{job.location || "-"}</span>
         </span>
       ),
     },
@@ -315,7 +318,9 @@ export default function AdminJobsPage() {
       title: "薪资",
       width: "140px",
       render: (_, job) => (
-        <span className="text-sm text-brand-charcoal/70">{job.salary || "-"}</span>
+        <span className="block truncate text-sm text-brand-charcoal/70" title={job.salary || undefined}>
+          {job.salary || "-"}
+        </span>
       ),
     },
     {

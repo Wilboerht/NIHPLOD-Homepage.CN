@@ -78,6 +78,8 @@ export const ADMIN_PERMISSIONS = [
   "advisor:users:read",
   // 主站控制中台内的测肤用户写操作（调整配额/禁用启用子站账号）
   "advisor:users:write",
+  // 主站控制中台内的测肤子站全局概览/AI 健康
+  "advisor:stats:read",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -170,6 +172,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "advisor:admin",
       "advisor:users:read",
       "advisor:users:write",
+      "advisor:stats:read",
     ],
   },
 ];
@@ -225,6 +228,7 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "advisor:admin": "测肤子站超级管理员",
   "advisor:users:read": "查看用户测肤档案（账号/配额/报告摘要）",
   "advisor:users:write": "调整测肤配额/禁用启用子站账号",
+  "advisor:stats:read": "测肤子站全局概览/AI 健康",
 };
 
 /**
@@ -280,6 +284,7 @@ export const ROLE_TEMPLATES: Record<
     "redemptions:fulfill",
     "advisor:users:read",
     "advisor:users:write",
+    "advisor:stats:read",
     "audit:read",
   ],
   ops: [
@@ -302,6 +307,7 @@ export const ROLE_TEMPLATES: Record<
     "messages:delete",
     "advisor:users:read",
     "advisor:users:write",
+    "advisor:stats:read",
   ],
   support: [
     "dashboard:read",
