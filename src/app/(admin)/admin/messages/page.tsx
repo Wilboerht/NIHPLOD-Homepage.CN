@@ -328,64 +328,10 @@ function AdminMessagesContent() {
         }
       />
 
-      {/* 状态筛选 + 搜索 */}
+      {/* 工具栏：搜索 + 筛选，与用户管理保持一致的单行布局 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div
-              role="group"
-              aria-label="按阅读状态筛选"
-              className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
-            >
-              {STATUS_TABS.map((t) => {
-                const active = statusFilter === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => update({ status: t.key })}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
-                      active
-                        ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                        : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
-                    )}
-                  >
-                    {t.label}
-                    <span
-                      className={cn(
-                        "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs tabular-nums",
-                        active
-                          ? "bg-brand-primary/10 text-brand-primary"
-                          : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
-                      )}
-                    >
-                      {tabCounts[t.key]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <Select
-              options={[
-                { value: "all", label: "全部备注状态" },
-                { value: "unreplied", label: "无备注" },
-                { value: "replied", label: "有备注" },
-              ]}
-              value={repliedFilter}
-              onChange={(e) => update({ replied: e.target.value })}
-              className="w-full sm:w-40"
-            />
-            <Select
-              options={MESSAGE_TYPE_OPTIONS}
-              value={typeFilter}
-              onChange={(e) => update({ type: e.target.value })}
-              className="w-full sm:w-40"
-            />
-          </div>
-
-          <div className="relative w-full lg:w-72">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full md:w-64 lg:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
               aria-label="搜索姓名、手机号或留言内容"
@@ -408,6 +354,80 @@ function AdminMessagesContent() {
               </button>
             )}
           </div>
+
+          <div
+            role="group"
+            aria-label="按阅读状态筛选"
+            className="flex shrink-0 items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+          >
+            {STATUS_TABS.map((t) => {
+              const active = statusFilter === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => update({ status: t.key })}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
+                    active
+                      ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                      : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                  )}
+                >
+                  {t.label}
+                  <span
+                    className={cn(
+                      "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs tabular-nums",
+                      active
+                        ? "bg-brand-primary/10 text-brand-primary"
+                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                    )}
+                  >
+                    {tabCounts[t.key]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="w-full sm:w-36">
+            <Select
+              options={[
+                { value: "all", label: "全部备注状态" },
+                { value: "unreplied", label: "无备注" },
+                { value: "replied", label: "有备注" },
+              ]}
+              value={repliedFilter}
+              onChange={(e) => update({ replied: e.target.value })}
+              aria-label="按备注状态筛选"
+            />
+          </div>
+          <div className="w-full sm:w-36">
+            <Select
+              options={MESSAGE_TYPE_OPTIONS}
+              value={typeFilter}
+              onChange={(e) => update({ type: e.target.value })}
+              aria-label="按留言类型筛选"
+            />
+          </div>
+
+          {(search || statusFilter !== "all" || repliedFilter !== "all" || typeFilter) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<X className="h-4 w-4" />}
+              onClick={() => {
+                setSearch("");
+                update(
+                  { search: null, status: null, replied: null, type: null },
+                  { replace: true }
+                );
+              }}
+            >
+              清除筛选
+            </Button>
+          )}
         </div>
       </div>
 

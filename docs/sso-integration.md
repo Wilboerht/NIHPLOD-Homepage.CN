@@ -614,6 +614,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | --- | --- |
 | `POST /api/v1/internal/points/sync`（消费额同步） | `mall` |
 | `POST /api/v1/internal/points/redeem`（积分兑礼扣减） | `mall` |
+| `POST /api/v1/internal/points/refund`（兑换撤销退分） | `mall` |
 | `GET /api/v1/internal/points/balance`（余额/兑礼率查询） | `mall`、`advisor` |
 | `POST /api/v1/internal/points/grant`（活动积分发放） | `advisor` |
 | `POST /api/v1/internal/user/status`（用户状态同步） | `advisor`、`mall` |
@@ -690,7 +691,28 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - `userId` 与 `phone` 二选一（必须且只能提供一个），语义同「上报消费额变动」（userId 推荐，换绑/微信占位号账号稳定）。
 - `points`：本次扣减积分数量（正整数）。**兑礼率折算在商城侧完成**：礼品所需积分 = 商品价值 ÷ 用户当前兑礼率（普通不参与 / 银 1:1 / 金 1:1.3 / 钻 1:1.5，兑礼率可通过 balance 查询或 userinfo 的 `points_redeem_rate` 获取），向下取整后调用本接口。
 - `reference`：商城侧兑换单号，幂等键。重复调用不重复扣减，返回 `duplicated: true`。
-- 响应：`{ success: true, data: { userId, available, spent, redeemRate, membershipLevel } }`；积分不足返回 400 `INSUFFICIENT`（附当前可用余额）。
+- 响应：`{ success: true, data: { userId, available, spent, redeemRate, membershipLevel } }`；积分不足返回 400 `INSUFFICIENT`（附当前可用余额）。若事务提交前会员等级发生变化，返回 409 `LEVEL_CHANGED`（附最新 `membershipLevel` / `redeemRate`），商城应重新折算后重试。
+- **库存**：官网 `Product.redeemStock` 只约束官网积分商城兑换；内部兑换接口不接收商品 ID，不会扣减官网库存，商城侧兑换库存需由商城自行维护。
+
+### 积分兑换撤销退分（商城取消兑换调用）
+
+`POST /api/v1/internal/points/refund`
+
+```json
+{
+  "userId": "cm1234567890abcdef",
+  "reference": "mall-redeem-R20260903001",
+  "note": "用户取消兑换 / 缺货"
+}
+```
+
+- `reference`：必须是原 `/points/redeem` 使用的同一个兑换单号；接口只支持**整单全额退回**，金额由原 `REDEEM` 流水反推，商城无需传 `points`。
+- 原兑换流水不存在或不是扣减流水时返回 404 `REDEMPTION_NOT_FOUND`，避免无源退分。
+- 幂等：退分流水固定为 `redeem-refund:{reference}`，重复上报返回 `duplicated: true`，不会重复退分。
+- 退回积分立即到账、6 个月后过期，流水类型 `REDEEM_REFUND`，可在用户账单中显示为“兑换撤销退分”。
+- 响应：`{ success: true, data: { userId, refunded, available } }`。
+
+> OAuth 兑礼（`/api/oauth/points/redeem`）默认允许所有已授权 `membership` 的客户端。生产环境可通过 `OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS=wechat-mp-points,...` 收紧为官方客户端白名单。
 
 ### 积分查询（商城侧，签名内部 API）
 
@@ -763,6 +785,8 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 ### 生日积分
 
 官网每日 cron 扫描当天生日的有效用户，按**生日当天当前等级**发放生日积分（银 50 / 金 100 / 钻 200，普通不发放），每年一次（`lastBirthdayRewardYear` 幂等），6 个月过期。生日首次设置后锁定，修改需人工客服，商城侧无需处理。
+
+> 打卡积分只发放**当天（UTC+8）**的首条手动打卡；补录历史日期仅保存日记、不发积分（内部 `points/grant` 也会拒绝非当天日期）。退款/消费额下降使积分变为负数时，未履约兑换会在管理端履约前被拦截，需先人工调整积分或取消兑换。
 
 ### 错误码
 

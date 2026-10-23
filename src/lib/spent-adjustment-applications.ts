@@ -97,17 +97,35 @@ export async function createSpentApplication(params: {
   const { userId, input, request } = params;
   const { channel, orderNo, dealerName, amountClaimed, purchasedAt, images, note } = input;
 
-  let application: { id: string; status: string } | null = null;
+  type ClaimResult =
+    | { kind: "ok"; application: { id: string; status: string } }
+    | { kind: "limit" }
+    | { kind: "duplicate" };
+
+  let claim: ClaimResult;
   try {
-    application = await prisma.$transaction(async (tx) => {
+    claim = await prisma.$transaction(async (tx): Promise<ClaimResult> => {
+      // 同一用户串行化：待审上限检查 + 订单号大小写不敏感查重都依赖此锁
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+
+      // DB 部分唯一索引是大小写敏感的；这里补一次同一用户内
+      // “忽略大小写”的活动申请查重，防止 ABC123 / abc123 被重复提交。
+      const duplicate = await tx.spentAdjustmentApplication.findFirst({
+        where: {
+          userId,
+          status: { in: ["PENDING", "APPROVED"] },
+          orderNo: { equals: orderNo, mode: "insensitive" },
+        },
+        select: { id: true },
+      });
+      if (duplicate) return { kind: "duplicate" };
 
       const pendingCount = await tx.spentAdjustmentApplication.count({
         where: { userId, status: "PENDING" },
       });
-      if (pendingCount >= MAX_PENDING_PER_USER) return null;
+      if (pendingCount >= MAX_PENDING_PER_USER) return { kind: "limit" };
 
-      return tx.spentAdjustmentApplication.create({
+      const application = await tx.spentAdjustmentApplication.create({
         data: {
           userId,
           channel,
@@ -120,18 +138,23 @@ export async function createSpentApplication(params: {
           note: note || null,
         },
       });
+      return { kind: "ok", application };
     });
   } catch (error) {
-    // P2002 唯一约束冲突 = 该订单号已有待审/已通过申请
+    // P2002 唯一约束冲突 = 并发提交撞上精确大小写的活动订单号索引
     if ((error as { code?: string }).code === "P2002") {
       return { ok: false, kind: "duplicate" };
     }
     throw error;
   }
 
-  if (!application) {
+  if (claim.kind === "duplicate") {
+    return { ok: false, kind: "duplicate" };
+  }
+  if (claim.kind === "limit") {
     return { ok: false, kind: "pending_limit" };
   }
+  const application = claim.application;
 
   // 审计（用户侧提交，记录 userId 便于追溯）
   await createAuditLog({

@@ -11,6 +11,7 @@ const { txClient } = vi.hoisted(() => ({
     product: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn() },
     userAddress: { findUnique: vi.fn() },
+    $queryRaw: vi.fn(),
   },
 }));
 
@@ -26,6 +27,7 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/points-ledger", () => ({
   redeemPoints: vi.fn(),
+  withPointTxRetry: async <T>(fn: () => Promise<T>) => fn(),
 }));
 
 import { prisma } from "@/lib/prisma";
@@ -308,17 +310,18 @@ describe("redeemGiftForUser 兑换事务", () => {
 });
 
 describe("fulfillRedemption 履约", () => {
-  const mockFindUnique = (prisma.pointRedemption as unknown as { findUnique: ReturnType<typeof vi.fn> })
-    .findUnique;
-  const mockUpdateMany = (prisma.pointRedemption as unknown as { updateMany: ReturnType<typeof vi.fn> })
-    .updateMany;
+  const mockFindUnique = txClient.pointRedemption.findUnique as ReturnType<typeof vi.fn>;
+  const mockUpdateMany = txClient.pointRedemption.updateMany as ReturnType<typeof vi.fn>;
+  const mockBalanceFind = txClient.pointBalance.findUnique as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    txClient.$queryRaw.mockResolvedValue([{ id: "bal-1" }]);
+    mockBalanceFind.mockResolvedValue({ available: 0 });
   });
 
   it("PENDING → FULFILLED（CAS 抢占成功）", async () => {
-    mockFindUnique.mockResolvedValue({ id: "r1", status: "PENDING" });
+    mockFindUnique.mockResolvedValue({ id: "r1", status: "PENDING", userId: "user-1" });
     mockUpdateMany.mockResolvedValue({ count: 1 });
 
     const result = await fulfillRedemption({ redemptionId: "r1", adminId: "admin-1" });
@@ -337,9 +340,19 @@ describe("fulfillRedemption 履约", () => {
   });
 
   it("已处理：ALREADY_PROCESSED", async () => {
-    mockFindUnique.mockResolvedValue({ id: "r1", status: "FULFILLED" });
+    mockFindUnique.mockResolvedValue({ id: "r1", status: "FULFILLED", userId: "user-1" });
     const result = await fulfillRedemption({ redemptionId: "r1", adminId: "admin-1" });
     expect(result).toEqual({ ok: false, code: "ALREADY_PROCESSED" });
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("用户积分为负：拒绝履约并要求先人工处置", async () => {
+    mockFindUnique.mockResolvedValue({ id: "r1", status: "PENDING", userId: "user-1" });
+    mockBalanceFind.mockResolvedValue({ available: -50 });
+
+    const result = await fulfillRedemption({ redemptionId: "r1", adminId: "admin-1" });
+
+    expect(result).toEqual({ ok: false, code: "NEGATIVE_BALANCE", available: -50 });
     expect(mockUpdateMany).not.toHaveBeenCalled();
   });
 });

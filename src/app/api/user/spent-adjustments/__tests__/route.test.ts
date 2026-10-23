@@ -10,6 +10,7 @@ const prismaMock = vi.hoisted(() => {
   const m = {
     spentAdjustmentApplication: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
     },
@@ -100,6 +101,9 @@ describe("POST /api/user/spent-adjustments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRateLimit.mockResolvedValue({ success: true });
+    (prismaMock.spentAdjustmentApplication.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(
+      null
+    );
     mockCount.mockResolvedValue(0);
     mockCreate.mockResolvedValue({
       id: "app-new",

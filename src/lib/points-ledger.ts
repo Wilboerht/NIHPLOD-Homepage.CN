@@ -12,8 +12,10 @@
  * - 生日积分（BIRTHDAY）：直接可用，6 个月过期，每年一次幂等。
  * - 打卡奖励（CHECKIN）：子站手动打卡发放，直接可用，6 个月过期，按 checkin:{userId}:{date} 幂等。
  *
- * 一致性：PointBalance 与 PointLedger 同事务更新；余额 = 流水剩余量之和（可用为负时代表超兑债务，
- * 后续新积分入账先行抵债）。所有函数接受事务客户端 tx，由调用方包在 prisma.$transaction 内。
+ * 一致性：PointBalance 是权威余额，与 PointLedger 同事务更新。发放流水 remaining 只用于
+ * FIFO 消耗与过期清理；负向人工调整/退款超兑时 available 可为负（债务），此时
+ * available 与 remaining 之和不再相等，不能把两者简单相加做对账。
+ * 所有函数接受事务客户端 tx，由调用方包在 prisma.$transaction 内。
  */
 import { Prisma } from "@/generated/prisma/client";
 import type { MembershipLevel } from "@/generated/prisma/client";
@@ -25,10 +27,58 @@ export type PointTx = Prisma.TransactionClient;
 
 export const POINT_EXPIRY_MONTHS = 6; // 积分有效期（月）
 
+/**
+ * 月末对齐的加月：1/31 + 1 个月 = 2/28（闰年 2/29），而不是溢出到 3/3。
+ * 保证“6 个月有效期”不会因目标月份天数不足而被意外延长。
+ */
 function addMonths(date: Date, months: number): Date {
   const d = new Date(date);
-  d.setUTCMonth(d.getUTCMonth() + months);
+  const day = d.getUTCDate();
+  d.setUTCMonth(d.getUTCMonth() + months, 1);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
   return d;
+}
+
+/**
+ * 余额行锁：
+ * 所有会改动余额/发放流水剩余量的操作都先锁同一行，统一“先余额后流水”的锁顺序，
+ * 避免兑礼（余额→流水）与退款/过期（流水→余额）互相死锁。
+ * 行不存在时顺手创建（0 余额），保证并发首次入账也能串行化。
+ */
+async function lockPointBalance(tx: PointTx, userId: string): Promise<void> {
+  await tx.pointBalance.upsert({
+    where: { userId },
+    create: { userId },
+    update: { updatedAt: new Date() },
+  });
+}
+
+/** 可重试的积分事务错误：PG 死锁/写冲突（Prisma P2034）与账本 CAS 冲突 */
+export function isRetryablePointTxError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: string }).code;
+  if (code === "P2034") return true;
+  const message = (error as { message?: string }).message ?? "";
+  return message.includes("POINT_LEDGER_CONFLICT") || message.includes("SPENT_SYNC_CAS_CONFLICT");
+}
+
+/**
+ * 积分事务重试包装：死锁/写冲突时短暂退避后重跑整个事务。
+ * 事务内所有写入必须可安全重放（幂等检查也在事务内完成）。
+ */
+export async function withPointTxRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isRetryablePointTxError(error) || attempt === attempts - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 15 * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -45,6 +95,7 @@ export async function creditSpendPoints(
   });
   if (existing) return { duplicated: true };
 
+  await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
     data: {
@@ -84,9 +135,14 @@ export async function refundSpendPoints(
   });
   if (existing) return { duplicated: true };
 
+  // 先物化过期并按统一锁顺序锁余额行：退款只能消耗仍然有效的积分，
+  // 避免“退款先于过期任务”时用已过期流水抵扣，导致最终余额随 cron 时序漂移。
+  await materializePoints(tx, userId);
+  await lockPointBalance(tx, userId);
+
   // 先冲减原始发放流水的 remaining，再扣余额。
   // 若退款金额大于全部剩余量，差额自然成为负余额（超兑债务）。
-  await consumeGrantsFifo(tx, userId, amount);
+  await consumeGrantsFifo(tx, userId, amount, { onlyUnexpired: true });
 
   await tx.pointLedger.create({
     data: { userId, type: "REFUND", amount: -amount, reference, note: note ?? null },
@@ -103,7 +159,13 @@ export async function refundSpendPoints(
 }
 
 /** 会记 remaining 并参与过期清理的发放类流水类型 */
-const GRANT_LEDGER_TYPES = ["CONSUME", "BIRTHDAY", "CHECKIN", "ADJUST"] as const;
+export const POINT_GRANT_LEDGER_TYPES = [
+  "CONSUME",
+  "BIRTHDAY",
+  "CHECKIN",
+  "ADJUST",
+  "REDEEM_REFUND",
+] as const;
 
 /**
  * FIFO 消耗发放流水的剩余量。
@@ -128,7 +190,7 @@ async function consumeGrantsFifo(
   const rows = await tx.pointLedger.findMany({
     where: {
       userId,
-      type: { in: [...GRANT_LEDGER_TYPES] },
+      type: { in: [...POINT_GRANT_LEDGER_TYPES] },
       remaining: { gt: 0 },
       ...(options.onlyUnexpired ? { expiresAt: { gt: now } } : {}),
     },
@@ -168,10 +230,12 @@ export async function expirePoints(
   userId: string,
   now: Date = new Date()
 ): Promise<number> {
+  // 先锁余额行，与兑礼/退款统一锁顺序，避免过期任务与用户兑礼互相死锁
+  await lockPointBalance(tx, userId);
   const expired = await tx.pointLedger.findMany({
     where: {
       userId,
-      type: { in: [...GRANT_LEDGER_TYPES] },
+      type: { in: [...POINT_GRANT_LEDGER_TYPES] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
     },
@@ -204,7 +268,8 @@ export async function expirePoints(
   const availableDeduct = Math.min(availableExpired, Math.max(0, balance?.available ?? 0));
   const frozenDeduct = Math.min(frozenExpired, balance?.frozen ?? 0);
 
-  if (availableDeduct > 0 || frozenDeduct > 0) {
+  const deducted = availableDeduct + frozenDeduct;
+  if (deducted > 0) {
     await tx.pointBalance.upsert({
       where: { userId },
       create: { userId },
@@ -215,15 +280,24 @@ export async function expirePoints(
     });
   }
 
+  // 只记实际扣减额：余额为负（超兑债务）时过期不减免债务，
+  // 记 -total 会让用户账单出现“过期扣了 200、余额却没变”的矛盾记录。
+  // 全部为债务抵扣时无余额变动，不产生流水；发放流水的 remaining 已清零可供审计。
+  if (deducted <= 0) return total;
+
+  const debtOffset = total - deducted;
   await tx.pointLedger.create({
     data: {
       userId,
       type: "EXPIRE",
-      amount: -total,
+      amount: -deducted,
       // 时间戳 reference：同一用户同一天可能有多批不同时刻到期的流水（创建时间不同），
       // 每次过期处理独立记账，避免同参考键唯一冲突
       reference: `expire:${userId}:${now.getTime()}`,
-      note: "积分过期（6 个月有效期）",
+      note:
+        debtOffset > 0
+          ? `积分过期（6 个月有效期；其中 ${debtOffset} 分用于抵扣超兑债务）`
+          : "积分过期（6 个月有效期）",
     },
   });
   return total;
@@ -270,6 +344,8 @@ export async function redeemPoints(
 
   const now = new Date();
   await materializePoints(tx, userId, now);
+  // 统一锁顺序：先锁余额行，再改发放流水；与退款/过期任务串行化
+  await lockPointBalance(tx, userId);
 
   const balance = await tx.pointBalance.findUnique({
     where: { userId },
@@ -304,11 +380,17 @@ export async function redeemPoints(
   for (const row of rows) {
     if (rest <= 0) break;
     const take = Math.min(row.remaining ?? 0, rest);
-    rest -= take;
-    await tx.pointLedger.update({
-      where: { id: row.id },
+    if (take <= 0) continue;
+    // 条件更新（CAS）：并发退款/过期已改过该行时命中 0 行，抛错让整个事务回滚，
+    // 绝不能像无条件 decrement 那样把 remaining 扣成负数。
+    const claimed = await tx.pointLedger.updateMany({
+      where: { id: row.id, remaining: { gte: take } },
       data: { remaining: { decrement: take } },
     });
+    if (claimed.count === 0) {
+      throw new Error("POINT_LEDGER_CONFLICT");
+    }
+    rest -= take;
   }
   if (rest > 0) {
     // 余额与流水不一致（理论不可达）：拒绝兑礼，事务回滚（含条件扣减）
@@ -366,6 +448,9 @@ export async function adjustPoints(
   });
   if (existing) return { duplicated: true };
 
+  // 先物化过期并锁余额行：负向调整与退款同一口径，不能因 cron 时序而“少扣”债务
+  await materializePoints(tx, userId);
+
   const now = new Date();
   await tx.pointLedger.create({
     data:
@@ -397,6 +482,49 @@ export async function adjustPoints(
 }
 
 /**
+ * 商城兑换撤销退分（内部 API 调用）：
+ * - 正向发放（REDEEM_REFUND），计 remaining + 6 个月有效，可再次参与兑礼/过期；
+ * - 幂等键固定为 `redeem-refund:{原兑换单号}`，重复上报不重复退分；
+ * - 调用方必须先确认原兑换流水存在，避免无源退分。
+ */
+export async function refundRedeemPoints(
+  tx: PointTx,
+  params: { userId: string; amount: number; redemptionReference: string; note?: string }
+): Promise<{ duplicated: boolean; amount: number }> {
+  const { userId, amount, redemptionReference, note } = params;
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error("POINT_REDEEM_REFUND_INVALID_AMOUNT");
+  }
+
+  const reference = `redeem-refund:${redemptionReference}`;
+  const existing = await tx.pointLedger.findUnique({
+    where: { userId_reference: { userId, reference } },
+  });
+  if (existing) return { duplicated: true, amount: 0 };
+
+  await lockPointBalance(tx, userId);
+  const now = new Date();
+  await tx.pointLedger.create({
+    data: {
+      userId,
+      type: "REDEEM_REFUND",
+      amount,
+      remaining: amount,
+      reference,
+      note: note ?? "商城兑换撤销退还",
+      releasedAt: now,
+      expiresAt: addMonths(now, POINT_EXPIRY_MONTHS),
+    },
+  });
+  await tx.pointBalance.upsert({
+    where: { userId },
+    create: { userId, available: amount },
+    update: { available: { increment: amount } },
+  });
+  return { duplicated: false, amount };
+}
+
+/**
  * 打卡奖励发放（测肤子站手动打卡，经 /api/v1/internal/points/grant 调用）：
  * 直接可用（无冻结），6 个月过期。
  * 幂等：同 userId+reference（checkin:{userId}:{date}）已存在则跳过——
@@ -412,6 +540,7 @@ export async function grantCheckinPoints(
   });
   if (existing) return { duplicated: true, amount: 0 };
 
+  await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
     data: {
@@ -447,6 +576,7 @@ export async function grantBirthdayPoints(
   const amount = BIRTHDAY_POINTS[level];
   if (amount <= 0) return { granted: false, amount: 0 };
 
+  await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
     data: {
@@ -480,7 +610,7 @@ export async function expirePointsCron(): Promise<number> {
   const now = new Date();
   const due = await prisma.pointLedger.findMany({
     where: {
-      type: { in: [...GRANT_LEDGER_TYPES] },
+      type: { in: [...POINT_GRANT_LEDGER_TYPES] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
     },
@@ -523,6 +653,13 @@ export async function grantBirthdayRewards(): Promise<{ rewarded: number; skippe
   for (const user of candidates) {
     try {
       const result = await prisma.$transaction(async (tx) => {
+        // 等级/状态在事务内重读：候选列表查询与发分之间可能发生升级/退款降档或封禁
+        const fresh = await tx.user.findUnique({
+          where: { id: user.id },
+          select: { membershipLevel: true, status: true },
+        });
+        if (!fresh || fresh.status !== "ACTIVE") return { granted: false, amount: 0 };
+
         // CAS 抢占：并发/重试场景下只有一次能抢占成功
         const claimed = await tx.user.updateMany({
           where: {
@@ -532,7 +669,11 @@ export async function grantBirthdayRewards(): Promise<{ rewarded: number; skippe
           data: { lastBirthdayRewardYear: year },
         });
         if (claimed.count === 0) return { granted: false, amount: 0 };
-        return grantBirthdayPoints(tx, { userId: user.id, level: user.membershipLevel, year });
+        return grantBirthdayPoints(tx, {
+          userId: user.id,
+          level: fresh.membershipLevel,
+          year,
+        });
       });
       if (result.granted) rewarded += 1;
       else skipped += 1;

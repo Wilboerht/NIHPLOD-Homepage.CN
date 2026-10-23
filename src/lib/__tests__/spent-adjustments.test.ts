@@ -11,6 +11,7 @@ vi.mock("@/lib/prisma", () => ({
       updateMany: vi.fn(),
       findUnique: vi.fn(),
     },
+    spentImportRow: { findFirst: vi.fn() },
   },
 }));
 
@@ -55,6 +56,7 @@ const pendingApp = {
 describe("reviewApplication", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma.spentImportRow.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
   });
 
   it("通过：入账（reference 周期唯一）并发送通知", async () => {

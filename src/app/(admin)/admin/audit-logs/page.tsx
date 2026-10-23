@@ -39,11 +39,36 @@ interface AuditLogItem {
   outcome?: "PENDING" | "SUCCESS" | "FAILURE" | "PARTIAL";
   requestId?: string | null;
   authMethod?: string | null;
+  actorType?: "ADMIN" | "USER" | "SYSTEM" | "INTEGRATION";
+  actorName?: string | null;
+  actorEmail?: string | null;
   detail: Record<string, unknown> | null;
   ipAddress: string | null;
   userAgent: string | null;
   admin: { id: string; email: string; name: string } | null;
   createdAt: string;
+}
+
+const ACTOR_TYPE_LABELS: Record<string, string> = {
+  ADMIN: "管理员",
+  USER: "用户",
+  SYSTEM: "系统",
+  INTEGRATION: "集成",
+};
+
+const ACTOR_TYPE_OPTIONS = [
+  { value: "ADMIN", label: "管理员操作" },
+  { value: "USER", label: "用户操作" },
+  { value: "SYSTEM", label: "系统操作" },
+  { value: "ALL", label: "全部操作" },
+] as const;
+
+type ActorTypeFilter = (typeof ACTOR_TYPE_OPTIONS)[number]["value"];
+
+function resolveActorTypeFilter(value: string | null): ActorTypeFilter {
+  return ACTOR_TYPE_OPTIONS.some((option) => option.value === value)
+    ? (value as ActorTypeFilter)
+    : "ADMIN";
 }
 
 /**
@@ -144,6 +169,8 @@ function AuditLogsContent() {
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
   const page = parseInt(searchParams.get("page") || "1");
+  // 操作者类型：默认只看管理员操作，可切换用户/系统/全部
+  const actorType = resolveActorTypeFilter(searchParams.get("actorType"));
   const action = searchParams.get("action") || "";
   const targetType = searchParams.get("targetType") || "";
   const outcome = searchParams.get("outcome") || "";
@@ -161,6 +188,7 @@ function AuditLogsContent() {
     try {
       const params: Record<string, string | number | undefined> = {
         page,
+        actorType,
         action: action || undefined,
         targetType: targetType || undefined,
         outcome: outcome || undefined,
@@ -182,7 +210,7 @@ function AuditLogsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, action, targetType, outcome, startDate, endDate, takeLatestLogs]);
+  }, [page, actorType, action, targetType, outcome, startDate, endDate, takeLatestLogs]);
 
   useEffect(() => {
     deferInEffect(fetchLogs);
@@ -212,6 +240,7 @@ function AuditLogsContent() {
 
   const exportCsv = async () => {
     const params = new URLSearchParams();
+    params.set("actorType", actorType);
     if (action) params.set("action", action);
     if (targetType) params.set("targetType", targetType);
     if (outcome) params.set("outcome", outcome);
@@ -231,7 +260,9 @@ function AuditLogsContent() {
     }
   };
 
-  const hasFilters = Boolean(action || targetType || outcome || startDate || endDate);
+  const hasFilters = Boolean(
+    actorType !== "ADMIN" || action || targetType || outcome || startDate || endDate
+  );
   const clearFilters = () => router.push("/admin/audit-logs");
 
   // 表格列定义
@@ -250,15 +281,17 @@ function AuditLogsContent() {
       key: "admin",
       title: "操作人",
       width: "180px",
-      render: (_, log) =>
-        log.admin ? (
+      render: (_, log) => {
+        const name =
+          log.admin?.name || log.actorName || ACTOR_TYPE_LABELS[log.actorType ?? "SYSTEM"] || "-";
+        const email = log.admin?.email || log.actorEmail;
+        return (
           <div className="min-w-0">
-            <p className="truncate font-medium text-brand-charcoal">{log.admin.name}</p>
-            <p className="truncate text-xs text-brand-charcoal/65">{log.admin.email}</p>
+            <p className="truncate font-medium text-brand-charcoal">{name}</p>
+            {email && <p className="truncate text-xs text-brand-charcoal/65">{email}</p>}
           </div>
-        ) : (
-          <span className="text-brand-charcoal/65">-</span>
-        ),
+        );
+      },
     },
     {
       key: "action",
@@ -328,7 +361,7 @@ function AuditLogsContent() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="审计日志"
-        description="记录管理端关键操作，便于追溯和合规审计"
+        description="默认展示管理员操作，可切换用户/系统操作，便于追溯和合规审计"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canAdmin("audit:export") && (
@@ -358,6 +391,16 @@ function AuditLogsContent() {
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="flex flex-wrap items-center gap-3">
+            <div className="w-full sm:w-36">
+              <Select
+                aria-label="按操作者筛选"
+                options={ACTOR_TYPE_OPTIONS.map((option) => ({ ...option }))}
+                value={actorType}
+                onChange={(e) =>
+                  updateParams({ actorType: e.target.value === "ADMIN" ? "" : e.target.value })
+                }
+              />
+            </div>
             <div className="w-full sm:w-44">
               <Select
                 aria-label="按操作筛选"
@@ -466,7 +509,13 @@ function AuditLogsContent() {
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
-                <span className="truncate">操作人：{log.admin?.name || "-"}</span>
+                <span className="truncate">
+                  操作人：
+                  {log.admin?.name ||
+                    log.actorName ||
+                    ACTOR_TYPE_LABELS[log.actorType ?? "SYSTEM"] ||
+                    "-"}
+                </span>
                 <span className="truncate">IP：{log.ipAddress || "-"}</span>
                 <span className="col-span-2 truncate font-mono">目标：{log.targetId || "-"}</span>
               </div>
@@ -524,7 +573,17 @@ function AuditLogsContent() {
                 <dd className="font-medium">
                   {selectedLog.admin
                     ? `${selectedLog.admin.name} (${selectedLog.admin.email})`
-                    : "-"}
+                    : [selectedLog.actorName, selectedLog.actorEmail].filter(Boolean).join(" / ") ||
+                      ACTOR_TYPE_LABELS[selectedLog.actorType ?? "SYSTEM"] ||
+                      "-"}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
+                <dt className="mb-1 text-brand-charcoal/65">操作者类型</dt>
+                <dd className="font-medium">
+                  {ACTOR_TYPE_LABELS[selectedLog.actorType ?? "ADMIN"] ??
+                    selectedLog.actorType ??
+                    "管理员"}
                 </dd>
               </div>
               <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">

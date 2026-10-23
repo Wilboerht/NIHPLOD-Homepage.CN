@@ -105,15 +105,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
         ALREADY_PROCESSED: 409,
+        NEGATIVE_BALANCE: 409,
       };
+      const message =
+        result.code === "ALREADY_PROCESSED"
+          ? "该兑换已处理"
+          : result.code === "NEGATIVE_BALANCE"
+            ? `用户当前积分为负（${result.available ?? 0}），请先人工调整/取消兑换后再履约`
+            : "兑换记录不存在";
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.code,
-            message: result.code === "ALREADY_PROCESSED" ? "该兑换已处理" : "兑换记录不存在",
-          },
-        },
+        { success: false, error: { code: result.code, message } },
         { status: statusMap[result.code ?? ""] ?? 500 }
       );
     }

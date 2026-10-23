@@ -15,11 +15,7 @@ import {
   AUDIT_ACTION_LABELS as ACTION_LABELS,
   AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
 } from "@/lib/audit-labels";
-import {
-  maskAuditDetail,
-  maskAuditText,
-  redactSensitiveAuditDetail,
-} from "@/lib/audit-sanitize";
+import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
 import { maskIdentifier, maskIp } from "@/lib/mask-phone";
 import { escapeCSV } from "@/lib/sso-audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -34,6 +30,8 @@ const querySchema = z.object({
   action: z.enum(AUDIT_ACTIONS).optional(),
   targetType: z.enum(AUDIT_TARGET_TYPES).optional(),
   adminId: z.string().cuid().optional(),
+  // 操作者类型：默认只看管理员操作；ALL 表示不按操作者过滤
+  actorType: z.enum(["ADMIN", "USER", "SYSTEM", "INTEGRATION", "ALL"]).default("ADMIN"),
   outcome: z.enum(["PENDING", "SUCCESS", "FAILURE", "PARTIAL"]).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -74,10 +72,12 @@ export async function GET(request: NextRequest) {
       action: searchParams.get("action") || undefined,
       targetType: searchParams.get("targetType") || undefined,
       adminId: searchParams.get("adminId") || undefined,
+      actorType: searchParams.get("actorType") || undefined,
       outcome: searchParams.get("outcome") || undefined,
       startDate: searchParams.get("startDate") || undefined,
       endDate: searchParams.get("endDate") || undefined,
     });
+    const actorType = params.actorType === "ALL" ? undefined : params.actorType;
 
     // 审计详情脱敏：无 audit:sensitive:read 时遮盖 PII、IP、UA 与操作者邮箱
     type AuditLogRow = Awaited<ReturnType<typeof listAuditLogs>>["items"][number];
@@ -139,6 +139,7 @@ export async function GET(request: NextRequest) {
           action: params.action,
           targetType: params.targetType,
           adminId: params.adminId,
+          actorType,
           outcome: params.outcome,
           startDate,
           endDate,
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
         new Date(log.createdAt as string).toISOString(),
         log.admin
           ? `${(log.admin as { name: string }).name} (${(log.admin as { email: string }).email})`
-          : "-",
+          : log.actorName || log.actorEmail || (log.actorType === "USER" ? "用户" : "-"),
         ACTION_LABELS[log.action as string] || (log.action as string),
         (log as { outcome?: string }).outcome || "SUCCESS",
         TARGET_TYPE_LABELS[log.targetType as string] || (log.targetType as string),
@@ -188,6 +189,7 @@ export async function GET(request: NextRequest) {
           action: params.action ?? null,
           targetType: params.targetType ?? null,
           adminId: params.adminId ?? null,
+          actorType: params.actorType,
           outcome: params.outcome ?? null,
           startDate: startDate?.toISOString() ?? null,
           endDate: endDate?.toISOString() ?? null,
@@ -218,6 +220,7 @@ export async function GET(request: NextRequest) {
       action: params.action,
       targetType: params.targetType,
       adminId: params.adminId,
+      actorType,
       outcome: params.outcome,
       startDate,
       endDate,
@@ -246,6 +249,7 @@ export async function GET(request: NextRequest) {
             action: params.action ?? null,
             targetType: params.targetType ?? null,
             adminId: params.adminId ?? null,
+            actorType: params.actorType,
             outcome: params.outcome ?? null,
             startDate: params.startDate ?? null,
             endDate: params.endDate ?? null,

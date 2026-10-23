@@ -30,6 +30,7 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/points-ledger", () => ({
   redeemPoints: vi.fn(),
   adjustPoints: vi.fn().mockResolvedValue({ duplicated: false }),
+  withPointTxRetry: async <T>(fn: () => Promise<T>) => fn(),
 }));
 
 import { cancelRedemption } from "@/lib/point-gifts";
@@ -91,7 +92,7 @@ describe("cancelRedemption 取消兑换退分", () => {
     expect(result.points).toBe(200);
     expect(txMock.pointRedemption.updateMany).toHaveBeenCalledWith({
       where: { id: "rd-1", status: "PENDING" },
-      data: { status: "CANCELLED" },
+      data: expect.objectContaining({ status: "CANCELLED" }),
     });
     expect(adjustPoints).toHaveBeenCalledWith(
       expect.anything(),

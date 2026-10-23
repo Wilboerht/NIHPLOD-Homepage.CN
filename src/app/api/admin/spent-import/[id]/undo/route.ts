@@ -102,6 +102,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         NOT_FOUND: 404,
         ALREADY_UNDONE: 409,
         NOTHING_TO_UNDO: 400,
+        NOT_COMPLETED: 409,
       };
       return NextResponse.json(
         { success: false, error: { code: result.code, message: result.message } },

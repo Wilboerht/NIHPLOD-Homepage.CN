@@ -15,7 +15,11 @@ import type { MembershipLevel } from "@/generated/prisma/client";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import { creditSpendPoints, refundSpendPoints } from "@/lib/points-ledger";
+import {
+  creditSpendPoints,
+  refundSpendPoints,
+  withPointTxRetry,
+} from "@/lib/points-ledger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
 
@@ -69,7 +73,7 @@ export async function applyExternalSpentSync(params: {
 
   try {
     // 成功入账时事务额外返回 previous（入账前快照），用于提交后判断消费额/等级是否实际变化
-    const txOutcome = await prisma.$transaction(async (tx) => {
+    const txOutcome = await withPointTxRetry(() => prisma.$transaction(async (tx) => {
       // 幂等检查：同一用户同一单据已入账过，直接返回当前权威消费额
       const existing = await tx.spentSyncRecord.findUnique({
         where: { userId_reference: { userId, reference } },
@@ -163,9 +167,9 @@ export async function applyExternalSpentSync(params: {
           previous: { totalSpent: user.totalSpent, membershipLevel: user.membershipLevel },
         };
       }
-      // CAS 重试耗尽（持续高频并发冲突），抛出由路由层 500 兜底
+      // CAS 重试耗尽（持续高频并发冲突），抛出后由 withPointTxRetry/路由层兜底
       throw new Error("SPENT_SYNC_CAS_CONFLICT");
-    });
+    }));
 
     if (txOutcome) {
       const result = {

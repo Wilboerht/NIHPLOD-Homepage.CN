@@ -125,7 +125,7 @@ function totpError(code: AdminTotpErrorCode, message: string): NextResponse {
  * - 授权绑定管理员/会话/tokenVersion，改密、改权限、登出后自动失效。
  *
  * 适用于：用户删除、管理员账号/角色/权限变更、break-glass 查看、
- * OAuth Client 密钥轮换/缩权等。
+ * OAuth Client 密钥轮换/缩权、分类编辑等。
  */
 export async function requireAdminStepUp(
   request: NextRequest,

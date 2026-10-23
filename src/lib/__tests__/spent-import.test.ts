@@ -11,6 +11,7 @@ vi.mock("@/lib/prisma", () => {
     user: { findMany: vi.fn() },
     spentImportBatch: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     spentImportRow: { update: vi.fn(), findFirst: vi.fn() },
+    spentAdjustmentApplication: { findMany: vi.fn() },
     spentSyncRecord: { updateMany: vi.fn(), deleteMany: vi.fn() },
   };
   prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
@@ -277,6 +278,7 @@ describe("executeImportBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000" }]);
+    (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     mockBatchFindFirst.mockResolvedValue(null);
     mockBatchCreate.mockImplementation(
       (args: { data: { rows: { create: Record<string, unknown>[] } } }) => ({

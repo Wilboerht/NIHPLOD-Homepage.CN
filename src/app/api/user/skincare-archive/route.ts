@@ -20,6 +20,7 @@ import { withUserAuth } from "@/lib/auth";
 import { advisorRequest, mapAdvisorError, resolveClientIp } from "@/lib/advisor-internal";
 import { prisma } from "@/lib/prisma";
 import { grantCheckinPoints } from "@/lib/points-ledger";
+import { getUtc8DateKey } from "@/lib/timezone";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -113,23 +114,34 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
     });
   }
 
-  if (
-    upstream?.isFirstManualCheckin &&
-    dateStr &&
-    amountValid &&
-    typeof upstream.streak === "number"
-  ) {
+  // 只有“今天（UTC+8）”的打卡才发积分：补录历史日期只写日记、不发分，
+  // 避免用户逐日补录刷积分。reference 幂等，重复提交/编辑不会重复发放。
+  const todayKey = getUtc8DateKey();
+  const isToday = !!dateStr && dateStr === todayKey;
+  const streak = typeof upstream?.streak === "number" ? upstream.streak : null;
+
+  // 首次打卡拿上游金额；若是首次发分失败后的重试（上游已不再返回 points/isFirst），
+  // 用 streak 兜底补发（1/2/3+ 天 → 1/2/3 分），保证已打卡用户不丢积分。
+  // 非首次且上游仍返回合法 points 时不发分，避免编辑历史记录反复触发。
+  const fallbackAmount =
+    streak !== null && Number.isInteger(streak) ? Math.min(3, Math.max(1, streak)) : null;
+  const isFirst = upstream?.isFirstManualCheckin === true;
+  const grantAmount = isFirst ? (amountValid ? rawAmount : null) : amountValid ? null : fallbackAmount;
+  const shouldAttemptGrant = isToday && grantAmount !== null;
+
+  if (shouldAttemptGrant) {
+    const amountToGrant = grantAmount as number;
     try {
       const grant = await prisma.$transaction((tx) =>
         grantCheckinPoints(tx, {
           userId: payload.id,
-          amount: upstream.points as number,
+          amount: amountToGrant,
           reference: `checkin:${payload.id}:${dateStr}`,
-          note: `连续第 ${upstream.streak} 天`,
+          note: streak !== null ? `连续第 ${streak} 天` : "打卡奖励",
         })
       );
       if (!grant.duplicated && grant.amount > 0) {
-        points = { granted: grant.amount, streak: upstream.streak };
+        points = { granted: grant.amount, streak: streak ?? 1 };
       }
     } catch (error) {
       apiConsole.error("[skincare-archive] 打卡积分发放失败", { error: String(error) });

@@ -53,7 +53,7 @@
 
 ## 高风险操作 step-up
 
-- 用户删除、管理员账号/角色/权限变更、break-glass 查看、OAuth Client 密钥轮换/缩权/停用/删除：
+- 用户删除、管理员账号/角色/权限变更、break-glass 查看、OAuth Client 密钥轮换/缩权/停用/删除、分类编辑：
   服务端必须调用 `requireAdminStepUp`，前端用 `useTotpConfirm` 拉起二次验证。
 - 未启用 TOTP 时 fail-closed，引导前往「安全设置」，不得静默放行。
 - 一次性恢复码/临时密码弹窗：禁止遮罩、Esc、X 关闭，必须勾选“已保存”后显式关闭。

@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
-import { adjustPoints, redeemPoints } from "@/lib/points-ledger";
+import { adjustPoints, redeemPoints, withPointTxRetry } from "@/lib/points-ledger";
 
 /** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
@@ -25,6 +25,7 @@ export async function listRedeemableProducts() {
       description: true,
       price: true,
       capacity: true,
+      redeemStock: true,
       origin: true,
       ingredients: true,
       usage: true,
@@ -67,8 +68,11 @@ export type RedeemGiftResult =
         | "ADDRESS_NOT_FOUND"
         | "OUT_OF_STOCK"
         | "INSUFFICIENT"
-        | "INVALID_REQUEST";
+        | "INVALID_REQUEST"
+        | "PRICE_CHANGED";
       message: string;
+      /** PRICE_CHANGED 时返回服务端当前折算分，供调用方刷新后再确认 */
+      currentPoints?: number;
     };
 
 type RedeemErrorCode = Extract<RedeemGiftResult, { ok: false }>["code"];
@@ -98,15 +102,19 @@ export async function redeemGiftForUser(params: {
   productId: string;
   requestId: string;
   addressId: string;
+  /** 客户端确认弹窗展示的积分；与实际重新折算不一致时拒绝，防止静默多扣/少扣 */
+  expectedPoints?: number;
+  /** OAuth 来源客户端（会话直兑为空），用于责任追溯 */
+  clientId?: string | null;
 }): Promise<RedeemGiftResult> {
-  const { userId, productId, requestId, addressId } = params;
+  const { userId, productId, requestId, addressId, expectedPoints, clientId } = params;
   if (!requestId || requestId.length > 64) {
     return { ok: false, code: "INVALID_REQUEST", message: "请求参数错误" };
   }
   const reference = `redeem:${userId}:${requestId}`;
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await withPointTxRetry(() => prisma.$transaction(async (tx) => {
       // 幂等：同一请求单只产生一条兑换记录
       const existing = await tx.pointRedemption.findUnique({
         where: { userId_reference: { userId, reference } },
@@ -153,6 +161,17 @@ export async function redeemGiftForUser(params: {
       const points = giftCostForUser(product.price, level);
       if (points === null) {
         return { ok: false, code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑换" };
+      }
+
+      // 报价一致性：价格/会员等级可能在用户打开确认页后变化。
+      // 不静默按新值扣分，而是让用户重新确认（调用方刷新礼品列表）。
+      if (expectedPoints !== undefined && expectedPoints !== points) {
+        return {
+          ok: false,
+          code: "PRICE_CHANGED",
+          message: `礼品所需积分已变化（当前 ${points} 积分），请刷新后重新确认`,
+          currentPoints: points,
+        };
       }
 
       // 收货地址校验（扣分前拦截，地址必须属于当前用户）
@@ -203,6 +222,9 @@ export async function redeemGiftForUser(params: {
           productName: product.name,
           priceYuan: product.price,
           points,
+          level,
+          redeemRate: POINT_REDEEM_RATES[level],
+          clientId: clientId ?? null,
           reference,
           recipient: address.recipient,
           phone: address.phone,
@@ -217,7 +239,7 @@ export async function redeemGiftForUser(params: {
         available: result.available,
         redemptionId: redemption.id,
       };
-    });
+    }));
   } catch (error) {
     if (error instanceof RedeemRollback) {
       return { ok: false, code: error.code, message: error.message };
@@ -252,24 +274,50 @@ export async function fulfillRedemption(params: {
   redemptionId: string;
   adminId: string;
   waybillNo?: string;
-}): Promise<{ ok: boolean; code?: "NOT_FOUND" | "ALREADY_PROCESSED" }> {
+}): Promise<{
+  ok: boolean;
+  code?: "NOT_FOUND" | "ALREADY_PROCESSED" | "NEGATIVE_BALANCE";
+  available?: number;
+}> {
   const { redemptionId, waybillNo } = params;
-  const redemption = await prisma.pointRedemption.findUnique({
-    where: { id: redemptionId },
-    select: { id: true, status: true },
-  });
-  if (!redemption) return { ok: false, code: "NOT_FOUND" };
-  if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
 
-  const claimed = await prisma.pointRedemption.updateMany({
-    where: { id: redemptionId, status: "PENDING" },
-    data: {
-      status: "FULFILLED",
-      fulfilledAt: new Date(),
-      ...(waybillNo ? { waybillNo, carrier: "SF" } : {}),
-    },
-  });
-  return { ok: claimed.count > 0 };
+  return withPointTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const redemption = await tx.pointRedemption.findUnique({
+        where: { id: redemptionId },
+        select: { id: true, status: true, userId: true },
+      });
+    if (!redemption) return { ok: false, code: "NOT_FOUND" as const };
+    if (redemption.status !== "PENDING") {
+      return { ok: false, code: "ALREADY_PROCESSED" as const };
+    }
+
+    // 履约前风控：退款/消费额下降可把用户积分冲成负数（超兑债务）。
+    // 负积分时禁止直接发货，需管理员先人工调整/取消兑换，避免“先发货后追债”。
+    // 锁余额行，避免与并发退款检查后写入形成竞态。
+    await tx.$queryRaw`SELECT "id" FROM "PointBalance" WHERE "userId" = ${redemption.userId} FOR UPDATE`;
+    const balance = await tx.pointBalance.findUnique({
+      where: { userId: redemption.userId },
+      select: { available: true },
+    });
+    const available = balance?.available ?? 0;
+    if (available < 0) {
+      return { ok: false, code: "NEGATIVE_BALANCE" as const, available };
+    }
+
+    const claimed = await tx.pointRedemption.updateMany({
+      where: { id: redemptionId, status: "PENDING" },
+      data: {
+        status: "FULFILLED",
+        fulfilledAt: new Date(),
+        ...(waybillNo ? { waybillNo, carrier: "SF" } : {}),
+      },
+    });
+      return claimed.count > 0
+        ? { ok: true as const }
+        : { ok: false, code: "ALREADY_PROCESSED" as const };
+    })
+  );
 }
 
 /**
@@ -299,24 +347,26 @@ export async function cancelRedemption(params: {
 }): Promise<{ ok: boolean; code?: "NOT_FOUND" | "ALREADY_PROCESSED"; points?: number }> {
   const { redemptionId, note } = params;
 
-  return prisma.$transaction(async (tx) => {
-    const redemption = await tx.pointRedemption.findUnique({
-      where: { id: redemptionId },
-      select: {
-        id: true,
-        userId: true,
-        points: true,
-        status: true,
-        productName: true,
-        productId: true,
-      },
-    });
+  return withPointTxRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const redemption = await tx.pointRedemption.findUnique({
+        where: { id: redemptionId },
+        select: {
+          id: true,
+          userId: true,
+          points: true,
+          status: true,
+          productName: true,
+          productId: true,
+        },
+      });
     if (!redemption) return { ok: false, code: "NOT_FOUND" };
     if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
 
+    const cancelNote = note?.trim() || null;
     const claimed = await tx.pointRedemption.updateMany({
       where: { id: redemptionId, status: "PENDING" },
-      data: { status: "CANCELLED" },
+      data: { status: "CANCELLED", cancelledAt: new Date(), cancelNote },
     });
     if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
 
@@ -326,24 +376,27 @@ export async function cancelRedemption(params: {
       userId: redemption.userId,
       amount: redemption.points,
       reference: `cancel:${redemptionId}`,
-      note: note?.trim() || `兑换取消退还：${redemption.productName}`,
+      note: cancelNote || `兑换取消退还：${redemption.productName}`,
     });
 
-    return { ok: true, points: redemption.points };
-  });
+      return { ok: true, points: redemption.points };
+    })
+  );
 }
 
 /** 管理端：补录/更新运单号（已履约订单；传空字符串清除） */
 export async function updateRedemptionWaybill(params: {
   redemptionId: string;
   waybillNo: string | null;
-}): Promise<{ ok: boolean; code?: "NOT_FOUND" }> {
+}): Promise<{ ok: boolean; code?: "NOT_FOUND" | "INVALID_STATUS" }> {
   const { redemptionId, waybillNo } = params;
   const redemption = await prisma.pointRedemption.findUnique({
     where: { id: redemptionId },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!redemption) return { ok: false, code: "NOT_FOUND" };
+  // 运单号只对已履约订单有意义；待履约/已取消单不应写入物流信息
+  if (redemption.status !== "FULFILLED") return { ok: false, code: "INVALID_STATUS" };
 
   await prisma.pointRedemption.update({
     where: { id: redemptionId },

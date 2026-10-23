@@ -195,20 +195,26 @@ export async function executeAccountDeletion(
         data: { revokedAt: new Date() },
       });
 
-      // 积分兑换单：待履约的一律取消（用户已注销，不再寄送）；
-      // 限量库存同时归还，避免注销后库存被永久占用。
+      // 积分兑换单：待履约的一律取消（用户已注销，不再寄送）。
+      // 逐行 CAS 抢占后再归还库存：避免与管理员取消并发时 updateMany 命中 0 行、
+      // 但循环仍按旧快照归还库存，造成同一单库存归还两次。
       const pendingRedemptions = await tx.pointRedemption.findMany({
         where: { userId, status: "PENDING" },
-        select: { productId: true },
+        select: { id: true, productId: true },
       });
-      await tx.pointRedemption.updateMany({
-        where: { userId, status: "PENDING" },
-        data: { status: "CANCELLED" },
-      });
-      for (const { productId } of pendingRedemptions) {
-        if (!productId) continue;
+      for (const redemption of pendingRedemptions) {
+        const claimed = await tx.pointRedemption.updateMany({
+          where: { id: redemption.id, userId, status: "PENDING" },
+          data: {
+            status: "CANCELLED",
+            cancelledAt: new Date(),
+            cancelNote: "账号注销，兑换权益作废",
+          },
+        });
+        if (claimed.count === 0) continue;
+        if (!redemption.productId) continue;
         await tx.product.updateMany({
-          where: { id: productId, redeemStock: { not: null } },
+          where: { id: redemption.productId, redeemStock: { not: null } },
           data: { redeemStock: { increment: 1 } },
         });
       }
@@ -217,6 +223,31 @@ export async function executeAccountDeletion(
         where: { userId },
         data: { recipient: null, phone: null, address: null },
       });
+
+      // 账号注销积分作废：写一条 ADJUST 流水后清零余额。
+      // 保留流水便于财务审计；正余额记为负向作废，负余额（超兑债务）记为正向豁免，
+      // 避免余额长期留在全站积分总额里虚高。账户已 DELETED，后续不可登录使用。
+      const pointBalance = await tx.pointBalance.findUnique({
+        where: { userId },
+        select: { available: true, frozen: true },
+      });
+      const available = pointBalance?.available ?? 0;
+      const frozen = pointBalance?.frozen ?? 0;
+      if (available !== 0 || frozen !== 0) {
+        await tx.pointLedger.create({
+          data: {
+            userId,
+            type: "ADJUST",
+            amount: -(available + frozen),
+            reference: `account-deletion:${requestId}`,
+            note: "账号注销，积分余额作废",
+          },
+        });
+        await tx.pointBalance.updateMany({
+          where: { userId },
+          data: { available: 0, frozen: 0 },
+        });
+      }
 
       // 消费导入行内手机号匿名化：替换为与 User.phone 相同的占位值——
       // 该列语义是"行内手机号回溯"，占位值保持同用户可关联、对他人不可逆，

@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn, generateSlug } from "@/lib/utils";
-import { apiPost, apiPut } from "@/lib/api-client";
+import { apiPost, apiPut, ApiError } from "@/lib/api-client";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { CategorySchema as FullCategorySchema } from "@/schemas/product";
 
 // 分类表单专用 Schema（扩展支持更多字段）
@@ -43,6 +44,7 @@ interface CategoryFormProps {
 
 export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFormProps) {
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const [formData, setFormData] = useState({
     name: "",
     nameEn: "",
@@ -155,17 +157,29 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
       return;
     }
 
-    setSaving(true);
-    try {
+    /** 编辑分类：服务端要求 step-up，首次调用失败时拉起二次验证并重试 */
+    const submit = async () => {
       const payload = {
         ...formData,
         order: formData.order === "" ? undefined : Number(formData.order),
       };
-      if (isEdit) {
-        await apiPut(`/api/admin/categories/${category.id}`, payload);
-      } else {
-        await apiPost("/api/admin/categories", payload);
+      if (!isEdit) {
+        return apiPost("/api/admin/categories", payload);
       }
+      try {
+        return await apiPut(`/api/admin/categories/${category.id}`, payload);
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return null;
+        return apiPut(`/api/admin/categories/${category.id}`, payload);
+      }
+    };
+
+    setSaving(true);
+    try {
+      const result = await submit();
+      if (result === null) return;
 
       success(isEdit ? "分类已更新" : "分类已创建");
       setBaseline(JSON.stringify(formData));
@@ -179,106 +193,109 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={() => {
-        if (!saving) guardClose(onClose);
-      }}
-      title={isEdit ? "编辑分类" : "新增分类"}
-      size="md"
-      closeOnBackdrop={false}
-      footer={
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button variant="outline" onClick={() => guardClose(onClose)} disabled={saving}>
-            取消
-          </Button>
-          <Button onClick={handleSave} loading={saving}>
-            {isEdit ? "保存" : "创建"}
-          </Button>
-        </div>
-      }
-    >
-      <div className="space-y-4">
-        <Input
-          label="分类名称（中文）"
-          data-autofocus
-          value={formData.name}
-          onChange={(e) => updateField("name", e.target.value)}
-          error={errors.name}
-          placeholder="e.g. Skincare Essence"
-          required
-        />
-        <Input
-          label="分类名称（英文）"
-          value={formData.nameEn}
-          onChange={(e) => updateField("nameEn", e.target.value)}
-          error={errors.nameEn}
-          placeholder="如：Essence"
-          required
-        />
-        <Input
-          label="URL 别名"
-          value={formData.slug}
-          onChange={(e) => {
-            slugManuallySetRef.current = true;
-            updateField("slug", e.target.value);
-          }}
-          error={errors.slug}
-          placeholder="自动生成，可修改"
-          required
-        />
-        <Textarea
-          label="分类描述"
-          value={formData.description}
-          onChange={(e) => updateField("description", e.target.value)}
-          error={errors.description}
-          placeholder="简短描述分类内容"
-          rows={2}
-        />
-        <Input
-          label="排序"
-          type="number"
-          min={0}
-          value={formData.order}
-          onChange={(e) => updateField("order", e.target.value)}
-          error={errors.order}
-          placeholder="留空追加到末尾"
-          hint="数字越小越靠前；留空自动追加到末尾"
-        />
-        <Textarea
-          label="图标 (SVG)"
-          value={formData.icon}
-          onChange={(e) => updateField("icon", e.target.value)}
-          error={errors.icon}
-          placeholder="可选，粘贴 SVG 代码"
-          rows={3}
-        />
-
-        {/* 前台展示开关 */}
-        <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-4 py-3">
-          <div>
-            <label className="text-sm font-medium text-brand-charcoal/80">前台展示</label>
-            <p className="text-xs text-brand-charcoal/65">关闭后该分类不会在产品页显示</p>
+    <>
+      <Modal
+        open={open}
+        onClose={() => {
+          if (!saving) guardClose(onClose);
+        }}
+        title={isEdit ? "编辑分类" : "新增分类"}
+        size="md"
+        closeOnBackdrop={false}
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="outline" onClick={() => guardClose(onClose)} disabled={saving}>
+              取消
+            </Button>
+            <Button onClick={handleSave} loading={saving}>
+              {isEdit ? "保存" : "创建"}
+            </Button>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={formData.visible}
-            onClick={() => setFormData((prev) => ({ ...prev, visible: !prev.visible }))}
-            className={cn(
-              "relative h-6 w-11 rounded-full transition-colors",
-              formData.visible ? "bg-brand-primary" : "bg-brand-charcoal/25"
-            )}
-          >
-            <span
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="分类名称（中文）"
+            data-autofocus
+            value={formData.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            error={errors.name}
+            placeholder="e.g. Skincare Essence"
+            required
+          />
+          <Input
+            label="分类名称（英文）"
+            value={formData.nameEn}
+            onChange={(e) => updateField("nameEn", e.target.value)}
+            error={errors.nameEn}
+            placeholder="如：Essence"
+            required
+          />
+          <Input
+            label="URL 别名"
+            value={formData.slug}
+            onChange={(e) => {
+              slugManuallySetRef.current = true;
+              updateField("slug", e.target.value);
+            }}
+            error={errors.slug}
+            placeholder="自动生成，可修改"
+            required
+          />
+          <Textarea
+            label="分类描述"
+            value={formData.description}
+            onChange={(e) => updateField("description", e.target.value)}
+            error={errors.description}
+            placeholder="简短描述分类内容"
+            rows={2}
+          />
+          <Input
+            label="排序"
+            type="number"
+            min={0}
+            value={formData.order}
+            onChange={(e) => updateField("order", e.target.value)}
+            error={errors.order}
+            placeholder="留空追加到末尾"
+            hint="数字越小越靠前；留空自动追加到末尾"
+          />
+          <Textarea
+            label="图标 (SVG)"
+            value={formData.icon}
+            onChange={(e) => updateField("icon", e.target.value)}
+            error={errors.icon}
+            placeholder="可选，粘贴 SVG 代码"
+            rows={3}
+          />
+
+          {/* 前台展示开关 */}
+          <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-4 py-3">
+            <div>
+              <label className="text-sm font-medium text-brand-charcoal/80">前台展示</label>
+              <p className="text-xs text-brand-charcoal/65">关闭后该分类不会在产品页显示</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.visible}
+              onClick={() => setFormData((prev) => ({ ...prev, visible: !prev.visible }))}
               className={cn(
-                "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-                formData.visible && "translate-x-5"
+                "relative h-6 w-11 rounded-full transition-colors",
+                formData.visible ? "bg-brand-primary" : "bg-brand-charcoal/25"
               )}
-            />
-          </button>
+            >
+              <span
+                className={cn(
+                  "absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+                  formData.visible && "translate-x-5"
+                )}
+              />
+            </button>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      {totpModal}
+    </>
   );
 }

@@ -13,8 +13,10 @@ const { txClient } = vi.hoisted(() => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     pointBalance: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() },
+    user: { findUnique: vi.fn() },
   },
 }));
 
@@ -94,9 +96,11 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
     mockRateLimit.mockResolvedValue({ success: true });
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
     mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "GOLD", status: "ACTIVE" });
+    txClient.user.findUnique.mockResolvedValue({ membershipLevel: "GOLD", status: "ACTIVE" });
     txClient.pointLedger.findUnique.mockResolvedValue(null);
     txClient.pointLedger.findMany.mockResolvedValue([]);
     txClient.pointLedger.create.mockResolvedValue({});
+    txClient.pointLedger.updateMany.mockResolvedValue({ count: 1 });
     txClient.pointBalance.upsert.mockResolvedValue({});
     txClient.pointBalance.update.mockResolvedValue({});
     txClient.pointBalance.updateMany.mockResolvedValue({ count: 1 });

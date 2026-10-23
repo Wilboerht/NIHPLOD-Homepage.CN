@@ -855,6 +855,7 @@ enum PointLedgerType {
   BIRTHDAY // 生日积分（每年一次，按生日当天当前等级 50/100/200）
   CHECKIN // 打卡奖励（测肤子站手动打卡：连续第 1/2/3+ 天 +1/+2/+3 分，6 个月过期）
   REDEEM // 兑礼扣减（FIFO 消耗最旧可用流水）
+  REDEEM_REFUND // 商城兑换撤销退分（正向计 remaining 并 6 个月过期）
   EXPIRE // 过期扣减
   ADJUST // 人工调整（管理端补偿/冲正；正向计 remaining 并 6 个月过期，负向直接冲可用）
 }
@@ -878,6 +879,7 @@ model PointLedger {
   @@unique([userId, reference]) // 幂等防重
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, type, expiresAt])
+  @@index([expiresAt])
 }
 
 // 积分余额（可用可负；frozen 列已废弃恒为 0，无冻结期）
@@ -932,6 +934,9 @@ model PointRedemption {
   productName String // 兑换时的产品名称快照
   priceYuan   Decimal               @db.Decimal(10, 2) // 兑换时的参考价格快照
   points      Int // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
+  level       MembershipLevel? // 兑换时的会员等级快照（历史数据为空）
+  redeemRate  Decimal?              @db.Decimal(4, 2) // 兑换时的兑礼率快照（历史数据为空）
+  clientId    String? // OAuth 客户端 ID（会话直兑为空，用于责任追溯）
   status      PointRedemptionStatus @default(PENDING)
   reference   String // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
   recipient   String? // 收货人姓名快照（履约寄送用）
@@ -940,6 +945,8 @@ model PointRedemption {
   carrier     String? // 承运商（如 SF=顺丰），履约时写入
   waybillNo   String? // 运单号（履约时录入，用户端据此查询物流轨迹）
   fulfilledAt DateTime?
+  cancelledAt DateTime? // 取消时间
+  cancelNote  String?               @db.Text // 取消原因（管理端填写）
   createdAt   DateTime              @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)

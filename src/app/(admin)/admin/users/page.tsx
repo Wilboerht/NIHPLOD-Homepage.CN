@@ -3,7 +3,7 @@
 /**
  * 用户管理页面
  */
-import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { createClientRequestId } from "@/lib/request-id";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { apiConsole } from "@/lib/logger";
 import { downloadFromUrl } from "@/lib/client-download";
@@ -302,6 +303,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   BIRTHDAY: "生日礼遇",
   CHECKIN: "打卡奖励",
   REDEEM: "积分兑礼",
+  REDEEM_REFUND: "兑换撤销退分",
   EXPIRE: "积分过期",
   ADJUST: "人工调整",
 };
@@ -425,6 +427,8 @@ function AdminUsersContent() {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
   const [adjusting, setAdjusting] = useState(false);
+  // 资金操作幂等键：弹窗打开时生成，网络超时/重试复用，避免重复加减积分
+  const adjustRequestIdRef = useRef<string | null>(null);
   const initialBirthday = detailUser?.birthday
     ? new Date(detailUser.birthday).toISOString().slice(0, 10)
     : "";
@@ -507,6 +511,13 @@ function AdminUsersContent() {
     }
   }, [activeDetailTab, detailUserId, fetchLedger]);
 
+  const closeAdjustModal = () => {
+    adjustRequestIdRef.current = null;
+    setAdjustOpen(false);
+    setAdjustAmount("");
+    setAdjustNote("");
+  };
+
   const handleAdjustPoints = async () => {
     if (!detailUser) return;
     const amount = Number(adjustAmount);
@@ -521,30 +532,47 @@ function AdminUsersContent() {
 
     setAdjusting(true);
     try {
-      const submit = (totpCode?: string) =>
-        apiPost(`/api/admin/users/${detailUser.id}/points`, {
-          amount,
-          note: adjustNote.trim(),
-          totpCode,
-        });
+      // 复用弹窗打开时生成的幂等键；兼容旧状态/直接调用时兜底生成
+      if (!adjustRequestIdRef.current) {
+        adjustRequestIdRef.current = createClientRequestId();
+      }
+      const requestId = adjustRequestIdRef.current;
 
+      const submit = (totpCode?: string) =>
+        apiPost<{ duplicated: boolean; available: number | null; amount: number }>(
+          `/api/admin/users/${detailUser.id}/points`,
+          {
+            amount,
+            note: adjustNote.trim(),
+            requestId,
+            totpCode,
+          }
+        );
+
+      let data: { duplicated: boolean; available: number | null; amount: number };
       try {
-        await submit();
+        data = await submit();
       } catch (err) {
         if (!isTotpRequired(err)) throw err;
         const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
         if (!verified) return;
-        await submit();
+        data = await submit();
       }
 
-      toast.success(
-        amount > 0 ? `已为该用户增加 ${amount} 积分` : `已为该用户扣减 ${-amount} 积分`
-      );
+      if (data.duplicated) {
+        toast.success("该调整请求已处理过，未重复加减积分；请以最新流水为准");
+      } else {
+        toast.success(
+          amount > 0 ? `已为该用户增加 ${amount} 积分` : `已为该用户扣减 ${-amount} 积分`
+        );
+      }
+      adjustRequestIdRef.current = null;
       setAdjustOpen(false);
       setAdjustAmount("");
       setAdjustNote("");
       await fetchLedger(detailUser.id, 1);
     } catch (err) {
+      // 保留 requestId：网络超时后重试仍会命中同一幂等键
       toast.error(err instanceof ApiError ? err.message : "积分调整失败");
     } finally {
       setAdjusting(false);
@@ -1557,7 +1585,10 @@ function AdminUsersContent() {
                         size="sm"
                         variant="outline"
                         leftIcon={<Wallet className="h-4 w-4" />}
-                        onClick={() => setAdjustOpen(true)}
+                        onClick={() => {
+                          adjustRequestIdRef.current = createClientRequestId();
+                          setAdjustOpen(true);
+                        }}
                       >
                         调整积分
                       </Button>
@@ -1959,9 +1990,7 @@ function AdminUsersContent() {
         open={adjustOpen}
         onClose={() => {
           if (adjusting) return;
-          setAdjustOpen(false);
-          setAdjustAmount("");
-          setAdjustNote("");
+          closeAdjustModal();
         }}
         title="调整用户积分"
         closeOnBackdrop={false}
@@ -1972,9 +2001,7 @@ function AdminUsersContent() {
               variant="outline"
               onClick={() => {
                 if (!confirmCloseAdjust()) return;
-                setAdjustOpen(false);
-                setAdjustAmount("");
-                setAdjustNote("");
+                closeAdjustModal();
               }}
               disabled={adjusting}
             >

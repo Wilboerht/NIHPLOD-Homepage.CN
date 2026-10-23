@@ -2,7 +2,7 @@
  * 护肤档案 BFF 路由测试（主站用户中心 → 子站内部接口代理）
  * 覆盖：路径/参数映射、透传、子站失败时 502 契约错误。
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
@@ -123,6 +123,15 @@ describe("GET /api/user/skincare-archive", () => {
 });
 
 describe("POST /api/user/skincare-archive（打卡 + 官网直发积分）", () => {
+  // 打卡积分只发放“今天（UTC+8）”：固定系统时间，保证用例日期与实现判断一致
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-24T12:00:00.000Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const upsertUpstream = {
     ok: true,
     status: 200,

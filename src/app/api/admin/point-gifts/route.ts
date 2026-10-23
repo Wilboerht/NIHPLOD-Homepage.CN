@@ -1,7 +1,7 @@
 /**
  * 积分兑换产品管理 API（管理端，产品数据来自产品库）
  * GET   /api/admin/point-gifts - 产品列表（可筛选"可兑换"，产品本身在 产品管理 维护）
- * PATCH /api/admin/point-gifts - 设置/取消产品的"积分可兑"标记（仅超级管理员）
+ * PATCH /api/admin/point-gifts - 设置/取消产品的"积分可兑"标记（需 gifts:write 权限）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";

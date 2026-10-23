@@ -63,7 +63,11 @@ type MockTx = {
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
   };
-  user: { update: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+  };
 };
 
 function createTx(): MockTx {
@@ -83,10 +87,12 @@ function createTx(): MockTx {
       updateMany: vi.fn(),
     },
     user: {
+      findUnique: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
   };
+  tx.user.findUnique.mockResolvedValue({ membershipLevel: "GOLD", status: "ACTIVE" });
   tx.pointLedger.findUnique.mockResolvedValue(null);
   tx.pointLedger.findMany.mockResolvedValue([]);
   tx.pointLedger.create.mockResolvedValue({});
@@ -263,12 +269,13 @@ describe("redeemPoints 兑礼扣减", () => {
       where: { userId: "user-1", available: { gte: 600 } },
       data: { available: { decrement: 600 } },
     });
-    expect(tx.pointLedger.update).toHaveBeenNthCalledWith(1, {
-      where: { id: "r1" },
+    // FIFO 也使用条件更新（remaining >= take），防止并发退款把剩余量扣成负数
+    expect(tx.pointLedger.updateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: "r1", remaining: { gte: 400 } },
       data: { remaining: { decrement: 400 } },
     });
-    expect(tx.pointLedger.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "r2" },
+    expect(tx.pointLedger.updateMany).toHaveBeenNthCalledWith(2, {
+      where: { id: "r2", remaining: { gte: 200 } },
       data: { remaining: { decrement: 200 } },
     });
     expect(tx.pointLedger.create).toHaveBeenCalledWith({
@@ -354,11 +361,10 @@ describe("expirePoints 过期扣减", () => {
 
     await expirePoints(asTx(tx), "user-1", NOW);
 
-    // 可用余额为负时不做任何余额扣减（债务不减免），仅清零流水并记 EXPIRE 流水
-    expect(tx.pointBalance.upsert).not.toHaveBeenCalled();
-    expect(tx.pointLedger.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ type: "EXPIRE", amount: -200 }),
-    });
+    // 可用余额为负时不做余额扣减（债务不减免），也不写金额为 -200 的假扣减流水；
+    // 仅锁余额行 + 清零发放流水 remaining
+    expect(tx.pointBalance.upsert).toHaveBeenCalledTimes(1); // 仅 lockPointBalance
+    expect(tx.pointLedger.create).not.toHaveBeenCalled();
   });
 
   it("无过期流水：不写 EXPIRE 流水", async () => {
@@ -384,7 +390,8 @@ describe("expirePoints 过期扣减", () => {
       where: { id: "r1", remaining: 200 },
       data: { remaining: 0 },
     });
-    expect(tx.pointBalance.upsert).not.toHaveBeenCalled();
+    // 仅 lockPointBalance 的 upsert，无扣减
+    expect(tx.pointBalance.upsert).toHaveBeenCalledTimes(1);
     expect(tx.pointLedger.create).not.toHaveBeenCalled();
   });
 });
@@ -447,6 +454,11 @@ describe("grantBirthdayRewards 批量发放（cron）", () => {
       { id: "u2", membershipLevel: "REGULAR" },
     ]);
     mockTransaction.mockImplementation(async (fn: (t: unknown) => Promise<unknown>) => fn(tx));
+    tx.user.findUnique.mockImplementation(async ({ where }: { where: { id: string } }) =>
+      where.id === "u1"
+        ? { membershipLevel: "GOLD", status: "ACTIVE" }
+        : { membershipLevel: "REGULAR", status: "ACTIVE" }
+    );
     tx.user.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await grantBirthdayRewards();

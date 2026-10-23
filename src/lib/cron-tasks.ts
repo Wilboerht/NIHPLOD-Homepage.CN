@@ -21,6 +21,7 @@ import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePointsCron } from "./points-ledger";
+import { failStaleImportBatches } from "./spent-import";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
@@ -339,6 +340,23 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 积分过期任务失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Fail Stale Spent Import Batches",
+    // 进程崩溃/请求超时会让导入批次长期停在 PROCESSING，阻塞同文件重导与撤销。
+    // 每小时把超过 30 分钟的 PROCESSING 批次标记 FAILED，由管理端撤销成功行后重试。
+    cronExpression: "10 * * * *",
+    handler: async () => {
+      try {
+        const count = await failStaleImportBatches(30);
+        if (count > 0) {
+          apiConsole.warn(`[Cron] 已标记 ${count} 个超时消费导入批次为 FAILED`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 清理超时消费导入批次失败:", error);
         throw error;
       }
     },

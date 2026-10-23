@@ -466,6 +466,7 @@ export async function listAuditLogs(options: {
   action?: string;
   targetType?: string;
   adminId?: string;
+  actorType?: AuditActorType;
   outcome?: string;
   startDate?: Date;
   endDate?: Date;
@@ -476,6 +477,7 @@ export async function listAuditLogs(options: {
     action,
     targetType,
     adminId,
+    actorType,
     outcome,
     startDate,
     endDate,
@@ -487,6 +489,7 @@ export async function listAuditLogs(options: {
   if (action) where.action = action;
   if (targetType) where.targetType = targetType;
   if (adminId) where.adminId = adminId;
+  if (actorType) where.actorType = actorType;
   if (outcome) where.outcome = outcome;
   if (startDate || endDate) {
     where.createdAt = {};

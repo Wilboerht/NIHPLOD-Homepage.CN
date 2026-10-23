@@ -31,7 +31,8 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, m } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
 import type { ProductData } from "@/components/website/ProductDrawer";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { createClientRequestId } from "@/lib/request-id";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { PanelShell } from "../PanelShell";
@@ -50,6 +51,7 @@ interface GiftItem {
   priceYuan: number;
   cost: number | null; // 当前等级所需积分（普通档 null）
   affordable: boolean;
+  stock: number | null; // null = 不限量；0 = 已兑完
   detail: ProductData; // 详情抽屉数据
 }
 
@@ -85,6 +87,8 @@ interface GiftsData {
 
 interface PointsData {
   available: number;
+  /** 服务端按全量发放流水计算的 30 天内即将过期积分（负余额时以可用余额封顶） */
+  expiringSoon?: { points: number; date: string } | null;
   recent: {
     id: string;
     type: string;
@@ -95,9 +99,6 @@ interface PointsData {
     createdAt: string;
   }[];
 }
-
-/** 即将过期提示窗口（天） */
-const EXPIRING_WINDOW_DAYS = 30;
 
 /** 主视图「我的兑换记录」预览条数（更多记录进「查看全部」子视图） */
 const RECORDS_PREVIEW_COUNT = 3;
@@ -144,6 +145,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   BIRTHDAY: "生日礼遇",
   CHECKIN: "打卡奖励",
   REDEEM: "积分兑礼",
+  REDEEM_REFUND: "兑换撤销退分",
   EXPIRE: "积分过期",
   ADJUST: "人工调整",
 };
@@ -171,25 +173,6 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
-/**
- * 计算 30 天内即将过期的积分（加载时调用，避免渲染期取当前时间）
- * 仅统计仍有剩余（remaining>0）的发放类流水：FIFO 消耗后仍有效的部分才是真实可损失积分。
- */
-function computeExpiringSoon(data: PointsData): { points: number; date: number } | null {
-  const now = Date.now();
-  const deadline = now + EXPIRING_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  let points = 0;
-  let earliest: number | null = null;
-  for (const r of data.recent) {
-    if (r.amount <= 0 || !r.remaining || r.remaining <= 0 || !r.expiresAt) continue;
-    const t = new Date(r.expiresAt).getTime();
-    if (Number.isNaN(t) || t <= now || t > deadline) continue;
-    points += r.remaining;
-    if (earliest === null || t < earliest) earliest = t;
-  }
-  return points > 0 && earliest !== null ? { points, date: earliest } : null;
-}
-
 export function PointsMallPanel() {
   const [giftsData, setGiftsData] = useState<GiftsData | null>(null);
   const [giftsLoading, setGiftsLoading] = useState(true);
@@ -210,6 +193,8 @@ export function PointsMallPanel() {
   /** 当前打开详情抽屉的礼品（null 表示关闭） */
   const [detailGift, setDetailGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
+  // 兑换幂等键：进入确认兑换视图时生成，网络超时/重试复用，避免重复扣分
+  const [redeemRequestId, setRedeemRequestId] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -254,7 +239,12 @@ export function PointsMallPanel() {
       if (data.success) {
         const points = data.data as PointsData;
         setPointsData(points);
-        setExpiringSoon(computeExpiringSoon(points));
+        const soon = points.expiringSoon;
+        setExpiringSoon(
+          soon && soon.points > 0
+            ? { points: soon.points, date: new Date(soon.date).getTime() }
+            : null
+        );
       } else {
         setPointsError(true);
       }
@@ -380,6 +370,7 @@ export function PointsMallPanel() {
   /** 打开兑换确认视图：加载地址并预选默认地址 */
   const openRedeem = (g: GiftItem) => {
     setConfirmGift(g);
+    setRedeemRequestId(createClientRequestId());
     setShowNewAddress(false);
     setNewRecipient("");
     setNewPhone("");
@@ -391,11 +382,9 @@ export function PointsMallPanel() {
 
   const handleRedeem = async () => {
     if (!confirmGift) return;
-    // crypto.randomUUID 仅在安全上下文（https）可用，非安全上下文降级随机串
-    const requestId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // 同一确认视图内复用幂等键：首次请求超时但实际成功时，重试不会重复扣分
+    const requestId = redeemRequestId ?? createClientRequestId();
+    if (!redeemRequestId) setRedeemRequestId(requestId);
 
     setRedeeming(true);
     try {
@@ -433,6 +422,10 @@ export function PointsMallPanel() {
             // 地址簿为空时后端自动设为默认
           });
           addressId = created.address.id;
+          // 记录新地址并退出“新增”态：网络重试时不会重复创建地址
+          setAddresses((prev) => [...prev, created.address]);
+          setSelectedAddressId(created.address.id);
+          setShowNewAddress(false);
         } finally {
           setCreatingAddress(false);
         }
@@ -448,7 +441,9 @@ export function PointsMallPanel() {
         productId: confirmGift.id,
         addressId,
         requestId,
+        expectedPoints: confirmGift.cost ?? undefined,
       });
+      setRedeemRequestId(null);
       setConfirmGift(null);
       setShowNewAddress(false);
       setView("main");
@@ -458,6 +453,19 @@ export function PointsMallPanel() {
       await loadGiftsData();
       await loadRedemptions();
     } catch (e) {
+      if (e instanceof ApiError && e.code === "PRICE_CHANGED") {
+        // 价格/等级在确认期间变化：更新确认页成本，让用户按新积分再确认
+        const latest = (e.data as { points?: number } | undefined)?.points;
+        if (latest && confirmGift) {
+          setConfirmGift({ ...confirmGift, cost: latest });
+        }
+        showError(e.message);
+        void loadGiftsData();
+        return;
+      }
+      if (e instanceof ApiError && e.code === "INSUFFICIENT") {
+        void loadPointsData();
+      }
       showError(e instanceof Error ? e.message : "兑换失败，请稍后重试");
     } finally {
       setRedeeming(false);
@@ -751,11 +759,11 @@ export function PointsMallPanel() {
                     </span>
                     <button
                       type="button"
-                      disabled={!g.affordable}
+                      disabled={!g.affordable || g.stock === 0}
                       onClick={() => openRedeem(g)}
                       className="rounded-full bg-brand-primary px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
                     >
-                      {g.affordable ? "兑换" : "积分不足"}
+                      {g.stock === 0 ? "已兑完" : g.affordable ? "兑换" : "积分不足"}
                     </button>
                   </div>
                 </div>
@@ -1059,6 +1067,7 @@ export function PointsMallPanel() {
                   <button
                     type="button"
                     onClick={() => {
+                      setRedeemRequestId(null);
                       setConfirmGift(null);
                       setShowNewAddress(false);
                       setView("main");
@@ -1272,7 +1281,7 @@ export function PointsMallPanel() {
               </div>
               <button
                 type="button"
-                disabled={!detailGift.affordable}
+                disabled={!detailGift.affordable || detailGift.stock === 0}
                 onClick={() => {
                   const gift = detailGift;
                   setDetailGift(null);
@@ -1280,7 +1289,11 @@ export function PointsMallPanel() {
                 }}
                 className="mt-5 w-full rounded-full bg-brand-charcoal py-3 text-[13px] tracking-[0.06em] text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:bg-brand-charcoal/10 disabled:text-brand-charcoal/40"
               >
-                {detailGift.affordable ? "立即兑换" : "积分不足"}
+                {detailGift.stock === 0
+                  ? "已兑完"
+                  : detailGift.affordable
+                    ? "立即兑换"
+                    : "积分不足"}
               </button>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-brand-charcoal/40">
                 兑换后可在「我的兑换记录」中查看发货进度

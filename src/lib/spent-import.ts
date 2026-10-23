@@ -715,6 +715,23 @@ export async function executeImportBatch(params: {
   });
   const userIdByPhone = new Map(users.map((u) => [u.phone, u.id]));
 
+  // 跨来源去重：同一用户同一订单号已通过补录审核入账的，导入侧直接标错，
+  // 避免同一笔消费经“补录审核 + Excel 导入”重复累积消费额/积分。
+  const approvedApplications =
+    users.length > 0
+      ? await prisma.spentAdjustmentApplication.findMany({
+          where: {
+            userId: { in: users.map((u) => u.id) },
+            status: "APPROVED",
+            orderNo: { not: "" },
+          },
+          select: { userId: true, orderNo: true },
+        })
+      : [];
+  const approvedOrderKeys = new Set(
+    approvedApplications.map((a) => `${a.userId}:${a.orderNo.trim().toUpperCase()}`)
+  );
+
   const version = randomUUID();
   const effectiveFileHash = (
     fileHash?.trim() || createHash("sha256").update(JSON.stringify(inputs)).digest("hex")
@@ -722,7 +739,8 @@ export async function executeImportBatch(params: {
   const now = new Date();
 
   // 先创建批次与 PENDING 行，再逐行入账：
-  // 进程崩溃/超时后批次与行仍存在，已成功行可撤销，未完成行可由恢复任务继续。
+  // 进程崩溃/超时后批次与行仍存在；超时批次由 failStaleImportBatches 标记 FAILED，
+  // 管理端撤销已成功行后重新导入，避免“批次已撤销但后续行仍入账”的并发窗口。
   const batch = await prisma.$transaction(async (tx) => {
     const lockKey = `spent-import:${effectiveFileHash}`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
@@ -843,6 +861,14 @@ export async function executeImportBatch(params: {
         const userId = userIdByPhone.get(row.phone);
         if (!userId) return markError("该手机号未注册官网账户");
 
+        // 同一用户同一订单号已通过补录审核入账：阻止跨来源重复入账
+        if (
+          row.orderNo &&
+          approvedOrderKeys.has(`${userId}:${row.orderNo.trim().toUpperCase()}`)
+        ) {
+          return markError("该订单号已通过消费补录审核入账，请勿重复导入");
+        }
+
         // 跨批次内容幂等：已成功且未撤销的同一内容不再入账。
         // 先占用进程内 key，避免同一批次并发行同时通过检查。
         const contentKey = `${userId}:${syncReference}`;
@@ -947,9 +973,32 @@ export type UndoResult =
   | { ok: true; revertedRows: number; totalAmount: number }
   | {
       ok: false;
-      code: "NOT_FOUND" | "ALREADY_UNDONE" | "NOTHING_TO_UNDO" | "INTERNAL_ERROR";
+      code:
+        | "NOT_FOUND"
+        | "ALREADY_UNDONE"
+        | "NOTHING_TO_UNDO"
+        | "NOT_COMPLETED"
+        | "INTERNAL_ERROR";
       message: string;
     };
+
+/**
+ * 回收因进程崩溃/请求超时长期停留在 PROCESSING 的导入批次。
+ * 只标记 FAILED，不尝试继续入账：已成功行可由管理端撤销，未完成行重新导入。
+ * 阈值默认 30 分钟，远大于单批正常执行时间，避免误伤仍在运行的任务。
+ */
+export async function failStaleImportBatches(maxAgeMinutes = 30): Promise<number> {
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
+  const result = await prisma.spentImportBatch.updateMany({
+    where: { status: "PROCESSING", startedAt: { lt: cutoff } },
+    data: {
+      status: "FAILED",
+      lastError: "处理超时或进程中断：请撤销已成功行后重新导入",
+      finishedAt: new Date(),
+    },
+  });
+  return result.count;
+}
 
 /**
  * 撤销整批导入：对每行 SUCCESS 反向冲正（reference 幂等，重试安全），
@@ -962,6 +1011,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     where: { id: batchId },
     select: {
       id: true,
+      status: true,
       undoneAt: true,
       totalAmount: true,
       rows: {
@@ -971,8 +1021,9 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
           userId: true,
           amount: true,
           appliedDelta: true,
+          // 注意：reference 是当初写入 SpentSyncRecord 的批内唯一键；
+          // syncReference 只是跨批内容键，不能拿去匹配 SpentSyncRecord。
           reference: true,
-          syncReference: true,
         },
       },
     },
@@ -984,33 +1035,73 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
   if (batch.undoneAt) {
     return { ok: false, code: "ALREADY_UNDONE", message: "该批次已撤销，不能重复操作" };
   }
+  // 执行中的批次可能仍在继续入账，撤销后会导致“批次已撤销但后续行仍入账”。
+  // 崩溃残留的 PROCESSING 会由 failStaleImportBatches 定时标记为 FAILED 后再允许撤销。
+  if (batch.status === "PROCESSING") {
+    return {
+      ok: false,
+      code: "NOT_COMPLETED",
+      message: "该批次仍在处理中，请等待完成后撤销（进程中断的批次会在超时后自动转失败）",
+    };
+  }
 
-  const successRows = batch.rows.filter((r) => r.userId && (r.appliedDelta ?? r.amount) !== 0);
-  if (successRows.length === 0) {
+  // 历史行没有 appliedDelta：从原始 SpentSyncRecord 取实际生效金额，
+  // 绝不能用 amount 代替——负数行当初可能被 0 下限钳制，直接撤销会反向多冲正。
+  const rows: { row: (typeof batch.rows)[number]; appliedDelta: number }[] = [];
+  let missingAppliedDelta = 0;
+  for (const row of batch.rows) {
+    if (!row.userId) continue;
+    let appliedDelta = row.appliedDelta;
+    if (appliedDelta === null) {
+      const original = await prisma.spentSyncRecord.findUnique({
+        where: {
+          userId_reference: { userId: row.userId, reference: row.reference },
+        },
+        select: { spentDelta: true },
+      });
+      appliedDelta = original?.spentDelta ?? null;
+    }
+    if (appliedDelta === null) {
+      missingAppliedDelta += 1;
+      continue;
+    }
+    rows.push({ row, appliedDelta });
+  }
+
+  if (missingAppliedDelta > 0) {
+    return {
+      ok: false,
+      code: "INTERNAL_ERROR",
+      message: `有 ${missingAppliedDelta} 行历史入账缺少实际生效金额，无法安全撤销，请人工核对`,
+    };
+  }
+  if (rows.length === 0) {
     return { ok: false, code: "NOTHING_TO_UNDO", message: "该批次没有可撤销的入账记录" };
   }
 
   const revertResults = await mapWithConcurrency(
-    successRows,
+    rows,
     IMPORT_EXECUTE_CONCURRENCY,
-    async (row) => {
+    async ({ row, appliedDelta }) => {
       try {
-        const appliedDelta = row.appliedDelta ?? row.amount;
         const reference = `import-undo:${batch.id}:${row.id}`;
 
-        // 按实际生效 delta 反向冲正；不物理删除原始 SpentSyncRecord，
-        // 保留审计并通过 revertedAt 标记。旧数据没有 syncReference 时回退 reference。
-        await applyExternalSpentSync({
-          userId: row.userId as string,
-          spentDelta: -appliedDelta,
-          reference,
-          note: `撤销Excel导入批次 ${batch.id}`,
-        });
+        // appliedDelta=0 的行当初未实际入账，也标记 reverted 以清除跨批内容幂等占用
+        if (appliedDelta !== 0) {
+          await applyExternalSpentSync({
+            userId: row.userId as string,
+            spentDelta: -appliedDelta,
+            reference,
+            note: `撤销Excel导入批次 ${batch.id}`,
+          });
+        }
 
+        // 不物理删除原始 SpentSyncRecord，保留审计并通过 revertedAt 标记。
+        // 原入账 reference 是 row.reference（含批次 version），不是 syncReference。
         await prisma.spentSyncRecord.updateMany({
           where: {
             userId: row.userId as string,
-            reference: row.syncReference ?? row.reference,
+            reference: row.reference,
           },
           data: { revertedAt: new Date() },
         });
@@ -1040,5 +1131,5 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     data: { undoneAt: new Date() },
   });
 
-  return { ok: true, revertedRows: successRows.length, totalAmount: batch.totalAmount };
+  return { ok: true, revertedRows: rows.length, totalAmount: batch.totalAmount };
 }

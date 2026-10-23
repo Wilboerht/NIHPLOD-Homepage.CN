@@ -102,6 +102,22 @@ describe("GET /api/admin/audit-logs", () => {
     );
   });
 
+  it("默认只查询管理员操作，可通过 actorType 切换用户/全部", async () => {
+    await GET(createRequest(""));
+    expect(mockListAuditLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, actorType: "ADMIN" })
+    );
+
+    await GET(createRequest("?actorType=USER"));
+    expect(mockListAuditLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ actorType: "USER" })
+    );
+
+    await GET(createRequest("?actorType=ALL"));
+    const lastArgs = mockListAuditLogs.mock.calls.at(-1)?.[0] as { actorType?: string };
+    expect(lastArgs.actorType).toBeUndefined();
+  });
+
   it("普通查询写入合并后的查看审计，而非导出审计", async () => {
     const res = await GET(createRequest("?outcome=FAILURE"));
     expect(res.status).toBe(200);

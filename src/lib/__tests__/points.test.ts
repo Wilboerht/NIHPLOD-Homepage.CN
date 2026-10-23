@@ -29,6 +29,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/points-ledger", () => ({
   creditSpendPoints: vi.fn().mockResolvedValue(undefined),
   refundSpendPoints: vi.fn().mockResolvedValue(undefined),
+  withPointTxRetry: async <T>(fn: () => Promise<T>) => fn(),
 }));
 
 vi.mock("@/lib/profile-webhook", () => ({

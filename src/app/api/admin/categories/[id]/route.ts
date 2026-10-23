@@ -8,6 +8,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 
 // 分类更新 Schema
@@ -112,6 +113,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (!validateCSRFToken(request)) {
       return csrfForbiddenResponse();
     }
+
+    // 分类编辑属于后台内容变更：要求 step-up（TOTP 二次验证，同会话短时复用）
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const { id } = await params;
     if (!validateCUID(id)) {

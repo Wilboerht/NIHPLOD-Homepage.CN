@@ -33,7 +33,7 @@ import {
   checkAndRecordNonce,
   hashRequestBody,
 } from "@/lib/internal-api";
-import { redeemPoints } from "@/lib/points-ledger";
+import { redeemPoints, withPointTxRetry } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -188,16 +188,66 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. 事务内扣减（幂等 + 物化 + FIFO）
-    const result = await prisma.$transaction((tx) =>
-      redeemPoints(tx, {
-        userId: user.id,
-        amount: points,
-        reference: `redeem:${reference}`,
-        note: note ?? `商城兑换 ${reference}`,
+    // 7. 事务内重读等级后再扣减（幂等 + 物化 + FIFO）：
+    // 商城按外部快照折算积分，若事务提交前发生退款降档，必须拒绝让商城重新折算，
+    // 避免按高档 rate 少扣积分。
+    const outcome = await withPointTxRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const fresh = await tx.user.findUnique({
+          where: { id: user.id },
+          select: { membershipLevel: true, status: true },
+        });
+        if (!fresh || fresh.status !== "ACTIVE") {
+          return { kind: "INACTIVE" as const };
+        }
+        if (fresh.membershipLevel !== user.membershipLevel) {
+          return { kind: "LEVEL_CHANGED" as const, level: fresh.membershipLevel };
+        }
+        if (POINT_REDEEM_RATES[fresh.membershipLevel] === null) {
+          return { kind: "NOT_ELIGIBLE" as const };
+        }
+        const result = await redeemPoints(tx, {
+          userId: user.id,
+          amount: points,
+          reference: `redeem:${reference}`,
+          note: note ?? `商城兑换 ${reference}`,
+        });
+        return { kind: "OK" as const, result };
       })
     );
 
+    if (outcome.kind === "INACTIVE") {
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DISABLED", message: "账户不可用" } },
+        { status: 403 }
+      );
+    }
+
+    if (outcome.kind === "LEVEL_CHANGED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "LEVEL_CHANGED", message: "会员等级已变化，请重新折算后再兑换" },
+          data: {
+            membershipLevel: outcome.level,
+            redeemRate: POINT_REDEEM_RATES[outcome.level],
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    if (outcome.kind === "NOT_ELIGIBLE") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑礼" },
+        },
+        { status: 403 }
+      );
+    }
+
+    const result = outcome.result;
     if (!result.ok) {
       return NextResponse.json(
         {

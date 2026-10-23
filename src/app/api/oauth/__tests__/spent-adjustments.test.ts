@@ -48,6 +48,7 @@ const prismaMock = vi.hoisted(() => {
     user: { findUnique: vi.fn() },
     spentAdjustmentApplication: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
     },
@@ -83,6 +84,7 @@ describe("/api/oauth/spent-adjustments", () => {
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     prismaMock.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(prismaMock));
     prismaMock.$queryRaw.mockResolvedValue([]);
+    prismaMock.spentAdjustmentApplication.findFirst.mockResolvedValue(null);
   });
 
   it("缺少 Authorization header 返回 401", async () => {

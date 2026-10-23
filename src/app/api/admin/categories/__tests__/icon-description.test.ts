@@ -37,6 +37,10 @@ vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
@@ -55,6 +59,7 @@ vi.mock("next/cache", () => ({
 import { GET, POST } from "../route";
 import { PUT } from "../[id]/route";
 import { verifyAuth } from "@/lib/auth";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { prisma } from "@/lib/prisma";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
@@ -112,10 +117,13 @@ describe("分类 icon/description 持久化", () => {
   it("更新分类时 icon/description 不应被 schema 剔除", async () => {
     (prisma.category.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "cat-1" });
 
-    const res = await PUT(createRequest("PUT", {
-      icon: "<svg>new</svg>",
-      description: "新描述",
-    }), { params: Promise.resolve({ id: "cat-1" }) });
+    const res = await PUT(
+      createRequest("PUT", {
+        icon: "<svg>new</svg>",
+        description: "新描述",
+      }),
+      { params: Promise.resolve({ id: "cat-1" }) }
+    );
 
     expect(res.status).toBe(200);
     expect(prisma.category.update).toHaveBeenCalledWith(
@@ -123,6 +131,23 @@ describe("分类 icon/description 持久化", () => {
         data: expect.objectContaining({ icon: "<svg>new</svg>", description: "新描述" }),
       })
     );
+  });
+
+  it("分类编辑未通过二次验证时不更新", async () => {
+    vi.mocked(requireAdminStepUp).mockResolvedValueOnce(
+      NextResponse.json(
+        { success: false, error: { code: "TOTP_REQUIRED", message: "请输入二次验证码" } },
+        { status: 400 }
+      )
+    );
+
+    const res = await PUT(createRequest("PUT", { name: "新名称" }), {
+      params: Promise.resolve({ id: "cat-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("TOTP_REQUIRED");
+    expect(prisma.category.update).not.toHaveBeenCalled();
   });
 
   it("分类列表应返回 icon/description 供表单回填", async () => {

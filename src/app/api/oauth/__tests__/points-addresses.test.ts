@@ -187,7 +187,9 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
         )
       ).status
     ).toBe(200);
-    expect(mall.redeemPointsResponse).toHaveBeenCalledWith("user-1", expect.any(Request));
+    expect(mall.redeemPointsResponse).toHaveBeenCalledWith("user-1", expect.any(Request), {
+      clientId: "test-client",
+    });
 
     expect(
       (await addressesPOST(req("POST", "/api/oauth/addresses", { recipient: "x" }))).status

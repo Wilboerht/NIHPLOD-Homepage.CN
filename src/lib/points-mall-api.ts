@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID } from "@/lib/validation";
 import { listRedeemableProducts, giftCostForUser, redeemGiftForUser } from "@/lib/point-gifts";
-import { getPointBalanceView } from "@/lib/points-ledger";
+import { getPointBalanceView, POINT_GRANT_LEDGER_TYPES } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { MAX_ADDRESSES, addressFieldsSchema, type UserAddressView } from "@/lib/user-address";
 import { htmlToPlainText } from "@/lib/html-sanitize";
@@ -24,6 +24,8 @@ import type { ProductData } from "@/components/website/ProductDrawer";
 
 const REDEMPTION_PAGE_SIZE = 10;
 const LEDGER_PAGE_SIZE = 20;
+/** 即将过期提醒窗口（天） */
+const EXPIRING_WINDOW_DAYS = 30;
 /** 积分明细查询窗口：近一年（365 天） */
 const LEDGER_WINDOW_DAYS = 365;
 
@@ -45,6 +47,8 @@ const redeemSchema = z.object({
   productId: z.string().min(1).max(64),
   addressId: z.string().min(1, "请选择收货地址").max(64),
   requestId: z.string().min(1, "缺少请求标识").max(64),
+  // 客户端确认页展示的积分；价格/等级变化时服务端拒绝并要求重新确认
+  expectedPoints: z.number().int().min(1).optional(),
 });
 
 function invalidParams(message: string): NextResponse {
@@ -88,6 +92,31 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
   try {
     const data = await prisma.$transaction(async (tx) => {
       const balance = await getPointBalanceView(tx, userId);
+      const now = new Date();
+      const expiringDeadline = new Date(now.getTime() + EXPIRING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+      // 即将过期提醒按全量发放流水统计（不受“最近 20 条”窗口限制），
+      // 并以可用余额封顶：负余额/债务场景下真实可损失积分不会超过可用余额。
+      const expiringRows = await tx.pointLedger.findMany({
+        where: {
+          userId,
+          type: { in: [...POINT_GRANT_LEDGER_TYPES] },
+          remaining: { gt: 0 },
+          expiresAt: { gt: now, lte: expiringDeadline },
+        },
+        orderBy: { expiresAt: "asc" },
+        select: { remaining: true, expiresAt: true },
+      });
+      let expiringTotal = 0;
+      let earliestExpiry: Date | null = null;
+      for (const row of expiringRows) {
+        const remaining = row.remaining ?? 0;
+        if (remaining <= 0 || !row.expiresAt) continue;
+        expiringTotal += remaining;
+        if (!earliestExpiry || row.expiresAt < earliestExpiry) earliestExpiry = row.expiresAt;
+      }
+      const usableExpiring = Math.min(expiringTotal, Math.max(0, balance.available));
+
       const recent = await tx.pointLedger.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
@@ -105,6 +134,10 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
       return {
         ...balance,
         nextReleaseAt: balance.nextReleaseAt?.toISOString() ?? null,
+        expiringSoon:
+          earliestExpiry && usableExpiring > 0
+            ? { points: usableExpiring, date: earliestExpiry.toISOString() }
+            : null,
         recent: recent.map((r) => ({
           id: r.id,
           type: r.type,
@@ -257,6 +290,8 @@ export async function getPointGiftsResponse(
             priceYuan,
             cost, // 实际所需积分（普通档为 null）
             affordable: cost !== null && cost <= balance.available,
+            // null = 不限量；0 = 已兑完（前端需禁用兑换并展示）
+            stock: p.redeemStock,
             detail,
           };
         }),
@@ -273,7 +308,8 @@ export async function getPointGiftsResponse(
 /** 兑换礼品（requestId 幂等；地址快照入库） */
 export async function redeemPointsResponse(
   userId: string,
-  request: Request
+  request: Request,
+  options: { clientId?: string | null } = {}
 ): Promise<NextResponse> {
   try {
     const body = await request.json().catch(() => null);
@@ -282,7 +318,7 @@ export async function redeemPointsResponse(
       return invalidParams(parsed.error.issues[0]?.message || "参数错误");
     }
 
-    const { productId, addressId, requestId } = parsed.data;
+    const { productId, addressId, requestId, expectedPoints } = parsed.data;
     if (!validateCUID(productId) || !validateCUID(addressId)) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_ID", message: "非法 ID 格式" } },
@@ -306,6 +342,8 @@ export async function redeemPointsResponse(
       productId,
       addressId,
       requestId,
+      expectedPoints,
+      clientId: options.clientId ?? null,
     });
 
     if (!result.ok) {
@@ -317,9 +355,14 @@ export async function redeemPointsResponse(
         OUT_OF_STOCK: 400,
         INSUFFICIENT: 400,
         INVALID_REQUEST: 400,
+        PRICE_CHANGED: 409,
       };
       return NextResponse.json(
-        { success: false, error: { code: result.code, message: result.message } },
+        {
+          success: false,
+          error: { code: result.code, message: result.message },
+          ...(result.currentPoints !== undefined ? { data: { points: result.currentPoints } } : {}),
+        },
         { status: statusMap[result.code] ?? 500 }
       );
     }

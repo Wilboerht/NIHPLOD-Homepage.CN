@@ -100,7 +100,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if (!result.ok) {
-      await finishAuditLog(auditId, "FAILURE", { code: "NOT_FOUND" });
+      await finishAuditLog(auditId, "FAILURE", { code: result.code ?? "UNKNOWN" });
+      if (result.code === "INVALID_STATUS") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "INVALID_STATUS", message: "仅已履约的兑换单可维护运单号" },
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "兑换记录不存在" } },
         { status: 404 }

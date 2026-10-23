@@ -24,7 +24,7 @@ export function SystemAlertIndicator({ alerts }: SystemAlertIndicatorProps) {
   return (
     <details className="group relative inline-block">
       <summary
-        className="group-open:border-amber-300 group-open:bg-amber-100 flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 transition-colors hover:border-amber-300 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 [&::-webkit-details-marker]:hidden"
+        className="flex h-8 w-8 cursor-pointer list-none items-center justify-center text-amber-600 transition-colors hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 group-open:text-amber-800 [&::-webkit-details-marker]:hidden"
         aria-label={`系统告警，共 ${total} 项`}
         title={`系统告警，共 ${total} 项`}
       >

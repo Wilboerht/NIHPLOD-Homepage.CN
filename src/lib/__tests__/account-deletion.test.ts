@@ -32,6 +32,9 @@ const mockTxPointRedemptionUpdateMany = vi.fn();
 const mockTxPointRedemptionFindMany = vi.fn();
 const mockTxSpentImportRowUpdateMany = vi.fn();
 const mockTxUserUpdate = vi.fn();
+const mockTxPointBalanceFindUnique = vi.fn();
+const mockTxPointBalanceUpdateMany = vi.fn();
+const mockTxPointLedgerCreate = vi.fn();
 
 const mockPurgeUserFromSubsites = vi.fn();
 const mockDeleteOSSFiles = vi.fn();
@@ -133,6 +136,11 @@ function mockTxSuccess() {
         findMany: mockTxPointRedemptionFindMany,
         updateMany: mockTxPointRedemptionUpdateMany,
       },
+      pointBalance: {
+        findUnique: mockTxPointBalanceFindUnique,
+        updateMany: mockTxPointBalanceUpdateMany,
+      },
+      pointLedger: { create: mockTxPointLedgerCreate },
       spentImportRow: { updateMany: mockTxSpentImportRowUpdateMany },
       user: { update: mockTxUserUpdate },
     })
@@ -150,6 +158,9 @@ describe("executeAccountDeletion", () => {
     mockDeleteOSSFiles.mockResolvedValue(undefined);
     mockQuiesce.mockResolvedValue(undefined);
     mockTxPointRedemptionFindMany.mockResolvedValue([]);
+    mockTxPointBalanceFindUnique.mockResolvedValue({ available: 0, frozen: 0 });
+    mockTxPointBalanceUpdateMany.mockResolvedValue({ count: 1 });
+    mockTxPointLedgerCreate.mockResolvedValue({});
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
     mockCreateAuditLog.mockResolvedValue(true);
@@ -227,14 +238,12 @@ describe("executeAccountDeletion", () => {
     });
 
     // 积分兑换单：待履约取消 + 全量清空收货快照 PII
-    expect(mockTxPointRedemptionUpdateMany).toHaveBeenCalledWith({
-      where: { userId: "user-1", status: "PENDING" },
-      data: { status: "CANCELLED" },
-    });
+    // 本用例无待履约兑换：仅执行全量 PII 脱敏，不写作废流水
     expect(mockTxPointRedemptionUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1" },
       data: { recipient: null, phone: null, address: null },
     });
+    expect(mockTxPointLedgerCreate).not.toHaveBeenCalled();
 
     // 消费导入行内手机号匿名化为同一占位值
     expect(mockTxSpentImportRowUpdateMany).toHaveBeenCalledWith({

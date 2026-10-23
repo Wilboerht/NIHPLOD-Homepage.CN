@@ -109,6 +109,8 @@ describe("POST /api/user/points/redeem", () => {
       productId: VALID_BODY.productId,
       addressId: VALID_BODY.addressId,
       requestId: "req-uuid-1",
+      expectedPoints: undefined,
+      clientId: null,
     });
   });
 

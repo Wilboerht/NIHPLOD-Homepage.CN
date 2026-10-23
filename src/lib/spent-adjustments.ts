@@ -127,6 +127,25 @@ export async function reviewApplication(params: {
     };
   }
 
+  // 跨来源去重：同一用户的同一订单号若已通过 Excel 导入成功入账且未撤销，
+  // 不允许再通过补录审核重复入账（导入侧执行时也会反向检查已通过的补录）。
+  const imported = await prisma.spentImportRow.findFirst({
+    where: {
+      userId: application.userId,
+      orderNo: { equals: application.orderNo, mode: "insensitive" },
+      status: "SUCCESS",
+      revertedAt: null,
+    },
+    select: { id: true },
+  });
+  if (imported) {
+    return {
+      ok: false,
+      code: "ORDER_ALREADY_IMPORTED",
+      message: "该订单号已通过 Excel 导入入账；请先撤销对应导入批次，再审核此申请",
+    };
+  }
+
   // 1. CAS 抢占：仅 PENDING 状态可被审核
   try {
     const claim = await prisma.spentAdjustmentApplication.updateMany({

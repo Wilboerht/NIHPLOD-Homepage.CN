@@ -8,17 +8,32 @@ import { CategoryForm } from "@/components/admin/CategoryForm";
 import { CategoriesTable, type CategoryItem } from "@/components/admin/CategoriesTable";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 
 function AdminCategoriesContent() {
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("categories:write");
   const canDelete = canAdmin("categories:delete");
+
+  /** 分类编辑：服务端要求 step-up，首次调用失败时拉起二次验证并重试 */
+  const withStepUp = async <T,>(action: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await action();
+    } catch (err) {
+      if (!isTotpRequired(err)) throw err;
+      const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+      if (!verified) return null;
+      return await action();
+    }
+  };
+
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -87,7 +102,10 @@ function AdminCategoriesContent() {
     setTogglingId(category.id);
     const nextVisible = !category.visible;
     try {
-      await apiPut(`/api/admin/categories/${category.id}`, { visible: nextVisible });
+      const result = await withStepUp(() =>
+        apiPut(`/api/admin/categories/${category.id}`, { visible: nextVisible })
+      );
+      if (result === null) return;
 
       // 更新本地状态
       setCategories((prev) =>
@@ -202,6 +220,8 @@ function AdminCategoriesContent() {
         loading={deleting}
         confirmDisabled={!!deleteConfirm.category?.productCount}
       />
+
+      {totpModal}
     </div>
   );
 }

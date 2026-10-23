@@ -30,6 +30,7 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { grantCheckinPoints, getPointBalanceView } from "@/lib/points-ledger";
+import { getUtc8DateKey } from "@/lib/timezone";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -163,13 +164,17 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const occurredAt = new Date(`${referenceMatch[2]}T00:00:00.000Z`);
-    if (
-      Number.isNaN(occurredAt.getTime()) ||
-      occurredAt.getTime() > Date.now() + 24 * 60 * 60 * 1000
-    ) {
+    // 只允许发放“今天（UTC+8）”的打卡积分：reference 中的日期即打卡日。
+    // 仅校验格式并不能阻止逐日补录历史日期刷分，必须把日期窗口收紧到当天。
+    if (referenceMatch[2] !== getUtc8DateKey()) {
       return NextResponse.json(
-        { success: false, error: { code: "INVALID_REFERENCE", message: "幂等键日期无效" } },
+        {
+          success: false,
+          error: {
+            code: "INVALID_REFERENCE",
+            message: "仅允许发放当天（UTC+8）的打卡积分，历史日期补录不发分",
+          },
+        },
         { status: 400 }
       );
     }
