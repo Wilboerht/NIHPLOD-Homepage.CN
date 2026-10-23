@@ -150,7 +150,12 @@ function AdminCategoriesContent() {
         description={`管理产品分类，拖拽调整排序，共 ${categories.length} 个分类`}
         actions={
           canWrite ? (
-            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleAdd}>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Plus className="h-4 w-4" />}
+              onClick={handleAdd}
+            >
               新增分类
             </Button>
           ) : undefined

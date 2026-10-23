@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { IconButton } from "@/components/admin/IconButton";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -133,35 +134,39 @@ function EditProductContent() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        title={
-          <>
-            <Link
-              href="/admin/products"
-              aria-label="返回产品列表"
-              className="rounded-lg p-1.5 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            编辑产品
-          </>
-        }
-        description={product.name}
-        accessory={
-          <Badge variant={product.published ? "success" : "secondary"}>
-            {product.published ? "已发布" : "草稿"}
-          </Badge>
-        }
-        actions={
-          product.published ? (
-            <Link href={`/products/${product.slug}`} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm" leftIcon={<ExternalLink className="h-4 w-4" />}>
-                查看前台
-              </Button>
-            </Link>
-          ) : undefined
-        }
-      />
+      <div className="flex items-start gap-1 sm:gap-2">
+        <IconButton
+          href="/admin/products"
+          label="返回产品列表"
+          className="-ml-2 -mt-2 shrink-0 sm:-mt-1"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </IconButton>
+        <div className="min-w-0 flex-1">
+          <PageHeader
+            title="编辑产品"
+            description={product.name}
+            accessory={
+              <Badge variant={product.published ? "success" : "secondary"}>
+                {product.published ? "已发布" : "草稿"}
+              </Badge>
+            }
+            actions={
+              product.published ? (
+                <Link href={`/products/${product.slug}`} target="_blank" rel="noreferrer">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<ExternalLink className="h-4 w-4" />}
+                  >
+                    查看前台
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+          />
+        </div>
+      </div>
       <ProductForm mode="edit" initialData={product} categories={categories} />
     </div>
   );

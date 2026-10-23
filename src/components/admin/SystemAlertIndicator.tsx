@@ -24,18 +24,18 @@ export function SystemAlertIndicator({ alerts }: SystemAlertIndicatorProps) {
   return (
     <details className="group relative inline-block">
       <summary
-        className="flex cursor-pointer list-none items-center gap-1 rounded-full p-1 text-amber-600 transition-colors hover:bg-amber-50 [&::-webkit-details-marker]:hidden"
+        className="group-open:border-amber-300 group-open:bg-amber-100 flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 transition-colors hover:border-amber-300 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 [&::-webkit-details-marker]:hidden"
         aria-label={`系统告警，共 ${total} 项`}
         title={`系统告警，共 ${total} 项`}
       >
         <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-amber-800">
-          {total}
-        </span>
       </summary>
 
       <div className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-amber-200 bg-white p-1.5 shadow-lg">
-        <div className="px-2.5 py-1.5 text-[11px] font-medium text-amber-800">系统告警</div>
+        <div className="flex items-center justify-between px-2.5 py-1.5">
+          <span className="text-[11px] font-medium text-amber-800">系统告警</span>
+          <span className="text-[11px] tabular-nums text-amber-700/80">共 {total} 项</span>
+        </div>
         <div className="flex flex-col gap-1">
           {alerts.map((alert) => (
             <Link

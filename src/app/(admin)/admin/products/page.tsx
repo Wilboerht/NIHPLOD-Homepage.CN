@@ -202,7 +202,9 @@ export default function AdminProductsPage() {
           actions={
             canWriteProducts ? (
               <Link href={`/admin/products/new?returnTo=${encodeURIComponent(returnTo)}`}>
-                <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
+                <Button variant="outline" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
+                  新增产品
+                </Button>
               </Link>
             ) : undefined
           }
@@ -250,7 +252,6 @@ export default function AdminProductsPage() {
               onChange={(e) => updateParams({ status: e.target.value })}
             />
           </div>
-
         </div>
 
         {/* 加载失败错误态（替代表格，避免错误与旧数据同时展示） */}

@@ -184,6 +184,7 @@ export function DataTable<T extends object>({
               <span>{emptyText}</span>
               {emptyAction && (
                 <Button
+                  variant="outline"
                   size="sm"
                   onClick={emptyAction.onClick}
                   leftIcon={<Plus className="h-4 w-4" />}
@@ -276,6 +277,7 @@ export function DataTable<T extends object>({
                     <span>{emptyText}</span>
                     {emptyAction && (
                       <Button
+                        variant="outline"
                         size="sm"
                         onClick={emptyAction.onClick}
                         leftIcon={<Plus className="h-4 w-4" />}
