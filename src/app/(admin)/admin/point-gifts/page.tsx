@@ -414,6 +414,7 @@ function AdminPointGiftsContent() {
                 : "text-brand-charcoal/70 hover:bg-brand-charcoal/[0.04]"
             }`}
           >
+            <PackageCheck className="h-4 w-4" />
             兑换履约
             {(counts.PENDING ?? 0) > 0 && (
               <span
@@ -430,12 +431,13 @@ function AdminPointGiftsContent() {
             role="tab"
             aria-selected={view === "gifts"}
             onClick={() => update({ view: "gifts" }, { replace: true, resetPage: false })}
-            className={`flex flex-1 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
               view === "gifts"
                 ? "bg-brand-primary text-white"
                 : "text-brand-charcoal/70 hover:bg-brand-charcoal/[0.04]"
             }`}
           >
+            <Gift className="h-4 w-4" />
             礼品设置
           </button>
         </div>
