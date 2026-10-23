@@ -18,6 +18,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { changeUserStatus } from "@/lib/user-status";
 import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { hashIdentifier } from "@/lib/auth-security";
 import { executeAccountDeletion, DELETION_STATUS, DELETION_LEASE_MS } from "@/lib/account-deletion";
 
@@ -711,6 +712,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
+
+    // 匿名化删除不可逆，要求 step-up（TOTP/备用码换取短时授权）
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const user = await prisma.user.findUnique({
       where: { id },

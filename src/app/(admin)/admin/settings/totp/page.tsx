@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   Shield,
@@ -18,10 +18,12 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { FormSection } from "@/components/admin/FormSection";
+import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut, ApiError } from "@/lib/api-client";
+import { validatePasswordStrength } from "@/lib/password";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { formatDateTimeNumeric } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -40,6 +42,7 @@ interface TOTPStatusData {
 
 export default function TOTPSettingsPage() {
   const toast = useToast();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const rawReturnTo = searchParams.get("return_to") || "";
   // 只允许回到主站管理员 SSO 授权端点，避免开放重定向
@@ -48,6 +51,8 @@ export default function TOTPSettingsPage() {
   const [totpEnabledAt, setTotpEnabledAt] = useState<string | null>(null);
   const [backupCodesRemaining, setBackupCodesRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [statusError, setStatusError] = useState(false);
+  const [statusReloadKey, setStatusReloadKey] = useState(0);
   const [setupData, setSetupData] = useState<TOTPSetupData | null>(null);
   const [setupPassword, setSetupPassword] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
@@ -65,14 +70,24 @@ export default function TOTPSettingsPage() {
   const [regenCodes, setRegenCodes] = useState<string[] | null>(null);
   const [regenSaved, setRegenSaved] = useState(false);
 
+  // 管理员自助改密
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordTotpCode, setPasswordTotpCode] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
   useEffect(() => {
     const fetchStatus = async () => {
+      setStatusError(false);
       try {
         const data = await apiGet<TOTPStatusData>("/api/admin/totp/status");
         setTotpEnabled(data.totpEnabled);
         setTotpEnabledAt(data.totpEnabledAt);
         setBackupCodesRemaining(data.backupCodesRemaining);
       } catch {
+        setStatusError(true);
         toast.error("获取二次验证状态失败");
       } finally {
         setLoading(false);
@@ -80,7 +95,7 @@ export default function TOTPSettingsPage() {
     };
 
     fetchStatus();
-  }, [toast]);
+  }, [toast, statusReloadKey]);
 
   const startSetup = async () => {
     // 幂等守卫：连按 Enter 不能重复创建密钥（后一次会覆盖前一次，导致二维码与库内不一致）
@@ -174,6 +189,7 @@ export default function TOTPSettingsPage() {
   };
 
   const closeRegenerate = () => {
+    if (processing) return;
     setShowRegenerate(false);
     setRegenCodes(null);
     setRegenSaved(false);
@@ -217,10 +233,68 @@ export default function TOTPSettingsPage() {
     }
   };
 
+  /** 管理员自助改密：成功后服务端会递增 tokenVersion 并清除当前 Cookie，强制重新登录 */
+  const handleChangePassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setPasswordError("");
+
+    if (!currentPassword) {
+      setPasswordError("请输入当前密码");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("两次输入的新密码不一致");
+      return;
+    }
+    const strength = validatePasswordStrength(newPassword);
+    if (!strength.valid) {
+      setPasswordError(strength.message || "新密码不符合安全要求");
+      return;
+    }
+    if (totpEnabled && passwordTotpCode.trim().length < 6) {
+      setPasswordError("请输入当前验证器上的 6 位验证码或备用码");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await apiPut("/api/admin/me", {
+        currentPassword,
+        newPassword,
+        ...(totpEnabled ? { totpCode: passwordTotpCode.trim() } : {}),
+      });
+      toast.success("密码已修改，请使用新密码重新登录");
+      router.replace("/admin-login?passwordChanged=1");
+      router.refresh();
+    } catch (err) {
+      setPasswordError(err instanceof ApiError ? err.message : "密码修改失败，请重试");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
+      </div>
+    );
+  }
+
+  if (statusError) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-20">
+        <p className="text-sm text-red-500">加载二次验证状态失败</p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setLoading(true);
+            setStatusReloadKey((key) => key + 1);
+          }}
+        >
+          重试
+        </Button>
       </div>
     );
   }
@@ -286,6 +360,69 @@ export default function TOTPSettingsPage() {
         </div>
       </div>
 
+      <FormSection
+        title="修改密码"
+        description="修改成功后当前账号的全部会话会失效，需要使用新密码重新登录。"
+      >
+        <form noValidate onSubmit={handleChangePassword} className="max-w-sm space-y-3">
+          <Input
+            label="当前密码"
+            required
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="请输入当前登录密码"
+            autoComplete="current-password"
+          />
+          <Input
+            label="新密码"
+            required
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="请输入新密码"
+            autoComplete="new-password"
+          />
+          <PasswordRulesChecklist password={newPassword} />
+          <Input
+            label="确认新密码"
+            required
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="请再次输入新密码"
+            autoComplete="new-password"
+          />
+          {totpEnabled && (
+            <Input
+              label="动态验证码 / 备用码"
+              required
+              value={passwordTotpCode}
+              onChange={(e) => setPasswordTotpCode(e.target.value.trim())}
+              placeholder="6 位验证码或备用码"
+              autoComplete="one-time-code"
+              hint="改密属于敏感操作，需要二次验证"
+              className="font-mono"
+            />
+          )}
+          {passwordError && (
+            <p
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+            >
+              {passwordError}
+            </p>
+          )}
+          <Button
+            type="submit"
+            loading={changingPassword}
+            disabled={!currentPassword || !newPassword || !confirmPassword}
+          >
+            修改密码
+          </Button>
+        </form>
+      </FormSection>
+
       {!totpEnabled && !setupData && (
         <FormSection title="启用二次验证">
           <form
@@ -334,7 +471,9 @@ export default function TOTPSettingsPage() {
                 </code>
                 <Tooltip content={showTotpSecret ? "隐藏密钥" : "显示密钥"} side="top">
                   <button
+                    type="button"
                     onClick={() => setShowTotpSecret(!showTotpSecret)}
+                    aria-label={showTotpSecret ? "隐藏密钥" : "显示密钥"}
                     className="inline-flex text-brand-charcoal/50 hover:text-brand-charcoal"
                   >
                     {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -342,7 +481,9 @@ export default function TOTPSettingsPage() {
                 </Tooltip>
                 <Tooltip content="复制密钥" side="top">
                   <button
+                    type="button"
                     onClick={() => copyToClipboard(setupData.secret, "secret")}
+                    aria-label="复制密钥"
                     className="inline-flex text-brand-charcoal/50 hover:text-brand-charcoal"
                   >
                     {copied === "secret" ? (
@@ -361,10 +502,12 @@ export default function TOTPSettingsPage() {
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {setupData.backupCodes.map((code, index) => (
-                  <div
+                  <button
                     key={index}
+                    type="button"
                     onClick={() => copyToClipboard(code, `backup-${index}`)}
-                    className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 font-mono text-xs text-brand-charcoal/80"
+                    aria-label={`复制备用码 ${code}`}
+                    className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80"
                   >
                     <span>{code}</span>
                     {copied === `backup-${index}` ? (
@@ -372,7 +515,7 @@ export default function TOTPSettingsPage() {
                     ) : (
                       <Copy className="h-3 w-3 text-brand-charcoal/50" />
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -525,10 +668,12 @@ export default function TOTPSettingsPage() {
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {regenCodes.map((code, index) => (
-                <div
+                <button
                   key={index}
+                  type="button"
                   onClick={() => copyToClipboard(code, `regen-${index}`)}
-                  className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 font-mono text-xs text-brand-charcoal/80"
+                  aria-label={`复制备用码 ${code}`}
+                  className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80"
                 >
                   <span>{code}</span>
                   {copied === `regen-${index}` ? (
@@ -536,7 +681,7 @@ export default function TOTPSettingsPage() {
                   ) : (
                     <Copy className="h-3 w-3 text-brand-charcoal/50" />
                   )}
-                </div>
+                </button>
               ))}
             </div>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">

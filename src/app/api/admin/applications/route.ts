@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -162,7 +162,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues } },
+        {
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
+        },
         { status: 400 }
       );
     }

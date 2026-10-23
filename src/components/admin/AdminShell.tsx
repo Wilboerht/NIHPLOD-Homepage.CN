@@ -17,6 +17,7 @@ import { apiGet, apiPost } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { useAdminSession } from "@/contexts/AdminSessionContext";
+import { useToast } from "@/components/ui/Toast";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { IconButton } from "./IconButton";
@@ -36,6 +37,7 @@ const CONTENT_WIDTH_CLASS: Record<AdminPageWidth, string> = {
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const toast = useToast();
   const { role, name, permissions, loading, redirecting } = useAdminSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -54,6 +56,26 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   // 抽屉打开时锁定背景滚动
   useScrollLock(drawerOpen);
+
+  // 移动端抽屉：Esc 关闭，符合弹层通用键盘习惯
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [drawerOpen]);
+
+  // 留言页读/删后同步侧边栏未读数，避免 badge 长期滞留
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const count = (event as CustomEvent<number>).detail;
+      if (typeof count === "number") setUnreadMessages(count);
+    };
+    window.addEventListener("admin:messages-updated", handler);
+    return () => window.removeEventListener("admin:messages-updated", handler);
+  }, []);
 
   // 加载未读留言数（badge）：无 messages:read 权限的角色跳过请求，避免必然 403
   useEffect(() => {
@@ -88,6 +110,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       router.refresh();
     } catch (error) {
       apiConsole.error("登出失败:", error);
+      toast.error("退出登录失败，请重试");
       setLoggingOut(false);
     }
   };
@@ -166,6 +189,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       {/* 主内容区：页面边距只由壳提供 */}
       <main
+        inert={drawerOpen || undefined}
+        aria-hidden={drawerOpen || undefined}
         className={cn(
           "min-h-dvh px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
           collapsed ? "lg:pl-24" : "lg:pl-[17rem]"
@@ -298,9 +323,12 @@ function SidebarContent({
           </div>
         ) : (
           (() => {
-            const filtered = adminNavItems.filter(
-              (item) => !item.permission || permissions.includes(item.permission)
-            );
+            const filtered = adminNavItems.filter((item) => {
+              if (item.permissionsAny) {
+                return item.permissionsAny.some((permission) => permissions.includes(permission));
+              }
+              return !item.permission || permissions.includes(item.permission);
+            });
             const groups: { label: string | null; items: typeof filtered }[] = [];
             for (const item of filtered) {
               const label = item.group ?? null;

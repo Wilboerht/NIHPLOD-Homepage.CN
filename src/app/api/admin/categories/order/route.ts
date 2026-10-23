@@ -6,6 +6,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // 排序更新 Schema
 const OrderUpdateSchema = z.object({
@@ -70,6 +71,9 @@ export async function PUT(request: NextRequest) {
         })
       )
     );
+
+    revalidatePath("/products");
+    revalidateTag("admin-stats", "max");
 
     await createAuditLog({
       action: "reorder_categories",

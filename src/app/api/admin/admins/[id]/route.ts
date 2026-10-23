@@ -8,6 +8,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
@@ -34,6 +35,9 @@ export const DELETE = withAuth(
       if (!validateCUID(id)) {
         return invalidIdResponse();
       }
+
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
 
       const auditId = await beginAuditLog({
         action: "delete_admin",

@@ -19,6 +19,31 @@ export function useUnsavedChanges(isDirty: boolean, message = "当前修改尚�
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
+  // 站内 Link（侧边栏、面包屑等）导航守卫：beforeunload 不会拦截 SPA 跳转。
+  // 这是最后一道兜底，表单的取消/关闭按钮仍应使用 guard/confirmClose。
+  useEffect(() => {
+    if (!isDirty) return;
+    const handleLinkClick = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target as Element | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        return;
+      }
+      // 只拦截站内路径，外链交给 beforeunload / 浏览器
+      if (!href.startsWith("/") || href.startsWith("//")) return;
+      if (!window.confirm(message)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    document.addEventListener("click", handleLinkClick, true);
+    return () => document.removeEventListener("click", handleLinkClick, true);
+  }, [isDirty, message]);
+
   const guard = useCallback(
     <T>(action: () => T): T | undefined => {
       if (isDirty && typeof window !== "undefined" && !window.confirm(message)) {

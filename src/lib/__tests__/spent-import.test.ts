@@ -10,7 +10,7 @@ vi.mock("@/lib/prisma", () => {
   const prisma: Record<string, unknown> = {
     user: { findMany: vi.fn() },
     spentImportBatch: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    spentImportRow: { update: vi.fn() },
+    spentImportRow: { update: vi.fn(), findFirst: vi.fn() },
     spentSyncRecord: { updateMany: vi.fn(), deleteMany: vi.fn() },
   };
   prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
@@ -44,6 +44,7 @@ const mockBatchFindFirst = prisma.spentImportBatch.findFirst as ReturnType<typeo
 const mockBatchFindUnique = prisma.spentImportBatch.findUnique as ReturnType<typeof vi.fn>;
 const mockBatchUpdate = prisma.spentImportBatch.update as ReturnType<typeof vi.fn>;
 const mockRowUpdate = prisma.spentImportRow.update as ReturnType<typeof vi.fn>;
+const mockRowFindFirst = prisma.spentImportRow.findFirst as ReturnType<typeof vi.fn>;
 const mockSyncRecordUpdateMany = prisma.spentSyncRecord.updateMany as ReturnType<typeof vi.fn>;
 const mockApplySync = applyExternalSpentSync as ReturnType<typeof vi.fn>;
 
@@ -284,6 +285,7 @@ describe("executeImportBatch", () => {
       })
     );
     mockRowUpdate.mockResolvedValue({});
+    mockRowFindFirst.mockResolvedValue(null);
     mockBatchUpdate.mockResolvedValue({});
     mockSyncRecordUpdateMany.mockResolvedValue({ count: 1 });
   });
@@ -322,7 +324,9 @@ describe("executeImportBatch", () => {
     expect(mockApplySync).toHaveBeenCalledTimes(1);
     const call = mockApplySync.mock.calls[0][0];
     expect(call).toMatchObject({ userId: "user-1", spentDelta: 1000 });
+    // SpentSyncRecord 仍使用批内唯一 reference，保证撤销后可重新导入
     expect(call.reference).toMatch(/^import:[0-9a-f]{32}:[0-9a-f-]+$/);
+    const contentReference = call.reference.replace(/:[0-9a-f-]+$/, "");
 
     // 批次先创建，行初始为 PENDING；成功后批次更新为 COMPLETED
     expect(mockBatchCreate).toHaveBeenCalledWith({
@@ -339,6 +343,7 @@ describe("executeImportBatch", () => {
               orderNo: "TM001",
               status: "PENDING",
               userId: "user-1",
+              syncReference: contentReference,
               reference: call.reference,
             }),
           ],
@@ -358,7 +363,7 @@ describe("executeImportBatch", () => {
     );
   });
 
-  it("不同导入批次使用不同 version 的 reference（撤销后可重导）", async () => {
+  it("相同内容跨批次：第二次上传通过 syncReference 预检标记重复，不重复入账", async () => {
     mockApplySync.mockResolvedValue({
       totalSpent: 1000,
       membershipLevel: "REGULAR",
@@ -366,13 +371,16 @@ describe("executeImportBatch", () => {
       duplicated: false,
     });
     await executeImportBatch({ rows: [okInput], fileName: "a.xlsx", adminId: "admin-1" });
-    await executeImportBatch({ rows: [okInput], fileName: "b.xlsx", adminId: "admin-1" });
+    // 模拟已存在一条成功且未撤销的同内容行
+    mockRowFindFirst.mockResolvedValueOnce({ id: "row-existing" });
+    const second = await executeImportBatch({
+      rows: [okInput],
+      fileName: "b.xlsx",
+      adminId: "admin-1",
+    });
 
-    const refs = mockApplySync.mock.calls.map((c) => c[0].reference);
-    expect(refs).toHaveLength(2);
-    expect(refs[0]).toMatch(/^import:/);
-    expect(refs[1]).toMatch(/^import:/);
-    expect(refs[0]).not.toBe(refs[1]);
+    expect(mockApplySync).toHaveBeenCalledTimes(1);
+    expect(second).toMatchObject({ successRows: 0, duplicateRows: 1, errorRows: 0 });
   });
 
   it("未注册手机号：行标记 ERROR，不调用入账", async () => {

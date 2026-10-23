@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Download,
@@ -36,6 +36,8 @@ import { formatDateTime as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useListQuery } from "@/hooks/useListQuery";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -91,34 +93,33 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 function AdminApplicationsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("applications:write");
   const canDelete = canAdmin("applications:delete");
+  const takeLatest = useLatestRequest();
+
+  // 列表状态全部由 URL 派生，刷新/分享/前进后退可恢复
+  const page = getNumber("page", 1);
+  const searchParam = get("search");
+  const statusFilter = get("status", "all");
+  const jobFilter = get("jobId", "all");
+  const folderFilter = get("folderId", "all");
 
   // 状态
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(search);
-  const [statusFilter, setStatusFilter] = useState("all");
-  // 职位筛选同步到 URL（?jobId=），职位列表的申请数链接直接落在该筛选上
-  const jobFilter = searchParams.get("jobId") || "all";
-  const setJobFilter = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === "all") {
-      params.delete("jobId");
-    } else {
-      params.set("jobId", value);
-    }
-    router.push(`/admin/applications?${params.toString()}`);
-  };
-  const [folderFilter, setFolderFilter] = useState("all");
+  const [search, setSearch] = useState(searchParam);
+  // URL 变化（如浏览器前进/后退）时同步输入框
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
+  if (prevSearchParam !== searchParam) {
+    setPrevSearchParam(searchParam);
+    setSearch(searchParam);
+  }
   const [jobs, setJobs] = useState<Job[]>([]);
 
   // 分类夹相关状态
@@ -166,6 +167,7 @@ function AdminApplicationsContent() {
 
   // 获取申请列表
   const fetchApplications = useCallback(async () => {
+    const isLatest = takeLatest();
     setLoading(true);
     setLoadError(false);
     try {
@@ -173,7 +175,7 @@ function AdminApplicationsContent() {
         page: page.toString(),
         pageSize: "20",
       });
-      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (searchParam) params.set("search", searchParam);
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (jobFilter !== "all") params.set("jobId", jobFilter);
       if (folderFilter !== "all") params.set("folderId", folderFilter);
@@ -183,11 +185,13 @@ function AdminApplicationsContent() {
         pagination: { total: number };
         pendingCount: number;
       }>("/api/admin/applications", Object.fromEntries(params.entries()));
+      if (!isLatest()) return;
 
       setApplications(data.items);
       setTotal(data.pagination.total);
       setPendingCount(data.pendingCount);
     } catch (error) {
+      if (!isLatest()) return;
       apiConsole.error("获取申请列表失败:", error);
       if (error instanceof ApiError && error.status === 401) {
         showError("登录已过期，请重新登录");
@@ -200,22 +204,31 @@ function AdminApplicationsContent() {
       setPendingCount(0);
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter, jobFilter, folderFilter, showError, router]);
+  }, [page, searchParam, statusFilter, jobFilter, folderFilter, showError, router, takeLatest]);
 
   useEffect(() => {
     deferInEffect(fetchApplications);
   }, [fetchApplications]);
 
-  // 搜索防抖
+  useEffect(() => {
+    const totalPages = Math.ceil(total / 20);
+    if (totalPages > 0 && page > totalPages) {
+      update({ page: String(totalPages) }, { replace: true, resetPage: false });
+    }
+  }, [page, total, update]);
+
+  // 搜索防抖写入 URL（replace，避免每次击键产生历史记录）
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
+      const next = search.trim();
+      if (next !== searchParam) {
+        update({ search: next || null }, { replace: true });
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, searchParam, update]);
 
   // 更新状态（详情弹窗用函数式更新，避免闭包里的旧状态覆盖）
   const updateStatus = async (application: Application, newStatus: string, toastMsg?: string) => {
@@ -274,7 +287,7 @@ function AdminApplicationsContent() {
       setDeleteTarget(null);
       // 删除本页最后一条时回退一页
       if (applications.length === 1 && page > 1) {
-        setPage(page - 1);
+        update({ page: String(page - 1) }, { resetPage: false });
       } else {
         fetchApplications();
       }
@@ -359,7 +372,7 @@ function AdminApplicationsContent() {
       setDeleteFolderTarget(null);
       fetchFolders();
       if (folderFilter === deleteFolderTarget.id) {
-        setFolderFilter("all");
+        update({ folderId: null }, { replace: true });
       }
     } catch {
       showError("删除失败");
@@ -418,10 +431,7 @@ function AdminApplicationsContent() {
       {folders.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => {
-              setFolderFilter("all");
-              setPage(1);
-            }}
+            onClick={() => update({ folderId: null })}
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               folderFilter === "all"
@@ -433,10 +443,7 @@ function AdminApplicationsContent() {
             全部
           </button>
           <button
-            onClick={() => {
-              setFolderFilter("uncategorized");
-              setPage(1);
-            }}
+            onClick={() => update({ folderId: "uncategorized" })}
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               folderFilter === "uncategorized"
@@ -450,10 +457,7 @@ function AdminApplicationsContent() {
           {folders.map((folder) => (
             <div key={folder.id} className="group relative">
               <button
-                onClick={() => {
-                  setFolderFilter(folder.id);
-                  setPage(1);
-                }}
+                onClick={() => update({ folderId: folder.id })}
                 className={cn(
                   "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   folderFilter === folder.id
@@ -488,7 +492,7 @@ function AdminApplicationsContent() {
                     </button>
                   </Tooltip>
                 )}
-                {canDelete && (
+                {canWrite && (
                   <Tooltip content="删除" side="top">
                     <button
                       onClick={(e) => {
@@ -532,10 +536,7 @@ function AdminApplicationsContent() {
               { value: "hired", label: "已录用" },
             ]}
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => update({ status: e.target.value })}
             className="w-32"
           />
         </div>
@@ -548,10 +549,7 @@ function AdminApplicationsContent() {
               ...jobs.map((job) => ({ value: job.id, label: job.title })),
             ]}
             value={jobFilter}
-            onChange={(e) => {
-              setJobFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => update({ jobId: e.target.value })}
             className="w-40"
           />
         </div>
@@ -569,9 +567,7 @@ function AdminApplicationsContent() {
               <AlertCircle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/50">
-              无法获取简历列表，请检查网络连接
-            </p>
+            <p className="mt-1 text-sm text-brand-charcoal/50">无法获取简历列表，请检查网络连接</p>
             <Button variant="outline" size="sm" className="mt-4" onClick={fetchApplications}>
               重试
             </Button>
@@ -768,7 +764,12 @@ function AdminApplicationsContent() {
       {/* 分页（始终展示总数） */}
       {total > 0 && (
         <div className="flex justify-center">
-          <Pagination page={page} pageSize={20} total={total} onChange={setPage} />
+          <Pagination
+            page={page}
+            pageSize={20}
+            total={total}
+            onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
+          />
         </div>
       )}
 

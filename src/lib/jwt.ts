@@ -540,7 +540,9 @@ export async function signRefreshToken(
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience("refresh")
-    .setExpirationTime(options?.expiresInSeconds ? `${options.expiresInSeconds}s` : refreshTokenExpiresIn)
+    .setExpirationTime(
+      options?.expiresInSeconds ? `${options.expiresInSeconds}s` : refreshTokenExpiresIn
+    )
     .sign(refreshSecret);
 
   return token;
@@ -709,10 +711,7 @@ const WECHAT_EXCHANGE_TOKEN_TTL_MS = 15 * 60 * 1000;
  * 停用/删除操作经 invalidateM2mClientCache 主动清除本实例缓存，做到同实例立即生效；
  * 多实例部署时其它实例最长 30s 后生效。
  */
-const m2mClientStateCache = new LRUCache<
-  string,
-  { active: boolean; scopeVersion: number }
->({
+const m2mClientStateCache = new LRUCache<string, { active: boolean; scopeVersion: number }>({
   max: 1000,
   ttl: 30 * 1000,
 });
@@ -1166,10 +1165,7 @@ export async function verifyLogoutToken(
       // 未配置 RS256 公钥：仅非生产或显式逃生门允许 HS256（与签名侧守卫同口径）。
       // 旧实现在此分支无条件接受 HS256，导致生产环境缺少密钥对时（守卫被
       // ALLOW_HS256_FALLBACK/NEXT_PHASE 跳过）仍可被对称密钥伪造 logout token。
-      if (
-        process.env.NODE_ENV === "production" &&
-        process.env.ALLOW_HS256_FALLBACK !== "true"
-      ) {
+      if (process.env.NODE_ENV === "production" && process.env.ALLOW_HS256_FALLBACK !== "true") {
         return null;
       }
       const result = await jwtVerify(token, logoutSecret, {
@@ -1415,8 +1411,29 @@ export async function verifyOAuthAccessToken(
       } else if (clientState.scopeVersion > 0) {
         return null;
       }
-    } else if (userId && (await isTokenBlacklisted(userId))) {
-      return null;
+    } else if (userId) {
+      if (await isTokenBlacklisted(userId)) {
+        return null;
+      }
+
+      // 与 verifyUserToken 统一口径：改密/管理员重置密码/全设备登出后，
+      // 早于失效时间签发的 OAuth access token 立即失效。
+      // 这里覆盖无 sid 的旧 token，避免只依赖黑名单造成新 token 也被误拦。
+      const credentialCutoff = await getPasswordChangedAtCached(userId);
+      if (credentialCutoff === undefined) {
+        return null;
+      }
+      const cutoffMs = Math.max(
+        credentialCutoff.changedAt?.getTime() ?? 0,
+        credentialCutoff.sessionsInvalidatedAt?.getTime() ?? 0
+      );
+      if (
+        cutoffMs &&
+        typeof payload.iat === "number" &&
+        payload.iat < Math.floor(cutoffMs / 1000)
+      ) {
+        return null;
+      }
     }
 
     // RFC 7009 access_token 撤销检查

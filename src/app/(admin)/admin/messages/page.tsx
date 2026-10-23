@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Mail, MailOpen, Trash2, Clock, Copy } from "lucide-react";
+import { Search, Mail, MailOpen, Trash2, Clock, Copy, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -19,6 +18,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useListQuery } from "@/hooks/useListQuery";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatRelativeTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
@@ -47,34 +47,38 @@ const MESSAGE_TYPE_LABELS: Record<string, string> = {
 };
 
 function AdminMessagesContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canDeleteMessages = canAdmin("messages:delete");
   const canWriteMessages = canAdmin("messages:write");
   const canReadSensitivePhone = canAdmin("messages:sensitive:read");
 
+  // 列表状态由 URL 派生
+  const page = getNumber("page", 1);
+  const pageSizeParam = getNumber("pageSize", 20, 1);
+  const pageSize = [10, 20, 50, 100].includes(pageSizeParam) ? pageSizeParam : 20;
+  const searchParam = get("search");
+  const statusFilter = get("status", "all");
+  const repliedFilter = get("replied", "all");
+  const typeFilter = get("type");
+
   // 状态
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() => {
-    const size = Number(searchParams.get("pageSize"));
-    return Number.isFinite(size) && size >= 1 ? Math.floor(size) : 20;
-  });
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(search);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [repliedFilter, setRepliedFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [search, setSearch] = useState(searchParam);
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
+  if (prevSearchParam !== searchParam) {
+    setPrevSearchParam(searchParam);
+    setSearch(searchParam);
+  }
   // 勾选状态：翻页/搜索/筛选变化时自动清空
   const selection = useRowSelection<Message>(
     (m) => m.id,
-    `${page}|${pageSize}|${debouncedSearch}|${statusFilter}|${repliedFilter}|${typeFilter}`
+    `${page}|${pageSize}|${searchParam}|${statusFilter}|${repliedFilter}|${typeFilter}`
   );
   const [batchActionLoading, setBatchActionLoading] = useState<string | null>(null);
 
@@ -105,7 +109,7 @@ function AdminMessagesContent() {
       }>("/api/admin/messages", {
         page,
         pageSize,
-        search: debouncedSearch,
+        search: searchParam,
         status: statusFilter === "all" ? undefined : statusFilter,
         replied: repliedFilter === "all" ? undefined : repliedFilter,
         type: typeFilter || undefined,
@@ -114,6 +118,7 @@ function AdminMessagesContent() {
       setMessages(data.items);
       setTotal(data.pagination.total);
       setUnreadCount(data.unreadCount);
+      window.dispatchEvent(new CustomEvent("admin:messages-updated", { detail: data.unreadCount }));
       setLoadError(false);
     } catch {
       if (!isLatest()) return;
@@ -121,20 +126,30 @@ function AdminMessagesContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, statusFilter, repliedFilter, typeFilter, takeLatestMessages]);
+  }, [page, pageSize, searchParam, statusFilter, repliedFilter, typeFilter, takeLatestMessages]);
 
   useEffect(() => {
     deferInEffect(fetchMessages);
   }, [fetchMessages]);
 
-  // 搜索防抖
+  // 搜索防抖写入 URL
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
+      const next = search.trim();
+      if (next !== searchParam) {
+        update({ search: next || null }, { replace: true });
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, searchParam, update]);
+
+  // URL 中 page 越界时收敛到最后一页
+  useEffect(() => {
+    const totalPages = Math.ceil(total / pageSize);
+    if (totalPages > 0 && page > totalPages) {
+      update({ page: String(totalPages) }, { replace: true, resetPage: false });
+    }
+  }, [page, total, pageSize, update]);
 
   // 标记已读（只读角色跳过，避免必然 403）
   const markAsRead = async (message: Message) => {
@@ -173,14 +188,14 @@ function AdminMessagesContent() {
     if (!detailMessage) return;
     const reply = replyDraft.trim();
     if (!reply) {
-      showError("请输入回复内容");
+      showError("请输入备注内容");
       return;
     }
 
     setReplying(true);
     try {
       await apiPatch(`/api/admin/messages/${detailMessage.id}`, { reply });
-      success(detailMessage.reply ? "回复已更新" : "回复已发送");
+      success(detailMessage.reply ? "备注已更新" : "备注已保存");
       const updated = {
         ...detailMessage,
         reply,
@@ -190,7 +205,7 @@ function AdminMessagesContent() {
       setDetailMessage(updated);
       fetchMessages();
     } catch {
-      showError("回复失败");
+      showError("备注保存失败");
     } finally {
       setReplying(false);
     }
@@ -222,7 +237,7 @@ function AdminMessagesContent() {
       setDeleteTarget(null);
       // 删光当前页最后一条时回退一页
       if (messages.length === 1 && page > 1) {
-        setPage(page - 1);
+        update({ page: String(page - 1) }, { resetPage: false });
       } else {
         fetchMessages();
       }
@@ -252,7 +267,7 @@ function AdminMessagesContent() {
         messages.every((m) => selection.selectedIds.has(m.id));
       selection.clear();
       if (deletesWholePage && page > 1) {
-        setPage(page - 1);
+        update({ page: String(page - 1) }, { resetPage: false });
       } else {
         await fetchMessages();
       }
@@ -297,8 +312,21 @@ function AdminMessagesContent() {
               placeholder="搜索留言..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className={search ? "pl-10 pr-10" : "pl-10"}
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  update({ search: null }, { replace: true });
+                }}
+                aria-label="清除搜索"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <Select
             options={[
@@ -307,23 +335,17 @@ function AdminMessagesContent() {
               { value: "read", label: "已读" },
             ]}
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => update({ status: e.target.value })}
             className="w-full sm:w-32"
           />
           <Select
             options={[
-              { value: "all", label: "全部回复状态" },
-              { value: "unreplied", label: "未回复" },
-              { value: "replied", label: "已回复" },
+              { value: "all", label: "全部备注状态" },
+              { value: "unreplied", label: "无备注" },
+              { value: "replied", label: "有备注" },
             ]}
             value={repliedFilter}
-            onChange={(e) => {
-              setRepliedFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => update({ replied: e.target.value })}
             className="w-full sm:w-36"
           />
           <Select
@@ -337,10 +359,7 @@ function AdminMessagesContent() {
               { value: "other", label: "其他问题" },
             ]}
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => update({ type: e.target.value })}
             className="w-full sm:w-32"
           />
         </div>
@@ -455,10 +474,12 @@ function AdminMessagesContent() {
                     />
                   )}
 
-                  {/* 留言内容 */}
-                  <div
-                    className="min-w-0 flex-1 cursor-pointer"
+                  {/* 留言内容（button 保证键盘可达） */}
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 cursor-pointer text-left"
                     onClick={() => viewDetail(message)}
+                    aria-label={`查看 ${message.name} 的留言详情`}
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -496,12 +517,12 @@ function AdminMessagesContent() {
                           )}
                           {message.reply && (
                             <Badge variant="success" size="sm">
-                              已回复
+                              有备注
                             </Badge>
                           )}
                           {message.reply && message.repliedAt && (
                             <span className="text-xs text-brand-charcoal/40">
-                              回复于 {formatRelativeTime(message.repliedAt)}
+                              备注于 {formatRelativeTime(message.repliedAt)}
                             </span>
                           )}
                         </div>
@@ -510,7 +531,7 @@ function AdminMessagesContent() {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </button>
 
                   {/* 联系方式 */}
                   <div className="hidden w-32 items-center text-sm text-brand-charcoal/50 sm:flex">
@@ -565,14 +586,8 @@ function AdminMessagesContent() {
             page={page}
             pageSize={pageSize}
             total={total}
-            onChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-              const params = new URLSearchParams(searchParams.toString());
-              params.set("pageSize", String(size));
-              router.push(`/admin/messages?${params.toString()}`);
-            }}
+            onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
+            onPageSizeChange={(size) => update({ pageSize: String(size) })}
           />
         </div>
       )}
@@ -582,7 +597,8 @@ function AdminMessagesContent() {
         open={!!detailMessage}
         onClose={() => setDetailMessage(null)}
         title="留言详情"
-        size="lg" mobileFullScreen
+        size="lg"
+        mobileFullScreen
         closeOnBackdrop={false}
         closeGuard={() => !replying && confirmCloseReply()}
         footer={
@@ -594,7 +610,7 @@ function AdminMessagesContent() {
                   {detailMessage.read ? "标记为未读" : "标记为已读"}
                 </Button>
                 <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
-                  {detailMessage.reply ? "更新回复" : "发送回复"}
+                  {detailMessage.reply ? "更新备注" : "保存备注"}
                 </Button>
               </div>
             </div>
@@ -625,10 +641,7 @@ function AdminMessagesContent() {
                   {detailMessage.phone}
                   {canReadSensitivePhone && (
                     <Tooltip content="复制手机号" side="top">
-                      <IconButton
-                        label="复制手机号"
-                        onClick={() => copyPhone(detailMessage.phone)}
-                      >
+                      <IconButton label="复制手机号" onClick={() => copyPhone(detailMessage.phone)}>
                         <Copy className="h-3.5 w-3.5" />
                       </IconButton>
                     </Tooltip>
@@ -655,13 +668,13 @@ function AdminMessagesContent() {
               <p className="whitespace-pre-wrap text-brand-charcoal/80">{detailMessage.content}</p>
             </div>
 
-            {/* 回复区域 */}
+            {/* 内部备注区域（不会发送给用户） */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-brand-charcoal">管理员回复</h3>
+                <h3 className="text-sm font-medium text-brand-charcoal">内部备注</h3>
                 {detailMessage.repliedAt && (
                   <span className="text-xs text-brand-charcoal/40">
-                    上次回复：{new Date(detailMessage.repliedAt).toLocaleString("zh-CN")}
+                    上次备注：{new Date(detailMessage.repliedAt).toLocaleString("zh-CN")}
                   </span>
                 )}
               </div>
@@ -671,11 +684,11 @@ function AdminMessagesContent() {
                 rows={4}
                 maxLength={5000}
                 disabled={!canWriteMessages}
-                placeholder="输入回复内容（仅记录在后台用于回访跟进，用户端暂不展示）"
+                placeholder="仅供后台回访跟进，不会发送给用户"
                 className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/30 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
               />
               {!canWriteMessages && (
-                <p className="text-xs text-brand-charcoal/40">只读查看（无回复权限）</p>
+                <p className="text-xs text-brand-charcoal/40">只读查看（无备注权限）</p>
               )}
             </div>
           </div>

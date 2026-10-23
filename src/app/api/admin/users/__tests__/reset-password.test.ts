@@ -138,7 +138,8 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
     expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "user-1", revokedAt: null } })
     );
-    expect(blacklistUserTokens).toHaveBeenCalledWith("user-1", expect.any(String));
+    // 不再写 user 级黑名单：passwordChangedAt 失效旧 token，避免新登录也被拦 8h
+    expect(blacklistUserTokens).not.toHaveBeenCalled();
     expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "user_password_reset",

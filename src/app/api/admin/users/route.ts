@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
         where,
         skip: isExport ? undefined : (params.page - 1) * params.pageSize,
         take: isExport ? 10000 : params.pageSize,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         select: {
           id: true,
           phone: true,

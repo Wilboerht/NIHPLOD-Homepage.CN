@@ -170,7 +170,8 @@ export const CategorySchema = z.object({
       return v.startsWith("/") || v.startsWith("http://") || v.startsWith("https://");
     }, "请输入有效的图片URL（支持相对路径或完整URL）")
     .optional(),
-  order: z.number().int().min(0).default(0),
+  // 不设默认值：区分“未填写（追加到末尾）”与“显式 0（排到最前）”
+  order: z.number().int().min(0).optional(),
   visible: z.boolean().default(true),
 });
 

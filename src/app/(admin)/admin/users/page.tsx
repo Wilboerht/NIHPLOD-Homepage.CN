@@ -23,6 +23,7 @@ import {
   Trash2,
   CalendarDays,
   KeyRound,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
@@ -261,6 +262,12 @@ function AdminUsersContent() {
   const status = searchParams.get("status") || "";
   const level = searchParams.get("level") || "";
   const [searchInput, setSearchInput] = useState(search);
+  // 浏览器前进/后退时同步搜索框，避免输入框与 URL 筛选不一致
+  const [prevSearch, setPrevSearch] = useState(search);
+  if (prevSearch !== search) {
+    setPrevSearch(search);
+    setSearchInput(search);
+  }
 
   // 批量操作状态（翻页/筛选/搜索变化时自动清空勾选）
   const userSelection = useRowSelection<UserItem>(
@@ -337,6 +344,7 @@ function AdminUsersContent() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const takeLatestUsers = useLatestRequest();
+  const takeLatestDetail = useLatestRequest();
   const fetchUsers = useCallback(async () => {
     const isLatest = takeLatestUsers();
     setLoading(true);
@@ -559,7 +567,15 @@ function AdminUsersContent() {
     const { id } = deleteTarget;
     setDeleteLoading(true);
     try {
-      await apiDelete(`/api/admin/users/${id}`);
+      const submit = () => apiDelete(`/api/admin/users/${id}`);
+      try {
+        await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       toast.success("用户已删除");
       setDeleteTarget(null);
       if (detailUser?.id === id) {
@@ -609,6 +625,14 @@ function AdminUsersContent() {
     router.push(`/admin/users?${params.toString()}`);
   };
 
+  // URL 中 page 越界（如从分享链接进入）时收敛到最后一页
+  useEffect(() => {
+    if (pagination.totalPages > 0 && page > pagination.totalPages) {
+      updateParams({ page: String(pagination.totalPages) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pagination.totalPages]);
+
   const handleSelectAll = (checked: boolean) => {
     userSelection.toggleAll(users, checked);
   };
@@ -647,6 +671,7 @@ function AdminUsersContent() {
   };
 
   const openDetail = async (id: string) => {
+    const isLatest = takeLatestDetail();
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailUser(null);
@@ -671,6 +696,7 @@ function AdminUsersContent() {
         levelChanges: LevelChangeItem[];
         loginAttempts: LoginAttemptItem[];
       }>(`/api/admin/users/${id}`);
+      if (!isLatest()) return;
       setDetailUser(data.user);
       setDetailPoints(data.points);
       setDetailAddresses(data.addresses);
@@ -679,11 +705,12 @@ function AdminUsersContent() {
       setDetailLevelChanges(data.levelChanges ?? []);
       setDetailLoginAttempts(data.loginAttempts ?? []);
     } catch (err) {
+      if (!isLatest()) return;
       // 区分真实原因：404 才是「用户不存在」，其他错误（400/500/网络）原样展示便于排查
       setDetailError(err instanceof ApiError ? err.message : "加载失败，请稍后重试");
       apiConsole.error("获取用户详情失败:", err);
     } finally {
-      setDetailLoading(false);
+      if (isLatest()) setDetailLoading(false);
     }
   };
 
@@ -741,8 +768,21 @@ function AdminUsersContent() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-            className="pl-10"
+            className={searchInput ? "pl-10 pr-10" : "pl-10"}
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput("");
+                updateParams({ search: "" });
+              }}
+              aria-label="清除搜索"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <Select
@@ -816,240 +856,248 @@ function AdminUsersContent() {
         </div>
       )}
 
-      {/* 用户列表（移动端卡片） */}
-      <div className="md:hidden">
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
-            ))}
-          </div>
-        ) : users.length === 0 ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
-            <Empty title="暂无用户" />
-          </div>
-        ) : (
-          <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
-            {users.map((user) => (
-              <div key={user.id} className="p-4">
-                <div className="flex items-start gap-3">
-                  {canWriteUsers && (
-                    <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(user.id)}
-                        onChange={() => userSelection.toggle(user)}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
-                        aria-label={`选择 ${user.nickname || user.phone || user.id}`}
-                      />
-                    </label>
-                  )}
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-sm text-brand-charcoal/50">
-                    {user.avatar && user.avatar.startsWith("http") ? (
-                      <Image
-                        src={user.avatar}
-                        alt=""
-                        width={40}
-                        height={40}
-                        className="h-10 w-10 rounded-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      user.nickname?.charAt(0) || "U"
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-brand-charcoal">
-                      {user.nickname || "未设置"}
-                    </p>
-                    <p className="truncate text-xs text-brand-charcoal/50">
-                      {user.phone || "未绑定手机号"}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <Badge variant={userStatusMap[user.status].variant}>
-                        {userStatusMap[user.status].label}
-                      </Badge>
-                      {user.membershipLevel && membershipLevelMap[user.membershipLevel] && (
-                        <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
-                          {membershipLevelMap[user.membershipLevel].label}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                  <span className="text-xs text-brand-charcoal/50">
-                    注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`查看 ${user.nickname || user.phone || "用户"} 详情`}
-                      onClick={() => openDetail(user.id)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {canDeleteUsers && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                        aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
-                        onClick={() =>
-                          requestDeleteUser(user.id, user.nickname || user.phone || user.id)
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 用户列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-              {canWriteUsers && (
-                <th scope="col" className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = isSelectionIndeterminate;
-                    }}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-4 w-4 rounded border-brand-charcoal/20"
-                    aria-label="全选"
-                  />
-                </th>
-              )}
-              <th scope="col" className="px-4 py-3">
-                用户
-              </th>
-              <th scope="col" className="px-4 py-3">
-                手机号
-              </th>
-              <th scope="col" className="px-4 py-3">
-                会员等级
-              </th>
-              <th scope="col" className="px-4 py-3">
-                状态
-              </th>
-              <th scope="col" className="px-4 py-3">
-                注册时间
-              </th>
-              <th scope="col" className="px-4 py-3">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
+      {/* 列表与分页：加载失败时用错误态独占，避免同时出现“暂无用户” */}
+      {!loadError && (
+        <>
+          {/* 用户列表（移动端卡片） */}
+          <div className="md:hidden">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={canWriteUsers ? 8 : 7} />
-              ))
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-24 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]"
+                  />
+                ))}
+              </div>
             ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={canWriteUsers ? 8 : 7}>
-                  <div className="flex justify-center py-12">
-                    <Empty title="暂无用户" />
-                  </div>
-                </td>
-              </tr>
+              <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
+                <Empty title="暂无用户" />
+              </div>
             ) : (
-              users.map((user) => (
-                <tr key={user.id} className="hover:bg-brand-charcoal/[0.03]">
-                  {canWriteUsers && (
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(user.id)}
-                        onChange={() => userSelection.toggle(user)}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
-                        aria-label={`选择 ${user.nickname || user.phone || user.id}`}
-                      />
-                    </td>
-                  )}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
+              <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
+                {users.map((user) => (
+                  <div key={user.id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      {canWriteUsers && (
+                        <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(user.id)}
+                            onChange={() => userSelection.toggle(user)}
+                            className="h-4 w-4 rounded border-brand-charcoal/20"
+                            aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+                          />
+                        </label>
+                      )}
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-sm text-brand-charcoal/50">
                         {user.avatar && user.avatar.startsWith("http") ? (
                           <Image
                             src={user.avatar}
                             alt=""
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 rounded-full object-cover"
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 rounded-full object-cover"
                             unoptimized
                           />
                         ) : (
                           user.nickname?.charAt(0) || "U"
                         )}
                       </div>
-                      <span>{user.nickname || "未设置"}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-brand-charcoal">
+                          {user.nickname || "未设置"}
+                        </p>
+                        <p className="truncate text-xs text-brand-charcoal/50">
+                          {user.phone || "未绑定手机号"}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <Badge variant={userStatusMap[user.status].variant}>
+                            {userStatusMap[user.status].label}
+                          </Badge>
+                          {user.membershipLevel && membershipLevelMap[user.membershipLevel] && (
+                            <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
+                              {membershipLevelMap[user.membershipLevel].label}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">{user.phone || "-"}</td>
-                  <td className="px-4 py-3">
-                    {user.membershipLevel && membershipLevelMap[user.membershipLevel] ? (
-                      <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
-                        {membershipLevelMap[user.membershipLevel].label}
-                      </Badge>
-                    ) : (
-                      <span className="text-brand-charcoal/40">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={userStatusMap[user.status].variant}>
-                      {userStatusMap[user.status].label}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-brand-charcoal/50">
-                    {new Date(user.createdAt).toLocaleDateString("zh-CN")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canDeleteUsers && (
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+                      <span className="text-xs text-brand-charcoal/50">
+                        注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+                      </span>
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={() =>
-                            requestDeleteUser(user.id, user.nickname || user.phone || user.id)
-                          }
+                          aria-label={`查看 ${user.nickname || user.phone || "用户"} 详情`}
+                          onClick={() => openDetail(user.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
+                        {canDeleteUsers && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                            aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
+                            onClick={() =>
+                              requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))
+                  </div>
+                ))}
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
 
-      {/* 分页 */}
-      <div className="flex justify-center">
-        <Pagination
-          page={pagination.page}
-          pageSize={pagination.pageSize}
-          total={pagination.total}
-          onChange={(p) => updateParams({ page: String(p) })}
-          onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
-        />
-      </div>
+          {/* 用户列表（桌面端表格） */}
+          <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead>
+                <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                  {canWriteUsers && (
+                    <th scope="col" className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isSelectionIndeterminate;
+                        }}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        aria-label="全选"
+                      />
+                    </th>
+                  )}
+                  <th scope="col" className="px-4 py-3">
+                    用户
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    手机号
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    会员等级
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    状态
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    注册时间
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRowSkeleton key={i} columns={canWriteUsers ? 8 : 7} />
+                  ))
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={canWriteUsers ? 8 : 7}>
+                      <div className="flex justify-center py-12">
+                        <Empty title="暂无用户" />
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((user) => (
+                    <tr key={user.id} className="hover:bg-brand-charcoal/[0.03]">
+                      {canWriteUsers && (
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(user.id)}
+                            onChange={() => userSelection.toggle(user)}
+                            className="h-4 w-4 rounded border-brand-charcoal/20"
+                            aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+                          />
+                        </td>
+                      )}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/50">
+                            {user.avatar && user.avatar.startsWith("http") ? (
+                              <Image
+                                src={user.avatar}
+                                alt=""
+                                width={32}
+                                height={32}
+                                className="h-8 w-8 rounded-full object-cover"
+                                unoptimized
+                              />
+                            ) : (
+                              user.nickname?.charAt(0) || "U"
+                            )}
+                          </div>
+                          <span>{user.nickname || "未设置"}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">{user.phone || "-"}</td>
+                      <td className="px-4 py-3">
+                        {user.membershipLevel && membershipLevelMap[user.membershipLevel] ? (
+                          <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
+                            {membershipLevelMap[user.membershipLevel].label}
+                          </Badge>
+                        ) : (
+                          <span className="text-brand-charcoal/40">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={userStatusMap[user.status].variant}>
+                          {userStatusMap[user.status].label}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-brand-charcoal/50">
+                        {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {canDeleteUsers && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                              onClick={() =>
+                                requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 分页 */}
+          <div className="flex justify-center">
+            <Pagination
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              onChange={(p) => updateParams({ page: String(p) })}
+              onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
+            />
+          </div>
+        </>
+      )}
 
       {/* 用户详情模态框 */}
       <Modal
@@ -1553,41 +1601,41 @@ function AdminUsersContent() {
                     ) : (
                       <div className="space-y-2">
                         {visibleAttempts.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-charcoal/10 bg-white px-4 py-2.5"
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span
-                            className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${
-                              a.success ? "bg-emerald-500" : "bg-red-500"
-                            }`}
-                          />
-                          <span className="text-sm text-brand-charcoal/80">
-                            {LOGIN_TYPE_LABELS[a.type] || a.type}
-                          </span>
-                          {!a.success && (
-                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">
-                              {a.reason || "失败"}
-                            </span>
-                          )}
-                          {a.clientId && (
-                            <span className="text-xs text-brand-charcoal/40">{a.clientId}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-brand-charcoal/40">
-                          {a.ipAddress && <span className="font-mono">{a.ipAddress}</span>}
-                          <span>{formatDate(a.createdAt)}</span>
-                        </div>
-                        {a.userAgent && (
-                          <p
-                            className="w-full truncate text-xs text-brand-charcoal/30"
-                            title={a.userAgent}
+                          <div
+                            key={a.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-charcoal/10 bg-white px-4 py-2.5"
                           >
-                            {a.userAgent}
-                          </p>
-                        )}
-                      </div>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${
+                                  a.success ? "bg-emerald-500" : "bg-red-500"
+                                }`}
+                              />
+                              <span className="text-sm text-brand-charcoal/80">
+                                {LOGIN_TYPE_LABELS[a.type] || a.type}
+                              </span>
+                              {!a.success && (
+                                <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">
+                                  {a.reason || "失败"}
+                                </span>
+                              )}
+                              {a.clientId && (
+                                <span className="text-xs text-brand-charcoal/40">{a.clientId}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-brand-charcoal/40">
+                              {a.ipAddress && <span className="font-mono">{a.ipAddress}</span>}
+                              <span>{formatDate(a.createdAt)}</span>
+                            </div>
+                            {a.userAgent && (
+                              <p
+                                className="w-full truncate text-xs text-brand-charcoal/30"
+                                title={a.userAgent}
+                              >
+                                {a.userAgent}
+                              </p>
+                            )}
+                          </div>
                         ))}
                       </div>
                     );

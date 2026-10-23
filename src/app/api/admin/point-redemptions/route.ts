@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         select: {
           id: true,
           productName: true,
@@ -111,11 +111,7 @@ export async function GET(request: NextRequest) {
           points: r.points,
           status: r.status,
           // PII 最小化：仅履约权限可见完整收件人姓名
-          recipient: canFulfill
-            ? r.recipient
-            : r.recipient
-              ? `${r.recipient.slice(0, 1)}**`
-              : null,
+          recipient: canFulfill ? r.recipient : r.recipient ? `${r.recipient.slice(0, 1)}**` : null,
           phone: canFulfill ? r.phone : r.phone ? maskPhone(r.phone) : null,
           address: canFulfill ? r.address : maskAddress(r.address),
           carrier: r.carrier,

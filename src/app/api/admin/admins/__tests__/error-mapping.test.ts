@@ -63,6 +63,9 @@ vi.mock("@/lib/token-blacklist", () => ({
 vi.mock("@/lib/admin-safety", () => ({
   deleteAdminsSafely: vi.fn(),
 }));
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));

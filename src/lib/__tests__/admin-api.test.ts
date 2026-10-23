@@ -172,6 +172,12 @@ vi.mock("@/lib/logger", () => ({
   logError: vi.fn(),
 }));
 
+// 高风险操作 step-up：集成测试默认已通过（单独的路由测试覆盖拒绝场景）
+vi.mock("@/lib/admin-totp", () => ({
+  requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 // Mock validation
 vi.mock("@/lib/validation", () => ({
   validateCUID: (id: string) => typeof id === "string" && id.length > 0,

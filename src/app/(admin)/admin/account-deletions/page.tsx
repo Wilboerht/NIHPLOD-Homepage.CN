@@ -18,6 +18,7 @@ import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useListQuery } from "@/hooks/useListQuery";
 import { cn } from "@/lib/utils";
 
 type DeletionStatus = "PENDING" | "RUNNING" | "CANCELLED" | "COMPLETED" | "FAILED";
@@ -70,12 +71,16 @@ export default function AdminAccountDeletionsPage() {
 }
 
 function AdminAccountDeletionsContent() {
+  const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canRetry = canAdmin("users:security:write");
-  const [status, setStatus] = useState<DeletionStatus>("FAILED");
+  const statusParam = get("status", "FAILED");
+  const status: DeletionStatus = STATUS_TABS.some((tab) => tab.key === statusParam)
+    ? (statusParam as DeletionStatus)
+    : "FAILED";
+  const page = getNumber("page", 1);
   const [items, setItems] = useState<DeletionItem[]>([]);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -108,6 +113,12 @@ function AdminAccountDeletionsContent() {
     deferInEffect(() => fetchItems(status, page));
   }, [status, page, fetchItems]);
 
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      update({ page: String(totalPages) }, { replace: true, resetPage: false });
+    }
+  }, [page, totalPages, update]);
+
   const handleRetry = async (item: DeletionItem, force: boolean) => {
     setActioningId(item.id);
     try {
@@ -122,7 +133,11 @@ function AdminAccountDeletionsContent() {
       }
       setRetryTarget(null);
       setForceRetry(false);
-      fetchItems(status, page);
+      if (data.status === "completed" && items.length === 1 && page > 1) {
+        update({ page: String(page - 1) }, { resetPage: false });
+      } else {
+        fetchItems(status, page);
+      }
     } catch (e) {
       // 失败（如达到重试上限返回 409）时保留弹窗，便于勾选「强制重试」后再次提交
       showError(e instanceof ApiError ? e.message : "重试失败");
@@ -169,10 +184,8 @@ function AdminAccountDeletionsContent() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => {
-              setStatus(tab.key);
-              setPage(1);
-            }}
+            aria-pressed={status === tab.key}
+            onClick={() => update({ status: tab.key })}
             className={cn(
               "rounded-full border px-4 py-1.5 text-sm transition-colors",
               status === tab.key
@@ -204,6 +217,7 @@ function AdminAccountDeletionsContent() {
           ) : undefined
         }
         empty={<Empty title="暂无记录" description="当前状态下没有注销申请" />}
+        isEmpty={!loading && !loadError && items.length === 0}
       >
         {items.map((item) => (
           <MobileListCard key={item.id}>
@@ -399,7 +413,7 @@ function AdminAccountDeletionsContent() {
               variant="outline"
               size="sm"
               disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
+              onClick={() => update({ page: String(page - 1) }, { resetPage: false })}
             >
               上一页
             </Button>
@@ -407,7 +421,7 @@ function AdminAccountDeletionsContent() {
               variant="outline"
               size="sm"
               disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
+              onClick={() => update({ page: String(page + 1) }, { resetPage: false })}
             >
               下一页
             </Button>

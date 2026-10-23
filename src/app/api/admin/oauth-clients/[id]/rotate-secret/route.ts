@@ -16,6 +16,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { cacheOldSecret } from "@/lib/oauth-client";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 import { z } from "zod";
@@ -57,6 +58,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const body = await request.json();
     const parsed = rotateSchema.safeParse(body);

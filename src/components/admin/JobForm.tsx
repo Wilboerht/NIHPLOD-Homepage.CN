@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Save, Send } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
@@ -60,6 +60,9 @@ interface JobFormProps {
 // ────────────────────────────────────────────────────────────
 export function JobForm({ jobId, initialData }: JobFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnToParam = searchParams.get("returnTo") ?? "";
+  const returnTo = returnToParam.startsWith("/admin/jobs") ? returnToParam : "/admin/jobs";
   const { success, error: showError } = useToast();
   const isEdit = !!jobId;
 
@@ -76,7 +79,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     salary: "",
     description: "",
     requirements: "",
-    order: 0,
+    order: undefined,
     published: true,
     longitude: null,
     latitude: null,
@@ -90,7 +93,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
   );
   const { guard: guardNavigation } = useUnsavedChanges(isDirty);
 
-  const updateField = <K extends keyof Job>(field: K, value: Job[K]) => {
+  const updateField = <K extends keyof Job>(field: K, value: Job[K] | undefined) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -218,7 +221,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
       }
 
       success(publish ? (isEdit ? "职位已发布" : "职位已创建并发布") : "职位已保存为草稿");
-      router.push("/admin/jobs");
+      router.push(returnTo);
       router.refresh();
     } catch (err) {
       showError(err instanceof Error ? err.message : "保存失败");
@@ -319,10 +322,12 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           <Input
             label="显示排序"
             type="number"
-            value={formData.order || 0}
-            onChange={(e) => updateField("order", parseInt(e.target.value) || 0)}
-            placeholder="0"
-            hint="数字越小越靠前"
+            value={formData.order ?? ""}
+            onChange={(e) =>
+              updateField("order", e.target.value === "" ? undefined : parseInt(e.target.value))
+            }
+            placeholder="留空追加到末尾"
+            hint="数字越小越靠前；留空自动追加到末尾"
           />
           {/* 发布状态由底部「保存草稿 / 保存并发布」按钮显式决定，避免开关与按钮语义冲突 */}
           {isEdit && (

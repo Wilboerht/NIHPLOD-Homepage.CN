@@ -115,3 +115,21 @@ export async function requireMoneyOperationTotp(
 function totpError(code: AdminTotpErrorCode, message: string): NextResponse {
   return NextResponse.json({ success: false, error: { code, message } }, { status: 400 });
 }
+
+/**
+ * 高风险操作的统一 step-up 校验。
+ *
+ * 与资金类操作共用同一短时授权（/api/admin/step-up + HttpOnly Cookie）：
+ * - 无授权时返回 TOTP_REQUIRED，前端用 useTotpConfirm 拉起一次验证；
+ * - 未启用 TOTP 时返回 TOTP_NOT_ENABLED，引导先完成安全设置；
+ * - 授权绑定管理员/会话/tokenVersion，改密、改权限、登出后自动失效。
+ *
+ * 适用于：用户删除、管理员账号/角色/权限变更、break-glass 查看、
+ * OAuth Client 密钥轮换/缩权等。
+ */
+export async function requireAdminStepUp(
+  request: NextRequest,
+  admin: Pick<AdminJWTPayload, "id" | "ver" | "jti">
+): Promise<NextResponse | null> {
+  return requireMoneyOperationTotp(admin.id, null, { request, admin });
+}

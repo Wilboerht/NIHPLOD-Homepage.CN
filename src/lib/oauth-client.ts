@@ -607,7 +607,7 @@ export async function listOAuthClients(params?: {
       where,
       skip: (page - 1) * pageSize,
       take: pageSize,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     }),
     prisma.oAuthClient.count({ where }),
   ]);

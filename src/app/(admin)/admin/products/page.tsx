@@ -58,16 +58,27 @@ export default function AdminProductsPage() {
   const pageParam = Number(searchParams.get("page"));
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
   const pageSizeParam = Number(searchParams.get("pageSize"));
-  const pageSize = Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
+  const pageSize =
+    Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
   const featured = searchParams.get("featured") || "all";
   const search = searchParams.get("search") || "";
   const sortBy = searchParams.get("sortBy") || "";
-  const sortOrder = searchParams.get("sortOrder") || "desc";
+  // 默认交给 API 的 order asc；只有显式排序时才携带 sortOrder，
+  // 避免默认 desc 与“数字越小越靠前”的业务语义相反。
+  const sortOrder = searchParams.get("sortOrder") || "";
+  const effectiveSortOrder = sortBy ? (sortOrder as "asc" | "desc") || "asc" : undefined;
+  const listQuery = searchParams.toString();
+  const returnTo = `/admin/products${listQuery ? `?${listQuery}` : ""}`;
 
-  // 搜索输入框状态
+  // 搜索输入框状态；浏览器前进/后退时与 URL 同步
   const [searchInput, setSearchInput] = useState(search);
+  const [prevSearch, setPrevSearch] = useState(search);
+  if (prevSearch !== search) {
+    setPrevSearch(search);
+    setSearchInput(search);
+  }
 
   // 权限：逐项删除/批量删除/编辑发布分别对应不同权限点（与 API 层一致）
   const { can: canAdmin } = useAdminPermissions();
@@ -98,7 +109,7 @@ export default function AdminProductsPage() {
           featured: featured === "all" ? undefined : featured,
           search,
           sortBy: sortBy || undefined,
-          sortOrder: sortOrder || undefined,
+          sortOrder: effectiveSortOrder,
         }
       );
       if (!isLatest()) return;
@@ -115,7 +126,18 @@ export default function AdminProductsPage() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, categoryId, status, featured, search, sortBy, sortOrder, router, takeLatestProducts]);
+  }, [
+    page,
+    pageSize,
+    categoryId,
+    status,
+    featured,
+    search,
+    sortBy,
+    effectiveSortOrder,
+    router,
+    takeLatestProducts,
+  ]);
 
   useEffect(() => {
     deferInEffect(fetchProducts);
@@ -140,6 +162,14 @@ export default function AdminProductsPage() {
 
     router.push(`/admin/products?${params.toString()}`);
   };
+
+  // URL 中 page 越界时收敛到最后一页
+  useEffect(() => {
+    if (pagination.totalPages > 0 && page > pagination.totalPages) {
+      updateParams({ page: String(pagination.totalPages) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pagination.totalPages]);
 
   // 处理搜索
   const handleSearch = (e: React.FormEvent) => {
@@ -174,99 +204,99 @@ export default function AdminProductsPage() {
 
   return (
     <RequirePermission permission="products:read">
-    <div className="flex flex-col gap-6">
-      {/* 页面头部 */}
-      <PageHeader
-        title="产品管理"
-        description={`管理所有产品，共 ${pagination.total} 个`}
-        actions={
-          canWriteProducts ? (
-            <Link href="/admin/products/new">
-              <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
-            </Link>
-          ) : undefined
-        }
-      />
-
-      {/* 筛选栏 */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* 搜索框 */}
-        <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="搜索产品名称..."
-            className="pl-10 pr-10"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              aria-label="清除搜索"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </form>
-
-        {/* 分类筛选 */}
-        <div className="w-40">
-          <Select
-            aria-label="按分类筛选"
-            options={categoryOptions}
-            value={categoryId}
-            onChange={(e) => updateParams({ categoryId: e.target.value })}
-          />
-        </div>
-
-        {/* 状态筛选 */}
-        <div className="w-32">
-          <Select
-            aria-label="按状态筛选"
-            options={statusOptions}
-            value={status}
-            onChange={(e) => updateParams({ status: e.target.value })}
-          />
-        </div>
-
-        {/* 推荐筛选 */}
-        <div className="w-32">
-          <Select
-            aria-label="按推荐筛选"
-            options={featuredOptions}
-            value={featured}
-            onChange={(e) => updateParams({ featured: e.target.value })}
-          />
-        </div>
-      </div>
-
-      {/* 加载失败错误态（替代表格，避免错误与旧数据同时展示） */}
-      {loadError ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <p className="text-sm text-red-500">{loadError}</p>
-          <Button variant="outline" size="sm" onClick={fetchProducts}>
-            重试
-          </Button>
-        </div>
-      ) : (
-        <ProductsTable
-          products={products}
-          loading={loading}
-          pagination={pagination}
-          onPageChange={(p) => updateParams({ page: String(p) })}
-          onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
-          onRefresh={fetchProducts}
-          onSort={(key, order) => updateParams({ sortBy: key, sortOrder: order })}
-          sortBy={sortBy || undefined}
-          sortOrder={sortOrder as "asc" | "desc" | undefined}
-          canDelete={canDelete}
-          canBatchDelete={canBatchDelete}
-          canWrite={canWriteProducts}
+      <div className="flex flex-col gap-6">
+        {/* 页面头部 */}
+        <PageHeader
+          title="产品管理"
+          description={`管理所有产品，共 ${pagination.total} 个`}
+          actions={
+            canWriteProducts ? (
+              <Link href={`/admin/products/new?returnTo=${encodeURIComponent(returnTo)}`}>
+                <Button leftIcon={<Plus className="h-4 w-4" />}>新增产品</Button>
+              </Link>
+            ) : undefined
+          }
         />
-      )}
-    </div>
+
+        {/* 筛选栏 */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 搜索框 */}
+          <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="搜索产品名称..."
+              className="pl-10 pr-10"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                aria-label="清除搜索"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 transition-colors hover:text-brand-charcoal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </form>
+
+          {/* 分类筛选 */}
+          <div className="w-40">
+            <Select
+              aria-label="按分类筛选"
+              options={categoryOptions}
+              value={categoryId}
+              onChange={(e) => updateParams({ categoryId: e.target.value })}
+            />
+          </div>
+
+          {/* 状态筛选 */}
+          <div className="w-32">
+            <Select
+              aria-label="按状态筛选"
+              options={statusOptions}
+              value={status}
+              onChange={(e) => updateParams({ status: e.target.value })}
+            />
+          </div>
+
+          {/* 推荐筛选 */}
+          <div className="w-32">
+            <Select
+              aria-label="按推荐筛选"
+              options={featuredOptions}
+              value={featured}
+              onChange={(e) => updateParams({ featured: e.target.value })}
+            />
+          </div>
+        </div>
+
+        {/* 加载失败错误态（替代表格，避免错误与旧数据同时展示） */}
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <p className="text-sm text-red-500">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={fetchProducts}>
+              重试
+            </Button>
+          </div>
+        ) : (
+          <ProductsTable
+            products={products}
+            loading={loading}
+            pagination={pagination}
+            onPageChange={(p) => updateParams({ page: String(p) })}
+            onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
+            onRefresh={fetchProducts}
+            onSort={(key, order) => updateParams({ sortBy: key, sortOrder: order })}
+            sortBy={sortBy || undefined}
+            sortOrder={effectiveSortOrder}
+            canDelete={canDelete}
+            canBatchDelete={canBatchDelete}
+            canWrite={canWriteProducts}
+          />
+        )}
+      </div>
     </RequirePermission>
   );
 }

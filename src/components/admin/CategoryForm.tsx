@@ -49,7 +49,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
     slug: "",
     description: "",
     icon: "",
-    order: 0,
+    order: "",
     visible: true,
   });
   const slugManuallySetRef = useRef(false);
@@ -76,7 +76,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
           slug: category.slug,
           description: category.description || "",
           icon: category.icon || "",
-          order: category.order ?? 0,
+          order: category.order != null ? String(category.order) : "",
           visible: category.visible ?? true,
         }
       : {
@@ -85,7 +85,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
           slug: "",
           description: "",
           icon: "",
-          order: 0,
+          order: "",
           visible: true,
         };
     setFormData(nextForm);
@@ -129,7 +129,10 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
   // 验证表单
   const validateForm = (): boolean => {
     try {
-      CategorySchema.parse(formData);
+      CategorySchema.parse({
+        ...formData,
+        order: formData.order === "" ? undefined : Number(formData.order),
+      });
       setErrors({});
       return true;
     } catch (err) {
@@ -154,10 +157,14 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
 
     setSaving(true);
     try {
+      const payload = {
+        ...formData,
+        order: formData.order === "" ? undefined : Number(formData.order),
+      };
       if (isEdit) {
-        await apiPut(`/api/admin/categories/${category.id}`, formData);
+        await apiPut(`/api/admin/categories/${category.id}`, payload);
       } else {
-        await apiPost("/api/admin/categories", formData);
+        await apiPost("/api/admin/categories", payload);
       }
 
       success(isEdit ? "分类已更新" : "分类已创建");
@@ -231,10 +238,12 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
         <Input
           label="排序"
           type="number"
+          min={0}
           value={formData.order}
-          onChange={(e) => updateField("order", Number(e.target.value))}
+          onChange={(e) => updateField("order", e.target.value)}
           error={errors.order}
-          placeholder="数字越小越靠前"
+          placeholder="留空追加到末尾"
+          hint="数字越小越靠前；留空自动追加到末尾"
         />
         <Textarea
           label="图标 (SVG)"

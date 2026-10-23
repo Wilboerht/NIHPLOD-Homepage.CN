@@ -15,29 +15,29 @@ datasource db {
 // ============================================
 
 model Product {
-  id            String         @id @default(cuid())
-  name          String         // 产品名称（中文）
-  nameEn        String         // 产品名称（英文）
-  slug          String         @unique // URL 标识
-  description   String         @db.Text // 产品描述
-  price         Decimal        @db.Decimal(10, 2) // 参考价格
-  capacity      String?        // 规格容量
-  categoryId    String
-  category      Category       @relation(fields: [categoryId], references: [id])
-  images        Image[]        // 产品图片
-  purchaseLinks PurchaseLink[] // 多平台购买链接
-  ingredients   String?        @db.Text // 成分说明
-  usage         String?        @db.Text // 使用方法
-  benefits      String[]       // 功效标签
-  origin        String?        // 产地
-  order         Int            @default(0) // 排序（数字越小越靠前）
-  featured      Boolean        @default(false) // 是否推荐
-  published     Boolean        @default(false) // 是否发布
-  pointRedeemable Boolean      @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
-  redeemStock   Int?           // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
-  geoFaqs       Json?          // AI 生成的 GEO FAQ 数据
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @default(now()) @updatedAt
+  id              String         @id @default(cuid())
+  name            String // 产品名称（中文）
+  nameEn          String // 产品名称（英文）
+  slug            String         @unique // URL 标识
+  description     String         @db.Text // 产品描述
+  price           Decimal        @db.Decimal(10, 2) // 参考价格
+  capacity        String? // 规格容量
+  categoryId      String
+  category        Category       @relation(fields: [categoryId], references: [id])
+  images          Image[] // 产品图片
+  purchaseLinks   PurchaseLink[] // 多平台购买链接
+  ingredients     String?        @db.Text // 成分说明
+  usage           String?        @db.Text // 使用方法
+  benefits        String[] // 功效标签
+  origin          String? // 产地
+  order           Int            @default(0) // 排序（数字越小越靠前）
+  featured        Boolean        @default(false) // 是否推荐
+  published       Boolean        @default(false) // 是否发布
+  pointRedeemable Boolean        @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
+  redeemStock     Int? // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
+  geoFaqs         Json? // AI 生成的 GEO FAQ 数据
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
 
   pointRedemptions PointRedemption[]
 
@@ -50,9 +50,9 @@ model Product {
 // 购买链接（支持多平台）
 model PurchaseLink {
   id                   String   @id @default(cuid())
-  platform             String   // 平台名称（如：天猫、京东、小红书、官方商城）
+  platform             String // 平台名称（如：天猫、京东、小红书、官方商城）
   platformKey          String?
-  url                  String   // 购买链接
+  url                  String // 购买链接
   miniProgramShortLink String?
   miniProgramPath      String?
   order                Int      @default(0) // 排序
@@ -67,24 +67,24 @@ model PurchaseLink {
 
 model Category {
   id          String    @id @default(cuid())
-  name        String    // 分类名称（中文）
-  nameEn      String    // 分类名称（英文）
+  name        String // 分类名称（中文）
+  nameEn      String // 分类名称（英文）
   slug        String    @unique // URL 标识
   description String?   @db.Text // 分类描述（管理端维护，前台可扩展展示）
   icon        String?   @db.Text // 分类图标（SVG 代码）
   order       Int       @default(0) // 排序
   visible     Boolean   @default(true) // 是否在前台展示
-  products  Product[] // 关联产品
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now()) @updatedAt
+  products    Product[] // 关联产品
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
 
   @@index([visible, order])
 }
 
 model Image {
   id        String   @id @default(cuid())
-  url       String   // 图片路径
-  alt       String?  // 替代文本
+  url       String // 图片路径
+  alt       String? // 替代文本
   order     Int      @default(0) // 排序
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -94,24 +94,21 @@ model Image {
   @@index([productId])
 }
 
-
-
-
 // ============================================
 // 职位管理
 // ============================================
 
 model Job {
   id           String   @id @default(cuid())
-  title        String   // 职位名称（中文）
-  titleEn      String?  // 职位名称（英文）
-  location     String   // 工作地点
-  type         String   // 职位类型 (fulltime, parttime, intern)
+  title        String // 职位名称（中文）
+  titleEn      String? // 职位名称（英文）
+  location     String // 工作地点
+  type         String // 职位类型 (fulltime, parttime, intern)
   description  String   @db.Text // 职责描述
   requirements String   @db.Text // 任职要求
-  salary       String?  // 薪资范围（可选）
-  longitude    Float?   // 经度
-  latitude     Float?   // 纬度
+  salary       String? // 薪资范围（可选）
+  longitude    Float? // 经度
+  latitude     Float? // 纬度
   order        Int      @default(0) // 排序
   published    Boolean  @default(false)
   createdAt    DateTime @default(now())
@@ -128,18 +125,18 @@ model Job {
 
 model JobApplication {
   id         String   @id @default(cuid())
-  jobId      String   // 申请的职位ID
-  name       String   // 申请人姓名
-  phone      String   // 手机号
-  resumePath String   // 简历文件路径
+  jobId      String // 申请的职位ID
+  name       String // 申请人姓名
+  phone      String // 手机号
+  resumePath String // 简历文件路径
   status     String   @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
   notes      String?  @db.Text // 备注
-  folderId   String?  // 分类夹ID（可选）
+  folderId   String? // 分类夹ID（可选）
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
 
-  job    Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  folder ApplicationFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  job    Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  folder ApplicationFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([jobId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
@@ -152,27 +149,26 @@ model JobApplication {
 // ============================================
 
 model ApplicationFolder {
-  id           String   @id @default(cuid())
-  name         String   // 分类夹名称
-  description  String?  // 描述说明
-  order        Int      @default(0) // 排序
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now()) @updatedAt
+  id          String   @id @default(cuid())
+  name        String // 分类夹名称
+  description String? // 描述说明
+  order       Int      @default(0) // 排序
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   applications JobApplication[] // 该分类夹下的申请
 
   @@index([order])
 }
 
-
 // 联系留言
 // ============================================
 
 model ContactMessage {
   id        String    @id @default(cuid())
-  name      String    // 留言人姓名
-  phone     String    // 联系电话
-  type      String?   // 留言类型 (咨询、合作等)
+  name      String // 留言人姓名
+  phone     String // 联系电话
+  type      String? // 留言类型 (咨询、合作等)
   content   String    @db.Text // 留言内容
   reply     String?   @db.Text // 管理员回复
   repliedAt DateTime? // 回复时间
@@ -182,9 +178,6 @@ model ContactMessage {
 
   @@index([read, createdAt(sort: Desc)])
 }
-
-
-
 
 // ============================================
 // C端用户系统
@@ -199,71 +192,71 @@ enum UserStatus {
 
 enum MembershipLevel {
   REGULAR // 普通会员（完成注册）
-  SILVER  // 银卡会员（官方店铺累计消费满 ¥1,000）
-  GOLD    // 金卡会员（累计消费满 ¥5,000）
+  SILVER // 银卡会员（官方店铺累计消费满 ¥1,000）
+  GOLD // 金卡会员（累计消费满 ¥5,000）
   DIAMOND // 钻石卡会员（累计消费满 ¥10,000）
 }
 
 model User {
   id            String     @id @default(cuid())
-  phone         String     @unique              // 手机号（唯一）
-  phoneVerified Boolean    @default(false)      // 手机验证状态
-  password      String?                         // 密码（哈希后）
-  nickname      String?                         // 昵称
-  avatar        String?                         // 头像 URL
-  status        UserStatus @default(ACTIVE)     // 账号状态
+  phone         String     @unique // 手机号（唯一）
+  phoneVerified Boolean    @default(false) // 手机验证状态
+  password      String? // 密码（哈希后）
+  nickname      String? // 昵称
+  avatar        String? // 头像 URL
+  status        UserStatus @default(ACTIVE) // 账号状态
 
   // 密码策略
-  passwordChangedAt DateTime?                   // 上次密码修改时间
-  passwordExpiresAt DateTime?                   // 密码过期时间（null 表示未启用过期策略）
+  passwordChangedAt     DateTime? // 上次密码修改时间
+  passwordExpiresAt     DateTime? // 密码过期时间（null 表示未启用过期策略）
   // 全设备登出时间：access token iat 早于此时间一律拒绝（与 passwordChangedAt 同口径）
   sessionsInvalidatedAt DateTime?
 
   // 多租户预留：如需租户隔离，添加 tenantId String? 字段，并在所有查询中添加 WHERE tenantId = ? 条件
 
   // 微信登录
-  wechatOpenId  String?   @unique               // 微信 OpenID
-  wechatUnionId String?                         // 微信 UnionID
+  wechatOpenId  String? @unique // 微信 OpenID
+  wechatUnionId String? // 微信 UnionID
 
   // 会员等级（四档，按累计消费实时判定，永久有效）
-  membershipLevel MembershipLevel @default(REGULAR)
-  totalSpent      Int              @default(0) // 历史购买金额（元，退款扣减），等级判定依据
+  membershipLevel        MembershipLevel @default(REGULAR)
+  totalSpent             Int             @default(0) // 历史购买金额（元，退款扣减），等级判定依据
   // 各档首次达档时间（仅成长展示，不产生有效期）
-  silverActivatedAt  DateTime?
-  goldActivatedAt    DateTime?
-  diamondActivatedAt DateTime?
+  silverActivatedAt      DateTime?
+  goldActivatedAt        DateTime?
+  diamondActivatedAt     DateTime?
   // 生日（生日积分发放依据）：首次设置后锁定，修改需人工客服
-  birthday             DateTime?
-  birthdayLocked       Boolean   @default(false)
-  lastBirthdayRewardYear Int?    // 最近一次生日积分发放的自然年（幂等，每年一次）
+  birthday               DateTime?
+  birthdayLocked         Boolean         @default(false)
+  lastBirthdayRewardYear Int? // 最近一次生日积分发放的自然年（幂等，每年一次）
   // 性别：male / female / null（未设置=保密）。会员身份属性（CRM/运营用），
   // 可随时自助修改，不锁定（与生日不同：无利益挂钩，无套利空间）；
   // 经 userinfo 的 profile scope 下发给子项目（如测肤站问卷的性别默认值）
-  gender               String?
+  gender                 String?
 
   // 关联
-  refreshTokens    RefreshToken[]
-  auditLogs        AuditLog[]
-  spentSyncRecords SpentSyncRecord[]
-  loginAttempts    LoginAttempt[]
-  passwordHistory  PasswordHistory[] @relation("UserPasswordHistory")
+  refreshTokens               RefreshToken[]
+  auditLogs                   AuditLog[]
+  spentSyncRecords            SpentSyncRecord[]
+  loginAttempts               LoginAttempt[]
+  passwordHistory             PasswordHistory[]            @relation("UserPasswordHistory")
   spentAdjustmentApplications SpentAdjustmentApplication[]
-  spentImportRows SpentImportRow[]
-  pointLedger PointLedger[]
-  pointBalance PointBalance?
-  pointRedemptions PointRedemption[]
-  addresses UserAddress[]
-  membershipLevelChanges MembershipLevelChange[]
+  spentImportRows             SpentImportRow[]
+  pointLedger                 PointLedger[]
+  pointBalance                PointBalance?
+  pointRedemptions            PointRedemption[]
+  addresses                   UserAddress[]
+  membershipLevelChanges      MembershipLevelChange[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
   oauthConsents UserConsent[]            @relation("UserConsentUser")
 
-  externalIdentities ExternalIdentity[]
+  externalIdentities     ExternalIdentity[]
   accountDeletionRequest AccountDeletionRequest?
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([status])
   @@index([membershipLevel])
@@ -283,10 +276,10 @@ model User {
 model ExternalIdentity {
   id        String   @id @default(cuid())
   userId    String
-  provider  String   // wechat_open | wechat_mp | wechat_miniprogram | ...（未来 apple / alipay 等）
-  subjectId String   // 平台内唯一标识（如微信 openid）
-  unionId   String?  // 微信系 UnionID（跨应用聚合）
-  metadata  Json?    // 昵称/头像等快照
+  provider  String // wechat_open | wechat_mp | wechat_miniprogram | ...（未来 apple / alipay 等）
+  subjectId String // 平台内唯一标识（如微信 openid）
+  unionId   String? // 微信系 UnionID（跨应用聚合）
+  metadata  Json? // 昵称/头像等快照
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
@@ -311,23 +304,23 @@ enum AccountDeletionStatus {
 }
 
 model AccountDeletionRequest {
-  id           String    @id @default(cuid())
-  userId       String    @unique // 同一用户仅一条进行中的申请
-  status       AccountDeletionStatus @default(PENDING)
+  id          String                @id @default(cuid())
+  userId      String                @unique // 同一用户仅一条进行中的申请
+  status      AccountDeletionStatus @default(PENDING)
   // 执行租约：抢占时写入，完成/失败必须带 leaseToken 条件更新，
   // 防止两个 worker 并发执行、慢失败覆盖 COMPLETED。
-  lockedAt     DateTime?
-  leaseToken   String?
-  reason       String? // 用户选填
+  lockedAt    DateTime?
+  leaseToken  String?
+  reason      String? // 用户选填
   // 申请时手机号的 HMAC（hashIdentifier 口径，不落明文）：冷静期内用户可能换绑手机号，
   // 执行时除当前号码哈希外还需按本哈希清理 LoginAttempt 等衍生数据
-  phoneHash    String?
-  requestedAt  DateTime  @default(now())
-  scheduledAt  DateTime // 冷静期结束时间（执行窗口），由 ACCOUNT_DELETION_COOLING_DAYS 决定
-  cancelledAt  DateTime?
-  completedAt  DateTime?
-  attempts     Int       @default(0) // 执行失败重试次数
-  lastError    String?
+  phoneHash   String?
+  requestedAt DateTime              @default(now())
+  scheduledAt DateTime // 冷静期结束时间（执行窗口），由 ACCOUNT_DELETION_COOLING_DAYS 决定
+  cancelledAt DateTime?
+  completedAt DateTime?
+  attempts    Int                   @default(0) // 执行失败重试次数
+  lastError   String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -344,21 +337,21 @@ model AccountDeletionRequest {
  * 用于实现 Token 刷新机制
  */
 model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  clientId  String?                               // OAuth client_id（OAuth 刷新令牌使用）
-  token     String   @db.Text                      // refresh token 的 SHA-256 哈希（不可逆，不落明文）
-  expiresAt DateTime                               // 过期时间
-  revokedAt DateTime?                              // 撤销时间（已登出）
-  revokedReason String?                            // 撤销原因（device_limit=设备数超限自动淘汰）
+  id            String    @id @default(cuid())
+  userId        String
+  clientId      String? // OAuth client_id（OAuth 刷新令牌使用）
+  token         String    @db.Text // refresh token 的 SHA-256 哈希（不可逆，不落明文）
+  expiresAt     DateTime // 过期时间
+  revokedAt     DateTime? // 撤销时间（已登出）
+  revokedReason String? // 撤销原因（device_limit=设备数超限自动淘汰）
 
   // 设备/会话信息
-  deviceName  String?  // 设备名称/浏览器摘要
-  deviceInfo  String?  // 原始 UA 摘要
-  ipAddress   String?  // 登录 IP
-  userAgent   String?  @db.Text
+  deviceName String? // 设备名称/浏览器摘要
+  deviceInfo String? // 原始 UA 摘要
+  ipAddress  String? // 登录 IP
+  userAgent  String? @db.Text
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -376,15 +369,15 @@ model RefreshToken {
  * 覆盖 C端用户（password/sms）和管理员（admin）登录
  */
 model LoginAttempt {
-  id        String   @id @default(cuid())
-  identifier String                            // 登录标识：手机号（C 端）或邮箱（管理员），HMAC 哈希存储
-  userId    String?                            // 账号维度关联（2026-09 起写入；历史行无此值，identifier 兜底）
-  type      String   @default("password")      // password | sms | admin — 应用层 Zod 约束，未用 Prisma enum 因保持灵活
-  success   Boolean                            // 是否成功
-  reason    String?                            // 失败原因（如：code_invalid、user_not_found 等）
-  ipAddress String?                            // IP 地址
-  userAgent String?  @db.Text                  // User Agent
-  clientId  String?                            // OAuth Client ID（来源子项目）
+  id         String  @id @default(cuid())
+  identifier String // 登录标识：手机号（C 端）或邮箱（管理员），HMAC 哈希存储
+  userId     String? // 账号维度关联（2026-09 起写入；历史行无此值，identifier 兜底）
+  type       String  @default("password") // password | sms | admin — 应用层 Zod 约束，未用 Prisma enum 因保持灵活
+  success    Boolean // 是否成功
+  reason     String? // 失败原因（如：code_invalid、user_not_found 等）
+  ipAddress  String? // IP 地址
+  userAgent  String? @db.Text // User Agent
+  clientId   String? // OAuth Client ID（来源子项目）
 
   createdAt DateTime @default(now())
 
@@ -404,7 +397,7 @@ model LoginAttempt {
 model PasswordHistory {
   id        String   @id @default(cuid())
   userId    String
-  password  String   // 密码哈希（bcrypt）
+  password  String // 密码哈希（bcrypt）
   createdAt DateTime @default(now())
 
   user User @relation("UserPasswordHistory", fields: [userId], references: [id], onDelete: Cascade)
@@ -417,32 +410,32 @@ model PasswordHistory {
 // ============================================
 
 model OAuthClient {
-  id                  String   @id @default(cuid())
-  clientId            String   @unique     // 客户端 ID（公开）
-  clientSecret        String               // 客户端密钥（bcrypt 哈希存储）
-  previousSecretHash  String?              // 密钥轮换过渡期旧 secret 的 bcrypt hash（多实例共享，验证时仅 5 分钟过渡期内有效）
-  secretRotatedAt     DateTime?            // 最近一次密钥轮换时间（用于判定过渡期窗口）
-  name                String               // 应用名称
-  redirectUris        String[]             // 允许的回调 URL 列表
-  postLogoutRedirectUris String[]            // 允许的 RP-Initiated Logout 返回地址
-  scopes              String[]             // 允许的权限范围
-  isActive            Boolean  @default(true)
-  isPublic            Boolean  @default(false)  // Public Client (SPA/移动端/桌面端不传 client_secret)
-  backchannelLogoutUri String?            // Backchannel Logout URI
-  webhookUri          String?              // 用户资料变更 Webhook 推送地址（可空，未配置则不推送）
-  codeTtlSeconds      Int      @default(300)    // 授权码有效期（秒），默认 5 分钟
-  accessTokenTtlSeconds Int    @default(28800)  // Access Token 有效期（秒），默认 8 小时
+  id                     String    @id @default(cuid())
+  clientId               String    @unique // 客户端 ID（公开）
+  clientSecret           String // 客户端密钥（bcrypt 哈希存储）
+  previousSecretHash     String? // 密钥轮换过渡期旧 secret 的 bcrypt hash（多实例共享，验证时仅 5 分钟过渡期内有效）
+  secretRotatedAt        DateTime? // 最近一次密钥轮换时间（用于判定过渡期窗口）
+  name                   String // 应用名称
+  redirectUris           String[] // 允许的回调 URL 列表
+  postLogoutRedirectUris String[] // 允许的 RP-Initiated Logout 返回地址
+  scopes                 String[] // 允许的权限范围
+  isActive               Boolean   @default(true)
+  isPublic               Boolean   @default(false) // Public Client (SPA/移动端/桌面端不传 client_secret)
+  backchannelLogoutUri   String? // Backchannel Logout URI
+  webhookUri             String? // 用户资料变更 Webhook 推送地址（可空，未配置则不推送）
+  codeTtlSeconds         Int       @default(300) // 授权码有效期（秒），默认 5 分钟
+  accessTokenTtlSeconds  Int       @default(28800) // Access Token 有效期（秒），默认 8 小时
   // scope 缩权版本：M2M token 携带 scv，不匹配即失效；scope 变更时递增
-  scopeVersion        Int      @default(0)
+  scopeVersion           Int       @default(0)
   // 会话失效水位：scope 缩权/停用时写入，用于拒绝变更前签发的授权码/会话
-  sessionsInvalidatedAt DateTime?
-  tenantId            String?              // 多租户预留：当前为 null 表示全局共享
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @default(now()) @updatedAt
+  sessionsInvalidatedAt  DateTime?
+  tenantId               String? // 多租户预留：当前为 null 表示全局共享
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @default(now()) @updatedAt
 
   authorizationCodes OAuthAuthorizationCode[] @relation("OAuthCodeClient")
-  sessions           OAuthSession[]          @relation("OAuthSessionClient")
-  consents           UserConsent[]           @relation("UserConsentClient")
+  sessions           OAuthSession[]           @relation("OAuthSessionClient")
+  consents           UserConsent[]            @relation("UserConsentClient")
 
   @@index([isActive])
   @@index([tenantId])
@@ -450,19 +443,19 @@ model OAuthClient {
 }
 
 model OAuthAuthorizationCode {
-  id                  String    @id @default(cuid())
-  code                String    @unique     // 授权码（SHA-256 哈希存储）
-  clientId            String                // 关联的 OAuthClient.clientId
-  userId              String                // 关联的用户 ID
-  redirectUri         String                // 回调 URL 快照
-  scopes              String[]              // 请求的权限范围
-  codeChallenge       String?               // PKCE code_challenge
-  codeChallengeMethod String?               // PKCE method（S256）
-  nonce               String?               // OIDC nonce（防重放）
-  authTime            Int?                  // 用户认证时间（Unix 秒），供 ID Token 的 auth_time claim（max_age 校验）
-  expiresAt           DateTime              // 过期时间（5 分钟）
-  used                Boolean   @default(false)
-  createdAt           DateTime  @default(now())
+  id                  String   @id @default(cuid())
+  code                String   @unique // 授权码（SHA-256 哈希存储）
+  clientId            String // 关联的 OAuthClient.clientId
+  userId              String // 关联的用户 ID
+  redirectUri         String // 回调 URL 快照
+  scopes              String[] // 请求的权限范围
+  codeChallenge       String? // PKCE code_challenge
+  codeChallengeMethod String? // PKCE method（S256）
+  nonce               String? // OIDC nonce（防重放）
+  authTime            Int? // 用户认证时间（Unix 秒），供 ID Token 的 auth_time claim（max_age 校验）
+  expiresAt           DateTime // 过期时间（5 分钟）
+  used                Boolean  @default(false)
+  createdAt           DateTime @default(now())
 
   client OAuthClient @relation("OAuthCodeClient", fields: [clientId], references: [clientId], onDelete: Cascade)
   user   User        @relation("OAuthCodeUser", fields: [userId], references: [id], onDelete: Cascade)
@@ -473,15 +466,15 @@ model OAuthAuthorizationCode {
 }
 
 model OAuthSession {
-  id                   String    @id @default(cuid())
-  userId               String
-  clientId             String
-  sessionId            String    @unique
-  authorizationCodeId  String?   // 关联的授权码（用于追溯）。无 FK 约束：授权码定期清理，需保留 session 记录
-  scopes               String[]
-  createdAt            DateTime  @default(now())
-  expiresAt            DateTime
-  revokedAt            DateTime?
+  id                  String    @id @default(cuid())
+  userId              String
+  clientId            String
+  sessionId           String    @unique
+  authorizationCodeId String? // 关联的授权码（用于追溯）。无 FK 约束：授权码定期清理，需保留 session 记录
+  scopes              String[]
+  createdAt           DateTime  @default(now())
+  expiresAt           DateTime
+  revokedAt           DateTime?
 
   client OAuthClient @relation("OAuthSessionClient", fields: [clientId], references: [clientId], onDelete: Cascade)
   user   User        @relation("OAuthSessionUser", fields: [userId], references: [id], onDelete: Cascade)
@@ -514,15 +507,15 @@ model UserConsent {
 
 model SsoAuditEvent {
   id         String   @id @default(cuid())
-  event      String               // authorize | token | introspect | logout | userinfo | backchannel_logout | profile_webhook | consent | status_change
-  userId     String?              // 关联用户
-  clientId   String?              // 关联子项目
-  clientName String?              // 子项目名称快照
-  ip         String?              // IP 地址
-  userAgent  String?  @db.Text    // User Agent
-  detail     Json?                // 事件详情
+  event      String // authorize | token | introspect | logout | userinfo | backchannel_logout | profile_webhook | consent | status_change
+  userId     String? // 关联用户
+  clientId   String? // 关联子项目
+  clientName String? // 子项目名称快照
+  ip         String? // IP 地址
+  userAgent  String?  @db.Text // User Agent
+  detail     Json? // 事件详情
   success    Boolean  @default(true)
-  tenantId   String?              // 多租户预留
+  tenantId   String? // 多租户预留
   createdAt  DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
@@ -540,9 +533,9 @@ model BackchannelLogoutFailure {
   id          String   @id @default(cuid())
   userId      String
   clientId    String
-  payload     Json                 // 重投所需数据（如 logout_token 的 sid）
+  payload     Json // 重投所需数据（如 logout_token 的 sid）
   attempts    Int      @default(0) // 已重投次数
-  nextRetryAt DateTime             // 下一次重投时间
+  nextRetryAt DateTime // 下一次重投时间
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
@@ -558,9 +551,9 @@ model WebhookDeliveryFailure {
   id          String   @id @default(cuid())
   userId      String
   clientId    String
-  payload     Json                 // 重投所需数据（事件名 + 资料快照）
+  payload     Json // 重投所需数据（事件名 + 资料快照）
   attempts    Int      @default(0) // 已重投次数
-  nextRetryAt DateTime             // 下一次重投时间
+  nextRetryAt DateTime // 下一次重投时间
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
@@ -570,21 +563,21 @@ model WebhookDeliveryFailure {
 model SmsCode {
   id        String   @id @default(cuid())
   phone     String
-  codeHash  String   // 验证码 SHA-256 哈希
-  type      String   @default("login")         // login | bind | reset
+  codeHash  String // 验证码 SHA-256 哈希
+  type      String   @default("login") // login | bind | reset
   used      Boolean  @default(false)
   attempts  Int      @default(0) // 校验失败次数：达到上限（应用层 SMS_CODE_MAX_ATTEMPTS=5）即作废该码，防爆破
-  ipAddress String?  // 发送时的客户端 IP（可选，用于 IP 绑定校验）
+  ipAddress String? // 发送时的客户端 IP（可选，用于 IP 绑定校验）
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  @@index([phone, type])
-  @@index([expiresAt])
-  @@index([phone, used, expiresAt])
 
   // 注意：以下约束通过 raw SQL migration 实现（Prisma 不支持 partial unique index）：
   // migration 20260710100000_smscode_partial_unique_index
   // CREATE UNIQUE INDEX "SmsCode_phone_type_used_false_key" ON "SmsCode"("phone","type") WHERE "used" = false;
+
+  @@index([phone, type])
+  @@index([expiresAt])
+  @@index([phone, used, expiresAt])
 }
 
 // PoW 人机验证挑战（自研，原理同 Cap.js：SHA-256 前导零工作量证明）
@@ -619,29 +612,29 @@ enum AuditActorType {
 }
 
 model AuditLog {
-  id          String          @id @default(cuid())
+  id          String         @id @default(cuid())
   action      String // 操作类型: create_admin, update_admin, delete_admin, login, logout 等
   targetType  String // 目标类型: admin, product, category, job, message, application 等
   targetId    String? // 目标记录ID
   targetLabel String? // 目标名称快照（目标记录删除后仍可读）
   detail      Json? // 操作详情（变更前后数据快照等）
-  outcome     AuditOutcome    @default(SUCCESS)
+  outcome     AuditOutcome   @default(SUCCESS)
   requestId   String? // 同一次请求的关联 ID
-  actorType   AuditActorType  @default(ADMIN)
+  actorType   AuditActorType @default(ADMIN)
   actorEmail  String? // 操作者邮箱快照
   actorName   String? // 操作者姓名快照
   actorRole   String? // 操作者角色快照
   authMethod  String? // password | totp | step_up | system
   sessionJti  String? // 管理员会话 jti
-  legalHold   Boolean         @default(false)
+  legalHold   Boolean        @default(false)
   ipAddress   String? // 操作者IP
-  userAgent   String?         @db.Text // 浏览器UA
+  userAgent   String?        @db.Text // 浏览器UA
   adminId     String?
   userId      String? // C 端用户事件使用
   // 审计记录必须保持不可变：管理员/用户删除时不得级联修改历史行。
-  admin       Admin?          @relation(fields: [adminId], references: [id], onDelete: Restrict)
-  user        User?           @relation(fields: [userId], references: [id], onDelete: Restrict)
-  createdAt   DateTime        @default(now())
+  admin       Admin?         @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  user        User?          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt   DateTime       @default(now())
 
   @@index([action, createdAt(sort: Desc)])
   @@index([targetType, targetId])
@@ -658,15 +651,15 @@ model AuditLog {
  * DB 中保留用于校验；正式部署还应把签名摘要写入私有 OSS Object Lock。
  */
 model AuditLogAnchor {
-  id         String   @id @default(cuid())
-  day        String   @unique // UTC+8 日期 YYYY-MM-DD
-  fromAt     DateTime
-  toAt       DateTime
-  count      Int
-  digest     String
-  signature  String
-  objectKey  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  day       String   @unique // UTC+8 日期 YYYY-MM-DD
+  fromAt    DateTime
+  toAt      DateTime
+  count     Int
+  digest    String
+  signature String
+  objectKey String?
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
 }
@@ -705,7 +698,7 @@ model CronTaskLock {
 
 model RateLimitRecord {
   id          String   @id @default(cuid())
-  key         String   // 如 "login:192.168.1.1"
+  key         String // 如 "login:192.168.1.1"
   windowStart DateTime
   count       Int      @default(0)
   createdAt   DateTime @default(now())
@@ -743,7 +736,7 @@ enum SpentAdjustmentStatus {
 
 // 消费补录申请：用户提交全渠道消费凭证，管理员审核通过后手动累加历史消费金额（提升会员等级）
 model SpentAdjustmentApplication {
-  id            String                   @id @default(cuid())
+  id            String                 @id @default(cuid())
   userId        String
   channel       SpentAdjustmentChannel
   orderNo       String // 电商订单号或线下小票号
@@ -751,16 +744,16 @@ model SpentAdjustmentApplication {
   amountClaimed Int? // 用户申报金额（元）
   purchasedAt   DateTime? // 消费日期（不限制时间范围）
   images        String[] // 凭证截图 URL（选填，最多 3 张）
-  note          String? @db.Text // 备注
-  status        SpentAdjustmentStatus    @default(PENDING)
+  note          String?                @db.Text // 备注
+  status        SpentAdjustmentStatus  @default(PENDING)
   reviewAmount  Int? // 审核核实金额（元，以人工核实为准）
-  reviewNote    String? @db.Text // 驳回原因/审核备注
+  reviewNote    String?                @db.Text // 驳回原因/审核备注
   reviewedById  String?
   reviewedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @default(now()) @updatedAt
 
-  user       User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user       User   @relation(fields: [userId], references: [id], onDelete: Restrict)
   reviewedBy Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt(sort: Desc)])
@@ -770,15 +763,15 @@ model SpentAdjustmentApplication {
 
 // 外部商城消费额同步幂等记录（商城侧单据号唯一，防止重复上报重复入账）
 model SpentSyncRecord {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
-  reference  String   // 商城侧唯一单据号（幂等键）
-  spentDelta Int      // 实际生效的消费额变动（元，正加负减；可能被 0 下限钳制）
-  note       String?  @db.Text
+  reference  String // 商城侧唯一单据号（幂等键）
+  spentDelta Int // 实际生效的消费额变动（元，正加负减；可能被 0 下限钳制）
+  note       String?   @db.Text
   revertedAt DateTime? // 导入撤销时间（保留记录用于审计，不物理删除）
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, reference]) // 幂等防重：同一用户同一单据只入账一次
   @@index([userId, createdAt(sort: Desc)])
@@ -800,23 +793,23 @@ enum SpentImportBatchStatus {
 }
 
 model SpentImportBatch {
-  id            String    @id @default(cuid())
+  id            String                 @id @default(cuid())
   adminId       String
-  fileName      String   // ??????????
-  fileHash      String?  // ???? SHA-256???????????????
+  fileName      String // ??????????
+  fileHash      String? // ???? SHA-256???????????????
   version       String?
   status        SpentImportBatchStatus @default(PROCESSING)
-  processedRows Int      @default(0)
-  lastError     String?  @db.Text
-  startedAt     DateTime @default(now())
+  processedRows Int                    @default(0)
+  lastError     String?                @db.Text
+  startedAt     DateTime               @default(now())
   finishedAt    DateTime?
-  totalRows     Int      // Excel ?????
-  successRows   Int      // ??????
-  duplicateRows Int      @default(0) // ???????????????
-  errorRows     Int      // ????
-  totalAmount   Int      // ????????????? appliedDelta ???
+  totalRows     Int // Excel ?????
+  successRows   Int // ??????
+  duplicateRows Int                    @default(0) // ???????????????
+  errorRows     Int // ????
+  totalAmount   Int // ????????????? appliedDelta ???
   undoneAt      DateTime? // ?????????????????
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime               @default(now())
 
   admin Admin            @relation(fields: [adminId], references: [id])
   rows  SpentImportRow[]
@@ -828,40 +821,42 @@ model SpentImportBatch {
 
 // 导入批次内的逐行明细（保存 reference 与金额，支撑整批撤销）
 model SpentImportRow {
-  id          String                 @id @default(cuid())
-  batchId     String
-  phone       String                 // 行内手机号（原样保存，便于回溯）
-  amount      Int                    // 消费额变动（元，正加负减）
-  channel     SpentAdjustmentChannel? // 渠道（选填）
-  orderNo     String?                // 订单号/小票号（选填）
-  purchasedAt DateTime?              // 消费日期（选填）
-  note        String?                @db.Text
-  reference   String                 // 幂等键（import:{fileHash}:{rowIndex}:{batchId}）
-  appliedDelta Int?                  // 实际生效的消费额变动（可能被 0 下限钳制）
-  revertedAt   DateTime?             // 整批撤销时间
-  status      SpentImportRowStatus
-  error       String?                @db.Text // 失败原因（预览/执行阶段）
-  userId      String?                // 成功定位到的用户（失败行可能为空）
-  createdAt   DateTime               @default(now())
+  id            String                  @id @default(cuid())
+  batchId       String
+  phone         String // 行内手机号（原样保存，便于回溯）
+  amount        Int // 消费额变动（元，正加负减）
+  channel       SpentAdjustmentChannel? // 渠道（选填）
+  orderNo       String? // 订单号/小票号（选填）
+  purchasedAt   DateTime? // 消费日期（选填）
+  note          String?                 @db.Text
+  reference     String // 批内行键（内容键:批次version，仅用于映射本批次行）
+  syncReference String? // 跨批次稳定幂等键（内容键），写入 SpentSyncRecord
+  appliedDelta  Int? // 实际生效的消费额变动（可能被 0 下限钳制）
+  revertedAt    DateTime? // 整批撤销时间
+  status        SpentImportRowStatus
+  error         String?                 @db.Text // 失败原因（预览/执行阶段）
+  userId        String? // 成功定位到的用户（失败行可能为空）
+  createdAt     DateTime                @default(now())
 
   batch SpentImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
   user  User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([batchId])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, syncReference, status])
 }
 
 // 会员等级展示配置；消费门槛不在此表（唯一来源为 src/lib/membership.ts LEVEL_THRESHOLDS，判级与展示同源）
 model MembershipBenefit {
-  id          String          @id @default(cuid())
-  level       MembershipLevel @unique
-  name        String          // 等级名称（如：普通会员）
-  nameEn      String?         // 英文名称
-  icon        String?         // 图标 emoji/SVG
-  benefits    Json            // 权益列表 [{ icon, title, desc }]
-  colorClass  String?         // Tailwind 颜色类名
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @default(now()) @updatedAt
+  id         String          @id @default(cuid())
+  level      MembershipLevel @unique
+  name       String // 等级名称（如：普通会员）
+  nameEn     String? // 英文名称
+  icon       String? // 图标 emoji/SVG
+  benefits   Json // 权益列表 [{ icon, title, desc }]
+  colorClass String? // Tailwind 颜色类名
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @default(now()) @updatedAt
 }
 
 // ============================================
@@ -884,13 +879,13 @@ model PointLedger {
   id          String          @id @default(cuid())
   userId      String
   type        PointLedgerType
-  amount      Int             // 正加负减
-  remaining   Int?            // 剩余未消耗（仅发放类正向流水，null=非消耗对象）
-  reference   String          // 幂等键（消费单据 reference / birthday:{userId}:{year} / checkin:{userId}:{date} / redeem:{单号}）
+  amount      Int // 正加负减
+  remaining   Int? // 剩余未消耗（仅发放类正向流水，null=非消耗对象）
+  reference   String // 幂等键（消费单据 reference / birthday:{userId}:{year} / checkin:{userId}:{date} / redeem:{单号}）
   note        String?         @db.Text
-  frozenUntil DateTime?       // 稳定期解冻时间（已废弃：无冻结期，保留列向后兼容）
-  releasedAt   DateTime?      // 到账时间（无冻结期：发放即到账，恒非空）
-  expiresAt    DateTime?      // 过期时间（发放后 6 个月）
+  frozenUntil DateTime? // 稳定期解冻时间（已废弃：无冻结期，保留列向后兼容）
+  releasedAt  DateTime? // 到账时间（无冻结期：发放即到账，恒非空）
+  expiresAt   DateTime? // 过期时间（发放后 6 个月）
   createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -915,10 +910,10 @@ model PointBalance {
 model UserAddress {
   id        String   @id @default(cuid())
   userId    String
-  recipient String   // 收货人姓名
-  phone     String   // 收货手机号
-  region    String   // 省市区
-  detail    String   // 详细地址（街道、门牌号等）
+  recipient String // 收货人姓名
+  phone     String // 收货手机号
+  region    String // 省市区
+  detail    String // 详细地址（街道、门牌号等）
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -934,7 +929,7 @@ model MembershipLevelChange {
   userId    String
   fromLevel MembershipLevel
   toLevel   MembershipLevel
-  reference String          // 幂等键（与 SpentSyncRecord.reference 一致）
+  reference String // 幂等键（与 SpentSyncRecord.reference 一致）
   note      String?
   createdAt DateTime        @default(now())
 
@@ -946,21 +941,21 @@ model MembershipLevelChange {
 
 // 用户积分兑换记录（兑换产品来自产品库；名称/价格/扣分/收货地址快照，管理端履约）
 model PointRedemption {
-  id          String                  @id @default(cuid())
+  id          String                @id @default(cuid())
   userId      String
-  productId   String?                 // 产品从产品库删除时置空，历史记录保留快照
-  productName String                  // 兑换时的产品名称快照
-  priceYuan   Decimal                 @db.Decimal(10, 2) // 兑换时的参考价格快照
-  points      Int                     // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
-  status      PointRedemptionStatus   @default(PENDING)
-  reference   String                  // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
-  recipient   String?                 // 收货人姓名快照（履约寄送用）
-  phone       String?                 // 收货手机号快照
-  address     String?                 // 完整收货地址快照（省市区 + 详细地址）
-  carrier     String?                 // 承运商（如 SF=顺丰），履约时写入
-  waybillNo   String?                 // 运单号（履约时录入，用户端据此查询物流轨迹）
+  productId   String? // 产品从产品库删除时置空，历史记录保留快照
+  productName String // 兑换时的产品名称快照
+  priceYuan   Decimal               @db.Decimal(10, 2) // 兑换时的参考价格快照
+  points      Int // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
+  status      PointRedemptionStatus @default(PENDING)
+  reference   String // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
+  recipient   String? // 收货人姓名快照（履约寄送用）
+  phone       String? // 收货手机号快照
+  address     String? // 完整收货地址快照（省市区 + 详细地址）
+  carrier     String? // 承运商（如 SF=顺丰），履约时写入
+  waybillNo   String? // 运单号（履约时录入，用户端据此查询物流轨迹）
   fulfilledAt DateTime?
-  createdAt   DateTime                @default(now())
+  createdAt   DateTime              @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -987,11 +982,11 @@ enum AdminRole {
   // 由于已投入生产且有 DB 记录，保留当前值避免 breaking change。
   // owner/admin 为历史角色；ops/support/hr/finance 为 2026-09 引入的命名角色，
   // 具体权限由代码内角色模板（lib/admin-permissions.ts）决定。
-  owner   // 超级管理员：全部权限
-  admin   // 历史通用管理员：保持旧行为（不可管理管理员/SSO/资金导入等）
-  ops     // 运营：商品/分类/消费审核/积分礼品/兑换履约/留言/会员权益只读
+  owner // 超级管理员：全部权限
+  admin // 历史通用管理员：保持旧行为（不可管理管理员/SSO/资金导入等）
+  ops // 运营：商品/分类/消费审核/积分礼品/兑换履约/留言/会员权益只读
   support // 客服：留言、用户只读+手机号揭示、积分流水只读、兑换履约
-  hr      // 招聘：职位与简历
+  hr // 招聘：职位与简历
   finance // 财务/审计：审计日志、消费与积分流水只读
 }
 
@@ -1001,34 +996,34 @@ enum AdminStatus {
 }
 
 model Admin {
-  id              String      @id @default(cuid())
-  email           String      @unique // 登录邮箱
-  password        String      // 加密密码
-  name            String      // 显示名称
-  role            AdminRole   @default(admin)
+  id                String      @id @default(cuid())
+  email             String      @unique // 登录邮箱
+  password          String // 加密密码
+  name              String // 显示名称
+  role              AdminRole   @default(admin)
   // 个人权限覆盖：条目为权限点（追加授权）或 "!权限点"（从角色模板撤销）；
   // 最终权限 = 角色模板 − 撤销 + 追加（owner 恒为全部权限，忽略覆盖）
-  permissions     String[]    @default([])
+  permissions       String[]    @default([])
   // 会话版本：改密/改角色/改权限/禁用/删除时递增，JWT 中 ver 不匹配即视为失效。
   // 取代历史上的“用户级 token 黑名单”，避免新登录也被拦截、旧 token 在黑名单过期后复活。
-  tokenVersion    Int         @default(0)
-  status          AdminStatus @default(ACTIVE) // 账号状态
-  deletedAt       DateTime?   // 软删除时间
-  totpSecret      String?     // 加密后的 TOTP secret
-  totpEnabled     Boolean     @default(false)
-  totpEnabledAt   DateTime?   // TOTP 绑定时间（启用/重绑时写入，关闭后置空）
-  totpResetRequired Boolean   @default(false) // 恢复码已消费，必须重新绑定 TOTP
-  totpBackupCodes String?     @db.Text // 加密存储的备用码 JSON 数组
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @default(now()) @updatedAt
+  tokenVersion      Int         @default(0)
+  status            AdminStatus @default(ACTIVE) // 账号状态
+  deletedAt         DateTime? // 软删除时间
+  totpSecret        String? // 加密后的 TOTP secret
+  totpEnabled       Boolean     @default(false)
+  totpEnabledAt     DateTime? // TOTP 绑定时间（启用/重绑时写入，关闭后置空）
+  totpResetRequired Boolean     @default(false) // 恢复码已消费，必须重新绑定 TOTP
+  totpBackupCodes   String?     @db.Text // 加密存储的备用码 JSON 数组
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @default(now()) @updatedAt
 
-  auditLogs AuditLog[] // 审计日志关联
-  spentAdjustmentReviews SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
-  spentImportBatches SpentImportBatch[]
-  adminSsoCodes AdminSsoCode[]
-  adminStepUpGrants AdminStepUpGrant[]
-  totpRecoveryCodes AdminTotpRecovery[] @relation("AdminTotpRecoveryTarget")
-  createdTotpRecoveryCodes AdminTotpRecovery[] @relation("AdminTotpRecoveryCreator")
+  auditLogs                AuditLog[] // 审计日志关联
+  spentAdjustmentReviews   SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
+  spentImportBatches       SpentImportBatch[]
+  adminSsoCodes            AdminSsoCode[]
+  adminStepUpGrants        AdminStepUpGrant[]
+  totpRecoveryCodes        AdminTotpRecovery[]          @relation("AdminTotpRecoveryTarget")
+  createdTotpRecoveryCodes AdminTotpRecovery[]          @relation("AdminTotpRecoveryCreator")
 
   @@index([status])
   @@index([deletedAt])
@@ -1040,8 +1035,8 @@ model Admin {
  * 与 C 端 OAuthAuthorizationCode 完全隔离：管理员身份、权限、TOTP 体系不同。
  */
 model AdminSsoCode {
-  id                  String    @id @default(cuid())
-  code                String    @unique // SHA-256 hash
+  id                  String   @id @default(cuid())
+  code                String   @unique // SHA-256 hash
   adminId             String
   clientId            String
   redirectUri         String
@@ -1050,8 +1045,8 @@ model AdminSsoCode {
   adminTokenVersion   Int
   mainSessionExp      Int // 主站管理员 JWT 的 exp（Unix 秒）
   expiresAt           DateTime
-  used                Boolean   @default(false)
-  createdAt           DateTime  @default(now())
+  used                Boolean  @default(false)
+  createdAt           DateTime @default(now())
 
   admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
@@ -1121,12 +1116,12 @@ enum TokenBlacklistType {
 }
 
 model TokenBlacklist {
-  id        String              @id @default(cuid())
-  type      TokenBlacklistType  // access_token: 单条 token 撤销; user: 用户全局拉黑
-  key       String              @unique // jti、userId 或带前缀的防重放记录（如 nonce:xxx、dpop-jti:xxx）
-  reason    String?             // 拉黑原因（仅 user 类型使用）
-  expiresAt DateTime            // 自然过期时间，与 token 最大过期一致
-  createdAt DateTime            @default(now())
+  id        String             @id @default(cuid())
+  type      TokenBlacklistType // access_token: 单条 token 撤销; user: 用户全局拉黑
+  key       String             @unique // jti、userId 或带前缀的防重放记录（如 nonce:xxx、dpop-jti:xxx）
+  reason    String? // 拉黑原因（仅 user 类型使用）
+  expiresAt DateTime // 自然过期时间，与 token 最大过期一致
+  createdAt DateTime           @default(now())
 
   @@index([type])
   @@index([expiresAt])

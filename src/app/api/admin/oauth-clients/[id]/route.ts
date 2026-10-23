@@ -20,6 +20,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { prisma } from "@/lib/prisma";
 import {
   enqueueBackchannelLogoutForActiveSessions,
@@ -147,6 +148,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // 缩减 scopes 会立即使该 Client 全部用户下线，按高风险操作要求 step-up。
+    // 仅扩大权限/改名等普通编辑不额外打断。
+    const requestedScopes = Array.isArray(body?.scopes)
+      ? body.scopes.filter((scope: unknown): scope is string => typeof scope === "string")
+      : null;
+    const shrinksScopes =
+      requestedScopes !== null &&
+      previousClient.scopes.some((scope) => !requestedScopes.includes(scope));
+    const disablesClient = body?.isActive === false && previousClient.isActive;
+    if (shrinksScopes || disablesClient) {
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+    }
+
     const auditId = await beginAuditLog({
       action: "oauth_client_update",
       targetType: "oauth_client",
@@ -256,6 +271,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const client = await getOAuthClientById(id);
     if (!client) {

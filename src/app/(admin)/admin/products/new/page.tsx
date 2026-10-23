@@ -61,7 +61,9 @@ function NewProductContent() {
 export default function NewProductPage() {
   return (
     <RequirePermission permission="products:write">
-      <NewProductContent />
+      <RequirePermission permission="categories:read">
+        <NewProductContent />
+      </RequirePermission>
     </RequirePermission>
   );
 }

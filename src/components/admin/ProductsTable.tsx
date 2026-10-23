@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { DataTable, Column, IconButton } from "@/components/admin";
 import { Badge, DotBadge } from "@/components/ui/Badge";
@@ -77,6 +78,14 @@ export function ProductsTable({
   canBatchDelete = false,
   canWrite = false,
 }: ProductsTableProps) {
+  const searchParams = useSearchParams();
+  const listQuery = searchParams.toString();
+  const returnTo = `/admin/products${listQuery ? `?${listQuery}` : ""}`;
+  const editHref = useCallback(
+    (id: string) => `/admin/products/${id}/edit?returnTo=${encodeURIComponent(returnTo)}`,
+    [returnTo]
+  );
+
   // 勾选状态：当前页数据内容变化（翻页/筛选/刷新）时自动清空
   const selection = useRowSelection<ProductItem>(
     (p) => p.id,
@@ -307,9 +316,7 @@ export function ProductsTable({
         width: "150px",
         sortable: true,
         render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/50">
-            {formatDateTime(record.updatedAt)}
-          </span>
+          <span className="text-sm text-brand-charcoal/50">{formatDateTime(record.updatedAt)}</span>
         ),
       },
       {
@@ -332,10 +339,7 @@ export function ProductsTable({
             )}
             {canWrite && (
               <Tooltip content="编辑" side="top">
-                <IconButton
-                  label={`编辑 ${record.name}`}
-                  href={`/admin/products/${record.id}/edit`}
-                >
+                <IconButton label={`编辑 ${record.name}`} href={editHref(record.id)}>
                   <Pencil className="h-4 w-4" />
                 </IconButton>
               </Tooltip>
@@ -366,6 +370,7 @@ export function ProductsTable({
     canWrite,
     handleTogglePublish,
     handleToggleFeatured,
+    editHref,
   ]);
 
   return (
@@ -495,10 +500,7 @@ export function ProductsTable({
                 )}
                 {canWrite && (
                   <Tooltip content="编辑" side="top">
-                    <IconButton
-                      label={`编辑 ${record.name}`}
-                      href={`/admin/products/${record.id}/edit`}
-                    >
+                    <IconButton label={`编辑 ${record.name}`} href={editHref(record.id)}>
                       <Pencil className="h-4 w-4" />
                     </IconButton>
                   </Tooltip>

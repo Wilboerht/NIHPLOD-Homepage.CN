@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError } from "@/lib/api-client";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { cn } from "@/lib/utils";
 
 interface BreakGlassData {
@@ -30,6 +31,7 @@ interface BreakGlassData {
 
 export function BreakGlassCard() {
   const { success, error: toastError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const [data, setData] = useState<BreakGlassData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,16 @@ export function BreakGlassCard() {
     setLoading(true);
     setError(null);
     try {
-      const result = await apiGet<BreakGlassData>("/api/admin/break-glass");
+      const submit = () => apiGet<BreakGlassData>("/api/admin/break-glass");
+      let result: BreakGlassData;
+      try {
+        result = await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        result = await submit();
+      }
       setData(result);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "加载应急账号信息失败");
@@ -92,8 +103,8 @@ export function BreakGlassCard() {
               <Badge variant="warning">仅 owner 可见</Badge>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-amber-800/80">
-              仅用于主站管理员 SSO 不可用时的应急登录。查看操作会写入审计日志。
-              子站平时应保持 <code>ADMIN_BREAK_GLASS_ENABLED=false</code>。
+              仅用于主站管理员 SSO 不可用时的应急登录。查看操作会写入审计日志。 子站平时应保持{" "}
+              <code>ADMIN_BREAK_GLASS_ENABLED=false</code>。
             </p>
           </div>
         </div>
@@ -125,8 +136,7 @@ export function BreakGlassCard() {
       {data && !data.configured && (
         <p className="mt-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-amber-800">
           主站尚未配置 <code>ADVISOR_BREAK_GLASS_USERNAME</code> /
-          <code>ADVISOR_BREAK_GLASS_PASSWORD</code> /
-          <code>ADVISOR_BREAK_GLASS_TOTP_SECRET</code>。
+          <code>ADVISOR_BREAK_GLASS_PASSWORD</code> /<code>ADVISOR_BREAK_GLASS_TOTP_SECRET</code>。
         </p>
       )}
 
@@ -148,7 +158,12 @@ export function BreakGlassCard() {
                 密码
               </p>
               <div className="mt-1 flex items-center gap-2">
-                <code className={cn("break-all text-sm text-brand-charcoal", !showPassword && "tracking-widest")}>
+                <code
+                  className={cn(
+                    "break-all text-sm text-brand-charcoal",
+                    !showPassword && "tracking-widest"
+                  )}
+                >
                   {showPassword ? data.password : "••••••••••••"}
                 </code>
                 <button
@@ -157,7 +172,11 @@ export function BreakGlassCard() {
                   className="rounded p-1 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal"
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 >
-                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showPassword ? (
+                    <EyeOff className="h-3.5 w-3.5" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
                 </button>
                 {renderCopyButton(data.password || "", "密码")}
               </div>
@@ -168,7 +187,12 @@ export function BreakGlassCard() {
                 TOTP Secret
               </p>
               <div className="mt-1 flex items-center gap-2">
-                <code className={cn("break-all text-sm text-brand-charcoal", !showTotp && "tracking-widest")}>
+                <code
+                  className={cn(
+                    "break-all text-sm text-brand-charcoal",
+                    !showTotp && "tracking-widest"
+                  )}
+                >
                   {showTotp ? data.totpSecret : "••••••••••••••••"}
                 </code>
                 <button
@@ -188,9 +212,7 @@ export function BreakGlassCard() {
                 otpauth 链接
               </p>
               <div className="mt-1 flex items-center gap-2">
-                <code className="break-all text-xs text-brand-charcoal/70">
-                  {data.otpauthUrl}
-                </code>
+                <code className="break-all text-xs text-brand-charcoal/70">{data.otpauthUrl}</code>
                 {renderCopyButton(data.otpauthUrl || "", "otpauth 链接")}
               </div>
             </div>
@@ -209,9 +231,7 @@ export function BreakGlassCard() {
               onClick={() => setShowQr((v) => !v)}
               disabled={!data.qrCode}
               aria-expanded={showQr}
-              leftIcon={
-                showQr ? <EyeOff className="h-4 w-4" /> : <QrCode className="h-4 w-4" />
-              }
+              leftIcon={showQr ? <EyeOff className="h-4 w-4" /> : <QrCode className="h-4 w-4" />}
             >
               {showQr ? "隐藏二维码" : "显示二维码"}
             </Button>
@@ -242,6 +262,8 @@ export function BreakGlassCard() {
           </p>
         </div>
       )}
+
+      {totpModal}
     </div>
   );
 }

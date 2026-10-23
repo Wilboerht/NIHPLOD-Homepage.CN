@@ -127,6 +127,10 @@ vi.mock("@/lib/token-blacklist", () => ({
   isAccessTokenRevoked: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 // backchannel-logout：isBlockedHostname 保留真实实现（redirectUri 私网校验依赖它），
 // 仅 stub 投递/入队函数避免真实网络/JWT 逻辑
 vi.mock("@/lib/backchannel-logout", async (importOriginal) => {

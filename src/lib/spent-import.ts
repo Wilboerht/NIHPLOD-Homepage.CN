@@ -7,8 +7,9 @@
  * 2. 确认执行：executeImportBatch 重新全量校验（不信任客户端），逐行调用
  *    applyExternalSpentSync 入账（幂等、自动重算等级、失效 profile 缓存）。
  *
- * 幂等：逐行 reference 由行内容（手机号+金额+订单号+日期）内容哈希生成，
- * 同一文件重复上传、仅修改部分行后重新导入，未变化行均命中幂等跳过。
+ * 幂等：syncReference 由行内容（手机号+金额+订单号+日期）内容哈希生成，
+ * 同一文件重复上传、仅修改部分行后重新导入，未变化行命中“已成功且未撤销”预检并跳过。
+ * SpentSyncRecord.reference 仍使用批内唯一 `内容键:version`，保证撤销后可重新导入。
  * 支持整批撤销（undoImportBatch）：对每行成功入账反向冲正，撤销本身幂等。
  */
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
@@ -752,24 +753,30 @@ export async function executeImportBatch(params: {
         errorRows: 0,
         totalAmount: 0,
         rows: {
-          create: parsed.map((row) => ({
-            phone: row.phone ?? "",
-            amount: row.amount ?? 0,
-            channel: row.channel,
-            orderNo: row.orderNo,
-            purchasedAt: row.purchasedAt ? new Date(`${row.purchasedAt}T00:00:00.000Z`) : null,
-            note: row.note,
-            reference: `${rowReference(
+          create: parsed.map((row) => {
+            const contentReference = rowReference(
               row.phone ?? "",
               row.amount ?? 0,
               row.orderNo,
               row.purchasedAt
-            )}:${version}`,
-            status: "PENDING",
-            error: null,
-            appliedDelta: null,
-            userId: row.phone ? (userIdByPhone.get(row.phone) ?? null) : null,
-          })),
+            );
+            return {
+              phone: row.phone ?? "",
+              amount: row.amount ?? 0,
+              channel: row.channel,
+              orderNo: row.orderNo,
+              purchasedAt: row.purchasedAt ? new Date(`${row.purchasedAt}T00:00:00.000Z`) : null,
+              note: row.note,
+              // 批内行键：带随机 version，仅用于映射本批次行，不参与跨批次幂等
+              reference: `${contentReference}:${version}`,
+              // 跨批次稳定幂等键：只由内容生成，写入 SpentSyncRecord
+              syncReference: contentReference,
+              status: "PENDING",
+              error: null,
+              appliedDelta: null,
+              userId: row.phone ? (userIdByPhone.get(row.phone) ?? null) : null,
+            };
+          }),
         },
       },
       include: { rows: true },
@@ -777,6 +784,8 @@ export async function executeImportBatch(params: {
   });
 
   const rowByReference = new Map(batch.rows.map((row) => [row.reference, row]));
+  // 同一批次内内容完全相同的行：先到先入账，后续标记重复
+  const claimedContentKeys = new Set<string>();
 
   let rowResults: ExecuteRowResult[];
   try {
@@ -784,13 +793,14 @@ export async function executeImportBatch(params: {
       parsed,
       IMPORT_EXECUTE_CONCURRENCY,
       async (row): Promise<ExecuteRowResult> => {
-        const reference = `${rowReference(
+        const syncReference = rowReference(
           row.phone ?? "",
           row.amount ?? 0,
           row.orderNo,
           row.purchasedAt
-        )}:${version}`;
-        const persisted = rowByReference.get(reference);
+        );
+        const batchReference = `${syncReference}:${version}`;
+        const persisted = rowByReference.get(batchReference);
         if (!persisted) throw new Error("IMPORT_ROW_NOT_CREATED");
 
         const markError = async (message: string): Promise<ExecuteRowResult> => {
@@ -805,7 +815,24 @@ export async function executeImportBatch(params: {
             appliedDelta: null,
             status: "ERROR",
             error: message,
-            reference,
+            reference: syncReference,
+          };
+        };
+
+        const markDuplicate = async (): Promise<ExecuteRowResult> => {
+          const message = "该记录已入账过（幂等跳过）";
+          await prisma.spentImportRow.update({
+            where: { id: persisted.id },
+            data: { status: "DUPLICATE", error: message, appliedDelta: 0, userId: null },
+          });
+          return {
+            rowIndex: row.rowIndex,
+            phone: row.phone ?? "",
+            amount: row.amount ?? 0,
+            appliedDelta: 0,
+            status: "DUPLICATE",
+            error: message,
+            reference: syncReference,
           };
         };
 
@@ -816,11 +843,30 @@ export async function executeImportBatch(params: {
         const userId = userIdByPhone.get(row.phone);
         if (!userId) return markError("该手机号未注册官网账户");
 
+        // 跨批次内容幂等：已成功且未撤销的同一内容不再入账。
+        // 先占用进程内 key，避免同一批次并发行同时通过检查。
+        const contentKey = `${userId}:${syncReference}`;
+        if (claimedContentKeys.has(contentKey)) return markDuplicate();
+        claimedContentKeys.add(contentKey);
+
+        const activeDuplicate = await prisma.spentImportRow.findFirst({
+          where: {
+            userId,
+            syncReference,
+            status: "SUCCESS",
+            revertedAt: null,
+            id: { not: persisted.id },
+          },
+          select: { id: true },
+        });
+        if (activeDuplicate) return markDuplicate();
+
         try {
           const result = await applyExternalSpentSync({
             userId,
             spentDelta: row.amount,
-            reference,
+            // 批内唯一 reference：撤销后可重新导入；跨批次去重由 syncReference 预检负责
+            reference: batchReference,
             note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
               row.orderNo ? ` ${row.orderNo}` : ""
             }`,
@@ -843,7 +889,7 @@ export async function executeImportBatch(params: {
             appliedDelta,
             status,
             error,
-            reference,
+            reference: syncReference,
           };
         } catch (error) {
           apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 入账失败:`, error);
@@ -926,6 +972,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
           amount: true,
           appliedDelta: true,
           reference: true,
+          syncReference: true,
         },
       },
     },
@@ -952,7 +999,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
         const reference = `import-undo:${batch.id}:${row.id}`;
 
         // 按实际生效 delta 反向冲正；不物理删除原始 SpentSyncRecord，
-        // 保留审计并通过 revertedAt 标记，重新导入使用新版本 reference。
+        // 保留审计并通过 revertedAt 标记。旧数据没有 syncReference 时回退 reference。
         await applyExternalSpentSync({
           userId: row.userId as string,
           spentDelta: -appliedDelta,
@@ -961,7 +1008,10 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
         });
 
         await prisma.spentSyncRecord.updateMany({
-          where: { userId: row.userId as string, reference: row.reference },
+          where: {
+            userId: row.userId as string,
+            reference: row.syncReference ?? row.reference,
+          },
           data: { revertedAt: new Date() },
         });
         await prisma.spentImportRow.update({

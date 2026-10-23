@@ -38,8 +38,19 @@ describe("管理端响应式契约", () => {
     const { container, rerender } = render(<MobileList>内容</MobileList>);
     expect(container.firstElementChild).toHaveClass("md:hidden");
 
-    rerender(<MobileList empty="暂无记录" />);
+    rerender(<MobileList empty="暂无记录" isEmpty />);
     expect(screen.getByText("暂无记录")).toBeInTheDocument();
+  });
+
+  it("MobileList 传入 empty 文案但 isEmpty=false 时仍渲染数据", () => {
+    render(
+      <MobileList empty="暂无记录">
+        <div>真实数据</div>
+      </MobileList>
+    );
+
+    expect(screen.getByText("真实数据")).toBeInTheDocument();
+    expect(screen.queryByText("暂无记录")).toBeNull();
   });
 
   it("Modal 的 mobileFullScreen 在手机端使用全屏高度", () => {

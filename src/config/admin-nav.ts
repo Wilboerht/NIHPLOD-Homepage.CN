@@ -36,6 +36,8 @@ export interface NavItem {
   badge?: number; // 可选徽章数字（如未读消息数）
   /** 访问所需权限点（不填表示所有管理员可见，如个人安全设置） */
   permission?: AdminPermission;
+  /** 任一权限点满足即可访问（用于同时支持多个权限域的页面） */
+  permissionsAny?: AdminPermission[];
   group?: string; // 导航分组（sidebar 渲染分组标题）
   /** 页面内容宽度：默认 5xl；多列表格用 wide，设置/向导用 narrow */
   width?: AdminPageWidth;
@@ -44,7 +46,13 @@ export interface NavItem {
 export const adminNavItems: NavItem[] = [
   { title: "仪表盘", href: "/admin", icon: LayoutDashboard, permission: "dashboard:read" },
   // 商城管理
-  { title: "用户管理", href: "/admin/users", icon: Users, permission: "users:read", group: "商城管理" },
+  {
+    title: "用户管理",
+    href: "/admin/users",
+    icon: Users,
+    permission: "users:read",
+    group: "商城管理",
+  },
   {
     title: "注销申请管理",
     href: "/admin/account-deletions",
@@ -70,7 +78,7 @@ export const adminNavItems: NavItem[] = [
     title: "消费记录审核",
     href: "/admin/spent-adjustments",
     icon: ClipboardCheck,
-    permission: "spent:read",
+    permissionsAny: ["spent:read", "spent:import"],
     group: "商城管理",
     width: "wide",
   },
@@ -78,7 +86,7 @@ export const adminNavItems: NavItem[] = [
     title: "积分礼品",
     href: "/admin/point-gifts",
     icon: Gift,
-    permission: "redemptions:read",
+    permissionsAny: ["redemptions:read", "gifts:read"],
     group: "商城管理",
   },
   {
@@ -89,7 +97,13 @@ export const adminNavItems: NavItem[] = [
     group: "商城管理",
   },
   // 招聘管理
-  { title: "职位管理", href: "/admin/jobs", icon: Briefcase, permission: "jobs:read", group: "招聘管理" },
+  {
+    title: "职位管理",
+    href: "/admin/jobs",
+    icon: Briefcase,
+    permission: "jobs:read",
+    group: "招聘管理",
+  },
   {
     title: "简历管理",
     href: "/admin/applications",

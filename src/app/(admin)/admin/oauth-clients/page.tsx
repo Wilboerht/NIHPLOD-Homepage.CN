@@ -33,9 +33,10 @@ import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
-import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { formatDate, formatDateTimeSeconds as formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RequirePermission } from "@/components/admin";
@@ -360,8 +361,21 @@ function isInRotationGrace(secretRotatedAt: string | null | undefined): boolean 
 function OAuthClientsPage() {
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("sso:clients:write");
+
+  /** 高风险 Client 操作（停用/删除/轮换/缩权）：服务端要求 step-up，失败时拉起二次验证并重试 */
+  const withStepUp = async <T,>(action: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await action();
+    } catch (err) {
+      if (!isTotpRequired(err)) throw err;
+      const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+      if (!verified) return null;
+      return await action();
+    }
+  };
   const [clients, setClients] = useState<OAuthClient[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => {
@@ -369,8 +383,16 @@ function OAuthClientsPage() {
     return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
+  const urlSearch = searchParams.get("search") || "";
+  const [prevUrlSearch, setPrevUrlSearch] = useState(urlSearch);
+  if (prevUrlSearch !== urlSearch) {
+    setPrevUrlSearch(urlSearch);
+    setSearch(urlSearch);
+    setDebouncedSearch(urlSearch);
+  }
   const pageSize = 20;
 
   // Modal states
@@ -481,8 +503,10 @@ function OAuthClientsPage() {
       if (!isLatest()) return;
       setClients(data.clients);
       setTotal(data.pagination.total);
+      setLoadError(false);
     } catch (err) {
       if (!isLatest()) return;
+      setLoadError(true);
       toast.error(err instanceof Error ? err.message : "获取 Client 列表失败");
     } finally {
       if (isLatest()) setLoading(false);
@@ -624,17 +648,20 @@ function OAuthClientsPage() {
     const scopes = formScopes.split(" ").filter(Boolean);
     setSaving(true);
     try {
-      await apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${editClient.id}`, {
-        name: formName.trim(),
-        redirectUris: uriValidation.parsed,
-        postLogoutRedirectUris: postLogoutValidation.parsed,
-        scopes,
-        isPublic: formIsPublic,
-        backchannelLogoutUri: formBackchannelUri.trim() || null,
-        webhookUri: formWebhookUri.trim() || null,
-        codeTtlSeconds: Number(formCodeTtl),
-        accessTokenTtlSeconds: Number(formAccessTokenTtl),
-      });
+      const saved = await withStepUp(() =>
+        apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${editClient.id}`, {
+          name: formName.trim(),
+          redirectUris: uriValidation.parsed,
+          postLogoutRedirectUris: postLogoutValidation.parsed,
+          scopes,
+          isPublic: formIsPublic,
+          backchannelLogoutUri: formBackchannelUri.trim() || null,
+          webhookUri: formWebhookUri.trim() || null,
+          codeTtlSeconds: Number(formCodeTtl),
+          accessTokenTtlSeconds: Number(formAccessTokenTtl),
+        })
+      );
+      if (saved === null) return;
       toast.success("Client 更新成功");
       setShowEdit(false);
       setShowScopeShrinkConfirm(false);
@@ -656,11 +683,18 @@ function OAuthClientsPage() {
     }
     setSaving(true);
     try {
-      await apiDelete(`/api/admin/oauth-clients/${deleteClient.id}`);
+      const deleted = await withStepUp(() =>
+        apiDelete(`/api/admin/oauth-clients/${deleteClient.id}`)
+      );
+      if (deleted === null) return;
       toast.success("Client 已删除");
       setDeleteClient(null);
       setDeleteConfirmText("");
-      fetchClients();
+      if (clients.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchClients();
+      }
     } catch (err) {
       // 失败时保留弹窗与已输入的确认名称，便于重试
       toast.error(err instanceof Error ? err.message : "删除 Client 失败");
@@ -673,10 +707,15 @@ function OAuthClientsPage() {
     if (!rotateClient) return;
     setSaving(true);
     try {
-      const data = await apiPost<{ plainSecret: string }>(
-        `/api/admin/oauth-clients/${rotateClient.id}/rotate-secret`,
-        { confirm: true }
+      const data = await withStepUp(() =>
+        apiPost<{ plainSecret: string }>(
+          `/api/admin/oauth-clients/${rotateClient.id}/rotate-secret`,
+          {
+            confirm: true,
+          }
+        )
       );
+      if (data === null) return;
       setRotatedSecret(data.plainSecret);
       setRotatedSecretSaved(false);
       setShowRotatedSecretValue(false);
@@ -693,9 +732,12 @@ function OAuthClientsPage() {
   const handleToggleActive = async (client: OAuthClient) => {
     setSaving(true);
     try {
-      await apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${client.id}`, {
-        isActive: !client.isActive,
-      });
+      const saved = await withStepUp(() =>
+        apiPatch<ClientActionResponse>(`/api/admin/oauth-clients/${client.id}`, {
+          isActive: !client.isActive,
+        })
+      );
+      if (saved === null) return;
       toast.success(client.isActive ? "Client 已禁用" : "Client 已启用");
       setDisableClient(null);
       fetchClients();
@@ -898,6 +940,13 @@ if (!payload) {
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-40 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
           ))
+        ) : loadError ? (
+          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center">
+            <p className="text-sm text-red-500">加载失败</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
+              重试
+            </Button>
+          </div>
         ) : clients.length === 0 ? (
           <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center text-sm text-brand-charcoal/50">
             暂无数据
@@ -939,7 +988,7 @@ if (!payload) {
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/50">
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5" />
-                  {c.activeUserCount ?? 0} 个用户
+                  {c.activeUserCount ?? 0} 个活跃会话
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
@@ -1021,6 +1070,15 @@ if (!payload) {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={10} density="compact" />
               ))
+            ) : loadError ? (
+              <tr>
+                <td colSpan={10} className="py-8 text-center">
+                  <p className="text-sm text-red-500">加载失败</p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
+                    重试
+                  </Button>
+                </td>
+              </tr>
             ) : clients.length === 0 ? (
               <tr>
                 <td colSpan={10} className="py-8 text-center text-brand-charcoal/50">
@@ -1809,6 +1867,9 @@ if (!payload) {
           </div>
         )}
       </Modal>
+
+      {/* 高风险操作二次验证 */}
+      {totpModal}
     </div>
   );
 }

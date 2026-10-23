@@ -25,12 +25,17 @@ import { useAdminSession } from "@/contexts/AdminSessionContext";
 import { PERMISSION_LABELS, type AdminPermission } from "@/lib/admin-permissions";
 
 interface RequirePermissionProps {
-  permission: AdminPermission;
+  /** 单一权限点 */
+  permission?: AdminPermission;
+  /** 任一权限点满足即可访问（与 permission 二选一） */
+  permissions?: AdminPermission[];
   children: ReactNode;
 }
 
-export function RequirePermission({ permission, children }: RequirePermissionProps) {
+export function RequirePermission({ permission, permissions, children }: RequirePermissionProps) {
   const { can, loading, redirecting, error, refresh } = useAdminSession();
+  const required = permissions?.length ? permissions : permission ? [permission] : [];
+  const allowed = required.length === 0 || required.some((item) => can(item));
 
   if (loading || redirecting) {
     return (
@@ -54,13 +59,14 @@ export function RequirePermission({ permission, children }: RequirePermissionPro
     );
   }
 
-  if (!can(permission)) {
+  if (!allowed) {
+    const labels = required.map((item) => PERMISSION_LABELS[item]).join("」或「");
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <ShieldAlert className="h-12 w-12 text-brand-charcoal/30" />
         <p className="text-lg font-medium text-brand-charcoal/70">无权访问</p>
         <p className="text-sm text-brand-charcoal/50">
-          该页面需要「{PERMISSION_LABELS[permission]}」权限，请联系超级管理员开通
+          该页面需要「{labels}」权限，请联系超级管理员开通
         </p>
       </div>
     );

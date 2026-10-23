@@ -68,6 +68,7 @@ function OAuthSessionsPage() {
   const toast = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("sso:write");
+  const canReadClients = canAdmin("sso:clients:read");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState({
     activeSessions: 0,
@@ -81,6 +82,7 @@ function OAuthSessionsPage() {
     return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const pageSize = 20;
 
   // Filters
@@ -138,8 +140,10 @@ function OAuthSessionsPage() {
       });
       setSearchTruncated(data.searchTruncated ?? false);
       setTotal(data.pagination.total);
+      setLoadError(false);
     } catch (err) {
       if (!isLatest()) return;
+      setLoadError(true);
       toast.error(err instanceof Error ? err.message : "获取会话列表失败");
     } finally {
       if (isLatest()) setLoading(false);
@@ -150,12 +154,13 @@ function OAuthSessionsPage() {
     deferInEffect(fetchSessions);
   }, [fetchSessions]);
 
-  // 加载 Client 下拉选项
+  // 加载 Client 下拉选项（需要 sso:clients:read；无权限时隐藏筛选器而不是静默空列表）
   useEffect(() => {
+    if (!canReadClients) return;
     apiGet<{ clients: ClientOption[] }>("/api/admin/oauth-clients?pageSize=100")
       .then((res) => setClientOptions(res.clients))
       .catch(() => setClientOptions([]));
-  }, []);
+  }, [canReadClients]);
 
   // 搜索防抖：输入停止 400ms 后才更新生效查询值，由 fetchSessions 统一发起请求。
   // 跳过首次执行，避免 ?page=N 深链在挂载 400ms 后被重置回第 1 页。
@@ -274,22 +279,24 @@ function OAuthSessionsPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
             </div>
-            <div className="w-48">
-              <Select
-                value={searchClientId}
-                onChange={(e) => {
-                  setSearchClientId(e.target.value);
-                  setPage(1);
-                }}
-                options={[
-                  { value: "", label: "全部 Client" },
-                  ...clientOptions.map((c) => ({
-                    value: c.clientId,
-                    label: `${c.name} (${c.clientId})`,
-                  })),
-                ]}
-              />
-            </div>
+            {canReadClients && (
+              <div className="w-48">
+                <Select
+                  value={searchClientId}
+                  onChange={(e) => {
+                    setSearchClientId(e.target.value);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: "", label: "全部 Client" },
+                    ...clientOptions.map((c) => ({
+                      value: c.clientId,
+                      label: `${c.name} (${c.clientId})`,
+                    })),
+                  ]}
+                />
+              </div>
+            )}
             <Button
               variant="outline"
               onClick={handleSearch}
@@ -326,7 +333,21 @@ function OAuthSessionsPage() {
       )}
 
       {/* 移动端卡片 */}
-      <MobileList loading={loading} empty="暂无会话数据">
+      <MobileList
+        loading={loading}
+        error={
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchSessions}>
+                重试
+              </Button>
+            </>
+          ) : undefined
+        }
+        empty="暂无会话数据"
+        isEmpty={!loading && !loadError && sessions.length === 0}
+      >
         {sessions.map((s) => (
           <MobileListCard key={s.id}>
             <div className="flex items-start justify-between gap-3">
@@ -557,18 +578,24 @@ function OAuthSessionsPage() {
             placeholder="输入要踢下线的用户 ID"
             hint="可在用户管理或会话详情中复制用户 ID"
           />
-          <Select
-            label="限定应用（可选）"
-            value={userTerminateClientId}
-            onChange={(e) => setUserTerminateClientId(e.target.value)}
-            options={[
-              { value: "", label: "全部应用" },
-              ...clientOptions.map((c) => ({
-                value: c.clientId,
-                label: `${c.name} (${c.clientId})`,
-              })),
-            ]}
-          />
+          {canReadClients ? (
+            <Select
+              label="限定应用（可选）"
+              value={userTerminateClientId}
+              onChange={(e) => setUserTerminateClientId(e.target.value)}
+              options={[
+                { value: "", label: "全部应用" },
+                ...clientOptions.map((c) => ({
+                  value: c.clientId,
+                  label: `${c.name} (${c.clientId})`,
+                })),
+              ]}
+            />
+          ) : (
+            <p className="text-xs text-brand-charcoal/50">
+              当前账号无 Client 列表权限，将终止该用户全部应用的会话。
+            </p>
+          )}
         </div>
       </Modal>
 

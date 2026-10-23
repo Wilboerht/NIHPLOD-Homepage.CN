@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { createAuditLogStrict } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,10 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
 
   const rateLimitResponse = await checkAdminRateLimit(request, "admin-break-glass");
   if (rateLimitResponse) return rateLimitResponse;
+
+  // 应急凭据明文返回：即使 owner 也必须先完成 step-up
+  const stepUpResponse = await requireAdminStepUp(request, admin);
+  if (stepUpResponse) return stepUpResponse;
 
   const username = process.env.ADVISOR_BREAK_GLASS_USERNAME || "";
   const password = process.env.ADVISOR_BREAK_GLASS_PASSWORD || "";

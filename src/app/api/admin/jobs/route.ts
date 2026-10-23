@@ -58,9 +58,7 @@ export async function GET(request: NextRequest) {
     const rawPage = parseInt(searchParams.get("page") || "1", 10);
     const page = Number.isFinite(rawPage) ? Math.min(Math.max(1, rawPage), 1000) : 1;
     const rawPageSize = parseInt(searchParams.get("pageSize") || "10", 10);
-    const pageSize = Number.isFinite(rawPageSize)
-      ? Math.min(Math.max(1, rawPageSize), 100)
-      : 10;
+    const pageSize = Number.isFinite(rawPageSize) ? Math.min(Math.max(1, rawPageSize), 100) : 10;
     const status = searchParams.get("status"); // published, draft, all
     const search = searchParams.get("search");
 
@@ -94,7 +92,7 @@ export async function GET(request: NextRequest) {
     // 查询列表（附带申请数，列表页展示并链接到简历管理）
     const items = await prisma.job.findMany({
       where,
-      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }, { id: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: { _count: { select: { applications: true } } },

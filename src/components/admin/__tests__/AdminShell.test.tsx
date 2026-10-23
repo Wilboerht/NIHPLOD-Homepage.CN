@@ -4,6 +4,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const mockUseLinkStatus = vi.fn();
 const mockPush = vi.fn();
@@ -46,18 +47,22 @@ describe("AdminShell 导航反馈", () => {
 
   it("仅在 Link 导航 pending 时显示对应菜单的加载指示", () => {
     const { rerender } = render(
-      <AdminShell>
-        <div>仪表盘内容</div>
-      </AdminShell>
+      <ToastProvider>
+        <AdminShell>
+          <div>仪表盘内容</div>
+        </AdminShell>
+      </ToastProvider>
     );
 
     expect(screen.queryByRole("status", { name: "页面加载中" })).toBeNull();
 
     mockUseLinkStatus.mockReturnValue({ pending: true });
     rerender(
-      <AdminShell>
-        <div>仪表盘内容</div>
-      </AdminShell>
+      <ToastProvider>
+        <AdminShell>
+          <div>仪表盘内容</div>
+        </AdminShell>
+      </ToastProvider>
     );
 
     const dashboardLinks = screen.getAllByRole("link", { name: /仪表盘/ });

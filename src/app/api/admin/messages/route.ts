@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     // 查询列表
     const items = await prisma.contactMessage.findMany({
       where,
-      orderBy: [{ read: "asc" }, { createdAt: "desc" }],
+      orderBy: [{ read: "asc" }, { createdAt: "desc" }, { id: "asc" }],
       skip: (params.page - 1) * params.pageSize,
       take: params.pageSize,
     });

@@ -5,7 +5,8 @@
  * 安全约束：
  * - 资金/安全敏感操作：须通过二次验证（TOTP 或备用码，requireMoneyOperationTotp）
  * - 临时密码仅本次响应返回一次，数据库仅存 bcrypt 哈希
- * - 重置后撤销全部 Refresh Token + access token 黑名单 + OAuth 会话 + backchannel logout
+ * - 重置后撤销全部 Refresh Token + OAuth 会话 + backchannel logout；
+ *   旧 access token 通过 passwordChangedAt/credential cutoff 失效（不再写 user 级黑名单）
  * - 重置成功后向被重置用户手机号发送安全提醒短信（fail-soft，不阻断主流程）
  * - 操作写入审计（user_password_reset）
  */
@@ -20,7 +21,6 @@ import { prisma } from "@/lib/prisma";
 import { updateUserPassword } from "@/lib/password-policy";
 import { validatePasswordStrength } from "@/lib/password";
 import { randomInt } from "@/lib/random";
-import { blacklistUserTokens } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { maskPhone } from "@/lib/mask-phone";
@@ -181,7 +181,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         where: { userId: user.id, revokedAt: null },
         data: { revokedAt: new Date(), revokedReason: "credential_change" },
       });
-      await blacklistUserTokens(user.id, "密码已被管理员重置");
+      // 不写 user 级黑名单：passwordChangedAt 已使旧 access token 失效，
+      // 而 user 级黑名单会同时拦截用户用临时密码新登录签发的 token（历史 8h 锁死问题）。
+      // OAuth access token 的失效由 verifyOAuthAccessToken 的 credential cutoff + session 撤销共同保证。
 
       const activeSessions = await prisma.oAuthSession.findMany({
         where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },

@@ -106,6 +106,8 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
   const generationRef = useRef(0);
 
   const handleClose = () => {
+    // 上传/导入进行中不允许关闭，避免结果与失败行列表丢失
+    if (uploading || importing) return;
     generationRef.current += 1;
     setStep("upload");
     setPreview(null);
@@ -213,7 +215,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       </div>
     ) : (
       <div className="flex justify-end">
-        <Button variant="outline" onClick={handleClose}>
+        <Button variant="outline" onClick={handleClose} disabled={uploading}>
           取消
         </Button>
       </div>
@@ -224,8 +226,11 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       <Modal
         open={open}
         onClose={handleClose}
-        size="xl" mobileFullScreen
+        size="xl"
+        mobileFullScreen
         title="Excel 批量导入消费记录"
+        closeOnBackdrop={false}
+        closeGuard={() => !uploading && !importing}
         footer={footer}
       >
         {step === "upload" && (
@@ -494,7 +499,15 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <>
-      <Modal open={open} onClose={onClose} size="xl" mobileFullScreen title="导入历史">
+      <Modal
+        open={open}
+        onClose={onClose}
+        size="xl"
+        mobileFullScreen
+        title="导入历史"
+        closeOnBackdrop={false}
+        closeGuard={() => !undoing}
+      >
         <div className="overflow-x-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">

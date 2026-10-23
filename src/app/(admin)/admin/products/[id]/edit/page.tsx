@@ -156,7 +156,9 @@ function EditProductContent() {
 export default function EditProductPage() {
   return (
     <RequirePermission permission="products:write">
-      <EditProductContent />
+      <RequirePermission permission="categories:read">
+        <EditProductContent />
+      </RequirePermission>
     </RequirePermission>
   );
 }

@@ -18,6 +18,7 @@ import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
@@ -132,7 +133,9 @@ function AuditLogsContent() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
 
+  const takeLatestLogs = useLatestRequest();
   const fetchLogs = useCallback(async () => {
+    const isLatest = takeLatestLogs();
     setLoading(true);
     try {
       const params: Record<string, string | number | undefined> = {
@@ -147,16 +150,18 @@ function AuditLogsContent() {
         "/api/admin/audit-logs",
         params
       );
+      if (!isLatest()) return;
       setLogs(data.items);
       setPagination(data.pagination);
       setLoadError(false);
     } catch {
+      if (!isLatest()) return;
       apiConsole.error("获取审计日志失败");
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, action, targetType, outcome, startDate, endDate]);
+  }, [page, action, targetType, outcome, startDate, endDate, takeLatestLogs]);
 
   useEffect(() => {
     deferInEffect(fetchLogs);
@@ -171,6 +176,13 @@ function AuditLogsContent() {
     if (!newParams.page) params.set("page", "1");
     router.push(`/admin/audit-logs?${params.toString()}`);
   };
+
+  useEffect(() => {
+    if (pagination.totalPages > 0 && page > pagination.totalPages) {
+      updateParams({ page: String(pagination.totalPages) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pagination.totalPages]);
 
   const openDetail = (log: AuditLogItem) => {
     setSelectedLog(log);
@@ -272,14 +284,17 @@ function AuditLogsContent() {
       <MobileList
         loading={loading}
         error={
-          <>
-            <p className="text-red-500">加载失败</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchLogs}>
-              重试
-            </Button>
-          </>
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchLogs}>
+                重试
+              </Button>
+            </>
+          ) : undefined
         }
         empty="暂无记录"
+        isEmpty={!loading && !loadError && logs.length === 0}
       >
         {logs.map((log) => (
           <MobileListCard key={log.id}>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { Save, Send, Plus, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -32,6 +32,7 @@ import {
   type PurchasePlatformKey,
 } from "@/lib/purchase-platforms";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 
 // 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
 const RichTextEditor = dynamic(
@@ -133,6 +134,10 @@ function hasPurchaseLinkContent(link: PurchaseLinkItem): boolean {
 
 export function ProductForm({ mode, initialData, categories }: ProductFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnToParam = searchParams.get("returnTo") ?? "";
+  // 只允许回到产品列表，避免开放重定向
+  const returnTo = returnToParam.startsWith("/admin/products") ? returnToParam : "/admin/products";
   const { success, error: showError } = useToast();
   const [formData, setFormData] = useState<FormData>(() => {
     if (initialData) {
@@ -239,6 +244,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     );
   }, [formData, initialFormSnapshot]);
   const { guard: guardNavigation } = useUnsavedChanges(isDirty);
+  const { can: canAdmin } = useAdminPermissions();
+  const canCreateCategory = canAdmin("categories:write");
 
   // 更新表单字段
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -479,7 +486,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       }
 
       success(publish ? "产品已发布" : "产品已保存为草稿");
-      router.push("/admin/products");
+      router.push(returnTo);
     } catch (err) {
       showError(err instanceof Error ? err.message : "保存失败");
     } finally {
@@ -551,17 +558,19 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 required
               />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setNewCategoryError("");
-                setNewCategoryOpen(true);
-              }}
-              leftIcon={<Plus className="h-4 w-4" />}
-            >
-              新建
-            </Button>
+            {canCreateCategory && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNewCategoryError("");
+                  setNewCategoryOpen(true);
+                }}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                新建
+              </Button>
+            )}
           </div>
           <Input
             label="价格（元）"

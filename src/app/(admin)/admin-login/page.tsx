@@ -25,9 +25,11 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const rawRedirect = searchParams.get("redirect");
   const redirectTo =
-    rawRedirect && (rawRedirect.startsWith("/admin") || rawRedirect === "/")
+    rawRedirect &&
+    (rawRedirect.startsWith("/admin/") || rawRedirect === "/admin" || rawRedirect === "/")
       ? rawRedirect
       : "/admin";
+  const passwordChanged = searchParams.get("passwordChanged") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -214,6 +216,15 @@ export default function LoginPage() {
               <p className="text-sm text-brand-charcoal/50">请输入您的管理账号</p>
             </div>
           </div>
+
+          {passwordChanged && (
+            <div
+              role="status"
+              className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            >
+              密码已修改，请使用新密码重新登录。
+            </div>
+          )}
 
           {/* 表单卡片 */}
           <form

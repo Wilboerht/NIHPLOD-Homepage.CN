@@ -120,11 +120,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json();
     const validated = UpdateJobSchema.parse(body);
 
-    // 对 HTML 字段入库前消毒
+    // 对 HTML 字段入库前消毒。PATCH 可能只带 published/order：
+    // 绝不能对未提供的字段调用 sanitizeHtml(undefined)，否则会把正文清空。
     const sanitized: typeof validated = {
       ...validated,
-      description: sanitizeHtml(validated.description),
-      requirements: sanitizeHtml(validated.requirements),
+      ...(validated.description !== undefined
+        ? { description: sanitizeHtml(validated.description) }
+        : {}),
+      ...(validated.requirements !== undefined
+        ? { requirements: sanitizeHtml(validated.requirements) }
+        : {}),
     };
 
     // 检查是否存在

@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Search,
   Undo2,
+  X,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +28,9 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -87,13 +90,22 @@ const TABS: { key: StatusFilter; label: string }[] = [
 ];
 
 function AdminSpentAdjustmentsContent() {
+  const { get, getNumber, update } = useListQuery();
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [tab, setTab] = useState<StatusFilter>("PENDING");
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  const tabParam = get("status", "PENDING");
+  const tab: StatusFilter = TABS.some((item) => item.key === tabParam)
+    ? (tabParam as StatusFilter)
+    : "PENDING";
+  const page = getNumber("page", 1);
+  const searchParam = get("search");
+  const [search, setSearch] = useState(searchParam);
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
+  if (prevSearchParam !== searchParam) {
+    setPrevSearchParam(searchParam);
+    setSearch(searchParam);
+  }
   const [detail, setDetail] = useState<ApplicationItem | null>(null);
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [reviewAmount, setReviewAmount] = useState("");
@@ -108,11 +120,23 @@ function AdminSpentAdjustmentsContent() {
   // 权限：Excel 导入/撤销导入需要 spent:import（与 API 层一致）
   const { can: canAdmin } = useAdminPermissions();
   const canImport = canAdmin("spent:import");
+  const canReadSpent = canAdmin("spent:read");
   const canReview = canAdmin("spent:review");
   const { requireTotp, totpModal } = useTotpConfirm();
 
+  const isReviewDirty =
+    detail?.status === "PENDING" &&
+    (decision !== "approve" ||
+      reviewNote.trim() !== "" ||
+      reviewAmount !== (detail.amountClaimed != null ? String(detail.amountClaimed) : ""));
+  const { confirmClose: confirmCloseReview } = useUnsavedChanges(isReviewDirty);
+
   const takeLatestSpent = useLatestRequest();
   const fetchData = useCallback(async () => {
+    if (!canReadSpent) {
+      setLoading(false);
+      return;
+    }
     const isLatest = takeLatestSpent();
     setLoading(true);
     try {
@@ -120,7 +144,7 @@ function AdminSpentAdjustmentsContent() {
         page,
         pageSize: 20,
         status: tab === "ALL" ? undefined : tab,
-        search: debouncedSearch || undefined,
+        search: searchParam || undefined,
       });
       if (!isLatest()) return;
       setData(result);
@@ -132,20 +156,29 @@ function AdminSpentAdjustmentsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, tab, debouncedSearch, showError, takeLatestSpent]);
+  }, [page, tab, searchParam, showError, canReadSpent, takeLatestSpent]);
 
   useEffect(() => {
     deferInEffect(fetchData);
   }, [fetchData]);
 
-  // 搜索防抖
+  useEffect(() => {
+    const totalPages = data?.pagination.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      update({ page: String(totalPages) }, { replace: true, resetPage: false });
+    }
+  }, [page, data?.pagination.totalPages, update]);
+
+  // 搜索防抖写入 URL
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
+      const next = search.trim();
+      if (next !== searchParam) {
+        update({ search: next || null }, { replace: true });
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, searchParam, update]);
 
   const openDetail = (item: ApplicationItem) => {
     setDetail(item);
@@ -188,7 +221,11 @@ function AdminSpentAdjustmentsContent() {
 
       success(decision === "approve" ? "已通过并完成入账" : "已驳回");
       setDetail(null);
-      fetchData();
+      if (tab !== "ALL" && data?.applications.length === 1 && page > 1) {
+        update({ page: String(page - 1) }, { resetPage: false });
+      } else {
+        fetchData();
+      }
     } catch (e) {
       if (e instanceof ApiError) {
         showError(e.message);
@@ -219,13 +256,51 @@ function AdminSpentAdjustmentsContent() {
       success("已撤销审核，申请回到待审核队列");
       setUndoTarget(null);
       setDetail(null);
-      fetchData();
+      if (tab !== "ALL" && data?.applications.length === 1 && page > 1) {
+        update({ page: String(page - 1) }, { resetPage: false });
+      } else {
+        fetchData();
+      }
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "撤销失败");
     } finally {
       setUndoing(false);
     }
   };
+
+  // 仅 Excel 导入权限：不加载/渲染审核列表，只展示导入入口
+  if (!canReadSpent) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="消费记录审核"
+          description="当前账号仅有 Excel 导入权限"
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+                <History className="mr-1.5 h-4 w-4" />
+                导入历史
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+                Excel 导入
+              </Button>
+            </>
+          }
+        />
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6 text-sm text-brand-charcoal/50">
+          你可以导入消费记录；查看和审核申请需要「消费补录查看」权限。
+        </div>
+        <SpentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+        <ImportHistoryModal
+          key={historyOpen ? "open" : "closed"}
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+        />
+        {totpModal}
+      </div>
+    );
+  }
 
   const pagination = data?.pagination;
 
@@ -268,10 +343,8 @@ function AdminSpentAdjustmentsContent() {
             <button
               key={t.key}
               type="button"
-              onClick={() => {
-                setTab(t.key);
-                setPage(1);
-              }}
+              aria-pressed={tab === t.key}
+              onClick={() => update({ status: t.key })}
               className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors ${
                 tab === t.key
                   ? "border-brand-charcoal bg-brand-charcoal text-white"
@@ -295,8 +368,21 @@ function AdminSpentAdjustmentsContent() {
             placeholder="搜索手机号 / 订单号 / 昵称"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className={search ? "pl-10 pr-10" : "pl-10"}
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                update({ search: null }, { replace: true });
+              }}
+              aria-label="清除搜索"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/50 hover:text-brand-charcoal"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -460,7 +546,10 @@ function AdminSpentAdjustmentsContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={12} className="px-4 py-10 text-center text-sm text-brand-charcoal/40">
+                  <td
+                    colSpan={12}
+                    className="px-4 py-10 text-center text-sm text-brand-charcoal/40"
+                  >
                     暂无申请
                   </td>
                 </tr>
@@ -475,7 +564,7 @@ function AdminSpentAdjustmentsContent() {
           page={pagination.page}
           pageSize={pagination.pageSize}
           total={pagination.total}
-          onChange={setPage}
+          onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
         />
       )}
 
@@ -484,11 +573,20 @@ function AdminSpentAdjustmentsContent() {
         open={!!detail}
         onClose={() => setDetail(null)}
         title={detail?.status === "PENDING" ? "审核申请" : "申请详情"}
-        size="lg" mobileFullScreen
+        size="lg"
+        mobileFullScreen
+        closeOnBackdrop={false}
+        closeGuard={() => !saving && confirmCloseReview()}
         footer={
           detail?.status === "PENDING" && canReview ? (
             <div className="flex flex-wrap justify-end gap-3">
-              <Button variant="outline" onClick={() => setDetail(null)} disabled={saving}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (confirmCloseReview()) setDetail(null);
+                }}
+                disabled={saving}
+              >
                 取消
               </Button>
               <Button
@@ -746,7 +844,7 @@ function AdminSpentAdjustmentsContent() {
 
 export default function AdminSpentAdjustmentsPage() {
   return (
-    <RequirePermission permission="spent:read">
+    <RequirePermission permissions={["spent:read", "spent:import"]}>
       <AdminSpentAdjustmentsContent />
     </RequirePermission>
   );

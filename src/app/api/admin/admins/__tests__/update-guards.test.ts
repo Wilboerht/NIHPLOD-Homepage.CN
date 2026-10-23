@@ -62,6 +62,9 @@ vi.mock("@/lib/audit", () => ({
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
 
 import { POST, PUT } from "../route";
 import { prisma } from "@/lib/prisma";

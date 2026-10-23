@@ -250,19 +250,21 @@ describe("JWT 工具", () => {
 
     // 用 HS256 对称密钥伪造的 access_token（payload 完全合法，仅签名算法不同）
     async function signHs256OAuthToken(): Promise<string> {
-      return new SignJWT({
-        id: "user-1",
-        client_id: "client-1",
-        scope: "openid",
-        type: "access_token",
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        // issuer 与签发侧统一（oauth-constants.getIssuer() 的回退链）
-        .setIssuer(getIssuer())
-        .setAudience("client-1")
-        .setExpirationTime("15m")
-        .sign(new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!));
+      return (
+        new SignJWT({
+          id: "user-1",
+          client_id: "client-1",
+          scope: "openid",
+          type: "access_token",
+        })
+          .setProtectedHeader({ alg: "HS256" })
+          .setIssuedAt()
+          // issuer 与签发侧统一（oauth-constants.getIssuer() 的回退链）
+          .setIssuer(getIssuer())
+          .setAudience("client-1")
+          .setExpirationTime("15m")
+          .sign(new TextEncoder().encode(process.env.JWT_ACCESS_SECRET!))
+      );
     }
 
     it("RS256 配置下应正常验证 RS256 签名的 token", async () => {
@@ -287,6 +289,43 @@ describe("JWT 工具", () => {
       const hs256Token = await signHs256OAuthToken();
       const payload = await verifyOAuthAccessToken(hs256Token, "client-1");
       expect(payload).toMatchObject({ id: "user-1" });
+    });
+  });
+
+  // 管理员重置密码后，旧 OAuth access token 也应通过 passwordChangedAt/会话失效时间即时失效，
+  // 且用户重新登录签发的新 token 不应被 user 级黑名单误拦（回归 8h 锁死）。
+  describe("OAuth Access Token credential cutoff", () => {
+    const userFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
+
+    it("改密后旧 token 失效、新 token 放行", async () => {
+      const oldToken = await signOAuthAccessToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "client-1",
+        scope: "openid",
+      });
+
+      _clearVerifyCache();
+      userFindUnique.mockResolvedValueOnce({
+        passwordChangedAt: new Date(Date.now() + 60_000),
+        sessionsInvalidatedAt: null,
+      } as never);
+      expect(await verifyOAuthAccessToken(oldToken, "client-1")).toBeNull();
+
+      const newToken = await signOAuthAccessToken({
+        id: "user-1",
+        phone: "13800138000",
+        clientId: "client-1",
+        scope: "openid",
+      });
+      _clearVerifyCache();
+      userFindUnique.mockResolvedValueOnce({
+        passwordChangedAt: new Date(Date.now() - 60_000),
+        sessionsInvalidatedAt: null,
+      } as never);
+      expect(await verifyOAuthAccessToken(newToken, "client-1")).toMatchObject({
+        id: "user-1",
+      });
     });
   });
 

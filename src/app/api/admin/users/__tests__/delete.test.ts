@@ -69,6 +69,10 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 import { DELETE } from "../[id]/route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";

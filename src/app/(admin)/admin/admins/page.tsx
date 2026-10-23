@@ -23,6 +23,8 @@ import { BreakGlassCard } from "@/components/admin/BreakGlassCard";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import {
   ADMIN_ROLES,
@@ -71,11 +73,31 @@ export default function AdminAdminsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
+
+  /** 管理员账号/权限写操作：服务端要求 step-up，首次调用失败时拉起二次验证并重试 */
+  const withStepUp = async <T,>(action: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await action();
+    } catch (err) {
+      if (!isTotpRequired(err)) throw err;
+      const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+      if (!verified) return null;
+      return await action();
+    }
+  };
 
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
+  const urlSearch = searchParams.get("search") || "";
+  const [prevUrlSearch, setPrevUrlSearch] = useState(urlSearch);
+  if (prevUrlSearch !== urlSearch) {
+    setPrevUrlSearch(urlSearch);
+    setSearchInput(urlSearch);
+  }
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminItem | null>(null);
   const {
@@ -126,6 +148,7 @@ export default function AdminAdminsPage() {
     expiresAt: string;
     targetEmail: string;
   } | null>(null);
+  const [recoverySaved, setRecoverySaved] = useState(false);
 
   const pageParam = Number(searchParams.get("page"));
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
@@ -136,25 +159,31 @@ export default function AdminAdminsPage() {
   const [showBatchDelete, setShowBatchDelete] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
 
+  const takeLatestAdmins = useLatestRequest();
   const fetchAdmins = useCallback(async () => {
+    const isLatest = takeLatestAdmins();
     setLoading(true);
     try {
       const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>(
         "/api/admin/admins",
         { page, search }
       );
+      if (!isLatest()) return;
       setAdmins(data.admins);
       setPagination(data.pagination);
+      setLoadError(false);
     } catch (err) {
+      if (!isLatest()) return;
       if (err instanceof ApiError && err.status === 401) {
         router.push("/admin-login");
         return;
       }
+      setLoadError(true);
       error(err instanceof Error ? err.message : "加载失败，请刷新重试");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, search, error, router]);
+  }, [page, search, error, router, takeLatestAdmins]);
 
   useEffect(() => {
     deferInEffect(fetchAdmins);
@@ -169,6 +198,13 @@ export default function AdminAdminsPage() {
     if (!newParams.page) params.set("page", "1");
     router.push(`/admin/admins?${params.toString()}`);
   };
+
+  useEffect(() => {
+    if (pagination.totalPages > 0 && page > pagination.totalPages) {
+      updateParams({ page: String(pagination.totalPages) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pagination.totalPages]);
 
   const openCreate = () => {
     // 默认选中第一个「可委派」角色并按自身权限取交集，避免预填必然被服务端拒绝的权限组合
@@ -250,11 +286,10 @@ export default function AdminAdminsPage() {
         body = { ...base, password: form.password };
       }
 
-      if (editing) {
-        await apiPut("/api/admin/admins", body);
-      } else {
-        await apiPost("/api/admin/admins", body);
-      }
+      const saved = await withStepUp(() =>
+        editing ? apiPut("/api/admin/admins", body) : apiPost("/api/admin/admins", body)
+      );
+      if (saved === null) return;
       setShowModal(false);
       fetchAdmins();
       success(editing ? "更新成功" : "创建成功");
@@ -269,7 +304,8 @@ export default function AdminAdminsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await apiDelete(`/api/admin/admins/${deleteTarget.id}`);
+      const result = await withStepUp(() => apiDelete(`/api/admin/admins/${deleteTarget.id}`));
+      if (result === null) return;
       success("删除成功");
       setDeleteTarget(null);
       // 删除本页最后一条时回退一页
@@ -290,6 +326,7 @@ export default function AdminAdminsPage() {
     setRecoveryReason("");
     setRecoveryCode("");
     setRecoveryResult(null);
+    setRecoverySaved(false);
   };
 
   const closeRecovery = () => {
@@ -298,6 +335,7 @@ export default function AdminAdminsPage() {
     setRecoveryResult(null);
     setRecoveryCode("");
     setRecoveryReason("");
+    setRecoverySaved(false);
   };
 
   const handleIssueRecovery = async (e: React.FormEvent) => {
@@ -323,6 +361,7 @@ export default function AdminAdminsPage() {
         totpCode: recoveryCode.trim(),
       });
       setRecoveryResult(data);
+      setRecoverySaved(false);
       success("恢复码已生成");
     } catch (err) {
       error(err instanceof Error ? err.message : "签发恢复码失败");
@@ -346,10 +385,13 @@ export default function AdminAdminsPage() {
     const ids = Array.from(selection.selectedIds);
     setBatchDeleting(true);
     try {
-      const res = await apiPost<{ message: string }>("/api/admin/admins", {
-        ids,
-        action: "delete",
-      });
+      const res = await withStepUp(() =>
+        apiPost<{ message: string }>("/api/admin/admins", {
+          ids,
+          action: "delete",
+        })
+      );
+      if (res === null) return;
       success(res.message || `已删除 ${ids.length} 名管理员`);
       const deletesWholePage = admins.length > 0 && admins.every((a) => ids.includes(a.id));
       selection.clear();
@@ -437,7 +479,18 @@ export default function AdminAdminsPage() {
         <MobileList
           loading={loading}
           skeletonCount={4}
+          error={
+            loadError ? (
+              <>
+                <p className="text-red-500">加载失败</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={fetchAdmins}>
+                  重试
+                </Button>
+              </>
+            ) : undefined
+          }
           empty={<Empty title="暂无管理员" description="当前还没有管理员账号" />}
+          isEmpty={!loading && !loadError && admins.length === 0}
         >
           {admins.map((admin) => {
             const advisor = getAdvisorAccess(admin);
@@ -838,10 +891,13 @@ export default function AdminAdminsPage() {
           onClose={closeRecovery}
           title="签发 TOTP 恢复码"
           size="md"
-          closeOnBackdrop={!recoverySubmitting}
+          closeOnBackdrop={!recoverySubmitting && !recoveryResult}
+          closeOnEscape={!recoveryResult}
+          showCloseButton={!recoveryResult}
+          closeGuard={() => !recoveryResult && !recoverySubmitting}
           footer={
             recoveryResult ? (
-              <Button type="button" onClick={closeRecovery}>
+              <Button type="button" onClick={closeRecovery} disabled={!recoverySaved}>
                 完成
               </Button>
             ) : (
@@ -883,6 +939,17 @@ export default function AdminAdminsPage() {
               <p className="text-xs text-brand-charcoal/50">
                 有效期至：{new Date(recoveryResult.expiresAt).toLocaleString("zh-CN")}
               </p>
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <input
+                  type="checkbox"
+                  checked={recoverySaved}
+                  onChange={(e) => setRecoverySaved(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs text-amber-800">
+                  我已通过安全渠道保存/发送恢复码；关闭后无法再次查看。
+                </span>
+              </label>
             </div>
           ) : (
             <form id="totp-recovery-form" onSubmit={handleIssueRecovery} className="space-y-4">
@@ -937,6 +1004,9 @@ export default function AdminAdminsPage() {
           confirmText="确认删除"
           loading={batchDeleting}
         />
+
+        {/* 高风险操作二次验证 */}
+        {totpModal}
       </div>
     </RequirePermission>
   );

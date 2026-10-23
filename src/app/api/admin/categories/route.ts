@@ -107,9 +107,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 如果没有指定 order，获取当前最大值 + 1
+    // 只有未提供 order 时才追加到末尾；显式 order=0 必须保留为 0（排到最前）
     let order = validated.order;
-    if (order === 0) {
+    if (order === undefined) {
       const maxOrder = await prisma.category.aggregate({
         _max: { order: true },
       });

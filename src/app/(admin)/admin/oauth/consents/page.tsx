@@ -67,6 +67,7 @@ function OAuthConsentsPage() {
     return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchTruncated, setSearchTruncated] = useState(false);
   const [showBatchRevoke, setShowBatchRevoke] = useState(false);
   const [batchRevoking, setBatchRevoking] = useState(false);
@@ -150,8 +151,10 @@ function OAuthConsentsPage() {
       setConsents(data.items);
       setTotal(data.pagination.total);
       setSearchTruncated(data.searchTruncated ?? false);
+      setLoadError(false);
     } catch (err) {
       if (!isLatest()) return;
+      setLoadError(true);
       toast.error(err instanceof Error ? err.message : "获取授权列表失败");
     } finally {
       if (isLatest()) setLoading(false);
@@ -295,7 +298,21 @@ function OAuthConsentsPage() {
       )}
 
       {/* 移动端卡片 */}
-      <MobileList loading={loading} empty="暂无授权记录">
+      <MobileList
+        loading={loading}
+        error={
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchConsents}>
+                重试
+              </Button>
+            </>
+          ) : undefined
+        }
+        empty="暂无授权记录"
+        isEmpty={!loading && !loadError && consents.length === 0}
+      >
         {consents.map((c) => (
           <MobileListCard key={c.id}>
             <div className="flex items-start gap-2">

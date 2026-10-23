@@ -17,6 +17,7 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useListQuery } from "@/hooks/useListQuery";
 import { cn } from "@/lib/utils";
 
 type Kind = "webhook" | "backchannel";
@@ -54,13 +55,14 @@ export default function AdminWebhookFailuresPage() {
 }
 
 function AdminWebhookFailuresContent() {
+  const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("webhooks:write");
-  const [kind, setKind] = useState<Kind>("webhook");
+  const kind: Kind = get("kind", "webhook") === "backchannel" ? "backchannel" : "webhook";
+  const page = getNumber("page", 1);
   const [items, setItems] = useState<FailureItem[]>([]);
   const [counts, setCounts] = useState<Record<Kind, number>>({ webhook: 0, backchannel: 0 });
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -95,6 +97,12 @@ function AdminWebhookFailuresContent() {
     deferInEffect(() => fetchItems(kind, page));
   }, [kind, page, fetchItems]);
 
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      update({ page: String(totalPages) }, { replace: true, resetPage: false });
+    }
+  }, [page, totalPages, update]);
+
   const handleRetry = async (item: FailureItem) => {
     setActioningId(item.id);
     try {
@@ -105,10 +113,15 @@ function AdminWebhookFailuresContent() {
       if (data.status === "failed") {
         // 附带目标端返回的具体错误（HTTP 状态/错误内容），便于定位失败原因
         showError(data.error ? `${data.message}：${data.error}` : data.message);
+        fetchItems(kind, page);
       } else {
         success(data.message);
+        if (items.length === 1 && page > 1) {
+          update({ page: String(page - 1) }, { resetPage: false });
+        } else {
+          fetchItems(kind, page);
+        }
       }
-      fetchItems(kind, page);
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "重投失败");
     } finally {
@@ -126,7 +139,11 @@ function AdminWebhookFailuresContent() {
         action: "delete",
       });
       success(data.message);
-      fetchItems(kind, page);
+      if (items.length === 1 && page > 1) {
+        update({ page: String(page - 1) }, { resetPage: false });
+      } else {
+        fetchItems(kind, page);
+      }
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "丢弃失败");
     } finally {
@@ -172,10 +189,8 @@ function AdminWebhookFailuresContent() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => {
-              setKind(tab.key);
-              setPage(1);
-            }}
+            aria-pressed={kind === tab.key}
+            onClick={() => update({ kind: tab.key })}
             className={cn(
               "flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-colors",
               kind === tab.key
@@ -215,6 +230,7 @@ function AdminWebhookFailuresContent() {
           ) : undefined
         }
         empty="当前没有投递失败的记录"
+        isEmpty={!loading && !loadError && items.length === 0}
       >
         {items.map((item) => (
           <MobileListCard key={item.id}>
@@ -375,7 +391,7 @@ function AdminWebhookFailuresContent() {
               variant="outline"
               size="sm"
               disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
+              onClick={() => update({ page: String(page - 1) }, { resetPage: false })}
             >
               上一页
             </Button>
@@ -383,7 +399,7 @@ function AdminWebhookFailuresContent() {
               variant="outline"
               size="sm"
               disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
+              onClick={() => update({ page: String(page + 1) }, { resetPage: false })}
             >
               下一页
             </Button>

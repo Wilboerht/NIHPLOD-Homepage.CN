@@ -71,12 +71,12 @@ export async function GET(request: NextRequest) {
     const [items, total, webhookCount, backchannelCount] = await Promise.all([
       kind === "webhook"
         ? prisma.webhookDeliveryFailure.findMany({
-            orderBy: { nextRetryAt: "asc" },
+            orderBy: [{ nextRetryAt: "asc" }, { id: "asc" }],
             skip,
             take: pageSize,
           })
         : prisma.backchannelLogoutFailure.findMany({
-            orderBy: { nextRetryAt: "asc" },
+            orderBy: [{ nextRetryAt: "asc" }, { id: "asc" }],
             skip,
             take: pageSize,
           }),

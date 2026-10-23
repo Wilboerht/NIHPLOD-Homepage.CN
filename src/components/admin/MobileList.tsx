@@ -3,8 +3,15 @@ import { cn } from "@/lib/utils";
 
 interface MobileListProps {
   loading?: boolean;
+  /** 加载失败时展示；仅在 error 有值且非 loading 时渲染 */
   error?: ReactNode;
+  /** 空数据时展示；仅在 isEmpty 为 true 时渲染 */
   empty?: ReactNode;
+  /**
+   * 是否为空数据。调用方必须显式传入，不能只传 empty 文案，
+   * 否则有数据时也会被空态短路（历史 bug）。
+   */
+  isEmpty?: boolean;
   skeletonCount?: number;
   className?: string;
   children?: ReactNode;
@@ -14,6 +21,7 @@ export function MobileList({
   loading = false,
   error,
   empty,
+  isEmpty = false,
   skeletonCount = 3,
   className,
   children,
@@ -41,7 +49,7 @@ export function MobileList({
     );
   }
 
-  if (empty) {
+  if (isEmpty) {
     return (
       <div
         className={cn(
@@ -49,7 +57,7 @@ export function MobileList({
           className
         )}
       >
-        {empty}
+        {empty ?? "暂无数据"}
       </div>
     );
   }

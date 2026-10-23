@@ -73,9 +73,24 @@ const quickActions = [
 
 // SSO 快捷操作
 const ssoQuickActions = [
-  { title: "OAuth Client 管理", href: "/admin/oauth-clients", icon: Key },
-  { title: "SSO 会话管理", href: "/admin/oauth/sessions", icon: MonitorStop },
-  { title: "SSO 审计日志", href: "/admin/oauth/audit", icon: FileSearch },
+  {
+    title: "OAuth Client 管理",
+    href: "/admin/oauth-clients",
+    icon: Key,
+    permission: "sso:clients:read" as const,
+  },
+  {
+    title: "SSO 会话管理",
+    href: "/admin/oauth/sessions",
+    icon: MonitorStop,
+    permission: "sso:read" as const,
+  },
+  {
+    title: "SSO 审计日志",
+    href: "/admin/oauth/audit",
+    icon: FileSearch,
+    permission: "sso:read" as const,
+  },
 ];
 
 export default async function AdminDashboard() {
@@ -172,7 +187,7 @@ export default async function AdminDashboard() {
                 title="用户总数"
                 value={stats.totalUsers}
                 icon={<Users className="h-6 w-6" />}
-                description="注册用户"
+                description="账号总数（含已注销）"
               />
             )}
             {stats.unreadMessages !== undefined && (
@@ -188,7 +203,11 @@ export default async function AdminDashboard() {
                 title="产品总数"
                 value={stats.products}
                 icon={<Package className="h-6 w-6" />}
-                description={stats.categories !== undefined ? `${stats.categories} 个分类` : "已发布产品"}
+                description={
+                  stats.categories !== undefined
+                    ? `${stats.categories} 个分类 · 含草稿`
+                    : "全部产品（含草稿）"
+                }
               />
             )}
             {stats.jobs !== undefined && (
@@ -304,107 +323,111 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 最近留言：仅 messages:read 渲染（业务统计降级时不渲染） */}
         {stats?.recentMessages !== undefined && (
-        <PanelCard
-          title="最近留言"
-          className="lg:col-span-2"
-          action={
-            <Link href="/admin/messages" className="text-sm text-brand-primary hover:underline">
-              查看全部
-            </Link>
-          }
-        >
-          {stats.recentMessages && stats.recentMessages.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {stats.recentMessages.map((message) => (
-                <Link
-                  key={message.id}
-                  href="/admin/messages"
-                  className="block rounded-lg p-3 transition-colors hover:bg-brand-charcoal/[0.03]"
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
-                        message.read
-                          ? "bg-brand-charcoal/8 text-brand-charcoal/60"
-                          : "bg-brand-primary/10 text-brand-primary"
-                      )}
-                    >
-                      {message.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={cn(
-                            "font-medium",
-                            message.read ? "text-brand-charcoal/60" : "text-brand-charcoal"
-                          )}
-                        >
-                          {message.name}
-                        </span>
-                        <span className="flex items-center gap-1 text-xs text-brand-charcoal/50">
-                          <Clock className="h-3 w-3" />
-                          {formatRelativeTime(message.createdAt)}
-                        </span>
+          <PanelCard
+            title="最近留言"
+            className="lg:col-span-2"
+            action={
+              <Link href="/admin/messages" className="text-sm text-brand-primary hover:underline">
+                查看全部
+              </Link>
+            }
+          >
+            {stats.recentMessages && stats.recentMessages.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {stats.recentMessages.map((message) => (
+                  <Link
+                    key={message.id}
+                    href="/admin/messages"
+                    className="block rounded-lg p-3 transition-colors hover:bg-brand-charcoal/[0.03]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
+                          message.read
+                            ? "bg-brand-charcoal/8 text-brand-charcoal/60"
+                            : "bg-brand-primary/10 text-brand-primary"
+                        )}
+                      >
+                        {message.name.charAt(0).toUpperCase()}
                       </div>
-                      <p className="mt-1 truncate text-sm text-brand-charcoal/50">
-                        {message.content}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={cn(
+                              "font-medium",
+                              message.read ? "text-brand-charcoal/60" : "text-brand-charcoal"
+                            )}
+                          >
+                            {message.name}
+                          </span>
+                          <span className="flex items-center gap-1 text-xs text-brand-charcoal/50">
+                            <Clock className="h-3 w-3" />
+                            {formatRelativeTime(message.createdAt)}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-sm text-brand-charcoal/50">
+                          {message.content}
+                        </p>
+                      </div>
+                      {!message.read && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
                     </div>
-                    {!message.read && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <Empty title="暂无留言" />
-          )}
-        </PanelCard>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Empty title="暂无留言" />
+            )}
+          </PanelCard>
         )}
 
         {/* 快捷操作 */}
         <PanelCard title="快捷操作">
           <div className="flex flex-col gap-2">
             {quickActions
-              .filter((action) => !action.permission || hasAdminPermission(admin, action.permission))
+              .filter(
+                (action) => !action.permission || hasAdminPermission(admin, action.permission)
+              )
               .map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  target={action.external ? "_blank" : undefined}
-                  className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <span className="font-medium">{action.title}</span>
-                </Link>
-              );
-            })}
+                const Icon = action.icon;
+                return (
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    target={action.external ? "_blank" : undefined}
+                    className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <span className="font-medium">{action.title}</span>
+                  </Link>
+                );
+              })}
           </div>
 
-          {hasAdminPermission(admin, "sso:read") && (
+          {ssoQuickActions.some((action) => hasAdminPermission(admin, action.permission)) && (
             <>
               <div className="my-4 border-t border-brand-charcoal/10" />
               <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">SSO 管理</h3>
               <div className="space-y-2">
-                {ssoQuickActions.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <Link
-                      key={action.href}
-                      href={action.href}
-                      className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
-                    >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <span className="font-medium">{action.title}</span>
-                    </Link>
-                  );
-                })}
+                {ssoQuickActions
+                  .filter((action) => hasAdminPermission(admin, action.permission))
+                  .map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Link
+                        key={action.href}
+                        href={action.href}
+                        className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium">{action.title}</span>
+                      </Link>
+                    );
+                  })}
               </div>
             </>
           )}

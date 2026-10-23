@@ -107,6 +107,7 @@ function OAuthAuditPage() {
     return Number.isFinite(p) && p >= 1 ? Math.floor(p) : 1;
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [exporting, setExporting] = useState(false);
   const pageSize = 20;
 
@@ -146,8 +147,10 @@ function OAuthAuditPage() {
       if (!isLatest()) return;
       setEntries(data.items);
       setTotal(data.pagination.total);
+      setLoadError(false);
     } catch (err) {
       if (!isLatest()) return;
+      setLoadError(true);
       toast.error(err instanceof Error ? err.message : "获取审计日志失败");
     } finally {
       if (isLatest()) setLoading(false);
@@ -319,7 +322,21 @@ function OAuthAuditPage() {
       </div>
 
       {/* 移动端卡片 */}
-      <MobileList loading={loading} empty="暂无数据，请调整筛选条件后重试">
+      <MobileList
+        loading={loading}
+        error={
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchAudit}>
+                重试
+              </Button>
+            </>
+          ) : undefined
+        }
+        empty="暂无数据，请调整筛选条件后重试"
+        isEmpty={!loading && !loadError && entries.length === 0}
+      >
         {entries.map((entry) => (
           <MobileListCard key={entry.id}>
             <div className="flex items-start justify-between gap-3">

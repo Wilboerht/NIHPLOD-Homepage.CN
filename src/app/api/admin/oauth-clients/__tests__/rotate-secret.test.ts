@@ -95,6 +95,10 @@ vi.mock("@/lib/backchannel-logout", () => ({
   isBlockedHostname: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/validation", () => ({
   validateCUID: (id: string) => typeof id === "string" && id.length > 0,
   invalidIdResponse: () =>

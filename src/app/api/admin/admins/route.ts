@@ -21,6 +21,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -102,7 +103,7 @@ export const GET = withAuth(async (request, admin) => {
         where,
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         select: {
           id: true,
           email: true,
@@ -169,6 +170,10 @@ export const POST = withAuth(async (request, admin) => {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    // 管理员账号/权限变更属于高风险操作：要求 step-up
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const body = await request.json();
 
@@ -379,6 +384,10 @@ export const PUT = withAuth(async (request, admin) => {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    // 管理员账号/权限变更属于高风险操作：要求 step-up
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const body = await request.json();
     const data = updateSchema.parse(body);

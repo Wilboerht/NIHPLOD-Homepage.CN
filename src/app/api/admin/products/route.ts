@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
             select: { id: true, url: true, alt: true },
           },
         },
-        orderBy: { [query.sortBy]: query.sortOrder },
+        orderBy: [{ [query.sortBy]: query.sortOrder }, { id: "asc" }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),
