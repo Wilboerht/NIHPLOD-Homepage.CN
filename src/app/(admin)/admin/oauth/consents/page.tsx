@@ -2,18 +2,19 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, XCircle } from "lucide-react";
+import { RefreshCw, Search, X, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -48,8 +49,8 @@ interface ConsentsResponse {
   searchTruncated?: boolean;
 }
 
-const STATUS_OPTIONS = [
-  { value: "", label: "全部状态" },
+const STATUS_TABS = [
+  { value: "", label: "全部授权" },
   { value: "active", label: "已授权" },
   { value: "revoked", label: "已撤销" },
 ];
@@ -172,6 +173,17 @@ function OAuthConsentsPage() {
     setPage(1);
   };
 
+  const hasFilters = Boolean(searchPhone || searchClientId || statusFilter);
+
+  const handleReset = () => {
+    setSearchPhone("");
+    setSearchClientId("");
+    setDebouncedPhone("");
+    setDebouncedClientId("");
+    setStatusFilter("");
+    setPage(1);
+  };
+
   const handleRevoke = async () => {
     if (!revokeTarget) return;
     setRevoking(true);
@@ -233,39 +245,112 @@ function OAuthConsentsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="SSO 用户授权管理" description="管理用户对 SSO 应用的授权记录" />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="SSO 用户授权管理"
+        description="查看并撤销用户对 SSO 应用的授权记录"
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchConsents}>
+            <RefreshCw className="mr-1.5 h-4 w-4" />
+            刷新
+          </Button>
+        }
+      />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="w-48">
-          <Input
-            placeholder="用户手机号"
-            value={searchPhone}
-            onChange={(e) => setSearchPhone(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
+      {/* 工具栏：状态分段筛选 + 精确搜索 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            role="group"
+            aria-label="按授权状态筛选"
+            className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+          >
+            {STATUS_TABS.map((tab) => {
+              const active = statusFilter === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setStatusFilter(tab.value);
+                    setPage(1);
+                  }}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
+                    active
+                      ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                      : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-56">
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Input
+                aria-label="按用户手机号搜索"
+                placeholder="搜索用户手机号"
+                value={searchPhone}
+                onChange={(e) => setSearchPhone(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className={searchPhone ? "pl-10 pr-10" : "pl-10"}
+              />
+              {searchPhone && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchPhone("");
+                    setDebouncedPhone("");
+                    setPage(1);
+                  }}
+                  aria-label="清除手机号搜索"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="relative w-full sm:w-56">
+              <Input
+                aria-label="按 Client ID 搜索"
+                placeholder="Client ID"
+                value={searchClientId}
+                onChange={(e) => setSearchClientId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className={searchClientId ? "pr-10" : undefined}
+              />
+              {searchClientId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchClientId("");
+                    setDebouncedClientId("");
+                    setPage(1);
+                  }}
+                  aria-label="清除 Client ID 搜索"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                leftIcon={<X className="h-4 w-4" />}
+              >
+                清除筛选
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="w-48">
-          <Input
-            placeholder="Client ID"
-            value={searchClientId}
-            onChange={(e) => setSearchClientId(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-        </div>
-        <div className="w-36">
-          <Select
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
-        <Button variant="outline" onClick={handleSearch} leftIcon={<Search className="h-4 w-4" />}>
-          搜索
-        </Button>
       </div>
 
       {searchTruncated && (
@@ -276,9 +361,9 @@ function OAuthConsentsPage() {
 
       {/* 批量操作栏 */}
       {canWrite && selection.selectedCount > 0 && (
-        <div className="flex items-center gap-4 rounded-lg bg-brand-primary/5 px-4 py-3">
-          <span className="text-sm text-brand-charcoal/80">
-            已选择 <strong>{selection.selectedCount}</strong> 条授权
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
+          <span className="text-sm font-medium text-brand-charcoal">
+            已选择 {selection.selectedCount} 条授权
           </span>
           <Button
             size="sm"
@@ -397,11 +482,11 @@ function OAuthConsentsPage() {
 
       {/* 桌面端表格 */}
       <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <table className="w-full min-w-[860px]">
-          <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
-            <tr>
+        <table className="w-full min-w-[900px] text-sm">
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
               {canWrite && (
-                <th className="w-10 px-4 py-3">
+                <th scope="col" className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selection.isAllSelected(consents.filter((c) => c.status === "active"))}
@@ -416,49 +501,48 @@ function OAuthConsentsPage() {
                   />
                 </th>
               )}
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 用户手机号
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 用户昵称
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
-                Client ID
+              <th scope="col" className="px-4 py-3 font-normal">
+                Client
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 Scopes
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 授权时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 撤销时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 状态
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 text-right font-normal">
                 操作
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={canWrite ? 9 : 8} />
               ))
             ) : consents.length === 0 ? (
               <tr>
-                <td colSpan={canWrite ? 9 : 8} className="py-8 text-center text-brand-charcoal/65">
-                  暂无数据
+                <td colSpan={canWrite ? 9 : 8}>
+                  <div className="flex justify-center py-8">
+                    <Empty title="暂无授权记录" description="用户授权后记录会显示在这里" />
+                  </div>
                 </td>
               </tr>
             ) : (
               consents.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]"
-                >
+                <tr key={c.id} className="hover:bg-brand-charcoal/[0.03]">
                   {canWrite && (
                     <td className="w-10 px-4 py-3">
                       {c.status === "active" ? (
@@ -487,9 +571,14 @@ function OAuthConsentsPage() {
                     <Tooltip content="查看 Client" side="top">
                       <Link
                         href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
-                        className="inline-flex font-mono text-brand-primary hover:underline"
+                        className="inline-flex flex-col text-brand-primary hover:underline"
                       >
-                        {c.clientName || c.clientId}
+                        <span>{c.clientName || c.clientId}</span>
+                        {c.clientName && (
+                          <span className="font-mono text-xs text-brand-charcoal/65">
+                            {c.clientId}
+                          </span>
+                        )}
                       </Link>
                     </Tooltip>
                   </td>
@@ -552,8 +641,8 @@ function OAuthConsentsPage() {
         </table>
       </div>
 
-      {total > pageSize && (
-        <div className="mt-4">
+      {total > 0 && (
+        <div className="flex justify-center">
           <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}

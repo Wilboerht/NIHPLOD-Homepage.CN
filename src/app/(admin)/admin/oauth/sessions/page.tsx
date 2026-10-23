@@ -2,7 +2,17 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, LogOut, Trash2, Key, ShieldCheck, Eye, ExternalLink } from "lucide-react";
+import {
+  Search,
+  LogOut,
+  Trash2,
+  Key,
+  ShieldCheck,
+  Eye,
+  ExternalLink,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -11,6 +21,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
@@ -182,6 +193,15 @@ function OAuthSessionsPage() {
     setDebouncedSearch(search);
   };
 
+  const hasFilters = Boolean(search.trim() || searchClientId);
+
+  const handleReset = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setSearchClientId("");
+    setPage(1);
+  };
+
   const handleTerminate = async () => {
     if (!terminateTarget) return;
     setTerminating(true);
@@ -250,38 +270,89 @@ function OAuthSessionsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="SSO 会话管理" />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="SSO 会话管理"
+        description="查看全站活跃 SSO 会话与 Refresh Token，可终止单个用户或全部会话"
+        actions={
+          <>
+            {canWrite && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openUserTerminate()}
+                leftIcon={<LogOut className="h-4 w-4" />}
+              >
+                按用户终止
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={fetchSessions}>
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              刷新
+            </Button>
+            {canWrite && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setShowBatchTerminate(true)}
+                leftIcon={<Trash2 className="h-4 w-4" />}
+              >
+                终止全部会话
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <StatsCard
           title="活跃会话数（全站）"
           value={stats.globalActiveSessions}
+          description="未撤销且未过期的 OAuth 会话"
           icon={<Key className="h-5 w-5" />}
         />
         <StatsCard
           title="活跃 Refresh Token 数"
           value={stats.activeRefreshTokens}
+          description="未撤销且未过期的刷新令牌"
           icon={<ShieldCheck className="h-5 w-5" />}
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="w-56">
+      {/* 工具栏：关键词与 Client 筛选 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
-                placeholder="搜索手机号、昵称、Client ID/名称"
+                aria-label="搜索手机号、昵称、Client ID 或名称"
+                placeholder="搜索手机号 / 昵称 / Client"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className={search ? "pl-10 pr-10" : "pl-10"}
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setDebouncedSearch("");
+                    setPage(1);
+                  }}
+                  aria-label="清除搜索"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             {canReadClients && (
-              <div className="w-48">
+              <div className="w-full sm:w-52">
                 <Select
+                  aria-label="按 Client 筛选"
                   value={searchClientId}
                   onChange={(e) => {
                     setSearchClientId(e.target.value);
@@ -297,32 +368,18 @@ function OAuthSessionsPage() {
                 />
               </div>
             )}
-            <Button
-              variant="outline"
-              onClick={handleSearch}
-              leftIcon={<Search className="h-4 w-4" />}
-            >
-              搜索
-            </Button>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                leftIcon={<X className="h-4 w-4" />}
+              >
+                清除筛选
+              </Button>
+            )}
           </div>
-          {canWrite && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => openUserTerminate()}
-                leftIcon={<LogOut className="h-4 w-4" />}
-              >
-                按用户终止会话
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => setShowBatchTerminate(true)}
-                leftIcon={<Trash2 className="h-4 w-4" />}
-              >
-                批量终止全部会话
-              </Button>
-            </div>
-          )}
+          <span className="text-sm text-brand-charcoal/65 md:ml-auto">共 {total} 条会话</span>
         </div>
       </div>
 
@@ -406,52 +463,63 @@ function OAuthSessionsPage() {
 
       {/* 桌面端表格 */}
       <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <table className="w-full min-w-[860px]">
-          <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
-                用户手机号
+        <table className="w-full min-w-[900px] text-sm">
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="px-4 py-3 font-normal">
+                用户
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
-                用户昵称
+              <th scope="col" className="px-4 py-3 font-normal">
+                Client
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
-                Client ID
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 Scopes
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 创建时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 过期时间
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 text-right font-normal">
                 操作
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
             ) : sessions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-brand-charcoal/65">
-                  暂无数据
-                  {(debouncedSearch || searchClientId) && "，请调整筛选条件后重试"}
+                <td colSpan={6}>
+                  <div className="flex justify-center py-8">
+                    <Empty
+                      title="暂无会话数据"
+                      description={
+                        hasFilters
+                          ? "当前筛选条件下没有活跃会话，请调整筛选条件"
+                          : "用户通过 SSO 登录后会话会显示在这里"
+                      }
+                    />
+                  </div>
                 </td>
               </tr>
             ) : (
               sessions.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]"
-                >
-                  <td className="px-4 py-3 text-sm">{maskForList(s.phone) || s.userId}</td>
-                  <td className="px-4 py-3 text-sm">{s.nickname || "-"}</td>
-                  <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
-                    {s.clientId}
+                <tr key={s.id} className="hover:bg-brand-charcoal/[0.03]">
+                  <td className="px-4 py-3">
+                    <p className="truncate font-medium text-brand-charcoal/80">
+                      {s.nickname || "未设置昵称"}
+                    </p>
+                    <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                      {maskForList(s.phone) || s.userId}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="truncate text-brand-charcoal/80">{s.clientName || "-"}</p>
+                    <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                      {s.clientId}
+                    </p>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
@@ -504,8 +572,8 @@ function OAuthSessionsPage() {
         </table>
       </div>
 
-      {total > pageSize && (
-        <div className="mt-4">
+      {total > 0 && (
+        <div className="flex justify-center">
           <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}

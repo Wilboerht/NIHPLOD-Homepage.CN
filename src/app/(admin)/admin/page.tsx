@@ -4,7 +4,6 @@ import {
   MessageSquare,
   Briefcase,
   Package,
-  Clock,
   Key,
   MonitorStop,
   Shield,
@@ -22,7 +21,7 @@ import {
   PanelCard,
   CollapsiblePanel,
   PendingQueue,
-  SystemAlertBar,
+  SystemAlertIndicator,
   type StatStripItem,
   type PendingQueueItem,
   type SystemAlert,
@@ -32,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
 import { getAdminStats, getSsoStats } from "@/lib/admin-stats";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { formatRelativeTime } from "@/lib/format";
+import { RecentMessagesList } from "@/components/admin/RecentMessagesList";
 
 export default async function AdminDashboard() {
   // 服务端验证管理员身份，未登录直接重定向
@@ -228,7 +227,13 @@ export default async function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="仪表盘" description="欢迎回来，站点数据每 5 分钟更新" />
+      <PageHeader
+        title="仪表盘"
+        description="欢迎回来，站点数据每 5 分钟更新"
+        accessory={
+          systemAlerts.length > 0 ? <SystemAlertIndicator alerts={systemAlerts} /> : undefined
+        }
+      />
 
       {/* 业务统计：独立降级，失败不影响 SSO 统计 */}
       {statsError || !stats ? (
@@ -247,8 +252,6 @@ export default async function AdminDashboard() {
         </div>
       ) : (
         <>
-          <SystemAlertBar alerts={systemAlerts} />
-
           {hasPendingQueues && <PendingQueue items={pendingQueueItems} />}
 
           {overviewItems.length > 0 && (
@@ -273,53 +276,7 @@ export default async function AdminDashboard() {
               className={cn(twoColumnBottom && "lg:col-span-2")}
             >
               {recentMessages && recentMessages.length > 0 ? (
-                <div className="divide-y divide-brand-charcoal/[0.06]">
-                  {recentMessages.map((message) => (
-                    <Link
-                      key={message.id}
-                      href="/admin/messages"
-                      className="flex items-center gap-3 px-1 py-2.5 transition-colors hover:bg-brand-charcoal/[0.03]"
-                    >
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                          message.read
-                            ? "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
-                            : "bg-brand-primary/10 text-brand-primary"
-                        )}
-                      >
-                        {message.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "truncate text-sm",
-                              message.read
-                                ? "font-medium text-brand-charcoal/70"
-                                : "font-semibold text-brand-charcoal"
-                            )}
-                          >
-                            {message.name}
-                          </span>
-                          {!message.read && (
-                            <span
-                              aria-label="未读"
-                              className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-primary"
-                            />
-                          )}
-                          <span className="ml-auto flex shrink-0 items-center gap-1 text-[11px] text-brand-charcoal/65">
-                            <Clock className="h-3 w-3" />
-                            {formatRelativeTime(message.createdAt)}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
-                          {message.content}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                <RecentMessagesList messages={recentMessages} />
               ) : (
                 <Empty title="暂无留言" className="py-10" />
               )}

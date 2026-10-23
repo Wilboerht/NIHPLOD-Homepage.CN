@@ -45,7 +45,7 @@ export function useTotpConfirm() {
     setSubmitting(false);
     setHint(
       reason === "TOTP_NOT_ENABLED"
-        ? "尚未启用二次验证：请先前往「安全设置」启用，或联系超级管理员。"
+        ? "尚未启用二次验证：请先前往「二次验证设置」启用，或联系超级管理员。"
         : "该操作涉及敏感变更。验证成功后短时间内无需重复输入，之后的操作将直接执行。"
     );
     setOpen(true);

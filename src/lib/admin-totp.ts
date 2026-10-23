@@ -69,7 +69,7 @@ export async function requireMoneyOperationTotp(
     return totpError("TOTP_INVALID", "管理员不存在");
   }
   if (!admin.totpEnabled || !admin.totpSecret) {
-    return totpError("TOTP_NOT_ENABLED", "请先在「安全设置」启用二次验证后再执行该操作");
+    return totpError("TOTP_NOT_ENABLED", "请先在「二次验证设置」启用二次验证后再执行该操作");
   }
 
   const trimmed = code?.trim();
@@ -121,7 +121,7 @@ function totpError(code: AdminTotpErrorCode, message: string): NextResponse {
  *
  * 与资金类操作共用同一短时授权（/api/admin/step-up + HttpOnly Cookie）：
  * - 无授权时返回 TOTP_REQUIRED，前端用 useTotpConfirm 拉起一次验证；
- * - 未启用 TOTP 时返回 TOTP_NOT_ENABLED，引导先完成安全设置；
+ * - 未启用 TOTP 时返回 TOTP_NOT_ENABLED，引导先完成二次验证设置；
  * - 授权绑定管理员/会话/tokenVersion，改密、改权限、登出后自动失效。
  *
  * 适用于：用户删除、管理员账号/角色/权限变更、break-glass 查看、

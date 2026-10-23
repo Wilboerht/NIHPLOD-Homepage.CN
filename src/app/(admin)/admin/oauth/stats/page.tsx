@@ -9,12 +9,27 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Users, KeyRound, RefreshCw, Activity, ShieldCheck, ShieldAlert } from "lucide-react";
+import {
+  Activity,
+  KeyRound,
+  MonitorStop,
+  Plus,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Empty } from "@/components/ui/Empty";
 import { apiGet } from "@/lib/api-client";
-import { StatsCard } from "@/components/admin/StatsCard";
-import { PageHeader } from "@/components/admin/PageHeader";
-import { RequirePermission } from "@/components/admin";
+import { cn } from "@/lib/utils";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import {
+  PageHeader,
+  PanelCard,
+  RequirePermission,
+  StatStrip,
+  type StatStripItem,
+} from "@/components/admin";
 
 interface OAuthStats {
   activeClients: number;
@@ -41,6 +56,22 @@ const EVENT_LABELS: Record<string, string> = {
   profile_webhook: "资料变更推送",
 };
 
+const formatCount = (value: number) => value.toLocaleString("zh-CN");
+
+function StatSkeleton({ count, className }: { count: number; className?: string }) {
+  return (
+    <div className={cn("grid gap-x-4 gap-y-4", className)}>
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={index} className="space-y-2">
+          <div className="h-3 w-20 animate-pulse rounded bg-brand-charcoal/10" />
+          <div className="h-6 w-16 animate-pulse rounded bg-brand-charcoal/10" />
+          <div className="h-2.5 w-24 animate-pulse rounded bg-brand-charcoal/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OAuthStatsPage() {
   const [stats, setStats] = useState<OAuthStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,139 +94,186 @@ export default function OAuthStatsPage() {
     deferInEffect(fetchStats);
   }, [fetchStats]);
 
-  if (error) {
-    return (
-      <RequirePermission permission="sso:read">
-        <div className="flex flex-col items-center justify-center gap-3 py-16">
-          <p className="text-sm text-red-500">{error}</p>
-          <button
-            onClick={fetchStats}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-xs hover:bg-gray-50"
-          >
-            重试
-          </button>
-        </div>
-      </RequirePermission>
-    );
-  }
+  const overviewItems: StatStripItem[] = stats
+    ? [
+        {
+          label: "活跃 Client",
+          value: formatCount(stats.activeClients),
+          icon: <KeyRound className="h-3.5 w-3.5" />,
+          description: "启用状态的 OAuth 子项目",
+        },
+        {
+          label: "活跃会话",
+          value: formatCount(stats.activeSessions),
+          icon: <MonitorStop className="h-3.5 w-3.5" />,
+          description: "未撤销的 OAuth 会话",
+        },
+        {
+          label: "活跃刷新令牌",
+          value: formatCount(stats.activeRefreshTokens),
+          icon: <RefreshCw className="h-3.5 w-3.5" />,
+          description: "未撤销的 refresh token",
+        },
+        {
+          label: "本月授权成功率",
+          value: stats.successRate === null ? "—" : `${stats.successRate}%`,
+          icon: <ShieldCheck className="h-3.5 w-3.5" />,
+          description: stats.successRate === null ? "本月暂无授权事件" : "本月 authorize 成功占比",
+          muted: stats.successRate === null,
+        },
+      ]
+    : [];
+
+  const trendItems: StatStripItem[] = stats
+    ? [
+        {
+          label: "今日事件",
+          value: formatCount(stats.events.today),
+          icon: <Activity className="h-3.5 w-3.5" />,
+          description: "今日 0 点至今",
+        },
+        {
+          label: "本周事件",
+          value: formatCount(stats.events.thisWeek),
+          icon: <Activity className="h-3.5 w-3.5" />,
+          description: "本周累计",
+        },
+        {
+          label: "本月事件",
+          value: formatCount(stats.events.thisMonth),
+          icon: <Activity className="h-3.5 w-3.5" />,
+          description: "本月累计",
+        },
+      ]
+    : [];
 
   const maxEventCount = stats ? Math.max(1, ...Object.values(stats.eventsByType)) : 1;
+  const eventTotal = stats
+    ? Object.values(stats.eventsByType).reduce((sum, count) => sum + count, 0)
+    : 0;
+  const isEmpty =
+    !!stats &&
+    stats.activeClients === 0 &&
+    stats.activeSessions === 0 &&
+    stats.activeRefreshTokens === 0 &&
+    stats.events.thisMonth === 0;
 
   return (
     <RequirePermission permission="sso:read">
-      <div className="space-y-6">
-        <PageHeader title="SSO 统计概览" description="子项目接入与授权情况总览" />
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          title="SSO 统计概览"
+          description="子项目接入与授权情况总览"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+              onClick={fetchStats}
+              loading={loading}
+            >
+              刷新
+            </Button>
+          }
+        />
 
-        {/* 统计卡片 */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            title="活跃客户端"
-            value={stats?.activeClients ?? 0}
-            icon={<Users className="h-5 w-5" />}
-            description="启用状态的 OAuth 子项目"
-            loading={loading}
-          />
-          <StatsCard
-            title="活跃授权会话"
-            value={stats?.activeSessions ?? 0}
-            icon={<KeyRound className="h-5 w-5" />}
-            description="未撤销的 OAuth 会话"
-            loading={loading}
-          />
-          <StatsCard
-            title="活跃刷新令牌"
-            value={stats?.activeRefreshTokens ?? 0}
-            icon={<RefreshCw className="h-5 w-5" />}
-            description="未撤销的 refresh token"
-            loading={loading}
-          />
-          <StatsCard
-            title="本月授权成功率"
-            value={
-              stats ? (stats.successRate === null ? "暂无数据" : `${stats.successRate}%`) : "—"
-            }
-            icon={<ShieldCheck className="h-5 w-5" />}
-            description="本月 SSO 授权事件成功比例"
-            loading={loading}
-          />
-        </div>
+        {error ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
+            <div className="rounded-full bg-red-50 p-4">
+              <ShieldAlert className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="mt-4 text-base font-medium text-brand-charcoal">统计加载失败</h2>
+            <p className="mt-1 text-sm text-brand-charcoal/65">{error}</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={fetchStats}>
+              重试
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* 核心指标 */}
+            <PanelCard>
+              {loading ? (
+                <StatSkeleton count={4} className="grid-cols-2 sm:grid-cols-4" />
+              ) : (
+                <StatStrip items={overviewItems} />
+              )}
+            </PanelCard>
 
-        {/* 全部无数据时引导创建第一个 Client */}
-        {stats &&
-          !loading &&
-          stats.activeClients === 0 &&
-          stats.activeSessions === 0 &&
-          stats.activeRefreshTokens === 0 &&
-          stats.events.thisMonth === 0 && (
-            <div className="rounded-xl border border-dashed border-brand-charcoal/20 bg-white p-4 text-sm text-brand-charcoal/70">
-              还没有任何 SSO 数据，
-              <Link
-                href="/admin/oauth-clients/wizard"
-                className="text-brand-primary hover:underline"
-              >
-                去创建第一个 Client
-              </Link>
-              开始接入。
-            </div>
-          )}
+            {/* 空数据引导 */}
+            {!loading && isEmpty && (
+              <PanelCard>
+                <Empty
+                  title="还没有任何 SSO 数据"
+                  description="创建第一个 Client 开始接入 SSO"
+                  action={
+                    <Link href="/admin/oauth-clients/wizard">
+                      <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>
+                        创建 Client
+                      </Button>
+                    </Link>
+                  }
+                  className="py-8"
+                />
+              </PanelCard>
+            )}
 
-        {/* 事件趋势 */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <StatsCard
-            title="今日事件"
-            value={stats?.events.today ?? 0}
-            icon={<Activity className="h-5 w-5" />}
-            loading={loading}
-          />
-          <StatsCard
-            title="本周事件"
-            value={stats?.events.thisWeek ?? 0}
-            icon={<Activity className="h-5 w-5" />}
-            loading={loading}
-          />
-          <StatsCard
-            title="本月事件"
-            value={stats?.events.thisMonth ?? 0}
-            icon={<Activity className="h-5 w-5" />}
-            loading={loading}
-          />
-        </div>
+            {/* 事件趋势 */}
+            <PanelCard title="事件趋势">
+              {loading ? (
+                <StatSkeleton count={3} className="grid-cols-2 sm:grid-cols-3" />
+              ) : (
+                <StatStrip items={trendItems} />
+              )}
+            </PanelCard>
 
-        {/* 事件类型分布 */}
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-          <h2 className="mb-4 text-sm font-medium text-brand-charcoal">本月事件类型分布</h2>
-          {loading ? (
-            <div className="space-y-3">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-6 animate-pulse rounded bg-brand-charcoal/10" />
-              ))}
-            </div>
-          ) : !stats || Object.keys(stats.eventsByType).length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-brand-charcoal/65">
-              本月暂无 SSO 事件
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {Object.entries(stats.eventsByType)
-                .sort((a, b) => b[1] - a[1])
-                .map(([type, count]) => (
-                  <div key={type} className="flex items-center gap-3">
-                    <div className="flex w-32 items-center gap-1.5 text-sm text-brand-charcoal/70">
-                      <ShieldAlert className="h-3.5 w-3.5 text-brand-charcoal/65" />
-                      {EVENT_LABELS[type] || type}
-                    </div>
-                    <div className="h-5 flex-1 overflow-hidden rounded bg-brand-charcoal/5">
-                      <div
-                        className="h-full rounded bg-brand-primary/60 transition-all"
-                        style={{ width: `${(count / maxEventCount) * 100}%` }}
-                      />
-                    </div>
-                    <span className="w-12 text-right text-sm text-brand-charcoal/70">{count}</span>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
+            {/* 事件类型分布 */}
+            <PanelCard
+              title="本月事件类型分布"
+              action={
+                !loading && eventTotal > 0 ? (
+                  <span className="text-xs tabular-nums text-brand-charcoal/65">
+                    共 {formatCount(eventTotal)} 次
+                  </span>
+                ) : undefined
+              }
+            >
+              {loading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2, 3].map((index) => (
+                    <div
+                      key={index}
+                      className="h-6 animate-pulse rounded bg-brand-charcoal/[0.04]"
+                    />
+                  ))}
+                </div>
+              ) : !stats || Object.keys(stats.eventsByType).length === 0 ? (
+                <Empty title="本月暂无 SSO 事件" className="py-8" />
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(stats.eventsByType)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([type, count]) => (
+                      <div key={type} className="flex items-center gap-3">
+                        <div className="flex w-28 shrink-0 items-center gap-1.5 text-xs text-brand-charcoal/70 sm:w-32">
+                          <Activity className="h-3.5 w-3.5 shrink-0 text-brand-charcoal/65" />
+                          <span className="truncate">{EVENT_LABELS[type] || type}</span>
+                        </div>
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-charcoal/[0.06]">
+                          <div
+                            className="h-full rounded-full bg-brand-primary/70 transition-all"
+                            style={{ width: `${(count / maxEventCount) * 100}%` }}
+                          />
+                        </div>
+                        <span className="w-12 shrink-0 text-right text-xs tabular-nums text-brand-charcoal/70">
+                          {formatCount(count)}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </PanelCard>
+          </>
+        )}
       </div>
     </RequirePermission>
   );

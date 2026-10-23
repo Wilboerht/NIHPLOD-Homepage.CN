@@ -207,7 +207,7 @@ export function DataTable<T extends object>({
       <div className={cn("overflow-x-auto", mobileCard && "hidden md:block")}>
         <table
           className={cn(
-            "min-w-full divide-y divide-brand-charcoal/10",
+            "w-full divide-y divide-brand-charcoal/10",
             tableLayout === "fixed" && "table-fixed"
           )}
           style={minWidth ? { minWidth } : undefined}

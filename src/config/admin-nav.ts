@@ -31,7 +31,7 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   badge?: number; // 可选徽章数字（如未读消息数）
-  /** 访问所需权限点（不填表示所有管理员可见，如个人安全设置） */
+  /** 访问所需权限点（不填表示所有管理员可见，如个人二次验证设置） */
   permission?: AdminPermission;
   /** 任一权限点满足即可访问（用于同时支持多个权限域的页面） */
   permissionsAny?: AdminPermission[];
@@ -113,8 +113,8 @@ export const adminNavItems: NavItem[] = [
     permission: "admins:read",
     group: "系统管理",
   },
-  // 个人安全设置对所有管理员开放
-  { title: "安全设置", href: "/admin/settings/totp", icon: ShieldCheck, group: "系统管理" },
+  // 个人二次验证设置对所有管理员开放
+  { title: "二次验证设置", href: "/admin/settings/totp", icon: ShieldCheck, group: "系统管理" },
   {
     title: "审计日志",
     href: "/admin/audit-logs",
@@ -212,7 +212,7 @@ function parseDeepPath(pathname: string): { title: string; href: string } | null
   }
   // TOTP 设置: /admin/settings/totp
   if (pathname === "/admin/settings/totp") {
-    return { title: "安全设置", href: "/admin/settings/totp" };
+    return { title: "二次验证设置", href: "/admin/settings/totp" };
   }
   return null;
 }

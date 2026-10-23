@@ -13,11 +13,14 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { FormSection } from "@/components/admin/FormSection";
+import { CollapsiblePanel } from "@/components/admin/CollapsiblePanel";
 import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -111,6 +114,9 @@ export default function TOTPSettingsPage() {
       });
       setSetupData(data);
       setSetupPassword("");
+      setVerifyCode("");
+      setBackupSaved(false);
+      setShowTotpSecret(false);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "初始化失败");
     } finally {
@@ -301,10 +307,13 @@ export default function TOTPSettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="二次验证设置" />
+      <PageHeader
+        title="二次验证设置"
+        description="使用 TOTP 验证器保护管理员账号；启用后登录和高风险操作都需要动态验证码。"
+      />
 
       {returnTo && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
           {totpEnabled ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>二次验证已开启，可以继续访问测肤子站后台。</span>
@@ -323,48 +332,320 @@ export default function TOTPSettingsPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6">
-        <div className="flex items-start gap-4">
-          <div className={cn("rounded-full p-3", totpEnabled ? "bg-emerald-100" : "bg-amber-100")}>
-            {totpEnabled ? (
-              <ShieldCheck className="h-6 w-6 text-emerald-600" />
-            ) : (
-              <Shield className="h-6 w-6 text-amber-600" />
-            )}
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-medium text-brand-charcoal">
-              {totpEnabled ? "二次验证已启用" : "二次验证未启用"}
-            </h2>
-            <p className="mt-1 text-sm text-brand-charcoal/65">
-              {totpEnabled
-                ? "您的账号已启用基于 TOTP 的二次验证，登录时需要输入动态验证码。"
-                : "启用二次验证后，登录时除了密码还需要输入 Authenticator 应用生成的 6 位动态验证码，大幅提升账号安全性。"}
-            </p>
-            {totpEnabled && (
-              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-brand-charcoal/70">
-                <span>
-                  绑定时间：
-                  <span className="font-medium text-brand-charcoal">
-                    {formatDateTimeNumeric(totpEnabledAt)}
-                  </span>
-                </span>
-                <span>
-                  剩余备用码：
-                  <span className="font-medium text-brand-charcoal">{backupCodesRemaining}</span>
-                  <span className="text-brand-charcoal/65"> 个</span>
-                </span>
+      <section className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+          <div className="flex items-start gap-3.5">
+            <div
+              className={cn(
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                totpEnabled ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
+              )}
+            >
+              {totpEnabled ? <ShieldCheck className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-medium text-brand-charcoal">二次验证</h2>
+                <Badge variant={totpEnabled ? "success" : "warning"} size="sm">
+                  {totpEnabled ? "已启用" : "未启用"}
+                </Badge>
               </div>
-            )}
+              <p className="mt-1 text-sm text-brand-charcoal/65">
+                {totpEnabled
+                  ? "登录和高风险操作需要输入验证器生成的 6 位动态验证码。"
+                  : "启用后，登录和高风险操作都需要动态验证码，可显著降低账号被盗风险。"}
+              </p>
+            </div>
           </div>
+          {totpEnabled && (
+            <Button variant="outline" size="sm" onClick={openRegenerate} className="shrink-0">
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              重新生成备用码
+            </Button>
+          )}
         </div>
-      </div>
 
-      <FormSection
-        title="修改密码"
-        description="修改成功后当前账号的全部会话会失效，需要使用新密码重新登录。"
+        {totpEnabled ? (
+          <div className="grid grid-cols-2 gap-px border-t border-brand-charcoal/10 bg-brand-charcoal/10 sm:grid-cols-3">
+            <div className="bg-white p-4">
+              <p className="text-xs text-brand-charcoal/65">绑定时间</p>
+              <p className="mt-1 text-sm font-medium text-brand-charcoal">
+                {formatDateTimeNumeric(totpEnabledAt)}
+              </p>
+            </div>
+            <div className="bg-white p-4">
+              <p className="text-xs text-brand-charcoal/65">剩余备用码</p>
+              <p className="mt-1 text-sm font-medium text-brand-charcoal">
+                {backupCodesRemaining} 个
+              </p>
+            </div>
+            <div className="col-span-2 bg-white p-4 sm:col-span-1">
+              <p className="text-xs text-brand-charcoal/65">保护范围</p>
+              <p className="mt-1 text-sm font-medium text-brand-charcoal">登录 + 高风险操作</p>
+            </div>
+          </div>
+        ) : (
+          !setupData && (
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                void startSetup();
+              }}
+              className="border-t border-brand-charcoal/10 p-4 sm:p-5"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <Input
+                  label="当前密码"
+                  required
+                  type="password"
+                  value={setupPassword}
+                  onChange={(e) => setSetupPassword(e.target.value)}
+                  placeholder="请输入当前登录密码"
+                  autoComplete="current-password"
+                  hint="出于安全考虑，启用前需验证当前密码"
+                  className="flex-1"
+                />
+                <Button type="submit" loading={processing} disabled={!setupPassword}>
+                  启用二次验证
+                </Button>
+              </div>
+            </form>
+          )
+        )}
+      </section>
+
+      {setupData && (
+        <FormSection title="绑定验证器" description="完成以下 3 步后，二次验证才会正式启用。">
+          <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            密钥和备用码仅显示一次，请妥善保存，不要通过聊天工具发送给他人。
+          </div>
+
+          <ol className="space-y-6">
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-medium text-brand-primary">
+                1
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-brand-charcoal">扫描二维码</p>
+                <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                  使用 Google Authenticator、Microsoft Authenticator 等应用扫描。
+                </p>
+                <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start">
+                  <div className="w-fit rounded-xl border border-brand-charcoal/10 bg-white p-2">
+                    <Image
+                      src={setupData.qrCode}
+                      alt="TOTP QR Code"
+                      width={180}
+                      height={180}
+                      className="h-[180px] w-[180px]"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <p className="text-xs text-brand-charcoal/65">无法扫码时手动输入密钥</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <code className="max-w-full truncate rounded-lg bg-brand-charcoal/[0.04] px-2.5 py-1.5 font-mono text-xs text-brand-charcoal/80">
+                        {showTotpSecret ? setupData.secret : "••••••••••••••••"}
+                      </code>
+                      <Tooltip content={showTotpSecret ? "隐藏密钥" : "显示密钥"} side="top">
+                        <button
+                          type="button"
+                          onClick={() => setShowTotpSecret(!showTotpSecret)}
+                          aria-label={showTotpSecret ? "隐藏密钥" : "显示密钥"}
+                          className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
+                        >
+                          {showTotpSecret ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="复制密钥" side="top">
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(setupData.secret, "secret")}
+                          aria-label="复制密钥"
+                          className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
+                        >
+                          {copied === "secret" ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </button>
+                      </Tooltip>
+                    </div>
+                    <p className="text-[11px] text-brand-charcoal/65">
+                      密钥属于敏感信息，请勿通过聊天工具发送。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </li>
+
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-medium text-brand-primary">
+                2
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-brand-charcoal">保存备用码</p>
+                    <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                      每个备用码只能使用一次，建议保存在密码管理器或离线位置。
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(setupData.backupCodes.join("\n"), "all-backup")}
+                  >
+                    {copied === "all-backup" ? (
+                      <Check className="mr-1.5 h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="mr-1.5 h-4 w-4" />
+                    )}
+                    复制全部
+                  </Button>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {setupData.backupCodes.map((code, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => copyToClipboard(code, `backup-${index}`)}
+                      aria-label={`复制备用码 ${code}`}
+                      className="flex cursor-pointer items-center justify-between rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.06]"
+                    >
+                      <span>{code}</span>
+                      {copied === `backup-${index}` ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3 text-brand-charcoal/65" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-charcoal/10 px-3 py-2.5 text-sm text-brand-charcoal/80">
+                  <input
+                    type="checkbox"
+                    checked={backupSaved}
+                    onChange={(e) => setBackupSaved(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-brand-primary"
+                  />
+                  <span>我已安全保存以上备用码</span>
+                </label>
+              </div>
+            </li>
+
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-medium text-brand-primary">
+                3
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-brand-charcoal">输入验证码完成绑定</p>
+                <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                  输入验证器当前显示的 6 位数字。
+                </p>
+                <form
+                  noValidate
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void verifySetup();
+                  }}
+                  className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end"
+                >
+                  <Input
+                    label="6 位验证码"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={verifyCode}
+                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    autoComplete="one-time-code"
+                    className="flex-1 font-mono"
+                  />
+                  <Button
+                    type="submit"
+                    loading={processing}
+                    disabled={verifyCode.length !== 6 || !backupSaved}
+                  >
+                    确认启用
+                  </Button>
+                </form>
+              </div>
+            </li>
+          </ol>
+        </FormSection>
+      )}
+
+      {totpEnabled && (
+        <CollapsiblePanel
+          title={
+            <span className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-4 w-4" />
+              关闭二次验证
+            </span>
+          }
+          summary="高风险操作，需要当前密码和动态验证码"
+          className="border-red-200"
+        >
+          <p className="text-sm text-brand-charcoal/65">
+            关闭后登录不再需要动态验证码，账号安全性将降低。建议仅在更换验证器或无法继续使用时操作。
+          </p>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              requestDisable();
+            }}
+            className="mt-4 grid gap-3 sm:grid-cols-2"
+          >
+            <Input
+              label="当前密码"
+              type="password"
+              value={disablePassword}
+              onChange={(e) => setDisablePassword(e.target.value)}
+              placeholder="请输入当前密码"
+              autoComplete="current-password"
+            />
+            <Input
+              label="动态验证码 / 备用码"
+              value={disableCode}
+              onChange={(e) => setDisableCode(e.target.value)}
+              placeholder="6 位验证码或备用码"
+              autoComplete="one-time-code"
+              className="font-mono"
+            />
+            <div className="sm:col-span-2">
+              <Button
+                type="submit"
+                variant="danger"
+                loading={processing}
+                disabled={!disablePassword || disableCode.trim().length < 6}
+              >
+                关闭二次验证
+              </Button>
+            </div>
+          </form>
+        </CollapsiblePanel>
+      )}
+
+      <CollapsiblePanel
+        title={
+          <span className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-brand-charcoal/65" />
+            账号密码
+          </span>
+        }
+        summary="修改登录密码；保存后全部会话失效，需要重新登录"
       >
-        <form noValidate onSubmit={handleChangePassword} className="max-w-sm space-y-3">
+        <p className="text-sm text-brand-charcoal/65">
+          修改成功后当前账号的全部会话会失效，需要使用新密码重新登录。
+        </p>
+        <form noValidate onSubmit={handleChangePassword} className="mt-4 max-w-sm space-y-3">
           <Input
             label="当前密码"
             required
@@ -421,212 +702,7 @@ export default function TOTPSettingsPage() {
             修改密码
           </Button>
         </form>
-      </FormSection>
-
-      {!totpEnabled && !setupData && (
-        <FormSection title="启用二次验证">
-          <form
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              void startSetup();
-            }}
-            className="max-w-sm space-y-3"
-          >
-            <Input
-              label="当前密码"
-              required
-              type="password"
-              value={setupPassword}
-              onChange={(e) => setSetupPassword(e.target.value)}
-              placeholder="请输入当前登录密码"
-              autoComplete="current-password"
-              hint="出于安全考虑，启用前需验证当前密码"
-            />
-            <Button type="submit" loading={processing} disabled={!setupPassword}>
-              启用二次验证
-            </Button>
-          </form>
-        </FormSection>
-      )}
-
-      {setupData && (
-        <FormSection>
-          <div className="mb-4 flex items-center gap-2 text-amber-600">
-            <AlertTriangle className="h-5 w-5" />
-            <span className="font-medium">请妥善保存以下信息</span>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-brand-charcoal/80">
-                1. 使用 Authenticator 应用扫描二维码
-              </p>
-              <div className="relative inline-block overflow-hidden rounded-lg border border-brand-charcoal/15">
-                <Image src={setupData.qrCode} alt="TOTP QR Code" width={200} height={200} />
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-xs text-brand-charcoal/80">
-                  {showTotpSecret ? setupData.secret : "••••••••••••••••"}
-                </code>
-                <Tooltip content={showTotpSecret ? "隐藏密钥" : "显示密钥"} side="top">
-                  <button
-                    type="button"
-                    onClick={() => setShowTotpSecret(!showTotpSecret)}
-                    aria-label={showTotpSecret ? "隐藏密钥" : "显示密钥"}
-                    className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
-                  >
-                    {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </Tooltip>
-                <Tooltip content="复制密钥" side="top">
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(setupData.secret, "secret")}
-                    aria-label="复制密钥"
-                    className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
-                  >
-                    {copied === "secret" ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
-                </Tooltip>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-brand-charcoal/80">
-                2. 备用码（仅显示一次，请保存）
-              </p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {setupData.backupCodes.map((code, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => copyToClipboard(code, `backup-${index}`)}
-                    aria-label={`复制备用码 ${code}`}
-                    className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80"
-                  >
-                    <span>{code}</span>
-                    {copied === `backup-${index}` ? (
-                      <Check className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <Copy className="h-3 w-3 text-brand-charcoal/65" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <form
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              void verifySetup();
-            }}
-            className="mt-6 space-y-4"
-          >
-            <label className="flex cursor-pointer items-start gap-2 text-sm text-brand-charcoal/80">
-              <input
-                type="checkbox"
-                checked={backupSaved}
-                onChange={(e) => setBackupSaved(e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-brand-primary"
-              />
-              <span>
-                我已安全保存以上备用码（备用码仅显示一次，丢失后无法找回，未保存将无法在验证器不可用时登录）
-              </span>
-            </label>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[12rem] flex-1">
-                <Input
-                  label="输入 6 位验证码完成绑定"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={verifyCode}
-                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="000000"
-                />
-              </div>
-              <Button
-                type="submit"
-                loading={processing}
-                disabled={verifyCode.length !== 6 || !backupSaved}
-              >
-                确认启用
-              </Button>
-            </div>
-          </form>
-        </FormSection>
-      )}
-
-      {totpEnabled && (
-        <FormSection
-          title="备用码"
-          description="备用码用于验证器不可用时登录，每个仅可使用一次。重新生成后旧备用码立即失效。"
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              leftIcon={<RefreshCw className="h-4 w-4" />}
-              onClick={openRegenerate}
-            >
-              重新生成备用码
-            </Button>
-            <span className="text-sm text-brand-charcoal/65">
-              当前剩余 {backupCodesRemaining} 个备用码
-            </span>
-          </div>
-        </FormSection>
-      )}
-
-      {totpEnabled && (
-        <FormSection
-          title="关闭二次验证"
-          description="关闭后登录不再需要动态验证码，账号安全性将降低。"
-        >
-          <form
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              requestDisable();
-            }}
-            className="flex flex-wrap items-end gap-3"
-          >
-            <div className="min-w-[12rem] flex-1">
-              <Input
-                label="当前密码"
-                type="password"
-                value={disablePassword}
-                onChange={(e) => setDisablePassword(e.target.value)}
-                placeholder="请输入当前密码"
-                autoComplete="current-password"
-              />
-            </div>
-            <div className="min-w-[12rem] flex-1">
-              <Input
-                label="动态验证码 / 备用码"
-                value={disableCode}
-                onChange={(e) => setDisableCode(e.target.value)}
-                placeholder="6 位验证码或备用码"
-                autoComplete="one-time-code"
-                className="font-mono"
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="danger"
-              loading={processing}
-              disabled={!disablePassword || disableCode.trim().length < 6}
-            >
-              关闭二次验证
-            </Button>
-          </form>
-        </FormSection>
-      )}
+      </CollapsiblePanel>
 
       {/* 重新生成备用码（一次性密钥弹窗：展示期间禁止遮罩/Esc/X 关闭） */}
       <Modal

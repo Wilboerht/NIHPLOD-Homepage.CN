@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Download, RotateCw, ChevronDown } from "lucide-react";
+import { Search, Download, RotateCw, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { Pagination } from "@/components/ui/Pagination";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Empty } from "@/components/ui/Empty";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
@@ -195,6 +196,10 @@ function OAuthAuditPage() {
     setDebouncedUserId(searchUserId);
   };
 
+  const hasFilters = Boolean(
+    eventType || searchClientId || searchUserId || dateFrom || dateTo || successFilter
+  );
+
   const handleReset = () => {
     setEventType("");
     setSearchClientId("");
@@ -231,97 +236,118 @@ function OAuthAuditPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="SSO 审计日志"
-        description="记录 SSO 系统所有关键事件"
+        description="记录 SSO 系统所有关键事件，支持按事件类型、用户、Client 与时间范围追溯"
         actions={
-          canExport ? (
-            <Button
-              variant="outline"
-              onClick={handleExportCsv}
-              disabled={exporting}
-              leftIcon={<Download className="h-4 w-4" />}
-            >
-              {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
+          <>
+            {canExport && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={exporting}
+                leftIcon={<Download className="h-4 w-4" />}
+              >
+                {exporting ? "导出中..." : "导出 CSV（最多 5000 条）"}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={fetchAudit}>
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              刷新
             </Button>
-          ) : undefined
+          </>
         }
       />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-44">
-            <Select
-              options={EVENT_TYPE_OPTIONS}
-              value={eventType}
-              onChange={(e) => {
-                setEventType(e.target.value);
-                setPage(1);
-              }}
-            />
+      {/* 筛选栏：条件按类型分组，窄屏自然换行 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="w-full sm:w-40">
+              <Select
+                aria-label="按事件类型筛选"
+                options={EVENT_TYPE_OPTIONS}
+                value={eventType}
+                onChange={(e) => {
+                  setEventType(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div className="w-full sm:w-32">
+              <Select
+                aria-label="按结果筛选"
+                options={SUCCESS_OPTIONS}
+                value={successFilter}
+                onChange={(e) => {
+                  setSuccessFilter(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
+                <DatePicker
+                  aria-label="开始日期"
+                  value={dateFrom}
+                  onChange={(v) => {
+                    setDateFrom(v);
+                    setPage(1);
+                  }}
+                  placeholder="开始日期"
+                />
+              </div>
+              <span className="text-sm text-brand-charcoal/65">至</span>
+              <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
+                <DatePicker
+                  aria-label="结束日期"
+                  value={dateTo}
+                  onChange={(v) => {
+                    setDateTo(v);
+                    setPage(1);
+                  }}
+                  placeholder="结束日期"
+                />
+              </div>
+            </div>
           </div>
-          <div className="w-44">
-            <Input
-              placeholder="Client ID"
-              value={searchClientId}
-              onChange={(e) => setSearchClientId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-44">
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Input
+                aria-label="按 Client ID 搜索"
+                placeholder="搜索 Client ID"
+                value={searchClientId}
+                onChange={(e) => setSearchClientId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-10"
+              />
+            </div>
+            <div className="relative w-full sm:w-44">
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Input
+                aria-label="按用户 ID 搜索"
+                placeholder="搜索用户 ID"
+                value={searchUserId}
+                onChange={(e) => setSearchUserId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-10"
+              />
+            </div>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                leftIcon={<RotateCw className="h-4 w-4" />}
+              >
+                重置
+              </Button>
+            )}
           </div>
-          <div className="w-44">
-            <Input
-              placeholder="用户 ID"
-              value={searchUserId}
-              onChange={(e) => setSearchUserId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </div>
-          <div className="w-36">
-            <DatePicker
-              value={dateFrom}
-              onChange={(v) => {
-                setDateFrom(v);
-                setPage(1);
-              }}
-              placeholder="开始日期"
-            />
-          </div>
-          <div className="w-36">
-            <DatePicker
-              value={dateTo}
-              onChange={(v) => {
-                setDateTo(v);
-                setPage(1);
-              }}
-              placeholder="结束日期"
-            />
-          </div>
-          <div className="w-32">
-            <Select
-              options={SUCCESS_OPTIONS}
-              value={successFilter}
-              onChange={(e) => {
-                setSuccessFilter(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={handleSearch}
-            leftIcon={<Search className="h-4 w-4" />}
-          >
-            搜索
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            leftIcon={<RotateCw className="h-4 w-4" />}
-          >
-            重置
-          </Button>
         </div>
       </div>
 
@@ -374,7 +400,7 @@ function OAuthAuditPage() {
                   />
                 </button>
                 {expandedId === entry.id && (
-                  <pre className="mt-2 max-h-40 overflow-x-auto rounded bg-brand-charcoal/[0.03] p-3 text-xs text-brand-charcoal/70">
+                  <pre className="mt-2 max-h-40 overflow-x-auto rounded-lg border border-brand-charcoal/10 bg-white p-3 text-xs text-brand-charcoal/70">
                     {JSON.stringify(entry.detail, null, 2)}
                   </pre>
                 )}
@@ -386,56 +412,54 @@ function OAuthAuditPage() {
 
       {/* 桌面端表格 */}
       <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <table className="w-full min-w-[900px]">
-          <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+        <table className="w-full min-w-[960px] text-sm">
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="px-4 py-3 font-normal">
                 事件类型
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 用户
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
-                Client ID
+              <th scope="col" className="px-4 py-3 font-normal">
+                Client
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
-                Client Name
+              <th scope="col" className="px-4 py-3 font-normal">
+                IP
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">IP</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 状态
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 时间
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 详情
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-brand-charcoal/65">
-                  暂无数据
-                  {(eventType ||
-                    debouncedClientId ||
-                    debouncedUserId ||
-                    dateFrom ||
-                    dateTo ||
-                    successFilter) &&
-                    "，请调整筛选条件后重试"}
+                <td colSpan={7}>
+                  <div className="flex justify-center py-8">
+                    <Empty
+                      title="暂无审计日志"
+                      description={
+                        hasFilters
+                          ? "当前筛选条件下没有事件，请调整筛选条件"
+                          : "SSO 事件发生后会记录在这里"
+                      }
+                    />
+                  </div>
                 </td>
               </tr>
             ) : (
               entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <tr
-                    key={entry.id}
-                    className="border-b border-brand-charcoal/[0.06] hover:bg-brand-charcoal/[0.03]"
-                  >
+                  <tr className="hover:bg-brand-charcoal/[0.03]">
                     <td className="px-4 py-3">
                       <Badge variant={getEventBadgeVariant(entry.event)}>
                         {formatEventType(entry.event)}
@@ -444,10 +468,12 @@ function OAuthAuditPage() {
                     <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
                       {entry.userPhone || "-"}
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
-                      {entry.clientId}
+                    <td className="px-4 py-3">
+                      <p className="truncate text-brand-charcoal/80">{entry.clientName || "-"}</p>
+                      <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                        {entry.clientId}
+                      </p>
                     </td>
-                    <td className="px-4 py-3 text-sm">{entry.clientName || "-"}</td>
                     <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/65">
                       {entry.ip}
                     </td>
@@ -471,17 +497,14 @@ function OAuthAuditPage() {
                           />
                         </button>
                       ) : (
-                        <span className="text-xs text-gray-600">-</span>
+                        <span className="text-xs text-brand-charcoal/65">-</span>
                       )}
                     </td>
                   </tr>
                   {expandedId === entry.id && entry.detail != null && (
-                    <tr
-                      key={`${entry.id}-detail`}
-                      className="border-b border-brand-charcoal/[0.06] bg-brand-charcoal/[0.03]"
-                    >
-                      <td colSpan={8} className="px-4 py-3">
-                        <pre className="max-h-40 overflow-x-auto rounded bg-brand-charcoal/[0.03] p-3 text-xs text-brand-charcoal/70">
+                    <tr key={`${entry.id}-detail`} className="bg-brand-charcoal/[0.02]">
+                      <td colSpan={7} className="px-4 py-3">
+                        <pre className="max-h-40 overflow-x-auto rounded-lg border border-brand-charcoal/10 bg-white p-3 text-xs text-brand-charcoal/70">
                           {JSON.stringify(entry.detail, null, 2)}
                         </pre>
                       </td>
@@ -494,8 +517,8 @@ function OAuthAuditPage() {
         </table>
       </div>
 
-      {total > pageSize && (
-        <div className="mt-4">
+      {total > 0 && (
+        <div className="flex justify-center">
           <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}

@@ -19,7 +19,7 @@ import { validatePasswordStrength } from "@/lib/password";
 import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { BreakGlassCard } from "@/components/admin/BreakGlassCard";
+import { BreakGlassButton } from "@/components/admin/BreakGlassButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -417,6 +417,7 @@ export default function AdminAdminsPage() {
         <PageHeader
           title="管理员管理"
           description="管理后台管理员账号"
+          accessory={isOwnerActor ? <BreakGlassButton /> : undefined}
           actions={
             <>
               <Button
@@ -435,8 +436,6 @@ export default function AdminAdminsPage() {
             </>
           }
         />
-
-        {isOwnerActor && <BreakGlassCard />}
 
         {/* 搜索栏 */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">

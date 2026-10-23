@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
@@ -130,7 +132,7 @@ function EditProductContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title={
           <>
@@ -145,6 +147,20 @@ function EditProductContent() {
           </>
         }
         description={product.name}
+        accessory={
+          <Badge variant={product.published ? "success" : "secondary"}>
+            {product.published ? "已发布" : "草稿"}
+          </Badge>
+        }
+        actions={
+          product.published ? (
+            <Link href={`/products/${product.slug}`} target="_blank" rel="noreferrer">
+              <Button variant="outline" size="sm" leftIcon={<ExternalLink className="h-4 w-4" />}>
+                查看前台
+              </Button>
+            </Link>
+          ) : undefined
+        }
       />
       <ProductForm mode="edit" initialData={product} categories={categories} />
     </div>

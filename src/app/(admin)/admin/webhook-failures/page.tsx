@@ -6,7 +6,7 @@
  * - 支持立即重投（忽略退避时间）与丢弃单条记录
  */
 import { useCallback, useEffect, useState } from "react";
-import { Webhook, RefreshCw, RotateCw, Trash2, Info, AlertCircle } from "lucide-react";
+import { Webhook, RefreshCw, RotateCw, Trash2, AlertCircle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
@@ -39,6 +39,27 @@ const KIND_TABS: { key: Kind; label: string }[] = [
   { key: "webhook", label: "资料变更 Webhook" },
   { key: "backchannel", label: "Backchannel Logout" },
 ];
+
+function QueueInfoHint() {
+  return (
+    <details className="group relative inline-block">
+      <summary
+        className="flex cursor-pointer list-none items-center rounded-full p-1 text-brand-primary transition-colors hover:bg-brand-primary/5 [&::-webkit-details-marker]:hidden"
+        aria-label="查看队列处理说明"
+        title="查看队列处理说明"
+      >
+        <Webhook className="h-4 w-4" aria-hidden="true" />
+      </summary>
+      <div className="absolute left-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-brand-charcoal/10 bg-white p-3 text-xs leading-relaxed text-brand-charcoal/80 shadow-lg">
+        <p className="font-medium text-brand-charcoal">队列处理说明</p>
+        <p className="mt-1.5">
+          重投会立即向目标地址发起一次投递（忽略退避时间）；失败则按指数退避安排下次自动重试。
+        </p>
+        <p className="mt-2">达到上限或目标已不可用时，记录会被丢弃且不再自动重投。</p>
+      </div>
+    </details>
+  );
+}
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -155,13 +176,9 @@ function AdminWebhookFailuresContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <>
-            <Webhook className="h-5 w-5 text-brand-primary" />
-            通知失败队列
-          </>
-        }
-        description="资料变更 Webhook 与 Backchannel Logout 投递失败记录（cron 自动退避重投，最多 10 次）"
+        title="通知失败队列"
+        description="查看资料变更 Webhook 与 Backchannel Logout 的投递失败记录。"
+        accessory={<QueueInfoHint />}
         actions={
           <Button
             variant="outline"
@@ -173,15 +190,6 @@ function AdminWebhookFailuresContent() {
           </Button>
         }
       />
-
-      {/* 说明 */}
-      <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/70">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-charcoal/65" />
-        <p>
-          重投会立即向目标地址发起一次投递（忽略退避时间）；失败则按指数退避安排下次自动重试。
-          达到上限或目标已不可用时记录会被丢弃。
-        </p>
-      </div>
 
       {/* 队列切换 */}
       <div className="flex flex-wrap gap-2">
@@ -229,7 +237,7 @@ function AdminWebhookFailuresContent() {
             </>
           ) : undefined
         }
-        empty="当前没有投递失败的记录"
+        empty={<Empty title="队列为空" description="当前没有投递失败的记录" />}
         isEmpty={!loading && !loadError && items.length === 0}
       >
         {items.map((item) => (

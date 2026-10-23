@@ -2,12 +2,12 @@
 
 import React from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ClipboardCheck, MessageSquare } from "lucide-react";
 import { CollapsiblePanel } from "@/components/admin/CollapsiblePanel";
 import { PendingQueue, type PendingQueueItem } from "@/components/admin/PendingQueue";
 import { StatStrip } from "@/components/admin/StatStrip";
-import { SystemAlertBar } from "@/components/admin/SystemAlertBar";
+import { SystemAlertIndicator } from "@/components/admin/SystemAlertIndicator";
 
 describe("管理端仪表盘组件", () => {
   it("CollapsiblePanel 默认收起，并提供一行摘要", () => {
@@ -43,14 +43,14 @@ describe("管理端仪表盘组件", () => {
     expect(screen.getByText("含已注销账号")).toBeInTheDocument();
   });
 
-  it("SystemAlertBar 无告警时不渲染", () => {
-    const { container } = render(<SystemAlertBar alerts={[]} />);
+  it("SystemAlertIndicator 无告警时不渲染", () => {
+    const { container } = render(<SystemAlertIndicator alerts={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("SystemAlertBar 渲染告警计数与入口", () => {
+  it("SystemAlertIndicator 在标题旁展示感叹号，展开后显示告警入口", () => {
     render(
-      <SystemAlertBar
+      <SystemAlertIndicator
         alerts={[
           { key: "deletion", label: "注销执行失败", count: 1, href: "/admin/account-deletions" },
           { key: "webhook", label: "Webhook 投递失败", count: 3, href: "/admin/webhook-failures" },
@@ -58,12 +58,17 @@ describe("管理端仪表盘组件", () => {
       />
     );
 
-    expect(screen.getByText("系统告警")).toBeInTheDocument();
-    expect(screen.getByText("共 4 项")).toBeInTheDocument();
+    const trigger = screen.getByLabelText("系统告警，共 4 项");
+    expect(trigger).toBeInTheDocument();
+    fireEvent.click(trigger);
 
     const deletionLink = screen.getByRole("link", { name: /注销执行失败/ });
     expect(deletionLink).toHaveAttribute("href", "/admin/account-deletions");
     expect(within(deletionLink).getByText("1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Webhook 投递失败/ })).toHaveAttribute(
+      "href",
+      "/admin/webhook-failures"
+    );
   });
 
   it("PendingQueue 全部为零时展示成功态", () => {

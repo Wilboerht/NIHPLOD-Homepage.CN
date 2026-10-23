@@ -51,27 +51,21 @@ export async function GET(request: NextRequest) {
       search: searchParams.get("search") || undefined,
     });
 
-    // 构建查询条件
-    const where: Prisma.ContactMessageWhereInput = {};
-
-    if (params.status === "unread") {
-      where.read = false;
-    } else if (params.status === "read") {
-      where.read = true;
-    }
+    // 构建基础筛选（不含阅读状态），用于状态页签计数
+    const baseWhere: Prisma.ContactMessageWhereInput = {};
 
     if (params.replied === "unreplied") {
-      where.reply = null;
+      baseWhere.reply = null;
     } else if (params.replied === "replied") {
-      where.reply = { not: null };
+      baseWhere.reply = { not: null };
     }
 
     if (params.type) {
-      where.type = params.type;
+      baseWhere.type = params.type;
     }
 
     if (params.search) {
-      where.OR = [
+      baseWhere.OR = [
         { name: { contains: params.search, mode: "insensitive" } },
         // 手机号仅精确匹配：contains 可被无敏感权限角色用于逐位枚举完整号码
         { phone: { equals: params.search } },
@@ -79,21 +73,33 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // 查询总数
-    const total = await prisma.contactMessage.count({ where });
+    const where: Prisma.ContactMessageWhereInput = { ...baseWhere };
+    if (params.status === "unread") {
+      where.read = false;
+    } else if (params.status === "read") {
+      where.read = true;
+    }
 
-    // 查询列表
-    const items = await prisma.contactMessage.findMany({
-      where,
-      orderBy: [{ read: "asc" }, { createdAt: "desc" }, { id: "asc" }],
-      skip: (params.page - 1) * params.pageSize,
-      take: params.pageSize,
-    });
+    const [items, allCount, unreadFilteredCount, unreadCount] = await Promise.all([
+      prisma.contactMessage.findMany({
+        where,
+        orderBy: [{ read: "asc" }, { createdAt: "desc" }, { id: "asc" }],
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
+      }),
+      prisma.contactMessage.count({ where: baseWhere }),
+      prisma.contactMessage.count({ where: { ...baseWhere, read: false } }),
+      // 全局未读数：供侧边栏 badge 使用，不随列表筛选变化
+      prisma.contactMessage.count({ where: { read: false } }),
+    ]);
 
-    // 统计未读数
-    const unreadCount = await prisma.contactMessage.count({
-      where: { read: false },
-    });
+    const readFilteredCount = Math.max(0, allCount - unreadFilteredCount);
+    const total =
+      params.status === "unread"
+        ? unreadFilteredCount
+        : params.status === "read"
+          ? readFilteredCount
+          : allCount;
 
     // 持有 messages:sensitive:read 的管理员返回完整手机号（用于回访跟进），否则保持脱敏
     const canReadSensitive = hasAdminPermission(admin, "messages:sensitive:read");
@@ -114,6 +120,11 @@ export async function GET(request: NextRequest) {
           totalPages: Math.ceil(total / params.pageSize),
         },
         unreadCount,
+        counts: {
+          all: allCount,
+          unread: unreadFilteredCount,
+          read: readFilteredCount,
+        },
       },
     });
   } catch (error) {

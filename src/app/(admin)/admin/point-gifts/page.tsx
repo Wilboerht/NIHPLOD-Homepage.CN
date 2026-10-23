@@ -6,7 +6,7 @@
  * - 兑换记录：查看与履约标记
  */
 import { useCallback, useEffect, useState } from "react";
-import { Gift, PackageCheck, RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -379,10 +379,14 @@ function AdminPointGiftsContent() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="积分兑换"
-        description="处理兑换履约与物流单号，并配置可兑换礼品。"
+        description={
+          view === "redemptions"
+            ? `处理兑换履约与物流单号。全站可用积分 ${pointsTotal.toLocaleString()}，待履约 ${counts.PENDING ?? 0} 条。`
+            : "从产品库启用积分兑换，并维护礼品库存。"
+        }
         actions={
           <Button
             variant="outline"
@@ -395,123 +399,138 @@ function AdminPointGiftsContent() {
         }
       />
 
-      {showViewTabs && (
-        <div
-          role="tablist"
-          aria-label="积分兑换工作区"
-          className="inline-flex w-full rounded-xl border border-brand-charcoal/10 bg-white p-1 sm:w-auto"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "redemptions"}
-            onClick={() =>
-              update({ view: "redemptions", page: null }, { replace: true, resetPage: false })
-            }
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
-              view === "redemptions"
-                ? "bg-brand-primary text-white"
-                : "text-brand-charcoal/70 hover:bg-brand-charcoal/[0.04]"
-            }`}
-          >
-            <PackageCheck className="h-4 w-4" />
-            兑换履约
-            {(counts.PENDING ?? 0) > 0 && (
-              <span
-                className={`rounded-full px-1.5 text-[11px] ${
-                  view === "redemptions" ? "bg-white/20" : "bg-red-50 text-red-600"
+      {/* 与消费记录审核一致的筛选栏：工作区切换 + 当前工作区筛选 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {showViewTabs ? (
+            <div
+              role="group"
+              aria-label="积分兑换工作区"
+              className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+            >
+              <button
+                type="button"
+                aria-pressed={view === "redemptions"}
+                onClick={() =>
+                  update({ view: "redemptions", page: null }, { replace: true, resetPage: false })
+                }
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 ${
+                  view === "redemptions"
+                    ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                    : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
                 }`}
               >
-                {counts.PENDING}
-              </span>
-            )}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "gifts"}
-            onClick={() => update({ view: "gifts" }, { replace: true, resetPage: false })}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
-              view === "gifts"
-                ? "bg-brand-primary text-white"
-                : "text-brand-charcoal/70 hover:bg-brand-charcoal/[0.04]"
-            }`}
-          >
-            <Gift className="h-4 w-4" />
-            礼品设置
-          </button>
-        </div>
-      )}
+                兑换履约
+                <span
+                  className={`min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs tabular-nums ${
+                    view === "redemptions"
+                      ? "bg-brand-primary/10 text-brand-primary"
+                      : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                  }`}
+                >
+                  {counts.PENDING ?? 0}
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={view === "gifts"}
+                onClick={() => update({ view: "gifts" }, { replace: true, resetPage: false })}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 ${
+                  view === "gifts"
+                    ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                    : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                }`}
+              >
+                礼品设置
+              </button>
+            </div>
+          ) : (
+            <h2 className="px-1 text-sm font-medium text-brand-charcoal">
+              {view === "redemptions" ? "兑换履约" : "礼品设置"}
+            </h2>
+          )}
 
-      {/* 概览统计：仅在兑换履约工作区展示 */}
-      {view === "redemptions" && canRedeemRead && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3">
-            <p className="text-xs text-brand-charcoal/65">全站可用积分</p>
-            <p className="mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal">
-              {pointsTotal.toLocaleString()}
-            </p>
-            <p className="mt-0.5 text-[11px] text-brand-charcoal/65">用户账户可用积分之和</p>
-          </div>
-          <div className="rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3">
-            <p className="text-xs text-brand-charcoal/65">待履约兑换</p>
-            <p className="mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal">
-              {counts.PENDING ?? 0}
-            </p>
-            <p className="mt-0.5 text-[11px] text-brand-charcoal/65">需要人工处理</p>
-          </div>
-          <div className="col-span-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 md:col-span-1">
-            <p className="text-xs text-brand-charcoal/65">已履约兑换</p>
-            <p className="mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal">
-              {counts.FULFILLED ?? 0}
-            </p>
-            <p className="mt-0.5 text-[11px] text-brand-charcoal/65">已完成发货</p>
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:items-center">
+            {view === "redemptions" ? (
+              <>
+                <div className="relative w-full md:w-72">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+                  <Input
+                    aria-label="搜索手机号、昵称或产品名"
+                    placeholder="搜索手机号 / 昵称 / 产品名"
+                    value={redemptionSearch}
+                    onChange={(e) => setRedemptionSearch(e.target.value)}
+                    className={redemptionSearch ? "pl-10 pr-10" : "pl-10"}
+                  />
+                  {redemptionSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRedemptionSearch("");
+                        update({ search: null }, { replace: true });
+                      }}
+                      aria-label="清除搜索"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="w-full sm:w-40">
+                  <Select
+                    aria-label="按履约状态筛选"
+                    value={tab}
+                    onChange={(e) => update({ tab: e.target.value })}
+                    options={[
+                      { value: "PENDING", label: `待履约 (${counts.PENDING ?? 0})` },
+                      { value: "FULFILLED", label: `已履约 (${counts.FULFILLED ?? 0})` },
+                      { value: "CANCELLED", label: `已取消 (${counts.CANCELLED ?? 0})` },
+                      {
+                        value: "ALL",
+                        label: `全部 (${Object.values(counts).reduce((sum, count) => sum + count, 0)})`,
+                      },
+                    ]}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="relative w-full md:w-64">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+                  <Input
+                    aria-label="搜索产品名"
+                    placeholder="搜索产品名..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updateProductQuery({ productSearch: searchInput.trim() || null });
+                      }
+                    }}
+                    className="w-full pl-9"
+                  />
+                </div>
+                <div className="w-full sm:w-40">
+                  <Select
+                    aria-label="按兑换状态筛选"
+                    value={redeemableFilter}
+                    onChange={(e) => updateProductQuery({ redeemable: e.target.value })}
+                    options={[
+                      { value: "all", label: "全部产品" },
+                      { value: "true", label: "仅可兑换" },
+                      { value: "false", label: "未设可兑" },
+                    ]}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* 礼品设置（无 gifts:read 权限时不展示，避免必然 403） */}
       {view === "gifts" && canGiftRead && (
         <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-          <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-base font-medium text-brand-charcoal">
-                <Gift className="h-4 w-4 text-brand-charcoal/65" />
-                可兑换礼品
-              </h2>
-              <p className="mt-0.5 text-xs text-brand-charcoal/65">
-                从产品库启用积分兑换，并维护礼品库存。
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <div className="relative w-full sm:w-52">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-                <Input
-                  placeholder="搜索产品名..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      updateProductQuery({ productSearch: searchInput.trim() || null });
-                    }
-                  }}
-                  className="w-full pl-9"
-                />
-              </div>
-              <div className="w-full sm:w-36">
-                <Select
-                  aria-label="按兑换状态筛选"
-                  value={redeemableFilter}
-                  onChange={(e) => updateProductQuery({ redeemable: e.target.value })}
-                  options={[
-                    { value: "all", label: "全部产品" },
-                    { value: "true", label: "仅可兑换" },
-                    { value: "false", label: "未设可兑" },
-                  ]}
-                />
-              </div>
-            </div>
-          </div>
           <div className="md:hidden">
             {productsLoading ? (
               <div className="space-y-2 p-3">
@@ -793,59 +812,6 @@ function AdminPointGiftsContent() {
       {/* 兑换履约（需要 redemptions:read） */}
       {view === "redemptions" && canRedeemRead && (
         <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-          <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-base font-medium text-brand-charcoal">
-                <PackageCheck className="h-4 w-4 text-brand-charcoal/65" />
-                兑换记录
-              </h2>
-              <p className="mt-0.5 text-xs text-brand-charcoal/65">
-                处理待履约订单，维护发货信息与物流单号。
-              </p>
-            </div>
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-              <Input
-                placeholder="搜索手机号 / 昵称 / 产品名"
-                value={redemptionSearch}
-                onChange={(e) => setRedemptionSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 border-b px-4 py-3">
-            {(
-              [
-                { key: "PENDING", label: "待履约" },
-                { key: "FULFILLED", label: "已履约" },
-                { key: "CANCELLED", label: "已取消" },
-                { key: "ALL", label: "全部" },
-              ] as { key: StatusTab; label: string }[]
-            ).map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                aria-pressed={tab === t.key}
-                onClick={() => update({ tab: t.key })}
-                className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                  tab === t.key
-                    ? "border-brand-charcoal bg-brand-charcoal text-white"
-                    : "border-brand-charcoal/15 text-brand-charcoal/70 hover:border-brand-charcoal/30"
-                }`}
-              >
-                {t.label}
-                <span
-                  className={`rounded-full px-1.5 text-xs ${
-                    tab === t.key ? "bg-white/20" : "bg-brand-charcoal/[0.06]"
-                  }`}
-                >
-                  {t.key === "ALL"
-                    ? Object.values(counts).reduce((s, c) => s + c, 0)
-                    : (counts[t.key] ?? 0)}
-                </span>
-              </button>
-            ))}
-          </div>
           <div className="md:hidden">
             {redemptionLoading ? (
               <div className="space-y-2 p-3">

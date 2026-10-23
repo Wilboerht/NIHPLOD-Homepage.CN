@@ -7,7 +7,7 @@
  *   （重试为不可逆操作，需 users:security:write 权限 + 二次确认）
  */
 import { useCallback, useEffect, useState } from "react";
-import { UserX, RefreshCw, RotateCw, Info, AlertCircle } from "lucide-react";
+import { AlertTriangle, RefreshCw, RotateCw, AlertCircle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -54,6 +54,29 @@ const STATUS_BADGES: Record<DeletionStatus, { label: string; className: string }
   COMPLETED: { label: "已完成", className: "bg-emerald-50 text-emerald-600" },
   CANCELLED: { label: "已撤回", className: "bg-brand-charcoal/5 text-brand-charcoal/65" },
 };
+
+function DeletionWarningHint() {
+  return (
+    <details className="group relative inline-block">
+      <summary
+        className="flex cursor-pointer list-none items-center rounded-full p-1 text-amber-600 transition-colors hover:bg-amber-50 [&::-webkit-details-marker]:hidden"
+        aria-label="查看注销任务执行说明"
+        title="查看注销任务执行说明"
+      >
+        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+      </summary>
+      <div className="absolute left-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-amber-200 bg-white p-3 text-xs leading-relaxed text-brand-charcoal/80 shadow-lg">
+        <p className="font-medium text-amber-800">注销任务执行说明</p>
+        <p className="mt-1.5">
+          重试会立即同步执行注销任务（撤销全部会话与子站授权、解绑第三方身份、匿名化个人数据），操作不可逆。
+        </p>
+        <p className="mt-2">
+          连续失败达到上限的申请不会自动重试，需排查失败原因后在此人工处理。
+        </p>
+      </div>
+    </details>
+  );
+}
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "-";
@@ -151,13 +174,9 @@ function AdminAccountDeletionsContent() {
     <div className="space-y-6">
       {/* 头部 */}
       <PageHeader
-        title={
-          <span className="flex items-center gap-2">
-            <UserX className="h-5 w-5 text-brand-primary" />
-            注销申请管理
-          </span>
-        }
-        description="用户自助注销申请（冷静期 → 定时任务匿名化执行）；执行失败的申请可在此人工重试"
+        title="注销申请管理"
+        description="查看冷静期、执行失败与已完成的注销申请。"
+        accessory={<DeletionWarningHint />}
         actions={
           <Button
             variant="outline"
@@ -170,14 +189,6 @@ function AdminAccountDeletionsContent() {
         }
       />
 
-      {/* 说明 */}
-      <div className="flex items-start gap-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 text-sm text-brand-charcoal/70">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-charcoal/65" />
-        <p>
-          重试会立即同步执行注销任务（撤销全部会话与子站授权、解绑第三方身份、匿名化个人数据），
-          操作不可逆。连续失败达到上限的申请不会自动重试，需排查失败原因后在此人工处理。
-        </p>
-      </div>
 
       {/* 状态切换 */}
       <div className="flex flex-wrap gap-2">

@@ -8,11 +8,9 @@ import {
   Eye,
   Trash2,
   Clock,
-  AlertCircle,
   FileText,
   User,
   Briefcase,
-  Filter,
   FolderPlus,
   Folder,
   Edit2,
@@ -29,7 +27,6 @@ import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { formatDateTime as formatDate } from "@/lib/format";
@@ -39,9 +36,13 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
-import { RequirePermission } from "@/components/admin/RequirePermission";
-import { PageHeader } from "@/components/admin/PageHeader";
-import { IconButton } from "@/components/admin/IconButton";
+import {
+  DataTable,
+  IconButton,
+  PageHeader,
+  RequirePermission,
+  type Column,
+} from "@/components/admin";
 
 interface Job {
   id: string;
@@ -90,6 +91,8 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   parttime: "兼职",
   intern: "实习",
 };
+
+const getStatusInfo = (status: string) => statusConfig[status] || statusConfig.pending;
 
 function AdminApplicationsContent() {
   const router = useRouter();
@@ -407,8 +410,119 @@ function AdminApplicationsContent() {
     }
   };
 
+  // 表格列定义
+  const columns: Column<Application>[] = [
+    {
+      key: "name",
+      title: "申请人",
+      width: "260px",
+      render: (_, application) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-xs font-medium text-brand-primary">
+            {application.name.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-medium text-brand-charcoal">{application.name}</p>
+            <p className="truncate text-xs text-brand-charcoal/65">{application.phone}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "job.title",
+      title: "应聘职位",
+      width: "240px",
+      render: (_, application) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-brand-charcoal/80" title={application.job.title}>
+            {application.job.title}
+          </p>
+          <p className="truncate text-xs text-brand-charcoal/65" title={application.job.titleEn}>
+            {application.job.titleEn}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "folder.name",
+      title: "分类",
+      width: "120px",
+      render: (_, application) =>
+        application.folder ? (
+          <Badge variant="secondary" className="max-w-full">
+            <span className="min-w-0 truncate">{application.folder.name}</span>
+          </Badge>
+        ) : (
+          <span className="text-sm text-brand-charcoal/65">—</span>
+        ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "100px",
+      align: "center",
+      render: (_, application) => {
+        const statusInfo = getStatusInfo(application.status);
+        return <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>;
+      },
+    },
+    {
+      key: "createdAt",
+      title: "申请时间",
+      width: "150px",
+      render: (_, application) => (
+        <span className="text-sm text-brand-charcoal/65">{formatDate(application.createdAt)}</span>
+      ),
+    },
+    {
+      key: "updatedAt",
+      title: "最近处理",
+      width: "150px",
+      render: (_, application) => (
+        <span className="text-sm text-brand-charcoal/65">{formatDate(application.updatedAt)}</span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "140px",
+      align: "right",
+      render: (_, application) => (
+        <div className="flex items-center justify-end gap-1">
+          <Tooltip content="查看详情" side="top">
+            <IconButton
+              label={`查看 ${application.name} 的简历`}
+              onClick={() => viewDetail(application)}
+            >
+              <Eye className="h-4 w-4" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip content="下载简历" side="top">
+            <IconButton
+              label={`下载 ${application.name} 的简历`}
+              onClick={() => downloadResume(application)}
+            >
+              <Download className="h-4 w-4" />
+            </IconButton>
+          </Tooltip>
+          {canDelete && (
+            <Tooltip content="删除" side="top">
+              <IconButton
+                label={`删除 ${application.name} 的申请`}
+                variant="danger"
+                onClick={() => setDeleteTarget(application)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* 头部 */}
       <PageHeader
         title="简历管理"
@@ -429,339 +543,242 @@ function AdminApplicationsContent() {
         }
       />
 
-      {/* 分类夹列表 */}
-      {folders.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => update({ folderId: null })}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              folderFilter === "all"
-                ? "bg-brand-primary text-white"
-                : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/70"
-            )}
-          >
-            <Folder className="h-4 w-4" />
-            全部
-          </button>
-          <button
-            onClick={() => update({ folderId: "uncategorized" })}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              folderFilter === "uncategorized"
-                ? "bg-brand-charcoal text-white"
-                : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/70"
-            )}
-          >
-            <FileText className="h-4 w-4" />
-            未分类
-          </button>
-          {folders.map((folder) => (
-            <div key={folder.id} className="group relative">
-              <button
-                onClick={() => update({ folderId: folder.id })}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                  folderFilter === folder.id
-                    ? "bg-brand-primary text-white"
-                    : "hover:bg-brand-charcoal/8 bg-white text-brand-charcoal/70"
-                )}
-              >
-                {folder.name}
-                <span
+      {/* 筛选栏 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
+        {folders.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-brand-charcoal/10 p-4">
+            <span className="mr-1 text-sm text-brand-charcoal/65">分类</span>
+            <button
+              onClick={() => update({ folderId: null })}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
+                folderFilter === "all"
+                  ? "border-brand-primary bg-brand-primary text-white"
+                  : "border-brand-charcoal/10 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
+              )}
+            >
+              <Folder className="h-3.5 w-3.5" />
+              全部
+            </button>
+            <button
+              onClick={() => update({ folderId: "uncategorized" })}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
+                folderFilter === "uncategorized"
+                  ? "border-brand-primary bg-brand-primary text-white"
+                  : "border-brand-charcoal/10 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
+              )}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              未分类
+            </button>
+            {folders.map((folder) => (
+              <div key={folder.id} className="group relative">
+                <button
+                  onClick={() => update({ folderId: folder.id })}
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-xs",
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
                     folderFilter === folder.id
-                      ? "bg-white/20 text-white"
-                      : "bg-brand-charcoal/8 text-brand-charcoal/65"
+                      ? "border-brand-primary bg-brand-primary text-white"
+                      : "border-brand-charcoal/10 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
                   )}
                 >
-                  {folder.applicationCount}
-                </span>
-              </button>
-              <div className="absolute right-0 top-0 hidden -translate-y-1 translate-x-1 gap-0.5 group-focus-within:flex group-hover:flex max-md:flex">
-                {canWrite && (
-                  <Tooltip content="编辑" side="top">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openFolderModal(folder);
-                      }}
-                      aria-label={`编辑分类 ${folder.name}`}
-                      className="rounded bg-white p-1 text-brand-charcoal/65 shadow hover:text-brand-charcoal/70"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                    </button>
-                  </Tooltip>
-                )}
-                {canWrite && (
-                  <Tooltip content="删除" side="top">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteFolderTarget(folder);
-                      }}
-                      aria-label={`删除分类 ${folder.name}`}
-                      className="rounded bg-white p-1 text-brand-charcoal/65 shadow hover:text-red-500"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Tooltip>
-                )}
+                  {folder.name}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
+                      folderFilter === folder.id
+                        ? "bg-white/20 text-white"
+                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                    )}
+                  >
+                    {folder.applicationCount}
+                  </span>
+                </button>
+                <div className="absolute -right-1.5 -top-2 hidden items-center gap-0.5 group-focus-within:flex group-hover:flex max-md:flex">
+                  {canWrite && (
+                    <Tooltip content="编辑" side="top">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openFolderModal(folder);
+                        }}
+                        aria-label={`编辑分类 ${folder.name}`}
+                        className="rounded-full border border-brand-charcoal/10 bg-white p-1 text-brand-charcoal/65 shadow-sm transition-colors hover:text-brand-charcoal"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  {canWrite && (
+                    <Tooltip content="删除" side="top">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteFolderTarget(folder);
+                        }}
+                        aria-label={`删除分类 ${folder.name}`}
+                        className="rounded-full border border-brand-charcoal/10 bg-white p-1 text-brand-charcoal/65 shadow-sm transition-colors hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="relative w-full md:max-w-sm md:flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Input
+                aria-label="搜索姓名、手机号"
+                placeholder="搜索姓名、手机号..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={search ? "pl-10 pr-10" : "pl-10"}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="清除搜索"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row md:ml-auto">
+              <div className="w-full sm:w-36">
+                <Select
+                  aria-label="按状态筛选"
+                  options={[
+                    { value: "all", label: "全部状态" },
+                    { value: "pending", label: "待处理" },
+                    { value: "reviewed", label: "已查看" },
+                    { value: "interviewed", label: "已面试" },
+                    { value: "rejected", label: "已拒绝" },
+                    { value: "hired", label: "已录用" },
+                  ]}
+                  value={statusFilter}
+                  onChange={(e) => update({ status: e.target.value })}
+                />
+              </div>
+              <div className="w-full sm:w-44">
+                <Select
+                  aria-label="按职位筛选"
+                  options={[
+                    { value: "all", label: "全部职位" },
+                    ...jobs.map((job) => ({ value: job.id, label: job.title })),
+                  ]}
+                  value={jobFilter}
+                  onChange={(e) => update({ jobId: e.target.value })}
+                />
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* 工具栏 */}
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-          <Input
-            placeholder="搜索姓名、手机号..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-brand-charcoal/65" />
-          <Select
-            options={[
-              { value: "all", label: "全部状态" },
-              { value: "pending", label: "待处理" },
-              { value: "reviewed", label: "已查看" },
-              { value: "interviewed", label: "已面试" },
-              { value: "rejected", label: "已拒绝" },
-              { value: "hired", label: "已录用" },
-            ]}
-            value={statusFilter}
-            onChange={(e) => update({ status: e.target.value })}
-            className="w-32"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Briefcase className="h-4 w-4 text-brand-charcoal/65" />
-          <Select
-            options={[
-              { value: "all", label: "全部职位" },
-              ...jobs.map((job) => ({ value: job.id, label: job.title })),
-            ]}
-            value={jobFilter}
-            onChange={(e) => update({ jobId: e.target.value })}
-            className="w-40"
-          />
+          </div>
         </div>
       </div>
 
-      {/* 申请列表（窄屏横向滚动，避免 12 列网格挤压错位） */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-          </div>
-        ) : loadError ? (
-          <div className="flex h-64 flex-col items-center justify-center">
-            <div className="rounded-full bg-red-50 p-4">
-              <AlertCircle className="h-8 w-8 text-red-400" />
-            </div>
-            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/65">无法获取简历列表，请检查网络连接</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={fetchApplications}>
-              重试
-            </Button>
-          </div>
-        ) : applications.length === 0 ? (
-          <Empty className="h-64" title="暂无简历申请" />
-        ) : (
-          <>
-            <div className="divide-brand-charcoal/8 divide-y md:hidden">
-              {applications.map((application) => {
-                const statusInfo = statusConfig[application.status] || statusConfig.pending;
-                return (
-                  <div key={application.id} className="px-4 py-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
-                        {application.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate font-medium text-brand-charcoal">
-                            {application.name}
-                          </p>
-                          <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
-                        </div>
-                        <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
-                          {application.phone}
-                        </p>
-                        <p className="mt-1 truncate text-sm text-brand-charcoal/80">
-                          {application.job.title}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/65">
-                          {application.folder && (
-                            <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5">
-                              <Tag className="h-3 w-3" />
-                              {application.folder.name}
-                            </span>
-                          )}
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            申请 {formatDate(application.createdAt)}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            最近处理 {formatDate(application.updatedAt)}
-                          </span>
-                        </div>
-                      </div>
+      {/* 申请列表 */}
+      {loadError ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <p className="text-sm text-red-500">加载失败，请重试</p>
+          <Button variant="outline" size="sm" onClick={fetchApplications}>
+            重试
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={applications}
+          loading={loading}
+          rowKey="id"
+          tableLayout="fixed"
+          minWidth="1160px"
+          emptyText="暂无简历申请"
+          rowProps={(application) => ({
+            className: cn(
+              "hover:bg-brand-charcoal/[0.03]",
+              application.status === "pending" &&
+                "!bg-brand-primary/[0.04] hover:!bg-brand-primary/[0.06]"
+            ),
+          })}
+          mobileCard={(application) => {
+            const statusInfo = getStatusInfo(application.status);
+            return (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
+                    {application.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium text-brand-charcoal">{application.name}</p>
+                      <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
                     </div>
-                    <div className="mt-3 flex justify-end gap-1">
-                      <Tooltip content="查看详情" side="top">
-                        <IconButton
-                          label={`查看 ${application.name} 的简历`}
-                          onClick={() => viewDetail(application)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content="下载简历" side="top">
-                        <IconButton
-                          label={`下载 ${application.name} 的简历`}
-                          onClick={() => downloadResume(application)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </IconButton>
-                      </Tooltip>
-                      {canDelete && (
-                        <Tooltip content="删除" side="top">
-                          <IconButton
-                            label={`删除 ${application.name} 的申请`}
-                            variant="danger"
-                            onClick={() => setDeleteTarget(application)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </IconButton>
-                        </Tooltip>
+                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
+                      {application.phone}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-brand-charcoal/80">
+                      {application.job.title}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/65">
+                      {application.folder && (
+                        <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5">
+                          <Tag className="h-3 w-3" />
+                          {application.folder.name}
+                        </span>
                       )}
+                      <span>最近处理 {formatDate(application.updatedAt)}</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="hidden min-w-[880px] md:block">
-              {/* 表头 */}
-              <div className="border-brand-charcoal/8 grid grid-cols-12 gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/65">
-                <span className="col-span-3">申请人</span>
-                <span className="col-span-3">应聘职位</span>
-                <span className="col-span-2">状态</span>
-                <span className="col-span-2">申请 / 处理时间</span>
-                <span className="col-span-2 text-right">操作</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+                  <span className="inline-flex items-center gap-1 text-xs text-brand-charcoal/65">
+                    <Clock className="h-3 w-3" />
+                    申请 {formatDate(application.createdAt)}
+                  </span>
+                  <div className="flex items-center justify-end gap-1">
+                    <Tooltip content="查看详情" side="top">
+                      <IconButton
+                        label={`查看 ${application.name} 的简历`}
+                        onClick={() => viewDetail(application)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip content="下载简历" side="top">
+                      <IconButton
+                        label={`下载 ${application.name} 的简历`}
+                        onClick={() => downloadResume(application)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </IconButton>
+                    </Tooltip>
+                    {canDelete && (
+                      <Tooltip content="删除" side="top">
+                        <IconButton
+                          label={`删除 ${application.name} 的申请`}
+                          variant="danger"
+                          onClick={() => setDeleteTarget(application)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              {/* 列表 */}
-              <div className="divide-brand-charcoal/8 divide-y">
-                {applications.map((application) => {
-                  const statusInfo = statusConfig[application.status] || statusConfig.pending;
-                  return (
-                    <div
-                      key={application.id}
-                      className={cn(
-                        "grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-brand-charcoal/[0.03]",
-                        application.status === "pending" && "bg-brand-primary/5"
-                      )}
-                    >
-                      {/* 申请人信息 */}
-                      <div className="col-span-3 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
-                          {application.name.charAt(0)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-brand-charcoal">
-                            {application.name}
-                          </p>
-                          <p className="truncate text-xs text-brand-charcoal/65">
-                            {application.phone}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* 应聘职位 */}
-                      <div className="col-span-3 flex items-center">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-brand-charcoal/80">
-                            {application.job.title}
-                          </p>
-                          <p className="truncate text-xs text-brand-charcoal/65">
-                            {application.job.titleEn}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* 状态 */}
-                      <div className="col-span-2 flex flex-col justify-center gap-1">
-                        <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
-                        {application.folder && (
-                          <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-brand-charcoal/70">
-                            <Tag className="h-3 w-3" />
-                            {application.folder.name}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* 时间 */}
-                      <div className="col-span-2 flex flex-col justify-center gap-0.5 text-sm text-brand-charcoal/65">
-                        <span className="flex items-center">
-                          <Clock className="mr-1.5 h-3.5 w-3.5" />
-                          {formatDate(application.createdAt)}
-                        </span>
-                        <span className="text-xs text-brand-charcoal/65">
-                          最近处理 {formatDate(application.updatedAt)}
-                        </span>
-                      </div>
-
-                      {/* 操作 */}
-                      <div className="col-span-2 flex items-center justify-end gap-1">
-                        <Tooltip content="查看详情" side="top">
-                          <button
-                            onClick={() => viewDetail(application)}
-                            aria-label={`查看 ${application.name} 的简历`}
-                            className="hover:bg-brand-charcoal/8 rounded p-2 text-brand-charcoal/65 hover:text-brand-charcoal/70"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                        <Tooltip content="下载简历" side="top">
-                          <button
-                            onClick={() => downloadResume(application)}
-                            aria-label={`下载 ${application.name} 的简历`}
-                            className="rounded p-2 text-brand-charcoal/65 hover:bg-brand-primary/[0.06] hover:text-brand-primary"
-                          >
-                            <Download className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                        {canDelete && (
-                          <Tooltip content="删除" side="top">
-                            <button
-                              onClick={() => setDeleteTarget(application)}
-                              aria-label={`删除 ${application.name} 的申请`}
-                              className="rounded p-2 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+            );
+          }}
+        />
+      )}
 
       {/* 分页（始终展示总数） */}
       {total > 0 && (

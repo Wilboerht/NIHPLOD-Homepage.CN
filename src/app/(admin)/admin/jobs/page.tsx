@@ -3,25 +3,28 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Edit, Eye, EyeOff, MapPin, Plus, Search, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { Pagination } from "@/components/ui/Pagination";
+import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { useToast } from "@/components/ui/Toast";
+import { Input } from "@/components/ui/Input";
+import { Pagination } from "@/components/ui/Pagination";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { Empty } from "@/components/ui/Empty";
-import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
+import { useToast } from "@/components/ui/Toast";
+import {
+  DataTable,
+  IconButton,
+  PageHeader,
+  RequirePermission,
+  type Column,
+} from "@/components/admin";
+import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
-import { RequirePermission } from "@/components/admin/RequirePermission";
-import { PageHeader } from "@/components/admin/PageHeader";
-import { IconButton } from "@/components/admin/IconButton";
+import { cn } from "@/lib/utils";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
-import { useRowSelection } from "@/hooks/useRowSelection";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useRowSelection } from "@/hooks/useRowSelection";
 
 interface Job {
   id: string;
@@ -41,6 +44,12 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   parttime: "兼职",
   intern: "实习",
 };
+
+const STATUS_TABS = [
+  { value: "all", label: "全部" },
+  { value: "published", label: "已发布" },
+  { value: "draft", label: "草稿" },
+] as const;
 
 export default function AdminJobsPage() {
   const router = useRouter();
@@ -231,12 +240,163 @@ export default function AdminJobsPage() {
     }
   };
 
+  // 表格列定义（无任何写/删权限时不展示勾选列）
+  const selectColumn: Column<Job> = {
+    key: "select",
+    title: (
+      <input
+        type="checkbox"
+        checked={selection.isAllSelected(jobs)}
+        ref={(el) => {
+          if (el) el.indeterminate = selection.isIndeterminate(jobs);
+        }}
+        onChange={() => selection.toggleAll(jobs, !selection.isAllSelected(jobs))}
+        aria-label="全选本页职位"
+        className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+      />
+    ),
+    width: "48px",
+    align: "center",
+    render: (_, job) => (
+      <input
+        type="checkbox"
+        checked={selection.isSelected(job)}
+        onChange={() => selection.toggle(job)}
+        aria-label={`选择 ${job.title}`}
+        className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+      />
+    ),
+  };
+
+  const columns: Column<Job>[] = [
+    ...(canSelect ? [selectColumn] : []),
+    {
+      key: "title",
+      title: "职位",
+      width: "280px",
+      render: (_, job) => (
+        <div className="min-w-0">
+          <Link
+            href={editHref(job.id)}
+            className="block truncate font-medium text-brand-charcoal transition-colors hover:text-brand-primary"
+            title={job.title}
+          >
+            {job.title}
+          </Link>
+          <p className="truncate text-xs text-brand-charcoal/65" title={job.titleEn}>
+            {job.titleEn}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      title: "类型",
+      width: "100px",
+      render: (_, job) => (
+        <span className="text-sm text-brand-charcoal/70">
+          {JOB_TYPE_LABELS[job.type] || job.type || "-"}
+        </span>
+      ),
+    },
+    {
+      key: "location",
+      title: "工作地点",
+      width: "140px",
+      render: (_, job) => (
+        <span className="inline-flex items-center gap-1 text-sm text-brand-charcoal/70">
+          <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65" />
+          {job.location || "-"}
+        </span>
+      ),
+    },
+    {
+      key: "salary",
+      title: "薪资",
+      width: "140px",
+      render: (_, job) => (
+        <span className="text-sm text-brand-charcoal/70">{job.salary || "-"}</span>
+      ),
+    },
+    {
+      key: "published",
+      title: "状态",
+      width: "100px",
+      align: "center",
+      render: (_, job) => (
+        <Badge variant={job.published ? "success" : "default"}>
+          {job.published ? "已发布" : "草稿"}
+        </Badge>
+      ),
+    },
+    {
+      key: "applications",
+      title: "申请",
+      width: "90px",
+      align: "center",
+      render: (_, job) => (
+        <Link href={`/admin/applications?jobId=${job.id}`} title={`查看 ${job.title} 的申请`}>
+          <Badge variant={job._count.applications > 0 ? "secondary" : "default"}>
+            {job._count.applications}
+          </Badge>
+        </Link>
+      ),
+    },
+    {
+      key: "updatedAt",
+      title: "更新时间",
+      width: "144px",
+      render: (_, job) => (
+        <span className="text-sm text-brand-charcoal/65">{formatDate(job.updatedAt)}</span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "152px",
+      align: "right",
+      render: (_, job) => (
+        <div className="flex items-center justify-end gap-1">
+          {canWriteJobs && (
+            <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
+              <IconButton
+                label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
+                onClick={() => togglePublish(job)}
+                disabled={publishLoadingId !== null}
+              >
+                {job.published ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </IconButton>
+            </Tooltip>
+          )}
+          {canWriteJobs && (
+            <Tooltip content="编辑" side="top">
+              <IconButton label={`编辑 ${job.title}`} href={editHref(job.id)}>
+                <Edit className="h-4 w-4" />
+              </IconButton>
+            </Tooltip>
+          )}
+          {canDeleteJobs && (
+            <Tooltip content="删除" side="top">
+              <IconButton
+                label={`删除 ${job.title}`}
+                variant="danger"
+                onClick={() => setDeleteTarget(job)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <RequirePermission permission="jobs:read">
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {/* 头部 */}
         <PageHeader
-          title="招聘管理"
+          title="职位管理"
           description={`共 ${total} 个职位`}
           actions={
             canWriteJobs ? (
@@ -247,203 +407,212 @@ export default function AdminJobsPage() {
           }
         />
 
-        {/* 工具栏 */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-4">
-            <div className="relative w-full sm:w-60">
+        {/* 筛选栏 */}
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div
+              role="group"
+              aria-label="按发布状态筛选"
+              className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+            >
+              {STATUS_TABS.map((tab) => {
+                const active = statusFilter === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => updateParams({ status: tab.value })}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
+                      active
+                        ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                        : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="relative w-full md:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
+                aria-label="搜索职位"
                 placeholder="搜索职位..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-10"
+                className={searchInput ? "pl-10 pr-10" : "pl-10"}
               />
-            </div>
-            <Select
-              options={[
-                { value: "all", label: "全部状态" },
-                { value: "published", label: "已发布" },
-                { value: "draft", label: "草稿" },
-              ]}
-              value={statusFilter}
-              onChange={(e) => updateParams({ status: e.target.value })}
-              className="w-full sm:w-32"
-            />
-          </div>
-
-          {selection.selectedCount > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-brand-charcoal/65">
-                已选 {selection.selectedCount} 项
-              </span>
-              {canWriteJobs && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBatchAction("publish")}
-                    loading={batchActionLoading === "publish"}
-                    disabled={batchActionLoading !== null && batchActionLoading !== "publish"}
-                  >
-                    批量发布
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleBatchAction("unpublish")}
-                    loading={batchActionLoading === "unpublish"}
-                    disabled={batchActionLoading !== null && batchActionLoading !== "unpublish"}
-                  >
-                    批量下架
-                  </Button>
-                </>
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("");
+                    updateParams({ search: null });
+                  }}
+                  aria-label="清除搜索"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               )}
-              {canBatchDelete && (
+            </div>
+          </div>
+        </div>
+
+        {/* 批量操作 */}
+        {selection.selectedCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
+            <span className="mr-1 text-sm text-brand-charcoal/80">
+              已选 {selection.selectedCount} 项
+            </span>
+            {canWriteJobs && (
+              <>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-red-600 hover:bg-red-50"
-                  onClick={() => setShowBatchDeleteConfirm(true)}
-                  disabled={batchActionLoading !== null}
+                  onClick={() => handleBatchAction("publish")}
+                  loading={batchActionLoading === "publish"}
+                  disabled={batchActionLoading !== null && batchActionLoading !== "publish"}
                 >
-                  批量删除
+                  批量发布
                 </Button>
-              )}
-            </div>
-          )}
-        </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleBatchAction("unpublish")}
+                  loading={batchActionLoading === "unpublish"}
+                  disabled={batchActionLoading !== null && batchActionLoading !== "unpublish"}
+                >
+                  批量下架
+                </Button>
+              </>
+            )}
+            {canBatchDelete && (
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => setShowBatchDeleteConfirm(true)}
+                disabled={batchActionLoading !== null}
+              >
+                批量删除
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={selection.clear}>
+              取消选择
+            </Button>
+          </div>
+        )}
 
         {/* 职位列表 */}
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
-          {loading ? (
-            <div className="flex h-64 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-            </div>
-          ) : loadError ? (
-            <div className="flex h-64 flex-col items-center justify-center gap-3">
-              <p className="text-sm text-red-500">加载失败，请重试</p>
-              <Button variant="outline" size="sm" onClick={fetchJobs}>
-                重试
-              </Button>
-            </div>
-          ) : jobs.length === 0 ? (
-            <Empty className="h-64" title="暂无职位" />
-          ) : (
-            <>
-              {/* 表头：全选本页（无任何操作权限时不展示） */}
-              {canSelect && (
-                <div className="border-brand-charcoal/8 hidden items-center gap-4 border-b px-6 py-3 text-sm font-medium text-brand-charcoal/65 md:flex">
-                  <input
-                    type="checkbox"
-                    checked={selection.isAllSelected(jobs)}
-                    ref={(el) => {
-                      if (el) el.indeterminate = selection.isIndeterminate(jobs);
-                    }}
-                    onChange={() => selection.toggleAll(jobs, !selection.isAllSelected(jobs))}
-                    aria-label="全选本页职位"
-                    className="h-4 w-4 rounded border-brand-charcoal/20"
-                  />
-                  <span className="flex-1">职位</span>
-                  <span>更新时间</span>
-                  <span>操作</span>
-                </div>
-              )}
-              <div className="divide-brand-charcoal/8 divide-y">
-                {jobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="flex flex-wrap items-start gap-3 px-4 py-4 hover:bg-brand-charcoal/[0.03] sm:flex-nowrap sm:items-center sm:gap-4 sm:px-6"
-                  >
-                    {/* 选择框（无任何操作权限时不展示） */}
-                    {canSelect && (
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <p className="text-sm text-red-500">加载失败，请重试</p>
+            <Button variant="outline" size="sm" onClick={fetchJobs}>
+              重试
+            </Button>
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={jobs}
+            loading={loading}
+            rowKey="id"
+            tableLayout="fixed"
+            minWidth="1200px"
+            emptyText="暂无职位数据"
+            rowProps={() => ({ className: "hover:bg-brand-charcoal/[0.03]" })}
+            mobileCard={(job) => (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  {canSelect && (
+                    <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
                       <input
                         type="checkbox"
                         checked={selection.isSelected(job)}
                         onChange={() => selection.toggle(job)}
                         aria-label={`选择 ${job.title}`}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
                       />
-                    )}
-
-                    {/* 职位信息 */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <Link
-                          href={editHref(job.id)}
-                          className="min-w-0 truncate font-medium text-brand-charcoal hover:text-brand-primary"
-                          title={job.title}
-                        >
-                          {job.title}
-                        </Link>
-                        <Badge variant={job.published ? "success" : "default"}>
-                          {job.published ? "已发布" : "草稿"}
-                        </Badge>
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-brand-charcoal/65">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {job.location}
-                        </span>
-                        <span>{JOB_TYPE_LABELS[job.type] || job.type}</span>
-                        {job.salary && <span>{job.salary}</span>}
-                        <Link
-                          href={`/admin/applications?jobId=${job.id}`}
-                          className="hover:text-brand-primary hover:underline"
-                        >
-                          {job._count.applications} 份申请
-                        </Link>
-                      </div>
+                    </label>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={editHref(job.id)}
+                        className="truncate font-medium text-brand-charcoal transition-colors hover:text-brand-primary"
+                      >
+                        {job.title}
+                      </Link>
+                      <Badge variant={job.published ? "success" : "default"}>
+                        {job.published ? "已发布" : "草稿"}
+                      </Badge>
                     </div>
-
-                    {/* 更新时间（移动端同样展示） */}
-                    <div className="text-xs text-brand-charcoal/65 sm:text-sm">
-                      {formatDate(job.updatedAt)}
-                    </div>
-
-                    {/* 操作按钮 */}
-                    <div className="relative ml-auto flex shrink-0 items-center gap-1">
-                      {canWriteJobs && (
-                        <Tooltip content="编辑" side="top">
-                          <IconButton label={`编辑 ${job.title}`} href={editHref(job.id)}>
-                            <Edit className="h-4 w-4" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {canWriteJobs && (
-                        <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
-                          <IconButton
-                            label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
-                            onClick={() => togglePublish(job)}
-                            disabled={publishLoadingId !== null}
-                          >
-                            {job.published ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {canDeleteJobs && (
-                        <Tooltip content="删除" side="top">
-                          <IconButton
-                            label={`删除 ${job.title}`}
-                            variant="danger"
-                            onClick={() => setDeleteTarget(job)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                    <p className="truncate text-xs text-brand-charcoal/65">{job.titleEn}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-brand-charcoal/65">
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {job.location || "-"}
+                      </span>
+                      <span>{JOB_TYPE_LABELS[job.type] || job.type || "-"}</span>
+                      {job.salary && <span>{job.salary}</span>}
+                      <Link
+                        href={`/admin/applications?jobId=${job.id}`}
+                        className="hover:text-brand-primary hover:underline"
+                      >
+                        {job._count.applications} 份申请
+                      </Link>
                     </div>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+                  <span className="text-xs text-brand-charcoal/65">
+                    更新于 {formatDate(job.updatedAt)}
+                  </span>
+                  <div className="flex items-center justify-end gap-1">
+                    {canWriteJobs && (
+                      <Tooltip content={job.published ? "取消发布" : "发布"} side="top">
+                        <IconButton
+                          label={job.published ? `取消发布 ${job.title}` : `发布 ${job.title}`}
+                          onClick={() => togglePublish(job)}
+                          disabled={publishLoadingId !== null}
+                        >
+                          {job.published ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {canWriteJobs && (
+                      <Tooltip content="编辑" side="top">
+                        <IconButton label={`编辑 ${job.title}`} href={editHref(job.id)}>
+                          <Edit className="h-4 w-4" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {canDeleteJobs && (
+                      <Tooltip content="删除" side="top">
+                        <IconButton
+                          label={`删除 ${job.title}`}
+                          variant="danger"
+                          onClick={() => setDeleteTarget(job)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            )}
+          />
+        )}
 
-        {/* 分页（始终展示总数与每页条数，便于小数据量时调整） */}
+        {/* 分页 */}
         {total > 0 && (
           <div className="flex justify-center">
             <Pagination

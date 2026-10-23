@@ -18,6 +18,8 @@ import {
   Shield,
   Smartphone,
   Trash2,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -27,9 +29,11 @@ import { Modal } from "@/components/ui/Modal";
 import { Switch } from "@/components/ui/Switch";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { IconButton } from "@/components/admin/IconButton";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -909,170 +913,195 @@ if (!payload) {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="SSO 应用（OAuth Client）管理"
+        description="管理接入 SSO 的 OAuth 客户端，配置回调地址、Scopes 与令牌安全参数"
         actions={
           <>
-            <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索名称或 Client ID"
-                className="w-full pl-9 sm:w-64"
-              />
-            </div>
             {canWrite && (
               <>
                 <Link href="/admin/oauth-clients/wizard">
-                  <Button variant="outline">向导创建</Button>
+                  <Button variant="outline" size="sm">
+                    向导创建
+                  </Button>
                 </Link>
-                <Button onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
+                <Button size="sm" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>
                   新建 Client
                 </Button>
               </>
             )}
+            <Button variant="outline" size="sm" onClick={fetchClients}>
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              刷新
+            </Button>
           </>
         }
       />
 
-      {/* 移动端卡片列表 */}
-      <div className="space-y-3 md:hidden">
-        {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
-          ))
-        ) : loadError ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center">
-            <p className="text-sm text-red-500">加载失败</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
-              重试
-            </Button>
+      {/* 工具栏：搜索与结果统计同一行，避免筛选控件堆叠 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full md:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Input
+              aria-label="搜索应用名称或 Client ID"
+              placeholder="搜索名称 / Client ID"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={search ? "pl-10 pr-10" : "pl-10"}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setDebouncedSearch("");
+                  setPage(1);
+                }}
+                aria-label="清除搜索"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
-        ) : clients.length === 0 ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center text-sm text-brand-charcoal/65">
-            暂无数据
-            {debouncedSearch && "，请调整筛选条件后重试"}
-          </div>
-        ) : (
-          clients.map((c) => (
-            <div key={c.id} className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <button
-                  onClick={() => openDetailDrawer(c)}
-                  className="min-w-0 text-left"
-                  aria-label={`查看 ${c.name} 详情`}
-                >
-                  <p className="truncate font-medium text-brand-charcoal">{c.name}</p>
-                  <p className="mt-0.5 truncate font-mono text-xs text-brand-charcoal/65">
-                    {c.clientId}
-                  </p>
-                </button>
-                <Badge variant={c.isActive ? "success" : "danger"}>
-                  {c.isActive ? "启用" : "禁用"}
-                </Badge>
-              </div>
-
-              <div className="mt-2 flex flex-wrap items-center gap-1">
-                <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
-                  {c.isPublic ? "Public" : "Confidential"}
-                </Badge>
-                {c.scopes.slice(0, 3).map((s) => (
-                  <Badge key={s} variant="secondary" className="text-xs">
-                    {s}
-                  </Badge>
-                ))}
-                {c.scopes.length > 3 && (
-                  <span className="text-xs text-brand-charcoal/65">+{c.scopes.length - 3}</span>
-                )}
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/65">
-                <span className="flex items-center gap-1">
-                  <Users className="h-3.5 w-3.5" />
-                  {c.activeUserCount ?? 0} 个活跃会话
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {c.lastActiveAt ? formatDate(c.lastActiveAt) : "从未活跃"}
-                </span>
-                <span className="col-span-2 truncate" title={c.redirectUris.join(", ")}>
-                  回调：{c.redirectUris[0] || "-"}
-                  {c.redirectUris.length > 1 && ` 等 ${c.redirectUris.length} 个`}
-                </span>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                <button
-                  onClick={() => copyToClipboard(c.clientId)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  复制 Client ID
-                </button>
-                <ClientActions
-                  client={c}
-                  canWrite={canWrite}
-                  onView={() => openDetailDrawer(c)}
-                  onSdkConfig={() => openSdkConfig(c)}
-                  onTest={() => openTest(c)}
-                  onEdit={() => openEdit(c)}
-                  onRotate={() => setRotateClient(c)}
-                  onToggle={() => (c.isActive ? setDisableClient(c) : handleToggleActive(c))}
-                  onDelete={() => {
-                    setDeleteClient(c);
-                    setDeleteConfirmText("");
-                  }}
-                />
-              </div>
-            </div>
-          ))
-        )}
+          <span className="text-sm text-brand-charcoal/65 md:ml-auto">共 {total} 个 Client</span>
+        </div>
       </div>
+
+      {/* 移动端卡片列表 */}
+      <MobileList
+        loading={loading}
+        error={
+          loadError ? (
+            <>
+              <p className="text-red-500">加载失败</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
+                重试
+              </Button>
+            </>
+          ) : undefined
+        }
+        empty={
+          debouncedSearch ? `暂无匹配「${debouncedSearch}」的 Client` : "暂无 Client，请先创建"
+        }
+        isEmpty={!loading && !loadError && clients.length === 0}
+      >
+        {clients.map((c) => (
+          <MobileListCard key={c.id}>
+            <div className="flex items-start justify-between gap-3">
+              <button
+                onClick={() => openDetailDrawer(c)}
+                className="min-w-0 text-left"
+                aria-label={`查看 ${c.name} 详情`}
+              >
+                <p className="truncate font-medium text-brand-charcoal">{c.name}</p>
+                <p className="mt-0.5 truncate font-mono text-xs text-brand-charcoal/65">
+                  {c.clientId}
+                </p>
+              </button>
+              <Badge variant={c.isActive ? "success" : "danger"}>
+                {c.isActive ? "启用" : "禁用"}
+              </Badge>
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
+                {c.isPublic ? "Public" : "Confidential"}
+              </Badge>
+              {c.scopes.slice(0, 3).map((s) => (
+                <Badge key={s} variant="secondary" className="text-xs">
+                  {s}
+                </Badge>
+              ))}
+              {c.scopes.length > 3 && (
+                <span className="text-xs text-brand-charcoal/65">+{c.scopes.length - 3}</span>
+              )}
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/65">
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                {c.activeUserCount ?? 0} 个活跃会话
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {c.lastActiveAt ? formatDate(c.lastActiveAt) : "从未活跃"}
+              </span>
+              <span className="col-span-2 truncate" title={c.redirectUris.join(", ")}>
+                回调：{c.redirectUris[0] || "-"}
+                {c.redirectUris.length > 1 && ` 等 ${c.redirectUris.length} 个`}
+              </span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+              <button
+                onClick={() => copyToClipboard(c.clientId)}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                复制 Client ID
+              </button>
+              <ClientActions
+                client={c}
+                canWrite={canWrite}
+                onView={() => openDetailDrawer(c)}
+                onSdkConfig={() => openSdkConfig(c)}
+                onTest={() => openTest(c)}
+                onEdit={() => openEdit(c)}
+                onRotate={() => setRotateClient(c)}
+                onToggle={() => (c.isActive ? setDisableClient(c) : handleToggleActive(c))}
+                onDelete={() => {
+                  setDeleteClient(c);
+                  setDeleteConfirmText("");
+                }}
+              />
+            </div>
+          </MobileListCard>
+        ))}
+      </MobileList>
 
       {/* 桌面端表格 */}
       <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <table className="w-full min-w-[960px]">
-          <thead className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02]">
-            <tr>
-              <th className="min-w-[10rem] px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+        <table className="w-full min-w-[1040px] text-sm">
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="min-w-[10rem] px-4 py-3 font-normal">
                 名称
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 Client ID
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 类型
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 回调 URL
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 Scopes
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 活跃会话
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 最近活跃
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 状态
               </th>
-              <th className="px-3 py-2 text-left text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 font-normal">
                 创建时间
               </th>
-              <th className="sticky right-0 bg-brand-charcoal/[0.02] px-3 py-2 text-right text-sm font-medium text-brand-charcoal/70">
+              <th scope="col" className="px-4 py-3 text-right font-normal">
                 操作
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={10} density="compact" />
-              ))
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={10} />)
             ) : loadError ? (
               <tr>
-                <td colSpan={10} className="py-8 text-center">
+                <td colSpan={10} className="px-4 py-10 text-center">
                   <p className="text-sm text-red-500">加载失败</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
                     重试
@@ -1081,18 +1110,23 @@ if (!payload) {
               </tr>
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-8 text-center text-brand-charcoal/65">
-                  暂无数据
-                  {debouncedSearch && "，请调整筛选条件后重试"}
+                <td colSpan={10}>
+                  <div className="flex justify-center py-8">
+                    <Empty
+                      title="暂无 Client"
+                      description={
+                        debouncedSearch
+                          ? `没有匹配「${debouncedSearch}」的 Client，请调整搜索条件`
+                          : "创建第一个 OAuth Client 以接入 SSO"
+                      }
+                    />
+                  </div>
                 </td>
               </tr>
             ) : (
               clients.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b border-brand-charcoal/10 hover:bg-brand-charcoal/[0.03]"
-                >
-                  <td className="min-w-[10rem] px-3 py-2 text-sm font-medium">
+                <tr key={c.id} className="hover:bg-brand-charcoal/[0.03]">
+                  <td className="min-w-[10rem] px-4 py-3 font-medium">
                     <button
                       onClick={() => openDetailDrawer(c)}
                       className="text-left text-brand-charcoal hover:text-brand-primary hover:underline"
@@ -1100,7 +1134,7 @@ if (!payload) {
                       {c.name}
                     </button>
                   </td>
-                  <td className="px-3 py-2 font-mono text-sm text-brand-charcoal/70">
+                  <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/70">
                     <div className="flex items-center gap-2">
                       <span className="max-w-[120px] truncate" title={c.clientId}>
                         {c.clientId}
@@ -1116,15 +1150,15 @@ if (!payload) {
                       </Tooltip>
                     </div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
                       {c.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </td>
-                  <td className="max-w-[200px] truncate px-3 py-2 text-sm text-brand-charcoal/70">
+                  <td className="max-w-[200px] truncate px-4 py-3 text-sm text-brand-charcoal/70">
                     {c.redirectUris.join(", ")}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {c.scopes.map((s) => (
                         <Badge key={s} variant="secondary" className="text-xs">
@@ -1133,27 +1167,27 @@ if (!payload) {
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-sm text-brand-charcoal/70">
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
                     <div className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" />
                       {c.activeUserCount ?? "-"}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
                     <div className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" />
                       {c.lastActiveAt ? formatDate(c.lastActiveAt) : "-"}
                     </div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <Badge variant={c.isActive ? "success" : "danger"}>
                       {c.isActive ? "启用" : "禁用"}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
                     {formatDate(c.createdAt)}
                   </td>
-                  <td className="sticky right-0 bg-white px-3 py-2 text-right">
+                  <td className="px-4 py-3 text-right">
                     <ClientActions
                       client={c}
                       canWrite={canWrite}
@@ -1176,8 +1210,8 @@ if (!payload) {
         </table>
       </div>
 
-      {total > pageSize && (
-        <div className="mt-4">
+      {total > 0 && (
+        <div className="flex justify-center">
           <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}
