@@ -8,6 +8,8 @@ export { Badge } from "./Badge";
 export { IconButton } from "./IconButton";
 export { DataTable, type Column } from "./DataTable";
 export { StatsCard } from "./StatsCard";
+export { StatStrip, type StatStripItem } from "./StatStrip";
+export { CollapsiblePanel } from "./CollapsiblePanel";
 export { ProductsTable } from "./ProductsTable";
 export { ImageUploader } from "./ImageUploader";
 export { ProductForm } from "./ProductForm";

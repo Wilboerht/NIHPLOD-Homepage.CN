@@ -617,7 +617,7 @@ function AdminUsersContent() {
     }
   };
 
-  const updateParams = (newParams: Record<string, string>) => {
+  const updateParams = (newParams: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(newParams).forEach(([k, v]) => {
       if (v) params.set(k, v);
@@ -773,89 +773,124 @@ function AdminUsersContent() {
         }
       />
 
-      {/* 搜索栏 */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-          <Input
-            placeholder="搜索用户 ID/完整手机号/昵称..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-            className={searchInput ? "pl-10 pr-10" : "pl-10"}
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput("");
-                updateParams({ search: "" });
-              }}
-              aria-label="清除搜索"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 hover:text-brand-charcoal"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-          <Select
-            options={[
-              { value: "", label: "全部状态" },
-              { value: "ACTIVE", label: "正常" },
-              { value: "SUSPENDED", label: "冻结" },
-              { value: "BANNED", label: "封禁" },
-              { value: "DELETED", label: "已注销" },
-            ]}
-            value={status}
-            onChange={(e) => updateParams({ status: e.target.value })}
-            className="w-full sm:w-32"
-          />
-          <Select
-            options={[
-              { value: "", label: "全部等级" },
-              { value: "REGULAR", label: membershipLevelMap.REGULAR.label },
-              { value: "SILVER", label: membershipLevelMap.SILVER.label },
-              { value: "GOLD", label: membershipLevelMap.GOLD.label },
-              { value: "DIAMOND", label: membershipLevelMap.DIAMOND.label },
-            ]}
-            value={level}
-            onChange={(e) => updateParams({ level: e.target.value })}
-            className="w-full sm:w-32"
-            aria-label="按会员等级筛选"
-          />
-          {canWriteUsers && selectedIds.size > 0 && (
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <span className="text-sm text-brand-charcoal/65">已选 {selectedCount} 项</span>
-              <Button
-                size="sm"
-                variant="outline"
-                leftIcon={<CheckCircle className="h-4 w-4" />}
-                onClick={() => setBatchTarget({ status: "ACTIVE" })}
+      {/* 工具栏：搜索 + 筛选保持同一行，避免筛选器堆叠产生大片空白 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="relative w-full md:max-w-sm md:flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Input
+              placeholder="搜索用户 ID/完整手机号/昵称..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
+              className={searchInput ? "pl-10 pr-10" : "pl-10"}
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("");
+                  updateParams({ search: "" });
+                }}
+                aria-label="清除搜索"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 hover:text-brand-charcoal"
               >
-                恢复正常
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                leftIcon={<Lock className="h-4 w-4" />}
-                onClick={() => setBatchTarget({ status: "SUSPENDED" })}
-              >
-                冻结
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                leftIcon={<Ban className="h-4 w-4" />}
-                onClick={() => setBatchTarget({ status: "BANNED" })}
-              >
-                封禁
-              </Button>
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:items-center">
+            <div className="w-full sm:w-36">
+              <Select
+                options={[
+                  { value: "", label: "全部状态" },
+                  { value: "ACTIVE", label: "正常" },
+                  { value: "SUSPENDED", label: "冻结" },
+                  { value: "BANNED", label: "封禁" },
+                  { value: "DELETED", label: "已注销" },
+                ]}
+                value={status}
+                onChange={(e) => updateParams({ status: e.target.value })}
+                aria-label="按用户状态筛选"
+              />
             </div>
-          )}
+            <div className="w-full sm:w-36">
+              <Select
+                options={[
+                  { value: "", label: "全部等级" },
+                  { value: "REGULAR", label: membershipLevelMap.REGULAR.label },
+                  { value: "SILVER", label: membershipLevelMap.SILVER.label },
+                  { value: "GOLD", label: membershipLevelMap.GOLD.label },
+                  { value: "DIAMOND", label: membershipLevelMap.DIAMOND.label },
+                ]}
+                value={level}
+                onChange={(e) => updateParams({ level: e.target.value })}
+                aria-label="按会员等级筛选"
+              />
+            </div>
+            {(search || status || level) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchInput("");
+                  updateParams({ search: null, status: null, level: null });
+                }}
+                leftIcon={<X className="h-4 w-4" />}
+              >
+                清除筛选
+              </Button>
+            )}
+          </div>
+
+          <span className="hidden text-sm text-brand-charcoal/65 md:ml-auto md:inline">
+            共 {pagination.total} 位用户
+          </span>
         </div>
       </div>
+
+      {/* 批量操作独立一行，避免勾选后把筛选器挤到第二行 */}
+      {canWriteUsers && selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
+          <span className="mr-1 text-sm font-medium text-brand-charcoal">
+            已选 {selectedCount} 项
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            leftIcon={<CheckCircle className="h-4 w-4" />}
+            onClick={() => setBatchTarget({ status: "ACTIVE" })}
+          >
+            恢复正常
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-200 text-amber-700 hover:bg-amber-50"
+            leftIcon={<Lock className="h-4 w-4" />}
+            onClick={() => setBatchTarget({ status: "SUSPENDED" })}
+          >
+            冻结
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            leftIcon={<Ban className="h-4 w-4" />}
+            onClick={() => setBatchTarget({ status: "BANNED" })}
+          >
+            封禁
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            onClick={userSelection.clear}
+          >
+            取消选择
+          </Button>
+        </div>
+      )}
 
       {/* 加载失败错误态 */}
       {loadError && (

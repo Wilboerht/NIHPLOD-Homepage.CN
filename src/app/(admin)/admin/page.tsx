@@ -4,13 +4,11 @@ import {
   MessageSquare,
   Briefcase,
   Package,
-  Plus,
-  Eye,
   Clock,
   Key,
   MonitorStop,
-  FileSearch,
   Shield,
+  ShieldCheck,
   Users,
   TrendingUp,
   ClipboardCheck,
@@ -18,8 +16,15 @@ import {
   UserX,
   Webhook,
   CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
-import { StatsCard, PageHeader, PanelCard } from "@/components/admin";
+import {
+  StatStrip,
+  PageHeader,
+  PanelCard,
+  CollapsiblePanel,
+  type StatStripItem,
+} from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
@@ -41,57 +46,6 @@ function formatRelativeTime(dateString: string) {
   if (diffDays < 7) return `${diffDays}天前`;
   return date.toLocaleDateString("zh-CN");
 }
-
-// 快捷操作（带权限点时按当前管理员权限过滤，避免点了才 403）
-const quickActions = [
-  {
-    title: "新增产品",
-    href: "/admin/products/new",
-    icon: Plus,
-    permission: "products:write" as const,
-  },
-  {
-    title: "发布职位",
-    href: "/admin/jobs/new",
-    icon: Briefcase,
-    permission: "jobs:write" as const,
-  },
-  {
-    title: "处理未读留言",
-    href: "/admin/messages",
-    icon: MessageSquare,
-    permission: "messages:read" as const,
-  },
-  {
-    title: "审核消费补录",
-    href: "/admin/spent-adjustments",
-    icon: ClipboardCheck,
-    permission: "spent:read" as const,
-  },
-  { title: "查看网站", href: "/", icon: Eye, external: true },
-];
-
-// SSO 快捷操作
-const ssoQuickActions = [
-  {
-    title: "OAuth Client 管理",
-    href: "/admin/oauth-clients",
-    icon: Key,
-    permission: "sso:clients:read" as const,
-  },
-  {
-    title: "SSO 会话管理",
-    href: "/admin/oauth/sessions",
-    icon: MonitorStop,
-    permission: "sso:read" as const,
-  },
-  {
-    title: "SSO 审计日志",
-    href: "/admin/oauth/audit",
-    icon: FileSearch,
-    permission: "sso:read" as const,
-  },
-];
 
 export default async function AdminDashboard() {
   // 服务端验证管理员身份，未登录直接重定向
@@ -158,14 +112,85 @@ export default async function AdminDashboard() {
         },
       ].filter((item): item is typeof item & { count: number } => item.count !== undefined)
     : [];
+  const totalPending = pendingItems.reduce((sum, item) => sum + item.count, 0);
+
+  // 概览指标：按权限裁剪，无权限的域不渲染
+  const overviewItems: StatStripItem[] = [];
+  if (stats?.totalUsers !== undefined) {
+    overviewItems.push({
+      label: "用户总数",
+      value: stats.totalUsers.toLocaleString("zh-CN"),
+      icon: <Users className="h-3.5 w-3.5" />,
+      description: "含已注销账号",
+    });
+  }
+  if (stats?.unreadMessages !== undefined) {
+    overviewItems.push({
+      label: "未读留言",
+      value: stats.unreadMessages.toLocaleString("zh-CN"),
+      icon: <MessageSquare className="h-3.5 w-3.5" />,
+      description: stats.unreadMessages > 0 ? "待处理" : "暂无未读",
+      muted: stats.unreadMessages === 0,
+    });
+  }
+  if (stats?.products !== undefined) {
+    overviewItems.push({
+      label: "产品总数",
+      value: stats.products.toLocaleString("zh-CN"),
+      icon: <Package className="h-3.5 w-3.5" />,
+      description:
+        stats.categories !== undefined ? `${stats.categories} 个分类 · 含草稿` : "含草稿",
+    });
+  }
+  if (stats?.jobs !== undefined) {
+    overviewItems.push({
+      label: "在招职位",
+      value: stats.jobs.toLocaleString("zh-CN"),
+      icon: <Briefcase className="h-3.5 w-3.5" />,
+      description: "已发布职位",
+    });
+  }
+
+  const ssoItems: StatStripItem[] = ssoStats
+    ? [
+        {
+          label: "活跃 Client",
+          value: ssoStats.activeClients.toLocaleString("zh-CN"),
+          icon: <Key className="h-3.5 w-3.5" />,
+          description: "已启用的 OAuth Client",
+        },
+        {
+          label: "活跃会话",
+          value: ssoStats.activeSessions.toLocaleString("zh-CN"),
+          icon: <MonitorStop className="h-3.5 w-3.5" />,
+          description: "当前在线的 SSO 会话",
+        },
+        {
+          label: "今日事件",
+          value: ssoStats.todayEvents.toLocaleString("zh-CN"),
+          icon: <TrendingUp className="h-3.5 w-3.5" />,
+          description: "授权 / Token / 登出等",
+        },
+        {
+          label: "本月成功率",
+          value: ssoStats.successRate === null ? "—" : `${ssoStats.successRate}%`,
+          icon: <ShieldCheck className="h-3.5 w-3.5" />,
+          description: "authorize 成功占比",
+        },
+      ]
+    : [];
+
+  const recentMessages = stats?.recentMessages;
+  const showRecentMessages = recentMessages !== undefined;
+  const twoColumnBottom = showRecentMessages && !!ssoStats;
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="仪表盘" description="欢迎回来，查看网站概览数据" />
+    <div className="flex flex-col gap-5">
+      <PageHeader title="仪表盘" description="欢迎回来，站点数据每 5 分钟更新" />
 
-      {/* 业务统计：独立降级，失败不影响 SSO 统计与快捷操作 */}
+      {/* 业务统计：独立降级，失败不影响 SSO 统计 */}
       {statsError || !stats ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-16">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
           <div className="rounded-full bg-red-50 p-4">
             <TrendingUp className="h-8 w-8 text-red-400" />
           </div>
@@ -180,259 +205,196 @@ export default async function AdminDashboard() {
         </div>
       ) : (
         <>
-          {/* 统计卡片：按权限裁剪，没有权限的域不渲染 */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.totalUsers !== undefined && (
-              <StatsCard
-                title="用户总数"
-                value={stats.totalUsers}
-                icon={<Users className="h-6 w-6" />}
-                description="账号总数（含已注销）"
-              />
-            )}
-            {stats.unreadMessages !== undefined && (
-              <StatsCard
-                title="未读留言"
-                value={stats.unreadMessages}
-                icon={<MessageSquare className="h-6 w-6" />}
-                description="待处理"
-              />
-            )}
-            {stats.products !== undefined && (
-              <StatsCard
-                title="产品总数"
-                value={stats.products}
-                icon={<Package className="h-6 w-6" />}
-                description={
-                  stats.categories !== undefined
-                    ? `${stats.categories} 个分类 · 含草稿`
-                    : "全部产品（含草稿）"
-                }
-              />
-            )}
-            {stats.jobs !== undefined && (
-              <StatsCard
-                title="在招职位"
-                value={stats.jobs}
-                icon={<Briefcase className="h-6 w-6" />}
-                description="已发布职位"
-              />
-            )}
-          </div>
-          <p className="-mt-2 text-right text-xs text-brand-charcoal/65">统计数据每 5 分钟更新</p>
-
-          {/* 待处理事项：按权限裁剪，计数为 0 时置灰显示勾号 */}
+          {/* 待处理：行动优先，紧凑条目替代大卡片 */}
           {pendingItems.length > 0 && (
-            <div className="flex flex-col gap-4">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
-                <Clock className="h-4 w-4 text-brand-primary" />
-                待处理
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {pendingItems.map((item) => {
-                  const Icon = item.icon;
-                  const hasPending = item.count > 0;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "rounded-2xl border border-brand-charcoal/10 bg-white p-5 transition-colors",
-                        hasPending ? "hover:border-brand-primary/30" : "opacity-60"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <p className="text-sm text-brand-charcoal/65">{item.title}</p>
-                          <p
+            <PanelCard
+              title={
+                <span className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-brand-primary" />
+                  待处理
+                </span>
+              }
+              action={
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs",
+                    totalPending > 0 ? "text-brand-charcoal/65" : "text-emerald-600"
+                  )}
+                >
+                  {totalPending > 0 ? (
+                    `共 ${totalPending} 项`
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      已全部处理
+                    </>
+                  )}
+                </span>
+              }
+            >
+              {totalPending === 0 ? (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-50/70 px-3 py-3 text-sm text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  所有队列已清零，暂无待处理事项
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 md:auto-cols-fr md:grid-flow-col md:grid-cols-none">
+                  {pendingItems.map((item) => {
+                    const Icon = item.icon;
+                    const hasPending = item.count > 0;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex min-h-[64px] items-center gap-2.5 rounded-xl p-3 transition-colors",
+                          hasPending
+                            ? "bg-brand-primary/[0.04] hover:bg-brand-primary/[0.08]"
+                            : "bg-brand-charcoal/[0.02] hover:bg-brand-charcoal/[0.04]"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                            hasPending
+                              ? "bg-brand-primary/10 text-brand-primary"
+                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs text-brand-charcoal/65">
+                            {item.title}
+                          </span>
+                          <span
                             className={cn(
-                              "mt-1 text-2xl font-semibold tracking-tight",
+                              "text-lg font-semibold tabular-nums",
                               hasPending ? "text-brand-primary" : "text-brand-charcoal/65"
                             )}
                           >
                             {item.count}
-                          </p>
-                          <p className="mt-1 text-xs text-brand-charcoal/65">
-                            {hasPending ? "点击查看处理" : "暂无待办"}
-                          </p>
-                        </div>
-                        <div
-                          className={cn(
-                            "flex h-10 w-10 items-center justify-center rounded-lg",
-                            hasPending
-                              ? "bg-brand-primary/10 text-brand-primary"
-                              : "bg-brand-charcoal/8 text-brand-charcoal/65"
-                          )}
-                        >
-                          {hasPending ? (
-                            <Icon className="h-6 w-6" />
-                          ) : (
-                            <CheckCircle2 className="h-6 w-6" />
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+                          </span>
+                        </span>
+                        {hasPending && (
+                          <ChevronRight className="h-4 w-4 shrink-0 text-brand-charcoal/65" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </PanelCard>
+          )}
+
+          {/* 概览：一个容器 + 细分隔线，替代四个独立卡片 */}
+          {overviewItems.length > 0 && (
+            <PanelCard>
+              <StatStrip items={overviewItems} />
+            </PanelCard>
           )}
         </>
       )}
 
-      {/* SSO 概览 */}
-      {ssoStats && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
-              <Shield className="h-4 w-4 text-brand-primary" />
-              SSO 概览
-            </h2>
-            <span className="text-xs text-brand-charcoal/65">需要 SSO 权限</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatsCard
-              title="活跃 Client"
-              value={ssoStats.activeClients}
-              icon={<Key className="h-6 w-6" />}
-              description="已启用的 OAuth Client"
-            />
-            <StatsCard
-              title="活跃会话"
-              value={ssoStats.activeSessions}
-              icon={<Users className="h-6 w-6" />}
-              description="当前在线的 SSO 会话"
-            />
-            <StatsCard
-              title="今日 SSO 事件"
-              value={ssoStats.todayEvents}
-              icon={<TrendingUp className="h-6 w-6" />}
-              description="今日授权/Token/登出等事件"
-            />
-            <StatsCard
-              title="本月授权成功率"
-              value={ssoStats.successRate === null ? "—" : `${ssoStats.successRate}%`}
-              icon={<MonitorStop className="h-6 w-6" />}
-              description="本月 authorize 事件成功占比"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 下方内容区域 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 最近留言：仅 messages:read 渲染（业务统计降级时不渲染） */}
-        {stats?.recentMessages !== undefined && (
-          <PanelCard
-            title="最近留言"
-            className="lg:col-span-2"
-            action={
-              <Link href="/admin/messages" className="text-sm text-brand-primary hover:underline">
-                查看全部
-              </Link>
-            }
-          >
-            {stats.recentMessages && stats.recentMessages.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {stats.recentMessages.map((message) => (
-                  <Link
-                    key={message.id}
-                    href="/admin/messages"
-                    className="block rounded-lg p-3 transition-colors hover:bg-brand-charcoal/[0.03]"
-                  >
-                    <div className="flex items-start gap-3">
+      {/* 最近留言 + SSO 概览：SSO 默认收起，不抢占首屏 */}
+      {(showRecentMessages || ssoStats) && (
+        <div className={cn("grid grid-cols-1 gap-5", twoColumnBottom && "lg:grid-cols-3")}>
+          {showRecentMessages && (
+            <PanelCard
+              title="最近留言"
+              action={
+                <Link href="/admin/messages" className="text-xs text-brand-primary hover:underline">
+                  查看全部
+                </Link>
+              }
+              className={cn(twoColumnBottom && "lg:col-span-2")}
+            >
+              {recentMessages && recentMessages.length > 0 ? (
+                <div className="divide-y divide-brand-charcoal/[0.06]">
+                  {recentMessages.map((message) => (
+                    <Link
+                      key={message.id}
+                      href="/admin/messages"
+                      className="flex items-center gap-3 px-1 py-2.5 transition-colors hover:bg-brand-charcoal/[0.03]"
+                    >
                       <div
                         className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                           message.read
-                            ? "bg-brand-charcoal/8 text-brand-charcoal/70"
+                            ? "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
                             : "bg-brand-primary/10 text-brand-primary"
                         )}
                       >
                         {message.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              "font-medium",
-                              message.read ? "text-brand-charcoal/70" : "text-brand-charcoal"
+                              "truncate text-sm",
+                              message.read
+                                ? "font-medium text-brand-charcoal/70"
+                                : "font-semibold text-brand-charcoal"
                             )}
                           >
                             {message.name}
                           </span>
-                          <span className="flex items-center gap-1 text-xs text-brand-charcoal/65">
+                          {!message.read && (
+                            <span
+                              aria-label="未读"
+                              className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-primary"
+                            />
+                          )}
+                          <span className="ml-auto flex shrink-0 items-center gap-1 text-[11px] text-brand-charcoal/65">
                             <Clock className="h-3 w-3" />
                             {formatRelativeTime(message.createdAt)}
                           </span>
                         </div>
-                        <p className="mt-1 truncate text-sm text-brand-charcoal/65">
+                        <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
                           {message.content}
                         </p>
                       </div>
-                      {!message.read && <span className="h-2 w-2 rounded-full bg-brand-primary" />}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <Empty title="暂无留言" />
-            )}
-          </PanelCard>
-        )}
-
-        {/* 快捷操作 */}
-        <PanelCard title="快捷操作">
-          <div className="flex flex-col gap-2">
-            {quickActions
-              .filter(
-                (action) => !action.permission || hasAdminPermission(admin, action.permission)
-              )
-              .map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.href}
-                    href={action.href}
-                    target={action.external ? "_blank" : undefined}
-                    className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <span className="font-medium">{action.title}</span>
-                  </Link>
-                );
-              })}
-          </div>
-
-          {ssoQuickActions.some((action) => hasAdminPermission(admin, action.permission)) && (
-            <>
-              <div className="my-4 border-t border-brand-charcoal/10" />
-              <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">SSO 管理</h3>
-              <div className="space-y-2">
-                {ssoQuickActions
-                  .filter((action) => hasAdminPermission(admin, action.permission))
-                  .map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <Link
-                        key={action.href}
-                        href={action.href}
-                        className="flex items-center gap-3 rounded-lg p-3 text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
-                      >
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <span className="font-medium">{action.title}</span>
-                      </Link>
-                    );
-                  })}
-              </div>
-            </>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Empty title="暂无留言" className="py-10" />
+              )}
+            </PanelCard>
           )}
-        </PanelCard>
-      </div>
+
+          {ssoStats && (
+            <CollapsiblePanel
+              title={
+                <>
+                  <Shield className="h-4 w-4 text-brand-primary" />
+                  SSO 概览
+                </>
+              }
+              summary={`${ssoStats.activeClients} Client · ${ssoStats.activeSessions} 会话 · 今日 ${ssoStats.todayEvents} 事件`}
+              className={cn(twoColumnBottom && "self-start")}
+            >
+              <StatStrip items={ssoItems} layout={twoColumnBottom ? "grid" : "strip"} />
+              <Link
+                href="/admin/oauth/stats"
+                className="mt-3 inline-flex items-center gap-1 text-xs text-brand-primary hover:underline"
+              >
+                查看完整统计
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </CollapsiblePanel>
+          )}
+        </div>
+      )}
+
+      {/* 有 dashboard:read 但没有任何可查看域时避免空白页 */}
+      {stats && !statsError && overviewItems.length === 0 && !showRecentMessages && !ssoStats && (
+        <Empty
+          className="rounded-2xl border border-brand-charcoal/10 bg-white py-12"
+          title="暂无可查看的统计"
+          description="请联系超级管理员分配权限"
+        />
+      )}
     </div>
   );
 }
