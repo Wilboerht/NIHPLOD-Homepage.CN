@@ -39,7 +39,7 @@ export function resolveClientIp(request: Request | { headers: Headers }): string
   }
 }
 
-export type AdvisorMethod = "GET" | "POST" | "DELETE";
+export type AdvisorMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 export interface AdvisorRequestOptions {
   method?: AdvisorMethod;
@@ -120,15 +120,30 @@ export async function advisorRequest<T>(
       signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       cache: "no-store",
     });
-    const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+    const payload = (await res.json().catch(() => null)) as
+      | {
+          error?: string | { code?: string; message?: string };
+          message?: string;
+        }
+      | null;
 
     if (!res.ok) {
       apiConsole.warn("[advisor-internal] 子站响应异常", { path, status: res.status });
+      const structured =
+        payload && typeof payload.error === "object" && payload.error !== null
+          ? payload.error
+          : null;
+      const message =
+        (typeof structured?.message === "string" && structured.message) ||
+        (typeof payload?.error === "string" && payload.error) ||
+        "子站服务暂时不可用";
       return {
         ok: false,
         status: res.status,
-        code: res.status === 401 ? "UNAUTHORIZED" : "UPSTREAM_ERROR",
-        message: typeof payload?.error === "string" ? payload.error : "子站服务暂时不可用",
+        // 保留子站结构化错误码（如 403 ACCOUNT_DISABLED），供 BFF 透传；
+        // 非结构化错误沿用原 UPSTREAM_ERROR/UNAUTHORIZED 分类。
+        code: structured?.code || (res.status === 401 ? "UNAUTHORIZED" : "UPSTREAM_ERROR"),
+        message,
       };
     }
 
@@ -159,6 +174,9 @@ export function mapAdvisorError(result: {
   code: string;
   message: string;
 }): { status: number; code: string; message: string } {
+  if (result.status === 403 && result.code === "ACCOUNT_DISABLED") {
+    return { status: 403, code: "ACCOUNT_DISABLED", message: result.message };
+  }
   if (result.status === 400) {
     return { status: 400, code: "INVALID_PARAMS", message: result.message };
   }

@@ -76,6 +76,22 @@ describe("advisorRequest", () => {
     const bad = await advisorRequest("/api/internal/diary");
     expect(bad).toMatchObject({ ok: false, status: 400, message: "日期格式错误" });
 
+    globalFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        success: false,
+        error: { code: "ACCOUNT_DISABLED", message: "账号已被限制使用测肤功能，请联系客服" },
+      }),
+    });
+    const disabled = await advisorRequest("/api/internal/diary");
+    expect(disabled).toMatchObject({
+      ok: false,
+      status: 403,
+      code: "ACCOUNT_DISABLED",
+      message: "账号已被限制使用测肤功能，请联系客服",
+    });
+
     globalFetch.mockRejectedValueOnce(new Error("network"));
     const rejected = await advisorRequest("/api/internal/diary");
     expect(rejected).toMatchObject({ ok: false, code: "UPSTREAM_ERROR" });
@@ -95,6 +111,20 @@ describe("mapAdvisorError", () => {
     expect(
       mapAdvisorError({ status: 0, code: "UPSTREAM_ERROR", message: "子站服务连接失败" })
     ).toEqual({ status: 502, code: "UPSTREAM_ERROR", message: "子站服务连接失败" });
+  });
+
+  it("403 ACCOUNT_DISABLED 原样透传（主站用户中心可提示功能被限制）", () => {
+    expect(
+      mapAdvisorError({
+        status: 403,
+        code: "ACCOUNT_DISABLED",
+        message: "账号已被限制使用测肤功能，请联系客服",
+      })
+    ).toEqual({
+      status: 403,
+      code: "ACCOUNT_DISABLED",
+      message: "账号已被限制使用测肤功能，请联系客服",
+    });
   });
 });
 

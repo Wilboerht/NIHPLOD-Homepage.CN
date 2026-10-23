@@ -74,6 +74,10 @@ export const ADMIN_PERMISSIONS = [
   // 子站管理员账号统一由主站管理，这两个权限点决定谁能进入子站后台。
   "advisor:access",
   "advisor:admin",
+  // 主站控制中台内的测肤用户数据查看（账号状态/配额/报告摘要）
+  "advisor:users:read",
+  // 主站控制中台内的测肤用户写操作（调整配额/禁用启用子站账号）
+  "advisor:users:write",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -161,7 +165,12 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
   },
   {
     group: "测肤子站",
-    permissions: ["advisor:access", "advisor:admin"],
+    permissions: [
+      "advisor:access",
+      "advisor:admin",
+      "advisor:users:read",
+      "advisor:users:write",
+    ],
   },
 ];
 
@@ -214,6 +223,8 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "sso:clients:write": "SSO 客户端管理/密钥轮换/测试",
   "advisor:access": "测肤子站访问（子站管理员）",
   "advisor:admin": "测肤子站超级管理员",
+  "advisor:users:read": "查看用户测肤档案（账号/配额/报告摘要）",
+  "advisor:users:write": "调整测肤配额/禁用启用子站账号",
 };
 
 /**
@@ -267,6 +278,8 @@ export const ROLE_TEMPLATES: Record<
     "gifts:read",
     "redemptions:read",
     "redemptions:fulfill",
+    "advisor:users:read",
+    "advisor:users:write",
     "audit:read",
   ],
   ops: [
@@ -287,6 +300,8 @@ export const ROLE_TEMPLATES: Record<
     "messages:read",
     "messages:write",
     "messages:delete",
+    "advisor:users:read",
+    "advisor:users:write",
   ],
   support: [
     "dashboard:read",
@@ -298,6 +313,7 @@ export const ROLE_TEMPLATES: Record<
     "gifts:read",
     "redemptions:read",
     "redemptions:fulfill",
+    "advisor:users:read",
   ],
   hr: [
     "dashboard:read",
@@ -314,6 +330,7 @@ export const ROLE_TEMPLATES: Record<
     "spent:read",
     "gifts:read",
     "redemptions:read",
+    "advisor:users:read",
     "audit:read",
     "audit:export",
   ],

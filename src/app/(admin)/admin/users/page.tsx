@@ -23,6 +23,7 @@ import {
   MapPin,
   ReceiptText,
   History,
+  Sparkles,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -49,6 +50,7 @@ import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { UserAvatar } from "@/components/admin/UserAvatar";
+import { UserAdvisorPanel } from "@/components/admin/UserAdvisorPanel";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
@@ -92,10 +94,11 @@ const membershipLevelMap: Record<
   DIAMOND: { label: "钻石卡会员", variant: "primary" },
 };
 
-type DetailTab = "basic" | "points" | "address" | "spent" | "growth" | "login";
+type DetailTab = "basic" | "advisor" | "points" | "address" | "spent" | "growth" | "login";
 
 const DETAIL_TABS: { key: DetailTab; label: string; icon: LucideIcon }[] = [
   { key: "basic", label: "基本信息", icon: User },
+  { key: "advisor", label: "测肤档案", icon: Sparkles },
   { key: "points", label: "积分与兑换", icon: Wallet },
   { key: "address", label: "收货地址", icon: MapPin },
   { key: "spent", label: "消费记录", icon: ReceiptText },
@@ -164,7 +167,7 @@ function UserDetailSkeleton() {
         </div>
       </div>
       <div className="flex gap-2 overflow-hidden">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: DETAIL_TABS.length }).map((_, index) => (
           <div
             key={index}
             className="h-8 w-20 shrink-0 animate-pulse rounded-lg bg-brand-charcoal/[0.06]"
@@ -417,6 +420,7 @@ function AdminUsersContent() {
   const canDeleteUsers = canAdmin("users:delete");
   const canSecurityWrite = canAdmin("users:security:write");
   const canRevealPhone = canAdmin("users:sensitive:read");
+  const canReadAdvisorProfile = canAdmin("advisor:users:read");
 
   // 积分流水与人工调整
   const [ledgerItems, setLedgerItems] = useState<PointLedgerItem[]>([]);
@@ -1322,7 +1326,9 @@ function AdminUsersContent() {
                 aria-label="用户详情分区"
                 className="scrollbar-hide -mb-px flex gap-1 overflow-x-auto"
               >
-                {DETAIL_TABS.map((tab) => {
+                {DETAIL_TABS.filter(
+                  (tab) => tab.key !== "advisor" || canReadAdvisorProfile
+                ).map((tab) => {
                   const Icon = tab.icon;
                   const active = activeDetailTab === tab.key;
                   return (
@@ -1563,6 +1569,15 @@ function AdminUsersContent() {
                     )}
                   </DetailSection>
                 </div>
+              )}
+
+              {/* 测肤档案 */}
+              {activeDetailTab === "advisor" && canReadAdvisorProfile && (
+                <UserAdvisorPanel
+                  key={detailUser.id}
+                  userId={detailUser.id}
+                  mainStatus={detailUser.status}
+                />
               )}
 
               {/* 积分与兑换 */}
