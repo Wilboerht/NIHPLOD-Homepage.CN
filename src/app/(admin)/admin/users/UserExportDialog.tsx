@@ -184,6 +184,7 @@ export function UserExportDialog({
                 key={group}
                 group={group}
                 checked={selected.has(group)}
+                disabled={loading}
                 onChange={(checked) => toggle(group, checked)}
               />
             ))}
@@ -198,6 +199,7 @@ export function UserExportDialog({
                 key={group}
                 group={group}
                 checked={selected.has(group)}
+                disabled={loading}
                 onChange={(checked) => toggle(group, checked)}
               />
             ))}
@@ -210,6 +212,7 @@ export function UserExportDialog({
             <GroupCheckbox
               group="addresses"
               checked={selected.has("addresses")}
+              disabled={loading}
               onChange={(checked) => toggle("addresses", checked)}
             />
           </div>
@@ -227,6 +230,7 @@ export function UserExportDialog({
                   key={group}
                   group={group}
                   checked={selected.has(group)}
+                  disabled={loading}
                   onChange={(checked) => toggle(group, checked)}
                 />
               ))}

@@ -41,7 +41,8 @@ function exportInfoEntry(
   params: UserListQuery,
   total: number,
   canReadSensitive: boolean,
-  canReadAdvisor: boolean
+  canReadAdvisor: boolean,
+  cutoff: Date
 ): UserExportEntry {
   const selected = new Set(groups);
   const advisorGroups = groups.filter((group) => ADVISOR_EXPORT_GROUPS.includes(group));
@@ -51,6 +52,7 @@ function exportInfoEntry(
     ["项目", "值"],
     [
       ["导出时间", new Date().toISOString()],
+      ["数据截止时间", cutoff.toISOString()],
       ["导出格式", "user-data-zip-v2"],
       ["筛选搜索", params.search ? maskPhone(params.search) : "全部"],
       ["筛选状态", params.status ? (USER_STATUS_LABELS[params.status] ?? params.status) : "全部"],
@@ -159,7 +161,10 @@ export async function GET(request: NextRequest) {
 
     const groups = normalized.groups;
     const advisorGroups = groups.filter((group) => ADVISOR_EXPORT_GROUPS.includes(group));
-    const where = buildUserWhere(params);
+    const exportCutoff = new Date();
+    const where = {
+      AND: [buildUserWhere(params), { createdAt: { lte: exportCutoff } }],
+    };
     const total = await prisma.user.count({ where });
     const dataFiles = selectedFileNames(groups);
     if (advisorGroups.length > 0) dataFiles.push("advisor-errors.csv");
@@ -234,7 +239,7 @@ export async function GET(request: NextRequest) {
       try {
         if (aborted) throw new Error("EXPORT_ABORTED");
         counts["export-info.csv"] = await append(
-          exportInfoEntry(groups, params, total, canReadSensitive, canReadAdvisor)
+          exportInfoEntry(groups, params, total, canReadSensitive, canReadAdvisor, exportCutoff)
         );
         for (const entry of buildDatabaseExportEntries({
           where,

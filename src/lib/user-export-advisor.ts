@@ -473,7 +473,7 @@ function diaryEntry(context: AdvisorExportContext): ExportCsvEntry {
           if (!hasMore || entries.length === 0 || !lastDate) break;
           before = lastDate.slice(0, 10);
         }
-        if (page === ADVISOR_MAX_PAGES) {
+        if (page > ADVISOR_MAX_PAGES) {
           addAdvisorError(context, {
             userId: meta.userId,
             stage: "diary",
@@ -531,6 +531,7 @@ function advisorAccountsEntry(
         else if (overviewFailed && historyFailed) statusLabel = "失败";
         else if (overviewFailed) statusLabel = historySelected ? "部分成功" : "失败";
         else if (historyFailed) statusLabel = "部分成功";
+        else if (context.globalFailure && historySelected) statusLabel = "部分成功";
         const errorMessages = [
           ...(meta.error ? [`${meta.error.code}: ${meta.error.message}`] : []),
           ...userErrors.map((item) => `${item.stage} ${item.code}: ${item.message}`),
