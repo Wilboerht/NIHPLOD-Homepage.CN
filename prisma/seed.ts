@@ -163,7 +163,6 @@ async function main() {
       usage: "取适量泡沫于湿润的面部，轻柔按摩后用温水洗净。",
       benefits: ["温和清洁", "保湿不紧绷", "深层洁净", "适合所有肤质"],
       order: 1,
-      featured: true,
       published: true,
     },
     {
@@ -178,7 +177,6 @@ async function main() {
       usage: "清洁皮肤可加少量水或不加水直接使用本品。 取适量大小的膏体于指尖，轻轻涂抹于面部。以打圈的方式轻柔按摩脸颊和额头后用清水彻底洗净。按摩眼周时请小心，避免接触眼睛。",
       benefits: ["去角质", "收缩毛孔", "提亮肤色", "平衡水油"],
       order: 2,
-      featured: false,
       published: true,
     },
     {
@@ -193,7 +191,6 @@ async function main() {
       usage: "洁面后，取出面膜敷于面部，静享 10--15 分钟后取下，可适当按摩面部，将剩余精华液彻底吸收。",
       benefits: ["密集修护", "修复屏障", "深层保湿", "提亮焕肤"],
       order: 3,
-      featured: true,
       published: true,
     },
     {
@@ -208,7 +205,6 @@ async function main() {
       usage: "深层清洁皮肤后，在指尖涂抹精华液，轻轻涂抹在脸上。轻轻按摩你的脸颊、眼睛和脖子。按摩眼睛时请务必小心，避免与眼睛接触。请根据个人情况，使用后续产品前需确保精华液被完全吸收。",
       benefits: ["抗老紧致", "淡化细纹", "提升弹性", "修护肌底", "焕亮光采"],
       order: 4,
-      featured: true,
       published: true,
     },
     {
@@ -223,7 +219,6 @@ async function main() {
       usage: "深层清洁皮肤后，在指尖涂抹面霜，轻轻涂抹在脸上。轻轻按摩你的脸颊和眼睛。按摩眼睛时请务必小心，避免与眼睛接触。请根据个人情况，使用后续产品前需确保乳霜被完全吸收。",
       benefits: ["抗衰老", "深层滋养", "紧致提升", "保湿锁水", "修护屏障"],
       order: 5,
-      featured: true,
       published: true,
     },
     {
@@ -238,7 +233,6 @@ async function main() {
       usage: "取适量乳霜于手掌或手背上，然后均匀涂抹于整个手部。\n对于特别干燥或严重脱水的肌肤，建议使用较多的频率和用量，以达到更好的修复效果。",
       benefits: ["深层滋润", "淡化细纹", "柔嫩双手", "长效保湿"],
       order: 6,
-      featured: false,
       published: true,
     },
     {
@@ -253,7 +247,6 @@ async function main() {
       usage: "清洁全身后 ，取适量本产品涂抹于需要护理的部位，并以打圈的方式轻轻按摩至完全吸收。",
       benefits: ["全身滋养", "持久保湿", "柔滑细腻", "快速吸收"],
       order: 7,
-      featured: false,
       published: true,
     },
     {
@@ -268,7 +261,6 @@ async function main() {
       usage: "在日晒前 1-5 分钟均匀涂抹于清洁并滋润的皮肤上。\n日常使用时，请待产品完全吸收后再进行后续上妆步骤。\n如需长时间户外活动，请适时补涂。",
       benefits: ["防晒隔离", "抗光老化", "抗炎修护", "轻薄不闷", "敏感肌适用"],
       order: 8,
-      featured: true,
       published: true,
     },
     {
@@ -283,7 +275,6 @@ async function main() {
       usage: "日常护肤：取数滴于掌心，温热后以向上打圈方式均匀涂抹于肌肤。亦可混合数滴至旎柏面霜、精华或身体乳中，增强滋养与修护效果。\n\n芳香泡浴：在放洗澡水时，取适量本品滴入水流中，可滋养全身肌肤并享受舒缓芳疗。",
       benefits: ["深层滋养", "修护屏障", "柔润光泽", "舒缓肌肤"],
       order: 9,
-      featured: false,
       published: true,
     },
     {
@@ -298,7 +289,6 @@ async function main() {
       usage: "按照单品使用说明，先使用精华后使用面霜，早晚护肤。",
       benefits: ["明星组合", "抗老紧致", "深层修护", "奢华礼遇"],
       order: 10,
-      featured: true,
       published: true,
     },
   ];

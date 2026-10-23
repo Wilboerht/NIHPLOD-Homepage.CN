@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select, SelectOption } from "@/components/ui/Select";
-import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
 import { TagInput } from "@/components/ui/TagInput";
 import { ImageUploader } from "@/components/admin/ImageUploader";
@@ -73,7 +72,6 @@ interface FormData {
   benefits: string[];
   images: ImageItem[];
   order: number;
-  featured: boolean;
   published: boolean;
   geoFaqs: { question: string; answer: string }[] | null;
 }
@@ -110,7 +108,6 @@ const defaultFormData: FormData = {
   benefits: [],
   images: [],
   order: 0,
-  featured: false,
   published: false,
   geoFaqs: null,
 };
@@ -909,20 +906,12 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
             error={errors.order}
             placeholder="数字越小越靠前"
           />
-          <div className="flex flex-wrap gap-8 pt-2">
-            <Switch
-              label="推荐产品"
-              description="在首页推荐位置展示"
-              checked={formData.featured}
-              onChange={(checked) => updateField("featured", checked)}
-            />
-            {/* 发布状态由底部“保存草稿 / 保存并发布”按钮显式决定，避免开关与按钮语义冲突 */}
-            {initialData?.published && (
-              <p className="self-center text-xs text-brand-charcoal/65">
-                当前状态：已发布（点击“保存草稿”将转为未发布）
-              </p>
-            )}
-          </div>
+          {/* 发布状态由底部“保存草稿 / 保存并发布”按钮控制，避免开关与按钮语义冲突 */}
+          {initialData?.published && (
+            <p className="text-xs text-brand-charcoal/65">
+              当前状态：已发布。保存后仍保持发布；如要转为未发布，请使用“保存草稿”。
+            </p>
+          )}
         </div>
       </section>
 

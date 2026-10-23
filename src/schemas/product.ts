@@ -107,7 +107,6 @@ export const ProductSchema = z
       .optional(),
     images: z.array(ProductImageSchema).min(1, "请至少上传一张产品图片"),
     order: z.number().int().min(0).default(0),
-    featured: z.boolean().default(false),
     published: z.boolean().default(false),
     // GEO FAQ 数据
     geoFaqs: z
@@ -144,7 +143,6 @@ export const ProductQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(12),
   categoryId: z.string().optional(),
-  featured: z.coerce.boolean().optional(),
   published: z.coerce.boolean().optional(),
   search: z.string().max(100).optional(),
   sortBy: z.enum(["createdAt", "updatedAt", "title", "order"]).default("createdAt"),

@@ -24,7 +24,6 @@ interface ProductItem {
   capacity: string | null;
   category: { id: string; name: string; slug: string };
   image: { id: string; url: string; alt: string | null } | null;
-  featured: boolean;
   published: boolean;
   order: number;
   createdAt: string;
@@ -62,7 +61,6 @@ export default function AdminProductsPage() {
     Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
-  const featured = searchParams.get("featured") || "all";
   const search = searchParams.get("search") || "";
   const sortBy = searchParams.get("sortBy") || "";
   // 默认交给 API 的 order asc；只有显式排序时才携带 sortOrder，
@@ -106,7 +104,6 @@ export default function AdminProductsPage() {
           pageSize,
           categoryId,
           status: status === "all" ? undefined : status,
-          featured: featured === "all" ? undefined : featured,
           search,
           sortBy: sortBy || undefined,
           sortOrder: effectiveSortOrder,
@@ -131,7 +128,6 @@ export default function AdminProductsPage() {
     pageSize,
     categoryId,
     status,
-    featured,
     search,
     sortBy,
     effectiveSortOrder,
@@ -188,12 +184,6 @@ export default function AdminProductsPage() {
     { value: "all", label: "全部状态" },
     { value: "published", label: "已发布" },
     { value: "draft", label: "草稿" },
-  ];
-
-  // 推荐筛选选项
-  const featuredOptions: SelectOption[] = [
-    { value: "all", label: "全部产品" },
-    { value: "true", label: "仅看推荐" },
   ];
 
   // 分类筛选选项
@@ -261,15 +251,6 @@ export default function AdminProductsPage() {
             />
           </div>
 
-          {/* 推荐筛选 */}
-          <div className="w-32">
-            <Select
-              aria-label="按推荐筛选"
-              options={featuredOptions}
-              value={featured}
-              onChange={(e) => updateParams({ featured: e.target.value })}
-            />
-          </div>
         </div>
 
         {/* 加载失败错误态（替代表格，避免错误与旧数据同时展示） */}

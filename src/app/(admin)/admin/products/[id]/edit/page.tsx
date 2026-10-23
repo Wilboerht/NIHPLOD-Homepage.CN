@@ -41,7 +41,6 @@ interface ProductData {
   benefits: string[];
   images: ImageItem[];
   order: number;
-  featured: boolean;
   published: boolean;
   geoFaqs: { question: string; answer: string }[] | null;
 }
@@ -97,7 +96,6 @@ function EditProductContent() {
             order: img.order,
           })),
           order: data.order,
-          featured: data.featured,
           published: data.published,
           geoFaqs: data.geoFaqs ?? null,
         });

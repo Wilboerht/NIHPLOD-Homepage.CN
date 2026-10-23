@@ -19,7 +19,6 @@ import { pushSearchEngines } from "@/lib/search-push";
 const patchProductSchema = z
   .object({
     published: z.boolean().optional(),
-    featured: z.boolean().optional(),
     order: z.number().int().min(0).optional(),
   })
   .strict();
@@ -141,7 +140,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const updateData: Record<string, unknown> = {};
     if (validated.published !== undefined) updateData.published = validated.published;
-    if (validated.featured !== undefined) updateData.featured = validated.featured;
     if (validated.order !== undefined) updateData.order = validated.order;
 
     if (Object.keys(updateData).length === 0) {
@@ -312,7 +310,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           usage: sanitized.usage,
           benefits: sanitized.benefits || [],
           order: validated.order,
-          featured: validated.featured,
           published: validated.published,
           category: { connect: { id: validated.categoryId } },
           geoFaqs: toInputJson(validated.geoFaqs),

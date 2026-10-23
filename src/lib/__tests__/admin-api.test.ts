@@ -1183,7 +1183,6 @@ describe("管理端 API 集成测试", () => {
           images: [],
           benefits: [],
           order: 0,
-          featured: false,
           published: false,
         },
       });

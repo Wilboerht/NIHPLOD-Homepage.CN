@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { Switch } from "@/components/ui/Switch";
 import { apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { formatPrice } from "@/lib/utils";
@@ -34,7 +33,6 @@ interface ProductItem {
     url: string;
     alt: string | null;
   } | null;
-  featured: boolean;
   published: boolean;
   order: number;
   createdAt: string;
@@ -112,22 +110,6 @@ export function ProductsTable({
       setActionLoading(id);
       try {
         await apiPatch(`/api/admin/products/${id}`, { published: !published });
-        onRefresh();
-      } catch (err) {
-        showError(err instanceof ApiError ? err.message : "操作失败，请重试");
-      } finally {
-        setActionLoading(null);
-      }
-    },
-    [onRefresh, showError]
-  );
-
-  // 切换推荐状态
-  const handleToggleFeatured = useCallback(
-    async (id: string, featured: boolean) => {
-      setActionLoading(id);
-      try {
-        await apiPatch(`/api/admin/products/${id}`, { featured: !featured });
         onRefresh();
       } catch (err) {
         showError(err instanceof ApiError ? err.message : "操作失败，请重试");
@@ -281,25 +263,6 @@ export function ProductsTable({
         ),
       },
       {
-        key: "featured",
-        title: "推荐",
-        width: "72px",
-        align: "center",
-        render: (_, record) =>
-          canWrite ? (
-            <Switch
-              label={`${record.featured ? "取消推荐" : "设为推荐"} ${record.name}`}
-              checked={record.featured}
-              disabled={actionLoading !== null}
-              onChange={() => handleToggleFeatured(record.id, record.featured)}
-            />
-          ) : (
-            <DotBadge color={record.featured ? "green" : "gray"}>
-              {record.featured ? "推荐" : "-"}
-            </DotBadge>
-          ),
-      },
-      {
         key: "published",
         title: "状态",
         width: "88px",
@@ -369,7 +332,6 @@ export function ProductsTable({
     canDelete,
     canWrite,
     handleTogglePublish,
-    handleToggleFeatured,
     editHref,
   ]);
 
@@ -472,7 +434,6 @@ export function ProductsTable({
                   <DotBadge color={record.published ? "green" : "gray"}>
                     {record.published ? "已发布" : "草稿"}
                   </DotBadge>
-                  {record.featured && <DotBadge color="green">推荐</DotBadge>}
                 </div>
               </div>
             </div>

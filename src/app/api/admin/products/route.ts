@@ -20,7 +20,6 @@ const QuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   categoryId: z.string().optional(),
   status: z.enum(["all", "published", "draft"]).default("all"),
-  featured: z.enum(["all", "true", "false"]).default("all"),
   search: z.string().max(100).optional(),
   sortBy: z.enum(["createdAt", "updatedAt", "name", "order", "price"]).default("order"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
@@ -58,7 +57,6 @@ export async function GET(request: NextRequest) {
       pageSize: searchParams.get("pageSize") || 10,
       categoryId: searchParams.get("categoryId") || undefined,
       status: searchParams.get("status") || "all",
-      featured: searchParams.get("featured") || "all",
       search: searchParams.get("search") || undefined,
       sortBy: searchParams.get("sortBy") || "order",
       sortOrder: searchParams.get("sortOrder") || "asc",
@@ -75,12 +73,6 @@ export async function GET(request: NextRequest) {
       where.published = true;
     } else if (query.status === "draft") {
       where.published = false;
-    }
-
-    if (query.featured === "true") {
-      where.featured = true;
-    } else if (query.featured === "false") {
-      where.featured = false;
     }
 
     if (query.search) {
@@ -122,7 +114,6 @@ export async function GET(request: NextRequest) {
       capacity: product.capacity,
       category: product.category,
       image: product.images[0] || null,
-      featured: product.featured,
       published: product.published,
       order: product.order,
       createdAt: product.createdAt.toISOString(),
@@ -239,7 +230,6 @@ export async function POST(request: NextRequest) {
         usage: sanitized.usage,
         benefits: sanitized.benefits || [],
         order: validated.order,
-        featured: validated.featured,
         published: validated.published,
         categoryId: validated.categoryId,
         geoFaqs: toInputJson(validated.geoFaqs),
