@@ -221,6 +221,7 @@ function AdminSpentAdjustmentsContent() {
 
       success(decision === "approve" ? "已通过并完成入账" : "已驳回");
       setDetail(null);
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (tab !== "ALL" && data?.applications.length === 1 && page > 1) {
         update({ page: String(page - 1) }, { resetPage: false });
       } else {
@@ -256,6 +257,7 @@ function AdminSpentAdjustmentsContent() {
       success("已撤销审核，申请回到待审核队列");
       setUndoTarget(null);
       setDetail(null);
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (tab !== "ALL" && data?.applications.length === 1 && page > 1) {
         update({ page: String(page - 1) }, { resetPage: false });
       } else {

@@ -133,6 +133,7 @@ function AdminAccountDeletionsContent() {
       }
       setRetryTarget(null);
       setForceRetry(false);
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (data.status === "completed" && items.length === 1 && page > 1) {
         update({ page: String(page - 1) }, { resetPage: false });
       } else {

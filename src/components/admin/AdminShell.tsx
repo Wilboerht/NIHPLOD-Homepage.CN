@@ -28,6 +28,18 @@ const CONTENT_WIDTH_CLASS: Record<AdminPageWidth, string> = {
   wide: "max-w-7xl",
 };
 
+interface NavCounts {
+  messages: number;
+  accountDeletions: number;
+  spentAdjustments: number;
+}
+
+const EMPTY_NAV_COUNTS: NavCounts = {
+  messages: 0,
+  accountDeletions: 0,
+  spentAdjustments: 0,
+};
+
 /**
  * 管理端壳：w-60 侧边栏 + 移动端抽屉 + 统一页面边距
  * - 导航由 adminNavItems 配置驱动（分组 + 权限过滤），样式对齐工具面板风格
@@ -42,7 +54,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState<number | undefined>(undefined);
+  const [navCounts, setNavCounts] = useState<NavCounts>(EMPTY_NAV_COUNTS);
+  const [navCountsVersion, setNavCountsVersion] = useState(0);
   const drawerTrapRef = useFocusTrap(drawerOpen);
 
   const permissionList = loading ? undefined : Array.from(permissions);
@@ -67,30 +80,45 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", handler);
   }, [drawerOpen]);
 
-  // 留言页读/删后同步侧边栏未读数，避免 badge 长期滞留
+  // 留言页读/删后同步侧边栏未读数，避免红点长期滞留
   useEffect(() => {
     const handler = (event: Event) => {
       const count = (event as CustomEvent<number>).detail;
-      if (typeof count === "number") setUnreadMessages(count);
+      if (typeof count === "number") {
+        setNavCounts((prev) => ({ ...prev, messages: count }));
+      }
     };
     window.addEventListener("admin:messages-updated", handler);
     return () => window.removeEventListener("admin:messages-updated", handler);
   }, []);
 
-  // 加载未读留言数（badge）：无 messages:read 权限的角色跳过请求，避免必然 403
+  // 注销重试、消费审核等操作完成后，页面可通知侧边栏重新拉取待处理数量
   useEffect(() => {
-    if (!permissionList || !permissionList.includes("messages:read")) return;
+    const handler = () => setNavCountsVersion((v) => v + 1);
+    window.addEventListener("admin:nav-counts-refresh", handler);
+    return () => window.removeEventListener("admin:nav-counts-refresh", handler);
+  }, []);
+
+  // 加载侧边栏待处理数量：只请求有对应权限的模块，避免必然 403
+  useEffect(() => {
+    if (!permissionList) return;
+    const canReadAny =
+      permissionList.includes("messages:read") ||
+      permissionList.includes("users:read") ||
+      permissionList.includes("spent:read");
+    if (!canReadAny) return;
+
     let cancelled = false;
-    apiGet<{ unreadCount: number }>("/api/admin/messages?pageSize=1&status=unread")
+    apiGet<NavCounts>("/api/admin/nav-counts")
       .then((data) => {
-        if (!cancelled) setUnreadMessages(data.unreadCount);
+        if (!cancelled) setNavCounts({ ...EMPTY_NAV_COUNTS, ...data });
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, pathname]);
+  }, [loading, pathname, navCountsVersion]);
 
   if (redirecting) {
     return (
@@ -133,7 +161,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <SidebarContent
           pathname={pathname}
           permissions={permissionList}
-          unreadMessages={unreadMessages}
+          navCounts={navCounts}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed((v) => !v)}
           userName={name}
@@ -176,7 +204,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <SidebarContent
             pathname={pathname}
             permissions={permissionList}
-            unreadMessages={unreadMessages}
+            navCounts={navCounts}
             onNavigate={() => setDrawerOpen(false)}
             onClose={() => setDrawerOpen(false)}
             userName={name}
@@ -220,7 +248,7 @@ interface SidebarContentProps {
   pathname: string;
   /** 当前管理员有效权限（未加载完成时显示骨架） */
   permissions?: string[];
-  unreadMessages?: number;
+  navCounts?: NavCounts;
   /** 桌面端折叠为图标模式 */
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -257,7 +285,7 @@ function isActive(item: NavItem, pathname: string): boolean {
 function SidebarContent({
   pathname,
   permissions,
-  unreadMessages,
+  navCounts = EMPTY_NAV_COUNTS,
   collapsed = false,
   onToggleCollapse,
   onNavigate,
@@ -347,13 +375,18 @@ function SidebarContent({
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item, pathname);
-                  // 留言管理：显示未读数 badge（0 时不显示）
-                  const badge =
+                  // 仅对有权限的待办模块显示红点；0 时不显示
+                  const count =
                     item.href === "/admin/messages"
-                      ? unreadMessages && unreadMessages > 0
-                        ? unreadMessages
-                        : undefined
-                      : item.badge;
+                      ? navCounts.messages
+                      : item.href === "/admin/account-deletions"
+                        ? navCounts.accountDeletions
+                        : item.href === "/admin/spent-adjustments"
+                          ? navCounts.spentAdjustments
+                          : item.badge;
+                  const hasPending = typeof count === "number" && count > 0;
+                  const pendingTitle =
+                    typeof count === "number" ? `${item.title}（${count} 条待处理）` : item.title;
 
                   return (
                     <Link
@@ -361,21 +394,29 @@ function SidebarContent({
                       href={item.href}
                       onClick={onNavigate}
                       aria-current={active ? "page" : undefined}
-                      title={collapsed ? item.title : undefined}
+                      title={collapsed ? pendingTitle : undefined}
                       className={cn(
+                        "relative",
                         active ? activeCls : inactiveCls,
                         collapsed && "justify-center px-2"
                       )}
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                      {!collapsed && badge !== undefined && (
-                        <span className="ml-auto rounded-full bg-red-400 px-1.5 py-0.5 text-[10px] leading-none text-white">
-                          {badge > 99 ? "99+" : badge}
-                        </span>
+                      {!collapsed && <span className="truncate">{item.title}</span>}
+                      {!collapsed && hasPending && (
+                        <span
+                          className="ml-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-red-500"
+                          title={`${count} 条待处理`}
+                          aria-label={`${count} 条待处理`}
+                        />
                       )}
-                      {!collapsed && (
-                        <SidebarLinkPending className={badge !== undefined ? "ml-1" : "ml-auto"} />
+                      {!collapsed && <SidebarLinkPending className="ml-auto" />}
+                      {collapsed && hasPending && (
+                        <span
+                          className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500"
+                          title={`${count} 条待处理`}
+                          aria-label={`${count} 条待处理`}
+                        />
                       )}
                     </Link>
                   );
