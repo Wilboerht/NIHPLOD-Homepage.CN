@@ -91,7 +91,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   account_deletion_execute: "执行账号注销",
   account_deletion_retry: "重试账号注销",
   sso_audit_export: "导出 SSO 审计日志",
-  user_export: "导出用户列表",
+  user_export: "导出用户数据（ZIP）",
   audit_log_export: "导出审计日志",
   admin_sso_authorize: "授权测肤子站登录",
   admin_sso_token: "签发测肤子站断言",

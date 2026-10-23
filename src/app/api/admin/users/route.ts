@@ -10,16 +10,8 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { escapeCSV } from "@/lib/csv";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
-
-const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
-  pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  search: z.string().max(100).nullish(),
-  status: z.enum(["ACTIVE", "SUSPENDED", "BANNED", "DELETED"]).nullish(),
-  level: z.enum(["REGULAR", "SILVER", "GOLD", "DIAMOND"]).nullish(),
-});
+import { buildUserWhere, userListQuerySchema } from "@/lib/user-query";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -52,41 +44,33 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const params = querySchema.parse({
+    if (searchParams.has("export")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "EXPORT_MOVED",
+            message: "用户数据导出已迁移，请使用 /api/admin/users/export",
+          },
+        },
+        { status: 410 }
+      );
+    }
+    const params = userListQuerySchema.parse({
       page: searchParams.get("page"),
       pageSize: searchParams.get("pageSize"),
       search: searchParams.get("search"),
       status: searchParams.get("status"),
       level: searchParams.get("level"),
     });
-    const isExport = searchParams.get("export") === "csv";
-
-    // 构建查询条件
-    const where: Record<string, unknown> = {};
-
-    if (params.search) {
-      where.OR = [
-        { id: { equals: params.search } },
-        // 手机号仅精确匹配：模糊匹配（contains）会让无敏感权限的角色逐位穷举还原完整手机号
-        { phone: { equals: params.search } },
-        { nickname: { contains: params.search, mode: "insensitive" } },
-      ];
-    }
-
-    if (params.status) {
-      where.status = params.status;
-    }
-
-    if (params.level) {
-      where.membershipLevel = params.level;
-    }
+    const where = buildUserWhere(params);
 
     // 查询用户
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        skip: isExport ? undefined : (params.page - 1) * params.pageSize,
-        take: isExport ? 10000 : params.pageSize,
+        skip: (params.page - 1) * params.pageSize,
+        take: params.pageSize,
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         select: {
           id: true,
@@ -101,54 +85,6 @@ export async function GET(request: NextRequest) {
       }),
       prisma.user.count({ where }),
     ]);
-
-    // CSV 导出（按当前筛选条件）
-    if (isExport) {
-      const csvHeaders = "手机号,昵称,状态,会员等级,注册时间\n";
-      const csvRows = users
-        .map((user) =>
-          [
-            escapeCSV(maskPhone(user.phone)),
-            escapeCSV(user.nickname || ""),
-            escapeCSV(user.status),
-            escapeCSV(user.membershipLevel),
-            user.createdAt.toISOString(),
-          ].join(",")
-        )
-        .join("\n");
-
-      // 导出审计：记录筛选条件与导出条数（search 可能为完整手机号，统一脱敏）
-      const auditDetail = {
-        search: params.search ? maskPhone(params.search) : null,
-        status: params.status ?? null,
-        level: params.level ?? null,
-        exportedCount: users.length,
-      };
-      const auditId = await beginAuditLog({
-        action: "user_export",
-        targetType: "user",
-        detail: auditDetail,
-        adminId: admin.id,
-        request,
-      });
-      if (!auditId) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝导出" },
-          },
-          { status: 503 }
-        );
-      }
-      await finishAuditLog(auditId, "SUCCESS", auditDetail);
-
-      return new NextResponse(csvHeaders + csvRows, {
-        headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="users-${new Date().toISOString().slice(0, 10)}.csv"`,
-        },
-      });
-    }
 
     return NextResponse.json({
       success: true,

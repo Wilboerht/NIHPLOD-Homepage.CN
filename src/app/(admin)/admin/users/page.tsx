@@ -54,7 +54,6 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { createClientRequestId } from "@/lib/request-id";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { apiConsole } from "@/lib/logger";
-import { downloadFromUrl } from "@/lib/client-download";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -63,6 +62,8 @@ import { UserAdvisorPanel } from "@/components/admin/UserAdvisorPanel";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
+import type { UserExportGroup } from "@/lib/user-export";
+import { UserExportDialog } from "./UserExportDialog";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "DELETED";
 
@@ -387,6 +388,7 @@ function AdminUsersContent() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
@@ -856,18 +858,34 @@ function AdminUsersContent() {
     }
   };
 
-  const exportCsv = async () => {
+  const startExport = async (groups: UserExportGroup[]) => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (status) params.set("status", status);
     if (level) params.set("level", level);
+    params.set("include", groups.join(","));
     const qs = params.toString();
     setExporting(true);
     try {
-      await downloadFromUrl(
-        `/api/admin/users?export=csv${qs ? `&${qs}` : ""}`,
-        `users-${new Date().toISOString().slice(0, 10)}.csv`
-      );
+      const response = await fetch(`/api/admin/users/export?check=1&${qs}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error?.message || "导出预检失败，请稍后重试");
+      }
+      setExportOpen(false);
+      const anchor = document.createElement("a");
+      anchor.href = `/api/admin/users/export?${qs}`;
+      anchor.rel = "noopener";
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      setTimeout(() => anchor.remove(), 1000);
+      toast.success("已开始生成导出文件，请保持页面打开");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
     } finally {
@@ -953,10 +971,10 @@ function AdminUsersContent() {
               variant="outline"
               size="sm"
               leftIcon={<Download className="h-4 w-4" />}
-              onClick={exportCsv}
+              onClick={() => setExportOpen(true)}
               loading={exporting}
             >
-              {exporting ? "导出中..." : "导出 CSV"}
+              {exporting ? "预检中..." : "导出用户数据"}
             </Button>
             <Button
               variant="outline"
@@ -2337,6 +2355,16 @@ function AdminUsersContent() {
         type="danger"
         confirmText="确认删除"
         loading={deleteLoading}
+      />
+
+      <UserExportDialog
+        open={exportOpen}
+        total={pagination.total}
+        canReadSensitive={canRevealPhone}
+        canReadAdvisor={canReadAdvisorProfile}
+        loading={exporting}
+        onClose={() => setExportOpen(false)}
+        onConfirm={startExport}
       />
 
       {/* 资金类操作二次验证 */}

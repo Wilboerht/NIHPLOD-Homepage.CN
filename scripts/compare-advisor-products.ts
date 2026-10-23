@@ -107,7 +107,9 @@ function normalize(value: string): string {
 function toNumber(value: unknown): number | null {
     if (typeof value === "number") return Number.isFinite(value) ? value : null;
     if (typeof value === "string") {
-        const parsed = Number.parseFloat(value);
+        // 子站价格可能是 "4,500" / "¥1,350.00"，先去千分位和货币符号
+        const cleaned = value.replace(/[^\d.-]/g, "");
+        const parsed = Number.parseFloat(cleaned);
         return Number.isFinite(parsed) ? parsed : null;
     }
     // Prisma Decimal 等对象：走 toString 再解析

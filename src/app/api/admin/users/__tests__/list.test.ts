@@ -4,7 +4,7 @@
  *
  * 覆盖：
  * - 手机号搜索仅精确匹配（equals），防逐位穷举枚举（S3）
- * - export=csv 分支写入 user_export 审计日志（筛选条件 + 导出条数，search 脱敏）
+ * - 旧 export=csv 入口返回 410，导出迁移到 /api/admin/users/export
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
@@ -39,7 +39,7 @@ vi.mock("@/lib/logger", () => ({
 import { GET } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
+import { createAuditLog } from "@/lib/audit";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 
@@ -83,43 +83,13 @@ describe("GET /api/admin/users", () => {
     );
   });
 
-  it("export=csv 返回 CSV 并写入 user_export 审计日志（含筛选条件与条数）", async () => {
-    mockFindMany.mockResolvedValue([
-      {
-        id: "user-1",
-        phone: "13800138000",
-        phoneVerified: true,
-        nickname: "张三",
-        avatar: null,
-        status: "ACTIVE",
-        membershipLevel: "REGULAR",
-        createdAt: new Date("2024-01-01T00:00:00.000Z"),
-      },
-    ]);
-
+  it("旧导出入口返回 410 并指向新导出接口", async () => {
     const res = await GET(createRequest("?export=csv&search=13800138000&status=ACTIVE"));
 
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toContain("text/csv");
-    const text = await res.text();
-    // CSV 中手机号脱敏
-    expect(text).toContain("138****8000");
-    expect(text).not.toContain("13800138000");
-
-    expect(beginAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "user_export",
-        targetType: "user",
-        adminId: "admin-1",
-        detail: {
-          search: "138****8000",
-          status: "ACTIVE",
-          level: null,
-          exportedCount: 1,
-        },
-      })
-    );
-    expect(finishAuditLog).toHaveBeenCalledWith("audit-1", "SUCCESS", expect.any(Object));
+    expect(res.status).toBe(410);
+    const payload = await res.json();
+    expect(payload.error.code).toBe("EXPORT_MOVED");
+    expect(mockFindMany).not.toHaveBeenCalled();
   });
 
   it("非导出请求不写导出审计日志", async () => {
