@@ -1236,7 +1236,7 @@ function LoginPageContent() {
                 ))}
             </ul>
             <p className="mt-2 text-[11px] leading-relaxed text-brand-charcoal/40">
-              授权后此应用会记住您的选择，后续登录不再重复询问；可在用户中心「安全中心 → 授权管理」撤销。
+              授权后此应用会记住您的选择，后续登录时会根据实际情况可能需要再次授权确认；可在用户中心「安全中心 → 授权管理」撤销。
             </p>
           </div>
 

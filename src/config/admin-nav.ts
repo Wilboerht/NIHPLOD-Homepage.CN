@@ -20,7 +20,6 @@ import {
   Activity,
   ClipboardCheck,
   Gift,
-  Crown,
   Webhook,
   Timer,
   LucideIcon,
@@ -87,13 +86,6 @@ export const adminNavItems: NavItem[] = [
     href: "/admin/point-gifts",
     icon: Gift,
     permissionsAny: ["redemptions:read", "gifts:read"],
-    group: "商城管理",
-  },
-  {
-    title: "会员权益",
-    href: "/admin/membership",
-    icon: Crown,
-    permission: "membership:read",
     group: "商城管理",
   },
   // 招聘管理

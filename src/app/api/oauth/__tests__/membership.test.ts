@@ -38,14 +38,10 @@ vi.mock("@/lib/logger", () => ({
 
 // === Mock prisma ===
 const mockUserFindUnique = vi.fn();
-const mockBenefitFindMany = vi.fn();
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
-    },
-    membershipBenefit: {
-      findMany: (...args: unknown[]) => mockBenefitFindMany(...args),
     },
   },
 }));
@@ -63,8 +59,6 @@ describe("GET /api/oauth/membership", () => {
     mockIsBlacklisted.mockReturnValue(false);
     // 默认 token 验证失败（401 路径）
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
-    // 默认 DB 无权益配置：回退 LEVEL_DEFAULT_BENEFITS
-    mockBenefitFindMany.mockResolvedValue([]);
   });
 
   function getRequest() {

@@ -50,9 +50,6 @@ export const ADMIN_PERMISSIONS = [
   "redemptions:fulfill",
   "redemptions:cancel",
 
-  "membership:read",
-  "membership:write",
-
   "audit:read",
   "audit:export",
   "audit:sensitive:read",
@@ -141,8 +138,6 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "redemptions:read",
       "redemptions:fulfill",
       "redemptions:cancel",
-      "membership:read",
-      "membership:write",
     ],
   },
   {
@@ -203,8 +198,6 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "redemptions:read": "兑换记录查看",
   "redemptions:fulfill": "兑换履约/运单维护",
   "redemptions:cancel": "取消兑换并退分（资金类）",
-  "membership:read": "会员权益查看",
-  "membership:write": "会员权益编辑",
   "audit:read": "审计日志查看（脱敏）",
   "audit:export": "审计日志导出",
   "audit:sensitive:read": "查看审计敏感字段（IP/UA/操作者邮箱）",
@@ -294,7 +287,6 @@ export const ROLE_TEMPLATES: Record<
     "messages:read",
     "messages:write",
     "messages:delete",
-    "membership:read",
   ],
   support: [
     "dashboard:read",
@@ -322,7 +314,6 @@ export const ROLE_TEMPLATES: Record<
     "spent:read",
     "gifts:read",
     "redemptions:read",
-    "membership:read",
     "audit:read",
     "audit:export",
   ],

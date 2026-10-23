@@ -12,7 +12,6 @@ global.fetch = globalFetch as unknown as typeof fetch;
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: vi.fn() },
-    membershipBenefit: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 
