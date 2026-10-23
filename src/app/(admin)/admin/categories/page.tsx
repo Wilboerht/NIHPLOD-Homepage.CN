@@ -1,65 +1,34 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  GripVertical,
-  Eye,
-  EyeOff,
-  ChevronUp,
-  ChevronDown,
-  ExternalLink,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { CategoryForm } from "@/components/admin/CategoryForm";
+import { CategoriesTable, type CategoryItem } from "@/components/admin/CategoriesTable";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { IconButton } from "@/components/admin/IconButton";
 import { useToast } from "@/components/ui/Toast";
-import { Tooltip } from "@/components/ui/Tooltip";
-import { Empty } from "@/components/ui/Empty";
-import { cn } from "@/lib/utils";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 
-// 分类类型
-interface Category {
-  id: string;
-  name: string;
-  nameEn: string;
-  slug: string;
-  icon?: string | null;
-  order: number;
-  visible: boolean;
-  productCount: number;
-  createdAt: string;
-}
-
 function AdminCategoriesContent() {
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("categories:write");
   const canDelete = canAdmin("categories:delete");
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
-    category?: Category;
+    category?: CategoryItem;
   }>({ open: false });
   const [deleting, setDeleting] = useState(false);
 
-  // 拖拽状态
-  const [dragItem, setDragItem] = useState<number | null>(null);
-  const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   // 排序请求串行化：进行中禁止再次拖拽/移动，避免中间态覆盖
   const [savingOrder, setSavingOrder] = useState(false);
   // 可见性切换中的行 id
@@ -68,7 +37,7 @@ function AdminCategoriesContent() {
   // 获取分类列表
   const fetchCategories = useCallback(async () => {
     try {
-      const data = await apiGet<Category[]>("/api/admin/categories");
+      const data = await apiGet<CategoryItem[]>("/api/admin/categories");
       setCategories(data);
     } catch (error) {
       apiConsole.error("获取分类失败:", error);
@@ -89,7 +58,7 @@ function AdminCategoriesContent() {
   };
 
   // 打开编辑弹窗
-  const handleEdit = (category: Category) => {
+  const handleEdit = (category: CategoryItem) => {
     setEditingCategory(category);
     setFormOpen(true);
   };
@@ -113,7 +82,7 @@ function AdminCategoriesContent() {
   };
 
   // 切换前台可见性（带行级 pending，防重复点击）
-  const handleToggleVisible = async (category: Category) => {
+  const handleToggleVisible = async (category: CategoryItem) => {
     if (togglingId) return;
     setTogglingId(category.id);
     const nextVisible = !category.visible;
@@ -132,59 +101,36 @@ function AdminCategoriesContent() {
     }
   };
 
-  // 拖拽开始
-  const handleDragStart = (index: number) => {
-    setDragItem(index);
-  };
-
-  // 拖拽经过
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverItem(index);
-  };
-
-  // 拖拽结束
-  const handleDragEnd = async () => {
-    if (savingOrder || !canWrite) {
-      setDragItem(null);
-      setDragOverItem(null);
-      return;
-    }
-    if (dragItem === null || dragOverItem === null || dragItem === dragOverItem) {
-      setDragItem(null);
-      setDragOverItem(null);
-      return;
-    }
-
-    // 重新排序
-    const newCategories = [...categories];
-    const draggedItem = newCategories[dragItem];
-    newCategories.splice(dragItem, 1);
-    newCategories.splice(dragOverItem, 0, draggedItem);
-    // 更新本地状态
-    const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
+  // 保存排序（本地先行更新，失败恢复）
+  const saveOrder = async (updated: CategoryItem[]) => {
     setCategories(updated);
-    setDragItem(null);
-    setDragOverItem(null);
-
-    // 保存到服务器
     setSavingOrder(true);
     try {
       await apiPut("/api/admin/categories/order", {
         items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
       });
-
       success("排序已保存");
     } catch {
       showError("保存排序失败");
-      fetchCategories(); // 恢复原数据
+      fetchCategories();
     } finally {
       setSavingOrder(false);
     }
   };
 
+  // 拖拽排序
+  const handleReorder = (fromIndex: number, toIndex: number) => {
+    if (savingOrder || !canWrite || fromIndex === toIndex) return;
+
+    const newCategories = [...categories];
+    const [draggedItem] = newCategories.splice(fromIndex, 1);
+    newCategories.splice(toIndex, 0, draggedItem);
+    const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
+    void saveOrder(updated);
+  };
+
   // 上移/下移（移动端/键盘替代拖拽）
-  const moveCategory = async (index: number, direction: -1 | 1) => {
+  const moveCategory = (index: number, direction: -1 | 1) => {
     if (savingOrder || !canWrite) return;
     const target = index + direction;
     if (target < 0 || target >= categories.length) return;
@@ -192,34 +138,12 @@ function AdminCategoriesContent() {
     const newCategories = [...categories];
     const [moved] = newCategories.splice(index, 1);
     newCategories.splice(target, 0, moved);
-
     const updated = newCategories.map((cat, i) => ({ ...cat, order: i }));
-    setCategories(updated);
-
-    setSavingOrder(true);
-    try {
-      await apiPut("/api/admin/categories/order", {
-        items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
-      });
-      success("排序已保存");
-    } catch {
-      showError("保存排序失败");
-      fetchCategories(); // 恢复原数据
-    } finally {
-      setSavingOrder(false);
-    }
+    void saveOrder(updated);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* 页面头部 */}
       <PageHeader
         title="分类管理"
@@ -233,243 +157,21 @@ function AdminCategoriesContent() {
         }
       />
 
-      {/* 分类列表（窄屏横向滚动，避免网格挤压错位） */}
-      <div className="overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white">
-        {categories.length === 0 ? (
-          <Empty className="h-48" title="暂无分类" description="点击上方按钮创建第一个分类" />
-        ) : (
-          <>
-            <div className="divide-brand-charcoal/8 divide-y md:hidden">
-              {categories.map((category, index) => (
-                <div key={category.id} className="px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Link
-                        href={`/admin/products?categoryId=${category.id}`}
-                        className="group inline-flex max-w-full items-center gap-1.5 font-medium text-brand-charcoal transition-colors hover:text-brand-primary"
-                        title="查看该分类下的产品"
-                      >
-                        <span className="truncate">{category.name}</span>
-                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65 transition-colors group-hover:text-brand-primary" />
-                      </Link>
-                      <p className="truncate text-sm text-brand-charcoal/65">{category.nameEn}</p>
-                    </div>
-                    <Badge variant={category.productCount > 0 ? "secondary" : "default"}>
-                      {category.productCount} 个产品
-                    </Badge>
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-xs text-brand-charcoal/70">
-                      {category.slug}
-                    </code>
-                    <button
-                      onClick={() => handleToggleVisible(category)}
-                      disabled={!canWrite || togglingId === category.id}
-                      aria-label={`${category.visible ? "隐藏" : "显示"}分类 ${category.name}`}
-                      className={cn(
-                        "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50",
-                        category.visible
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-brand-charcoal/8 text-brand-charcoal/65"
-                      )}
-                    >
-                      {category.visible ? (
-                        <>
-                          <Eye className="h-3.5 w-3.5" /> 显示
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="h-3.5 w-3.5" /> 隐藏
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-end gap-1">
-                    {canWrite && (
-                      <>
-                        <IconButton
-                          label={`上移 ${category.name}`}
-                          onClick={() => moveCategory(index, -1)}
-                          disabled={index === 0 || savingOrder}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </IconButton>
-                        <IconButton
-                          label={`下移 ${category.name}`}
-                          onClick={() => moveCategory(index, 1)}
-                          disabled={index === categories.length - 1 || savingOrder}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </IconButton>
-                        <IconButton label={`编辑 ${category.name}`} onClick={() => handleEdit(category)}>
-                          <Pencil className="h-4 w-4" />
-                        </IconButton>
-                      </>
-                    )}
-                    {canDelete && (
-                      <IconButton
-                        label={`删除 ${category.name}`}
-                        variant="danger"
-                        onClick={() => setDeleteConfirm({ open: true, category })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </IconButton>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="hidden min-w-[880px] md:block">
-            {/* 表头 */}
-            <div className="grid grid-cols-11 gap-4 px-6 py-3 text-sm font-medium text-brand-charcoal/65">
-              <div className="col-span-1"></div>
-              <div className="col-span-3">分类名称</div>
-              <div className="col-span-2">URL 别名</div>
-              <div className="col-span-1">产品数量</div>
-              <div className="col-span-1">前台展示</div>
-              <div className="col-span-3 text-right">操作</div>
-            </div>
-
-            {/* 列表项 */}
-            {categories.map((category, index) => (
-              <div
-                key={category.id}
-                draggable={canWrite}
-                onDragStart={() => canWrite && handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={cn(
-                  "grid grid-cols-11 gap-4 px-6 py-4 transition-colors",
-                  dragOverItem === index && "bg-brand-primary/5",
-                  "hover:bg-brand-charcoal/[0.03]"
-                )}
-              >
-                {/* 拖拽手柄 + 移动端排序按钮 */}
-                <div className="col-span-1 flex items-center gap-1">
-                  {canWrite && (
-                    <button
-                      className="hidden cursor-grab text-brand-charcoal/65 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-30 md:block"
-                      title="拖拽排序"
-                      disabled={savingOrder}
-                      aria-label={`拖拽排序 ${category.name}`}
-                    >
-                      <GripVertical className="h-5 w-5" />
-                    </button>
-                  )}
-                  {canWrite && (
-                  <div className="flex md:hidden">
-                    <Tooltip content="上移" side="top">
-                      <button
-                        onClick={() => moveCategory(index, -1)}
-                        disabled={index === 0 || savingOrder}
-                        aria-label={`上移 ${category.name}`}
-                        className="rounded p-1 text-brand-charcoal/65 hover:text-brand-charcoal disabled:opacity-30"
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="下移" side="top">
-                      <button
-                        onClick={() => moveCategory(index, 1)}
-                        disabled={index === categories.length - 1 || savingOrder}
-                        aria-label={`下移 ${category.name}`}
-                        className="rounded p-1 text-brand-charcoal/65 hover:text-brand-charcoal disabled:opacity-30"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                  )}
-                </div>
-
-                {/* 名称（点击跳转产品页并按该分类筛选） */}
-                <div className="col-span-3 flex flex-col justify-center">
-                  <Link
-                    href={`/admin/products?categoryId=${category.id}`}
-                    className="group inline-flex w-fit items-center gap-1.5 font-medium text-brand-charcoal transition-colors hover:text-brand-primary"
-                    title="查看该分类下的产品"
-                  >
-                    {category.name}
-                    <ExternalLink className="h-3.5 w-3.5 text-brand-charcoal/65 transition-colors group-hover:text-brand-primary" />
-                  </Link>
-                  <span className="text-sm text-brand-charcoal/65">{category.nameEn}</span>
-                </div>
-
-                {/* Slug */}
-                <div className="col-span-2 flex items-center">
-                  <code className="bg-brand-charcoal/8 rounded px-2 py-1 text-sm text-brand-charcoal/70">
-                    {category.slug}
-                  </code>
-                </div>
-
-                {/* 产品数量 */}
-                <div className="col-span-1 flex items-center">
-                  <Badge variant={category.productCount > 0 ? "secondary" : "default"}>
-                    {category.productCount}
-                  </Badge>
-                </div>
-
-                {/* 前台展示开关 */}
-                <div className="col-span-1 flex items-center">
-                  <Tooltip content={category.visible ? "点击隐藏" : "点击显示"} side="top">
-                    <button
-                      onClick={() => handleToggleVisible(category)}
-                      disabled={!canWrite || togglingId === category.id}
-                      aria-label={`${category.visible ? "隐藏" : "显示"}分类 ${category.name}`}
-                      className={cn(
-                        "flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-colors",
-                        category.visible
-                          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                          : "bg-brand-charcoal/8 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06]"
-                      )}
-                    >
-                      {category.visible ? (
-                        <>
-                          <Eye className="h-3.5 w-3.5" /> 显示
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="h-3.5 w-3.5" /> 隐藏
-                        </>
-                      )}
-                    </button>
-                  </Tooltip>
-                </div>
-
-                {/* 操作 */}
-                <div className="col-span-3 flex items-center justify-end gap-2">
-                  {canWrite && (
-                    <Tooltip content="编辑" side="top">
-                      <button
-                        onClick={() => handleEdit(category)}
-                        aria-label={`编辑 ${category.name}`}
-                        className="rounded p-2 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                  )}
-                  {canDelete && (
-                    <Tooltip content="删除" side="top">
-                      <button
-                        onClick={() => setDeleteConfirm({ open: true, category })}
-                        aria-label={`删除 ${category.name}`}
-                        className="rounded p-2 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          </>
-        )}
-      </div>
+      {/* 分类列表 */}
+      <CategoriesTable
+        categories={categories}
+        loading={loading}
+        canWrite={canWrite}
+        canDelete={canDelete}
+        togglingId={togglingId}
+        savingOrder={savingOrder}
+        onEdit={handleEdit}
+        onDelete={(category) => setDeleteConfirm({ open: true, category })}
+        onToggleVisible={handleToggleVisible}
+        onMove={moveCategory}
+        onReorder={handleReorder}
+        onCreate={handleAdd}
+      />
 
       {/* 分类表单弹窗 */}
       <CategoryForm

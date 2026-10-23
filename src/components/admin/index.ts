@@ -1,6 +1,8 @@
 export { AdminShell } from "./AdminShell";
 export { PageHeader } from "./PageHeader";
 export { PanelCard } from "./PanelCard";
+export { PendingQueue, type PendingQueueItem } from "./PendingQueue";
+export { SystemAlertBar, type SystemAlert } from "./SystemAlertBar";
 export { MobileList, MobileListCard } from "./MobileList";
 export { FormSection } from "./FormSection";
 export { FormActions } from "./FormActions";
@@ -11,6 +13,7 @@ export { StatsCard } from "./StatsCard";
 export { StatStrip, type StatStripItem } from "./StatStrip";
 export { CollapsiblePanel } from "./CollapsiblePanel";
 export { ProductsTable } from "./ProductsTable";
+export { CategoriesTable, type CategoryItem } from "./CategoriesTable";
 export { ImageUploader } from "./ImageUploader";
 export { ProductForm } from "./ProductForm";
 export { CategoryForm } from "./CategoryForm";

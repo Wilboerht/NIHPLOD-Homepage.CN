@@ -65,6 +65,7 @@ export const adminNavItems: NavItem[] = [
     icon: Package,
     permission: "products:read",
     group: "商城管理",
+    width: "wide",
   },
   {
     title: "分类管理",

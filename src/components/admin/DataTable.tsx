@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, type HTMLAttributes } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus, Inbox } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
@@ -57,6 +57,8 @@ interface DataTableProps<T> {
   minWidth?: string;
   /** 移动端卡片渲染；提供后 md 以下使用卡片列表，表格仅桌面显示 */
   mobileCard?: (record: T, index: number) => ReactNode;
+  /** 行级属性（如拖拽排序）；className / onClick / onKeyDown 会与内置行为合并 */
+  rowProps?: (record: T, index: number) => HTMLAttributes<HTMLTableRowElement> | undefined;
 }
 
 /**
@@ -79,6 +81,7 @@ export function DataTable<T extends object>({
   tableLayout = "auto",
   minWidth,
   mobileCard,
+  rowProps,
 }: DataTableProps<T>) {
   const cellDensityCls = density === "compact" ? "px-3 py-2" : "px-4 py-3";
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(
@@ -285,46 +288,64 @@ export function DataTable<T extends object>({
               </tr>
             ) : (
               // 数据行
-              data.map((record, rowIndex) => (
-                <tr
-                  key={getRowKey(record, rowIndex)}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  role={onRowClick ? "button" : undefined}
-                  aria-label={onRowClick ? "查看详情" : undefined}
-                  onKeyDown={(e) => {
-                    if ((e.key === "Enter" || e.key === " ") && onRowClick) {
-                      e.preventDefault();
-                      onRowClick(record);
-                    }
-                  }}
-                  onClick={() => onRowClick?.(record)}
-                  className={cn(
-                    "transition-colors even:bg-brand-charcoal/[0.02]",
-                    onRowClick &&
-                      "cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
-                  )}
-                >
-                  {columns.map((column) => {
-                    const value = getCellValue(record, String(column.key));
-                    return (
-                      <td
-                        key={String(column.key)}
-                        className={cn(
-                          "whitespace-nowrap text-sm text-brand-charcoal",
-                          cellDensityCls,
-                          alignStyles[column.align || "left"]
-                        )}
-                      >
-                        {column.render
-                          ? column.render(value, record, rowIndex)
-                          : value !== undefined && value !== null
-                            ? String(value)
-                            : "-"}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))
+              data.map((record, rowIndex) => {
+                const {
+                  className: rowClassName,
+                  onClick: rowOnClick,
+                  onKeyDown: rowOnKeyDown,
+                  ...rowRestProps
+                } = rowProps?.(record, rowIndex) ?? {};
+                return (
+                  <tr
+                    key={getRowKey(record, rowIndex)}
+                    {...rowRestProps}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    role={onRowClick ? "button" : undefined}
+                    aria-label={onRowClick ? "查看详情" : undefined}
+                    onKeyDown={(e) => {
+                      rowOnKeyDown?.(e);
+                      if (
+                        !e.defaultPrevented &&
+                        (e.key === "Enter" || e.key === " ") &&
+                        onRowClick
+                      ) {
+                        e.preventDefault();
+                        onRowClick(record);
+                      }
+                    }}
+                    onClick={(e) => {
+                      rowOnClick?.(e);
+                      if (!e.defaultPrevented) onRowClick?.(record);
+                    }}
+                    className={cn(
+                      "transition-colors even:bg-brand-charcoal/[0.02]",
+                      rowClassName,
+                      onRowClick &&
+                        "cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    )}
+                  >
+                    {columns.map((column) => {
+                      const value = getCellValue(record, String(column.key));
+                      return (
+                        <td
+                          key={String(column.key)}
+                          className={cn(
+                            "whitespace-nowrap text-sm text-brand-charcoal",
+                            cellDensityCls,
+                            alignStyles[column.align || "left"]
+                          )}
+                        >
+                          {column.render
+                            ? column.render(value, record, rowIndex)
+                            : value !== undefined && value !== null
+                              ? String(value)
+                              : "-"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

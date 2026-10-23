@@ -5,39 +5,23 @@
  *
  * 安全要求：服务端必须按当前管理员的有效权限裁剪返回字段，
  * 不能因为拥有 dashboard:read 就把留言/用户/商品/职位数据一并返回。
+ *
+ * 口径说明：站内没有订单/支付，产品均为站外购买链接。
+ * 这里的“消费补录”仅代表用户站外消费申报/同步，用于会员等级与积分，不代表站内营收。
  */
 import { unstable_cache } from "next/cache";
 import prisma from "./prisma";
 import { getSsoOverview } from "./sso-overview";
-import { hasAdminPermission, type AdminPermission } from "./admin-permissions";
+import { hasAdminPermission } from "./admin-permissions";
 import type { AdminUser } from "@/types/auth";
-import { getUtc8DateKey } from "./timezone";
+import { getUtc8DateKey, getUtc8DayStart, getUtc8WeekStartMonday } from "./timezone";
+import {
+  buildAdminStatsData,
+  type AdminStatsData,
+  type AdminStatsSnapshot,
+} from "./admin-stats-data";
 
-const STATS_REVALIDATE = parseInt(process.env.ADMIN_STATS_CACHE_TTL ?? "", 10) || 300;
-
-export interface AdminStatsData {
-  products?: number;
-  categories?: number;
-  unreadMessages?: number;
-  jobs?: number;
-  totalUsers?: number;
-  recentMessages?: {
-    id: string;
-    name: string;
-    phone: string;
-    content: string;
-    read: boolean;
-    createdAt: string;
-  }[];
-  /** 待审核消费补录数（spent:read 可见） */
-  pendingSpentAdjustments?: number;
-  /** 待履约积分兑换数（redemptions:read 可见） */
-  pendingRedemptions?: number;
-  /** 注销失败人工队列数（users:read 可见） */
-  failedAccountDeletions?: number;
-  /** Webhook 失败队列条数（webhooks:read 可见） */
-  webhookFailures?: number;
-}
+export type { AdminStatsData, AdminStatsSnapshot, RecentMessageRecord } from "./admin-stats-data";
 
 export interface SsoStatsData {
   activeClients: number;
@@ -47,46 +31,98 @@ export interface SsoStatsData {
   successRate: number | null;
 }
 
+const STATS_REVALIDATE = parseInt(process.env.ADMIN_STATS_CACHE_TTL ?? "", 10) || 300;
 const STATS_CACHE_TAGS = ["admin-stats"];
+
+const toIsoString = (value: Date | null | undefined): string | undefined =>
+  value ? value.toISOString() : undefined;
 
 /** 仅缓存聚合计数（不含留言内容等 PII） */
 const getCachedCounts = unstable_cache(
-  async (_: string) => {
+  async (_: string): Promise<AdminStatsSnapshot> => {
+    const now = new Date();
+    const dayStart = getUtc8DayStart(now);
+    const weekStart = getUtc8WeekStartMonday(now);
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
     const [
       productsCount,
       categoriesCount,
-      unreadMessagesCount,
+      draftProductsCount,
       jobsCount,
-      totalUsers,
-      pendingSpentAdjustmentsCount,
-      pendingRedemptionsCount,
+      totalUsersCount,
+      newUsersTodayCount,
+      totalMessagesCount,
+      messagesTodayCount,
+      unreadMessagesAgg,
+      pendingSpentAgg,
+      pendingRedemptionsAgg,
+      pendingApplicationsAgg,
+      newApplicationsThisWeekCount,
       failedAccountDeletionsCount,
       webhookFailuresCount,
+      cronFailures24hCount,
     ] = await Promise.all([
       prisma.product.count(),
       prisma.category.count(),
-      prisma.contactMessage.count({ where: { read: false } }),
+      prisma.product.count({ where: { published: false } }),
       prisma.job.count({ where: { published: true } }),
       prisma.user.count(),
-      prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } }),
-      prisma.pointRedemption.count({ where: { status: "PENDING" } }),
+      prisma.user.count({ where: { createdAt: { gte: dayStart } } }),
+      prisma.contactMessage.count(),
+      prisma.contactMessage.count({ where: { createdAt: { gte: dayStart } } }),
+      prisma.contactMessage.aggregate({
+        _count: true,
+        _min: { createdAt: true },
+        where: { read: false },
+      }),
+      prisma.spentAdjustmentApplication.aggregate({
+        _count: true,
+        _min: { createdAt: true },
+        _sum: { amountClaimed: true },
+        where: { status: "PENDING" },
+      }),
+      prisma.pointRedemption.aggregate({
+        _count: true,
+        _min: { createdAt: true },
+        where: { status: "PENDING" },
+      }),
+      prisma.jobApplication.aggregate({
+        _count: true,
+        _min: { createdAt: true },
+        where: { status: "pending" },
+      }),
+      prisma.jobApplication.count({ where: { createdAt: { gte: weekStart } } }),
       prisma.accountDeletionRequest.count({ where: { status: "FAILED" } }),
       prisma.webhookDeliveryFailure.count(),
+      prisma.cronTaskRun.count({ where: { success: false, startedAt: { gte: last24h } } }),
     ]);
 
     return {
       productsCount,
       categoriesCount,
-      unreadMessagesCount,
+      draftProductsCount,
       jobsCount,
-      totalUsers,
-      pendingSpentAdjustmentsCount,
-      pendingRedemptionsCount,
+      totalUsersCount,
+      newUsersTodayCount,
+      totalMessagesCount,
+      messagesTodayCount,
+      unreadMessagesCount: unreadMessagesAgg._count,
+      unreadMessagesOldestAt: toIsoString(unreadMessagesAgg._min.createdAt),
+      pendingSpentAdjustmentsCount: pendingSpentAgg._count,
+      pendingSpentAmount: pendingSpentAgg._sum.amountClaimed ?? 0,
+      pendingSpentAdjustmentsOldestAt: toIsoString(pendingSpentAgg._min.createdAt),
+      pendingRedemptionsCount: pendingRedemptionsAgg._count,
+      pendingRedemptionsOldestAt: toIsoString(pendingRedemptionsAgg._min.createdAt),
+      pendingApplicationsCount: pendingApplicationsAgg._count,
+      pendingApplicationsOldestAt: toIsoString(pendingApplicationsAgg._min.createdAt),
+      newApplicationsThisWeekCount,
       failedAccountDeletionsCount,
       webhookFailuresCount,
+      cronFailures24hCount,
     };
   },
-  ["admin-stats-counts-v3"],
+  ["admin-stats-counts-v4"],
   { revalidate: STATS_REVALIDATE, tags: [...STATS_CACHE_TAGS] }
 );
 
@@ -110,44 +146,20 @@ const getCachedRecentMessages = unstable_cache(
   { revalidate: STATS_REVALIDATE, tags: [...STATS_CACHE_TAGS] }
 );
 
-const maskPhone = (phone: string) => phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
-
 /**
  * 获取当前管理员可见的仪表盘统计数据。
- * 无权限的域不会查询/返回（留言内容仅在 messages:read 时查询）。
+ * 无权限的域不会返回（留言内容仅在 messages:read 时查询）。
  */
 export async function getAdminStats(admin: AdminUser): Promise<AdminStatsData> {
-  const can = (permission: AdminPermission) => hasAdminPermission(admin, permission);
   const dateKey = getUtc8DateKey();
+  const canReadMessages = hasAdminPermission(admin, "messages:read");
 
   const [counts, recentMessages] = await Promise.all([
     getCachedCounts(dateKey),
-    can("messages:read") ? getCachedRecentMessages(dateKey) : Promise.resolve(undefined),
+    canReadMessages ? getCachedRecentMessages(dateKey) : Promise.resolve(undefined),
   ]);
 
-  const data: AdminStatsData = {};
-
-  if (can("users:read")) {
-    data.totalUsers = counts.totalUsers;
-    data.failedAccountDeletions = counts.failedAccountDeletionsCount;
-  }
-  if (can("products:read")) data.products = counts.productsCount;
-  if (can("categories:read")) data.categories = counts.categoriesCount;
-  if (can("jobs:read")) data.jobs = counts.jobsCount;
-  if (can("spent:read")) data.pendingSpentAdjustments = counts.pendingSpentAdjustmentsCount;
-  if (can("redemptions:read")) data.pendingRedemptions = counts.pendingRedemptionsCount;
-  if (can("webhooks:read")) data.webhookFailures = counts.webhookFailuresCount;
-
-  if (can("messages:read")) {
-    data.unreadMessages = counts.unreadMessagesCount;
-    data.recentMessages = (recentMessages ?? []).map((msg) => ({
-      ...msg,
-      phone: maskPhone(msg.phone),
-      createdAt: new Date(msg.createdAt).toISOString(),
-    }));
-  }
-
-  return data;
+  return buildAdminStatsData(admin, counts, recentMessages);
 }
 
 const getCachedSsoStats = unstable_cache(

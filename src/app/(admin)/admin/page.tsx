@@ -10,12 +10,10 @@ import {
   Shield,
   ShieldCheck,
   Users,
+  UserCheck,
   TrendingUp,
   ClipboardCheck,
   Gift,
-  UserX,
-  Webhook,
-  CheckCircle2,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -23,29 +21,18 @@ import {
   PageHeader,
   PanelCard,
   CollapsiblePanel,
+  PendingQueue,
+  SystemAlertBar,
   type StatStripItem,
+  type PendingQueueItem,
+  type SystemAlert,
 } from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
 import { getAdminStats, getSsoStats } from "@/lib/admin-stats";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-
-// 格式化相对时间（基于服务端渲染时刻）
-function formatRelativeTime(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMinutes < 1) return "刚刚";
-  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 7) return `${diffDays}天前`;
-  return date.toLocaleDateString("zh-CN");
-}
+import { formatRelativeTime } from "@/lib/format";
 
 export default async function AdminDashboard() {
   // 服务端验证管理员身份，未登录直接重定向
@@ -83,36 +70,78 @@ export default async function AdminDashboard() {
     }
   }
 
-  // 待处理事项：按权限裁剪（admin-stats 已按权限裁剪字段，无权限的项为 undefined 不渲染）
-  const pendingItems = stats
-    ? [
-        {
-          title: "待审核消费补录",
-          count: stats.pendingSpentAdjustments,
-          href: "/admin/spent-adjustments",
-          icon: ClipboardCheck,
-        },
-        {
-          title: "待履约积分兑换",
-          count: stats.pendingRedemptions,
-          href: "/admin/point-gifts",
-          icon: Gift,
-        },
-        {
-          title: "注销失败人工队列",
-          count: stats.failedAccountDeletions,
-          href: "/admin/account-deletions",
-          icon: UserX,
-        },
-        {
-          title: "Webhook 失败队列",
-          count: stats.webhookFailures,
-          href: "/admin/webhook-failures",
-          icon: Webhook,
-        },
-      ].filter((item): item is typeof item & { count: number } => item.count !== undefined)
-    : [];
-  const totalPending = pendingItems.reduce((sum, item) => sum + item.count, 0);
+  // 业务待办：按权限裁剪，只展示有积压的队列
+  const pendingQueueItems: PendingQueueItem[] = [];
+  if (stats) {
+    if (stats.unreadMessages !== undefined) {
+      pendingQueueItems.push({
+        key: "messages",
+        label: "未读留言",
+        count: stats.unreadMessages,
+        href: "/admin/messages?status=unread",
+        icon: MessageSquare,
+        oldestAt: stats.unreadMessagesOldestAt,
+      });
+    }
+    if (stats.pendingSpentAdjustments !== undefined) {
+      pendingQueueItems.push({
+        key: "spent",
+        label: "消费补录待审",
+        count: stats.pendingSpentAdjustments,
+        href: "/admin/spent-adjustments?status=PENDING",
+        icon: ClipboardCheck,
+        oldestAt: stats.pendingSpentAdjustmentsOldestAt,
+        amountYuan: stats.pendingSpentAmount,
+      });
+    }
+    if (stats.pendingRedemptions !== undefined) {
+      pendingQueueItems.push({
+        key: "redemptions",
+        label: "积分兑换待履约",
+        count: stats.pendingRedemptions,
+        href: "/admin/point-gifts?status=PENDING",
+        icon: Gift,
+        oldestAt: stats.pendingRedemptionsOldestAt,
+      });
+    }
+    if (stats.pendingApplications !== undefined) {
+      pendingQueueItems.push({
+        key: "applications",
+        label: "简历待处理",
+        count: stats.pendingApplications,
+        href: "/admin/applications?status=pending",
+        icon: UserCheck,
+        oldestAt: stats.pendingApplicationsOldestAt,
+      });
+    }
+  }
+
+  // 系统告警：与业务待办分开，只在有异常时出现
+  const systemAlerts: SystemAlert[] = [];
+  if (stats?.failedAccountDeletions !== undefined && stats.failedAccountDeletions > 0) {
+    systemAlerts.push({
+      key: "account-deletions",
+      label: "注销执行失败",
+      count: stats.failedAccountDeletions,
+      href: "/admin/account-deletions",
+    });
+  }
+  if (stats?.webhookFailures !== undefined && stats.webhookFailures > 0) {
+    systemAlerts.push({
+      key: "webhooks",
+      label: "Webhook 投递失败",
+      count: stats.webhookFailures,
+      href: "/admin/webhook-failures",
+    });
+  }
+  if (stats?.cronFailures24h !== undefined && stats.cronFailures24h > 0) {
+    systemAlerts.push({
+      key: "cron",
+      label: "定时任务失败",
+      count: stats.cronFailures24h,
+      href: "/admin/cron-tasks",
+    });
+  }
 
   // 概览指标：按权限裁剪，无权限的域不渲染
   const overviewItems: StatStripItem[] = [];
@@ -121,25 +150,32 @@ export default async function AdminDashboard() {
       label: "用户总数",
       value: stats.totalUsers.toLocaleString("zh-CN"),
       icon: <Users className="h-3.5 w-3.5" />,
-      description: "含已注销账号",
+      description:
+        stats.newUsersToday && stats.newUsersToday > 0
+          ? `今日 +${stats.newUsersToday.toLocaleString("zh-CN")}`
+          : "今日暂无新增",
     });
   }
-  if (stats?.unreadMessages !== undefined) {
+  if (stats?.totalMessages !== undefined) {
     overviewItems.push({
-      label: "未读留言",
-      value: stats.unreadMessages.toLocaleString("zh-CN"),
+      label: "留言总数",
+      value: stats.totalMessages.toLocaleString("zh-CN"),
       icon: <MessageSquare className="h-3.5 w-3.5" />,
-      description: stats.unreadMessages > 0 ? "待处理" : "暂无未读",
-      muted: stats.unreadMessages === 0,
+      description:
+        stats.messagesToday && stats.messagesToday > 0
+          ? `今日 +${stats.messagesToday.toLocaleString("zh-CN")}`
+          : "今日暂无新增",
     });
   }
   if (stats?.products !== undefined) {
+    const draftText =
+      stats.draftProducts !== undefined ? `草稿 ${stats.draftProducts}` : "全部产品";
+    const categoryText = stats.categories !== undefined ? ` · ${stats.categories} 个分类` : "";
     overviewItems.push({
       label: "产品总数",
       value: stats.products.toLocaleString("zh-CN"),
       icon: <Package className="h-3.5 w-3.5" />,
-      description:
-        stats.categories !== undefined ? `${stats.categories} 个分类 · 含草稿` : "含草稿",
+      description: `${draftText}${categoryText}`,
     });
   }
   if (stats?.jobs !== undefined) {
@@ -147,7 +183,12 @@ export default async function AdminDashboard() {
       label: "在招职位",
       value: stats.jobs.toLocaleString("zh-CN"),
       icon: <Briefcase className="h-3.5 w-3.5" />,
-      description: "已发布职位",
+      description:
+        stats.newApplicationsThisWeek !== undefined
+          ? stats.newApplicationsThisWeek > 0
+            ? `本周新简历 ${stats.newApplicationsThisWeek}`
+            : "本周暂无新简历"
+          : "已发布职位",
     });
   }
 
@@ -183,6 +224,7 @@ export default async function AdminDashboard() {
   const recentMessages = stats?.recentMessages;
   const showRecentMessages = recentMessages !== undefined;
   const twoColumnBottom = showRecentMessages && !!ssoStats;
+  const hasPendingQueues = pendingQueueItems.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -205,89 +247,10 @@ export default async function AdminDashboard() {
         </div>
       ) : (
         <>
-          {/* 待处理：行动优先，紧凑条目替代大卡片 */}
-          {pendingItems.length > 0 && (
-            <PanelCard
-              title={
-                <span className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-brand-primary" />
-                  待处理
-                </span>
-              }
-              action={
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs",
-                    totalPending > 0 ? "text-brand-charcoal/65" : "text-emerald-600"
-                  )}
-                >
-                  {totalPending > 0 ? (
-                    `共 ${totalPending} 项`
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      已全部处理
-                    </>
-                  )}
-                </span>
-              }
-            >
-              {totalPending === 0 ? (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-50/70 px-3 py-3 text-sm text-emerald-700">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  所有队列已清零，暂无待处理事项
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 md:auto-cols-fr md:grid-flow-col md:grid-cols-none">
-                  {pendingItems.map((item) => {
-                    const Icon = item.icon;
-                    const hasPending = item.count > 0;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex min-h-[64px] items-center gap-2.5 rounded-xl p-3 transition-colors",
-                          hasPending
-                            ? "bg-brand-primary/[0.04] hover:bg-brand-primary/[0.08]"
-                            : "bg-brand-charcoal/[0.02] hover:bg-brand-charcoal/[0.04]"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                            hasPending
-                              ? "bg-brand-primary/10 text-brand-primary"
-                              : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs text-brand-charcoal/65">
-                            {item.title}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-lg font-semibold tabular-nums",
-                              hasPending ? "text-brand-primary" : "text-brand-charcoal/65"
-                            )}
-                          >
-                            {item.count}
-                          </span>
-                        </span>
-                        {hasPending && (
-                          <ChevronRight className="h-4 w-4 shrink-0 text-brand-charcoal/65" />
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </PanelCard>
-          )}
+          <SystemAlertBar alerts={systemAlerts} />
 
-          {/* 概览：一个容器 + 细分隔线，替代四个独立卡片 */}
+          {hasPendingQueues && <PendingQueue items={pendingQueueItems} />}
+
           {overviewItems.length > 0 && (
             <PanelCard>
               <StatStrip items={overviewItems} />
@@ -388,13 +351,19 @@ export default async function AdminDashboard() {
       )}
 
       {/* 有 dashboard:read 但没有任何可查看域时避免空白页 */}
-      {stats && !statsError && overviewItems.length === 0 && !showRecentMessages && !ssoStats && (
-        <Empty
-          className="rounded-2xl border border-brand-charcoal/10 bg-white py-12"
-          title="暂无可查看的统计"
-          description="请联系超级管理员分配权限"
-        />
-      )}
+      {stats &&
+        !statsError &&
+        !hasPendingQueues &&
+        overviewItems.length === 0 &&
+        !showRecentMessages &&
+        !ssoStats &&
+        systemAlerts.length === 0 && (
+          <Empty
+            className="rounded-2xl border border-brand-charcoal/10 bg-white py-12"
+            title="暂无可查看的统计"
+            description="请联系超级管理员分配权限"
+          />
+        )}
     </div>
   );
 }

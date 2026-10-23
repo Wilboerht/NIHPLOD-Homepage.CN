@@ -235,7 +235,7 @@ export function ProductsTable({
       {
         key: "category.name",
         title: "分类",
-        width: "128px",
+        width: "136px",
         render: (_, record) => (
           <span className="block max-w-full" title={record.category.name}>
             <Badge variant="secondary" className="max-w-full">
@@ -247,7 +247,7 @@ export function ProductsTable({
       {
         key: "price",
         title: "价格",
-        width: "100px",
+        width: "96px",
         align: "right",
         sortable: true,
         render: (_, record) => <span className="font-medium">{formatPrice(record.price)}</span>,
@@ -256,7 +256,7 @@ export function ProductsTable({
         key: "order",
         title: "排序",
         align: "right",
-        width: "64px",
+        width: "60px",
         sortable: true,
         render: (_, record) => (
           <span className="text-sm text-brand-charcoal/65">{record.order}</span>
@@ -265,7 +265,7 @@ export function ProductsTable({
       {
         key: "published",
         title: "状态",
-        width: "88px",
+        width: "80px",
         align: "center",
         render: (_, record) => (
           <DotBadge color={record.published ? "green" : "gray"}>
@@ -276,7 +276,7 @@ export function ProductsTable({
       {
         key: "updatedAt",
         title: "更新时间",
-        width: "150px",
+        width: "144px",
         sortable: true,
         render: (_, record) => (
           <span className="text-sm text-brand-charcoal/65">{formatDateTime(record.updatedAt)}</span>
@@ -393,7 +393,7 @@ export function ProductsTable({
         loading={loading}
         rowKey="id"
         tableLayout="fixed"
-        minWidth="1160px"
+        minWidth="1080px"
         emptyText="暂无产品数据"
         mobileCard={(record) => (
           <div className="space-y-3">
