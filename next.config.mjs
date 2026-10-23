@@ -38,6 +38,12 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
 
+  // 构建时跳过类型检查（小内存部署机上 tsc 全量检查会卡 50s+ 甚至 OOM）。
+  // 类型安全由 `npm run typecheck` 在本地 / CI 保证。
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   webpack: (config) => {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
