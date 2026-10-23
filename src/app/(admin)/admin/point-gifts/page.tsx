@@ -296,6 +296,7 @@ function AdminPointGiftsContent() {
 
   /** 状态变更可能把当前页最后一条移出当前 tab：回退一页，避免停在空页 */
   const refreshRedemptionsAfterMutation = (removedFromCurrentTab: boolean) => {
+    window.dispatchEvent(new Event("admin:nav-counts-refresh"));
     if (removedFromCurrentTab && tab !== "ALL" && redemptions.length === 1 && page > 1) {
       update({ page: String(page - 1) }, { resetPage: false });
     } else {

@@ -235,6 +235,7 @@ function AdminApplicationsContent() {
     try {
       await apiPatch(`/api/admin/applications/${application.id}`, { status: newStatus });
       success(toastMsg || "状态已更新");
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       setDetailApplication((prev) =>
         prev && prev.id === application.id ? { ...prev, status: newStatus } : prev
       );
@@ -284,6 +285,7 @@ function AdminApplicationsContent() {
     try {
       await apiDelete(`/api/admin/applications/${deleteTarget.id}`);
       success("申请已删除");
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       setDeleteTarget(null);
       // 删除本页最后一条时回退一页
       if (applications.length === 1 && page > 1) {

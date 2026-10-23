@@ -32,12 +32,16 @@ interface NavCounts {
   messages: number;
   accountDeletions: number;
   spentAdjustments: number;
+  pointRedemptions: number;
+  applications: number;
 }
 
 const EMPTY_NAV_COUNTS: NavCounts = {
   messages: 0,
   accountDeletions: 0,
   spentAdjustments: 0,
+  pointRedemptions: 0,
+  applications: 0,
 };
 
 /**
@@ -94,9 +98,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   // 注销重试、消费审核等操作完成后，页面可通知侧边栏重新拉取待处理数量
   useEffect(() => {
-    const handler = () => setNavCountsVersion((v) => v + 1);
-    window.addEventListener("admin:nav-counts-refresh", handler);
-    return () => window.removeEventListener("admin:nav-counts-refresh", handler);
+    const refresh = () => setNavCountsVersion((v) => v + 1);
+    window.addEventListener("admin:nav-counts-refresh", refresh);
+    // 新简历/新兑换没有实时推送，低频轮询 + 回到页面时刷新作为兜底
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.removeEventListener("admin:nav-counts-refresh", refresh);
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
 
   // 加载侧边栏待处理数量：只请求有对应权限的模块，避免必然 403
@@ -105,7 +116,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     const canReadAny =
       permissionList.includes("messages:read") ||
       permissionList.includes("users:read") ||
-      permissionList.includes("spent:read");
+      permissionList.includes("spent:read") ||
+      permissionList.includes("redemptions:read") ||
+      permissionList.includes("applications:read");
     if (!canReadAny) return;
 
     let cancelled = false;
@@ -383,7 +396,11 @@ function SidebarContent({
                         ? navCounts.accountDeletions
                         : item.href === "/admin/spent-adjustments"
                           ? navCounts.spentAdjustments
-                          : item.badge;
+                          : item.href === "/admin/point-gifts"
+                            ? navCounts.pointRedemptions
+                            : item.href === "/admin/applications"
+                              ? navCounts.applications
+                              : item.badge;
                   const hasPending = typeof count === "number" && count > 0;
                   const pendingTitle =
                     typeof count === "number" ? `${item.title}（${count} 条待处理）` : item.title;

@@ -6,6 +6,8 @@ const { prismaMock, hasPermissionMock } = vi.hoisted(() => ({
     contactMessage: { count: vi.fn() },
     accountDeletionRequest: { count: vi.fn() },
     spentAdjustmentApplication: { count: vi.fn() },
+    pointRedemption: { count: vi.fn() },
+    jobApplication: { count: vi.fn() },
   },
   hasPermissionMock: vi.fn(),
 }));
@@ -35,20 +37,34 @@ describe("GET /api/admin/nav-counts", () => {
     prismaMock.contactMessage.count.mockResolvedValue(3);
     prismaMock.accountDeletionRequest.count.mockResolvedValue(2);
     prismaMock.spentAdjustmentApplication.count.mockResolvedValue(5);
+    prismaMock.pointRedemption.count.mockResolvedValue(4);
+    prismaMock.jobApplication.count.mockResolvedValue(6);
     hasPermissionMock.mockReturnValue(true);
   });
 
-  it("返回留言/注销失败/消费待审核数量", async () => {
+  it("返回留言/注销失败/消费待审核/兑换待履约/简历待处理数量", async () => {
     const res = await GET(new NextRequest("http://localhost/api/admin/nav-counts"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body.data).toEqual({ messages: 3, accountDeletions: 2, spentAdjustments: 5 });
+    expect(body.data).toEqual({
+      messages: 3,
+      accountDeletions: 2,
+      spentAdjustments: 5,
+      pointRedemptions: 4,
+      applications: 6,
+    });
     expect(prismaMock.accountDeletionRequest.count).toHaveBeenCalledWith({
       where: { status: "FAILED" },
     });
     expect(prismaMock.spentAdjustmentApplication.count).toHaveBeenCalledWith({
       where: { status: "PENDING" },
+    });
+    expect(prismaMock.pointRedemption.count).toHaveBeenCalledWith({
+      where: { status: "PENDING" },
+    });
+    expect(prismaMock.jobApplication.count).toHaveBeenCalledWith({
+      where: { status: "pending" },
     });
   });
 
@@ -60,8 +76,16 @@ describe("GET /api/admin/nav-counts", () => {
     const res = await GET(new NextRequest("http://localhost/api/admin/nav-counts"));
     const body = await res.json();
 
-    expect(body.data).toEqual({ messages: 3, accountDeletions: 0, spentAdjustments: 0 });
+    expect(body.data).toEqual({
+      messages: 3,
+      accountDeletions: 0,
+      spentAdjustments: 0,
+      pointRedemptions: 0,
+      applications: 0,
+    });
     expect(prismaMock.accountDeletionRequest.count).not.toHaveBeenCalled();
     expect(prismaMock.spentAdjustmentApplication.count).not.toHaveBeenCalled();
+    expect(prismaMock.pointRedemption.count).not.toHaveBeenCalled();
+    expect(prismaMock.jobApplication.count).not.toHaveBeenCalled();
   });
 });
