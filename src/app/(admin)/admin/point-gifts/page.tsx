@@ -90,6 +90,18 @@ function AdminPointGiftsContent() {
     : "PENDING";
   const redemptionSearchParam = get("search");
 
+  // 页面按任务拆成两个工作区：默认优先处理兑换履约，礼品配置按需切换
+  const viewParam = get("view");
+  const view: "redemptions" | "gifts" =
+    !canRedeemRead
+      ? "gifts"
+      : !canGiftRead
+        ? "redemptions"
+        : viewParam === "gifts"
+          ? "gifts"
+          : "redemptions";
+  const showViewTabs = canGiftRead && canRedeemRead;
+
   const [products, setProducts] = useState<RedeemableProductItem[]>([]);
   const [productTotal, setProductTotal] = useState(0);
   const [searchInput, setSearchInput] = useState(searchParam);
@@ -367,18 +379,15 @@ function AdminPointGiftsContent() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="积分兑换"
-        description="标记产品库中的产品为「积分可兑」后，将出现在用户面板兑换板块；用户实际扣分 = 产品价格 ÷ 当前兑礼率（向下取整）"
+        description="处理兑换履约与物流单号，并配置可兑换礼品。"
         actions={
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              fetchProducts();
-              fetchRedemptions();
-            }}
+            onClick={view === "redemptions" ? fetchRedemptions : fetchProducts}
           >
             <RefreshCw className="mr-1.5 h-4 w-4" />
             刷新
@@ -386,43 +395,94 @@ function AdminPointGiftsContent() {
         }
       />
 
-      {/* 概览统计（需要兑换记录查看权限） */}
-      {canRedeemRead && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
-            <p className="text-xs text-brand-charcoal/65">全站可用积分总额</p>
-            <p className="mt-1 text-2xl font-semibold text-brand-charcoal">
+      {showViewTabs && (
+        <div
+          role="tablist"
+          aria-label="积分兑换工作区"
+          className="inline-flex w-full rounded-xl border border-brand-charcoal/10 bg-white p-1 sm:w-auto"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "redemptions"}
+            onClick={() =>
+              update({ view: "redemptions", page: null }, { replace: true, resetPage: false })
+            }
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
+              view === "redemptions"
+                ? "bg-brand-primary text-white"
+                : "text-brand-charcoal/70 hover:bg-brand-charcoal/[0.04]"
+            }`}
+          >
+            兑换履约
+            {(counts.PENDING ?? 0) > 0 && (
+              <span
+                className={`rounded-full px-1.5 text-[11px] ${
+                  view === "redemptions" ? "bg-white/20" : "bg-red-50 text-red-600"
+                }`}
+              >
+                {counts.PENDING}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "gifts"}
+            onClick={() => update({ view: "gifts" }, { replace: true, resetPage: false })}
+            className={`flex flex-1 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
+              view === "gifts"
+                ? "bg-brand-primary text-white"
+                : "text-brand-charcoal/70 hover:bg-brand-charcoal/[0.04]"
+            }`}
+          >
+            礼品设置
+          </button>
+        </div>
+      )}
+
+      {/* 概览统计：仅在兑换履约工作区展示 */}
+      {view === "redemptions" && canRedeemRead && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3">
+            <p className="text-xs text-brand-charcoal/65">全站可用积分</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal">
               {pointsTotal.toLocaleString()}
             </p>
-            <p className="mt-1 text-[11px] text-brand-charcoal/65">
-              所有用户账户可用积分之和（可含退款冲正负值）
-            </p>
+            <p className="mt-0.5 text-[11px] text-brand-charcoal/65">用户账户可用积分之和</p>
           </div>
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
+          <div className="rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3">
             <p className="text-xs text-brand-charcoal/65">待履约兑换</p>
-            <p className="mt-1 text-2xl font-semibold text-brand-charcoal">{counts.PENDING ?? 0}</p>
-            <p className="mt-1 text-[11px] text-brand-charcoal/65">待发货处理</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal">
+              {counts.PENDING ?? 0}
+            </p>
+            <p className="mt-0.5 text-[11px] text-brand-charcoal/65">需要人工处理</p>
           </div>
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-5">
+          <div className="col-span-2 rounded-xl border border-brand-charcoal/10 bg-white px-4 py-3 md:col-span-1">
             <p className="text-xs text-brand-charcoal/65">已履约兑换</p>
-            <p className="mt-1 text-2xl font-semibold text-brand-charcoal">
+            <p className="mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal">
               {counts.FULFILLED ?? 0}
             </p>
-            <p className="mt-1 text-[11px] text-brand-charcoal/65">已发货</p>
+            <p className="mt-0.5 text-[11px] text-brand-charcoal/65">已完成发货</p>
           </div>
         </div>
       )}
 
-      {/* 可兑换产品（无 gifts:read 权限时不展示，避免必然 403） */}
-      {canGiftRead && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-            <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
-              <Gift className="h-5 w-5 text-brand-charcoal/65" />
-              可兑换产品（产品库）
-            </h2>
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <div className="relative">
+      {/* 礼品设置（无 gifts:read 权限时不展示，避免必然 403） */}
+      {view === "gifts" && canGiftRead && (
+        <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
+          <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-base font-medium text-brand-charcoal">
+                <Gift className="h-4 w-4 text-brand-charcoal/65" />
+                可兑换礼品
+              </h2>
+              <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                从产品库启用积分兑换，并维护礼品库存。
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative w-full sm:w-52">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
                 <Input
                   placeholder="搜索产品名..."
@@ -433,19 +493,21 @@ function AdminPointGiftsContent() {
                       updateProductQuery({ productSearch: searchInput.trim() || null });
                     }
                   }}
-                  className="w-full pl-9 sm:w-48"
+                  className="w-full pl-9"
                 />
               </div>
-              <Select
-                value={redeemableFilter}
-                onChange={(e) => updateProductQuery({ redeemable: e.target.value })}
-                options={[
-                  { value: "all", label: "全部产品" },
-                  { value: "true", label: "仅可兑换" },
-                  { value: "false", label: "未设可兑" },
-                ]}
-                className="w-full sm:w-32"
-              />
+              <div className="w-full sm:w-36">
+                <Select
+                  aria-label="按兑换状态筛选"
+                  value={redeemableFilter}
+                  onChange={(e) => updateProductQuery({ redeemable: e.target.value })}
+                  options={[
+                    { value: "all", label: "全部产品" },
+                    { value: "true", label: "仅可兑换" },
+                    { value: "false", label: "未设可兑" },
+                  ]}
+                />
+              </div>
             </div>
           </div>
           <div className="md:hidden">
@@ -726,15 +788,20 @@ function AdminPointGiftsContent() {
         </div>
       )}
 
-      {/* 兑换记录（需要 redemptions:read） */}
-      {canRedeemRead && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-            <h2 className="flex items-center gap-2 text-lg font-medium text-brand-charcoal">
-              <PackageCheck className="h-5 w-5 text-brand-charcoal/65" />
-              兑换记录
-            </h2>
-            <div className="relative w-full sm:w-64">
+      {/* 兑换履约（需要 redemptions:read） */}
+      {view === "redemptions" && canRedeemRead && (
+        <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
+          <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-base font-medium text-brand-charcoal">
+                <PackageCheck className="h-4 w-4 text-brand-charcoal/65" />
+                兑换记录
+              </h2>
+              <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                处理待履约订单，维护发货信息与物流单号。
+              </p>
+            </div>
+            <div className="relative w-full sm:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
                 placeholder="搜索手机号 / 昵称 / 产品名"

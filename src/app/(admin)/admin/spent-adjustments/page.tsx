@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   ExternalLink,
+  Eye,
   FileSpreadsheet,
   History,
   Image as ImageIcon,
@@ -19,13 +20,17 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Empty } from "@/components/ui/Empty";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
@@ -76,10 +81,10 @@ interface ListData {
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
-const STATUS_BADGE: Record<AdjustmentStatus, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-600",
+const STATUS_BADGE_VARIANT: Record<AdjustmentStatus, "warning" | "success" | "danger"> = {
+  PENDING: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
 };
 
 const TABS: { key: StatusFilter; label: string }[] = [
@@ -334,66 +339,83 @@ function AdminSpentAdjustmentsContent() {
       />
 
       {/* 状态筛选 + 搜索 */}
-      <div className="flex flex-wrap items-center gap-2">
-        {TABS.map((t) => {
-          // “全部”为各状态计数之和；不能用当前筛选的 total（会随 tab 变化）
-          const count =
-            t.key === "ALL"
-              ? Object.values(data?.counts ?? {}).reduce((sum, n) => sum + n, 0)
-              : (data?.counts[t.key] ?? 0);
-          return (
-            <button
-              key={t.key}
-              type="button"
-              aria-pressed={tab === t.key}
-              onClick={() => update({ status: t.key })}
-              className={`flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                tab === t.key
-                  ? "border-brand-charcoal bg-brand-charcoal text-white"
-                  : "border-brand-charcoal/15 text-brand-charcoal/70 hover:border-brand-charcoal/30"
-              }`}
-            >
-              {t.label}
-              <span
-                className={`rounded-full px-1.5 text-xs ${
-                  tab === t.key ? "bg-white/20" : "bg-brand-charcoal/[0.06]"
-                }`}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div
+            role="group"
+            aria-label="按审核状态筛选"
+            className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+          >
+            {TABS.map((t) => {
+              // “全部”为各状态计数之和；不能用当前筛选的 total（会随 tab 变化）
+              const count =
+                t.key === "ALL"
+                  ? Object.values(data?.counts ?? {}).reduce((sum, n) => sum + n, 0)
+                  : (data?.counts[t.key] ?? 0);
+              const active = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => update({ status: t.key })}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
+                    active
+                      ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                      : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                  )}
+                >
+                  {t.label}
+                  <span
+                    className={cn(
+                      "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs tabular-nums",
+                      active
+                        ? "bg-brand-primary/10 text-brand-primary"
+                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="relative w-full md:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Input
+              aria-label="搜索手机号、订单号或昵称"
+              placeholder="搜索手机号 / 订单号 / 昵称"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={search ? "pl-10 pr-10" : "pl-10"}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  update({ search: null }, { replace: true });
+                }}
+                aria-label="清除搜索"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
               >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-        <div className="relative w-full sm:ml-auto sm:w-64">
-          <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-          <Input
-            placeholder="搜索手机号 / 订单号 / 昵称"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className={search ? "pl-10 pr-10" : "pl-10"}
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                update({ search: null }, { replace: true });
-              }}
-              aria-label="清除搜索"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 hover:text-brand-charcoal"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 列表（移动端卡片） */}
-      <div className="space-y-3 md:hidden">
+      <div className="md:hidden">
         {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-32 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
-          ))
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
+            ))}
+          </div>
         ) : loadError ? (
           <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center">
             <p className="text-sm text-red-500">加载失败，请重试</p>
@@ -402,172 +424,206 @@ function AdminSpentAdjustmentsContent() {
             </Button>
           </div>
         ) : data && data.applications.length > 0 ? (
-          data.applications.map((a) => (
-            <div key={a.id} className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-brand-charcoal">
-                    {a.user.nickname || "未设置昵称"}
-                  </p>
-                  <p className="truncate text-xs text-brand-charcoal/65">
-                    {a.user.phone} · {a.channelLabel}
-                  </p>
+          <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
+            {data.applications.map((a) => (
+              <div key={a.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-brand-charcoal">
+                      {a.user.nickname || "未设置昵称"}
+                    </p>
+                    <p className="truncate text-xs text-brand-charcoal/65">
+                      {a.user.phone} · {a.channelLabel}
+                    </p>
+                  </div>
+                  <Badge variant={STATUS_BADGE_VARIANT[a.status]} className="shrink-0">
+                    {a.statusLabel}
+                  </Badge>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[a.status]}`}
-                >
-                  {a.statusLabel}
-                </span>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
+                  <span className="col-span-2 truncate">
+                    订单：<span className="font-mono">{a.orderNo}</span>
+                  </span>
+                  <span>
+                    申报：{a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
+                  </span>
+                  <span>消费：{formatDate(a.purchasedAt)}</span>
+                  {a.status !== "PENDING" && (
+                    <>
+                      <span>
+                        核实：{a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
+                      </span>
+                      <span>审核人：{a.reviewedBy?.name ?? "-"}</span>
+                      <span className="col-span-2">
+                        审核时间：{a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
+                      </span>
+                    </>
+                  )}
+                  <span className="col-span-2">
+                    凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
+                  </span>
+                </div>
+                <div className="mt-3 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`${a.status === "PENDING" ? "审核" : "查看"} ${a.user.nickname || a.user.phone || "申请"}`}
+                    onClick={() => openDetail(a)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
-                <span className="col-span-2 truncate">
-                  订单：<span className="font-mono">{a.orderNo}</span>
-                </span>
-                <span>
-                  申报：{a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
-                </span>
-                <span>消费：{formatDate(a.purchasedAt)}</span>
-                {a.status !== "PENDING" && (
-                  <>
-                    <span>
-                      核实：{a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
-                    </span>
-                    <span>审核人：{a.reviewedBy?.name ?? "-"}</span>
-                    <span className="col-span-2">
-                      审核时间：{a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
-                    </span>
-                  </>
-                )}
-                <span className="col-span-2">
-                  凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
-                </span>
-              </div>
-              <div className="mt-3 flex justify-end border-t border-brand-charcoal/10 pt-2">
-                <Button variant="outline" size="sm" onClick={() => openDetail(a)}>
-                  {a.status === "PENDING" ? "审核" : "查看"}
-                </Button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center text-sm text-brand-charcoal/65">
-            暂无申请
+          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
+            <Empty title="暂无申请" />
           </div>
         )}
       </div>
 
       {/* 列表（桌面端表格） */}
-      <div className="hidden rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px]">
-            <thead>
-              <tr className="border-b bg-brand-charcoal/[0.03] text-left text-xs uppercase text-brand-charcoal/65">
-                <th className="px-3 py-2 font-medium">用户</th>
-                <th className="px-3 py-2 font-medium">渠道</th>
-                <th className="px-3 py-2 font-medium">订单号</th>
-                <th className="px-3 py-2 font-medium">申报金额</th>
-                <th className="px-3 py-2 font-medium">核实金额</th>
-                <th className="px-3 py-2 font-medium">消费日期</th>
-                <th className="px-3 py-2 font-medium">凭证</th>
-                <th className="px-3 py-2 font-medium">状态</th>
-                <th className="px-3 py-2 font-medium">审核人</th>
-                <th className="px-3 py-2 font-medium">审核时间</th>
-                <th className="px-3 py-2 font-medium">提交时间</th>
-                <th className="px-3 py-2 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {loading ? (
-                <tr>
-                  <td colSpan={12} className="px-4 py-10 text-center">
-                    <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/65" />
-                  </td>
-                </tr>
-              ) : loadError ? (
-                <tr>
-                  <td colSpan={12} className="px-4 py-10 text-center">
-                    <p className="text-sm text-red-500">加载失败，请重试</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={fetchData}
-                      leftIcon={<RefreshCw className="h-4 w-4" />}
-                    >
-                      重试
-                    </Button>
-                  </td>
-                </tr>
-              ) : data && data.applications.length > 0 ? (
-                data.applications.map((a) => (
-                  <tr key={a.id} className="hover:bg-brand-charcoal/[0.03]">
-                    <td className="px-3 py-2">
-                      <p className="text-sm text-brand-charcoal/70">
-                        {a.user.nickname || "未设置昵称"}
-                      </p>
-                      <p className="text-xs text-brand-charcoal/65">{a.user.phone}</p>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/70">{a.channelLabel}</td>
-                    <td className="max-w-[180px] truncate px-3 py-2 font-mono text-sm text-brand-charcoal/70">
-                      {a.orderNo}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/70">
-                      {a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/70">
-                      {a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/70">
-                      {formatDate(a.purchasedAt)}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/70">
-                      {a.images.length > 0 ? `${a.images.length} 张` : "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[a.status]}`}
-                      >
-                        {a.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/65">
-                      {a.reviewedBy?.name ?? "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/65">
-                      {a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-brand-charcoal/65">
-                      {formatDateTime(a.createdAt)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Button variant="outline" size="sm" onClick={() => openDetail(a)}>
-                        {a.status === "PENDING" ? "审核" : "查看"}
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={12}
-                    className="px-4 py-10 text-center text-sm text-brand-charcoal/65"
+      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+        <table className="w-full min-w-[1120px] text-sm">
+          <thead>
+            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+              <th scope="col" className="px-4 py-3 font-normal">
+                用户
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                渠道
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                订单号
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                申报金额
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                核实金额
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                消费日期
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                凭证
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                状态
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                审核人
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                审核时间
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                提交时间
+              </th>
+              <th scope="col" className="px-4 py-3 font-normal">
+                操作
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={12} />)
+            ) : loadError ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-10 text-center">
+                  <p className="text-sm text-red-500">加载失败，请重试</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={fetchData}
+                    leftIcon={<RefreshCw className="h-4 w-4" />}
                   >
-                    暂无申请
+                    重试
+                  </Button>
+                </td>
+              </tr>
+            ) : data && data.applications.length > 0 ? (
+              data.applications.map((a) => (
+                <tr key={a.id} className="hover:bg-brand-charcoal/[0.03]">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/65">
+                        {(a.user.nickname || a.user.phone || "U").charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-sm text-brand-charcoal/70">
+                          {a.user.nickname || "未设置昵称"}
+                        </p>
+                        <p className="text-xs text-brand-charcoal/65">{a.user.phone}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">{a.channelLabel}</td>
+                  <td className="max-w-[180px] truncate px-4 py-3 font-mono text-sm text-brand-charcoal/70">
+                    {a.orderNo}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
+                    {a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
+                    {a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
+                    {formatDate(a.purchasedAt)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
+                    {a.images.length > 0 ? `${a.images.length} 张` : "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={STATUS_BADGE_VARIANT[a.status]}>{a.statusLabel}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                    {a.reviewedBy?.name ?? "-"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                    {a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                    {formatDateTime(a.createdAt)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${a.status === "PENDING" ? "审核" : "查看"} ${a.user.nickname || a.user.phone || "申请"}`}
+                        onClick={() => openDetail(a)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={12}>
+                  <div className="flex justify-center py-12">
+                    <Empty title="暂无申请" />
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {pagination && pagination.total > 0 && (
-        <Pagination
-          page={pagination.page}
-          pageSize={pagination.pageSize}
-          total={pagination.total}
-          onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
-        />
+        <div className="flex justify-center">
+          <Pagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
+          />
+        </div>
       )}
 
       {/* 详情 / 审核弹窗 */}

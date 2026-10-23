@@ -228,7 +228,7 @@ export function DataTable<T extends object>({
                     scope="col"
                     style={{ width: column.width }}
                     className={cn(
-                      "text-xs font-medium uppercase tracking-wider text-brand-charcoal/65",
+                      "text-sm font-normal text-brand-charcoal",
                       cellDensityCls,
                       alignStyles[column.align || "left"],
                       column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"

@@ -881,12 +881,7 @@ function AdminUsersContent() {
           >
             封禁
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="ml-auto"
-            onClick={userSelection.clear}
-          >
+          <Button size="sm" variant="ghost" className="ml-auto" onClick={userSelection.clear}>
             取消选择
           </Button>
         </div>
@@ -1012,7 +1007,7 @@ function AdminUsersContent() {
               <thead>
                 <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
                   {canWriteUsers && (
-                    <th scope="col" className="w-10 px-4 py-3">
+                    <th scope="col" className="w-10 px-4 py-3 font-normal">
                       <input
                         type="checkbox"
                         checked={isAllSelected}
@@ -1025,22 +1020,22 @@ function AdminUsersContent() {
                       />
                     </th>
                   )}
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3 font-normal">
                     用户
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3 font-normal">
                     手机号
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3 font-normal">
                     会员等级
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3 font-normal">
                     状态
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3 font-normal">
                     注册时间
                   </th>
-                  <th scope="col" className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3 font-normal">
                     操作
                   </th>
                 </tr>

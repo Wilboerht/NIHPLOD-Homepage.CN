@@ -5,13 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode, Suspense } from "react";
 import { ChevronLeft, ChevronRight, Globe, Loader2, LogOut, Menu, X } from "lucide-react";
-import {
-  adminNavItems,
-  getAdminPageWidth,
-  getBreadcrumbs,
-  type AdminPageWidth,
-  type NavItem,
-} from "@/config/admin-nav";
+import { adminNavItems, getBreadcrumbs, type NavItem } from "@/config/admin-nav";
 import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
@@ -22,11 +16,8 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { IconButton } from "./IconButton";
 
-const CONTENT_WIDTH_CLASS: Record<AdminPageWidth, string> = {
-  narrow: "max-w-3xl",
-  default: "max-w-5xl",
-  wide: "max-w-7xl",
-};
+/** 管理端内容区统一最大宽度（与消费记录审核页对齐） */
+const CONTENT_MAX_WIDTH_CLASS = "max-w-7xl";
 
 interface NavCounts {
   messages: number;
@@ -48,7 +39,7 @@ const EMPTY_NAV_COUNTS: NavCounts = {
  * 管理端壳：w-60 侧边栏 + 移动端抽屉 + 统一页面边距
  * - 导航由 adminNavItems 配置驱动（分组 + 权限过滤），样式对齐工具面板风格
  * - 页面边距只由壳提供（移动端安全区 + 桌面 1.5rem + safe-area）
- * - 内容宽度由路由决定：3xl / 5xl / 7xl，页面组件不再写 mx-auto max-w-*
+ * - 所有页面内容区统一 max-w-7xl，页面组件不再写 mx-auto max-w-*
  */
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -159,8 +150,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
   // 移动端顶栏标题：取面包屑最后一级
   const breadcrumbs = getBreadcrumbs(pathname);
   const pageTitle = breadcrumbs[breadcrumbs.length - 1]?.title ?? "管理面板";
-  const contentWidth = getAdminPageWidth(pathname);
-  const contentWidthClass = CONTENT_WIDTH_CLASS[contentWidth];
 
   return (
     <div className="min-h-dvh bg-white font-sans">
@@ -233,11 +222,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
         inert={drawerOpen || undefined}
         aria-hidden={drawerOpen || undefined}
         className={cn(
-          "min-h-dvh px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
+          "flex min-h-dvh flex-col px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
           collapsed ? "lg:pl-24" : "lg:pl-[17rem]"
         )}
       >
-        <div className={cn("mx-auto", contentWidthClass)} data-admin-content-width={contentWidth}>
+        <div className={cn("mx-auto w-full flex-1", CONTENT_MAX_WIDTH_CLASS)}>
           <Suspense
             fallback={<div className="flex items-center justify-center py-8">加载中...</div>}
           >
@@ -246,8 +235,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
         <footer
           className={cn(
-            "mx-auto pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/65",
-            contentWidthClass
+            "mx-auto mt-auto w-full pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/65",
+            CONTENT_MAX_WIDTH_CLASS
           )}
         >
           © {new Date().getFullYear()} NIHPLOD All Rights Reserved.

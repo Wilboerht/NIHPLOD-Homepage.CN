@@ -29,7 +29,7 @@ export function SystemAlertBar({ alerts }: SystemAlertBarProps) {
         <AlertTriangle className="h-4 w-4 shrink-0" />
         系统告警
         <span className="rounded-full bg-amber-200/70 px-1.5 py-0.5 text-[11px] tabular-nums">
-          共 {total} 条
+          共 {total} 项
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">

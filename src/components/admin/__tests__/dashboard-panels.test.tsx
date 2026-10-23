@@ -59,7 +59,7 @@ describe("管理端仪表盘组件", () => {
     );
 
     expect(screen.getByText("系统告警")).toBeInTheDocument();
-    expect(screen.getByText("共 4 条")).toBeInTheDocument();
+    expect(screen.getByText("共 4 项")).toBeInTheDocument();
 
     const deletionLink = screen.getByRole("link", { name: /注销执行失败/ });
     expect(deletionLink).toHaveAttribute("href", "/admin/account-deletions");

@@ -72,7 +72,12 @@ export function PendingQueue({ items, className }: PendingQueueProps) {
           所有队列已清零，暂无待处理事项
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]",
+            visibleItems.length === 1 && "grid-cols-1"
+          )}
+        >
           {visibleItems.map((item) => {
             const Icon = item.icon;
             const age = item.oldestAt ? formatAge(item.oldestAt) : null;
