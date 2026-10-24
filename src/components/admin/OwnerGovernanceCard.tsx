@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { AlertTriangle, ChevronRight, Clock, ShieldCheck, Users } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Clock, ShieldCheck, Users } from "lucide-react";
 import type { OwnerGovernanceData } from "@/lib/admin-dashboard-governance";
 import { APPROVAL_POLICIES, type ApprovalPolicyKey } from "@/lib/admin-approval-policy";
 import { PERMISSION_LABELS } from "@/lib/admin-permissions";
 import { formatDateTimeSeconds, formatRelativeTime } from "@/lib/format";
 import { Badge } from "./Badge";
-import { PanelCard } from "./PanelCard";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 
 function CountBox({
   label,
@@ -41,21 +41,33 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
 
   const pending = data.approvals.latestPending;
   const ownerOnly = data.ownerOnly.events;
+  const needsAttention =
+    data.approvals.pending > 0 ||
+    data.approvals.approvedAwaiting > 0 ||
+    data.ownerOnly.nonOwner > 0 ||
+    data.holders.some((holder) => !holder.totpEnabled);
 
   return (
-    <PanelCard
+    <CollapsiblePanel
       title={
         <span className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-brand-primary" />
           Owner 治理
         </span>
       }
-      action={
-        <Link href="/admin/approvals" className="text-xs text-brand-primary hover:underline">
-          进入审批中心
-        </Link>
-      }
+      summary={`待审批 ${data.approvals.pending} · 待执行 ${data.approvals.approvedAwaiting} · 非 owner 操作 ${data.ownerOnly.nonOwner}`}
+      defaultOpen={needsAttention}
     >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-brand-charcoal/65">审批、owner 级权限与高风险操作概览</p>
+        <Link
+          href="/admin/approvals"
+          className="inline-flex items-center gap-1 text-xs text-brand-primary hover:underline"
+        >
+          进入审批中心
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <CountBox label="待我审批" value={data.approvals.pending} tone="warning" />
         <CountBox label="已通过待执行" value={data.approvals.approvedAwaiting} tone="primary" />
@@ -129,7 +141,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
               没有非 owner 持有 owner 级权限
             </p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
               {data.holders.map((holder) => (
                 <li
                   key={holder.id}
@@ -169,7 +181,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
         {ownerOnly.length === 0 ? (
           <p className="text-sm text-brand-charcoal/65">暂无 owner 专属操作</p>
         ) : (
-          <ul className="divide-y divide-brand-charcoal/5">
+          <ul className="max-h-56 divide-y divide-brand-charcoal/5 overflow-y-auto pr-1">
             {ownerOnly.map((event) => (
               <li key={event.id}>
                 <Link
@@ -197,11 +209,17 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
         )}
       </div>
 
-      <div className="mt-4 rounded-xl bg-brand-charcoal/[0.03] px-3 py-2.5">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-brand-charcoal">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          保护规则
-        </p>
+      <details className="group mt-4 rounded-xl bg-brand-charcoal/[0.03] px-3 py-2.5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-brand-charcoal [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            保护规则
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
+          />
+        </summary>
         <ul className="mt-1.5 space-y-1 text-[11px] text-brand-charcoal/65">
           {data.protectionRules.map((rule) => (
             <li key={rule}>· {rule}</li>
@@ -213,7 +231,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
             仍待补 step-up：{data.unenforcedActions.join("、")}
           </p>
         )}
-      </div>
-    </PanelCard>
+      </details>
+    </CollapsiblePanel>
   );
 }

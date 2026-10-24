@@ -427,7 +427,9 @@ export default function AdminJobsPage() {
           actions={
             canWriteJobs ? (
               <Link href={`/admin/jobs/new?returnTo=${encodeURIComponent(returnTo)}`}>
-                <Button leftIcon={<Plus className="h-4 w-4" />}>新增职位</Button>
+                <Button variant="outline" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
+                  新增职位
+                </Button>
               </Link>
             ) : undefined
           }

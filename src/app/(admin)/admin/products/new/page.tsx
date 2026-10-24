@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/ProductForm";
+import { IconButton } from "@/components/admin/IconButton";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { apiGet } from "@/lib/api-client";
@@ -37,22 +37,19 @@ function NewProductContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={
-          <>
-            <Link
-              href="/admin/products"
-              aria-label="返回产品列表"
-              className="rounded-lg p-1.5 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            新增产品
-          </>
-        }
-        description="创建新的产品"
-      />
+    <div className="flex flex-col gap-5">
+      <div className="flex items-start gap-1 sm:gap-2">
+        <IconButton
+          href="/admin/products"
+          label="返回产品列表"
+          className="-ml-2 -mt-2 shrink-0 sm:-mt-1"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </IconButton>
+        <div className="min-w-0 flex-1">
+          <PageHeader title="新增产品" description="创建新的产品" />
+        </div>
+      </div>
       <ProductForm mode="create" categories={categories} />
     </div>
   );

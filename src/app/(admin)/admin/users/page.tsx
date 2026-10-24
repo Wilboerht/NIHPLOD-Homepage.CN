@@ -25,7 +25,6 @@ import {
   Award,
   Wallet,
   Trash2,
-  CalendarDays,
   KeyRound,
   MapPin,
   ReceiptText,
@@ -150,15 +149,15 @@ function DetailSection({
   return (
     <section
       className={cn(
-        "border-t border-brand-charcoal/10 pt-4 first:border-t-0 first:pt-0",
+        "overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white",
         className
       )}
     >
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-2.5">
         <h3 className="text-sm font-semibold text-brand-charcoal">{title}</h3>
         {action}
       </div>
-      <div className={cn(bodyClassName)}>{children}</div>
+      <div className={cn("p-4", bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -205,34 +204,40 @@ function DetailRow({
 
 function UserDetailSkeleton() {
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-4 rounded-xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="h-12 w-12 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 rounded-xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
         <div className="flex-1 space-y-2">
           <div className="flex gap-2">
             <div className="h-5 w-16 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
             <div className="h-5 w-16 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
           </div>
           <div className="h-3 w-48 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-          <div className="h-3 w-32 animate-pulse rounded bg-brand-charcoal/[0.06]" />
         </div>
       </div>
-      <div className="flex gap-2 overflow-hidden">
-        {Array.from({ length: DETAIL_TABS.length }).map((_, index) => (
-          <div
-            key={index}
-            className="h-8 w-20 shrink-0 animate-pulse rounded-lg bg-brand-charcoal/[0.06]"
-          />
-        ))}
-      </div>
-      <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="space-y-2">
-              <div className="h-3 w-16 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-              <div className="h-4 w-32 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-            </div>
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="flex shrink-0 gap-1 overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white p-1 lg:w-44 lg:flex-col">
+          {Array.from({ length: DETAIL_TABS.length }).map((_, index) => (
+            <div
+              key={index}
+              className="h-8 w-20 shrink-0 animate-pulse rounded-lg bg-brand-charcoal/[0.06] lg:w-full"
+            />
           ))}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white">
+            <div className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-2.5">
+              <div className="h-4 w-20 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+            </div>
+            <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3 w-16 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1508,92 +1513,92 @@ function AdminUsersContent() {
           />
         ) : (
           <div className="space-y-4">
-            {/* 用户摘要 */}
-            <div className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
-              <UserAvatar src={detailUser.avatar} name={detailUser.nickname} size="md" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <Badge variant={userStatusMap[detailUser.status].variant}>
-                    {userStatusMap[detailUser.status].label}
-                  </Badge>
-                  {detailUser.membershipLevel && membershipLevelMap[detailUser.membershipLevel] && (
-                    <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
-                      {membershipLevelMap[detailUser.membershipLevel].label}
+            {/* 用户摘要：身份/状态 + 全局操作，切换分区时保持可见 */}
+            <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 sm:p-4">
+              <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
+                <UserAvatar src={detailUser.avatar} name={detailUser.nickname} size="md" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={userStatusMap[detailUser.status].variant}>
+                      {userStatusMap[detailUser.status].label}
                     </Badge>
-                  )}
-                  <span className="inline-flex items-center gap-1 text-xs text-brand-charcoal/65">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    注册于 {formatDate(detailUser.createdAt)}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-brand-charcoal/65">
-                  <span className="inline-flex items-center gap-1">
-                    <Smartphone className="h-3.5 w-3.5" />
-                    <span className="font-mono">
-                      {revealedPhone || detailUser.phone || "未绑定手机号"}
-                    </span>
-                  </span>
-                  {detailUser.phoneVerified && (
-                    <Badge variant="success" className="px-1.5 py-0 text-[11px]">
-                      已验证
-                    </Badge>
-                  )}
-                  {canRevealPhone && !revealedPhone && detailUser.phone && (
-                    <button
-                      type="button"
-                      onClick={revealPhone}
-                      disabled={revealingPhone}
-                      className="text-brand-primary hover:underline disabled:opacity-50"
-                    >
-                      {revealingPhone ? "加载中..." : "显示完整号码"}
-                    </button>
-                  )}
-                  <span className="inline-flex min-w-0 items-center gap-1">
-                    <span className="shrink-0 text-brand-charcoal/45">ID</span>
-                    <code className="max-w-[16rem] truncate font-mono" title={detailUser.id}>
-                      {detailUser.id}
-                    </code>
-                    <Tooltip content="复制用户 ID" side="top">
-                      <button
-                        type="button"
-                        aria-label="复制用户 ID"
-                        onClick={() => void copyText(detailUser.id, "用户 ID")}
-                        className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </Tooltip>
-                  </span>
-                </div>
-              </div>
-              <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
-                {canWriteUsers && detailUser.status !== "ACTIVE" && detailUser.status !== "DELETED" && (
-                  <Button
-                    size="sm"
-                    leftIcon={<CheckCircle className="h-4 w-4" />}
-                    disabled={statusLoading}
-                    onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
-                  >
-                    恢复正常
-                  </Button>
-                )}
-                {detailMoreItems.length > 0 && (
-                  <Dropdown
-                    trigger={
-                      <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand-charcoal/15 bg-white px-3 text-xs font-medium text-brand-charcoal/75 transition-colors hover:border-brand-charcoal/25 hover:text-brand-charcoal">
-                        更多操作
-                        <MoreHorizontal className="h-3.5 w-3.5" />
+                    {detailUser.membershipLevel && membershipLevelMap[detailUser.membershipLevel] && (
+                      <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
+                        {membershipLevelMap[detailUser.membershipLevel].label}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-brand-charcoal/65">
+                    <span className="inline-flex items-center gap-1">
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span className="font-mono">
+                        {revealedPhone || detailUser.phone || "未绑定手机号"}
                       </span>
-                    }
-                    items={detailMoreItems}
-                  />
-                )}
+                      {detailUser.phoneVerified && (
+                        <Badge variant="success" className="ml-1 px-1.5 py-0 text-[11px]">
+                          已验证
+                        </Badge>
+                      )}
+                      {canRevealPhone && !revealedPhone && detailUser.phone && (
+                        <button
+                          type="button"
+                          onClick={revealPhone}
+                          disabled={revealingPhone}
+                          className="ml-1 text-brand-primary hover:underline disabled:opacity-50"
+                        >
+                          {revealingPhone ? "加载中..." : "显示完整号码"}
+                        </button>
+                      )}
+                    </span>
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <span className="shrink-0 text-brand-charcoal/65">ID</span>
+                      <code className="max-w-[16rem] truncate font-mono" title={detailUser.id}>
+                        {detailUser.id}
+                      </code>
+                      <Tooltip content="复制用户 ID" side="top">
+                        <button
+                          type="button"
+                          aria-label="复制用户 ID"
+                          onClick={() => void copyText(detailUser.id, "用户 ID")}
+                          className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </Tooltip>
+                    </span>
+                  </div>
+                </div>
+                <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+                  {canWriteUsers &&
+                    detailUser.status !== "ACTIVE" &&
+                    detailUser.status !== "DELETED" && (
+                      <Button
+                        size="sm"
+                        leftIcon={<CheckCircle className="h-4 w-4" />}
+                        disabled={statusLoading}
+                        onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
+                      >
+                        恢复正常
+                      </Button>
+                    )}
+                  {detailMoreItems.length > 0 && (
+                    <Dropdown
+                      trigger={
+                        <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-charcoal/20 bg-white px-3 text-sm font-medium text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]">
+                          更多操作
+                          <MoreHorizontal className="h-4 w-4" />
+                        </span>
+                      }
+                      items={detailMoreItems}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
             {/* 分区导航 + 内容 */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-              <div className="shrink-0 lg:sticky lg:top-0 lg:w-40">
+              <div className="shrink-0 lg:sticky lg:top-0 lg:w-44">
                 <div
                   role="tablist"
                   aria-label="用户详情分区"
@@ -1614,13 +1619,13 @@ function AdminUsersContent() {
                         onClick={() => setActiveDetailTab(tab.key)}
                         onKeyDown={(event) => handleDetailTabKeyDown(event, visibleDetailTabs)}
                         className={cn(
-                          "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/40",
+                          "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/40",
                           active
-                            ? "bg-brand-charcoal/[0.07] font-medium text-brand-charcoal"
+                            ? "bg-brand-primary/10 font-medium text-brand-primary"
                             : "text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
                         )}
                       >
-                        <Icon className="h-3.5 w-3.5" />
+                        <Icon className="h-4 w-4" />
                         {tab.label}
                       </button>
                     );
@@ -1638,7 +1643,7 @@ function AdminUsersContent() {
               {activeDetailTab === "overview" && (
                 <div className="space-y-4">
                   <DetailSection title="账号概览">
-                    <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
                       <DetailField label="账号状态">
                         <Badge variant={userStatusMap[detailUser.status].variant}>
                           {userStatusMap[detailUser.status].label}
@@ -1662,7 +1667,7 @@ function AdminUsersContent() {
                         </span>
                       </DetailField>
                       <DetailField label="可用积分">
-                        <span className="inline-flex items-center gap-2">
+                        <span className="inline-flex flex-wrap items-center gap-2">
                           <span className="font-mono font-medium tabular-nums">
                             {detailPoints ? detailPoints.available.toLocaleString() : "—"}
                           </span>
@@ -1682,7 +1687,10 @@ function AdminUsersContent() {
                         </span>
                       </DetailField>
                     </dl>
-                    <dl className="mt-3 grid gap-x-8 border-t border-brand-charcoal/10 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+                  </DetailSection>
+
+                  <DetailSection title="活跃信息">
+                    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
                       <DetailField label="注册时间">
                         {formatDate(detailUser.createdAt)}
                       </DetailField>
@@ -1703,39 +1711,13 @@ function AdminUsersContent() {
                       </DetailField>
                     </dl>
                   </DetailSection>
-
-                  <div className="flex flex-wrap gap-2">
-                    {canReadAdvisorProfile && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setActiveDetailTab("advisor")}
-                      >
-                        查看测肤报告
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveDetailTab("points")}
-                    >
-                      积分与兑换
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setActiveDetailTab("login")}
-                    >
-                      登录历史
-                    </Button>
-                  </div>
                 </div>
               )}
 
               {/* 基本信息 */}
               {activeDetailTab === "basic" && (
-                <DetailSection title="资料信息">
-                  <dl className="grid gap-x-8 sm:grid-cols-2">
+                <DetailSection title="账号资料">
+                  <dl className="grid gap-x-6 sm:grid-cols-2">
                     <DetailRow label="性别">
                       {detailUser.gender === "male"
                         ? "男"

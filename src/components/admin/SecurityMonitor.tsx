@@ -8,7 +8,7 @@ import type {
 } from "@/lib/admin-dashboard-governance";
 import { formatDateTimeSeconds, formatRelativeTime } from "@/lib/format";
 import { Badge } from "./Badge";
-import { PanelCard } from "./PanelCard";
+import { CollapsiblePanel } from "./CollapsiblePanel";
 
 function riskBadge(risk: string | null) {
   if (risk === "CRITICAL") return <Badge variant="danger">严重</Badge>;
@@ -131,26 +131,23 @@ function MonitorCard({
   viewAllLabel: string;
 }) {
   return (
-    <PanelCard
-      title={
-        <span className="flex items-center gap-2">
+    <section className="rounded-xl bg-brand-charcoal/[0.02] p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
           {icon}
           {title}
-        </span>
-      }
-      action={
+        </h3>
         <Link href={viewAllHref} className="text-xs text-brand-primary hover:underline">
           {viewAllLabel}
         </Link>
-      }
-    >
+      </div>
       <StatRow items={stats} />
       <div className="mb-2 flex items-center justify-between text-[11px] text-brand-charcoal/65">
         <span>近 24 小时</span>
         <span>{group.total} 条</span>
       </div>
       <EventList events={group.events} emptyText={emptyText} />
-    </PanelCard>
+    </section>
   );
 }
 
@@ -163,7 +160,16 @@ export function SecurityMonitor({
 }) {
   if (error) {
     return (
-      <PanelCard title="安全与资金监控">
+      <CollapsiblePanel
+        title={
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-brand-primary" />
+            安全与资金监控
+          </span>
+        }
+        summary="监控数据加载失败"
+        defaultOpen
+      >
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-3 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
@@ -171,21 +177,28 @@ export function SecurityMonitor({
             <p className="mt-1 text-xs text-amber-700/80">请刷新页面，或前往审计日志查看。</p>
           </div>
         </div>
-      </PanelCard>
+      </CollapsiblePanel>
     );
   }
   if (!data) return null;
 
+  const needsAttention =
+    data.sensitive.highRisk > 0 ||
+    data.sensitive.authFailures > 0 ||
+    data.funds.failures > 0;
+
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
+    <CollapsiblePanel
+      title={
+        <span className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-brand-primary" />
           安全与资金监控
-        </h2>
-        <span className="text-xs text-brand-charcoal/65">近 24 小时</span>
-      </div>
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        </span>
+      }
+      summary={`敏感操作 ${data.sensitive.total} · 高危 ${data.sensitive.highRisk} · 认证失败 ${data.sensitive.authFailures} · 资金失败 ${data.funds.failures}`}
+      defaultOpen={needsAttention}
+    >
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MonitorCard
           title="敏感操作"
           icon={<ShieldCheck className="h-4 w-4 text-brand-primary" />}
@@ -213,6 +226,6 @@ export function SecurityMonitor({
           viewAllLabel="查看全部资金操作"
         />
       </div>
-    </section>
+    </CollapsiblePanel>
   );
 }

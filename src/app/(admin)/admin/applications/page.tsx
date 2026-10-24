@@ -693,6 +693,7 @@ function AdminApplicationsContent() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
+              size="sm"
               leftIcon={<RefreshCw className="h-4 w-4" />}
               onClick={() => void refreshAll()}
               loading={loading}
@@ -701,6 +702,8 @@ function AdminApplicationsContent() {
             </Button>
             {canWrite && (
               <Button
+                variant="outline"
+                size="sm"
                 leftIcon={<FolderPlus className="h-4 w-4" />}
                 onClick={() => openFolderModal()}
               >

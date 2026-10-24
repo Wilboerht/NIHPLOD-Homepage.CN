@@ -262,19 +262,14 @@ export default async function AdminDashboard() {
   const hasPendingQueues = pendingQueueItems.length > 0;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="仪表盘"
-        description="欢迎回来，站点数据每 5 分钟更新"
+        description="待办优先；治理、监控与历史记录按需展开"
         accessory={
           systemAlerts.length > 0 ? <SystemAlertIndicator alerts={systemAlerts} /> : undefined
         }
       />
-
-      {/* 业务统计：独立降级，失败不影响 SSO 统计 */}
-      {governanceData && <OwnerGovernanceCard data={governanceData} />}
-
-      {canMonitor && <SecurityMonitor data={monitorData} error={monitorError} />}
 
       {statsError || !stats ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
@@ -295,32 +290,39 @@ export default async function AdminDashboard() {
           {hasPendingQueues && <PendingQueue items={pendingQueueItems} />}
 
           {overviewItems.length > 0 && (
-            <PanelCard>
+            <PanelCard title="运营概览">
               <StatStrip items={overviewItems} />
             </PanelCard>
           )}
         </>
       )}
 
+      {/* 治理与监控：无待办/无风险时默认收起，有异常自动展开 */}
+      {governanceData && <OwnerGovernanceCard data={governanceData} />}
+
+      {canMonitor && <SecurityMonitor data={monitorData} error={monitorError} />}
+
       {/* 最近留言 + SSO 概览：SSO 默认收起，不抢占首屏 */}
       {(showRecentMessages || ssoStats) && (
-        <div className={cn("grid grid-cols-1 gap-5", twoColumnBottom && "lg:grid-cols-3")}>
+        <div className={cn("grid grid-cols-1 gap-4", twoColumnBottom && "lg:grid-cols-3")}>
           {showRecentMessages && (
-            <PanelCard
+            <CollapsiblePanel
               title="最近留言"
-              action={
+              summary={`未读 ${stats?.unreadMessages ?? 0} · 最近 ${recentMessages?.length ?? 0} 条`}
+              defaultOpen={(stats?.unreadMessages ?? 0) > 0}
+              className={cn(twoColumnBottom && "lg:col-span-2")}
+            >
+              <div className="mb-2 flex justify-end">
                 <Link href="/admin/messages" className="text-xs text-brand-primary hover:underline">
                   查看全部
                 </Link>
-              }
-              className={cn(twoColumnBottom && "lg:col-span-2")}
-            >
+              </div>
               {recentMessages && recentMessages.length > 0 ? (
                 <RecentMessagesList messages={recentMessages} />
               ) : (
                 <Empty title="暂无留言" className="py-10" />
               )}
-            </PanelCard>
+            </CollapsiblePanel>
           )}
 
           {ssoStats && (

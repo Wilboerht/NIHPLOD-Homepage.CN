@@ -5,9 +5,47 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ClipboardCheck, MessageSquare } from "lucide-react";
 import { CollapsiblePanel } from "@/components/admin/CollapsiblePanel";
+import { OwnerGovernanceCard } from "@/components/admin/OwnerGovernanceCard";
 import { PendingQueue, type PendingQueueItem } from "@/components/admin/PendingQueue";
+import { SecurityMonitor } from "@/components/admin/SecurityMonitor";
 import { StatStrip } from "@/components/admin/StatStrip";
 import { SystemAlertIndicator } from "@/components/admin/SystemAlertIndicator";
+import type {
+  OwnerGovernanceData,
+  SecurityMonitorData,
+} from "@/lib/admin-dashboard-governance";
+
+const EMPTY_OWNER_DATA: OwnerGovernanceData = {
+  approvals: { pending: 0, approvedAwaiting: 0, recent: [], latestPending: [] },
+  holders: [],
+  ownerOnly: { total: 0, nonOwner: 0, events: [] },
+  protectionRules: [],
+  unenforcedActions: [],
+};
+
+const EMPTY_MONITOR_DATA: SecurityMonitorData = {
+  windowHours: 24,
+  sensitive: {
+    total: 0,
+    highRisk: 0,
+    authFailures: 0,
+    actors: 0,
+    manual: 0,
+    system: 0,
+    failures: 0,
+    events: [],
+  },
+  funds: {
+    total: 0,
+    highRisk: 0,
+    authFailures: 0,
+    actors: 0,
+    manual: 0,
+    system: 0,
+    failures: 0,
+    events: [],
+  },
+};
 
 describe("管理端仪表盘组件", () => {
   it("CollapsiblePanel 默认收起，并提供一行摘要", () => {
@@ -123,5 +161,39 @@ describe("管理端仪表盘组件", () => {
     expect(screen.getByText(/最老 \d+ 天/)).toBeInTheDocument();
     expect(screen.getByText("申报 ¥1,200")).toBeInTheDocument();
     expect(screen.getByText("共 5 项")).toBeInTheDocument();
+  });
+});
+
+describe("治理与监控面板折叠策略", () => {
+  it("无待办、无风险时默认收起", () => {
+    const owner = render(<OwnerGovernanceCard data={EMPTY_OWNER_DATA} />);
+    expect(screen.getByText("Owner 治理").closest("details")).not.toHaveAttribute("open");
+    owner.unmount();
+
+    render(<SecurityMonitor data={EMPTY_MONITOR_DATA} />);
+    expect(screen.getByText("安全与资金监控").closest("details")).not.toHaveAttribute("open");
+  });
+
+  it("有待审批或高风险时自动展开", () => {
+    const owner = render(
+      <OwnerGovernanceCard
+        data={{
+          ...EMPTY_OWNER_DATA,
+          approvals: { ...EMPTY_OWNER_DATA.approvals, pending: 1 },
+        }}
+      />
+    );
+    expect(screen.getByText("Owner 治理").closest("details")).toHaveAttribute("open");
+    owner.unmount();
+
+    render(
+      <SecurityMonitor
+        data={{
+          ...EMPTY_MONITOR_DATA,
+          sensitive: { ...EMPTY_MONITOR_DATA.sensitive, highRisk: 1 },
+        }}
+      />
+    );
+    expect(screen.getByText("安全与资金监控").closest("details")).toHaveAttribute("open");
   });
 });
