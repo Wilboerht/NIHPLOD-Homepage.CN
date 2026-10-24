@@ -398,7 +398,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       detail: { name: validated.name, slug: validated.slug, price: validated.price },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,
@@ -493,7 +493,7 @@ export async function DELETE(
       detail: { name: existing.name, slug: existing.slug },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,

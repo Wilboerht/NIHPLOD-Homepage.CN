@@ -515,12 +515,14 @@ model SsoAuditEvent {
   detail     Json? // 事件详情
   success    Boolean  @default(true)
   tenantId   String? // 多租户预留
+  requestId  String? // 与 AuditLog 关联的请求 ID
   createdAt  DateTime @default(now())
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([clientId, createdAt(sort: Desc)])
   @@index([event, createdAt(sort: Desc)])
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([requestId])
   @@index([createdAt])
 }
 
@@ -630,10 +632,24 @@ model AuditLog {
   userAgent   String?        @db.Text // 浏览器UA
   adminId     String?
   userId      String? // C 端用户事件使用
+
+  // 审计 v2：分类、风险、来源、原因与链式完整性
+  category            String?
+  riskLevel           String?
+  source              String?
+  reason              String?   @db.Text
+  schemaVersion       Int       @default(2)
+  chainVersion        Int       @default(1)
+  integrityKeyVersion Int       @default(1)
+  chainSeq            Int?      @unique
+  prevHash            String?
+  entryHash           String?
+  finalizedAt         DateTime?
+
   // 审计记录必须保持不可变：管理员/用户删除时不得级联修改历史行。
-  admin       Admin?         @relation(fields: [adminId], references: [id], onDelete: Restrict)
-  user        User?          @relation(fields: [userId], references: [id], onDelete: Restrict)
-  createdAt   DateTime       @default(now())
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
 
   @@index([action, createdAt(sort: Desc)])
   @@index([targetType, targetId])
@@ -643,6 +659,10 @@ model AuditLog {
   @@index([outcome, createdAt(sort: Desc)])
   @@index([requestId])
   @@index([createdAt])
+  @@index([actorType, createdAt(sort: Desc)])
+  @@index([targetId, createdAt(sort: Desc)])
+  @@index([sessionJti])
+  @@index([riskLevel, createdAt(sort: Desc)])
 }
 
 /**
@@ -650,17 +670,110 @@ model AuditLog {
  * DB 中保留用于校验；正式部署还应把签名摘要写入私有 OSS Object Lock。
  */
 model AuditLogAnchor {
-  id        String   @id @default(cuid())
-  day       String   @unique // UTC+8 日期 YYYY-MM-DD
-  fromAt    DateTime
-  toAt      DateTime
-  count     Int
-  digest    String
-  signature String
-  objectKey String?
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  stream           String    @default("audit") // audit | sso
+  signatureVersion Int       @default(1)
+  keyVersion       Int       @default(1)
+  day              String // UTC+8 日期 YYYY-MM-DD
+  fromAt           DateTime
+  toAt             DateTime
+  count            Int
+  digest           String
+  signature        String
+  prevAnchorHash   String?
+  objectKey        String?
+  archivedAt       DateTime?
+  archiveSha256    String?
+  verifyStatus     String    @default("PENDING")
+  verifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
 
+  @@unique([stream, day, signatureVersion])
+  @@index([stream, day(sort: Desc)])
   @@index([createdAt])
+}
+
+// 审计导出任务（异步生成）
+model AuditExportJob {
+  id            String    @id @default(cuid())
+  adminId       String?
+  adminEmail    String?
+  adminName     String?
+  stream        String    @default("audit")
+  filters       Json
+  format        String    @default("csv")
+  status        String    @default("QUEUED")
+  totalRows     Int       @default(0)
+  processedRows Int       @default(0)
+  filePath      String?
+  sha256        String?
+  error         String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([adminId, createdAt])
+}
+
+// 法律保留：命中目标的审计记录不会被到期清理
+model AuditLegalHold {
+  id             String    @id @default(cuid())
+  targetType     String?
+  targetId       String?
+  userId         String?
+  adminId        String?
+  reason         String    @db.Text
+  createdBy      String
+  createdByEmail String?
+  createdAt      DateTime  @default(now())
+  releasedBy     String?
+  releasedAt     DateTime?
+  expiresAt      DateTime?
+  active         Boolean   @default(true)
+
+  @@index([active, targetType, targetId])
+  @@index([active, userId])
+  @@index([active, adminId])
+}
+
+// 到期清理任务：后台按钮创建，独立 worker 使用 audit_retention 角色执行
+model AuditRetentionJob {
+  id                String    @id @default(cuid())
+  requestedBy       String
+  requestedByEmail  String?
+  requestedByRole   String
+  reason            String    @db.Text
+  streams           Json
+  cutoff            DateTime
+  previewHash       String
+  expectedCount     Int
+  expectedBytes     Int
+  localOnlyAck      Boolean
+  totpVerifiedAt    DateTime
+  approvalSignature String
+  status            String    @default("PENDING")
+  deletedCount      Int       @default(0)
+  deletedBytes      Int       @default(0)
+  holdsExcluded     Int       @default(0)
+  archiveManifests  Json?
+  error             String?
+  createdAt         DateTime  @default(now())
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  expiresAt         DateTime
+
+  @@index([status, createdAt])
+  @@index([requestedBy, createdAt])
+}
+
+// 告警去重状态
+model AuditAlertState {
+  ruleKey    String   @id
+  lastSentAt DateTime
+  lastCount  Int
+  updatedAt  DateTime @updatedAt
 }
 
 // ============================================
@@ -791,13 +904,13 @@ model SpentSyncRecord {
 // 统一消费订单占用：商城同步、Excel 导入、用户补录审批共用。
 // 用户撤销导入/补录时删除占用，允许修正后重新入账。
 model SpentOrderClaim {
-  id        String           @id @default(cuid())
-  userId    String
-  orderNo   String
+  id         String           @id @default(cuid())
+  userId     String
+  orderNo    String
   orderNoKey String
-  source    SpentOrderSource
-  reference String
-  createdAt DateTime         @default(now())
+  source     SpentOrderSource
+  reference  String
+  createdAt  DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

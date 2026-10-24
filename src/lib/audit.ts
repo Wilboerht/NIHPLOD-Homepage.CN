@@ -4,11 +4,16 @@
  */
 import { randomUUID } from "crypto";
 import { prisma } from "./prisma";
-import { getClientIP } from "./ratelimit";
+import { getClientIP } from "./client-ip";
 import { Prisma } from "@/generated/prisma/client";
 import type { AuditActorType, AuditOutcome } from "@/generated/prisma/client";
 import { apiConsole } from "@/lib/logger";
-import { isAuditArchiveReady } from "@/lib/audit-integrity";
+import { getAuditActionMeta, type AuditCategory, type AuditRiskLevel } from "./audit-registry";
+import {
+  AUDIT_CHAIN_VERSION,
+  getAuditIntegrityKeyVersion,
+  prepareAuditChain,
+} from "./audit-chain";
 
 function sanitizeUserAgent(ua: string | null): string | null {
   if (!ua) return null;
@@ -120,6 +125,7 @@ export type AuditAction =
   | "account_deletion_retry"
   | "admin_sso_authorize"
   | "admin_sso_token"
+  | "admin_sso_status_sync"
   | "admin_sso_denied"
   | "break_glass_view"
   | "admin_login_failed"
@@ -127,10 +133,17 @@ export type AuditAction =
   | "amap_config_view"
   | "spent_receipt_view"
   | "spent_import_preview"
+  | "point_redemption_pii_view"
   | "application_list_view"
   | "audit_log_view"
+  | "audit_log_detail_view"
   | "sso_audit_view"
-  | "step_up_failed";
+  | "step_up_failed"
+  | "audit_integrity_verify"
+  | "audit_retention_request"
+  | "audit_retention_execute"
+  | "audit_legal_hold_create"
+  | "audit_legal_hold_release";
 
 export type AuditTargetType =
   | "order"
@@ -154,7 +167,9 @@ export type AuditTargetType =
   | "point_gift"
   | "point_redemption"
   | "oauth_session"
-  | "point_campaign";
+  | "point_campaign"
+  | "audit_hold"
+  | "audit_retention";
 
 export const AUDIT_ACTIONS = [
   "login",
@@ -260,6 +275,7 @@ export const AUDIT_ACTIONS = [
   "account_deletion_retry",
   "admin_sso_authorize",
   "admin_sso_token",
+  "admin_sso_status_sync",
   "admin_sso_denied",
   "break_glass_view",
   "device_force_logout",
@@ -268,10 +284,17 @@ export const AUDIT_ACTIONS = [
   "amap_config_view",
   "spent_receipt_view",
   "spent_import_preview",
+  "point_redemption_pii_view",
   "application_list_view",
   "audit_log_view",
+  "audit_log_detail_view",
   "sso_audit_view",
   "step_up_failed",
+  "audit_integrity_verify",
+  "audit_retention_request",
+  "audit_retention_execute",
+  "audit_legal_hold_create",
+  "audit_legal_hold_release",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
@@ -297,7 +320,11 @@ export const AUDIT_TARGET_TYPES = [
   "point_gift",
   "point_redemption",
   "point_campaign",
+  "audit_hold",
+  "audit_retention",
 ] as const;
+
+export type AuditSource = "WEB" | "CRON" | "INTEGRATION" | "SYSTEM";
 
 export interface AuditLogInput {
   action: AuditAction;
@@ -312,11 +339,16 @@ export interface AuditLogInput {
   actorName?: string;
   actorRole?: string;
   authMethod?: string;
-  sessionJti?: string;
+  sessionJti?: string | null;
   legalHold?: boolean;
   adminId?: string;
   userId?: string;
   request?: Request;
+  category?: AuditCategory;
+  riskLevel?: AuditRiskLevel;
+  source?: AuditSource;
+  reason?: string;
+  schemaVersion?: number;
 }
 
 const SENSITIVE_DETAIL_KEYS = new Set([
@@ -367,9 +399,13 @@ function prepareDetail(detail?: Record<string, unknown>): Prisma.InputJsonValue 
 
 const requestIdCache = new WeakMap<object, string>();
 
-function resolveRequestId(request?: Request): string | undefined {
+export function resolveAuditRequestId(request?: Request): string | undefined {
   if (!request) return undefined;
-  const headerId = request.headers.get("x-request-id") || request.headers.get("x-correlation-id");
+  // Cloudflare 的 CF-Ray 可与边缘/WAF 日志关联，优先使用。
+  const headerId =
+    request.headers.get("cf-ray") ||
+    request.headers.get("x-request-id") ||
+    request.headers.get("x-correlation-id");
   if (headerId) return headerId.slice(0, 128);
 
   const cached = requestIdCache.get(request);
@@ -379,27 +415,84 @@ function resolveRequestId(request?: Request): string | undefined {
   return generated;
 }
 
-function buildAuditData(input: AuditLogInput): Prisma.AuditLogUncheckedCreateInput {
+function resolveAuditSource(input: AuditLogInput): AuditSource {
+  if (input.source) return input.source;
+  if (input.actorType === "SYSTEM") return "CRON";
+  if (input.actorType === "INTEGRATION") return "INTEGRATION";
+  return "WEB";
+}
+
+type AuditEnvelopeData = Omit<
+  Prisma.AuditLogUncheckedCreateInput,
+  "chainSeq" | "prevHash" | "entryHash"
+>;
+
+function buildAuditEnvelope(input: AuditLogInput): AuditEnvelopeData {
+  const meta = getAuditActionMeta(input.action);
+  const actorType =
+    input.actorType ?? (input.userId ? "USER" : input.adminId ? "ADMIN" : "SYSTEM");
   return {
+    id: randomUUID(),
+    createdAt: new Date(),
     action: input.action,
     targetType: input.targetType,
     targetId: input.targetId,
     targetLabel: input.targetLabel,
     detail: prepareDetail(input.detail),
     outcome: input.outcome ?? "SUCCESS",
-    requestId: input.requestId ?? resolveRequestId(input.request),
-    actorType: input.actorType ?? (input.userId ? "USER" : input.adminId ? "ADMIN" : "SYSTEM"),
+    requestId: input.requestId ?? resolveAuditRequestId(input.request),
+    actorType,
     actorEmail: input.actorEmail,
     actorName: input.actorName,
     actorRole: input.actorRole,
     authMethod: input.authMethod,
-    sessionJti: input.sessionJti,
+    sessionJti: input.sessionJti ?? null,
     legalHold: input.legalHold ?? false,
     ipAddress: input.request ? getClientIP(input.request) : null,
     userAgent: sanitizeUserAgent(input.request?.headers.get("user-agent") ?? null),
     adminId: input.adminId,
     userId: input.userId,
+    category: input.category ?? meta.category,
+    riskLevel: input.riskLevel ?? meta.riskLevel,
+    source: resolveAuditSource({ ...input, actorType }),
+    reason: input.reason ?? null,
+    schemaVersion: input.schemaVersion ?? 2,
+    chainVersion: AUDIT_CHAIN_VERSION,
+    integrityKeyVersion: getAuditIntegrityKeyVersion(),
   };
+}
+
+async function createWithChain(
+  tx: Prisma.TransactionClient,
+  input: AuditLogInput
+): Promise<{ id: string }> {
+  const data = buildAuditEnvelope(input);
+  const chain = await prepareAuditChain(tx, {
+    id: String(data.id),
+    createdAt: data.createdAt as Date,
+    action: String(data.action),
+    targetType: String(data.targetType),
+    targetLabel: data.targetLabel ?? null,
+    requestId: data.requestId ?? null,
+    actorType: String(data.actorType),
+    actorEmail: data.actorEmail ?? null,
+    actorName: data.actorName ?? null,
+    actorRole: data.actorRole ?? null,
+    authMethod: data.authMethod ?? null,
+    sessionJti: data.sessionJti ?? null,
+    adminId: data.adminId ?? null,
+    userId: data.userId ?? null,
+    category: data.category ?? null,
+    riskLevel: data.riskLevel ?? null,
+    source: data.source ?? null,
+    schemaVersion: data.schemaVersion ?? 2,
+    chainVersion: data.chainVersion ?? AUDIT_CHAIN_VERSION,
+    integrityKeyVersion: data.integrityKeyVersion ?? 1,
+  });
+  return tx.auditLog.create({
+    data: { ...data, ...chain },
+    select: { id: true },
+  });
 }
 
 /** 事务内写入审计；失败会向上抛出并回滚业务事务。 */
@@ -407,10 +500,7 @@ export async function createAuditLogTx(
   tx: Prisma.TransactionClient,
   input: AuditLogInput
 ): Promise<string> {
-  const log = await tx.auditLog.create({
-    data: buildAuditData(input),
-    select: { id: true },
-  });
+  const log = await createWithChain(tx, input);
   return log.id;
 }
 
@@ -420,10 +510,9 @@ export async function createAuditLogTx(
  */
 export async function beginAuditLog(input: AuditLogInput): Promise<string | null> {
   try {
-    const log = await prisma.auditLog.create({
-      data: buildAuditData({ ...input, outcome: "PENDING" }),
-      select: { id: true },
-    });
+    const log = await prisma.$transaction((tx) =>
+      createWithChain(tx, { ...input, outcome: "PENDING" })
+    );
     return log.id;
   } catch (error) {
     apiConsole.error("[AuditLog] 预写审计失败，拒绝执行操作:", error);
@@ -443,6 +532,7 @@ export async function finishAuditLog(
       where: { id },
       data: {
         outcome,
+        finalizedAt: new Date(),
         ...(targetId ? { targetId } : {}),
         ...(detail ? { detail: prepareDetail(detail) } : {}),
       },
@@ -455,7 +545,7 @@ export async function finishAuditLog(
 }
 
 /**
- * 写入审计日志
+ * 写入审计日志（best-effort）
  * @returns 是否写入成功
  */
 export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
@@ -465,7 +555,7 @@ export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
       return false;
     }
 
-    await prisma.auditLog.create({ data: buildAuditData(input) });
+    await prisma.$transaction((tx) => createWithChain(tx, input));
     return true;
   } catch (error) {
     // 审计日志写入失败不应静默忽略，至少记录到 console 并返回失败
@@ -476,105 +566,189 @@ export async function createAuditLog(input: AuditLogInput): Promise<boolean> {
 
 /** 关键操作使用：审计写入失败时抛错，由调用方回滚/拒绝返回成功。 */
 export async function createAuditLogStrict(input: AuditLogInput): Promise<void> {
-  await prisma.auditLog.create({ data: buildAuditData(input) });
+  await prisma.$transaction((tx) => createWithChain(tx, input));
 }
 
-/**
- * 批量查询审计日志（带分页）
- */
-export async function listAuditLogs(options: {
-  page: number;
-  pageSize: number;
+export interface AuditLogQueryOptions {
+  page?: number;
+  pageSize?: number;
+  cursor?: string | null;
   action?: string;
   targetType?: string;
   adminId?: string;
+  userId?: string;
   actorType?: AuditActorType;
   outcome?: string;
+  riskLevel?: string;
+  category?: string;
+  source?: string;
+  authMethod?: string;
+  sessionJti?: string;
+  targetId?: string;
+  requestId?: string;
+  ipAddress?: string;
+  legalHold?: boolean;
+  search?: string;
   startDate?: Date;
   endDate?: Date;
-}) {
-  const {
-    page: rawPage,
-    pageSize: rawPageSize,
-    action,
-    targetType,
-    adminId,
-    actorType,
-    outcome,
-    startDate,
-    endDate,
-  } = options;
-  const page = Math.min(rawPage, 1000); // 防止跳过过多行
-  const pageSize = Math.min(rawPageSize, 100);
+}
 
-  const where: Record<string, unknown> = {};
-  if (action) where.action = action;
-  if (targetType) where.targetType = targetType;
-  if (adminId) where.adminId = adminId;
-  if (actorType) where.actorType = actorType;
-  if (outcome) where.outcome = outcome;
-  if (startDate || endDate) {
+export interface AuditCursor {
+  createdAt: Date;
+  id: string;
+}
+
+export function encodeAuditCursor(createdAt: Date, id: string): string {
+  return Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id })).toString(
+    "base64url"
+  );
+}
+
+export function decodeAuditCursor(cursor?: string | null): AuditCursor | null {
+  if (!cursor) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
+      createdAt?: string;
+      id?: string;
+    };
+    if (!parsed.createdAt || !parsed.id) return null;
+    const createdAt = new Date(parsed.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return { createdAt, id: parsed.id };
+  } catch {
+    return null;
+  }
+}
+
+export function buildAuditWhere(options: AuditLogQueryOptions): Prisma.AuditLogWhereInput {
+  const where: Prisma.AuditLogWhereInput = {};
+  if (options.action) where.action = options.action;
+  if (options.targetType) where.targetType = options.targetType;
+  if (options.adminId) where.adminId = options.adminId;
+  if (options.userId) where.userId = options.userId;
+  if (options.actorType) where.actorType = options.actorType;
+  if (options.outcome) where.outcome = options.outcome as AuditOutcome;
+  if (options.riskLevel) where.riskLevel = options.riskLevel;
+  if (options.category) where.category = options.category;
+  if (options.source) where.source = options.source;
+  if (options.authMethod) where.authMethod = options.authMethod;
+  if (options.sessionJti) where.sessionJti = options.sessionJti;
+  if (options.targetId) where.targetId = options.targetId;
+  if (options.requestId) where.requestId = options.requestId;
+  if (options.ipAddress) where.ipAddress = options.ipAddress;
+  if (options.legalHold !== undefined) where.legalHold = options.legalHold;
+  if (options.startDate || options.endDate) {
     where.createdAt = {};
-    if (startDate) (where.createdAt as Record<string, Date>).gte = startDate;
-    if (endDate) (where.createdAt as Record<string, Date>).lte = endDate;
+    if (options.startDate) where.createdAt.gte = options.startDate;
+    if (options.endDate) where.createdAt.lte = options.endDate;
   }
 
-  const [items, total] = await Promise.all([
-    prisma.auditLog.findMany({
-      where,
-      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        admin: {
-          select: { id: true, email: true, name: true },
-        },
-      },
-    }),
-    prisma.auditLog.count({ where }),
-  ]);
+  const and: Prisma.AuditLogWhereInput[] = [];
+  if (options.search) {
+    const search = options.search.slice(0, 100);
+    and.push({
+      OR: [
+        { targetLabel: { contains: search, mode: "insensitive" } },
+        { targetId: { contains: search, mode: "insensitive" } },
+        { actorName: { contains: search, mode: "insensitive" } },
+        { actorEmail: { contains: search, mode: "insensitive" } },
+        { requestId: { contains: search, mode: "insensitive" } },
+        { action: { contains: search, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (and.length > 0) where.AND = and;
+  return where;
+}
+
+/**
+ * 批量查询审计日志。支持 page 与 keyset cursor 两种模式。
+ * cursor 模式不执行 count，避免深分页和导出时的重复全量统计。
+ */
+export async function listAuditLogs(options: AuditLogQueryOptions) {
+  const pageSize = Math.min(Math.max(options.pageSize ?? 20, 1), 100);
+  const baseWhere = buildAuditWhere(options);
+  const cursor = decodeAuditCursor(options.cursor);
+  if (options.cursor && !cursor) throw new Error("INVALID_CURSOR");
+
+  let where: Prisma.AuditLogWhereInput = baseWhere;
+  if (cursor) {
+    const cursorWhere: Prisma.AuditLogWhereInput = {
+      OR: [
+        { createdAt: { lt: cursor.createdAt } },
+        { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+      ],
+    };
+    where = { AND: [baseWhere, cursorWhere] };
+  }
+
+  const page = Math.min(Math.max(options.page ?? 1, 1), 1000);
+  const include = {
+    admin: { select: { id: true, email: true, name: true } },
+  } as const;
+
+  const items = await prisma.auditLog.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    ...(cursor ? {} : { skip: (page - 1) * pageSize }),
+    take: pageSize,
+    include,
+  });
+
+  const total = cursor ? null : await prisma.auditLog.count({ where: baseWhere });
+  const last = items.at(-1);
+  const nextCursor = last ? encodeAuditCursor(last.createdAt, last.id) : null;
 
   return {
     items: items.map((log) => ({
       ...log,
       createdAt: log.createdAt.toISOString(),
+      finalizedAt: log.finalizedAt?.toISOString() ?? null,
     })),
     pagination: {
       page,
       pageSize,
       total,
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: total === null ? null : Math.ceil(total / pageSize),
+      nextCursor,
     },
   };
 }
 
-/** 审计日志保留天数（默认 365 天；最小 30，最大 3650，防止误配把审计清空/永久堆积） */
+export async function getAuditLogById(id: string) {
+  const log = await prisma.auditLog.findUnique({
+    where: { id },
+    include: {
+      admin: { select: { id: true, email: true, name: true } },
+    },
+  });
+  if (!log) return null;
+  return {
+    ...log,
+    createdAt: log.createdAt.toISOString(),
+    finalizedAt: log.finalizedAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * 回收长时间停留在 PENDING 的审计记录（进程崩溃/请求中断）。
+ * 触发器只允许 PENDING -> 终态，正好匹配此操作。
+ */
+export async function reapStalePendingAuditLogs(olderThanMinutes = 10): Promise<number> {
+  const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+  const result = await prisma.auditLog.updateMany({
+    where: { outcome: "PENDING", createdAt: { lt: cutoff } },
+    data: { outcome: "FAILURE", finalizedAt: new Date() },
+  });
+  if (result.count > 0) {
+    apiConsole.warn(`[AuditLog] 回收超时 PENDING 审计记录 ${result.count} 条`);
+  }
+  return result.count;
+}
+
+/** 审计日志保留天数（默认 5 年；最小 30，最大 3650）。 */
 export function getAuditLogRetentionDays(): number {
   const raw = Number(process.env.AUDIT_LOG_RETENTION_DAYS ?? 1825);
   if (!Number.isFinite(raw)) return 1825;
   return Math.min(Math.max(Math.floor(raw), 30), 3650);
-}
-
-/**
- * 清理超过保留期的 AuditLog 记录（合规留存到期后物理删除）。
- * 失败时抛出，由 cron 运行记录（CronTaskRun）标记失败，避免"假成功"。
- */
-export async function cleanupOldAuditLogs(): Promise<number> {
-  const retentionDays = getAuditLogRetentionDays();
-  if (!isAuditArchiveReady()) {
-    apiConsole.warn(
-      `[CleanupAuditLogs] 审计归档存储未就绪，跳过 ${retentionDays} 天前审计日志的物理删除（fail-closed）`
-    );
-    return 0;
-  }
-
-  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
-  const result = await prisma.auditLog.deleteMany({
-    where: {
-      createdAt: { lt: cutoff },
-      legalHold: false,
-    },
-  });
-  apiConsole.info(`[CleanupAuditLogs] 清理了 ${result.count} 条超过 ${retentionDays} 天的审计日志`);
-  return result.count;
 }

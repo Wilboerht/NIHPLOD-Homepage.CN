@@ -171,7 +171,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       detail: { read: validated.read, replied: !!validated.reply?.trim() },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     // PATCH 响应同样按 messages:sensitive:read 决定是否返回完整手机号
     const canReadSensitive = hasAdminPermission(admin, "messages:sensitive:read");
@@ -253,7 +253,7 @@ export async function DELETE(
       detail: {},
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     revalidateTag("admin-stats", "max");
 

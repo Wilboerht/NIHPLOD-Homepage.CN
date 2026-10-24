@@ -10,6 +10,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone, maskAddress } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { createAuditLog } from "@/lib/audit";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -99,6 +100,39 @@ export async function GET(request: NextRequest) {
     const counts: Record<string, number> = { PENDING: 0, FULFILLED: 0, CANCELLED: 0 };
     for (const row of statusCounts) {
       counts[row.status] = row._count;
+    }
+
+    if (canFulfill && redemptions.length > 0) {
+      const recentView = await prisma.auditLog.findFirst({
+        where: {
+          action: "point_redemption_pii_view",
+          adminId: admin.id,
+          createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        },
+        select: { id: true },
+      });
+      if (!recentView) {
+        await createAuditLog({
+          action: "point_redemption_pii_view",
+          targetType: "point_redemption",
+          actorType: "ADMIN",
+          actorEmail: admin.email,
+          actorName: admin.name,
+          actorRole: admin.role,
+          authMethod: "session",
+          sessionJti: admin.jti ?? null,
+          source: "WEB",
+          detail: {
+            filters: { status: status ?? null, search: search ?? null },
+            page,
+            pageSize,
+            count: redemptions.length,
+            fields: ["recipient", "phone", "address"],
+          },
+          adminId: admin.id,
+          request,
+        });
+      }
     }
 
     return NextResponse.json({

@@ -711,7 +711,7 @@ if (webhookUrlsRaw) {
   check({ status: "PASS", name: "SSO_STATUS_CHANGE_WEBHOOK_URLS", message: "未启用" });
 }
 
-// 审计日志保留期（越界会回退默认 365 天，提前提示避免误配）
+// 审计日志保留期（越界会回退默认 1825 天）
 const auditRetention = process.env.AUDIT_LOG_RETENTION_DAYS;
 if (auditRetention) {
   const days = Number(auditRetention);
@@ -719,14 +719,48 @@ if (auditRetention) {
     check({
       status: "FAIL",
       name: "AUDIT_LOG_RETENTION_DAYS",
-      message: `非法或超范围（${auditRetention}），运行时回退默认 365 天（允许 30–3650）`,
+      message: `非法或超范围（${auditRetention}），运行时回退默认 1825 天（允许 30–3650）`,
       fix: "改为 30–3650 范围内的整数，或移除使用默认值",
     });
   } else {
     check({ status: "PASS", name: "AUDIT_LOG_RETENTION_DAYS", message: `已配置 ${days} 天` });
   }
 } else {
-  check({ status: "PASS", name: "AUDIT_LOG_RETENTION_DAYS", message: "未配置（默认 365 天）" });
+  check({ status: "PASS", name: "AUDIT_LOG_RETENTION_DAYS", message: "未配置（默认 1825 天）" });
+}
+
+// 审计 v2：HMAC 密钥与归档目录
+const integrityKey = process.env.AUDIT_INTEGRITY_HMAC_KEY;
+if (!integrityKey || integrityKey.length < 32) {
+  check({
+    status: "FAIL",
+    name: "AUDIT_INTEGRITY_HMAC_KEY",
+    message: "未配置或长度不足 32 字符；每日锚点/哈希链将无法生成",
+    fix: "使用 openssl rand -hex 32 生成，并离线备份",
+  });
+} else {
+  check({ status: "PASS", name: "AUDIT_INTEGRITY_HMAC_KEY", message: "已配置" });
+}
+
+const archiveDir = process.env.AUDIT_ARCHIVE_DIR || "var/audit-archive";
+if (archiveDir.replace(/\\/g, "/").includes("/public/")) {
+  check({
+    status: "FAIL",
+    name: "AUDIT_ARCHIVE_DIR",
+    message: "归档目录不能位于 public/ 下",
+    fix: "改为 public 之外的持久目录，如 /var/lib/nihplod/audit-archive",
+  });
+} else {
+  check({ status: "PASS", name: "AUDIT_ARCHIVE_DIR", message: `使用 ${archiveDir}` });
+}
+
+if (process.env.AUDIT_RETENTION_ENABLED === "true" && process.env.AUDIT_RETENTION_ALLOW_LOCAL_ONLY !== "true") {
+  check({
+    status: "FAIL",
+    name: "AUDIT_RETENTION_ALLOW_LOCAL_ONLY",
+    message: "审计清理已启用，但未确认本地唯一副本",
+    fix: "没有异地备份时不要开启清理；或显式设置 AUDIT_RETENTION_ALLOW_LOCAL_ONLY=true",
+  });
 }
 
 // ============================================

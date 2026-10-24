@@ -8,6 +8,7 @@ import {
 import { resolveAdvisorRole, resolveAdminPermissions } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { createAuditLog } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +82,22 @@ export async function POST(request: NextRequest) {
       deletedAt: true,
       totpEnabled: true,
     },
+  });
+
+  await createAuditLog({
+    action: "admin_sso_status_sync",
+    targetType: "admin",
+    targetLabel: client_id,
+    actorType: "INTEGRATION",
+    actorName: client_id,
+    authMethod: "client_secret",
+    source: "INTEGRATION",
+    detail: {
+      clientId: client_id,
+      requestedIds: ids.length,
+      returnedCount: admins.length,
+    },
+    request,
   });
 
   return NextResponse.json(

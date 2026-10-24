@@ -29,7 +29,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "rate_limited", message: "请求过于频繁" }, { status: 429 });
   }
 
-  const checks: Record<string, { status: string; latency?: number; error?: string }> = {
+  const checks: Record<
+    string,
+    { status: string; latency?: number; error?: string; detail?: Record<string, unknown> }
+  > = {
     server: { status: "ok" },
   };
 
@@ -59,6 +62,44 @@ export async function GET(request: Request) {
       status: ossResult === "ok" ? "ok" : "error",
       error: ossResult !== "ok" ? ossResult : undefined,
     };
+  }
+
+  // 审计链路：锚点、PENDING、归档目录配置
+  try {
+    const [auditAnchor, ssoAnchor, pendingCount] = await Promise.all([
+      prisma.auditLogAnchor.findFirst({
+        where: { stream: "audit", signatureVersion: 2 },
+        orderBy: { day: "desc" },
+        select: { day: true, count: true, archivedAt: true },
+      }),
+      prisma.auditLogAnchor.findFirst({
+        where: { stream: "sso", signatureVersion: 2 },
+        orderBy: { day: "desc" },
+        select: { day: true, count: true, archivedAt: true },
+      }),
+      prisma.auditLog.count({ where: { outcome: "PENDING" } }),
+    ]);
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const stale = !auditAnchor || auditAnchor.day < yesterday;
+    checks.audit = {
+      status: stale || pendingCount > 50 ? "warn" : "ok",
+      detail: {
+        auditAnchor: auditAnchor
+          ? {
+              day: auditAnchor.day,
+              count: auditAnchor.count,
+              archived: Boolean(auditAnchor.archivedAt),
+            }
+          : null,
+        ssoAnchor: ssoAnchor ? { day: ssoAnchor.day, count: ssoAnchor.count } : null,
+        pendingCount,
+        archiveDir: process.env.AUDIT_ARCHIVE_DIR || "var/audit-archive",
+      },
+    };
+  } catch {
+    checks.audit = { status: "error", error: "audit_pipeline_unavailable" };
   }
 
   const allOk = Object.values(checks).every((c) => !c.error);

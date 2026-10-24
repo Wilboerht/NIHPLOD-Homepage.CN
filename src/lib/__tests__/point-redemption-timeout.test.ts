@@ -17,6 +17,11 @@ const tx = vi.hoisted(() => ({
   product: {
     updateMany: vi.fn(),
   },
+  auditLog: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+  },
+  $queryRaw: vi.fn(),
 }));
 
 const prismaMock = vi.hoisted(() => ({
@@ -49,6 +54,9 @@ describe("expirePendingRedemptions", () => {
     ]);
     prismaMock.auditLog.create.mockResolvedValue({ id: "audit-1" });
     prismaMock.auditLog.update.mockResolvedValue({});
+    tx.auditLog.findFirst.mockResolvedValue(null);
+    tx.auditLog.create.mockResolvedValue({ id: "audit-1" });
+    tx.$queryRaw.mockResolvedValue(1);
     tx.pointRedemption.findUnique.mockResolvedValue({
       id: "redemption-1",
       userId: "user-1",
@@ -81,7 +89,7 @@ describe("expirePendingRedemptions", () => {
         reference: "cancel:redemption-1",
       }),
     });
-    expect(prismaMock.auditLog.create).toHaveBeenCalled();
+    expect(tx.auditLog.create).toHaveBeenCalled();
     expect(prismaMock.auditLog.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "audit-1" },

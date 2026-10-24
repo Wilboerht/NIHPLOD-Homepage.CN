@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLog, createAuditLogStrict } from "@/lib/audit";
 import { escapeCSV } from "@/lib/sso-audit";
 import { maskIdentifier, maskIp, maskPhone } from "@/lib/mask-phone";
 import { maskAuditDetail, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
@@ -165,13 +165,22 @@ export async function GET(request: NextRequest) {
         .join("\n");
 
       // 导出行为本身留痕：导出内容含 userId/IP 等敏感字段
-      await createAuditLog({
+      await createAuditLogStrict({
         action: "sso_audit_export",
         targetType: "system",
         targetId: "sso_audit_csv",
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "session",
+        sessionJti: admin.jti ?? null,
+        source: "WEB",
+        reason: "导出 SSO 审计日志",
         detail: {
           filters: { event, clientId, userId, startDate, endDate, success },
           exportedCount: items.length,
+          truncated: items.length >= 5000,
         },
         adminId: admin.id,
         request,
@@ -212,6 +221,37 @@ export async function GET(request: NextRequest) {
           })
         : [];
     const phoneMap = new Map(users.map((u) => [u.id, u.phone ? maskPhone(u.phone) : null]));
+
+    // SSO 审计查看留痕；同一管理员 5 分钟内合并。
+    const recentView = await prisma.auditLog.findFirst({
+      where: {
+        action: "sso_audit_view",
+        adminId: admin.id,
+        createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+      },
+      select: { id: true },
+    });
+    if (!recentView) {
+      await createAuditLog({
+        action: "sso_audit_view",
+        targetType: "system",
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "session",
+        sessionJti: admin.jti ?? null,
+        source: "WEB",
+        detail: {
+          filters: { event, clientId, userId, startDate, endDate, success },
+          page,
+          pageSize,
+          count: items.length,
+        },
+        adminId: admin.id,
+        request,
+      });
+    }
 
     return NextResponse.json({
       success: true,

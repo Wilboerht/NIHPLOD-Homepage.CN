@@ -132,6 +132,20 @@ export const adminNavItems: NavItem[] = [
     group: "系统管理",
   },
   {
+    title: "审计完整性",
+    href: "/admin/audit-integrity",
+    icon: ShieldCheck,
+    permission: "audit:read",
+    group: "系统管理",
+  },
+  {
+    title: "审计保留",
+    href: "/admin/audit-retention",
+    icon: ClipboardCheck,
+    permission: "audit:retention:read",
+    group: "系统管理",
+  },
+  {
     title: "定时任务",
     href: "/admin/cron-tasks",
     icon: Timer,

@@ -31,6 +31,7 @@ const { mockVerifyAuth, mockCheckAdminRateLimit, mockCreateAuditLog, prismaMock 
       prismaMock: {
         ssoAuditEvent: createMockModel(),
         user: createMockModel(),
+        auditLog: { ...createMockModel(), findFirst: vi.fn() },
       } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
     };
   }
@@ -60,6 +61,7 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
+  createAuditLogStrict: (...args: unknown[]) => mockCreateAuditLog(...args),
 }));
 
 // sso-audit：保留真实 escapeCSV（公式注入防护为安全关键路径），仅 stub 记录函数

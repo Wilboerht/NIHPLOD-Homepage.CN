@@ -54,6 +54,9 @@ export const ADMIN_PERMISSIONS = [
   "audit:read",
   "audit:export",
   "audit:sensitive:read",
+  "audit:retention:read",
+  "audit:retention:execute",
+  "audit:hold",
 
   "admins:read",
   "admins:write",
@@ -156,6 +159,9 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "audit:read",
       "audit:export",
       "audit:sensitive:read",
+      "audit:retention:read",
+      "audit:retention:execute",
+      "audit:hold",
       "admins:read",
       "admins:write",
       "cron:read",
@@ -219,6 +225,9 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "audit:read": "审计日志查看（脱敏）",
   "audit:export": "审计日志导出",
   "audit:sensitive:read": "查看审计敏感字段（IP/UA/操作者邮箱）",
+  "audit:retention:read": "审计保留期预览",
+  "audit:retention:execute": "执行审计到期清理（仅 owner）",
+  "audit:hold": "设置/解除审计法律保留（仅 owner）",
   "admins:read": "管理员查看",
   "admins:write": "管理员新增/编辑/删除/权限分配",
   "cron:read": "定时任务查看",
@@ -350,6 +359,7 @@ export const ROLE_TEMPLATES: Record<
     "advisor:users:read",
     "audit:read",
     "audit:export",
+    "audit:retention:read",
   ],
 };
 

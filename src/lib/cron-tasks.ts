@@ -14,8 +14,6 @@ import {
 import { cleanupExpiredCodes } from "./oauth-code";
 import { cleanupExpiredAdminSsoCodes } from "./admin-sso";
 import { cleanupInternalApiNonces } from "./internal-api";
-import { cleanupOldSsoAuditEvents } from "./sso-audit";
-import { cleanupOldAuditLogs } from "./audit";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
@@ -29,7 +27,15 @@ import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
 import { cleanupExpiredAdminTotpRecoveries } from "./admin-totp-recovery";
-import { anchorAuditLogsForDay } from "./audit-integrity";
+import { anchorMissingAuditDays } from "./audit-integrity";
+import { archiveAuditDay } from "./audit-archive";
+import { expireAuditExportJobs, processAuditExportJobs } from "./audit-export";
+import { reapStalePendingAuditLogs } from "./audit";
+import {
+  scanAuditAlerts,
+  sendAuditDailyDigest,
+  sendRetentionEligibilityAlert,
+} from "./audit-alert";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
 import { acquireCronLock, releaseCronLock } from "./cron-lock";
@@ -98,7 +104,7 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
-    name: "Cleanup Old Login Attempts + SSO Audit Events",
+    name: "Cleanup Old Login Attempts",
     cronExpression: "0 4 * * *", // 每天凌晨 4 点执行
     isCleanup: true,
     handler: async () => {
@@ -110,17 +116,6 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 登录尝试记录清理失败:", error);
         markCleanupFailed("登录尝试记录");
-        throw error;
-      }
-
-      try {
-        apiConsole.info("[Cron] 开始清理超过保留期的 SSO 审计日志...");
-        const auditCount = await cleanupOldSsoAuditEvents();
-        apiConsole.info(`[Cron] SSO 审计日志清理完成: ${auditCount} 条`);
-        markCleanupOk("SSO 审计日志");
-      } catch (error) {
-        apiConsole.error("[Cron] SSO 审计日志清理失败:", error);
-        markCleanupFailed("SSO 审计日志");
         throw error;
       }
     },
@@ -255,31 +250,110 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
-    name: "Cleanup Old Audit Logs",
-    cronExpression: "30 5 * * *", // 每天凌晨 5:30 执行（保留期由 AUDIT_LOG_RETENTION_DAYS 控制，默认 1825 天）
-    isCleanup: true,
+    name: "Anchor Missing Audit Days",
+    cronExpression: "15 1 * * *", // 每天 01:15（Asia/Shanghai）补锚；重复执行幂等
     handler: async () => {
       try {
-        apiConsole.info("[Cron] 开始清理超过保留期的审计日志...");
-        const count = await cleanupOldAuditLogs();
-        apiConsole.info(`[Cron] 审计日志清理完成: ${count} 条`);
-        markCleanupOk("审计日志");
+        const result = await anchorMissingAuditDays({ maxDays: 400 });
+        apiConsole.info(
+          `[Cron] 审计锚点补齐完成: 新增 ${result.created.length} 个（截至 ${result.lastDay}）`
+        );
       } catch (error) {
-        apiConsole.error("[Cron] 审计日志清理失败:", error);
-        markCleanupFailed("审计日志");
+        apiConsole.error("[Cron] 审计锚点补齐失败:", error);
         throw error;
       }
     },
   },
   {
-    name: "Anchor Previous Day Audit Logs",
-    cronExpression: "15 1 * * *", // 每天 01:15（Asia/Shanghai）生成前一日审计摘要
+    name: "Archive Audit Logs",
+    cronExpression: "30 2 * * *", // 每天 02:30 归档前一日审计/SSO 日志
+    isCleanup: true,
     handler: async () => {
       try {
-        const anchor = await anchorAuditLogsForDay();
-        apiConsole.info(`[Cron] 审计摘要生成完成: ${anchor.day} (${anchor.count} 条)`);
+        // 失败重试：每次最多补 30 个缺失归档，避免漏一天后永远不补。
+        const missing = await prisma.auditLogAnchor.findMany({
+          where: { signatureVersion: 2, archivedAt: null },
+          orderBy: [{ day: "asc" }, { stream: "asc" }],
+          take: 30,
+        });
+        let archived = 0;
+        for (const anchor of missing) {
+          const [year, month, date] = anchor.day.split("-").map(Number);
+          const fromAt = new Date(Date.UTC(year, month - 1, date) - 8 * 60 * 60 * 1000);
+          const result = await archiveAuditDay(anchor.stream as "audit" | "sso", {
+            day: anchor.day,
+            fromAt,
+            toAt: new Date(fromAt.getTime() + 24 * 60 * 60 * 1000),
+          });
+          if (result.verified) archived += 1;
+        }
+        apiConsole.info(`[Cron] 审计归档完成: 补齐 ${archived}/${missing.length} 个`);
+        markCleanupOk("审计归档");
       } catch (error) {
-        apiConsole.error("[Cron] 审计摘要生成失败:", error);
+        apiConsole.error("[Cron] 审计归档失败:", error);
+        markCleanupFailed("审计归档");
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Reap Stale Pending Audit Logs",
+    cronExpression: "*/15 * * * *",
+    handler: async () => {
+      try {
+        await reapStalePendingAuditLogs(10);
+      } catch (error) {
+        apiConsole.error("[Cron] PENDING 审计回收失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Process Audit Export Jobs",
+    cronExpression: "* * * * *", // 每分钟处理队列
+    handler: async () => {
+      try {
+        await expireAuditExportJobs();
+        const count = await processAuditExportJobs(3);
+        if (count > 0) apiConsole.info(`[Cron] 审计导出任务处理: ${count} 个`);
+      } catch (error) {
+        apiConsole.error("[Cron] 审计导出任务处理失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Audit Anomaly Scan",
+    cronExpression: "*/5 * * * *",
+    handler: async () => {
+      try {
+        await scanAuditAlerts();
+      } catch (error) {
+        apiConsole.error("[Cron] 审计异常扫描失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Audit Daily Digest",
+    cronExpression: "0 9 * * *",
+    handler: async () => {
+      try {
+        await sendAuditDailyDigest();
+      } catch (error) {
+        apiConsole.error("[Cron] 审计日报发送失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Audit Retention Eligibility Alert",
+    cronExpression: "30 9 * * *",
+    handler: async () => {
+      try {
+        await sendRetentionEligibilityAlert();
+      } catch (error) {
+        apiConsole.error("[Cron] 审计到期提醒失败:", error);
         throw error;
       }
     },

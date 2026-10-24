@@ -7,17 +7,12 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import {
   listAuditLogs,
   createAuditLog,
-  createAuditLogStrict,
   AUDIT_ACTIONS,
   AUDIT_TARGET_TYPES,
 } from "@/lib/audit";
-import {
-  AUDIT_ACTION_LABELS as ACTION_LABELS,
-  AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
-} from "@/lib/audit-labels";
-import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
+import { AUDIT_RISK_LEVELS, AUDIT_CATEGORIES } from "@/lib/audit-registry";
+import { maskAuditText } from "@/lib/audit-sanitize";
 import { maskIdentifier, maskIp } from "@/lib/mask-phone";
-import { escapeCSV } from "@/lib/sso-audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -27,12 +22,26 @@ import { parseUtc8DateBoundary } from "@/lib/timezone";
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
+  cursor: z.string().max(500).optional(),
   action: z.enum(AUDIT_ACTIONS).optional(),
   targetType: z.enum(AUDIT_TARGET_TYPES).optional(),
   adminId: z.string().cuid().optional(),
-  // 操作者类型：默认只看管理员操作；ALL 表示不按操作者过滤
+  userId: z.string().max(64).optional(),
   actorType: z.enum(["ADMIN", "USER", "SYSTEM", "INTEGRATION", "ALL"]).default("ADMIN"),
   outcome: z.enum(["PENDING", "SUCCESS", "FAILURE", "PARTIAL"]).optional(),
+  riskLevel: z.enum(AUDIT_RISK_LEVELS).optional(),
+  category: z.enum(AUDIT_CATEGORIES).optional(),
+  source: z.enum(["WEB", "CRON", "INTEGRATION", "SYSTEM"]).optional(),
+  authMethod: z.string().max(64).optional(),
+  sessionJti: z.string().max(128).optional(),
+  targetId: z.string().max(128).optional(),
+  requestId: z.string().max(128).optional(),
+  ipAddress: z.string().max(64).optional(),
+  legalHold: z.preprocess(
+    (val) => (val === "true" ? true : val === "false" ? false : undefined),
+    z.boolean().optional()
+  ),
+  search: z.string().max(100).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });
@@ -69,42 +78,29 @@ export async function GET(request: NextRequest) {
     const params = querySchema.parse({
       page: searchParams.get("page"),
       pageSize: searchParams.get("pageSize"),
+      cursor: searchParams.get("cursor") || undefined,
       action: searchParams.get("action") || undefined,
       targetType: searchParams.get("targetType") || undefined,
       adminId: searchParams.get("adminId") || undefined,
+      userId: searchParams.get("userId") || undefined,
       actorType: searchParams.get("actorType") || undefined,
       outcome: searchParams.get("outcome") || undefined,
+      riskLevel: searchParams.get("riskLevel") || undefined,
+      category: searchParams.get("category") || undefined,
+      source: searchParams.get("source") || undefined,
+      authMethod: searchParams.get("authMethod") || undefined,
+      sessionJti: searchParams.get("sessionJti") || undefined,
+      targetId: searchParams.get("targetId") || undefined,
+      requestId: searchParams.get("requestId") || undefined,
+      ipAddress: searchParams.get("ipAddress") || undefined,
+      legalHold: searchParams.get("legalHold") || undefined,
+      search: searchParams.get("search") || undefined,
       startDate: searchParams.get("startDate") || undefined,
       endDate: searchParams.get("endDate") || undefined,
     });
     const actorType = params.actorType === "ALL" ? undefined : params.actorType;
 
-    // 审计详情脱敏：无 audit:sensitive:read 时遮盖 PII、IP、UA 与操作者邮箱
-    type AuditLogRow = Awaited<ReturnType<typeof listAuditLogs>>["items"][number];
     const canViewSensitive = hasAdminPermission(admin, "audit:sensitive:read");
-    // 高敏自由文本（留言/备注/简历）对所有人隐藏；敏感权限只影响 PII/IP/UA。
-    const scrubLog = (log: AuditLogRow): AuditLogRow => ({
-      ...log,
-      detail: redactSensitiveAuditDetail(log.detail) as AuditLogRow["detail"],
-    });
-    const sanitizeLog = (log: AuditLogRow): AuditLogRow => {
-      const scrubbed = scrubLog(log);
-      if (canViewSensitive) return scrubbed;
-      return {
-        ...scrubbed,
-        targetLabel: scrubbed.targetLabel ? maskAuditText(scrubbed.targetLabel) : null,
-        detail: maskAuditDetail(scrubbed.detail) as AuditLogRow["detail"],
-        ipAddress: scrubbed.ipAddress ? maskIp(scrubbed.ipAddress) : null,
-        userAgent: null,
-        actorEmail: scrubbed.actorEmail ? maskIdentifier(scrubbed.actorEmail) : null,
-        admin: scrubbed.admin
-          ? { ...scrubbed.admin, email: maskIdentifier(scrubbed.admin.email) ?? "-" }
-          : null,
-      };
-    };
-
-    // 仅日期字符串按 UTC+8 当天 00:00 / 23:59:59.999 解析；
-    // 不能直接 z.coerce.date()，否则 YYYY-MM-DD 会被当成 UTC 00:00（=北京时间 08:00）。
     const startDate = params.startDate
       ? (parseUtc8DateBoundary(params.startDate, false) ?? undefined)
       : undefined;
@@ -119,114 +115,65 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // CSV 导出 — 分批拉取（每批 100 条），最多 5 万条并在截断时明确标注
-    const isExport = searchParams.get("export") === "csv";
-    if (isExport && !hasAdminPermission(admin, "audit:export")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计日志导出" } },
-        { status: 403, headers: NO_STORE_HEADERS }
-      );
-    }
-    if (isExport) {
-      const EXPORT_BATCH = 100;
-      const EXPORT_MAX = 50000;
-      const exportItems: AuditLogRow[] = [];
-      let truncated = false;
-      for (let exportPage = 1; exportItems.length < EXPORT_MAX; exportPage += 1) {
-        const batch = await listAuditLogs({
-          page: exportPage,
-          pageSize: EXPORT_BATCH,
-          action: params.action,
-          targetType: params.targetType,
-          adminId: params.adminId,
-          actorType,
-          outcome: params.outcome,
-          startDate,
-          endDate,
-        });
-        exportItems.push(...batch.items.map((log) => sanitizeLog(log)));
-        if (batch.items.length < EXPORT_BATCH || exportItems.length >= batch.pagination.total) {
-          break;
-        }
-        if (exportItems.length >= EXPORT_MAX) {
-          truncated = exportItems.length < batch.pagination.total;
-          break;
-        }
-      }
-
-      const headers = ["时间", "操作人", "操作", "结果", "目标类型", "目标ID", "IP地址", "详情"];
-      const rows: string[][] = exportItems.map((log) => [
-        new Date(log.createdAt as string).toISOString(),
-        log.admin
-          ? `${(log.admin as { name: string }).name} (${(log.admin as { email: string }).email})`
-          : log.actorName || log.actorEmail || (log.actorType === "USER" ? "用户" : "-"),
-        ACTION_LABELS[log.action as string] || (log.action as string),
-        (log as { outcome?: string }).outcome || "SUCCESS",
-        TARGET_TYPE_LABELS[log.targetType as string] || (log.targetType as string),
-        (log.targetId as string) || "-",
-        (log.ipAddress as string) || "-",
-        JSON.stringify(log.detail || {}),
-      ]);
-      if (truncated) {
-        rows.push([
-          `导出已截断：仅包含前 ${EXPORT_MAX} 条，请缩小时间范围后重试`,
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-        ]);
-      }
-      const csv = [headers.join(","), ...rows.map((r) => r.map(escapeCSV).join(","))].join("\n");
-
-      // 导出审计：记录筛选条件与导出条数（审计不可用时拒绝导出）
-      await createAuditLogStrict({
-        action: "audit_log_export",
-        targetType: "system",
-        detail: {
-          action: params.action ?? null,
-          targetType: params.targetType ?? null,
-          adminId: params.adminId ?? null,
-          actorType: params.actorType,
-          outcome: params.outcome ?? null,
-          startDate: startDate?.toISOString() ?? null,
-          endDate: endDate?.toISOString() ?? null,
-          exportedCount: exportItems.length,
-          truncated,
-        },
-        actorType: "ADMIN",
-        actorEmail: admin.email,
-        actorName: admin.name,
-        actorRole: admin.role,
-        authMethod: "session",
-        adminId: admin.id,
-        request,
-      });
-
-      return new NextResponse(`\uFEFF${csv}`, {
-        headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": "attachment; filename=audit-logs.csv",
-          ...NO_STORE_HEADERS,
-        },
-      });
-    }
-
     const result = await listAuditLogs({
       page: params.page,
       pageSize: params.pageSize,
+      cursor: params.cursor,
       action: params.action,
       targetType: params.targetType,
       adminId: params.adminId,
+      userId: params.userId,
       actorType,
       outcome: params.outcome,
+      riskLevel: params.riskLevel,
+      category: params.category,
+      source: params.source,
+      authMethod: params.authMethod,
+      sessionJti: params.sessionJti,
+      targetId: params.targetId,
+      requestId: params.requestId,
+      ipAddress: params.ipAddress,
+      legalHold: params.legalHold,
+      search: params.search,
       startDate,
       endDate,
     });
 
-    // 审计日志查看也留痕；同一管理员 5 分钟内合并为一条，避免翻页刷屏。
+    // 列表不返回完整 detail；详情由 /api/admin/audit-logs/[id] 提供并单独留痕。
+    type AuditLogRow = (typeof result.items)[number];
+    const sanitize = (log: AuditLogRow) => {
+      const { detail, ...rest } = log;
+      void detail;
+      return {
+        ...rest,
+        targetLabel: canViewSensitive
+          ? rest.targetLabel
+          : rest.targetLabel
+            ? maskAuditText(rest.targetLabel)
+            : null,
+        actorEmail: canViewSensitive
+          ? rest.actorEmail
+          : rest.actorEmail
+            ? maskIdentifier(rest.actorEmail)
+            : null,
+        ipAddress: canViewSensitive
+          ? rest.ipAddress
+          : rest.ipAddress
+            ? maskIp(rest.ipAddress)
+            : null,
+        userAgent: canViewSensitive ? rest.userAgent : null,
+        admin: rest.admin
+          ? {
+              ...rest.admin,
+              email: canViewSensitive
+                ? rest.admin.email
+                : (maskIdentifier(rest.admin.email) ?? "-"),
+            }
+          : null,
+      };
+    };
+
+    // 查看审计日志本身也留痕；同一管理员 5 分钟内合并。
     const recentView = await prisma.auditLog.findFirst({
       where: {
         action: "audit_log_view",
@@ -244,13 +191,19 @@ export async function GET(request: NextRequest) {
         actorName: admin.name,
         actorRole: admin.role,
         authMethod: "session",
+        sessionJti: admin.jti ?? null,
+        source: "WEB",
         detail: {
           filters: {
             action: params.action ?? null,
             targetType: params.targetType ?? null,
             adminId: params.adminId ?? null,
+            userId: params.userId ?? null,
             actorType: params.actorType,
             outcome: params.outcome ?? null,
+            riskLevel: params.riskLevel ?? null,
+            category: params.category ?? null,
+            search: params.search ?? null,
             startDate: params.startDate ?? null,
             endDate: params.endDate ?? null,
           },
@@ -268,7 +221,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           ...result,
-          items: result.items.map((log) => sanitizeLog(log)),
+          items: result.items.map(sanitize),
         },
       },
       { headers: NO_STORE_HEADERS }
@@ -280,6 +233,12 @@ export async function GET(request: NextRequest) {
           success: false,
           error: { code: "VALIDATION_ERROR", message: "参数错误", details: error.issues },
         },
+        { status: 400 }
+      );
+    }
+    if (error instanceof Error && error.message === "INVALID_CURSOR") {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_CURSOR", message: "分页游标无效" } },
         { status: 400 }
       );
     }

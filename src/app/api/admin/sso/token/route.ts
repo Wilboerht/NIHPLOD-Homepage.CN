@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       targetType: "admin",
       detail: { reason: "invalid_client", clientId: client_id },
       request,
-    }).catch(() => {});
+    }).catch((error) => logger.error("[AdminSSO] 审计写入失败", { error: String(error) }));
     return jsonError("INVALID_CLIENT", "客户端认证失败", 401);
   }
 
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       targetType: "admin",
       detail: { reason: "invalid_or_expired_code", clientId: client_id },
       request,
-    }).catch(() => {});
+    }).catch((error) => logger.error("[AdminSSO] 审计写入失败", { error: String(error) }));
     return jsonError("INVALID_GRANT", "授权码无效或已过期", 400);
   }
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       detail: { reason, clientId: client_id },
       adminId: consumed.adminId,
       request,
-    }).catch(() => {});
+    }).catch((error) => logger.error("[AdminSSO] 审计写入失败", { error: String(error) }));
     return jsonError("INVALID_GRANT", message, status);
   };
 

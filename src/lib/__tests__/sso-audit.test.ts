@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockCreate = vi.fn();
-const mockDeleteMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     ssoAuditEvent: {
       create: (...args: unknown[]) => mockCreate(...args),
-      deleteMany: (...args: unknown[]) => mockDeleteMany(...args),
     },
   },
 }));
@@ -22,12 +20,7 @@ vi.mock("next/server", () => ({
   after: (task: () => unknown) => mockAfter(task),
 }));
 
-import {
-  recordSsoEvent,
-  scheduleSsoEvent,
-  cleanupOldSsoAuditEvents,
-  escapeCSV,
-} from "@/lib/sso-audit";
+import { recordSsoEvent, scheduleSsoEvent, escapeCSV } from "@/lib/sso-audit";
 
 describe("sso-audit", () => {
   beforeEach(() => {
@@ -79,27 +72,13 @@ describe("sso-audit", () => {
     );
   });
 
-  it("归档未就绪时 fail-closed，不物理删除 SSO 审计", async () => {
-    vi.stubEnv("AUDIT_ARCHIVE_READY", "false");
-    mockDeleteMany.mockResolvedValue({ count: 5 });
-
-    const result = await cleanupOldSsoAuditEvents();
-
-    expect(result).toBe(0);
-    expect(mockDeleteMany).not.toHaveBeenCalled();
-  });
-
-  it("归档就绪后删除 90 天前的记录", async () => {
-    vi.stubEnv("AUDIT_ARCHIVE_READY", "true");
-    vi.stubEnv("AUDIT_ARCHIVE_BUCKET", "audit-archive");
-    mockDeleteMany.mockResolvedValue({ count: 5 });
-
-    const result = await cleanupOldSsoAuditEvents();
-
-    expect(result).toBe(5);
-    expect(mockDeleteMany).toHaveBeenCalledWith(
+  it("应保存 requestId 以便与 AuditLog 关联", async () => {
+    mockCreate.mockResolvedValue({ id: "event-id" });
+    recordSsoEvent({ event: "token", userId: "user-1", requestId: "req-1", success: true });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { createdAt: { lt: expect.any(Date) } },
+        data: expect.objectContaining({ requestId: "req-1" }),
       })
     );
   });

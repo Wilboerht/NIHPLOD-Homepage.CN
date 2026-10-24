@@ -72,3 +72,8 @@ Desktop.ini
 # 运行时上传的文件（本地存储模式）
 public/uploads/
 private/
+
+# 审计本地归档/导出
+var/audit-archive/
+var/audit-archive-backup/
+var/audit-exports/

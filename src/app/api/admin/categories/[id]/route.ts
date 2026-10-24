@@ -170,7 +170,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       detail: validated,
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     revalidateTag("admin-stats", "max");
     revalidatePath("/products");
@@ -290,7 +290,7 @@ export async function DELETE(
       detail: {},
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,

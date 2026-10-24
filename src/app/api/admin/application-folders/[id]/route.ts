@@ -132,7 +132,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       detail: validated,
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,
@@ -204,7 +204,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       detail: { name: existing.name },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,

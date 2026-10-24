@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
       detail: { title: job.title, type: job.type, location: job.location },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,

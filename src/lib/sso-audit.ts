@@ -7,7 +7,6 @@
 import { after } from "next/server";
 import { prisma } from "./prisma";
 import { apiConsole } from "@/lib/logger";
-import { isAuditArchiveReady } from "./audit-integrity";
 
 export type SsoEventType =
   | "authorize"
@@ -29,6 +28,7 @@ export interface SsoEventContext {
   userAgent?: string;
   detail?: Record<string, unknown>;
   success?: boolean;
+  requestId?: string;
 }
 
 /**
@@ -62,6 +62,7 @@ export function recordSsoEvent(context: SsoEventContext): Promise<void> {
         userAgent: context.userAgent || null,
         detail: context.detail ? (context.detail as object) : undefined,
         success: context.success ?? true,
+        requestId: context.requestId || null,
       },
     })
     .then(() => undefined)
@@ -93,31 +94,9 @@ export function scheduleSsoEvent(context: SsoEventContext): void {
 
 export { escapeCSV } from "./csv";
 
-/**
- * 清理 90 天前的 SSO 审计事件
- */
+/** SSO 审计保留天数（仅用于到期预览/手动清理）。 */
 export function getSsoAuditRetentionDays(): number {
   const raw = Number(process.env.SSO_AUDIT_RETENTION_DAYS ?? 730);
   if (!Number.isFinite(raw)) return 730;
   return Math.min(Math.max(Math.floor(raw), 30), 3650);
-}
-
-export async function cleanupOldSsoAuditEvents(): Promise<number> {
-  try {
-    const retentionDays = getSsoAuditRetentionDays();
-    if (!isAuditArchiveReady()) {
-      apiConsole.warn(
-        `[SsoAudit] 审计归档存储未就绪，跳过 ${retentionDays} 天前 SSO 审计的物理删除（fail-closed）`
-      );
-      return 0;
-    }
-    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
-    const result = await prisma.ssoAuditEvent.deleteMany({
-      where: { createdAt: { lt: cutoff } },
-    });
-    return result.count;
-  } catch (error) {
-    apiConsole.error("[SsoAudit] 清理旧记录失败:", error);
-    throw error;
-  }
 }

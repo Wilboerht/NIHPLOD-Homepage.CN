@@ -251,7 +251,7 @@ curl -X POST "https://nihplod.cn/api/cron/run" \
 
 补充：失败队列（Backchannel / 资料 Webhook）支持管理端手动重投，重投采用**原子认领**（先删除记录再投递，失败按退避重建），与 cron 重投并发时不会重复投递；失败队列接口不回传 `payload`（含用户资料快照 PII）。进程内 cron 任务失败会写 `CronTaskRun`（`success=false`）并输出错误日志，外部调度器端点整体失败时返回 500（便于调度平台告警）。
 
-`POST /api/cron/run` 使用数据库事务级 advisory lock 做**跨实例互斥**：已有调度在执行时返回 409 `ALREADY_RUNNING`（调度器可按普通失败重试，不会并发执行大批 `deleteMany`）；整次调度超时（默认 280s）时事务回滚并自动释放锁，返回 500 `CRON_RUN_FAILED`。审计日志（`AuditLog`）保留期由 `AUDIT_LOG_RETENTION_DAYS` 控制（默认 365 天，允许 30–3650），由每日任务「Cleanup Old Audit Logs」物理删除到期记录。
+`POST /api/cron/run` 使用数据库事务级 advisory lock 做**跨实例互斥**：已有调度在执行时返回 409 `ALREADY_RUNNING`（调度器可按普通失败重试，不会并发执行大批 `deleteMany`）；整次调度超时（默认 280s）时事务回滚并自动释放锁，返回 500 `CRON_RUN_FAILED`。审计日志（`AuditLog`）保留期由 `AUDIT_LOG_RETENTION_DAYS` 控制（默认 1825 天，允许 30–3650）。到期清理默认不自动执行：仅 owner 在后台「审计保留」页通过 TOTP 发起，由独立 worker 使用 `audit_retention` 角色执行；未归档/未备份/法律保留中的记录不会被删除。
 
 ### 2.9 凭证变更与会话撤销口径
 

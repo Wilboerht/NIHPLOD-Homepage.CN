@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  findMany: vi.fn(),
+  auditFindMany: vi.fn(),
+  ssoFindMany: vi.fn(),
   findAnchor: vi.fn(),
   createAnchor: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    auditLog: { findMany: mocks.findMany },
+    auditLog: { findMany: mocks.auditFindMany },
+    ssoAuditEvent: { findMany: mocks.ssoFindMany },
     auditLogAnchor: {
-      findUnique: mocks.findAnchor,
+      findFirst: mocks.findAnchor,
       create: mocks.createAnchor,
     },
   },
@@ -20,6 +22,11 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
+vi.mock("@/lib/audit-archive", () => ({
+  verifyArchiveDay: vi.fn().mockResolvedValue(false),
+  verifyArchiveBackup: vi.fn().mockResolvedValue(false),
+}));
+
 import {
   anchorAuditLogsForDay,
   getUtc8DayRange,
@@ -27,6 +34,7 @@ import {
 } from "@/lib/audit-integrity";
 
 const KEY_BACKUP = process.env.AUDIT_INTEGRITY_HMAC_KEY;
+let lastAuditAnchor: Record<string, unknown> | null = null;
 
 const row = {
   id: "log-1",
@@ -48,18 +56,32 @@ const row = {
   ipAddress: "1.2.3.4",
   userAgent: "test",
   detail: { b: 2, a: 1 },
+  category: "auth",
+  riskLevel: "LOW",
+  source: "WEB",
+  reason: null,
+  schemaVersion: 2,
+  chainVersion: 1,
+  integrityKeyVersion: 1,
+  chainSeq: 1,
+  prevHash: null,
+  entryHash: "a".repeat(64),
+  finalizedAt: new Date("2026-10-18T00:00:00.000Z"),
 };
 
 describe("audit integrity anchors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    lastAuditAnchor = null;
     process.env.AUDIT_INTEGRITY_HMAC_KEY = "x".repeat(32);
-    mocks.findMany.mockResolvedValue([row]);
+    mocks.auditFindMany.mockResolvedValue([row]);
+    mocks.ssoFindMany.mockResolvedValue([]);
     mocks.findAnchor.mockResolvedValue(null);
-    mocks.createAnchor.mockImplementation(async ({ data }) => ({
-      id: "anchor-1",
-      ...data,
-    }));
+    mocks.createAnchor.mockImplementation(async ({ data }) => {
+      const anchor = { id: `anchor-${String(data.stream)}`, ...data };
+      if (data.stream === "audit") lastAuditAnchor = anchor;
+      return anchor;
+    });
   });
 
   afterEach(() => {
@@ -74,14 +96,18 @@ describe("audit integrity anchors", () => {
     expect(range.toAt.toISOString()).toBe("2026-10-18T16:00:00.000Z");
   });
 
-  it("生成并持久化每日摘要", async () => {
-    const result = await anchorAuditLogsForDay(getUtc8DayRange(new Date("2026-10-18T00:30:00+08:00")));
+  it("生成并持久化每日 v2 摘要", async () => {
+    const result = await anchorAuditLogsForDay(
+      getUtc8DayRange(new Date("2026-10-18T00:30:00+08:00"))
+    );
 
     expect(result.count).toBe(1);
     expect(result.digest).toMatch(/^[a-f0-9]{64}$/);
     expect(result.signature).toMatch(/^[a-f0-9]{64}$/);
     expect(mocks.createAnchor).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        stream: "audit",
+        signatureVersion: 2,
         day: "2026-10-18",
         count: 1,
         digest: result.digest,
@@ -93,9 +119,13 @@ describe("audit integrity anchors", () => {
   it("已有摘要不一致时拒绝覆盖", async () => {
     mocks.findAnchor.mockResolvedValue({
       day: "2026-10-18",
+      stream: "audit",
+      signatureVersion: 2,
       count: 1,
       digest: "0".repeat(64),
       signature: "0".repeat(64),
+      keyVersion: 1,
+      prevAnchorHash: null,
     });
 
     await expect(
@@ -104,21 +134,12 @@ describe("audit integrity anchors", () => {
   });
 
   it("验证时检测记录篡改", async () => {
-    const original = await anchorAuditLogsForDay(
-      getUtc8DayRange(new Date("2026-10-18T00:30:00+08:00"))
-    );
-    mocks.findAnchor.mockResolvedValue({
-      day: "2026-10-18",
-      fromAt: new Date("2026-10-17T16:00:00.000Z"),
-      toAt: new Date("2026-10-18T16:00:00.000Z"),
-      count: original.count,
-      digest: original.digest,
-      signature: original.signature,
-    });
+    await anchorAuditLogsForDay(getUtc8DayRange(new Date("2026-10-18T00:30:00+08:00")));
+    mocks.findAnchor.mockResolvedValue(lastAuditAnchor);
 
     await expect(verifyAuditLogAnchor("2026-10-18")).resolves.toBe(true);
 
-    mocks.findMany.mockResolvedValue([{ ...row, action: "tampered" }]);
+    mocks.auditFindMany.mockResolvedValue([{ ...row, action: "tampered" }]);
     await expect(verifyAuditLogAnchor("2026-10-18")).resolves.toBe(false);
   });
 });

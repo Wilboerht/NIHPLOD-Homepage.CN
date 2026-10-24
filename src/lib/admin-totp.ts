@@ -112,6 +112,53 @@ export async function requireMoneyOperationTotp(
   return totpError("TOTP_INVALID", "二次验证码错误");
 }
 
+/**
+ * 强制新鲜 TOTP：不接受 step-up 缓存，也不受 ADMIN_TOTP_ENFORCE=false 影响。
+ * 用于不可逆操作（审计到期清理、法律保留）。
+ */
+export async function requireFreshAdminTotp(
+  adminId: string,
+  code?: string | null
+): Promise<NextResponse | null> {
+  const admin = await prisma.admin.findUnique({
+    where: { id: adminId },
+    select: { totpEnabled: true, totpSecret: true, totpBackupCodes: true },
+  });
+  if (!admin) return totpError("TOTP_INVALID", "管理员不存在");
+  if (!admin.totpEnabled || !admin.totpSecret) {
+    return totpError("TOTP_NOT_ENABLED", "请先在「管理员安全中心」启用二次验证后再执行该操作");
+  }
+
+  const trimmed = code?.trim();
+  if (!trimmed || trimmed.length < 6) {
+    return totpError("TOTP_REQUIRED", "请输入二次验证码以确认该操作");
+  }
+
+  try {
+    const secret = decryptTOTPSecret(admin.totpSecret);
+    if (verifyTOTP(trimmed, secret)) {
+      const replayKey = `totp:fresh:${adminId}:${trimmed}`;
+      if (!(await consumeAccessTokenOnce(replayKey))) {
+        return totpError("TOTP_INVALID", "验证码已被使用，请等待下一次刷新");
+      }
+      return null;
+    }
+  } catch (err) {
+    apiConsole.warn("[AdminTotp] 新鲜 TOTP 密钥解密失败:", err);
+  }
+
+  if (admin.totpBackupCodes) {
+    try {
+      const consumed = await consumeAdminBackupCode(adminId, trimmed, admin.totpBackupCodes);
+      if (consumed.ok) return null;
+    } catch (err) {
+      apiConsole.warn("[AdminTotp] 新鲜 TOTP 备用码消费失败（fail-closed）:", err);
+    }
+  }
+
+  return totpError("TOTP_INVALID", "二次验证码错误");
+}
+
 function totpError(code: AdminTotpErrorCode, message: string): NextResponse {
   return NextResponse.json({ success: false, error: { code, message } }, { status: 400 });
 }

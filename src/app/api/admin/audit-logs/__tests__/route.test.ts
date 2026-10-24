@@ -37,7 +37,7 @@ vi.mock("@/lib/prisma", () => ({
 
 import { GET } from "../route";
 import { verifyAuth } from "@/lib/auth";
-import { listAuditLogs, createAuditLog, createAuditLogStrict } from "@/lib/audit";
+import { listAuditLogs, createAuditLog } from "@/lib/audit";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 
@@ -60,7 +60,13 @@ describe("GET /api/admin/audit-logs", () => {
     });
   });
 
-  it("export=csv 返回 CSV 并写入 audit_log_export 审计日志", async () => {
+  it("列表不返回完整 detail，无敏感权限时脱敏 IP/邮箱", async () => {
+    vi.mocked(verifyAuth).mockResolvedValue({
+      id: "finance-1",
+      email: "finance@test.com",
+      name: "Finance",
+      role: "finance",
+    } as never);
     mockListAuditLogs.mockResolvedValue({
       items: [
         {
@@ -68,38 +74,28 @@ describe("GET /api/admin/audit-logs", () => {
           action: "login",
           targetType: "admin",
           targetId: null,
+          targetLabel: "Owner <owner@test.com>",
+          actorEmail: "alice@example.com",
           detail: { notes: "候选人张三，期望薪资 30k", status: "reviewed" },
-          ipAddress: "127.0.0.1",
-          admin: { name: "Owner", email: "owner@test.com" },
+          ipAddress: "1.2.3.4",
+          userAgent: "UA",
+          admin: { id: "admin-1", name: "Owner", email: "owner@test.com" },
           createdAt: "2024-01-01T00:00:00.000Z",
         },
       ],
-      pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1, nextCursor: null },
     });
 
-    const res = await GET(
-      createRequest("?export=csv&action=login&startDate=2024-01-01&endDate=2024-01-31")
-    );
-
+    const res = await GET(createRequest("?action=login"));
     expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toContain("text/csv");
-    const csv = await res.text();
-    expect(csv).not.toContain("候选人张三");
-    expect(csv).not.toContain("30k");
-    expect(csv).toContain("[已脱敏]");
-
-    expect(createAuditLogStrict).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "audit_log_export",
-        targetType: "system",
-        adminId: "admin-1",
-        detail: expect.objectContaining({
-          action: "login",
-          exportedCount: 1,
-          truncated: false,
-        }),
-      })
-    );
+    const body = (await res.json()) as {
+      data: { items: Array<Record<string, unknown>> };
+    };
+    const item = body.data.items[0];
+    expect(item.detail).toBeUndefined();
+    expect(String(item.ipAddress)).not.toBe("1.2.3.4");
+    expect(String(item.actorEmail)).not.toBe("alice@example.com");
+    expect(String(item.targetLabel)).toContain("***");
   });
 
   it("默认只查询管理员操作，可通过 actorType 切换用户/全部", async () => {

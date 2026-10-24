@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
       detail: { name: product.name, slug: product.slug, price: Number(product.price) },
       adminId: admin.id,
       request,
-    }).catch(() => {});
+    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     return NextResponse.json({
       success: true,
