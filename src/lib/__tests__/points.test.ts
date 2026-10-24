@@ -7,6 +7,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockTxSpentSyncFindUnique = vi.fn();
 const mockTxSpentSyncCreate = vi.fn();
+const mockTxSpentClaimFindUnique = vi.fn();
+const mockTxSpentClaimCreate = vi.fn();
 const mockTxUserFindUnique = vi.fn();
 const mockTxUserUpdateMany = vi.fn();
 const mockTxLevelChangeCreate = vi.fn();
@@ -15,6 +17,7 @@ const mockSendProfileUpdateWebhook = vi.fn();
 
 const tx = {
   spentSyncRecord: { findUnique: mockTxSpentSyncFindUnique, create: mockTxSpentSyncCreate },
+  spentOrderClaim: { findUnique: mockTxSpentClaimFindUnique, create: mockTxSpentClaimCreate },
   user: { findUnique: mockTxUserFindUnique, updateMany: mockTxUserUpdateMany },
   membershipLevelChange: { create: mockTxLevelChangeCreate },
 };
@@ -46,6 +49,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import { applyExternalSpentSync, calculateLevel } from "@/lib/points";
+import { SpentOrderConflictError } from "@/lib/spent-order";
 
 const flushMicrotasks = () => new Promise((r) => setTimeout(r, 10));
 
@@ -54,6 +58,8 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
     vi.clearAllMocks();
     mockTxSpentSyncFindUnique.mockResolvedValue(null);
     mockTxSpentSyncCreate.mockResolvedValue({});
+    mockTxSpentClaimFindUnique.mockResolvedValue(null);
+    mockTxSpentClaimCreate.mockResolvedValue({});
     mockTxUserUpdateMany.mockResolvedValue({ count: 1 });
     mockTxLevelChangeCreate.mockResolvedValue({});
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
@@ -188,6 +194,68 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
     // 推送为 fire-and-forget：rejection 被 .catch 兜底，不产生未处理异常
     await vi.waitFor(() => expect(mockSendProfileUpdateWebhook).toHaveBeenCalledTimes(1));
     await flushMicrotasks();
+  });
+});
+
+describe("applyExternalSpentSync 跨来源订单占用", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTxSpentSyncFindUnique.mockResolvedValue(null);
+    mockTxSpentSyncCreate.mockResolvedValue({});
+    mockTxSpentClaimFindUnique.mockResolvedValue(null);
+    mockTxSpentClaimCreate.mockResolvedValue({});
+    mockTxLevelChangeCreate.mockResolvedValue({});
+    mockTxUserFindUnique.mockResolvedValue({
+      totalSpent: 0,
+      membershipLevel: "REGULAR",
+      silverActivatedAt: null,
+      goldActivatedAt: null,
+      diamondActivatedAt: null,
+    });
+    mockTxUserUpdateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it("正向消费带 orderNo 时创建占用并写入来源", async () => {
+    const result = await applyExternalSpentSync({
+      userId: "user-1",
+      spentDelta: 100,
+      reference: "ORDER-A",
+      orderNo: "ORDER-A",
+      source: "MALL_SYNC",
+    });
+
+    expect(result?.duplicated).toBe(false);
+    expect(mockTxSpentClaimCreate).toHaveBeenCalledWith({
+      data: {
+        userId: "user-1",
+        orderNo: "ORDER-A",
+        orderNoKey: "ORDER-A",
+        source: "MALL_SYNC",
+        reference: "ORDER-A",
+      },
+    });
+    expect(mockTxSpentSyncCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        orderNo: "ORDER-A",
+        orderNoKey: "ORDER-A",
+        source: "MALL_SYNC",
+      }),
+    });
+  });
+
+  it("订单已被其他来源占用时拒绝入账", async () => {
+    mockTxSpentClaimFindUnique.mockResolvedValue({ source: "SPENT_IMPORT" });
+
+    await expect(
+      applyExternalSpentSync({
+        userId: "user-1",
+        spentDelta: 100,
+        reference: "ORDER-B",
+        orderNo: "ORDER-B",
+        source: "MALL_SYNC",
+      })
+    ).rejects.toBeInstanceOf(SpentOrderConflictError);
+    expect(mockTxSpentSyncCreate).not.toHaveBeenCalled();
   });
 });
 

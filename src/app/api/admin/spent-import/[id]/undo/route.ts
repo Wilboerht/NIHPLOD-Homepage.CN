@@ -15,10 +15,10 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { undoImportBatch } from "@/lib/spent-import";
 
-const undoBodySchema = z
-  .object({ totpCode: z.string().max(20).optional() })
-  .optional()
-  .default({});
+const undoBodySchema = z.object({
+  totpCode: z.string().max(20).optional(),
+  reason: z.string().trim().min(2, "请填写撤销原因或工单号").max(200),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       action: "undo_spent_import",
       targetType: "spent_import",
       targetId: id,
+      detail: { reason: parsedBody.data.reason },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await finishAuditLog(auditId, "SUCCESS", {
       revertedRows: result.revertedRows,
       totalAmount: result.totalAmount,
+      reason: parsedBody.data.reason,
     });
 
     return NextResponse.json({

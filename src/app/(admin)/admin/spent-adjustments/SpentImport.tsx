@@ -10,8 +10,9 @@ import { Download, Loader2, Undo2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { apiGet, apiPost, apiRequest, ApiError } from "@/lib/api-client";
 import {
   buildNeedsAttentionCsv,
   pickNeedsAttentionRows,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/spent-import-rows";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { ImportBatchDetailModal } from "./ImportBatchDetail";
 
 /** 浏览器端下载文本 CSV（BOM 由内容携带） */
 function downloadCsv(filename: string, csv: string) {
@@ -35,8 +37,6 @@ function downloadCsv(filename: string, csv: string) {
 
 interface PreviewRowItem {
   rowIndex: number;
-  /** 服务端签发的行令牌（预览不回传明文手机号） */
-  phoneToken: string | null;
   maskedPhone: string | null;
   amount: number | null;
   channel: string | null;
@@ -51,6 +51,8 @@ interface PreviewRowItem {
 interface PreviewData {
   fileName: string;
   fileHash: string;
+  /** 服务端 AES-GCM 加密的完整预览快照 */
+  previewToken: string;
   rows: PreviewRowItem[];
   okCount: number;
   errorCount: number;
@@ -71,6 +73,8 @@ interface ExecuteData {
 interface ImportBatchItem {
   id: string;
   fileName: string;
+  reason: string | null;
+  status: "PROCESSING" | "COMPLETED" | "FAILED";
   totalRows: number;
   successRows: number;
   duplicateRows: number;
@@ -101,6 +105,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [result, setResult] = useState<ExecuteData | null>(null);
+  const [reason, setReason] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 弹窗关闭后忽略在途响应，避免下次打开时旧预览/结果“复活”
   const generationRef = useRef(0);
@@ -112,6 +117,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
     setStep("upload");
     setPreview(null);
     setResult(null);
+    setReason("");
     onClose();
   };
 
@@ -136,6 +142,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       const data = await apiPost<PreviewData>("/api/admin/spent-import/upload", formData);
       if (generation !== generationRef.current) return;
       setPreview(data);
+      setReason("");
       setStep("preview");
     } catch (e) {
       if (generation !== generationRef.current) return;
@@ -148,23 +155,25 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
 
   const handleExecute = async () => {
     if (!preview) return;
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < 2) {
+      showError("请填写导入原因或工单号（至少 2 个字符）");
+      return;
+    }
     const generation = generationRef.current;
     setImporting(true);
     try {
       const okRows = preview.rows.filter((r) => r.status === "ok");
       const submit = (totpCode?: string) =>
-        apiPost<ExecuteData>("/api/admin/spent-import/execute", {
-          fileName: preview.fileName,
-          fileHash: preview.fileHash,
-          totpCode,
-          rows: okRows.map((r) => ({
-            phoneToken: r.phoneToken,
-            amount: r.amount,
-            channel: r.channel,
-            orderNo: r.orderNo,
-            purchasedAt: r.purchasedAt,
-            note: r.note,
-          })),
+        apiRequest<ExecuteData>("/api/admin/spent-import/execute", {
+          method: "POST",
+          timeoutMs: 120000,
+          body: {
+            previewToken: preview.previewToken,
+            rowIndexes: okRows.map((r) => r.rowIndex),
+            reason: trimmedReason,
+            totpCode,
+          },
         });
 
       let data: ExecuteData;
@@ -180,7 +189,11 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       if (generation !== generationRef.current) return;
       setResult(data);
       setStep("result");
-      success("导入完成");
+      if (data.successRows > 0) {
+        success("导入完成");
+      } else {
+        showError("没有成功入账的行，请查看结果与导入历史");
+      }
     } catch (e) {
       if (generation !== generationRef.current) return;
       showError(e instanceof ApiError ? e.message : "导入失败，请稍后重试");
@@ -236,8 +249,8 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
         {step === "upload" && (
           <div>
             <p className="text-sm text-brand-charcoal/65">
-              请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 1000 行；
-              金额为整数（元），负数表示退款冲正；未注册手机号的行会标记错误并跳过。
+              请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 500 行；
+              金额为整数（元），负数表示退款冲正；订单号/小票号必填，用于跨批次去重。
             </p>
             <div className="mt-4 flex items-center gap-3">
               <Button
@@ -266,7 +279,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                 <li>金额（元，必填）：非零整数，正数累加消费、负数冲正（退款）</li>
                 <li>消费日期（选填）：如 2026-01-15</li>
                 <li>渠道（选填）：天猫国际 / 抖音商城 / 小红书 / 线下专柜 / 经销渠道 / 其它</li>
-                <li>订单号/小票号（选填）：参与幂等去重，建议填写</li>
+                <li>订单号/小票号（必填）：跨批次去重，同一用户同一订单号只能入账一次</li>
                 <li>备注（选填）</li>
               </ul>
             </div>
@@ -285,6 +298,19 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                 合计金额{" "}
                 <span className="font-medium">¥{preview.totalAmount.toLocaleString()}</span>
               </span>
+            </div>
+
+            <div className="mt-3">
+              <Textarea
+                label="导入原因 / 工单号"
+                required
+                rows={2}
+                maxLength={200}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="如：2026-10 线下专柜消费补录 / FIN-20261024-01"
+                hint="会写入审计日志和导入历史，便于财务追溯"
+              />
             </div>
 
             <div className="mt-4 overflow-x-auto rounded-lg border">
@@ -445,7 +471,28 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [undoTarget, setUndoTarget] = useState<ImportBatchItem | null>(null);
+  const [undoReason, setUndoReason] = useState("");
   const [undoing, setUndoing] = useState(false);
+  const [detailBatchId, setDetailBatchId] = useState<string | null>(null);
+  const [conflictLoading, setConflictLoading] = useState(false);
+  const [conflictError, setConflictError] = useState("");
+  const [conflicts, setConflicts] = useState<{
+    count: number;
+    truncated: boolean;
+    items: Array<{
+      userId: string;
+      orderNo: string;
+      sources?: string[];
+      importBatchId?: string;
+      importAmount?: number;
+      adjustmentAmount?: number | null;
+      importedAt?: string;
+      reviewedAt?: string | null;
+      mallAmount?: number;
+      mallSyncedAt?: string;
+      mallReference?: string;
+    }>;
+  } | null>(null);
 
   const fetchBatches = useCallback(async () => {
     setLoading(true);
@@ -471,12 +518,50 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
     }
   }, [open, fetchBatches]);
 
+  const checkConflicts = async () => {
+    setConflictLoading(true);
+    setConflictError("");
+    try {
+      const data = await apiGet<{
+        count: number;
+        truncated: boolean;
+        items: Array<{
+          userId: string;
+          orderNo: string;
+          sources?: string[];
+          importBatchId?: string;
+          importAmount?: number;
+          adjustmentAmount?: number | null;
+          importedAt?: string;
+          reviewedAt?: string | null;
+          mallAmount?: number;
+          mallSyncedAt?: string;
+          mallReference?: string;
+        }>;
+      }>("/api/admin/spent-import/conflicts");
+      setConflicts(data);
+    } catch (e) {
+      setConflicts(null);
+      setConflictError(e instanceof ApiError ? e.message : "订单冲突检查失败");
+    } finally {
+      setConflictLoading(false);
+    }
+  };
+
   const handleUndo = async () => {
     if (!undoTarget) return;
+    const trimmedReason = undoReason.trim();
+    if (trimmedReason.length < 2) {
+      showError("请填写撤销原因或工单号（至少 2 个字符）");
+      return;
+    }
     setUndoing(true);
     try {
       const submit = (totpCode?: string) =>
-        apiPost(`/api/admin/spent-import/${undoTarget.id}/undo`, { totpCode });
+        apiPost(`/api/admin/spent-import/${undoTarget.id}/undo`, {
+          totpCode,
+          reason: trimmedReason,
+        });
 
       try {
         await submit();
@@ -489,6 +574,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
 
       success("已撤销该批次，消费额已按行冲正");
       setUndoTarget(null);
+      setUndoReason("");
       fetchBatches();
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "撤销失败");
@@ -508,6 +594,85 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         closeOnBackdrop={false}
         closeGuard={() => !undoing}
       >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-3 py-2.5">
+          <div>
+            <p className="text-xs font-medium text-brand-charcoal">跨来源订单对账</p>
+            <p className="mt-0.5 text-[11px] text-brand-charcoal/55">
+              检查最近 90 天导入成功与已通过补录的重复订单号
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            loading={conflictLoading}
+            onClick={checkConflicts}
+          >
+            检查订单冲突
+          </Button>
+        </div>
+
+        {conflictError && (
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            {conflictError}
+          </p>
+        )}
+
+        {conflicts && (
+          <div className="mb-3 rounded-lg border border-brand-charcoal/10">
+            {conflicts.count === 0 ? (
+              <p className="px-3 py-2.5 text-xs text-emerald-700">
+                未发现导入、补录或商城同步的重复订单
+              </p>
+            ) : (
+              <>
+                <p className="border-b border-brand-charcoal/10 px-3 py-2 text-xs font-medium text-red-600">
+                  发现 {conflicts.count} 个重复订单，请人工核对
+                  {conflicts.truncated ? "（仅展示前 100 条）" : ""}
+                </p>
+                <div className="divide-y divide-brand-charcoal/[0.06]">
+                  {conflicts.items.map((item) => {
+                    const sourceLabels: Record<string, string> = {
+                      IMPORT: "Excel导入",
+                      ADJUSTMENT: "补录审批",
+                      MALL_SYNC: "商城同步",
+                    };
+                    return (
+                      <div
+                        key={`${item.userId}-${item.orderNo}`}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-mono text-brand-charcoal/75">{item.orderNo}</p>
+                          <p className="mt-0.5 text-[11px] text-brand-charcoal/50">
+                            来源：
+                            {(item.sources ?? [])
+                              .map((source) => sourceLabels[source] ?? source)
+                              .join(" + ") || "未知"}
+                            {" · "}导入 ¥{(item.importAmount ?? 0).toLocaleString()}
+                            {" · "}补录 ¥{(item.adjustmentAmount ?? 0).toLocaleString()}
+                            {" · "}商城 ¥{(item.mallAmount ?? 0).toLocaleString()}
+                            {" · "}用户 {item.userId.slice(0, 8)}…
+                            {item.importedAt ? ` · ${formatDateTime(item.importedAt)}` : ""}
+                          </p>
+                        </div>
+                        {item.importBatchId ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setDetailBatchId(item.importBatchId as string)}
+                          >
+                            查看批次
+                          </Button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="overflow-x-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -537,13 +702,28 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
               <tbody className="divide-y">
                 {batches.map((b) => (
                   <tr key={b.id} className={b.undoneAt ? "opacity-60" : ""}>
-                    <td className="max-w-[200px] truncate px-3 py-2 text-brand-charcoal/70">
-                      {b.fileName}
-                      {b.undoneAt && (
-                        <span className="ml-2 rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-xs text-brand-charcoal/70">
+                    <td className="max-w-[240px] px-3 py-2 text-brand-charcoal/70">
+                      <p className="truncate" title={b.fileName}>
+                        {b.fileName}
+                      </p>
+                      {b.reason && (
+                        <p className="mt-0.5 truncate text-[11px] text-brand-charcoal/50" title={b.reason}>
+                          原因：{b.reason}
+                        </p>
+                      )}
+                      {b.undoneAt ? (
+                        <span className="mt-0.5 inline-block rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-[11px] text-brand-charcoal/70">
                           已撤销
                         </span>
-                      )}
+                      ) : b.status === "FAILED" ? (
+                        <span className="mt-0.5 inline-block rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-600">
+                          未入账
+                        </span>
+                      ) : b.status === "PROCESSING" ? (
+                        <span className="mt-0.5 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                          处理中
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-brand-charcoal/70">
                       {b.totalRows} / {b.successRows} / {b.duplicateRows} / {b.errorRows}
@@ -556,17 +736,26 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                       {formatDateTime(b.createdAt)}
                     </td>
                     <td className="px-3 py-2">
-                      {!b.undoneAt && b.successRows > 0 && (
+                      <div className="flex justify-end gap-1">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => setUndoTarget(b)}
-                          disabled={undoing}
+                          onClick={() => setDetailBatchId(b.id)}
                         >
-                          <Undo2 className="mr-1 h-3.5 w-3.5" />
-                          撤销
+                          详情
                         </Button>
-                      )}
+                        {!b.undoneAt && b.successRows > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setUndoTarget(b)}
+                            disabled={undoing}
+                          >
+                            <Undo2 className="mr-1 h-3.5 w-3.5" />
+                            撤销
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -604,7 +793,11 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
 
       <ConfirmDialog
         open={!!undoTarget}
-        onClose={() => setUndoTarget(null)}
+        onClose={() => {
+          if (undoing) return;
+          setUndoTarget(null);
+          setUndoReason("");
+        }}
         onConfirm={handleUndo}
         title="撤销导入批次"
         description={
@@ -615,7 +808,26 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         type="danger"
         confirmText="确认撤销"
         loading={undoing}
-      />
+        confirmDisabled={undoReason.trim().length < 2}
+      >
+        <Textarea
+          label="撤销原因 / 工单号"
+          required
+          rows={2}
+          maxLength={200}
+          value={undoReason}
+          onChange={(event) => setUndoReason(event.target.value)}
+          placeholder="如：重复导入 / FIN-20261024-02"
+        />
+      </ConfirmDialog>
+      {open && detailBatchId && (
+        <ImportBatchDetailModal
+          key={detailBatchId}
+          open
+          batchId={detailBatchId}
+          onClose={() => setDetailBatchId(null)}
+        />
+      )}
       {totpModal}
     </>
   );

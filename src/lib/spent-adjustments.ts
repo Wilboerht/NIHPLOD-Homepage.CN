@@ -7,6 +7,11 @@
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { applyExternalSpentSync } from "@/lib/points";
+import {
+  normalizeOrderNo,
+  releaseSpentOrderClaim,
+  SpentOrderConflictError,
+} from "@/lib/spent-order";
 import { sendSpentReviewNotification } from "@/lib/sms";
 import { sendSpentAdjustmentReviewMessage } from "@/lib/wechat-template";
 import { notifyPointsSpentReview } from "@/lib/miniprogram-notify";
@@ -170,15 +175,35 @@ export async function reviewApplication(params: {
     // 2. 通过：入账（幂等），失败则补偿回滚
     if (approved) {
       try {
-        await applyExternalSpentSync({
+        const result = await applyExternalSpentSync({
           userId: application.userId,
           spentDelta: reviewAmount as number,
           reference: reviewReference(applicationId),
+          orderNo: application.orderNo,
+          source: "SPENT_ADJUSTMENT",
           note: `消费补录：${SPENT_CHANNEL_LABELS[application.channel]} ${application.orderNo}`,
         });
+        if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
       } catch (error) {
-        apiConsole.error("[SpentAdjustment] 入账失败，回滚申请状态:", error);
+        try {
+          await releaseSpentOrderClaim(prisma, {
+            userId: application.userId,
+            orderNoKey: application.orderNo ? normalizeOrderNo(application.orderNo) : null,
+            source: "SPENT_ADJUSTMENT",
+            referencePrefix: `manual:${applicationId}:`,
+          });
+        } catch (releaseError) {
+          apiConsole.error("[SpentAdjustment] 入账失败后释放订单占用失败:", releaseError);
+        }
         await compensateClaim(applicationId, "APPROVED");
+        if (error instanceof SpentOrderConflictError) {
+          return {
+            ok: false,
+            code: "ORDER_CONFLICT",
+            message: "该订单号已在商城同步或 Excel 导入中入账，请勿重复审核",
+          };
+        }
+        apiConsole.error("[SpentAdjustment] 入账失败，回滚申请状态:", error);
         return { ok: false, code: "INTERNAL_ERROR", message: "入账失败，请稍后重试" };
       }
     }
@@ -222,6 +247,7 @@ export async function undoApplication(params: {
       select: {
         status: true,
         userId: true,
+        orderNo: true,
         reviewAmount: true,
         reviewNote: true,
         reviewedById: true,
@@ -270,12 +296,13 @@ export async function undoApplication(params: {
 
     // 2. 反向冲正（幂等）
     try {
-      await applyExternalSpentSync({
+      const result = await applyExternalSpentSync({
         userId: application.userId,
         spentDelta: -(application.reviewAmount ?? 0),
         reference: `manual-undo:${applicationId}:${Date.now()}`,
         note: `撤销消费补录审核：${applicationId}（管理员 ${adminId}）`,
       });
+      if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
     } catch (error) {
       apiConsole.error("[SpentAdjustment] 撤销冲正失败，恢复审核状态:", error);
       await compensateClaim(applicationId, "PENDING", {
@@ -283,6 +310,18 @@ export async function undoApplication(params: {
         ...original,
       });
       return { ok: false, code: "INTERNAL_ERROR", message: "撤销失败，请稍后重试" };
+    }
+
+    try {
+      await releaseSpentOrderClaim(prisma, {
+        userId: application.userId,
+        orderNoKey: application.orderNo ? normalizeOrderNo(application.orderNo) : null,
+        source: "SPENT_ADJUSTMENT",
+        referencePrefix: `manual:${applicationId}:`,
+      });
+    } catch (error) {
+      // 消费额已安全冲正；占用清理失败只保留告警，避免把用户卡在不可重试状态。
+      apiConsole.error("[SpentAdjustment] 撤销后释放订单占用失败，需人工清理:", error);
     }
 
     apiConsole.info(`[SpentAdjustment] 撤销审核完成：applicationId=${applicationId}`);

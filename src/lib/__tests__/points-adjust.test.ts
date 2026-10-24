@@ -122,7 +122,9 @@ describe("adjustPoints 人工调整积分", () => {
 
     expect(result.duplicated).toBe(true);
     expect(tx.pointLedger.create).not.toHaveBeenCalled();
-    expect(tx.pointBalance.upsert).not.toHaveBeenCalled();
+    expect(tx.pointBalance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "user-1" } })
+    );
   });
 
   it("金额为 0 或非整数应抛错", async () => {

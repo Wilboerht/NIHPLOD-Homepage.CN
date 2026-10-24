@@ -50,6 +50,13 @@ describe("buildNeedsAttentionCsv", () => {
     expect(csv).toContain("5,138****8000,100,失败,该手机号未注册官网账户");
   });
 
+  it("历史行缺少 Excel 行号时导出为空列", () => {
+    const csv = buildNeedsAttentionCsv([
+      row({ rowIndex: null, status: "ERROR", error: "历史数据" }),
+    ]);
+    expect(csv).toContain(",138****8000,100,失败,历史数据");
+  });
+
   it("对已脱敏手机号保持幂等（不会二次破坏）", () => {
     const csv = buildNeedsAttentionCsv([
       row({ status: "DUPLICATE", phone: "138****8000" }),

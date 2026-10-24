@@ -34,6 +34,7 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { redeemPoints, withPointTxRetry } from "@/lib/points-ledger";
+import { auditInternalPoints } from "@/lib/internal-points-audit";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -259,6 +260,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await auditInternalPoints({
+      action: "points_internal_redeem",
+      targetType: "point_ledger",
+      targetId: reference,
+      userId: user.id,
+      project: config.project,
+      key,
+      request,
+      detail: {
+        points,
+        reference,
+        note: note ?? null,
+        spent: result.spent,
+        available: result.available,
+        duplicated: result.spent === 0,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -267,7 +286,7 @@ export async function POST(request: NextRequest) {
         spent: result.spent,
         redeemRate: POINT_REDEEM_RATES[user.membershipLevel],
         membershipLevel: user.membershipLevel,
-        // 幂等命中（未实际扣减）时标记，商城侧可直接视为兑换成功
+        // 幂等命中：未实际扣减时清空，商城不重复视为兑换成功
         ...(result.spent === 0 ? { duplicated: true } : {}),
       },
     });

@@ -22,17 +22,28 @@ export async function POST(request: NextRequest) {
     });
     if (!auth.ok) return auth.response;
 
-    // 可选收紧：生产环境可配置仅官方客户端可调用 OAuth 兑礼（逗号分隔 client_id）。
-    // 未配置时保持向后兼容（所有已授权 membership 的客户端可兑礼）。
+    // 默认拒绝：OAuth 兑礼必须显式配置官方 client_id 白名单。
     const allowedClients = (process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS ?? "")
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean);
-    if (allowedClients.length > 0 && !allowedClients.includes(auth.payload.client_id)) {
+    if (allowedClients.length === 0) {
       return auth.resJson(
         {
           success: false,
-          error: { code: "FORBIDDEN", message: "该应用无权发起积分兑换" },
+          error: {
+            code: "OAUTH_POINTS_REDEEM_DISABLED",
+            message: "OAuth 积分兑礼未配置可用客户端",
+          },
+        },
+        403
+      );
+    }
+    if (!allowedClients.includes(auth.payload.client_id)) {
+      return auth.resJson(
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "该应用无权发起积分兑礼" },
         },
         403
       );

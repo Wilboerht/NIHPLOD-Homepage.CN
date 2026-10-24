@@ -2,7 +2,7 @@
  * 消费记录导入执行 API（管理端）
  * POST /api/admin/spent-import/execute - 确认导入，逐行入账
  *
- * Body: { fileName, fileHash?, rows: [...], totpCode? }
+ * Body: { previewToken, rowIndexes?, reason, totpCode? }
  * 权限：需要 spent:import 权限；资金类操作需 TOTP 二次验证；操作写入审计日志。
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -16,32 +16,21 @@ import { maskPhone } from "@/lib/mask-phone";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import {
   executeImportBatch,
-  verifyImportPhoneToken,
+  verifyImportPreviewToken,
   IMPORT_MAX_ROWS,
-  IMPORT_MAX_AMOUNT,
+  IMPORT_PREVIEW_TOKEN_MAX_LENGTH,
   type ExecuteRowInput,
 } from "@/lib/spent-import";
 
-const rowSchema = z.object({
-  // 优先使用预览接口签发的签名令牌（PII 最小化），兼容旧客户端回传明文
-  phoneToken: z.string().max(1024).optional(),
-  phone: z.string().max(32).optional(),
-  amount: z.number().int().min(-IMPORT_MAX_AMOUNT).max(IMPORT_MAX_AMOUNT),
-  channel: z.string().max(32).nullish(),
-  orderNo: z.string().max(64).nullish(),
-  purchasedAt: z.string().max(10).nullish(),
-  note: z.string().max(500).nullish(),
-});
-
 const executeSchema = z.object({
-  fileName: z.string().trim().min(1, "缺少文件名").max(200),
-  fileHash: z.string().max(64).optional(),
-  rows: z.array(rowSchema).min(1, "没有可导入的行").max(IMPORT_MAX_ROWS),
-  // 资金类操作二次验证码（TOTP 或备用码）
+  previewToken: z.string().min(1).max(IMPORT_PREVIEW_TOKEN_MAX_LENGTH),
+  rowIndexes: z.array(z.number().int().positive()).max(IMPORT_MAX_ROWS).optional(),
+  reason: z.string().trim().min(2, "请填写导入原因或工单号").max(200),
   totpCode: z.string().max(20).optional(),
 });
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,29 +68,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { fileName, fileHash, rows, totpCode } = parsed.data;
+    const { previewToken, rowIndexes, reason, totpCode } = parsed.data;
 
-    // 解析行手机号：令牌优先（服务端还原），旧客户端明文作为兼容回退
-    const resolvedRows: ExecuteRowInput[] = [];
-    for (const row of rows) {
-      const phone = row.phoneToken ? verifyImportPhoneToken(row.phoneToken) : row.phone;
-      if (!phone) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: "INVALID_PHONE_TOKEN", message: "行令牌无效或已过期，请重新上传文件" },
-          },
-          { status: 400 }
-        );
-      }
-      resolvedRows.push({
-        phone,
-        amount: row.amount,
-        channel: row.channel,
-        orderNo: row.orderNo,
-        purchasedAt: row.purchasedAt,
-        note: row.note,
-      });
+    // 预览令牌是服务端签发的加密快照：执行接口不再接受客户端回传的金额/订单号/手机号
+    const verified = verifyImportPreviewToken(previewToken, admin.id);
+    if (!verified.ok) {
+      return NextResponse.json(
+        { success: false, error: { code: verified.code, message: verified.message } },
+        {
+          status:
+            verified.code === "TOKEN_EXPIRED"
+              ? 410
+              : verified.code === "TOKEN_FORBIDDEN"
+                ? 403
+                : 400,
+        }
+      );
+    }
+
+    const { fileName, fileHash, rows } = verified.payload;
+    const selectedIndexes = rowIndexes ? new Set(rowIndexes) : null;
+    const selectedRows = selectedIndexes
+      ? rows.filter((row) => selectedIndexes.has(row.rowIndex))
+      : rows;
+    if (selectedIndexes && selectedRows.length !== selectedIndexes.size) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_ROW_INDEX", message: "包含不存在的行号" } },
+        { status: 400 }
+      );
+    }
+    if (selectedRows.some((row) => row.error || !row.phone || row.amount === null)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_ROWS", message: "包含未通过预览校验的行" } },
+        { status: 400 }
+      );
+    }
+
+    const resolvedRows: ExecuteRowInput[] = selectedRows.map((row) => ({
+      phone: row.phone as string,
+      amount: row.amount as number,
+      channel: row.channel,
+      orderNo: row.orderNo,
+      purchasedAt: row.purchasedAt,
+      note: row.note,
+    }));
+    if (resolvedRows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: { code: "NO_ROWS", message: "没有可导入的行" } },
+        { status: 400 }
+      );
     }
 
     // 资金类操作：二次验证（TOTP / 备用码）
@@ -114,7 +129,12 @@ export async function POST(request: NextRequest) {
     const auditId = await beginAuditLog({
       action: "import_spent_records",
       targetType: "spent_import",
-      detail: { fileName, fileHash: fileHash ?? null, rowCount: resolvedRows.length },
+      detail: {
+        fileName,
+        fileHash,
+        rowCount: resolvedRows.length,
+        reason,
+      },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -139,6 +159,7 @@ export async function POST(request: NextRequest) {
         rows: resolvedRows,
         fileName,
         fileHash,
+        reason,
         adminId: admin.id,
       });
     } catch (error) {
@@ -163,6 +184,7 @@ export async function POST(request: NextRequest) {
         duplicateRows: result.duplicateRows,
         errorRows: result.errorRows,
         totalAmount: result.totalAmount,
+        reason,
       },
       result.batchId
     );
@@ -186,6 +208,24 @@ export async function POST(request: NextRequest) {
           },
         },
         { status: 409 }
+      );
+    }
+    if (error instanceof Error && error.message === "IMPORT_COMPENSATION_FAILED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "IMPORT_INTEGRITY_ERROR",
+            message: "入账后行状态写入失败且自动冲正失败，已停止批次，请立即联系技术核对",
+          },
+        },
+        { status: 500 }
+      );
+    }
+    if (error instanceof Error && error.message === "IMPORT_ROW_COUNT_INVALID") {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_ROWS", message: "导入行数不合法" } },
+        { status: 400 }
       );
     }
     apiConsole.error("[AdminSpentImport] 执行导入失败:", error);

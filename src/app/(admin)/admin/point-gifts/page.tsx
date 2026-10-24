@@ -327,9 +327,19 @@ function AdminPointGiftsContent() {
     setSubmittingFulfill(true);
     try {
       if (mode === "fulfill") {
-        await apiPost(`/api/admin/point-redemptions/${redemption.id}/fulfill`, {
-          waybillNo: waybillNo || undefined,
-        });
+        const submit = (totpCode?: string) =>
+          apiPost(`/api/admin/point-redemptions/${redemption.id}/fulfill`, {
+            waybillNo: waybillNo || undefined,
+            totpCode,
+          });
+        try {
+          await submit();
+        } catch (e) {
+          if (!isTotpRequired(e)) throw e;
+          const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+          if (!verified) return;
+          await submit();
+        }
         success("已标记履约");
       } else {
         await apiPatch(`/api/admin/point-redemptions/${redemption.id}/waybill`, {

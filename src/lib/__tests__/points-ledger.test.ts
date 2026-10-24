@@ -152,7 +152,9 @@ describe("creditSpendPoints 消费发放", () => {
 
     expect(result).toEqual({ duplicated: true });
     expect(tx.pointLedger.create).not.toHaveBeenCalled();
-    expect(tx.pointBalance.upsert).not.toHaveBeenCalled();
+    expect(tx.pointBalance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "user-1" } })
+    );
   });
 });
 
@@ -450,8 +452,18 @@ describe("grantBirthdayRewards 批量发放（cron）", () => {
     const mockQueryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
     mockQueryRaw.mockResolvedValue([
-      { id: "u1", membershipLevel: "GOLD" },
-      { id: "u2", membershipLevel: "REGULAR" },
+      {
+        id: "u1",
+        membershipLevel: "GOLD",
+        lastBirthdayRewardYear: null,
+        birthdayKey: "09-03",
+      },
+      {
+        id: "u2",
+        membershipLevel: "REGULAR",
+        lastBirthdayRewardYear: null,
+        birthdayKey: "09-03",
+      },
     ]);
     mockTransaction.mockImplementation(async (fn: (t: unknown) => Promise<unknown>) => fn(tx));
     tx.user.findUnique.mockImplementation(async ({ where }: { where: { id: string } }) =>
@@ -478,7 +490,14 @@ describe("grantBirthdayRewards 批量发放（cron）", () => {
     const tx = createTx();
     const mockQueryRaw = prisma.$queryRaw as ReturnType<typeof vi.fn>;
     const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
-    mockQueryRaw.mockResolvedValue([{ id: "u1", membershipLevel: "SILVER" }]);
+    mockQueryRaw.mockResolvedValue([
+      {
+        id: "u1",
+        membershipLevel: "SILVER",
+        lastBirthdayRewardYear: null,
+        birthdayKey: "09-03",
+      },
+    ]);
     mockTransaction.mockImplementation(async (fn: (t: unknown) => Promise<unknown>) => fn(tx));
     tx.user.updateMany.mockResolvedValue({ count: 0 });
 

@@ -8,8 +8,8 @@ import { maskPhone } from "./mask-phone";
 import { escapeCSV } from "./csv";
 
 export interface SpentImportRowResult {
-  /** Excel 行号（首个数据行为第 2 行） */
-  rowIndex: number;
+  /** Excel 行号（首个数据行为第 2 行；历史导入可能缺失） */
+  rowIndex: number | null;
   phone: string;
   amount: number;
   status: "SUCCESS" | "DUPLICATE" | "ERROR";
@@ -38,7 +38,7 @@ export function buildNeedsAttentionCsv(rows: readonly SpentImportRowResult[]): s
   const header = ["Excel行号", "手机号", "金额(元)", "结果", "原因"];
   const lines = rows.map((row) =>
     [
-      String(row.rowIndex),
+      row.rowIndex == null ? "" : String(row.rowIndex),
       maskPhone(row.phone),
       String(row.amount),
       STATUS_LABELS[row.status],

@@ -22,10 +22,12 @@ import type { MembershipLevel } from "@/generated/prisma/client";
 import { BIRTHDAY_POINTS } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { getUtc8DateKey } from "@/lib/timezone";
 
 export type PointTx = Prisma.TransactionClient;
 
 export const POINT_EXPIRY_MONTHS = 6; // 积分有效期（月）
+const BIRTHDAY_GRACE_DAYS = 7;
 
 /**
  * 月末对齐的加月：1/31 + 1 个月 = 2/28（闰年 2/29），而不是溢出到 3/3。
@@ -38,6 +40,19 @@ function addMonths(date: Date, months: number): Date {
   const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
   d.setUTCDate(Math.min(day, lastDay));
   return d;
+}
+
+/**
+ * 生日补发窗口：最近 7 天（UTC+8），跨年时保留上一年的生日归属年。
+ * 防止服务器当天宕机/任务失败后，用户永久错过生日积分。
+ */
+function getBirthdayWindow(now: Date = new Date()): Map<string, number> {
+  const keys = new Map<string, number>();
+  for (let i = 0; i < BIRTHDAY_GRACE_DAYS; i += 1) {
+    const key = getUtc8DateKey(new Date(now.getTime() - i * 24 * 60 * 60 * 1000));
+    keys.set(key.slice(5), Number(key.slice(0, 4)));
+  }
+  return keys;
 }
 
 /**
@@ -90,12 +105,12 @@ export async function creditSpendPoints(
   params: { userId: string; amount: number; reference: string; note?: string }
 ): Promise<{ duplicated: boolean }> {
   const { userId, amount, reference, note } = params;
+  await lockPointBalance(tx, userId);
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
   if (existing) return { duplicated: true };
 
-  await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
     data: {
@@ -130,15 +145,15 @@ export async function refundSpendPoints(
     throw new Error("POINT_REFUND_INVALID_AMOUNT");
   }
 
+  await lockPointBalance(tx, userId);
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
   if (existing) return { duplicated: true };
 
-  // 先物化过期并按统一锁顺序锁余额行：退款只能消耗仍然有效的积分，
+  // 先物化过期并按统一锁顺序锁余额行：退款只能消耗仍然有效的积分。
   // 避免“退款先于过期任务”时用已过期流水抵扣，导致最终余额随 cron 时序漂移。
   await materializePoints(tx, userId);
-  await lockPointBalance(tx, userId);
 
   // 先冲减原始发放流水的 remaining，再扣余额。
   // 若退款金额大于全部剩余量，差额自然成为负余额（超兑债务）。
@@ -331,6 +346,7 @@ export async function redeemPoints(
   const { userId, amount, reference, note } = params;
   if (amount <= 0) return { ok: false, code: "INSUFFICIENT", available: 0 };
 
+  await lockPointBalance(tx, userId);
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
@@ -344,8 +360,6 @@ export async function redeemPoints(
 
   const now = new Date();
   await materializePoints(tx, userId, now);
-  // 统一锁顺序：先锁余额行，再改发放流水；与退款/过期任务串行化
-  await lockPointBalance(tx, userId);
 
   const balance = await tx.pointBalance.findUnique({
     where: { userId },
@@ -431,7 +445,7 @@ export async function getPointBalanceView(
 /**
  * 人工调整积分（管理端补偿/冲正）：
  * - 正向：写入 ADJUST 流水（remaining + 6 个月过期），余额增加，可参与 FIFO 兑礼消耗与过期清理
- * - 负向：直接冲可用余额（可用可负，负余额代表超兑债务，由后续入账抵债）
+ * - 负向：先 FIFO 消耗未过期发放流水，再冲可用余额（差额为负余额/超兑债务）
  * 幂等：userId+reference 唯一约束，重复调用返回 duplicated=true 不重复入账。
  */
 export async function adjustPoints(
@@ -443,6 +457,7 @@ export async function adjustPoints(
     throw new Error("POINT_ADJUST_INVALID_AMOUNT");
   }
 
+  await lockPointBalance(tx, userId);
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
@@ -450,6 +465,9 @@ export async function adjustPoints(
 
   // 先物化过期并锁余额行：负向调整与退款同一口径，不能因 cron 时序而“少扣”债务
   await materializePoints(tx, userId);
+  if (amount < 0) {
+    await consumeGrantsFifo(tx, userId, -amount, { onlyUnexpired: true });
+  }
 
   const now = new Date();
   await tx.pointLedger.create({
@@ -497,12 +515,12 @@ export async function refundRedeemPoints(
   }
 
   const reference = `redeem-refund:${redemptionReference}`;
+  await lockPointBalance(tx, userId);
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
   if (existing) return { duplicated: true, amount: 0 };
 
-  await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
     data: {
@@ -535,12 +553,12 @@ export async function grantCheckinPoints(
   params: { userId: string; amount: number; reference: string; note?: string }
 ): Promise<{ duplicated: boolean; amount: number }> {
   const { userId, amount, reference, note } = params;
+  await lockPointBalance(tx, userId);
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
   if (existing) return { duplicated: true, amount: 0 };
 
-  await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
     data: {
@@ -576,6 +594,11 @@ export async function grantBirthdayPoints(
   const amount = BIRTHDAY_POINTS[level];
   if (amount <= 0) return { granted: false, amount: 0 };
 
+  // 与消费同步保持一致的锁顺序：先用户行，再积分余额行。
+  await tx.user.update({
+    where: { id: userId },
+    data: { lastBirthdayRewardYear: year },
+  });
   await lockPointBalance(tx, userId);
   const now = new Date();
   await tx.pointLedger.create({
@@ -594,10 +617,6 @@ export async function grantBirthdayPoints(
     where: { userId },
     create: { userId, available: amount },
     update: { available: { increment: amount } },
-  });
-  await tx.user.update({
-    where: { id: userId },
-    data: { lastBirthdayRewardYear: year },
   });
   return { granted: true, amount };
 }
@@ -620,37 +639,64 @@ export async function expirePointsCron(): Promise<number> {
   });
 
   let expiredTotal = 0;
+  let failed = 0;
   for (const { userId } of due) {
     try {
       const count = await prisma.$transaction((tx) => expirePoints(tx, userId, now));
       expiredTotal += count;
     } catch (error) {
+      failed += 1;
       apiConsole.error(`[PointsExpire] 用户 ${userId} 积分过期处理失败:`, error);
     }
+  }
+  if (failed > 0) {
+    throw new Error(`POINTS_EXPIRE_PARTIAL_FAILURE:${failed}`);
   }
   return expiredTotal;
 }
 
 /**
- * 生日积分批量发放（cron 每日调用）：当天生日的有效用户，
+ * 生日积分批量发放（cron 每日调用）：最近 7 天（UTC+8）生日的有效用户，
  * 按当前等级发放 BIRTHDAY_POINTS[level]（每年一次，CAS 抢占防并发双发）。
- * 普通档不发放（金额为 0）。
+ * 宽限窗口用于服务器当天宕机/任务失败后的补发；普通档不发放（金额为 0）。
  */
 export async function grantBirthdayRewards(): Promise<{ rewarded: number; skipped: number }> {
-  const year = new Date().getFullYear();
+  const birthdayWindow = getBirthdayWindow();
+  const birthdayKeys = [...birthdayWindow.keys()];
 
-  const candidates = await prisma.$queryRaw<{ id: string; membershipLevel: MembershipLevel }[]>`
-    SELECT id, "membershipLevel" FROM "User"
+  const candidates = await prisma.$queryRaw<
+    {
+      id: string;
+      membershipLevel: MembershipLevel;
+      lastBirthdayRewardYear: number | null;
+      birthdayKey: string;
+    }[]
+  >`
+    SELECT id, "membershipLevel", "lastBirthdayRewardYear",
+           to_char("birthday", 'MM-DD') AS "birthdayKey"
+    FROM "User"
     WHERE "birthday" IS NOT NULL
       AND "status" = 'ACTIVE'
-      AND EXTRACT(MONTH FROM "birthday") = EXTRACT(MONTH FROM CURRENT_DATE)
-      AND EXTRACT(DAY FROM "birthday") = EXTRACT(DAY FROM CURRENT_DATE)
-      AND ("lastBirthdayRewardYear" IS NULL OR "lastBirthdayRewardYear" < ${year})
+      AND to_char("birthday", 'MM-DD') IN (${Prisma.join(birthdayKeys)})
   `;
 
   let rewarded = 0;
   let skipped = 0;
+  let failed = 0;
   for (const user of candidates) {
+    const occasionYear = birthdayWindow.get(user.birthdayKey);
+    if (!occasionYear) {
+      skipped += 1;
+      continue;
+    }
+    if (
+      user.lastBirthdayRewardYear !== null &&
+      user.lastBirthdayRewardYear >= occasionYear
+    ) {
+      skipped += 1;
+      continue;
+    }
+
     try {
       const result = await prisma.$transaction(async (tx) => {
         // 等级/状态在事务内重读：候选列表查询与发分之间可能发生升级/退款降档或封禁
@@ -660,27 +706,34 @@ export async function grantBirthdayRewards(): Promise<{ rewarded: number; skippe
         });
         if (!fresh || fresh.status !== "ACTIVE") return { granted: false, amount: 0 };
 
-        // CAS 抢占：并发/重试场景下只有一次能抢占成功
+        // CAS 抢占：并发重试场景下只有一次能抢占成功
         const claimed = await tx.user.updateMany({
           where: {
             id: user.id,
-            OR: [{ lastBirthdayRewardYear: null }, { lastBirthdayRewardYear: { lt: year } }],
+            OR: [
+              { lastBirthdayRewardYear: null },
+              { lastBirthdayRewardYear: { lt: occasionYear } },
+            ],
           },
-          data: { lastBirthdayRewardYear: year },
+          data: { lastBirthdayRewardYear: occasionYear },
         });
         if (claimed.count === 0) return { granted: false, amount: 0 };
         return grantBirthdayPoints(tx, {
           userId: user.id,
           level: fresh.membershipLevel,
-          year,
+          year: occasionYear,
         });
       });
       if (result.granted) rewarded += 1;
       else skipped += 1;
     } catch (error) {
       skipped += 1;
+      failed += 1;
       apiConsole.error(`[BirthdayPoints] 发放失败 user=${user.id}:`, error);
     }
+  }
+  if (failed > 0) {
+    throw new Error(`BIRTHDAY_POINTS_PARTIAL_FAILURE:${failed}`);
   }
   return { rewarded, skipped };
 }

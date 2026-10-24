@@ -30,6 +30,7 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { grantCheckinPoints, getPointBalanceView } from "@/lib/points-ledger";
+import { auditInternalPoints } from "@/lib/internal-points-audit";
 import { getUtc8DateKey } from "@/lib/timezone";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -205,6 +206,23 @@ export async function POST(request: NextRequest) {
       const grant = await grantCheckinPoints(tx, { userId, amount: points, reference, note });
       const balance = await getPointBalanceView(tx, userId);
       return { ...grant, available: balance.available };
+    });
+
+    await auditInternalPoints({
+      action: "points_internal_grant",
+      targetType: "point_ledger",
+      targetId: reference,
+      userId,
+      project: config.project,
+      key,
+      request,
+      detail: {
+        points,
+        reference,
+        duplicated: result.duplicated,
+        granted: result.duplicated ? 0 : result.amount,
+        available: result.available,
+      },
     });
 
     return NextResponse.json({

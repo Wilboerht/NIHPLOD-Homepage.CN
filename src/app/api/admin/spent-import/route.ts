@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!hasAdminPermission(admin, "spent:read")) {
+    if (!hasAdminPermission(admin, "spent:import")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：导入历史查看" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：导入历史查询" } },
         { status: 403 }
       );
     }
@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           fileName: true,
+          reason: true,
+          status: true,
           totalRows: true,
           successRows: true,
           duplicateRows: true,

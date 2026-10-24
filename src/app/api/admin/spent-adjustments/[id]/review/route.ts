@@ -140,6 +140,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         NOT_FOUND: 404,
         ALREADY_REVIEWED: 409,
         ORDER_ALREADY_IMPORTED: 409,
+        ORDER_CONFLICT: 409,
         INVALID_PARAMS: 400,
       };
       return NextResponse.json(

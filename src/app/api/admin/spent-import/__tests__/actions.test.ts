@@ -34,9 +34,9 @@ vi.mock("@/lib/audit", () => ({
 vi.mock("@/lib/spent-import", () => ({
   executeImportBatch: vi.fn(),
   undoImportBatch: vi.fn(),
-  verifyImportPhoneToken: vi.fn().mockReturnValue("13800138000"),
-  IMPORT_MAX_ROWS: 1000,
-  IMPORT_MAX_AMOUNT: 1000000,
+  verifyImportPreviewToken: vi.fn(),
+  IMPORT_MAX_ROWS: 500,
+  IMPORT_PREVIEW_TOKEN_MAX_LENGTH: 2_000_000,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -45,7 +45,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { verifyAuth } from "@/lib/auth";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
-import { executeImportBatch, undoImportBatch } from "@/lib/spent-import";
+import { executeImportBatch, undoImportBatch, verifyImportPreviewToken } from "@/lib/spent-import";
 import { POST as execute } from "@/app/api/admin/spent-import/execute/route";
 import { POST as undo } from "@/app/api/admin/spent-import/[id]/undo/route";
 
@@ -61,9 +61,24 @@ function createRequest(url: string, body: unknown = {}) {
 }
 
 const executeBody = {
-  fileName: "spent.xlsx",
-  rows: [{ phoneToken: "token", amount: 100 }],
+  previewToken: "encrypted-preview-token",
+  rowIndexes: [2],
+  reason: "测试导入",
 };
+
+const previewRows = [
+  {
+    rowIndex: 2,
+    phone: "13800138000",
+    amount: 100,
+    channel: "TMALL",
+    orderNo: "TM001",
+    orderNoKey: "TM001",
+    purchasedAt: "2026-01-15",
+    note: null,
+    error: null,
+  },
+];
 
 describe("admin spent import actions", () => {
   beforeEach(() => {
@@ -71,6 +86,72 @@ describe("admin spent import actions", () => {
     vi.mocked(verifyAuth).mockResolvedValue(ADMIN as never);
     vi.mocked(beginAuditLog).mockResolvedValue("audit-1");
     vi.mocked(finishAuditLog).mockResolvedValue(true);
+    vi.mocked(verifyImportPreviewToken).mockReturnValue({
+      ok: true,
+      payload: {
+        v: 1,
+        adminId: "admin-1",
+        fileName: "spent.xlsx",
+        fileHash: "file-hash-1",
+        rows: previewRows as never,
+        iat: Date.now(),
+        exp: Date.now() + 60_000,
+      },
+    });
+  });
+
+  it("缺少导入原因返回 400", async () => {
+    const res = await execute(
+      createRequest("/api/admin/spent-import/execute", {
+        previewToken: "token",
+        rowIndexes: [2],
+      })
+    );
+    expect(res.status).toBe(400);
+    expect(executeImportBatch).not.toHaveBeenCalled();
+  });
+
+  it("预览令牌无效/过期返回对应状态", async () => {
+    vi.mocked(verifyImportPreviewToken).mockReturnValueOnce({
+      ok: false,
+      code: "INVALID_TOKEN",
+      message: "invalid",
+    });
+    const invalid = await execute(
+      createRequest("/api/admin/spent-import/execute", executeBody)
+    );
+    expect(invalid.status).toBe(400);
+
+    vi.mocked(verifyImportPreviewToken).mockReturnValueOnce({
+      ok: false,
+      code: "TOKEN_EXPIRED",
+      message: "expired",
+    });
+    const expired = await execute(
+      createRequest("/api/admin/spent-import/execute", executeBody)
+    );
+    expect(expired.status).toBe(410);
+    expect(executeImportBatch).not.toHaveBeenCalled();
+  });
+
+  it("包含预览失败行时拒绝执行", async () => {
+    vi.mocked(verifyImportPreviewToken).mockReturnValueOnce({
+      ok: true,
+      payload: {
+        v: 1,
+        adminId: "admin-1",
+        fileName: "spent.xlsx",
+        fileHash: "file-hash-1",
+        rows: [{ ...previewRows[0], error: "bad" }] as never,
+        iat: Date.now(),
+        exp: Date.now() + 60_000,
+      },
+    });
+    const res = await execute(
+      createRequest("/api/admin/spent-import/execute", executeBody)
+    );
+    expect(res.status).toBe(400);
+    expect(executeImportBatch).not.toHaveBeenCalled();
   });
 
   it("导入审计预写失败时不执行导入", async () => {
@@ -107,7 +188,10 @@ describe("admin spent import actions", () => {
   it("撤销审计预写失败时不执行撤销", async () => {
     vi.mocked(beginAuditLog).mockResolvedValueOnce(null);
 
-    const res = await undo(createRequest("/api/admin/spent-import/batch-1/undo"), context);
+    const res = await undo(
+      createRequest("/api/admin/spent-import/batch-1/undo", { reason: "测试撤销" }),
+      context
+    );
 
     expect(res.status).toBe(503);
     expect(undoImportBatch).not.toHaveBeenCalled();
@@ -120,7 +204,10 @@ describe("admin spent import actions", () => {
       totalAmount: 200,
     });
 
-    const res = await undo(createRequest("/api/admin/spent-import/batch-1/undo"), context);
+    const res = await undo(
+      createRequest("/api/admin/spent-import/batch-1/undo", { reason: "测试撤销" }),
+      context
+    );
 
     expect(res.status).toBe(200);
     expect(finishAuditLog).toHaveBeenCalledWith(

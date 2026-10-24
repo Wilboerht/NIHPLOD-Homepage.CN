@@ -20,8 +20,11 @@ import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { retryFailedWebhookDeliveries } from "./profile-webhook";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
+import { expirePendingRedemptions } from "./point-gifts";
+import { checkPointInvariants } from "./points-invariants";
 import { expirePointsCron } from "./points-ledger";
 import { failStaleImportBatches } from "./spent-import";
+import { findSpentOrderConflicts } from "./spent-order-conflicts";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
@@ -330,6 +333,27 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Cancel Stale Point Redemptions",
+    // 每天 03:00 取消超时未履约的兑换，退还积分并释放限量库存
+    cronExpression: "0 3 * * *",
+    handler: async () => {
+      try {
+        const result = await expirePendingRedemptions();
+        if (result.cancelled > 0 || result.failed > 0) {
+          apiConsole.warn(
+            `[Cron] 超时兑换处理: 扫描 ${result.scanned}，取消 ${result.cancelled}，跳过 ${result.skipped}，失败 ${result.failed}`
+          );
+        }
+        if (result.failed > 0) {
+          throw new Error(`超时兑换取消失败 ${result.failed} 条`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 超时兑换取消失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
     name: "Expire Points",
     cronExpression: "30 4 * * *", // 每天凌晨 4:30 处理 6 个月有效期到期积分
     handler: async () => {
@@ -340,6 +364,28 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 积分过期任务失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Check Point Invariants",
+    // 每周一 05:00 对账：可用余额大于未消耗发放流水、或缺失余额行时告警
+    cronExpression: "0 5 * * 1",
+    handler: async () => {
+      try {
+        const result = await checkPointInvariants();
+        if (result.negativeBalances > 0) {
+          apiConsole.warn(`[Cron] 存在 ${result.negativeBalances} 个负积分余额账户`);
+        }
+        if (result.issues.length > 0) {
+          apiConsole.error(
+            `[Cron] 积分账本对账发现 ${result.issues.length} 个异常，请运行 npm run points:check-invariants 查看详情`
+          );
+          throw new Error(`积分账本对账发现 ${result.issues.length} 个异常`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 积分账本对账失败:", error);
         throw error;
       }
     },
@@ -357,6 +403,29 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 清理超时消费导入批次失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Detect Spent Order Conflicts",
+    // 每天 09:20：扫描最近 90 天导入成功与已通过补录的重复订单号。
+    // 发现冲突时抛错，让 CronTaskRun 失败，管理员在定时任务页可见并人工处理。
+    cronExpression: "20 9 * * *",
+    handler: async () => {
+      try {
+        const result = await findSpentOrderConflicts({ sinceDays: 90, limit: 20 });
+        if (result.count > 0) {
+          apiConsole.error(
+            `[Cron] 发现 ${result.count} 个消费订单跨来源冲突: ${result.items
+              .slice(0, 5)
+              .map((item) => `${item.orderNo}(${item.sources.join("+")})`)
+              .join(", ")}`
+          );
+          throw new Error(`发现 ${result.count} 个消费订单存在跨来源重复入账，请人工核对`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 消费订单冲突检查失败:", error);
         throw error;
       }
     },

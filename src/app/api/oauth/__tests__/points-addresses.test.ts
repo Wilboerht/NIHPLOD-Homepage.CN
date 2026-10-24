@@ -96,6 +96,7 @@ const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS = "test-client";
     mockIsBlacklisted.mockReturnValue(false);
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE" });
@@ -171,6 +172,23 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
 
     expect((await addressesGET(req("GET", "/api/oauth/addresses"))).status).toBe(200);
     expect(mall.getAddressesResponse).toHaveBeenCalledWith("user-1");
+  });
+
+  it("未配置兑礼白名单时拒绝 OAuth 兑礼", async () => {
+    delete process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS;
+    authedToken();
+
+    const res = await redeemPOST(
+      req("POST", "/api/oauth/points/redeem", {
+        productId: "p",
+        addressId: "a",
+        requestId: "r",
+      })
+    );
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("OAUTH_POINTS_REDEEM_DISABLED");
+    expect(mall.redeemPointsResponse).not.toHaveBeenCalled();
   });
 
   it("兑换/新增地址/编辑地址/删除地址均委派共享核心", async () => {

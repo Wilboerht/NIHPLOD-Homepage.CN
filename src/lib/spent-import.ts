@@ -7,12 +7,12 @@
  * 2. 确认执行：executeImportBatch 重新全量校验（不信任客户端），逐行调用
  *    applyExternalSpentSync 入账（幂等、自动重算等级、失效 profile 缓存）。
  *
- * 幂等：syncReference 由行内容（手机号+金额+订单号+日期）内容哈希生成，
- * 同一文件重复上传、仅修改部分行后重新导入，未变化行命中“已成功且未撤销”预检并跳过。
+ * 幂等：预览令牌加密保存完整行快照；订单号必填，成功订单号在数据库层唯一，
+ * 同一文件/跨文件重复订单会被预检或唯一索引拦截。
  * SpentSyncRecord.reference 仍使用批内唯一 `内容键:version`，保证撤销后可重新导入。
  * 支持整批撤销（undoImportBatch）：对每行成功入账反向冲正，撤销本身幂等。
  */
-import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "crypto";
 import { Worker } from "node:worker_threads";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
@@ -23,14 +23,23 @@ import {
   SPENT_CHANNELS,
   ALL_SPENT_CHANNELS,
 } from "@/lib/spent-adjustment-meta";
+import {
+  normalizeOrderNo,
+  releaseSpentOrderClaim,
+  SpentOrderConflictError,
+} from "@/lib/spent-order";
 import type { SpentAdjustmentChannel } from "@/generated/prisma/client";
 
+export { normalizeOrderNo } from "@/lib/spent-order";
+
 export const IMPORT_MAX_FILE_SIZE = 5 * 1024 * 1024; // 上传文件大小上限（5MB）
-export const IMPORT_MAX_ROWS = 1000; // 单次导入数据行上限
+export const IMPORT_MAX_ROWS = 500; // 单次导入数据行上限（同步请求限制）
 export const IMPORT_MAX_AMOUNT = 1_000_000; // 单行金额绝对值上限（元）
 export const IMPORT_MAX_ORDER_NO_LENGTH = 64;
 export const IMPORT_MAX_NOTE_LENGTH = 500;
 export const IMPORT_ALLOWED_EXTENSIONS = [".xlsx", ".xls", ".csv"];
+export const IMPORT_PREVIEW_TTL_MS = 30 * 60 * 1000;
+export const IMPORT_PREVIEW_TOKEN_MAX_LENGTH = 2_000_000;
 
 export const IMPORT_HEADERS = [
   "手机号",
@@ -47,6 +56,8 @@ export interface ParsedImportRow {
   amount: number | null;
   channel: SpentAdjustmentChannel | null;
   orderNo: string | null;
+  /** 规范化订单号：去首尾空格并转大写，用于跨批次去重 */
+  orderNoKey: string | null;
   purchasedAt: string | null; // YYYY-MM-DD
   note: string | null;
   error: string | null;
@@ -106,46 +117,107 @@ export type ImportParseError = {
 export type ImportParseResult =
   { ok: true; fileHash: string; rows: ParsedImportRow[] } | ImportParseError;
 
+export interface ImportPreviewTokenPayload {
+  v: 1;
+  adminId: string;
+  fileName: string;
+  fileHash: string;
+  rows: ParsedImportRow[];
+  iat: number;
+  exp: number;
+}
+
+export type ImportPreviewTokenVerifyResult =
+  | { ok: true; payload: ImportPreviewTokenPayload }
+  | { ok: false; code: "INVALID_TOKEN" | "TOKEN_EXPIRED" | "TOKEN_FORBIDDEN"; message: string };
+
 /**
- * 行级手机号令牌（PII 最小化）：
- * 预览接口不再回传明文手机号，改为返回 HMAC 签名令牌；
- * 执行接口用令牌在服务端还原手机号，管理端页面无需接触明文。
- * 密钥从 JWT_ADMIN_SECRET 派生，令牌与 (fileHash, rowIndex, phone) 绑定，无法跨行/跨文件重用。
+ * 预览令牌使用 AES-256-GCM 加密，而不是 Base64/仅签名：
+ * - 令牌内包含服务端解析后的全部行数据，执行接口不再信任客户端回传的金额/订单号等字段
+ * - 绑定 adminId，令牌不能在管理员之间转交
+ * - 30 分钟后过期，避免长期保存 PII
  */
-function getImportPhoneTokenKey(): Buffer {
+function getImportPreviewTokenKey(): Buffer {
   const secret = process.env.JWT_ADMIN_SECRET;
-  if (!secret) throw new Error("缺少 JWT_ADMIN_SECRET，无法签发导入行令牌");
-  return createHash("sha256").update(`spent_import_phone:${secret}`).digest();
+  if (!secret) throw new Error("缺少 JWT_ADMIN_SECRET，无法签发导入预览令牌");
+  return createHash("sha256").update(`spent_import_preview:v1:${secret}`).digest();
 }
 
-export function signImportPhoneToken(fileHash: string, rowIndex: number, phone: string): string {
-  const payload = Buffer.from(`${fileHash}:${rowIndex}:${phone}`, "utf8").toString("base64url");
-  const signature = createHmac("sha256", getImportPhoneTokenKey())
-    .update(payload)
-    .digest("base64url");
-  return `${payload}.${signature}`;
+export function signImportPreviewToken(params: {
+  adminId: string;
+  fileName: string;
+  fileHash: string;
+  rows: ParsedImportRow[];
+}): string {
+  const now = Date.now();
+  const payload: ImportPreviewTokenPayload = {
+    v: 1,
+    adminId: params.adminId,
+    fileName: params.fileName,
+    fileHash: params.fileHash,
+    rows: params.rows,
+    iat: now,
+    exp: now + IMPORT_PREVIEW_TTL_MS,
+  };
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", getImportPreviewTokenKey(), iv);
+  cipher.setAAD(Buffer.from("spent-import-preview:v1", "utf8"));
+  const ciphertext = Buffer.concat([
+    cipher.update(JSON.stringify(payload), "utf8"),
+    cipher.final(),
+  ]);
+  const tag = cipher.getAuthTag();
+  return ["v1", iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(
+    "."
+  );
 }
 
-export function verifyImportPhoneToken(token: string): string | null {
-  const dotIndex = token.indexOf(".");
-  if (dotIndex <= 0 || dotIndex === token.length - 1) return null;
-  const payload = token.slice(0, dotIndex);
-  const signature = token.slice(dotIndex + 1);
-  const expected = createHmac("sha256", getImportPhoneTokenKey())
-    .update(payload)
-    .digest("base64url");
-  const sigBuf = Buffer.from(signature);
-  const expectedBuf = Buffer.from(expected);
-  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) return null;
+export function verifyImportPreviewToken(
+  token: string,
+  expectedAdminId: string
+): ImportPreviewTokenVerifyResult {
+  if (!token || token.length > IMPORT_PREVIEW_TOKEN_MAX_LENGTH) {
+    return { ok: false, code: "INVALID_TOKEN", message: "导入预览令牌无效" };
+  }
+  const parts = token.split(".");
+  if (parts.length !== 4 || parts[0] !== "v1") {
+    return { ok: false, code: "INVALID_TOKEN", message: "导入预览令牌无效" };
+  }
+
   try {
-    const decoded = Buffer.from(payload, "base64url").toString("utf8");
-    const firstColon = decoded.indexOf(":");
-    const secondColon = decoded.indexOf(":", firstColon + 1);
-    if (firstColon <= 0 || secondColon <= firstColon) return null;
-    const phone = decoded.slice(secondColon + 1);
-    return phone || null;
+    const iv = Buffer.from(parts[1], "base64url");
+    const tag = Buffer.from(parts[2], "base64url");
+    const ciphertext = Buffer.from(parts[3], "base64url");
+    if (iv.length !== 12 || tag.length !== 16 || ciphertext.length === 0) {
+      return { ok: false, code: "INVALID_TOKEN", message: "导入预览令牌无效" };
+    }
+
+    const decipher = createDecipheriv("aes-256-gcm", getImportPreviewTokenKey(), iv);
+    decipher.setAAD(Buffer.from("spent-import-preview:v1", "utf8"));
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final(),
+    ]).toString("utf8");
+    const payload = JSON.parse(plaintext) as ImportPreviewTokenPayload;
+
+    if (
+      payload.v !== 1 ||
+      payload.adminId !== expectedAdminId ||
+      typeof payload.fileHash !== "string" ||
+      typeof payload.fileName !== "string" ||
+      !Array.isArray(payload.rows) ||
+      payload.rows.length === 0 ||
+      payload.rows.length > IMPORT_MAX_ROWS
+    ) {
+      return { ok: false, code: "TOKEN_FORBIDDEN", message: "导入预览令牌与当前管理员不匹配" };
+    }
+    if (!Number.isFinite(payload.exp) || payload.exp < Date.now()) {
+      return { ok: false, code: "TOKEN_EXPIRED", message: "导入预览已过期，请重新上传文件" };
+    }
+    return { ok: true, payload };
   } catch {
-    return null;
+    return { ok: false, code: "INVALID_TOKEN", message: "导入预览令牌无效" };
   }
 }
 
@@ -212,8 +284,9 @@ function parseAmountValue(value: unknown): number | null {
   if (typeof value === "number") {
     n = value;
   } else if (typeof value === "string") {
+    // 允许 Excel/ERP 常见的 1280.00 文本格式；金额模型仍为整数元
     const s = value.trim().replace(/[¥,，\s]/g, "");
-    if (!/^-?\d+$/.test(s)) return null;
+    if (!/^-?\d+(?:\.0+)?$/.test(s)) return null;
     n = Number(s);
   } else {
     return null;
@@ -245,15 +318,16 @@ function parseChannelValue(value: unknown): {
 function parseOrderNoValue(value: unknown): string | null {
   if (value == null) return null;
   const s = String(value).trim();
-  if (!s) return null;
-  return s.slice(0, IMPORT_MAX_ORDER_NO_LENGTH);
+  if (!s || s.length > IMPORT_MAX_ORDER_NO_LENGTH) return null;
+  return s;
 }
 
 function parseNoteValue(value: unknown): string | null {
   if (value == null) return null;
   const s = String(value).trim();
   if (!s) return null;
-  return s.slice(0, IMPORT_MAX_NOTE_LENGTH);
+  if (s.length > IMPORT_MAX_NOTE_LENGTH) return null;
+  return s;
 }
 
 function rowReference(
@@ -295,6 +369,23 @@ function cellText(cell: unknown): string {
   return String(cell).trim();
 }
 
+/**
+ * CSV 编码兼容：中文 Excel 默认导出的 CSV 往往是 GBK/GB18030。
+ * 先按 UTF-8 判断表头，失败再用 GB18030 解码为 UTF-8 后交给 xlsx。
+ */
+function normalizeCsvEncoding(buffer: Buffer, fileName: string): Buffer {
+  if (!fileName.toLowerCase().endsWith(".csv")) return buffer;
+  const utf8 = buffer.toString("utf8");
+  if (utf8.includes("手机号")) return buffer;
+  try {
+    const gb = new TextDecoder("gb18030").decode(buffer);
+    if (gb.includes("手机号")) return Buffer.from(gb, "utf8");
+  } catch {
+    // 运行环境不支持 GB18030 时保持原 buffer，由解析器返回明确错误
+  }
+  return buffer;
+}
+
 function validateImportFile(buffer: Buffer, fileName: string): ImportParseError | null {
   const ext = fileName.toLowerCase().match(/\.[a-z0-9]+$/)?.[0] ?? "";
   if (!IMPORT_ALLOWED_EXTENSIONS.includes(ext)) {
@@ -314,21 +405,63 @@ function validateImportFile(buffer: Buffer, fileName: string): ImportParseError 
   return null;
 }
 
+const HEADER_ALIASES: Record<
+  "phone" | "amount" | "purchasedAt" | "channel" | "orderNo" | "note",
+  string[]
+> = {
+  phone: ["手机号", "手机"],
+  amount: ["金额"],
+  purchasedAt: ["消费日期", "日期"],
+  channel: ["渠道"],
+  orderNo: ["订单号", "小票号", "订单"],
+  note: ["备注"],
+};
+
+function findHeaderIndex(header: unknown[], aliases: string[]): number {
+  return header.findIndex((cell) => {
+    const text = cellText(cell);
+    return aliases.some((alias) => text.includes(alias));
+  });
+}
+
+function cellAt(row: unknown[], index: number): unknown {
+  return index >= 0 ? row[index] : "";
+}
+
 function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
-  const headerRowIndex = aoa.findIndex((row) => cellText(row?.[0]).includes("手机号"));
+  const headerRowIndex = aoa.findIndex((row) =>
+    row.some((cell) => cellText(cell).includes("手机号"))
+  );
   if (headerRowIndex === -1) {
     return {
       ok: false,
       code: "INVALID_HEADER",
-      message: "表头不正确：第一列应为「手机号」，请使用下载的模板填写",
+      message: "表头不正确：缺少「手机号」列，请使用下载的模板填写",
     };
   }
-  const header = aoa[headerRowIndex];
-  if (!cellText(header?.[1]).includes("金额")) {
+
+  const header = aoa[headerRowIndex] ?? [];
+  const columnIndex = {
+    phone: findHeaderIndex(header, HEADER_ALIASES.phone),
+    amount: findHeaderIndex(header, HEADER_ALIASES.amount),
+    purchasedAt: findHeaderIndex(header, HEADER_ALIASES.purchasedAt),
+    channel: findHeaderIndex(header, HEADER_ALIASES.channel),
+    orderNo: findHeaderIndex(header, HEADER_ALIASES.orderNo),
+    note: findHeaderIndex(header, HEADER_ALIASES.note),
+  };
+
+  if (columnIndex.amount === -1) {
     return {
       ok: false,
       code: "INVALID_HEADER",
-      message: "表头不正确：第二列应为「金额（元）」，请使用下载的模板填写",
+      message: "表头不正确：缺少「金额（元）」列，请使用下载的模板填写",
+    };
+  }
+  if (columnIndex.orderNo === -1) {
+    return {
+      ok: false,
+      code: "INVALID_HEADER",
+      message: "表头不正确：缺少「订单号/小票号」列，请使用下载的模板填写",
     };
   }
 
@@ -348,22 +481,33 @@ function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
 
   const rows: ParsedImportRow[] = dataRows.map((row, i) => {
     const rowIndex = headerRowIndex + 2 + i;
-    const phone = parsePhoneValue(row[0]);
-    const amount = parseAmountValue(row[1]);
-    const purchasedAt = parseExcelDateValue(row[2]);
-    const channelResult = parseChannelValue(row[3]);
-    const orderNo = parseOrderNoValue(row[4]);
-    const note = parseNoteValue(row[5]);
+    const phone = parsePhoneValue(cellAt(row, columnIndex.phone));
+    const amount = parseAmountValue(cellAt(row, columnIndex.amount));
+    const purchasedAt = parseExcelDateValue(cellAt(row, columnIndex.purchasedAt));
+    const channelResult = parseChannelValue(cellAt(row, columnIndex.channel));
+    const orderNoRaw = cellText(cellAt(row, columnIndex.orderNo));
+    const orderNo = parseOrderNoValue(orderNoRaw);
+    const noteRaw = cellText(cellAt(row, columnIndex.note));
+    const note = parseNoteValue(noteRaw);
 
     const errors: string[] = [];
     if (phone === null) errors.push("手机号格式不正确（应为 11 位大陆手机号）");
     if (amount === null) errors.push("金额必须为非零整数（元），绝对值不超过 100 万");
-    if (cellText(row[2]) && purchasedAt === null)
+    if (cellText(cellAt(row, columnIndex.purchasedAt)) && purchasedAt === null) {
       errors.push("消费日期格式不正确（如 2026-01-15）");
+    }
     if (channelResult.invalid) {
       errors.push(
         `渠道不正确（可选：${SPENT_CHANNELS.map((c) => SPENT_CHANNEL_LABELS[c]).join(" / ")}）`
       );
+    }
+    if (!orderNoRaw) {
+      errors.push("订单号/小票号必填，用于跨批次去重");
+    } else if (orderNo === null) {
+      errors.push(`订单号/小票号不能超过 ${IMPORT_MAX_ORDER_NO_LENGTH} 个字符`);
+    }
+    if (noteRaw.length > IMPORT_MAX_NOTE_LENGTH) {
+      errors.push(`备注不能超过 ${IMPORT_MAX_NOTE_LENGTH} 个字符`);
     }
 
     return {
@@ -372,6 +516,7 @@ function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
       amount,
       channel: channelResult.channel,
       orderNo,
+      orderNoKey: orderNo ? normalizeOrderNo(orderNo) : null,
       purchasedAt,
       note,
       error: errors.length > 0 ? errors.join("；") : null,
@@ -391,8 +536,9 @@ export function parseImportWorkbook(buffer: Buffer, fileName: string): ImportPar
 
   let sheet: XLSX.WorkSheet;
   try {
-    // codepage 65001：CSV 内容按 UTF-8 解码，避免中文表头乱码
-    const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false, codepage: 65001 });
+    // CSV 先统一为 UTF-8；xlsx 本身不受编码影响
+    const normalized = normalizeCsvEncoding(buffer, fileName);
+    const workbook = XLSX.read(normalized, { type: "buffer", cellDates: false, codepage: 65001 });
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) {
       return { ok: false, code: "INVALID_FILE", message: "文件中没有工作表" };
@@ -409,7 +555,7 @@ export function parseImportWorkbook(buffer: Buffer, fileName: string): ImportPar
   const declaredRange = sheet["!ref"]
     ? XLSX.utils.decode_range(sheet["!ref"])
     : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } };
-  const MAX_READ_ROWS = IMPORT_MAX_ROWS + 200; // 表头 + 1000 行 + 容错空行
+  const MAX_READ_ROWS = IMPORT_MAX_ROWS + 200; // 表头 + 数据行 + 容错空行
   const MAX_READ_COLS = 20; // 模板仅 6 列，留余量
 
   const rowLimit = declaredRange.s.r + MAX_READ_ROWS - 1;
@@ -440,7 +586,7 @@ export function parseImportWorkbook(buffer: Buffer, fileName: string): ImportPar
     range: readRange,
   });
 
-  const fileHash = createHash("md5").update(buffer).digest("hex");
+  const fileHash = createHash("sha256").update(buffer).digest("hex");
   return parseImportAoa(aoa, fileHash);
 }
 
@@ -579,8 +725,9 @@ export async function parseImportWorkbookIsolated(
   if (validation) return validation;
 
   try {
-    const aoa = await parseWorkbookInWorker(buffer);
-    const fileHash = createHash("md5").update(buffer).digest("hex");
+    const normalized = normalizeCsvEncoding(buffer, fileName);
+    const aoa = await parseWorkbookInWorker(normalized);
+    const fileHash = createHash("sha256").update(buffer).digest("hex");
     return parseImportAoa(aoa, fileHash);
   } catch (error) {
     if (error instanceof ImportWorkerError && error.code === "TOO_MANY_ROWS") {
@@ -606,6 +753,13 @@ function maskPhoneValue(phone: string | null): string | null {
 /**
  * 预览校验：定位手机号对应用户（存在性检查），不落库不入账。
  */
+const USER_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "正常",
+  SUSPENDED: "冻结",
+  BANNED: "封禁",
+  DELETED: "已注销",
+};
+
 export async function previewImportRows(
   rows: ParsedImportRow[]
 ): Promise<{ rows: PreviewRow[]; okCount: number; errorCount: number; totalAmount: number }> {
@@ -614,9 +768,66 @@ export async function previewImportRows(
   ];
   const users = await prisma.user.findMany({
     where: { phone: { in: validPhones } },
-    select: { phone: true },
+    select: { id: true, phone: true, status: true },
   });
-  const existingPhones = new Set(users.map((u) => u.phone));
+  const userByPhone = new Map(users.map((user) => [user.phone, user]));
+  const userIds = users.map((user) => user.id);
+  const orderNoKeys = [
+    ...new Set(rows.map((row) => row.orderNoKey).filter((key): key is string => !!key)),
+  ];
+
+  const [adjustmentApplications, importedRows, orderClaims] = await Promise.all([
+    userIds.length > 0
+      ? prisma.spentAdjustmentApplication.findMany({
+          where: {
+            userId: { in: userIds },
+            status: { in: ["PENDING", "APPROVED"] },
+            orderNo: { not: "" },
+          },
+          select: { userId: true, orderNo: true, status: true },
+        })
+      : Promise.resolve([]),
+    userIds.length > 0
+      ? prisma.spentImportRow.findMany({
+          where: {
+            userId: { in: userIds },
+            status: "SUCCESS",
+            revertedAt: null,
+            orderNo: { not: null },
+          },
+          select: { userId: true, orderNo: true },
+        })
+      : Promise.resolve([]),
+    userIds.length > 0 && orderNoKeys.length > 0 && prisma.spentOrderClaim
+      ? prisma.spentOrderClaim.findMany({
+          where: {
+            userId: { in: userIds },
+            orderNoKey: { in: orderNoKeys },
+          },
+          select: { userId: true, orderNoKey: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const pendingOrderKeys = new Set(
+    adjustmentApplications
+      .filter((application) => application.status === "PENDING")
+      .map((application) => `${application.userId}:${normalizeOrderNo(application.orderNo)}`)
+  );
+  const approvedOrderKeys = new Set(
+    adjustmentApplications
+      .filter((application) => application.status === "APPROVED")
+      .map((application) => `${application.userId}:${normalizeOrderNo(application.orderNo)}`)
+  );
+  const importedOrderKeys = new Set(
+    importedRows
+      .filter((row): row is typeof row & { orderNo: string } => !!row.orderNo)
+      .map((row) => `${row.userId}:${normalizeOrderNo(row.orderNo as string)}`)
+  );
+  const claimedOrderKeys = new Set(
+    orderClaims.map((claim) => `${claim.userId}:${claim.orderNoKey}`)
+  );
+  const seenOrderKeys = new Set<string>();
 
   let okCount = 0;
   let errorCount = 0;
@@ -625,12 +836,34 @@ export async function previewImportRows(
   const previewRows: PreviewRow[] = rows.map((row) => {
     let error = row.error;
     let userExists: boolean | null = null;
+    const user = row.phone ? userByPhone.get(row.phone) : undefined;
+
     if (!error && row.phone) {
-      userExists = existingPhones.has(row.phone);
-      if (!userExists) {
+      userExists = !!user;
+      if (!user) {
         error = "该手机号未注册官网账户，请先注册或检查手机号";
+      } else if (user.status !== "ACTIVE") {
+        error = `该账号当前状态为「${USER_STATUS_LABELS[user.status] || user.status}」，不能导入消费记录`;
       }
     }
+
+    if (!error && user && row.orderNoKey) {
+      const orderKey = `${user.id}:${row.orderNoKey}`;
+      if (pendingOrderKeys.has(orderKey)) {
+        error = "该订单号存在待审核的消费补录申请，请先处理补录申请";
+      } else if (approvedOrderKeys.has(orderKey)) {
+        error = "该订单号已通过消费补录审核入账，请勿重复导入";
+      } else if (importedOrderKeys.has(orderKey)) {
+        error = "该订单号已通过 Excel 导入入账，如需修正请先撤销原批次";
+      } else if (claimedOrderKeys.has(orderKey)) {
+        error = "该订单号已被商城同步或其他来源入账，请勿重复导入";
+      } else if (seenOrderKeys.has(orderKey)) {
+        error = "文件内订单号重复，请合并或删除重复行";
+      } else {
+        seenOrderKeys.add(orderKey);
+      }
+    }
+
     if (!error) {
       okCount += 1;
       totalAmount += row.amount ?? 0;
@@ -663,19 +896,29 @@ function toParsedRow(input: ExecuteRowInput, rowIndex: number): ParsedImportRow 
       : null;
   const purchasedAtInvalid = !!input.purchasedAt && purchasedAt === null;
   const channelResult = parseChannelValue(input.channel ?? null);
-  const orderNo = parseOrderNoValue(input.orderNo ?? null);
-  const note = parseNoteValue(input.note ?? null);
+  const orderNoRaw = typeof input.orderNo === "string" ? input.orderNo.trim() : "";
+  const orderNo = parseOrderNoValue(orderNoRaw);
+  const noteRaw = typeof input.note === "string" ? input.note.trim() : "";
+  const note = parseNoteValue(noteRaw);
 
-  if (!phone || !validAmount || purchasedAtInvalid || channelResult.invalid) {
+  if (
+    !phone ||
+    !validAmount ||
+    purchasedAtInvalid ||
+    channelResult.invalid ||
+    !orderNo ||
+    noteRaw.length > IMPORT_MAX_NOTE_LENGTH
+  ) {
     return {
       rowIndex,
       phone: phone ?? (typeof input.phone === "string" ? input.phone : null),
       amount: amount ?? null,
       channel: channelResult.channel,
       orderNo,
+      orderNoKey: orderNo ? normalizeOrderNo(orderNo) : null,
       purchasedAt,
       note,
-      error: "参数不合法",
+      error: "参数不合法（订单号必填且需符合长度限制）",
     };
   }
 
@@ -685,6 +928,7 @@ function toParsedRow(input: ExecuteRowInput, rowIndex: number): ParsedImportRow 
     amount,
     channel: channelResult.channel,
     orderNo,
+    orderNoKey: normalizeOrderNo(orderNo),
     purchasedAt,
     note,
     error: null,
@@ -698,10 +942,11 @@ function toParsedRow(input: ExecuteRowInput, rowIndex: number): ParsedImportRow 
 export async function executeImportBatch(params: {
   rows: ExecuteRowInput[];
   fileName: string;
-  fileHash?: string;
+  fileHash: string;
+  reason: string;
   adminId: string;
 }): Promise<ExecuteResult> {
-  const { rows: inputs, fileName, fileHash, adminId } = params;
+  const { rows: inputs, fileName, fileHash, reason, adminId } = params;
 
   if (inputs.length === 0 || inputs.length > IMPORT_MAX_ROWS) {
     throw new Error("IMPORT_ROW_COUNT_INVALID");
@@ -711,31 +956,54 @@ export async function executeImportBatch(params: {
   const phones = [...new Set(parsed.map((r) => r.phone).filter((p): p is string => !!p))];
   const users = await prisma.user.findMany({
     where: { phone: { in: phones } },
-    select: { id: true, phone: true },
+    select: { id: true, phone: true, status: true },
   });
   const userIdByPhone = new Map(users.map((u) => [u.phone, u.id]));
+  const userStatusById = new Map(users.map((u) => [u.id, u.status]));
 
-  // 跨来源去重：同一用户同一订单号已通过补录审核入账的，导入侧直接标错，
-  // 避免同一笔消费经“补录审核 + Excel 导入”重复累积消费额/积分。
-  const approvedApplications =
+  // 跨来源去重：待审核/已通过的补录订单都不允许再通过导入入账。
+  const adjustmentApplications =
     users.length > 0
       ? await prisma.spentAdjustmentApplication.findMany({
           where: {
             userId: { in: users.map((u) => u.id) },
-            status: "APPROVED",
+            status: { in: ["PENDING", "APPROVED"] },
             orderNo: { not: "" },
+          },
+          select: { userId: true, orderNo: true, status: true },
+        })
+      : [];
+  const pendingOrderKeys = new Set(
+    adjustmentApplications
+      .filter((application) => application.status === "PENDING")
+      .map((application) => `${application.userId}:${normalizeOrderNo(application.orderNo)}`)
+  );
+  const approvedOrderKeys = new Set(
+    adjustmentApplications
+      .filter((application) => application.status === "APPROVED")
+      .map((application) => `${application.userId}:${normalizeOrderNo(application.orderNo)}`)
+  );
+  const importedRows =
+    users.length > 0
+      ? await prisma.spentImportRow.findMany({
+          where: {
+            userId: { in: users.map((u) => u.id) },
+            status: "SUCCESS",
+            revertedAt: null,
+            orderNo: { not: null },
           },
           select: { userId: true, orderNo: true },
         })
       : [];
-  const approvedOrderKeys = new Set(
-    approvedApplications.map((a) => `${a.userId}:${a.orderNo.trim().toUpperCase()}`)
+  const importedOrderKeys = new Set(
+    importedRows
+      .filter((row): row is typeof row & { orderNo: string } => !!row.orderNo)
+      .map((row) => `${row.userId}:${normalizeOrderNo(row.orderNo)}`)
   );
 
   const version = randomUUID();
-  const effectiveFileHash = (
-    fileHash?.trim() || createHash("sha256").update(JSON.stringify(inputs)).digest("hex")
-  ).slice(0, 64);
+  const effectiveFileHash = fileHash.trim().slice(0, 64);
+  if (!effectiveFileHash) throw new Error("IMPORT_FILE_HASH_REQUIRED");
   const now = new Date();
 
   // 先创建批次与 PENDING 行，再逐行入账：
@@ -762,6 +1030,7 @@ export async function executeImportBatch(params: {
         adminId,
         fileName: fileName.slice(0, 200),
         fileHash: effectiveFileHash,
+        reason: reason.slice(0, 200),
         version,
         status: "PROCESSING",
         startedAt: now,
@@ -779,10 +1048,12 @@ export async function executeImportBatch(params: {
               row.purchasedAt
             );
             return {
+              rowIndex: row.rowIndex,
               phone: row.phone ?? "",
               amount: row.amount ?? 0,
               channel: row.channel,
               orderNo: row.orderNo,
+              orderNoKey: row.orderNoKey,
               purchasedAt: row.purchasedAt ? new Date(`${row.purchasedAt}T00:00:00.000Z`) : null,
               note: row.note,
               // 批内行键：带随机 version，仅用于映射本批次行，不参与跨批次幂等
@@ -802,8 +1073,9 @@ export async function executeImportBatch(params: {
   });
 
   const rowByReference = new Map(batch.rows.map((row) => [row.reference, row]));
-  // 同一批次内内容完全相同的行：先到先入账，后续标记重复
+  // 同一批次内内容/订单号完全相同的行：先到先入账，后续标记重复
   const claimedContentKeys = new Set<string>();
+  const claimedOrderKeys = new Set<string>();
 
   let rowResults: ExecuteRowResult[];
   try {
@@ -860,14 +1132,30 @@ export async function executeImportBatch(params: {
 
         const userId = userIdByPhone.get(row.phone);
         if (!userId) return markError("该手机号未注册官网账户");
+        const userStatus = userStatusById.get(userId);
+        if (userStatus && userStatus !== "ACTIVE") {
+          return markError(
+            `该账号当前状态为「${USER_STATUS_LABELS[userStatus] || userStatus}」，不能导入消费记录`
+          );
+        }
 
-        // 同一用户同一订单号已通过补录审核入账：阻止跨来源重复入账
-        if (
-          row.orderNo &&
-          approvedOrderKeys.has(`${userId}:${row.orderNo.trim().toUpperCase()}`)
-        ) {
+        if (!row.orderNoKey) {
+          return markError("订单号/小票号必填");
+        }
+        const orderKey = `${userId}:${row.orderNoKey}`;
+
+        // 同一用户同一订单号已有待审/已通过补录，或已导入：阻止跨来源重复入账
+        if (pendingOrderKeys.has(orderKey)) {
+          return markError("该订单号存在待审核的消费补录申请，请先处理补录申请");
+        }
+        if (approvedOrderKeys.has(orderKey)) {
           return markError("该订单号已通过消费补录审核入账，请勿重复导入");
         }
+        if (importedOrderKeys.has(orderKey)) {
+          return markError("该订单号已通过 Excel 导入入账，如需修正请先撤销原批次");
+        }
+        if (claimedOrderKeys.has(orderKey)) return markDuplicate();
+        claimedOrderKeys.add(orderKey);
 
         // 跨批次内容幂等：已成功且未撤销的同一内容不再入账。
         // 先占用进程内 key，避免同一批次并发行同时通过检查。
@@ -893,6 +1181,8 @@ export async function executeImportBatch(params: {
             spentDelta: row.amount,
             // 批内唯一 reference：撤销后可重新导入；跨批次去重由 syncReference 预检负责
             reference: batchReference,
+            orderNo: row.orderNo,
+            source: "SPENT_IMPORT",
             note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
               row.orderNo ? ` ${row.orderNo}` : ""
             }`,
@@ -903,10 +1193,43 @@ export async function executeImportBatch(params: {
           const status = result.duplicated ? "DUPLICATE" : "SUCCESS";
           const error = result.duplicated ? "该记录已入账过（幂等跳过）" : null;
 
-          await prisma.spentImportRow.update({
-            where: { id: persisted.id },
-            data: { status, error, appliedDelta, userId },
-          });
+          try {
+            await prisma.spentImportRow.update({
+              where: { id: persisted.id },
+              data: { status, error, appliedDelta, userId },
+            });
+          } catch (updateError) {
+            // 成功行状态写入失败时，必须先冲正已入账金额，避免“钱已加、行状态没落”。
+            // P2002 通常是并发同订单号命中数据库唯一索引；冲正后按重复处理。
+            if (appliedDelta !== 0) {
+              try {
+                await applyExternalSpentSync({
+                  userId,
+                  spentDelta: -appliedDelta,
+                  reference: `import-compensate:${batchReference}`,
+                  note: "导入行状态写入失败自动冲正",
+                });
+                await releaseSpentOrderClaim(prisma, {
+                  userId,
+                  orderNoKey: row.orderNoKey,
+                  source: "SPENT_IMPORT",
+                  reference: batchReference,
+                });
+              } catch (compensateError) {
+                apiConsole.error(
+                  `[SpentImport] 第 ${row.rowIndex} 行冲正失败，需人工核对:`,
+                  compensateError
+                );
+                throw new Error("IMPORT_COMPENSATION_FAILED");
+              }
+            }
+
+            if ((updateError as { code?: string }).code === "P2002") {
+              return markDuplicate();
+            }
+            apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 状态写入失败:`, updateError);
+            return markError("行状态写入失败，已自动冲正，请重试");
+          }
 
           return {
             rowIndex: row.rowIndex,
@@ -919,6 +1242,14 @@ export async function executeImportBatch(params: {
           };
         } catch (error) {
           apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 入账失败:`, error);
+          if (error instanceof Error && error.message === "IMPORT_COMPENSATION_FAILED") {
+            throw error;
+          }
+          if (error instanceof SpentOrderConflictError) {
+            return markError(
+              `订单号已在其他来源入账（${error.source}），请先撤销原入账再导入`
+            );
+          }
           return markError("入账失败，请重试");
         }
       }
@@ -945,10 +1276,15 @@ export async function executeImportBatch(params: {
     .filter((r) => r.status === "SUCCESS")
     .reduce((sum, r) => sum + (r.appliedDelta ?? 0), 0);
 
+  const noSuccess = successRows === 0;
   await prisma.spentImportBatch.update({
     where: { id: batch.id },
     data: {
-      status: "COMPLETED",
+      // 零成功批次不占用文件哈希，允许修正后重新上传同一文件
+      status: noSuccess ? "FAILED" : "COMPLETED",
+      lastError: noSuccess
+        ? "没有成功入账的行：请检查重复/账号状态/订单号后重新导入"
+        : null,
       processedRows: rowResults.length,
       successRows,
       duplicateRows,
@@ -1021,6 +1357,8 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
           userId: true,
           amount: true,
           appliedDelta: true,
+          orderNo: true,
+          orderNoKey: true,
           // 注意：reference 是当初写入 SpentSyncRecord 的批内唯一键；
           // syncReference 只是跨批内容键，不能拿去匹配 SpentSyncRecord。
           reference: true,
@@ -1104,6 +1442,12 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
             reference: row.reference,
           },
           data: { revertedAt: new Date() },
+        });
+        await releaseSpentOrderClaim(prisma, {
+          userId: row.userId as string,
+          orderNoKey: row.orderNoKey,
+          source: "SPENT_IMPORT",
+          reference: row.reference,
         });
         await prisma.spentImportRow.update({
           where: { id: row.id },

@@ -12,6 +12,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { fulfillRedemption } from "@/lib/point-gifts";
 import { notifyPointsRedemptionShipped } from "@/lib/miniprogram-notify";
 
@@ -25,6 +26,7 @@ const fulfillSchema = z.object({
     .regex(/^[A-Za-z0-9-]{8,32}$/, "运单号格式不正确")
     .optional()
     .or(z.literal("")),
+  totpCode: z.string().max(20).optional(),
 });
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -68,6 +70,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const waybillNo = parsed.data.waybillNo?.trim() || undefined;
+
+    const totpResponse = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode, {
+      request,
+      admin,
+    });
+    if (totpResponse) return totpResponse;
 
     const auditId = await beginAuditLog({
       action: "point_redemption_fulfill",

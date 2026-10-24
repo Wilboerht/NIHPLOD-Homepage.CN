@@ -32,6 +32,9 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { applyExternalSpentSync } from "@/lib/points";
+import { SpentOrderConflictError } from "@/lib/spent-order";
+import { auditInternalPoints, auditInternalPointsFailure } from "@/lib/internal-points-audit";
+import { getUtc8DayStart } from "@/lib/timezone";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -53,6 +56,7 @@ const syncSchema = z
       .min(-1_000_000, "消费额变动超出允许范围")
       .max(1_000_000, "消费额变动超出允许范围")
       .default(0),
+    orderNo: z.string().trim().min(1).max(128).optional(),
     reference: z.string().min(1, "缺少幂等单据号").max(128),
     note: z.string().max(500).optional(),
   })
@@ -158,7 +162,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, phone, spentDelta, reference, note } = parsed.data;
+    const { userId, phone, spentDelta, reference, note, orderNo } = parsed.data;
 
     // 5. 定位用户：userId 优先（稳定，支持微信占位号/换绑后账号），phone 兼容回退
     const user = await prisma.user.findUnique({
@@ -180,13 +184,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 入账（事务内写幂等记录 + 更新消费额 + 重算等级，reference 幂等）
-    const result = await applyExternalSpentSync({
-      userId: user.id,
+    const dailyLimit = Number(process.env.INTERNAL_POINTS_SYNC_DAILY_LIMIT_YUAN ?? "5000000");
+    if (spentDelta > 0 && Number.isFinite(dailyLimit) && dailyLimit > 0) {
+      const daily = await prisma.spentSyncRecord?.aggregate({
+        where: {
+          userId: user.id,
+          source: "MALL_SYNC",
+          createdAt: { gte: getUtc8DayStart() },
+          spentDelta: { gt: 0 },
+        },
+        _sum: { spentDelta: true },
+      });
+      if ((daily?._sum.spentDelta ?? 0) + spentDelta > dailyLimit) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "SYNC_DAILY_LIMIT_EXCEEDED",
+              message: "该用户今日消费同步额度已超限，请人工核对",
+            },
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    const auditDetail = {
       spentDelta,
+      orderNo: orderNo ?? null,
       reference,
-      note,
-    });
+      note: note ?? null,
+      largeDelta: Math.abs(spentDelta) >= 100000,
+    };
+
+    // 6. 入账（事务内写幂等记录 + 更新消费额 + 重算等级，reference 幂等）
+    let result: Awaited<ReturnType<typeof applyExternalSpentSync>>;
+    try {
+      result = await applyExternalSpentSync({
+        userId: user.id,
+        spentDelta,
+        reference,
+        note,
+        orderNo,
+        source: "MALL_SYNC",
+      });
+    } catch (error) {
+      await auditInternalPointsFailure({
+        action: "points_internal_sync",
+        targetType: "spent_sync",
+        targetId: reference,
+        userId: user.id,
+        project: config.project,
+        key,
+        request,
+        detail: auditDetail,
+      });
+      throw error;
+    }
 
     if (!result) {
       return NextResponse.json(
@@ -194,6 +248,23 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    await auditInternalPoints({
+      action: "points_internal_sync",
+      targetType: "spent_sync",
+      targetId: reference,
+      userId: user.id,
+      project: config.project,
+      key,
+      request,
+      detail: {
+        ...auditDetail,
+        totalSpent: result.totalSpent,
+        membershipLevel: result.membershipLevel,
+        appliedDelta: result.appliedDelta,
+        duplicated: result.duplicated,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -205,6 +276,19 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof SpentOrderConflictError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ORDER_CONFLICT",
+            message: "该订单号已在其他来源入账，请勿重复同步",
+            data: { source: error.source },
+          },
+        },
+        { status: 409 }
+      );
+    }
     apiConsole.error("[InternalApiV1] points/sync 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器内部错误" } },

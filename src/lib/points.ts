@@ -22,6 +22,11 @@ import {
 } from "@/lib/points-ledger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
+import {
+  SpentOrderConflictError,
+  normalizeOptionalOrderNo,
+} from "@/lib/spent-order";
+import type { SpentOrderSource } from "@/generated/prisma/client";
 
 /**
  * 根据历史消费金额计算会员等级
@@ -63,13 +68,20 @@ export async function applyExternalSpentSync(params: {
   spentDelta: number; // 消费额变动（元，整数，可为 0）
   reference: string; // 商城侧唯一单据号（幂等键）
   note?: string;
+  orderNo?: string | null;
+  source?: SpentOrderSource;
 }): Promise<{
   totalSpent: number;
   membershipLevel: MembershipLevel;
   appliedDelta: number;
   duplicated: boolean;
 } | null> {
-  const { userId, spentDelta, reference, note } = params;
+  const { userId, spentDelta, reference, note, orderNo } = params;
+  const source = params.source ?? "MALL_SYNC";
+  // 兼容未升级的商城客户端：正向消费以 reference 作为订单号兜底；显式 orderNo 优先。
+  const normalizedOrder = normalizeOptionalOrderNo(
+    orderNo ?? (spentDelta > 0 ? reference : null)
+  );
 
   try {
     // 成功入账时事务额外返回 previous（入账前快照），用于提交后判断消费额/等级是否实际变化
@@ -85,6 +97,30 @@ export async function applyExternalSpentSync(params: {
         });
         if (!current) return null;
         return { ...current, duplicated: true, previous: undefined, appliedDelta: 0 };
+      }
+
+      if (spentDelta > 0 && normalizedOrder.orderNoKey) {
+        const existingClaim = await tx.spentOrderClaim.findUnique({
+          where: {
+            userId_orderNoKey: { userId, orderNoKey: normalizedOrder.orderNoKey },
+          },
+          select: { source: true },
+        });
+        if (existingClaim) {
+          throw new SpentOrderConflictError(
+            normalizedOrder.orderNoKey,
+            existingClaim.source
+          );
+        }
+        await tx.spentOrderClaim.create({
+          data: {
+            userId,
+            orderNo: normalizedOrder.orderNo as string,
+            orderNoKey: normalizedOrder.orderNoKey,
+            source,
+            reference,
+          },
+        });
       }
 
       // 乐观并发控制（CAS）：以读取快照作为更新条件，快照被并发修改时 updateMany 命中 0 行，
@@ -125,7 +161,19 @@ export async function applyExternalSpentSync(params: {
         if (cas.count === 0) continue; // 快照过期（并发修改），重读重试
 
         await tx.spentSyncRecord.create({
-          data: { userId, reference, spentDelta: appliedDelta, note },
+          data: {
+            userId,
+            reference,
+            spentDelta: appliedDelta,
+            note,
+            ...(normalizedOrder.orderNoKey
+              ? {
+                  orderNo: normalizedOrder.orderNo,
+                  orderNoKey: normalizedOrder.orderNoKey,
+                  source,
+                }
+              : {}),
+          },
         });
 
         // 等级变更轨迹（升/降档实时记录，幂等键与同步记录一致）
@@ -144,19 +192,25 @@ export async function applyExternalSpentSync(params: {
         // 积分联动（与消费额同事务，保证账实一致）
         // 所有等级均按 1:1 发放积分（普通档仅累积、不可兑礼，兑礼侧按兑礼率拦截）
         if (appliedDelta > 0) {
-          await creditSpendPoints(tx, {
+          const credited = await creditSpendPoints(tx, {
             userId,
             amount: appliedDelta,
             reference: `points:${reference}`,
             note: note ?? "消费发放积分",
           });
+          if (credited && credited.duplicated) {
+            throw new Error("SPENT_POINTS_LEDGER_CONFLICT");
+          }
         } else if (appliedDelta < 0) {
-          await refundSpendPoints(tx, {
+          const refunded = await refundSpendPoints(tx, {
             userId,
             amount: -appliedDelta,
             reference: `points:${reference}`,
             note: note ?? "退款冲正积分",
           });
+          if (refunded && refunded.duplicated) {
+            throw new Error("SPENT_POINTS_LEDGER_CONFLICT");
+          }
         }
 
         return {
@@ -204,15 +258,34 @@ export async function applyExternalSpentSync(params: {
     }
     return null;
   } catch (error) {
-    // P2002 唯一约束冲突 = 该 reference 已入账过，幂等返回当前权威消费额
+    if (error instanceof SpentOrderConflictError) throw error;
+    // P2002 仅在确实是同一 SpentSyncRecord 时才算幂等；其他唯一键冲突不能静默吞掉
     if ((error as { code?: string }).code === "P2002") {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { totalSpent: true, membershipLevel: true },
+      const duplicate = await prisma.spentSyncRecord?.findUnique({
+        where: { userId_reference: { userId, reference } },
+        select: { id: true },
       });
-      if (!user) return null;
-      apiConsole.info(`[SpentSync] 外部同步重复上报（ref=${reference}），按幂等处理`);
-      return { ...user, duplicated: true, appliedDelta: 0 };
+      if (duplicate) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { totalSpent: true, membershipLevel: true },
+        });
+        if (!user) return null;
+        apiConsole.info(`[SpentSync] 外部同步重复上报（ref=${reference}），按幂等处理`);
+        return { ...user, duplicated: true, appliedDelta: 0 };
+      }
+      if (normalizedOrder.orderNoKey) {
+        const claim = await prisma.spentOrderClaim?.findUnique({
+          where: {
+            userId_orderNoKey: { userId, orderNoKey: normalizedOrder.orderNoKey },
+          },
+          select: { source: true },
+        });
+        if (claim) {
+          throw new SpentOrderConflictError(normalizedOrder.orderNoKey, claim.source);
+        }
+      }
+      apiConsole.error(`[SpentSync] 唯一键冲突但不是重复单据（ref=${reference}）`, error);
     }
     throw error;
   }

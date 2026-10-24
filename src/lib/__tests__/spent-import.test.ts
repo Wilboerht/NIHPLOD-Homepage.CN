@@ -10,7 +10,7 @@ vi.mock("@/lib/prisma", () => {
   const prisma: Record<string, unknown> = {
     user: { findMany: vi.fn() },
     spentImportBatch: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    spentImportRow: { update: vi.fn(), findFirst: vi.fn() },
+    spentImportRow: { update: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     spentAdjustmentApplication: { findMany: vi.fn() },
     spentSyncRecord: { updateMany: vi.fn(), deleteMany: vi.fn() },
   };
@@ -35,8 +35,8 @@ import {
   previewImportRows,
   executeImportBatch,
   undoImportBatch,
-  signImportPhoneToken,
-  verifyImportPhoneToken,
+  signImportPreviewToken,
+  verifyImportPreviewToken,
 } from "@/lib/spent-import";
 
 const mockUserFindMany = prisma.user.findMany as ReturnType<typeof vi.fn>;
@@ -46,6 +46,7 @@ const mockBatchFindUnique = prisma.spentImportBatch.findUnique as ReturnType<typ
 const mockBatchUpdate = prisma.spentImportBatch.update as ReturnType<typeof vi.fn>;
 const mockRowUpdate = prisma.spentImportRow.update as ReturnType<typeof vi.fn>;
 const mockRowFindFirst = prisma.spentImportRow.findFirst as ReturnType<typeof vi.fn>;
+const mockRowFindMany = prisma.spentImportRow.findMany as ReturnType<typeof vi.fn>;
 const mockSyncRecordUpdateMany = prisma.spentSyncRecord.updateMany as ReturnType<typeof vi.fn>;
 const mockApplySync = applyExternalSpentSync as ReturnType<typeof vi.fn>;
 
@@ -67,7 +68,7 @@ describe("parseImportWorkbook", () => {
     const buffer = buildWorkbook([
       HEADERS,
       ["13800138000", 1280, "2026-01-15", "天猫", "TM001", "备注A"],
-      [" 13900139000 ", "500", "", "JD", "", ""],
+      [" 13900139000 ", "500", "", "JD", "TM002", ""],
       [null, null, null, null, null, null],
     ]);
     const result = parseImportWorkbook(buffer, "import.xlsx");
@@ -75,7 +76,7 @@ describe("parseImportWorkbook", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.rows).toHaveLength(2);
-    expect(result.fileHash).toMatch(/^[0-9a-f]{32}$/);
+    expect(result.fileHash).toMatch(/^[0-9a-f]{64}$/);
     expect(result.rows[0]).toMatchObject({
       rowIndex: 2,
       phone: "13800138000",
@@ -135,7 +136,7 @@ describe("parseImportWorkbook", () => {
     const buffer = buildWorkbook([
       HEADERS,
       ["12345", "abc", "2026-13-99", "拼多多", "", ""],
-      ["13800138000", -200, "", "微信小程序", "", ""],
+      ["13800138000", -200, "", "微信小程序", "TM003", ""],
     ]);
     const result = parseImportWorkbook(buffer, "import.xlsx");
     expect(result.ok).toBe(true);
@@ -166,17 +167,55 @@ describe("parseImportWorkbook", () => {
     expect(result).toMatchObject({ ok: false, code: "INVALID_FILE" });
   });
 
-  it("CSV 文件可解析", () => {
-    const csv = Buffer.from("手机号,金额（元）,消费日期\n13800138000,100,2026-01-15\n", "utf-8");
-    const result = parseImportWorkbook(csv, "import.csv");
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]).toMatchObject({
+  it("CSV 文件可解析，并支持 GBK 编码", () => {
+    const text =
+      "手机号,金额（元）,消费日期,订单号/小票号\n13800138000,100,2026-01-15,CSV001\n";
+    const utf8 = parseImportWorkbook(Buffer.from(text, "utf-8"), "import.csv");
+    expect(utf8.ok).toBe(true);
+    if (!utf8.ok) return;
+    expect(utf8.rows[0]).toMatchObject({
       phone: "13800138000",
       amount: 100,
       purchasedAt: "2026-01-15",
     });
+
+    const gbkBuffer = Buffer.from(
+      "yta7+rrFLL3wtu6jqNSqo6ksz/u30cjVxtostqm1pbrFL9ChxrG6xQoxMzgwMDEzODAwMCwxMDAsMjAyNi0wMS0xNSxDU1YwMDEK",
+      "base64"
+    );
+    const gbk = parseImportWorkbook(gbkBuffer, "import-gbk.csv");
+    expect(gbk.ok).toBe(true);
+    if (!gbk.ok) return;
+    expect(gbk.rows[0]).toMatchObject({
+      phone: "13800138000",
+      amount: 100,
+      orderNo: "CSV001",
+    });
+  });
+
+  it("表头可重排，订单号必填", () => {
+    const reordered = buildWorkbook([
+      ["金额（元）", "订单号/小票号", "手机号", "备注", "渠道", "消费日期"],
+      [1280, "REORDER-1", "13800138000", "备注", "天猫", "2026-01-15"],
+    ]);
+    const result = parseImportWorkbook(reordered, "reordered.xlsx");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rows[0]).toMatchObject({
+      phone: "13800138000",
+      amount: 1280,
+      orderNo: "REORDER-1",
+      channel: "TMALL",
+      error: null,
+    });
+
+    const missingOrder = parseImportWorkbook(
+      buildWorkbook([HEADERS, ["13800138000", 100, "", "", "", ""]]),
+      "missing-order.xlsx"
+    );
+    expect(missingOrder.ok).toBe(true);
+    if (!missingOrder.ok) return;
+    expect(missingOrder.rows[0].error).toContain("订单号/小票号必填");
   });
 
   it("虚高 !ref（整列格式化）无越界真实单元格：正常解析", () => {
@@ -206,7 +245,7 @@ describe("parseImportWorkbook", () => {
   });
 
   it("worker 隔离解析正常 xlsx", async () => {
-    const buffer = buildWorkbook([HEADERS, ["13800138000", 100, "2026-01-15"]]);
+    const buffer = buildWorkbook([HEADERS, ["13800138000", 100, "2026-01-15", "", "W001"]]);
     const result = await parseImportWorkbookIsolated(buffer, "import.xlsx");
 
     expect(result.ok).toBe(true);
@@ -219,7 +258,11 @@ describe("parseImportWorkbook", () => {
 describe("previewImportRows", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserFindMany.mockResolvedValue([{ phone: "13800138000" }]);
+    mockUserFindMany.mockResolvedValue([
+      { id: "user-1", phone: "13800138000", status: "ACTIVE" },
+    ]);
+    (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    mockRowFindMany.mockResolvedValue([]);
   });
 
   it("已注册手机号可导入，未注册报错", async () => {
@@ -229,7 +272,8 @@ describe("previewImportRows", () => {
         phone: "13800138000",
         amount: 100,
         channel: null,
-        orderNo: null,
+        orderNo: "PREVIEW-1",
+        orderNoKey: "PREVIEW-1",
         purchasedAt: null,
         note: null,
         error: null,
@@ -239,7 +283,8 @@ describe("previewImportRows", () => {
         phone: "13900139000",
         amount: 200,
         channel: null,
-        orderNo: null,
+        orderNo: "PREVIEW-2",
+        orderNoKey: "PREVIEW-2",
         purchasedAt: null,
         note: null,
         error: null,
@@ -253,7 +298,7 @@ describe("previewImportRows", () => {
     expect(totalAmount).toBe(100);
     expect(mockUserFindMany).toHaveBeenCalledWith({
       where: { phone: { in: ["13800138000", "13900139000"] } },
-      select: { phone: true },
+      select: { id: true, phone: true, status: true },
     });
   });
 
@@ -264,7 +309,8 @@ describe("previewImportRows", () => {
         phone: "13800138000",
         amount: 100,
         channel: null,
-        orderNo: null,
+        orderNo: "PREVIEW-1",
+        orderNoKey: "PREVIEW-1",
         purchasedAt: null,
         note: null,
         error: null,
@@ -272,13 +318,70 @@ describe("previewImportRows", () => {
     ]);
     expect(rows[0].maskedPhone).toBe("138****8000");
   });
+
+  it("预览阶段识别已审核、已导入和文件内重复订单号", async () => {
+    (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { userId: "user-1", orderNo: "APPROVED-1", status: "APPROVED" },
+    ]);
+    mockRowFindMany.mockResolvedValue([
+      { userId: "user-1", orderNo: "IMPORTED-1" },
+    ]);
+
+    const baseRow = {
+      rowIndex: 2,
+      phone: "13800138000",
+      amount: 100,
+      channel: null,
+      purchasedAt: null,
+      note: null,
+      error: null,
+    };
+    const { rows, okCount } = await previewImportRows([
+      { ...baseRow, orderNo: "APPROVED-1", orderNoKey: "APPROVED-1" },
+      { ...baseRow, rowIndex: 3, orderNo: "IMPORTED-1", orderNoKey: "IMPORTED-1" },
+      { ...baseRow, rowIndex: 4, orderNo: "NEW-1", orderNoKey: "NEW-1" },
+      { ...baseRow, rowIndex: 5, orderNo: "NEW-1", orderNoKey: "NEW-1" },
+    ]);
+
+    expect(rows[0].error).toContain("补录审核");
+    expect(rows[1].error).toContain("Excel 导入");
+    expect(rows[2].error).toBeNull();
+    expect(rows[3].error).toContain("文件内订单号重复");
+    expect(okCount).toBe(1);
+  });
+
+  it("待审核补录订单在预览阶段被拦截", async () => {
+    (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { userId: "user-1", orderNo: "PENDING-1", status: "PENDING" },
+    ]);
+
+    const { rows, okCount } = await previewImportRows([
+      {
+        rowIndex: 2,
+        phone: "13800138000",
+        amount: 100,
+        channel: null,
+        orderNo: "PENDING-1",
+        orderNoKey: "PENDING-1",
+        purchasedAt: null,
+        note: null,
+        error: null,
+      },
+    ]);
+
+    expect(rows[0].error).toContain("待审核");
+    expect(okCount).toBe(0);
+  });
 });
 
 describe("executeImportBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000" }]);
+    mockUserFindMany.mockResolvedValue([
+      { id: "user-1", phone: "13800138000", status: "ACTIVE" },
+    ]);
     (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    mockRowFindMany.mockResolvedValue([]);
     mockBatchFindFirst.mockResolvedValue(null);
     mockBatchCreate.mockImplementation(
       (args: { data: { rows: { create: Record<string, unknown>[] } } }) => ({
@@ -301,6 +404,24 @@ describe("executeImportBatch", () => {
     note: null,
   };
 
+  it("待审核补录订单在执行阶段被再次拦截", async () => {
+    (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { userId: "user-1", orderNo: "TM001", status: "PENDING" },
+    ]);
+
+    const result = await executeImportBatch({
+      rows: [okInput],
+      fileName: "pending.xlsx",
+      fileHash: "pending123",
+      reason: "待审核测试",
+      adminId: "admin-1",
+    });
+
+    expect(result.errorRows).toBe(1);
+    expect(result.rows[0].error).toContain("待审核");
+    expect(mockApplySync).not.toHaveBeenCalled();
+  });
+
   it("成功行入账：reference 内容哈希且幂等稳定", async () => {
     mockApplySync.mockResolvedValue({
       totalSpent: 1000,
@@ -313,6 +434,7 @@ describe("executeImportBatch", () => {
       rows: [okInput],
       fileName: "import.xlsx",
       fileHash: "abc123",
+      reason: "测试导入",
       adminId: "admin-1",
     });
 
@@ -334,6 +456,7 @@ describe("executeImportBatch", () => {
     expect(mockBatchCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         adminId: "admin-1",
+        reason: "测试导入",
         totalRows: 1,
         status: "PROCESSING",
         rows: {
@@ -343,6 +466,7 @@ describe("executeImportBatch", () => {
               amount: 1000,
               channel: "TMALL",
               orderNo: "TM001",
+              orderNoKey: "TM001",
               status: "PENDING",
               userId: "user-1",
               syncReference: contentReference,
@@ -372,12 +496,20 @@ describe("executeImportBatch", () => {
       appliedDelta: 1000,
       duplicated: false,
     });
-    await executeImportBatch({ rows: [okInput], fileName: "a.xlsx", adminId: "admin-1" });
+    await executeImportBatch({
+      rows: [okInput],
+      fileName: "a.xlsx",
+      fileHash: "aaa111",
+      reason: "测试导入",
+      adminId: "admin-1",
+    });
     // 模拟已存在一条成功且未撤销的同内容行
     mockRowFindFirst.mockResolvedValueOnce({ id: "row-existing" });
     const second = await executeImportBatch({
       rows: [okInput],
       fileName: "b.xlsx",
+      fileHash: "def456",
+      reason: "测试导入",
       adminId: "admin-1",
     });
 
@@ -391,6 +523,8 @@ describe("executeImportBatch", () => {
     const result = await executeImportBatch({
       rows: [okInput],
       fileName: "import.xlsx",
+      fileHash: "abc123",
+      reason: "测试导入",
       adminId: "admin-1",
     });
 
@@ -410,6 +544,8 @@ describe("executeImportBatch", () => {
     const result = await executeImportBatch({
       rows: [okInput],
       fileName: "import.xlsx",
+      fileHash: "abc123",
+      reason: "测试导入",
       adminId: "admin-1",
     });
 
@@ -417,6 +553,44 @@ describe("executeImportBatch", () => {
     expect(result.successRows).toBe(0);
     expect(result.totalAmount).toBe(0);
     expect(result.rows[0].status).toBe("DUPLICATE");
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "FAILED" }),
+      })
+    );
+  });
+
+  it("并发订单唯一冲突：自动冲正并按重复处理", async () => {
+    mockApplySync
+      .mockResolvedValueOnce({
+        totalSpent: 1000,
+        membershipLevel: "SILVER",
+        appliedDelta: 1000,
+        duplicated: false,
+      })
+      .mockResolvedValueOnce({
+        totalSpent: 0,
+        membershipLevel: "REGULAR",
+        appliedDelta: -1000,
+        duplicated: false,
+      });
+    mockRowUpdate
+      .mockRejectedValueOnce(Object.assign(new Error("unique"), { code: "P2002" }))
+      .mockResolvedValue({});
+
+    const result = await executeImportBatch({
+      rows: [okInput],
+      fileName: "race.xlsx",
+      fileHash: "race123",
+      reason: "并发测试",
+      adminId: "admin-1",
+    });
+
+    expect(result.duplicateRows).toBe(1);
+    expect(mockApplySync).toHaveBeenCalledTimes(2);
+    expect(mockApplySync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ userId: "user-1", spentDelta: -1000 })
+    );
   });
 
   it("入账异常：行标记 ERROR，不影响汇总", async () => {
@@ -425,6 +599,8 @@ describe("executeImportBatch", () => {
     const result = await executeImportBatch({
       rows: [okInput],
       fileName: "import.xlsx",
+      fileHash: "abc123",
+      reason: "测试导入",
       adminId: "admin-1",
     });
 
@@ -596,25 +772,54 @@ describe("undoImportBatch", () => {
   });
 });
 
-describe("导入行手机号令牌（PII 最小化）", () => {
-  it("签名令牌可还原手机号", () => {
-    const token = signImportPhoneToken("file-hash-1", 7, "13800138000");
+describe("导入预览加密令牌", () => {
+  const rows = [
+    {
+      rowIndex: 2,
+      phone: "13800138000",
+      amount: 100,
+      channel: null,
+      orderNo: "TOKEN-1",
+      orderNoKey: "TOKEN-1",
+      purchasedAt: null,
+      note: null,
+      error: null,
+    },
+  ];
+
+  it("令牌不包含明文手机号，可还原完整行并绑定管理员", () => {
+    const token = signImportPreviewToken({
+      adminId: "admin-1",
+      fileName: "a.xlsx",
+      fileHash: "file-hash-1",
+      rows,
+    });
     expect(token).not.toContain("13800138000");
-    expect(verifyImportPhoneToken(token)).toBe("13800138000");
+    const verified = verifyImportPreviewToken(token, "admin-1");
+    expect(verified.ok).toBe(true);
+    if (!verified.ok) return;
+    expect(verified.payload.rows[0]).toMatchObject({
+      phone: "13800138000",
+      orderNo: "TOKEN-1",
+    });
+    expect(verifyImportPreviewToken(token, "admin-2")).toMatchObject({
+      ok: false,
+      code: "TOKEN_FORBIDDEN",
+    });
   });
 
-  it("篡改令牌返回 null", () => {
-    const token = signImportPhoneToken("file-hash-1", 7, "13800138000");
-    const [payload, sig] = token.split(".");
-    const tamperedPayload = Buffer.from("file-hash-1:7:13900000000", "utf8").toString("base64url");
-    expect(verifyImportPhoneToken(`${tamperedPayload}.${sig}`)).toBeNull();
-    expect(verifyImportPhoneToken(`${payload}.${"A".repeat(sig.length)}`)).toBeNull();
-  });
-
-  it("非法格式令牌返回 null", () => {
-    expect(verifyImportPhoneToken("")).toBeNull();
-    expect(verifyImportPhoneToken("no-dot")).toBeNull();
-    expect(verifyImportPhoneToken("a.")).toBeNull();
-    expect(verifyImportPhoneToken(".b")).toBeNull();
+  it("篡改令牌或过期令牌被拒绝", () => {
+    const token = signImportPreviewToken({
+      adminId: "admin-1",
+      fileName: "a.xlsx",
+      fileHash: "file-hash-1",
+      rows,
+    });
+    const parts = token.split(".");
+    parts[3] = `${parts[3][0] === "A" ? "B" : "A"}${parts[3].slice(1)}`;
+    expect(verifyImportPreviewToken(parts.join("."), "admin-1")).toMatchObject({
+      ok: false,
+      code: "INVALID_TOKEN",
+    });
   });
 });

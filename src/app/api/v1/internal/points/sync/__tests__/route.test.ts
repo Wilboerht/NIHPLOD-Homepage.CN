@@ -11,6 +11,7 @@ const { txClient } = vi.hoisted(() => ({
   txClient: {
     user: { findUnique: vi.fn(), updateMany: vi.fn() },
     spentSyncRecord: { findUnique: vi.fn(), create: vi.fn() },
+    spentOrderClaim: { findUnique: vi.fn(), create: vi.fn() },
     membershipLevelChange: { create: vi.fn() },
     pointLedger: {
       findUnique: vi.fn(),
@@ -27,6 +28,10 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: vi.fn() },
     tokenBlacklist: { create: vi.fn().mockResolvedValue({}) },
+    spentSyncRecord: {
+      findUnique: vi.fn(),
+      aggregate: vi.fn().mockResolvedValue({ _sum: { spentDelta: 0 } }),
+    },
     // 事务 mock：直接以 txClient 执行回调
     $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
   },
@@ -107,6 +112,14 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
     // 默认：幂等记录不存在、CAS 条件更新命中
     txClient.spentSyncRecord.findUnique.mockResolvedValue(null);
     txClient.spentSyncRecord.create.mockResolvedValue({});
+    txClient.spentOrderClaim.findUnique.mockResolvedValue(null);
+    txClient.spentOrderClaim.create.mockResolvedValue({});
+    (prisma.spentSyncRecord.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "rec-dup",
+    });
+    (prisma.spentSyncRecord.aggregate as ReturnType<typeof vi.fn>).mockResolvedValue({
+      _sum: { spentDelta: 0 },
+    });
     txClient.membershipLevelChange.create.mockResolvedValue({});
     txClient.user.updateMany.mockResolvedValue({ count: 1 });
     // 积分联动默认 mock
@@ -203,6 +216,9 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
         reference: "mall-order-N001",
         spentDelta: 150,
         note: "商城订单消费",
+        orderNo: "mall-order-N001",
+        orderNoKey: "MALL-ORDER-N001",
+        source: "MALL_SYNC",
       },
     });
     // 等级变更轨迹：REGULAR → SILVER（跨档入账记录）
@@ -370,6 +386,22 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
       duplicated: true,
     });
     // 事务因 P2002 中止并整体回滚，消费额不会重复入账（幂等返回当前权威值）
+  });
+
+  it("订单已被其他来源占用时返回 409 ORDER_CONFLICT", async () => {
+    mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
+    txClient.user.findUnique.mockResolvedValue({
+      totalSpent: 850,
+      membershipLevel: "REGULAR",
+    });
+    txClient.spentOrderClaim.findUnique.mockResolvedValue({ source: "SPENT_IMPORT" });
+
+    const res = await POST(createSignedRequest(VALID_BODY));
+    const data = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(data.error.code).toBe("ORDER_CONFLICT");
+    expect(txClient.spentSyncRecord.create).not.toHaveBeenCalled();
   });
 
   it("userId 定位成功（微信占位号/换绑后账号场景），响应回传 userId", async () => {

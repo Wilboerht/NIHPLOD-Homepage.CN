@@ -11,6 +11,8 @@ import { Prisma } from "@/generated/prisma/client";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { adjustPoints, redeemPoints, withPointTxRetry } from "@/lib/points-ledger";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 /** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
@@ -133,6 +135,8 @@ export async function redeemGiftForUser(params: {
         };
       }
 
+      // 锁定产品行，避免确认价格后管理员并发改价导致按旧价扣分
+      await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${productId} FOR UPDATE`;
       const product = await tx.product.findUnique({
         where: { id: productId },
         select: {
@@ -300,7 +304,10 @@ export async function fulfillRedemption(params: {
       where: { userId: redemption.userId },
       select: { available: true },
     });
-    const available = balance?.available ?? 0;
+    if (!balance) {
+      return { ok: false, code: "NEGATIVE_BALANCE" as const, available: 0 };
+    }
+    const available = balance.available;
     if (available < 0) {
       return { ok: false, code: "NEGATIVE_BALANCE" as const, available };
     }
@@ -403,4 +410,76 @@ export async function updateRedemptionWaybill(params: {
     data: waybillNo ? { waybillNo, carrier: "SF" } : { waybillNo: null, carrier: null },
   });
   return { ok: true };
+}
+
+
+/**
+ * Cron���Զ�ȡ����ʱδ��Լ�Ķһ������˻����ֲ��ͷ�������档
+ * Ĭ�� 30 �죬��ͨ�� POINT_REDEMPTION_PENDING_DAYS ��������Ϊ 0 �ɹرա�
+ */
+export async function expirePendingRedemptions(
+  options: { days?: number; limit?: number } = {}
+): Promise<{ scanned: number; cancelled: number; skipped: number; failed: number }> {
+  const configuredDays = options.days ?? Number(process.env.POINT_REDEMPTION_PENDING_DAYS ?? "30");
+  const days = Number.isFinite(configuredDays) ? configuredDays : 30;
+  if (days <= 0) return { scanned: 0, cancelled: 0, skipped: 0, failed: 0 };
+  const limit = Math.min(500, Math.max(1, options.limit ?? 200));
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const pending = await prisma.pointRedemption.findMany({
+    where: { status: "PENDING", createdAt: { lt: cutoff } },
+    select: { id: true, userId: true, productName: true, points: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let cancelled = 0;
+  let skipped = 0;
+  let failed = 0;
+  for (const redemption of pending) {
+    const auditId = await beginAuditLog({
+      action: "point_redemption_auto_cancel",
+      targetType: "point_redemption",
+      targetId: redemption.id,
+      userId: redemption.userId,
+      actorType: "SYSTEM",
+      authMethod: "cron",
+      detail: {
+        reason: "pending_timeout",
+        days,
+        productName: redemption.productName,
+        points: redemption.points,
+        createdAt: redemption.createdAt.toISOString(),
+      },
+    });
+    if (!auditId) {
+      failed += 1;
+      continue;
+    }
+
+    try {
+      const result = await cancelRedemption({
+        redemptionId: redemption.id,
+        note: `��ʱ ${days} ��δ��Լ�Զ�ȡ��`,
+      });
+      if (result.ok) {
+        cancelled += 1;
+        await finishAuditLog(auditId, "SUCCESS", {
+          refundedPoints: result.points ?? 0,
+        });
+      } else if (result.code === "ALREADY_PROCESSED") {
+        skipped += 1;
+        await finishAuditLog(auditId, "FAILURE", { code: result.code });
+      } else {
+        failed += 1;
+        await finishAuditLog(auditId, "FAILURE", { code: result.code ?? "UNKNOWN" });
+      }
+    } catch (error) {
+      failed += 1;
+      apiConsole.error(`[PointRedemptionTimeout] ȡ��ʧ�� id=${redemption.id}:`, error);
+      await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
+    }
+  }
+
+  return { scanned: pending.length, cancelled, skipped, failed };
 }

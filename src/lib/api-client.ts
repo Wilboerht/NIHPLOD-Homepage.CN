@@ -54,6 +54,8 @@ interface RequestOptions {
   body?: unknown;
   params?: Record<string, string | number | undefined>;
   headers?: Record<string, string>;
+  /** 请求超时，默认 30 秒；批量导入等长任务可单独放宽 */
+  timeoutMs?: number;
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
@@ -118,7 +120,7 @@ export async function apiRequest<T = unknown>(
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { method = "GET", body, params, headers: customHeaders } = options;
+  const { method = "GET", body, params, headers: customHeaders, timeoutMs = 30000 } = options;
   const url = buildUrl(path, params);
 
   const send = async (isRetry = false): Promise<T> => {
@@ -154,9 +156,9 @@ export async function apiRequest<T = unknown>(
       }
     }
 
-    // 30 秒请求超时保护
+    // 请求超时保护（默认 30 秒）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     init.signal = controller.signal;
 
     const response = await fetch(url, init).finally(() => clearTimeout(timeoutId));

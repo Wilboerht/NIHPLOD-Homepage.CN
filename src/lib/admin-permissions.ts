@@ -16,6 +16,7 @@ export const ADMIN_PERMISSIONS = [
   "users:write",
   "users:delete",
   "users:security:write",
+  "points:adjust",
 
   "products:read",
   "products:write",
@@ -109,6 +110,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "users:write",
       "users:delete",
       "users:security:write",
+      "points:adjust",
     ],
   },
   {
@@ -186,7 +188,8 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "users:sensitive:read": "查看完整手机号（敏感，写审计）",
   "users:write": "用户状态/生日/解绑",
   "users:delete": "用户删除（GDPR 匿名化）",
-  "users:security:write": "重置密码/积分调整（资金类）",
+  "users:security:write": "重置密码/敏感账户操作",
+  "points:adjust": "人工调整积分（资金类）",
   "products:read": "产品查看",
   "products:write": "产品编辑/上下架",
   "products:delete": "产品删除",
@@ -341,6 +344,7 @@ export const ROLE_TEMPLATES: Record<
     "dashboard:read",
     "users:read",
     "spent:read",
+    "spent:import",
     "gifts:read",
     "redemptions:read",
     "advisor:users:read",

@@ -5,7 +5,6 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -30,7 +29,7 @@ const adjustSchema = z.object({
     .refine((v) => v !== 0, "调整分值不能为 0")
     .refine((v) => Math.abs(v) <= 1000000, "单次调整绝对值不能超过 1,000,000"),
   note: z.string().trim().min(2, "请填写调整原因（至少 2 个字）").max(200, "调整原因过长"),
-  requestId: z.string().min(1).max(64).optional(),
+  requestId: z.string().min(1, "缺少幂等请求标识").max(64),
   // 资金类操作二次验证码（TOTP 或备用码）
   totpCode: z.string().max(20).optional(),
 });
@@ -117,7 +116,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       };
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminUserPoints] 查询失败:", error);
     return NextResponse.json(
@@ -141,7 +143,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 401 }
       );
     }
-    if (!hasAdminPermission(admin, "users:security:write")) {
+    if (!hasAdminPermission(admin, "points:adjust")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：积分调整" } },
         { status: 403 }
@@ -174,16 +176,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
     if (totpResponse) return totpResponse;
 
-    const user = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
     if (!user) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
       );
     }
+    if (user.status === "DELETED") {
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DELETED", message: "已注销用户不可调整积分" } },
+        { status: 409 }
+      );
+    }
 
-    // 幂等键：客户端重试可复用 requestId；缺省时服务端生成
-    const reference = `admin-adjust:${requestId ?? randomUUID()}`;
+    const reference = `admin-adjust:${requestId}`;
 
     const result = await prisma.$transaction(async (tx) => {
       const adjusted = await adjustPoints(tx, { userId: id, amount, reference, note });
@@ -210,10 +220,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return { duplicated: false, available };
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { duplicated: result.duplicated, available: result.available, amount },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { duplicated: result.duplicated, available: result.available, amount },
+      },
+      { headers: { "Cache-Control": "no-store, max-age=0" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminUserPoints] 调整失败:", error);
     return NextResponse.json(

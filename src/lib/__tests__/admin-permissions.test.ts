@@ -70,6 +70,7 @@ describe("角色模板", () => {
     const finance = resolveAdminPermissions("finance");
     expect(finance).toContain("audit:read");
     expect(finance).toContain("spent:read");
+    expect(finance).toContain("spent:import");
     expect(finance).not.toContain("spent:review");
     expect(finance).not.toContain("users:write");
   });

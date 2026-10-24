@@ -465,6 +465,7 @@ function AdminUsersContent() {
   const canWriteUsers = canAdmin("users:write");
   const canDeleteUsers = canAdmin("users:delete");
   const canSecurityWrite = canAdmin("users:security:write");
+  const canAdjustPoints = canAdmin("points:adjust");
   const canRevealPhone = canAdmin("users:sensitive:read");
   const canReadAdvisorProfile = canAdmin("advisor:users:read");
 
@@ -1583,7 +1584,7 @@ function AdminUsersContent() {
                           <span className="font-mono font-medium tabular-nums">
                             {detailPoints ? detailPoints.available.toLocaleString() : "—"}
                           </span>
-                          {canSecurityWrite && (
+                          {canAdjustPoints && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1805,7 +1806,7 @@ function AdminUsersContent() {
                         </p>
                       )}
                     </div>
-                    {canSecurityWrite && (
+                    {canAdjustPoints && (
                       <Button
                         size="sm"
                         variant="outline"

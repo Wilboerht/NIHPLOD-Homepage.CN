@@ -65,6 +65,20 @@ function internalError(message = "服务器错误"): NextResponse {
   );
 }
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store, max-age=0" };
+
+function userVisibleLedgerNote(
+  type: string,
+  reference: string,
+  note: string | null
+): string | null {
+  const ref = reference ?? "";
+  if (type === "ADJUST" && ref.startsWith("admin-adjust:")) return "人工调整";
+  if (type === "ADJUST" && ref.startsWith("cancel:")) return "兑换取消退还";
+  if (type === "EXPIRE") return "积分过期";
+  return note;
+}
+
 function toAddressView(a: {
   id: string;
   recipient: string;
@@ -127,6 +141,7 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
           amount: true,
           remaining: true,
           note: true,
+          reference: true,
           expiresAt: true,
           createdAt: true,
         },
@@ -144,14 +159,17 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
           amount: r.amount,
           // 剩余未消耗量：用于前端准确计算"即将过期"积分（FIFO 后仍有效的部分）
           remaining: r.remaining,
-          note: r.note,
+          note: userVisibleLedgerNote(r.type, r.reference, r.note),
           expiresAt: r.expiresAt?.toISOString() ?? null,
           createdAt: r.createdAt.toISOString(),
         })),
       };
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     apiConsole.error("[UserPoints] 查询失败:", error);
     return internalError();
@@ -201,14 +219,17 @@ export async function getPointsLedgerResponse(
       type: r.type,
       amount: r.amount,
       remaining: r.remaining,
-      note: r.note,
+      note: userVisibleLedgerNote(r.type, r.reference, r.note),
       // 业务流水号（商城单据号 / 幂等键），供用户核对
       reference: r.reference,
       expiresAt: r.expiresAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     }));
 
-    return NextResponse.json({ success: true, data: { items, hasMore, total } });
+    return NextResponse.json(
+      { success: true, data: { items, hasMore, total } },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     apiConsole.error("[UserPointsLedger] 查询失败:", error);
     return internalError();
@@ -298,7 +319,10 @@ export async function getPointGiftsResponse(
       };
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     apiConsole.error("[UserPointGifts] 查询失败:", error);
     return internalError();
@@ -367,15 +391,18 @@ export async function redeemPointsResponse(
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        redemptionId: result.redemptionId,
-        points: result.points,
-        available: result.available,
-        duplicated: result.duplicated,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          redemptionId: result.redemptionId,
+          points: result.points,
+          available: result.available,
+          duplicated: result.duplicated,
+        },
       },
-    });
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     apiConsole.error("[UserPointRedeem] 兑换失败:", error);
     return NextResponse.json(
@@ -449,10 +476,13 @@ export async function getRedemptionsResponse(
       createdAt: r.createdAt.toISOString(),
     }));
 
-    return NextResponse.json({
-      success: true,
-      data: { redemptions, hasMore, total },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: { redemptions, hasMore, total },
+      },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     apiConsole.error("[UserPointRedemptions] 查询失败:", error);
     return internalError();

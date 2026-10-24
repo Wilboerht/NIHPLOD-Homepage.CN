@@ -236,6 +236,7 @@ model User {
   refreshTokens               RefreshToken[]
   auditLogs                   AuditLog[]
   spentSyncRecords            SpentSyncRecord[]
+  spentOrderClaims            SpentOrderClaim[]
   loginAttempts               LoginAttempt[]
   passwordHistory             PasswordHistory[]            @relation("UserPasswordHistory")
   spentAdjustmentApplications SpentAdjustmentApplication[]
@@ -759,20 +760,50 @@ model SpentAdjustmentApplication {
   @@index([createdAt(sort: Desc)])
 }
 
+// 消费单据来源。同一用户同一订单号跨来源只能入账一次。
+enum SpentOrderSource {
+  MALL_SYNC
+  SPENT_IMPORT
+  SPENT_ADJUSTMENT
+}
+
 // 外部商城消费额同步幂等记录（商城侧单据号唯一，防止重复上报重复入账）
 model SpentSyncRecord {
-  id         String    @id @default(cuid())
+  id         String            @id @default(cuid())
   userId     String
   reference  String // 商城侧唯一单据号（幂等键）
-  spentDelta Int // 实际生效的消费额变动（元，正加负减；可能被 0 下限钳制）
-  note       String?   @db.Text
-  revertedAt DateTime? // 导入撤销时间（保留记录用于审计，不物理删除）
-  createdAt  DateTime  @default(now())
+  orderNo    String? // 原始订单号/小票号
+  orderNoKey String? // 规范化订单号；跨来源去重
+  source     SpentOrderSource? // 入账来源；历史数据为空
+  spentDelta Int // 实际生效的消费额变动（元，正负均可，可能被 0 下限钳制）
+  note       String?           @db.Text
+  revertedAt DateTime? // 导入撤销时间（保留记录做审计，不物理删除）
+  createdAt  DateTime          @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  @@unique([userId, reference]) // 幂等防重：同一用户同一单据只入账一次
+  @@unique([userId, reference]) // 幂等防重：同一用户同一单据只能入账一次
   @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, orderNoKey])
+  @@index([orderNoKey])
+}
+
+// 统一消费订单占用：商城同步、Excel 导入、用户补录审批共用。
+// 用户撤销导入/补录时删除占用，允许修正后重新入账。
+model SpentOrderClaim {
+  id        String           @id @default(cuid())
+  userId    String
+  orderNo   String
+  orderNoKey String
+  source    SpentOrderSource
+  reference String
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orderNoKey])
+  @@index([reference])
+  @@index([source, createdAt(sort: Desc)])
 }
 
 // 管理端 Excel 批量导入消费记录的逐行结果状态
@@ -795,6 +826,7 @@ model SpentImportBatch {
   adminId       String
   fileName      String // ??????????
   fileHash      String? // ???? SHA-256???????????????
+  reason        String?                @db.Text
   version       String?
   status        SpentImportBatchStatus @default(PROCESSING)
   processedRows Int                    @default(0)
@@ -821,10 +853,12 @@ model SpentImportBatch {
 model SpentImportRow {
   id            String                  @id @default(cuid())
   batchId       String
+  rowIndex      Int? // Excel 行号（表头为第 1 行，数据从第 2 行开始）
   phone         String // 行内手机号（原样保存，便于回溯）
   amount        Int // 消费额变动（元，正加负减）
   channel       SpentAdjustmentChannel? // 渠道（选填）
-  orderNo       String? // 订单号/小票号（选填）
+  orderNo       String? // 订单号/小票号
+  orderNoKey    String? // 规范化订单号（去重键；历史数据为空）
   purchasedAt   DateTime? // 消费日期（选填）
   note          String?                 @db.Text
   reference     String // 批内行键（内容键:批次version，仅用于映射本批次行）
@@ -842,6 +876,7 @@ model SpentImportRow {
   @@index([batchId])
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, syncReference, status])
+  @@index([userId, orderNoKey])
 }
 
 // ============================================
@@ -857,7 +892,7 @@ enum PointLedgerType {
   REDEEM // 兑礼扣减（FIFO 消耗最旧可用流水）
   REDEEM_REFUND // 商城兑换撤销退分（正向计 remaining 并 6 个月过期）
   EXPIRE // 过期扣减
-  ADJUST // 人工调整（管理端补偿/冲正；正向计 remaining 并 6 个月过期，负向直接冲可用）
+  ADJUST // 人工调整（管理端补偿/冲正；正向计 remaining 并 6 个月过期，负向先 FIFO 再冲可用）
 }
 
 // 积分流水（FIFO 消耗：发放类流水记录 remaining，兑礼/过期按时间序消耗）

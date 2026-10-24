@@ -73,6 +73,12 @@ export type AuditAction =
   | "user_password_reset"
   | "user_identity_unbind"
   | "user_points_adjust"
+  | "points_internal_sync"
+  | "points_internal_grant"
+  | "points_internal_redeem"
+  | "points_internal_refund"
+  | "point_redemption_auto_cancel"
+  | "point_invariant_check"
   | "update_vip_benefit"
   | "reset_vip_benefit"
   | "submit_spent_adjustment"
@@ -143,6 +149,8 @@ export type AuditTargetType =
   | "vip"
   | "spent_adjustment"
   | "spent_import"
+  | "spent_sync"
+  | "point_ledger"
   | "point_gift"
   | "point_redemption"
   | "oauth_session"
@@ -204,6 +212,12 @@ export const AUDIT_ACTIONS = [
   "user_password_reset",
   "user_identity_unbind",
   "user_points_adjust",
+  "points_internal_sync",
+  "points_internal_grant",
+  "points_internal_redeem",
+  "points_internal_refund",
+  "point_redemption_auto_cancel",
+  "point_invariant_check",
   "update_vip_benefit",
   "reset_vip_benefit",
   "submit_spent_adjustment",
@@ -278,6 +292,8 @@ export const AUDIT_TARGET_TYPES = [
   "vip",
   "spent_adjustment",
   "spent_import",
+  "spent_sync",
+  "point_ledger",
   "point_gift",
   "point_redemption",
   "point_campaign",

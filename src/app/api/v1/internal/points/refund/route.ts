@@ -32,6 +32,7 @@ import {
   hashRequestBody,
 } from "@/lib/internal-api";
 import { getPointBalanceView, refundRedeemPoints, withPointTxRetry } from "@/lib/points-ledger";
+import { auditInternalPoints } from "@/lib/internal-points-audit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -209,6 +210,23 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    await auditInternalPoints({
+      action: "points_internal_refund",
+      targetType: "point_ledger",
+      targetId: reference,
+      userId: user.id,
+      project: config.project,
+      key,
+      request,
+      detail: {
+        reference,
+        refunded: result.refunded,
+        available: result.available,
+        duplicated: result.duplicated,
+        note: note ?? null,
+      },
+    });
 
     return NextResponse.json({
       success: true,

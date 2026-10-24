@@ -80,6 +80,8 @@ describe("reviewApplication", () => {
       userId: "user-1",
       spentDelta: 1280,
       reference: expect.stringContaining("manual:app-1:"),
+      orderNo: "ORDER123",
+      source: "SPENT_ADJUSTMENT",
       note: expect.stringContaining("ORDER123"),
     });
     expect(sendSpentReviewNotification).toHaveBeenCalledWith("13800138000", "已通过");

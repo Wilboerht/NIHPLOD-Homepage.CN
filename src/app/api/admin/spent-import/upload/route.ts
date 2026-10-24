@@ -2,17 +2,18 @@
  * 消费记录导入预览 API（管理端）
  * POST /api/admin/spent-import/upload - 上传 Excel，解析并逐行校验（不落库不入账）
  *
- * multipart/form-data：file 字段（.xlsx / .xls / .csv，≤ 5MB，≤ 1000 行）
+ * multipart/form-data：file 字段（.xlsx / .xls / .csv，≤ 5MB，≤ 500 行）
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { createAuditLogStrict } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 import {
   parseImportWorkbookIsolated,
   previewImportRows,
-  signImportPhoneToken,
+  signImportPreviewToken,
   IMPORT_MAX_FILE_SIZE,
 } from "@/lib/spent-import";
 
@@ -37,6 +38,20 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "spent-import:preview");
     if (rateLimitResponse) return rateLimitResponse;
+
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (Number.isFinite(contentLength) && contentLength > IMPORT_MAX_FILE_SIZE + 1024 * 1024) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_FILE",
+            message: `文件大小不能超过 ${IMPORT_MAX_FILE_SIZE / 1024 / 1024}MB`,
+          },
+        },
+        { status: 413 }
+      );
+    }
 
     let formData: FormData;
     try {
@@ -85,7 +100,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const activeBatch = await prisma.spentImportBatch.findFirst({
+      where: {
+        fileHash: parsed.fileHash,
+        undoneAt: null,
+        status: { in: ["PROCESSING", "COMPLETED"] },
+      },
+      select: { id: true },
+    });
+    if (activeBatch) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ALREADY_IMPORTED",
+            message: "该文件已有未撤销的导入批次，请先在导入历史中撤销原批次",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     const preview = await previewImportRows(parsed.rows);
+    const previewToken = signImportPreviewToken({
+      adminId: admin.id,
+      fileName,
+      fileHash: parsed.fileHash,
+      rows: parsed.rows,
+    });
 
     await createAuditLogStrict({
       action: "spent_import_preview",
@@ -112,13 +154,9 @@ export async function POST(request: NextRequest) {
       data: {
         fileName,
         fileHash: parsed.fileHash,
+        previewToken,
         rows: preview.rows.map((r) => ({
           rowIndex: r.rowIndex,
-          // PII 最小化：预览不回传明文手机号，返回签名令牌供执行接口还原
-          phoneToken:
-            r.phone && r.error === null
-              ? signImportPhoneToken(parsed.fileHash, r.rowIndex, r.phone)
-              : null,
           maskedPhone: r.maskedPhone,
           amount: r.amount,
           channel: r.channel,

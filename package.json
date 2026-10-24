@@ -24,7 +24,9 @@
     "generate:oauth-rs256-keys": "tsx scripts/generate-oauth-rs256-keys.ts",
     "generate:internal-api-keys": "tsx scripts/generate-internal-api-keys.ts",
     "oauth:add-client-scopes": "tsx scripts/add-oauth-client-scopes.ts",
-    "compare:advisor-products": "tsx scripts/compare-advisor-products.ts"
+    "compare:advisor-products": "tsx scripts/compare-advisor-products.ts",
+    "spent:check-conflicts": "tsx scripts/check-spent-order-conflicts.ts",
+    "points:check-invariants": "tsx scripts/check-point-invariants.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

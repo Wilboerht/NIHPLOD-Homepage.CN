@@ -147,16 +147,22 @@ describe("POST /api/admin/users/[id]/points（人工调整）", () => {
     expect(adjustPoints).not.toHaveBeenCalled();
   });
 
-  it("金额为 0 或缺少原因返回 400", async () => {
+  it("金额为 0、缺少原因或缺少幂等标识返回 400", async () => {
     let res = await POST(createRequest("POST", { amount: 0, note: "测试" }), context);
     expect(res.status).toBe(400);
 
     res = await POST(createRequest("POST", { amount: 10, note: "" }), context);
     expect(res.status).toBe(400);
+
+    res = await POST(createRequest("POST", { amount: 10, note: "测试" }), context);
+    expect(res.status).toBe(400);
   });
 
   it("owner 调整成功并写审计", async () => {
-    const res = await POST(createRequest("POST", { amount: 50, note: "客服补偿" }), context);
+    const res = await POST(
+      createRequest("POST", { amount: 50, note: "客服补偿", requestId: "req-success" }),
+      context
+    );
     const data = await res.json();
 
     expect(res.status).toBe(200);
@@ -178,7 +184,10 @@ describe("POST /api/admin/users/[id]/points（人工调整）", () => {
   it("审计写入失败时返回 500，不返回调整成功", async () => {
     vi.mocked(createAuditLogTx).mockRejectedValueOnce(new Error("audit unavailable"));
 
-    const res = await POST(createRequest("POST", { amount: 50, note: "客服补偿" }), context);
+    const res = await POST(
+      createRequest("POST", { amount: 50, note: "客服补偿", requestId: "req-audit" }),
+      context
+    );
     expect(res.status).toBe(500);
   });
 
