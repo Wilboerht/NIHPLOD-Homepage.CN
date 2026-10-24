@@ -5,11 +5,9 @@ import {
   Activity,
   AlertTriangle,
   CalendarDays,
-  CheckCircle2,
   ExternalLink,
   RefreshCw,
   Sparkles,
-  XCircle,
 } from "lucide-react";
 import { apiGet, apiPatch, ApiError } from "@/lib/api-client";
 import { buildAdvisorAdminLink } from "@/lib/advisor-admin-link";
@@ -22,6 +20,7 @@ import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { PanelCard } from "@/components/admin/PanelCard";
 import { StatStrip } from "@/components/admin/StatStrip";
+import { AdvisorReports } from "@/components/admin/users/AdvisorReports";
 import { cn } from "@/lib/utils";
 import type { AdvisorOverviewPayload, AdvisorUserOverview } from "@/types/advisor-user";
 
@@ -102,14 +101,18 @@ function PanelSkeleton() {
 }
 
 function OverviewContent({
+  userId,
   overview,
   advisorDeepLink,
   canOpenAdvisor,
+  canReadReport,
   actions,
 }: {
+  userId: string;
   overview: AdvisorUserOverview;
   advisorDeepLink: string;
   canOpenAdvisor: boolean;
+  canReadReport: boolean;
   actions?: ReactNode;
 }) {
   const { account, usage, counts } = overview;
@@ -199,90 +202,67 @@ function OverviewContent({
         )}
       </PanelCard>
 
-      <PanelCard title="最近测肤记录">
-        {overview.recentSessions.length === 0 ? (
-          <p className="py-6 text-center text-sm text-brand-charcoal/65">暂无测肤记录</p>
-        ) : (
-          <div className="divide-y divide-brand-charcoal/10">
-            {overview.recentSessions.map((session) => (
-              <div
-                key={session.sessionId}
-                className="flex flex-wrap items-center justify-between gap-2 py-2.5"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  {session.completedAt ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                  ) : (
-                    <XCircle className="h-4 w-4 shrink-0 text-brand-charcoal/30" />
-                  )}
-                  <span className="text-sm text-brand-charcoal">
-                    {formatDateTime(session.completedAt || session.createdAt)}
-                  </span>
-                  {session.skinTypeLabel && (
-                    <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
-                      {session.skinTypeLabel}
-                    </Badge>
-                  )}
-                  {!session.completedAt && (
-                    <span className="text-xs text-brand-charcoal/65">已中断</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 text-sm">
-                  {typeof session.overallScore === "number" && (
-                    <span className="font-mono tabular-nums text-brand-charcoal">
-                      {session.overallScore} 分
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </PanelCard>
+      {canReadReport ? (
+        <AdvisorReports userId={userId} />
+      ) : (
+        <div className="rounded-xl border border-brand-charcoal/10 bg-white px-3 py-2.5 text-xs text-brand-charcoal/55">
+          需要完整报告权限（advisor:report:read）才能查看报告正文；当前仅展示账号、配额和摘要。
+        </div>
+      )}
 
-      <PanelCard title="最近护肤日记">
-        {overview.recentDiary.length === 0 ? (
-          <p className="py-6 text-center text-sm text-brand-charcoal/65">暂无护肤日记</p>
-        ) : (
-          <div className="divide-y divide-brand-charcoal/10">
-            {overview.recentDiary.map((entry) => (
-              <div
-                key={`${entry.date}-${entry.skinState}`}
-                className="flex flex-wrap items-center justify-between gap-2 py-2.5"
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-brand-charcoal/40" />
-                  <span className="text-sm text-brand-charcoal">{formatDay(entry.date)}</span>
-                  <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                    {SKIN_STATE_LABELS[entry.skinState] || entry.skinState}
-                  </Badge>
+      <details className="rounded-xl border border-brand-charcoal/10 bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm text-brand-charcoal">
+          <span className="inline-flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-brand-charcoal/45" />
+            最近护肤日记
+          </span>
+          <span className="text-[11px] text-brand-charcoal/45">
+            {overview.recentDiary.length > 0 ? `${overview.recentDiary.length} 条` : "暂无"}
+          </span>
+        </summary>
+        <div className="border-t border-brand-charcoal/10 px-3 py-2">
+          {overview.recentDiary.length === 0 ? (
+            <p className="py-2 text-xs text-brand-charcoal/55">暂无护肤日记</p>
+          ) : (
+            <div className="divide-y divide-brand-charcoal/[0.06]">
+              {overview.recentDiary.map((entry) => (
+                <div
+                  key={`${entry.date}-${entry.skinState}`}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-brand-charcoal">{formatDay(entry.date)}</span>
+                    <Badge variant="secondary" size="sm">
+                      {SKIN_STATE_LABELS[entry.skinState] || entry.skinState}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {entry.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-brand-charcoal/[0.04] px-2 py-0.5 text-[11px] text-brand-charcoal/70"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  {entry.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-brand-charcoal/[0.04] px-2 py-0.5 text-[11px] text-brand-charcoal/70"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </PanelCard>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
 
       {canOpenAdvisor && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-3">
-          <p className="text-xs text-brand-charcoal/65">
-            需要查看完整报告或调整配额时，请前往测肤子站后台。
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-3 py-2.5">
+          <p className="text-xs text-brand-charcoal/60">
+            需要调整配额、查看推荐规则或子站其他后台功能时，前往测肤子站。
           </p>
           <a
             href={advisorDeepLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-brand-primary hover:underline"
+            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-brand-primary hover:underline"
           >
             在测肤子站打开
             <ExternalLink className="h-3.5 w-3.5" />
@@ -314,6 +294,7 @@ export function UserAdvisorPanel({
 
   const canWrite = can("advisor:users:write");
   const canOpenAdvisor = can("advisor:access") || can("advisor:admin");
+  const canReadReport = can("advisor:report:read");
   const mainActive = mainStatus === "ACTIVE";
 
   useEffect(() => {
@@ -564,9 +545,11 @@ export function UserAdvisorPanel({
         </Button>
       </div>
       <OverviewContent
+        userId={userId}
         overview={payload.overview}
         advisorDeepLink={advisorDeepLink}
         canOpenAdvisor={canOpenAdvisor}
+        canReadReport={canReadReport}
         actions={actions}
       />
       <ConfirmDialog

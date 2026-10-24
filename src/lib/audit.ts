@@ -65,6 +65,7 @@ export type AuditAction =
   | "user_detail_sensitive_view"
   | "advisor_user_view"
   | "advisor_user_update"
+  | "advisor_report_view"
   | "application_detail_view"
   | "resume_download"
   | "step_up_granted"
@@ -195,6 +196,7 @@ export const AUDIT_ACTIONS = [
   "user_detail_sensitive_view",
   "advisor_user_view",
   "advisor_user_update",
+  "advisor_report_view",
   "application_detail_view",
   "resume_download",
   "step_up_granted",

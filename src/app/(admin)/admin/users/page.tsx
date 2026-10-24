@@ -33,6 +33,8 @@ import {
   Sparkles,
   Copy,
   X,
+  LayoutDashboard,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +46,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client";
@@ -104,10 +107,19 @@ const membershipLevelMap: Record<
   DIAMOND: { label: "钻石卡会员", variant: "primary" },
 };
 
-type DetailTab = "basic" | "advisor" | "points" | "address" | "spent" | "growth" | "login";
+type DetailTab =
+  | "overview"
+  | "basic"
+  | "advisor"
+  | "points"
+  | "address"
+  | "spent"
+  | "growth"
+  | "login";
 
 const DETAIL_TABS: { key: DetailTab; label: string; icon: LucideIcon }[] = [
-  { key: "basic", label: "基本信息", icon: User },
+  { key: "overview", label: "概览", icon: LayoutDashboard },
+  { key: "basic", label: "账号资料", icon: User },
   { key: "advisor", label: "测肤档案", icon: Sparkles },
   { key: "points", label: "积分与兑换", icon: Wallet },
   { key: "address", label: "收货地址", icon: MapPin },
@@ -132,15 +144,15 @@ function DetailSection({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white",
+        "border-t border-brand-charcoal/10 pt-4 first:border-t-0 first:pt-0",
         className
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-charcoal/10 px-4 py-3">
-        <h3 className="text-sm font-medium text-brand-charcoal">{title}</h3>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-brand-charcoal">{title}</h3>
         {action}
       </div>
-      <div className={cn("p-4", bodyClassName)}>{children}</div>
+      <div className={cn(bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -425,7 +437,7 @@ function AdminUsersContent() {
   const [detailAdjustments, setDetailAdjustments] = useState<SpentAdjustmentItem[]>([]);
   const [detailAdjustmentTotal, setDetailAdjustmentTotal] = useState(0);
   const [detailLevelChanges, setDetailLevelChanges] = useState<LevelChangeItem[]>([]);
-  const [activeDetailTab, setActiveDetailTab] = useState<DetailTab>("basic");
+  const [activeDetailTab, setActiveDetailTab] = useState<DetailTab>("overview");
   const [detailLoginAttempts, setDetailLoginAttempts] = useState<LoginAttemptItem[]>([]);
   // 登录历史：仅看失败（在最近返回的数据内前端筛选）
   const [loginFailedOnly, setLoginFailedOnly] = useState(false);
@@ -468,13 +480,22 @@ function AdminUsersContent() {
     [toast]
   );
 
-  /** Tabs 键盘导航：左右方向键切换，Home/End 跳到首尾 */
+  /** Tabs 键盘导航：方向键切换，Home/End 跳到首尾 */
   const handleDetailTabKeyDown = (
     event: ReactKeyboardEvent<HTMLButtonElement>,
     tabs: typeof DETAIL_TABS
   ) => {
     const { key } = event;
-    if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "Home" && key !== "End") return;
+    if (
+      key !== "ArrowLeft" &&
+      key !== "ArrowRight" &&
+      key !== "ArrowUp" &&
+      key !== "ArrowDown" &&
+      key !== "Home" &&
+      key !== "End"
+    ) {
+      return;
+    }
     event.preventDefault();
     const currentIndex = tabs.findIndex((tab) => tab.key === activeDetailTab);
     const nextIndex =
@@ -482,7 +503,7 @@ function AdminUsersContent() {
         ? 0
         : key === "End"
           ? tabs.length - 1
-          : key === "ArrowRight"
+          : key === "ArrowRight" || key === "ArrowDown"
             ? (currentIndex + 1) % tabs.length
             : (currentIndex - 1 + tabs.length) % tabs.length;
     const nextTab = tabs[nextIndex];
@@ -906,7 +927,7 @@ function AdminUsersContent() {
     setDetailAdjustmentTotal(0);
     setDetailLevelChanges([]);
     setDetailLoginAttempts([]);
-    setActiveDetailTab("basic");
+    setActiveDetailTab("overview");
     setRevealedPhone("");
     setLedgerItems([]);
     setLedgerPage(1);
@@ -959,6 +980,47 @@ function AdminUsersContent() {
   const visibleDetailTabs = DETAIL_TABS.filter(
     (tab) => tab.key !== "advisor" || canReadAdvisorProfile
   );
+
+  const detailMoreItems: DropdownItem[] = [];
+  if (detailUser && detailUser.status !== "DELETED") {
+    if (canSecurityWrite) {
+      detailMoreItems.push({
+        label: "重置密码",
+        icon: <KeyRound className="h-3.5 w-3.5" />,
+        onClick: () => setResetPasswordOpen(true),
+      });
+    }
+    if (canWriteUsers && detailUser.status !== "SUSPENDED") {
+      detailMoreItems.push({
+        label: "冻结账号",
+        icon: <Lock className="h-3.5 w-3.5" />,
+        onClick: () => updateUserStatus(detailUser.id, "SUSPENDED"),
+      });
+    }
+    if (canWriteUsers && detailUser.status !== "BANNED") {
+      detailMoreItems.push({
+        label: "封禁账号",
+        icon: <Ban className="h-3.5 w-3.5" />,
+        danger: true,
+        onClick: () => updateUserStatus(detailUser.id, "BANNED"),
+      });
+    }
+    if (canDeleteUsers) {
+      detailMoreItems.push(
+        { divider: true },
+        {
+          label: "删除用户",
+          icon: <Trash2 className="h-3.5 w-3.5" />,
+          danger: true,
+          onClick: () =>
+            requestDeleteUser(
+              detailUser.id,
+              detailUser.nickname || detailUser.phone || detailUser.id
+            ),
+        }
+      );
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -1339,88 +1401,6 @@ function AdminUsersContent() {
         title={detailUser?.nickname || detailUser?.phone || "用户详情"}
         size="full"
         mobileFullScreen
-        footer={
-          detailUser &&
-          detailUser.status !== "DELETED" &&
-          (canWriteUsers || canSecurityWrite || canDeleteUsers) ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs text-brand-charcoal/65">
-                <span>账号状态</span>
-                <Badge variant={userStatusMap[detailUser.status].variant}>
-                  {userStatusMap[detailUser.status].label}
-                </Badge>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {canDeleteUsers && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:bg-red-50"
-                    leftIcon={<Trash2 className="h-4 w-4" />}
-                    onClick={() =>
-                      requestDeleteUser(
-                        detailUser.id,
-                        detailUser.nickname || detailUser.phone || detailUser.id
-                      )
-                    }
-                  >
-                    删除用户
-                  </Button>
-                )}
-                {canDeleteUsers && (canWriteUsers || canSecurityWrite) && (
-                  <span
-                    aria-hidden="true"
-                    className="hidden h-5 w-px bg-brand-charcoal/10 sm:block"
-                  />
-                )}
-                {canSecurityWrite && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<KeyRound className="h-4 w-4" />}
-                    onClick={() => setResetPasswordOpen(true)}
-                  >
-                    重置密码
-                  </Button>
-                )}
-                {canWriteUsers && detailUser.status !== "ACTIVE" && (
-                  <Button
-                    size="sm"
-                    leftIcon={<CheckCircle className="h-4 w-4" />}
-                    disabled={statusLoading}
-                    onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
-                  >
-                    恢复正常
-                  </Button>
-                )}
-                {canWriteUsers && detailUser.status !== "SUSPENDED" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                    leftIcon={<Lock className="h-4 w-4" />}
-                    disabled={statusLoading}
-                    onClick={() => updateUserStatus(detailUser.id, "SUSPENDED")}
-                  >
-                    冻结账号
-                  </Button>
-                )}
-                {canWriteUsers && detailUser.status !== "BANNED" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-red-200 text-red-600 hover:bg-red-50"
-                    leftIcon={<Ban className="h-4 w-4" />}
-                    disabled={statusLoading}
-                    onClick={() => updateUserStatus(detailUser.id, "BANNED")}
-                  >
-                    封禁账号
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : undefined
-        }
       >
         {detailLoading ? (
           <UserDetailSkeleton />
@@ -1446,8 +1426,8 @@ function AdminUsersContent() {
         ) : (
           <div className="space-y-4">
             {/* 用户摘要 */}
-            <div className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4">
-              <UserAvatar src={detailUser.avatar} name={detailUser.nickname} size="lg" />
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
+              <UserAvatar src={detailUser.avatar} name={detailUser.nickname} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <Badge variant={userStatusMap[detailUser.status].variant}>
@@ -1503,50 +1483,172 @@ function AdminUsersContent() {
                   </span>
                 </div>
               </div>
-            </div>
-
-            {/* 分区标签 */}
-            <div className="sticky top-0 z-10 -mx-4 border-b border-brand-charcoal/10 bg-white/95 px-4 backdrop-blur sm:-mx-6 sm:px-6">
-              <div
-                role="tablist"
-                aria-label="用户详情分区"
-                aria-orientation="horizontal"
-                className="scrollbar-hide -mb-px flex gap-1 overflow-x-auto"
-              >
-                {visibleDetailTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const active = activeDetailTab === tab.key;
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      role="tab"
-                      id={`detail-tab-${tab.key}`}
-                      aria-controls={active ? `detail-panel-${tab.key}` : undefined}
-                      aria-selected={active}
-                      tabIndex={active ? 0 : -1}
-                      onClick={() => setActiveDetailTab(tab.key)}
-                      onKeyDown={(event) => handleDetailTabKeyDown(event, visibleDetailTabs)}
-                      className={cn(
-                        "flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/40",
-                        active
-                          ? "border-brand-charcoal font-medium text-brand-charcoal"
-                          : "border-transparent text-brand-charcoal/65 hover:text-brand-charcoal"
-                      )}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
+              <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+                {canWriteUsers && detailUser.status !== "ACTIVE" && detailUser.status !== "DELETED" && (
+                  <Button
+                    size="sm"
+                    leftIcon={<CheckCircle className="h-4 w-4" />}
+                    disabled={statusLoading}
+                    onClick={() => updateUserStatus(detailUser.id, "ACTIVE")}
+                  >
+                    恢复正常
+                  </Button>
+                )}
+                {detailMoreItems.length > 0 && (
+                  <Dropdown
+                    trigger={
+                      <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand-charcoal/15 bg-white px-3 text-xs font-medium text-brand-charcoal/75 transition-colors hover:border-brand-charcoal/25 hover:text-brand-charcoal">
+                        更多操作
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </span>
+                    }
+                    items={detailMoreItems}
+                  />
+                )}
               </div>
             </div>
 
-            <div
-              role="tabpanel"
-              id={`detail-panel-${activeDetailTab}`}
-              aria-labelledby={`detail-tab-${activeDetailTab}`}
-            >
+            {/* 分区导航 + 内容 */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+              <div className="shrink-0 lg:sticky lg:top-0 lg:w-40">
+                <div
+                  role="tablist"
+                  aria-label="用户详情分区"
+                  className="scrollbar-hide flex gap-1 overflow-x-auto rounded-xl border border-brand-charcoal/10 bg-white p-1 lg:flex-col"
+                >
+                  {visibleDetailTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const active = activeDetailTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        role="tab"
+                        id={`detail-tab-${tab.key}`}
+                        aria-controls={active ? `detail-panel-${tab.key}` : undefined}
+                        aria-selected={active}
+                        tabIndex={active ? 0 : -1}
+                        onClick={() => setActiveDetailTab(tab.key)}
+                        onKeyDown={(event) => handleDetailTabKeyDown(event, visibleDetailTabs)}
+                        className={cn(
+                          "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/40",
+                          active
+                            ? "bg-brand-charcoal/[0.07] font-medium text-brand-charcoal"
+                            : "text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div
+                role="tabpanel"
+                id={`detail-panel-${activeDetailTab}`}
+                aria-labelledby={`detail-tab-${activeDetailTab}`}
+                className="min-w-0 flex-1"
+              >
+              {/* 概览 */}
+              {activeDetailTab === "overview" && (
+                <div className="space-y-4">
+                  <DetailSection title="账号概览">
+                    <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <DetailField label="账号状态">
+                        <Badge variant={userStatusMap[detailUser.status].variant}>
+                          {userStatusMap[detailUser.status].label}
+                        </Badge>
+                      </DetailField>
+                      <DetailField label="会员等级">
+                        {detailUser.membershipLevel &&
+                        membershipLevelMap[detailUser.membershipLevel] ? (
+                          <Badge
+                            variant={membershipLevelMap[detailUser.membershipLevel].variant}
+                          >
+                            {membershipLevelMap[detailUser.membershipLevel].label}
+                          </Badge>
+                        ) : (
+                          <span className="text-brand-charcoal/65">未设置</span>
+                        )}
+                      </DetailField>
+                      <DetailField label="累计消费">
+                        <span className="font-mono font-medium tabular-nums">
+                          ¥{(detailUser.totalSpent ?? 0).toLocaleString()}
+                        </span>
+                      </DetailField>
+                      <DetailField label="可用积分">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="font-mono font-medium tabular-nums">
+                            {detailPoints ? detailPoints.available.toLocaleString() : "—"}
+                          </span>
+                          {canSecurityWrite && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-auto px-1.5 py-0.5 text-xs"
+                              onClick={() => {
+                                adjustRequestIdRef.current = createClientRequestId();
+                                setAdjustOpen(true);
+                              }}
+                            >
+                              调整
+                            </Button>
+                          )}
+                        </span>
+                      </DetailField>
+                    </dl>
+                    <dl className="mt-3 grid gap-x-8 border-t border-brand-charcoal/10 pt-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <DetailField label="注册时间">
+                        {formatDate(detailUser.createdAt)}
+                      </DetailField>
+                      <DetailField label="最后登录">
+                        {detailLoginAttempts[0]
+                          ? formatDate(detailLoginAttempts[0].createdAt)
+                          : "—"}
+                      </DetailField>
+                      <DetailField label="收货地址">
+                        {detailAddresses.length > 0
+                          ? `${detailAddresses.length} 个`
+                          : "暂无"}
+                      </DetailField>
+                      <DetailField label="最近等级变更">
+                        {detailLevelChanges[0]
+                          ? formatDate(detailLevelChanges[0].createdAt)
+                          : "—"}
+                      </DetailField>
+                    </dl>
+                  </DetailSection>
+
+                  <div className="flex flex-wrap gap-2">
+                    {canReadAdvisorProfile && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveDetailTab("advisor")}
+                      >
+                        查看测肤报告
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveDetailTab("points")}
+                    >
+                      积分与兑换
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveDetailTab("login")}
+                    >
+                      登录历史
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* 基本信息 */}
               {activeDetailTab === "basic" && (
                 <DetailSection title="资料信息">
@@ -2103,6 +2205,7 @@ function AdminUsersContent() {
                   )}
                 </DetailSection>
               )}
+            </div>
             </div>
           </div>
         )}

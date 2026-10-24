@@ -47,7 +47,7 @@ data/*.mmdb
 .tmp-e2e/
 
 # 只读盘点报告（scripts/compare-advisor-products.ts）
-reports/
+/reports/
 
 # canvas / 工具状态文件
 *.canvas.status.json
