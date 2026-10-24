@@ -1,3 +1,5 @@
+import { ApiError } from "@/lib/api-client";
+
 const UTF8_FILENAME_RE = /filename\*=UTF-8''([^;]+)/i;
 const FILENAME_RE = /filename="?([^";]+)"?/i;
 
@@ -25,18 +27,29 @@ export function parseContentDispositionFilename(header: string | null): string |
   return decoded || null;
 }
 
-async function readDownloadError(response: Response): Promise<string> {
+async function readDownloadError(response: Response): Promise<{ message: string; code: string }> {
   let fallback = `下载失败（HTTP ${response.status}）`;
   if (response.status === 401) fallback = "登录已过期，请重新登录";
   else if (response.status === 403) fallback = "没有下载权限";
   const text = await response.text().catch(() => "");
-  if (!text) return fallback;
-  if ((response.headers.get("Content-Type") || "").includes("text/html")) return fallback;
+  if (!text) return { message: fallback, code: `HTTP_${response.status}` };
+  if ((response.headers.get("Content-Type") || "").includes("text/html")) {
+    return { message: fallback, code: `HTTP_${response.status}` };
+  }
   try {
-    const parsed = JSON.parse(text) as { error?: { message?: string }; message?: string };
-    return parsed.error?.message || parsed.message || fallback;
+    const parsed = JSON.parse(text) as {
+      error?: { code?: string; message?: string };
+      message?: string;
+    };
+    return {
+      message: parsed.error?.message || parsed.message || fallback,
+      code: parsed.error?.code || `HTTP_${response.status}`,
+    };
   } catch {
-    return text.slice(0, 200).trim() || fallback;
+    return {
+      message: text.slice(0, 200).trim() || fallback,
+      code: `HTTP_${response.status}`,
+    };
   }
 }
 
@@ -59,7 +72,8 @@ export async function downloadFromUrl(
   });
 
   if (!response.ok) {
-    throw new Error(await readDownloadError(response));
+    const error = await readDownloadError(response);
+    throw new ApiError(error.code, error.message, response.status);
   }
 
   const blob = await response.blob();

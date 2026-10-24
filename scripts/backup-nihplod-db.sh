@@ -12,7 +12,8 @@ FILE="${BACKUP_DIR}/${DB_NAME}_${STAMP}.dump"
 mkdir -p "${BACKUP_DIR}"
 chmod 700 "${BACKUP_DIR}"
 
-sudo -u postgres pg_dump -Fc "${DB_NAME}" -f "${FILE}"
+# 由 root shell 负责创建文件，避免 postgres 用户无法写入 /root
+sudo -u postgres pg_dump -Fc "${DB_NAME}" > "${FILE}"
 chmod 600 "${FILE}"
 sha256sum "${FILE}" > "${FILE}.sha256"
 chmod 600 "${FILE}.sha256"

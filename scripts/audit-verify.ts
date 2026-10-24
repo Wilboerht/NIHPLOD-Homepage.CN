@@ -13,7 +13,7 @@ import { join } from "node:path";
 for (const file of [".env.local", ".env.production", ".env"]) {
   const path = join(process.cwd(), file);
   if (existsSync(path)) {
-    dotenvConfig({ path });
+    dotenvConfig({ path, quiet: true });
     break;
   }
 }

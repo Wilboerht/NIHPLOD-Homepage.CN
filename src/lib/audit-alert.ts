@@ -19,6 +19,19 @@ import { buildRetentionPreview, defaultRetentionCutoffs } from "./audit-retentio
 const COOLDOWN_MS = 30 * 60 * 1000;
 const WINDOW_MS = 10 * 60 * 1000;
 
+/**
+ * 每日锚点任务在 01:15 执行。凌晨 00:00–02:00 之间“昨天”的锚点
+ * 还没生成，这是正常窗口，不应告警；02:00 后才要求前一日锚点存在。
+ */
+function getExpectedAnchorDay(now: Date): string {
+  const raw = Number(process.env.AUDIT_ANCHOR_GRACE_HOURS ?? 2);
+  const graceHours = Number.isFinite(raw) ? Math.min(Math.max(raw, 1), 12) : 2;
+  const shifted = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const utc8Hour = shifted.getUTCHours() + shifted.getUTCMinutes() / 60;
+  const daysAgo = utc8Hour < graceHours ? 2 : 1;
+  return getUtc8DayRange(new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)).day;
+}
+
 async function claimAlert(ruleKey: string, count: number, now: Date): Promise<boolean> {
   const state = await prisma.auditAlertState.findUnique({ where: { ruleKey } });
   if (state && now.getTime() - state.lastSentAt.getTime() < COOLDOWN_MS) return false;
@@ -99,16 +112,17 @@ export async function scanAuditAlerts(now = new Date()): Promise<void> {
     }
   }
 
-  const yesterday = getUtc8DayRange(new Date(now.getTime() - 24 * 60 * 60 * 1000)).day;
+  const expectedAnchorDay = getExpectedAnchorDay(now);
   const latest = await prisma.auditLogAnchor.findFirst({
     where: { stream: "audit", signatureVersion: 2 },
     orderBy: { day: "desc" },
     select: { day: true },
   });
-  if (!latest || latest.day < yesterday) {
+  if (!latest || latest.day < expectedAnchorDay) {
     if (await claimAlert("anchor-missing", 1, now)) {
       await notify("审计告警：锚点缺失", [
-        `最新 v2 审计锚点：${latest?.day ?? "无"}，期望至少到 ${yesterday}。`,
+        `最新 v2 审计锚点：${latest?.day ?? "无"}，期望至少到 ${expectedAnchorDay}。`,
+        "每日锚点任务在 01:15 执行，02:00 前为正常宽限期。",
       ]);
     }
   }

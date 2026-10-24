@@ -122,6 +122,13 @@ export const adminNavItems: NavItem[] = [
     permission: "admins:read",
     group: "系统管理",
   },
+  {
+    title: "审批中心",
+    href: "/admin/approvals",
+    icon: ClipboardCheck,
+    permissionsAny: ["approvals:request", "approvals:review"],
+    group: "系统管理",
+  },
   // 个人安全管理（二次验证、改密）对所有管理员开放
   { title: "管理员安全中心", href: "/admin/settings/totp", icon: ShieldCheck, group: "系统管理" },
   {

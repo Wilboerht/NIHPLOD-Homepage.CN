@@ -22,6 +22,7 @@ import { hashPassword, passwordSchema } from "@/lib/password";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -178,10 +179,23 @@ export const POST = withAuth(async (request, admin) => {
     const body = await request.json();
 
     // 批量操作
-    if (body.ids && body.action) {
-      const batch = batchSchema.parse(body);
-      if (batch.action === "delete") {
-        const auditId = await beginAuditLog({
+      if (body.ids && body.action) {
+        const batch = batchSchema.parse(body);
+        if (isAdminApprovalEnforced() && batch.action === "delete" && admin.role !== "owner") {
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "APPROVAL_REQUIRED",
+                message: "该操作需要 owner 审批，请前往审批中心提交申请",
+                details: { policyKey: "admin.delete" },
+              },
+            },
+            { status: 403 }
+          );
+        }
+        if (batch.action === "delete") {
+          const auditId = await beginAuditLog({
           action: "delete_admin",
           targetType: "admin",
           detail: { ids: batch.ids, count: batch.ids.length },

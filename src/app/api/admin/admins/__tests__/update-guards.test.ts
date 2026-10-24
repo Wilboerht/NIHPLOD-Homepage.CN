@@ -358,7 +358,7 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
     expect(prisma.admin.updateMany).not.toHaveBeenCalled();
   });
 
-  it("委派管理员删除同权限范围的管理员允许", async () => {
+  it("委派管理员删除同权限范围的管理员需 owner 审批", async () => {
     (prisma.admin.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: TARGET_ID, role: "ops", permissions: [] },
     ]);
@@ -368,8 +368,11 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
       DELEGATED as never
     );
 
-    expect(res.status).toBe(200);
-    expect(prisma.admin.updateMany).toHaveBeenCalled();
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({
+      error: { code: "APPROVAL_REQUIRED" },
+    });
+    expect(prisma.admin.updateMany).not.toHaveBeenCalled();
   });
 });
 

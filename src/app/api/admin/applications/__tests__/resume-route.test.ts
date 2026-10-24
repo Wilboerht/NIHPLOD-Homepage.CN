@@ -18,6 +18,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/resume-files", () => ({
   resolveResumeDownload: mocks.resolveResumeDownload,
+  contentDispositionAttachment: (filename: string) => `attachment; filename="${filename}"`,
 }));
 vi.mock("@/lib/audit", () => ({
   createAuditLogStrict: mocks.createAuditLogStrict,

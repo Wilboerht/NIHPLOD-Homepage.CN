@@ -12,6 +12,7 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { z } from "zod";
 import { createOAuthClient, listOAuthClients, toSafeClientResponse } from "@/lib/oauth-client";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -155,12 +156,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
+      const rateLimitResponse = await checkAdminRateLimit(request);
+      if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
-    const auditId = await beginAuditLog({
-      action: "oauth_client_create",
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const body = await request.json();
+      const auditId = await beginAuditLog({
+        action: "oauth_client_create",
       targetType: "oauth_client",
       actorType: "ADMIN",
       actorEmail: admin.email,

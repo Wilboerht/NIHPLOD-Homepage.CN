@@ -58,6 +58,10 @@ vi.mock("@/lib/audit", () => ({
   finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 // === Mock SSO 审计 ===
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: vi.fn().mockResolvedValue(undefined),

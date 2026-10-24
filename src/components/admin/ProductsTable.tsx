@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { useRowSelection } from "@/hooks/useRowSelection";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatPrice } from "@/lib/utils";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 
@@ -90,8 +91,9 @@ export function ProductsTable({
     `${pagination.page}|${pagination.pageSize}|${products.map((p) => p.id).join(",")}`
   );
   const selectedIds = useMemo(() => Array.from(selection.selectedIds), [selection.selectedIds]);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const { error: showError } = useToast();
+    const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const { error: showError } = useToast();
+    const { requireTotp, totpModal } = useTotpConfirm();
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
     id?: string;
@@ -124,13 +126,23 @@ export function ProductsTable({
   const handleDelete = async () => {
     const { id, batch } = deleteConfirm;
     setActionLoading("delete");
-    try {
-      if (batch) {
-        await apiPost("/api/admin/products/batch", { ids: selectedIds, action: "delete" });
-        selection.clear();
-      } else if (id) {
-        await apiDelete(`/api/admin/products/${id}`);
-      }
+      try {
+        const runDelete = async () => {
+          if (batch) {
+            await apiPost("/api/admin/products/batch", { ids: selectedIds, action: "delete" });
+            selection.clear();
+          } else if (id) {
+            await apiDelete(`/api/admin/products/${id}`);
+          }
+        };
+        try {
+          await runDelete();
+        } catch (err) {
+          if (!isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return;
+          await runDelete();
+        }
       // 删光当前页所有数据（单删最后一条或批量选中全页）时回退一页
       const deletesWholePage = batch
         ? products.length > 0 && products.every((p) => selection.selectedIds.has(p.id))
@@ -511,6 +523,7 @@ export function ProductsTable({
         confirmText="删除"
         loading={actionLoading === "delete"}
       />
+      {totpModal}
     </div>
   );
 }

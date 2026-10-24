@@ -27,9 +27,13 @@ import {
   type SystemAlert,
 } from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
+import { SecurityMonitor } from "@/components/admin/SecurityMonitor";
+import { OwnerGovernanceCard } from "@/components/admin/OwnerGovernanceCard";
 import { cn } from "@/lib/utils";
 import { getCurrentAdmin } from "@/lib/auth";
 import { getAdminStats, getSsoStats } from "@/lib/admin-stats";
+import { getOwnerGovernanceData, getSecurityMonitorData } from "@/lib/admin-dashboard-governance";
+import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { RecentMessagesList } from "@/components/admin/RecentMessagesList";
 
@@ -68,6 +72,30 @@ export default async function AdminDashboard() {
       // SSO 统计获取失败不阻断整个仪表盘
     }
   }
+
+  const canMonitor =
+    hasAdminPermission(admin, "audit:read") &&
+    hasAdminPermission(admin, "audit:sensitive:read");
+
+  const [governanceResult, monitorResult] = await Promise.all([
+    admin.role === "owner"
+      ? getOwnerGovernanceData(admin).catch((error) => {
+          apiConsole.error("[AdminDashboard] Owner 治理数据加载失败:", error);
+          return "error" as const;
+        })
+      : Promise.resolve(null),
+    canMonitor
+      ? getSecurityMonitorData(admin).catch((error) => {
+          apiConsole.error("[AdminDashboard] 安全监控数据加载失败:", error);
+          return "error" as const;
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const governanceData = governanceResult === "error" ? null : governanceResult;
+  const governanceError = governanceResult === "error";
+  const monitorData = monitorResult === "error" ? null : monitorResult;
+  const monitorError = monitorResult === "error";
 
   // 业务待办：按权限裁剪，只展示有积压的队列
   const pendingQueueItems: PendingQueueItem[] = [];
@@ -117,6 +145,14 @@ export default async function AdminDashboard() {
 
   // 系统告警：与业务待办分开，只在有异常时出现
   const systemAlerts: SystemAlert[] = [];
+  if (governanceError) {
+    systemAlerts.push({
+      key: "owner-governance",
+      label: "Owner 治理数据加载失败",
+      count: 1,
+      href: "/admin/approvals",
+    });
+  }
   if (stats?.failedAccountDeletions !== undefined && stats.failedAccountDeletions > 0) {
     systemAlerts.push({
       key: "account-deletions",
@@ -236,6 +272,10 @@ export default async function AdminDashboard() {
       />
 
       {/* 业务统计：独立降级，失败不影响 SSO 统计 */}
+      {governanceData && <OwnerGovernanceCard data={governanceData} />}
+
+      {canMonitor && <SecurityMonitor data={monitorData} error={monitorError} />}
+
       {statsError || !stats ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
           <div className="rounded-full bg-red-50 p-4">

@@ -125,6 +125,15 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   create_point_campaign: "创建积分活动",
   update_point_campaign: "更新积分活动",
   delete_point_campaign: "删除积分活动",
+  admin_approval_requested: "提交 Owner 审批申请",
+  admin_approval_approved: "Owner 审批通过",
+  admin_approval_rejected: "Owner 审批拒绝",
+  admin_approval_cancelled: "撤回 Owner 审批申请",
+  admin_approval_expired: "Owner 审批过期",
+  admin_approval_retried: "重试 Owner 审批执行",
+  admin_approval_executed: "Owner 审批执行完成",
+  admin_approval_execution_failed: "Owner 审批执行失败",
+  admin_approval_stale: "Owner 审批目标已变化",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {

@@ -129,40 +129,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
+      const rateLimitResponse = await checkAdminRateLimit(request);
+      if (rateLimitResponse) return rateLimitResponse;
 
-    const { id } = await context.params;
-    if (!validateCUID(id)) {
-      return invalidIdResponse();
-    }
-
-    const body = await request.json();
-
-    // 更新前获取原状态，用于判断是否需要级联撤销
-    const previousClient = await getOAuthClientById(id);
-    if (!previousClient) {
-      return NextResponse.json(
-        { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
-        { status: 404 }
-      );
-    }
-
-    // 缩减 scopes 会立即使该 Client 全部用户下线，按高风险操作要求 step-up。
-    // 仅扩大权限/改名等普通编辑不额外打断。
-    const requestedScopes = Array.isArray(body?.scopes)
-      ? body.scopes.filter((scope: unknown): scope is string => typeof scope === "string")
-      : null;
-    const shrinksScopes =
-      requestedScopes !== null &&
-      previousClient.scopes.some((scope) => !requestedScopes.includes(scope));
-    const disablesClient = body?.isActive === false && previousClient.isActive;
-    if (shrinksScopes || disablesClient) {
       const stepUpResponse = await requireAdminStepUp(request, admin);
       if (stepUpResponse) return stepUpResponse;
-    }
 
-    const auditId = await beginAuditLog({
+      const { id } = await context.params;
+      if (!validateCUID(id)) {
+        return invalidIdResponse();
+      }
+
+      const body = await request.json();
+
+      const previousClient = await getOAuthClientById(id);
+      if (!previousClient) {
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
+          { status: 404 }
+        );
+      }
+
+      const auditId = await beginAuditLog({
       action: "oauth_client_update",
       targetType: "oauth_client",
       targetId: id,

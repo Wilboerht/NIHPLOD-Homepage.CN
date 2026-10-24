@@ -4,6 +4,7 @@ import {
   AUDIT_ACTION_LABELS,
   AUDIT_TARGET_TYPE_LABELS,
 } from "@/lib/audit-labels";
+import { getAuditActionMeta } from "@/lib/audit-registry";
 
 describe("audit action/target registry", () => {
   it("every audit action has a Chinese label", () => {
@@ -23,5 +24,9 @@ describe("audit action/target registry", () => {
 
   it("keeps device force logout filterable", () => {
     expect(AUDIT_ACTIONS).toContain("device_force_logout");
+  });
+
+  it("treats admin creation as a critical action", () => {
+    expect(getAuditActionMeta("create_admin").riskLevel).toBe("CRITICAL");
   });
 });

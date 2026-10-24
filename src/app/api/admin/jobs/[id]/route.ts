@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { createAuditLog } from "@/lib/audit";
@@ -220,14 +221,17 @@ export async function DELETE(
       );
     }
 
-    if (!hasAdminPermission(admin, "jobs:delete")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位删除" } },
-        { status: 403 }
-      );
-    }
+      if (!hasAdminPermission(admin, "jobs:delete")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位删除" } },
+          { status: 403 }
+        );
+      }
 
-    const { id } = await params;
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const { id } = await params;
 
     if (!validateCUID(id)) {
       return invalidIdResponse();

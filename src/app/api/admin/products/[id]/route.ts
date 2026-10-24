@@ -12,6 +12,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 
@@ -445,14 +446,17 @@ export async function DELETE(
         { status: 401 }
       );
     }
-    if (!hasAdminPermission(admin, "products:delete")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品删除" } },
-        { status: 403 }
-      );
-    }
+      if (!hasAdminPermission(admin, "products:delete")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品删除" } },
+          { status: 403 }
+        );
+      }
 
-    const { id } = await params;
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const { id } = await params;
 
     if (!validateCUID(id)) {
       return invalidIdResponse();

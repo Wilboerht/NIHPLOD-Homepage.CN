@@ -12,6 +12,13 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+function stubProductionRuntimeEnv() {
+  vi.stubEnv("TRUST_PROXY", "true");
+  vi.stubEnv("TRUST_PROXY_HOPS", "1");
+  vi.stubEnv("RATE_LIMIT_STORAGE", "database");
+  vi.stubEnv("ALI_OSS_PRIVATE_BUCKET", "test-private-bucket");
+}
+
 describe("server-init", () => {
   let originalPhase: string | undefined;
   const listeners: Record<string, Array<() => void>> = {};
@@ -68,6 +75,7 @@ describe("server-init", () => {
 
   it("生产环境缺少 RS256 密钥时应抛出错误", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
     vi.stubEnv("ALLOW_HS256_FALLBACK", "false");
     vi.stubEnv("JWT_ACCESS_PRIVATE_KEY", "");
     vi.stubEnv("JWT_ACCESS_PUBLIC_KEY", "");
@@ -84,6 +92,7 @@ describe("server-init", () => {
 
   it("生产环境配置 RS256 密钥时应正常初始化", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
     vi.stubEnv("ALLOW_HS256_FALLBACK", "false");
     vi.stubEnv("JWT_ACCESS_PRIVATE_KEY", "fake-access-private");
     vi.stubEnv("JWT_ACCESS_PUBLIC_KEY", "fake-access-public");
@@ -94,6 +103,33 @@ describe("server-init", () => {
     const { initializeApp } = await import("@/lib/server-init");
     await initializeApp();
     expect(mockInitializeCronTasks).toHaveBeenCalled();
+
+    vi.unstubAllEnvs();
+  });
+
+  it("生产环境缺少 TRUST_PROXY 时应启动失败", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ALLOW_HS256_FALLBACK", "true");
+    vi.stubEnv("SMS_PROVIDER", "tencent");
+    vi.stubEnv("TRUST_PROXY", "false");
+    vi.stubEnv("RATE_LIMIT_STORAGE", "database");
+
+    const { initializeApp } = await import("@/lib/server-init");
+    await expect(initializeApp()).rejects.toThrow("TRUST_PROXY");
+
+    vi.unstubAllEnvs();
+  });
+
+  it("生产环境 RATE_LIMIT_STORAGE 非法时应启动失败", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ALLOW_HS256_FALLBACK", "true");
+    vi.stubEnv("SMS_PROVIDER", "tencent");
+    vi.stubEnv("TRUST_PROXY", "true");
+    vi.stubEnv("TRUST_PROXY_HOPS", "1");
+    vi.stubEnv("RATE_LIMIT_STORAGE", "");
+
+    const { initializeApp } = await import("@/lib/server-init");
+    await expect(initializeApp()).rejects.toThrow("RATE_LIMIT_STORAGE");
 
     vi.unstubAllEnvs();
   });
@@ -118,6 +154,7 @@ describe("server-init", () => {
 
   it("生产环境 SMS_PROVIDER 未设置或为 mock 时应告警但正常启动", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
     vi.stubEnv("ALLOW_HS256_FALLBACK", "true"); // 跳过 RS256 检查，聚焦短信校验
     vi.stubEnv("SMS_PROVIDER", "mock");
 
@@ -130,6 +167,7 @@ describe("server-init", () => {
 
   it("生产环境 SMS_PROVIDER 为未知值时应告警但正常启动", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
     vi.stubEnv("ALLOW_HS256_FALLBACK", "true");
     vi.stubEnv("SMS_PROVIDER", "unknown-provider");
 
@@ -142,6 +180,7 @@ describe("server-init", () => {
 
   it("生产环境 SMS_PROVIDER=aliyun 且密钥齐备时应正常初始化", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
     vi.stubEnv("ALLOW_HS256_FALLBACK", "true");
     vi.stubEnv("SMS_PROVIDER", "aliyun");
 

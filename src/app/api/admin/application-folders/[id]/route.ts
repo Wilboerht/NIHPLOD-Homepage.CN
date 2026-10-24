@@ -5,7 +5,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return invalidIdResponse();
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-write", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     if (!validateCSRFToken(request)) return csrfForbiddenResponse();
@@ -120,19 +120,45 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const folder = await prisma.applicationFolder.update({
-      where: { id },
-      data: validated,
-    });
-
-    createAuditLog({
+    const auditDetail = {
+      fields: Object.keys(validated),
+      name: validated.name,
+      order: validated.order,
+    };
+    const auditId = await beginAuditLog({
       action: "update_application_folder",
       targetType: "application_folder",
       targetId: id,
-      detail: validated,
+      detail: auditDetail,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
       request,
-    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const folder = await prisma.applicationFolder
+      .update({
+        where: { id },
+        data: validated,
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", auditDetail, id);
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", auditDetail, id);
 
     return NextResponse.json({
       success: true,
@@ -181,7 +207,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return invalidIdResponse();
     }
 
-    const rateLimitResponse2 = await checkAdminRateLimit(request);
+    const rateLimitResponse2 = await checkAdminRateLimit(request, "admin-write", admin.id);
     if (rateLimitResponse2) return rateLimitResponse2;
 
     if (!validateCSRFToken(request)) return csrfForbiddenResponse();
@@ -195,16 +221,36 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // 删除分类夹（关联的申请会自动设为 null）
-    await prisma.applicationFolder.delete({ where: { id } });
-
-    await createAuditLog({
+    const auditDetail = { name: existing.name };
+    const auditId = await beginAuditLog({
       action: "delete_application_folder",
       targetType: "application_folder",
       targetId: id,
-      detail: { name: existing.name },
+      detail: auditDetail,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
       request,
-    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    await prisma.applicationFolder.delete({ where: { id } }).catch(async (error) => {
+      await finishAuditLog(auditId, "FAILURE", auditDetail, id);
+      throw error;
+    });
+
+    await finishAuditLog(auditId, "SUCCESS", auditDetail, id);
 
     return NextResponse.json({
       success: true,

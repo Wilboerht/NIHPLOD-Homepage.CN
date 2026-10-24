@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 
 // 批量操作 Schema
@@ -38,13 +39,17 @@ export async function POST(request: NextRequest) {
     const { ids, action } = BatchSchema.parse(body);
 
     // 批量删除为高危操作：需要 jobs:batch-delete 权限（默认仅 owner）
-    if (action === "delete" && !hasAdminPermission(admin, "jobs:batch-delete")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位批量删除" } },
-        { status: 403 }
-      );
-    }
-    if (action !== "delete" && !hasAdminPermission(admin, "jobs:write")) {
+      if (action === "delete" && !hasAdminPermission(admin, "jobs:batch-delete")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位批量删除" } },
+          { status: 403 }
+        );
+      }
+      if (action === "delete") {
+        const stepUpResponse = await requireAdminStepUp(request, admin);
+        if (stepUpResponse) return stepUpResponse;
+      }
+      if (action !== "delete" && !hasAdminPermission(admin, "jobs:write")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位编辑" } },
         { status: 403 }

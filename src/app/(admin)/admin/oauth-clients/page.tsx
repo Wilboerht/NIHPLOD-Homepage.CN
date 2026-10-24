@@ -591,19 +591,22 @@ function OAuthClientsPage() {
     if (Object.keys(nextErrors).length > 0) return;
 
     setSaving(true);
-    try {
-      const data = await apiPost<CreateClientResponse>("/api/admin/oauth-clients", {
-        name: formName.trim(),
-        redirectUris: uriValidation.parsed,
-        postLogoutRedirectUris: postLogoutValidation.parsed,
-        scopes,
-        isPublic: formIsPublic,
-        backchannelLogoutUri: formBackchannelUri.trim() || undefined,
-        webhookUri: formWebhookUri.trim() || undefined,
-        codeTtlSeconds: Number(formCodeTtl),
-        accessTokenTtlSeconds: Number(formAccessTokenTtl),
-      });
-      setNewSecret(data.plainSecret);
+      try {
+        const data = await withStepUp(() =>
+          apiPost<CreateClientResponse>("/api/admin/oauth-clients", {
+            name: formName.trim(),
+            redirectUris: uriValidation.parsed,
+            postLogoutRedirectUris: postLogoutValidation.parsed,
+            scopes,
+            isPublic: formIsPublic,
+            backchannelLogoutUri: formBackchannelUri.trim() || undefined,
+            webhookUri: formWebhookUri.trim() || undefined,
+            codeTtlSeconds: Number(formCodeTtl),
+            accessTokenTtlSeconds: Number(formAccessTokenTtl),
+          })
+        );
+        if (data === null) return;
+        setNewSecret(data.plainSecret);
       setShowNewSecret(false);
       setNewSecretSaved(false);
       toast.success("Client 创建成功");

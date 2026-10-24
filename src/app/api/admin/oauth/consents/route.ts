@@ -11,6 +11,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
@@ -179,15 +180,18 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-consents");
     if (rateLimitResponse) return rateLimitResponse;
-    if (!hasAdminPermission(admin, "sso:write")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 授权撤销" } },
-        { status: 403 }
-      );
-    }
+      if (!hasAdminPermission(admin, "sso:write")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 授权撤销" } },
+          { status: 403 }
+        );
+      }
 
-    const body = await request.json();
-    const parsed = revokeSchema.safeParse(body);
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const body = await request.json();
+      const parsed = revokeSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },

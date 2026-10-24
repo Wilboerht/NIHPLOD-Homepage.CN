@@ -20,6 +20,7 @@ import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { BreakGlassButton } from "@/components/admin/BreakGlassButton";
+import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -107,6 +108,7 @@ export default function AdminAdminsPage() {
     can: canAdmin,
   } = useAdminPermissions();
   const canManage = canAdmin("admins:write");
+  const canRequestApproval = canAdmin("approvals:request");
   const isOwnerActor = myRole === "owner";
   // 委派边界（与服务端一致）：非 owner 只能分配模板不超出自身权限的角色
   const assignableRoles = ADMIN_ROLES.filter(
@@ -551,7 +553,19 @@ export default function AdminAdminsPage() {
                             <KeyRound className="h-4 w-4" />
                           </Button>
                         )}
-                      {admin.id !== currentAdminId && (
+                      {!isOwnerActor &&
+                        admin.id !== currentAdminId &&
+                        (admin.totpEnabled || admin.totpResetRequired) &&
+                        canRequestApproval && (
+                          <ApprovalRequestAction
+                            policyKey="totp.recovery.issue"
+                            initialValues={{ adminId: admin.id }}
+                            label="申请恢复码"
+                            variant="ghost"
+                            size="sm"
+                          />
+                        )}
+                      {admin.id !== currentAdminId && isOwnerActor && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -562,6 +576,17 @@ export default function AdminAdminsPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
+                      {admin.id !== currentAdminId &&
+                        !isOwnerActor &&
+                        canRequestApproval && (
+                          <ApprovalRequestAction
+                            policyKey="admin.delete"
+                            initialValues={{ adminId: admin.id }}
+                            label="申请删除管理员"
+                            variant="ghost"
+                            size="sm"
+                          />
+                        )}
                     </div>
                   ) : (
                     <span className="text-xs text-brand-charcoal/65">只读</span>
@@ -697,7 +722,7 @@ export default function AdminAdminsPage() {
                               </Button>
                             )}
                           {/* 不能删除自己（服务端禁止，前端不展示避免必然失败） */}
-                          {admin.id !== currentAdminId && (
+                          {admin.id !== currentAdminId && isOwnerActor && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -707,6 +732,29 @@ export default function AdminAdminsPage() {
                               <Trash2 className="h-4 w-4 text-red-400" />
                             </Button>
                           )}
+                          {admin.id !== currentAdminId &&
+                            !isOwnerActor &&
+                            (admin.totpEnabled || admin.totpResetRequired) &&
+                            canRequestApproval && (
+                              <ApprovalRequestAction
+                                policyKey="totp.recovery.issue"
+                                initialValues={{ adminId: admin.id }}
+                                label="申请恢复码"
+                                variant="ghost"
+                                size="sm"
+                              />
+                            )}
+                          {admin.id !== currentAdminId &&
+                            !isOwnerActor &&
+                            canRequestApproval && (
+                              <ApprovalRequestAction
+                                policyKey="admin.delete"
+                                initialValues={{ adminId: admin.id }}
+                                label="申请删除管理员"
+                                variant="ghost"
+                                size="sm"
+                              />
+                            )}
                         </div>
                       ) : (
                         <span className="text-xs text-brand-charcoal/65">只读</span>

@@ -16,13 +16,16 @@ const ossConfig = {
 };
 
 // 检查配置是否完整
-export const isOSSConfigured = () => {
+const isOSSCredentialsConfigured = () => {
   return (
     !!ossConfig.region &&
     !!ossConfig.accessKeyId &&
-    !!ossConfig.accessKeySecret &&
-    !!ossConfig.bucket
+    !!ossConfig.accessKeySecret
   );
+};
+
+export const isOSSConfigured = () => {
+  return isOSSCredentialsConfigured() && !!ossConfig.bucket;
 };
 
 // 创建 OSS 客户端实例
@@ -176,7 +179,8 @@ export async function deleteOSSFiles(urls: string[]) {
 // ============================================
 
 export function isPrivateBucketConfigured(): boolean {
-  return !!process.env.ALI_OSS_PRIVATE_BUCKET && isOSSConfigured();
+  // 私有 bucket 只依赖 region/密钥/privateBucket，不要求同时配置公开 bucket
+  return !!process.env.ALI_OSS_PRIVATE_BUCKET && isOSSCredentialsConfigured();
 }
 
 let privateOssClient: OSS | null = null;
@@ -213,11 +217,24 @@ export async function uploadToPrivateOSS(
 
 /**
  * 生成私有对象的签名访问 URL（GET，默认 24 小时有效）
+ *
+ * contentDisposition 会作为 OSS 的 response-content-disposition 参与签名，
+ * 这样浏览器下载时能保留候选人原始文件名，并且强制 attachment。
  */
-export function signPrivateObjectUrl(objectName: string, expiresSec = 24 * 3600): string | null {
+export function signPrivateObjectUrl(
+  objectName: string,
+  expiresSec = 24 * 3600,
+  contentDisposition?: string
+): string | null {
   const client = getPrivateOssClient();
   if (!client) return null;
-  return client.signatureUrl(objectName, { method: "GET", expires: expiresSec });
+  return client.signatureUrl(objectName, {
+    method: "GET",
+    expires: expiresSec,
+    ...(contentDisposition
+      ? { response: { "content-disposition": contentDisposition } }
+      : {}),
+  });
 }
 
 /** 删除私有 bucket 对象；未配置时返回 false。 */
@@ -226,4 +243,29 @@ export async function deletePrivateOSSObject(objectName: string): Promise<boolea
   if (!client) return false;
   await client.delete(objectName);
   return true;
+}
+
+/** 列出私有 bucket 指定前缀下的对象名（用于孤儿简历清理）。 */
+export async function listPrivateOSSObjectNames(prefix: string): Promise<string[]> {
+  const client = getPrivateOssClient();
+  if (!client) return [];
+
+  const names: string[] = [];
+  let marker: string | undefined;
+  do {
+    const result = await client.list(
+      {
+        prefix,
+        "max-keys": 1000,
+        ...(marker ? { marker } : {}),
+      },
+      {}
+    );
+    for (const object of result.objects ?? []) {
+      names.push(object.name);
+    }
+    marker = result.nextMarker;
+  } while (marker);
+
+  return names;
 }

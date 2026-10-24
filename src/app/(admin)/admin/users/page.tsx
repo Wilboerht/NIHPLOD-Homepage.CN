@@ -50,6 +50,7 @@ import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -64,6 +65,11 @@ import { UserAvatar } from "@/components/admin/UserAvatar";
 import { UserAdvisorPanel } from "@/components/admin/UserAdvisorPanel";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import {
+  ApprovalRequestDialog,
+  type ApprovalInitialValues,
+} from "@/components/admin/ApprovalRequestDialog";
+import type { ApprovalPolicyKey } from "@/lib/admin-approval-policy";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
 import type { UserExportGroup } from "@/lib/user-export";
 import { UserExportDialog } from "./UserExportDialog";
@@ -397,6 +403,17 @@ function AdminUsersContent() {
   const toast = useToast();
   const { requireTotp, totpModal } = useTotpConfirm();
 
+  const runWithStepUp = async <T,>(run: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await run();
+    } catch (err) {
+      if (!isTotpRequired(err)) throw err;
+      const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+      if (!verified) return null;
+      return run();
+    }
+  };
+
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -461,13 +478,19 @@ function AdminUsersContent() {
   const [tempPasswordSaved, setTempPasswordSaved] = useState(false);
 
   // 权限（导航与按钮按权限点收敛，服务端为最终权威）
-  const { can: canAdmin } = useAdminPermissions();
+  const { can: canAdmin, role } = useAdminPermissions();
+  const isOwnerActor = role === "owner";
   const canWriteUsers = canAdmin("users:write");
   const canDeleteUsers = canAdmin("users:delete");
   const canSecurityWrite = canAdmin("users:security:write");
   const canAdjustPoints = canAdmin("points:adjust");
   const canRevealPhone = canAdmin("users:sensitive:read");
   const canReadAdvisorProfile = canAdmin("advisor:users:read");
+  const canRequestApproval = canAdmin("approvals:request");
+  const [approvalTarget, setApprovalTarget] = useState<{
+    policyKey: ApprovalPolicyKey;
+    values: ApprovalInitialValues;
+  } | null>(null);
 
   const copyText = useCallback(
     async (value: string, label: string) => {
@@ -679,10 +702,13 @@ function AdminUsersContent() {
     if (!detailUser) return;
     setBirthdaySaving(true);
     try {
-      const data = await apiPatch<{ user: { birthday: string | null; birthdayLocked: boolean } }>(
-        `/api/admin/users/${detailUser.id}`,
-        { birthday: birthdayInput === "" ? null : birthdayInput }
-      );
+        const data = await runWithStepUp(() =>
+          apiPatch<{ user: { birthday: string | null; birthdayLocked: boolean } }>(
+            `/api/admin/users/${detailUser.id}`,
+            { birthday: birthdayInput === "" ? null : birthdayInput }
+          )
+        );
+        if (data === null) return;
       toast.success(birthdayInput === "" ? "已清除生日并解锁" : "生日已更新");
       setDetailUser((prev) =>
         prev
@@ -706,7 +732,10 @@ function AdminUsersContent() {
     if (!detailUser) return;
     setBirthdaySaving(true);
     try {
-      await apiPatch(`/api/admin/users/${detailUser.id}`, { unlockBirthday: true });
+        const result = await runWithStepUp(() =>
+          apiPatch(`/api/admin/users/${detailUser.id}`, { unlockBirthday: true })
+        );
+        if (result === null) return;
       toast.success("已解锁生日，用户可自助修改");
       setDetailUser((prev) => (prev ? { ...prev, birthdayLocked: false } : prev));
       setBirthdayEditOpen(false);
@@ -722,7 +751,10 @@ function AdminUsersContent() {
     if (!detailUser || !identityUnbindTarget) return;
     setIdentityUnbinding(true);
     try {
-      await apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`);
+        const result = await runWithStepUp(() =>
+          apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`)
+        );
+        if (result === null) return;
       toast.success("已解绑该外部身份");
       setDetailUser((prev) =>
         prev
@@ -819,7 +851,8 @@ function AdminUsersContent() {
     const target = userStatusMap[status];
     setStatusLoading(true);
     try {
-      await apiPatch(`/api/admin/users/${id}`, { status });
+        const result = await runWithStepUp(() => apiPatch(`/api/admin/users/${id}`, { status }));
+        if (result === null) return;
       toast.success(`已设置用户状态为「${target.label}」`);
       setStatusTarget(null);
       await fetchUsers();
@@ -863,10 +896,13 @@ function AdminUsersContent() {
     const { status: targetStatus } = batchTarget;
     setBatchLoading(true);
     try {
-      await apiPost<{ updated: number }>("/api/admin/users", {
-        ids: Array.from(selectedIds),
-        status: targetStatus,
-      });
+        const result = await runWithStepUp(() =>
+          apiPost<{ updated: number }>("/api/admin/users", {
+            ids: Array.from(selectedIds),
+            status: targetStatus,
+          })
+        );
+        if (result === null) return;
       toast.success(
         `已将选中的 ${selectedCount} 个用户设置为「${userStatusMap[targetStatus].label}」`
       );
@@ -887,32 +923,30 @@ function AdminUsersContent() {
     if (level) params.set("level", level);
     params.set("include", groups.join(","));
     const qs = params.toString();
-    setExporting(true);
-    try {
-      const response = await fetch(`/api/admin/users/export?check=1&${qs}`, {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        error?: { message?: string };
-      } | null;
-      if (!response.ok) {
-        throw new Error(payload?.error?.message || "导出预检失败，请稍后重试");
+      setExporting(true);
+      try {
+        const preflight = await runWithStepUp(() =>
+          apiGet("/api/admin/users/export", {
+            check: "1",
+            search: search || undefined,
+            status: status || undefined,
+            level: level || undefined,
+            include: groups.join(","),
+          })
+        );
+        if (preflight === null) return;
+
+        setExportOpen(false);
+        const downloaded = await runWithStepUp(() =>
+          downloadFromUrl(`/api/admin/users/export?${qs}`, "users-export.zip")
+        );
+        if (downloaded === null) return;
+        toast.success("已开始生成导出文件，请保持页面打开");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
+      } finally {
+        setExporting(false);
       }
-      setExportOpen(false);
-      const anchor = document.createElement("a");
-      anchor.href = `/api/admin/users/export?${qs}`;
-      anchor.rel = "noopener";
-      anchor.style.display = "none";
-      document.body.appendChild(anchor);
-      anchor.click();
-      setTimeout(() => anchor.remove(), 1000);
-      toast.success("已开始生成导出文件，请保持页面打开");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
-    } finally {
-      setExporting(false);
-    }
   };
 
   const openDetail = async (id: string) => {
@@ -991,14 +1025,14 @@ function AdminUsersContent() {
         onClick: () => setResetPasswordOpen(true),
       });
     }
-    if (canWriteUsers && detailUser.status !== "SUSPENDED") {
+    if (isOwnerActor && canWriteUsers && detailUser.status !== "SUSPENDED") {
       detailMoreItems.push({
         label: "冻结账号",
         icon: <Lock className="h-3.5 w-3.5" />,
         onClick: () => updateUserStatus(detailUser.id, "SUSPENDED"),
       });
     }
-    if (canWriteUsers && detailUser.status !== "BANNED") {
+    if (isOwnerActor && canWriteUsers && detailUser.status !== "BANNED") {
       detailMoreItems.push({
         label: "封禁账号",
         icon: <Ban className="h-3.5 w-3.5" />,
@@ -1006,7 +1040,7 @@ function AdminUsersContent() {
         onClick: () => updateUserStatus(detailUser.id, "BANNED"),
       });
     }
-    if (canDeleteUsers) {
+    if (isOwnerActor && canDeleteUsers) {
       detailMoreItems.push(
         { divider: true },
         {
@@ -1021,12 +1055,60 @@ function AdminUsersContent() {
         }
       );
     }
-  }
+      if (!isOwnerActor && canRequestApproval) {
+        const approvalItems: DropdownItem[] = [];
+          approvalItems.push({
+            label: "申请调整积分",
+            icon: <Sparkles className="h-3.5 w-3.5" />,
+            onClick: () =>
+              setApprovalTarget({
+                policyKey: "points.adjust",
+                values: { userId: detailUser.id },
+              }),
+          });
+        if (detailUser.status !== "SUSPENDED") {
+          approvalItems.push({
+            label: "申请冻结账号",
+            icon: <Lock className="h-3.5 w-3.5" />,
+            onClick: () =>
+              setApprovalTarget({
+                policyKey: "user.status",
+                values: { userId: detailUser.id, status: "SUSPENDED" },
+              }),
+          });
+        }
+        if (detailUser.status !== "BANNED") {
+          approvalItems.push({
+            label: "申请封禁账号",
+            icon: <Ban className="h-3.5 w-3.5" />,
+            danger: true,
+            onClick: () =>
+              setApprovalTarget({
+                policyKey: "user.status",
+                values: { userId: detailUser.id, status: "BANNED" },
+              }),
+          });
+        }
+        approvalItems.push({
+          label: "申请删除用户",
+          icon: <Trash2 className="h-3.5 w-3.5" />,
+          danger: true,
+          onClick: () =>
+            setApprovalTarget({
+              policyKey: "user.delete",
+              values: { userId: detailUser.id },
+            }),
+        });
+        if (approvalItems.length > 0) {
+          detailMoreItems.push({ divider: true }, ...approvalItems);
+        }
+      }
+    }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="用户管理"
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="用户管理"
         description="管理注册用户"
         actions={
           <>
@@ -2472,6 +2554,15 @@ function AdminUsersContent() {
       />
 
       {/* 资金类操作二次验证 */}
+      {approvalTarget && (
+        <ApprovalRequestDialog
+          open
+          onClose={() => setApprovalTarget(null)}
+          initialPolicyKey={approvalTarget.policyKey}
+          initialValues={approvalTarget.values}
+          lockPolicy
+        />
+      )}
       {totpModal}
     </div>
   );

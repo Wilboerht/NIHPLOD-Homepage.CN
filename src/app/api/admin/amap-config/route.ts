@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { createAuditLogStrict } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,9 @@ export async function GET(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     await createAuditLogStrict({
       action: "amap_config_view",

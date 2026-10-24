@@ -18,7 +18,8 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost, apiGet } from "@/lib/api-client";
+import { apiPost, apiGet, ApiError } from "@/lib/api-client";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import {
   Check,
@@ -84,7 +85,19 @@ export default function OAuthWizardPage() {
 
 function OAuthWizardContent() {
   const toast = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const router = useRouter();
+
+  const withStepUp = async <T,>(action: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await action();
+    } catch (err) {
+      if (!isTotpRequired(err)) throw err;
+      const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+      if (!verified) return null;
+      return await action();
+    }
+  };
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -149,16 +162,19 @@ function OAuthWizardContent() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const data = await apiPost<CreateClientWizardResponse>("/api/admin/oauth-clients", {
-        name: appName.trim(),
-        redirectUris: [redirectUri.trim()],
-        scopes: selectedScopes,
-        isPublic,
-      });
+      setLoading(true);
+      try {
+        const data = await withStepUp(() =>
+          apiPost<CreateClientWizardResponse>("/api/admin/oauth-clients", {
+            name: appName.trim(),
+            redirectUris: [redirectUri.trim()],
+            scopes: selectedScopes,
+            isPublic,
+          })
+        );
+        if (data === null) return;
 
-      setResult({
+        setResult({
         clientId: data.client.clientId,
         plainSecret: data.plainSecret,
         client: data.client,
@@ -654,6 +670,7 @@ const user = await userRes.json();`;
           </div>
         </div>
       )}
+      {totpModal}
     </div>
   );
 }

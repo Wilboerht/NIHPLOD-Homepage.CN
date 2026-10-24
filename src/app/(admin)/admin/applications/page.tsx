@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -16,6 +16,8 @@ import {
   Edit2,
   X,
   Tag,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -29,12 +31,14 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { apiConsole } from "@/lib/logger";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useListQuery } from "@/hooks/useListQuery";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import {
   DataTable,
@@ -64,9 +68,12 @@ interface Application {
   jobId: string;
   name: string;
   phone: string;
-  resumePath: string;
+  hasResume: boolean;
+  resumeFileName?: string | null;
+  resumeSize?: number | null;
+  jobTitleSnapshot?: string | null;
   status: string;
-  notes: string | null;
+  notes?: string | null;
   folderId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -94,14 +101,22 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 const getStatusInfo = (status: string) => statusConfig[status] || statusConfig.pending;
 
+function formatFileSize(bytes?: number | null): string | null {
+  if (!bytes || bytes <= 0) return null;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function AdminApplicationsContent() {
   const router = useRouter();
   const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const canWrite = canAdmin("applications:write");
   const canDelete = canAdmin("applications:delete");
   const takeLatest = useLatestRequest();
+  const takeLatestDetail = useLatestRequest();
 
   // 列表状态全部由 URL 派生，刷新/分享/前进后退可恢复
   const page = getNumber("page", 1);
@@ -136,7 +151,10 @@ function AdminApplicationsContent() {
 
   // 详情弹窗
   const [detailApplication, setDetailApplication] = useState<Application | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const detailIdRef = useRef<string | null>(null);
 
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
@@ -152,21 +170,38 @@ function AdminApplicationsContent() {
     }
   }, []);
 
-  // 获取职位列表（用于筛选）
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        const data = await apiGet<{ items: Job[] }>("/api/admin/jobs", { pageSize: 100 });
-        setJobs(data.items);
-      } catch (error) {
-        apiConsole.error("获取职位列表失败:", error);
+  // 获取职位列表（用于筛选；超过 100 个时继续翻页）
+  const fetchJobs = useCallback(async () => {
+    try {
+      const firstPage = await apiGet<{
+        items: Job[];
+        pagination?: { total?: number; totalPages?: number };
+      }>("/api/admin/jobs", { page: 1, pageSize: 100 });
+      let items = firstPage.items;
+      const totalPages = Math.min(
+        firstPage.pagination?.totalPages ??
+          Math.ceil((firstPage.pagination?.total ?? items.length) / 100),
+        10
+      );
+      for (let nextPage = 2; nextPage <= totalPages; nextPage += 1) {
+        const data = await apiGet<{ items: Job[] }>("/api/admin/jobs", {
+          page: nextPage,
+          pageSize: 100,
+        });
+        items = items.concat(data.items);
       }
-    };
+      setJobs(items);
+    } catch (error) {
+      apiConsole.error("获取职位列表失败:", error);
+    }
+  }, []);
+
+  useEffect(() => {
     deferInEffect(() => {
       fetchJobs();
       fetchFolders();
     });
-  }, [fetchFolders]);
+  }, [fetchJobs, fetchFolders]);
 
   // 获取申请列表
   const fetchApplications = useCallback(async () => {
@@ -201,7 +236,7 @@ function AdminApplicationsContent() {
         router.push("/admin-login");
         return;
       }
-      showError("网络异常，请刷新重试");
+      showError(error instanceof ApiError ? error.message : "网络异常，请刷新重试");
       setApplications([]);
       setTotal(0);
       setPendingCount(0);
@@ -236,14 +271,25 @@ function AdminApplicationsContent() {
   // 更新状态（详情弹窗用函数式更新，避免闭包里的旧状态覆盖）
   const updateStatus = async (application: Application, newStatus: string, toastMsg?: string) => {
     try {
-      await apiPatch(`/api/admin/applications/${application.id}`, { status: newStatus });
+      const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
+        status: newStatus,
+        // 乐观锁：如果其他管理员已改过状态，拒绝静默覆盖
+        expectedStatus: application.status,
+      });
       success(toastMsg || "状态已更新");
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       setDetailApplication((prev) =>
-        prev && prev.id === application.id ? { ...prev, status: newStatus } : prev
+        prev && prev.id === application.id
+          ? { ...prev, status: newStatus, updatedAt: updated.updatedAt ?? prev.updatedAt }
+          : prev
       );
       fetchApplications();
     } catch (err) {
+      if (err instanceof ApiError && err.code === "STATUS_CONFLICT") {
+        showError("该申请状态已被其他管理员更新，已刷新列表");
+        fetchApplications();
+        return;
+      }
       showError(err instanceof Error ? err.message : "更新失败");
     }
   };
@@ -269,11 +315,34 @@ function AdminApplicationsContent() {
 
     setSavingNotes(true);
     try {
-      await apiPatch(`/api/admin/applications/${detailApplication.id}`, { notes: editingNotes });
+      const updated = await apiPatch<Application>(
+        `/api/admin/applications/${detailApplication.id}`,
+        {
+          notes: editingNotes,
+          // 乐观锁：防止覆盖其他管理员刚保存的备注/状态
+          expectedUpdatedAt: detailApplication.updatedAt,
+        }
+      );
       success("备注已保存");
-      setDetailApplication((prev) => (prev ? { ...prev, notes: editingNotes } : prev));
+      setDetailApplication((prev) =>
+        prev
+          ? {
+              ...prev,
+              notes: updated.notes ?? editingNotes,
+              updatedAt: updated.updatedAt ?? prev.updatedAt,
+            }
+          : prev
+      );
       fetchApplications();
     } catch (err) {
+      if (
+        err instanceof ApiError &&
+        (err.code === "STALE_APPLICATION" || err.code === "STATUS_CONFLICT")
+      ) {
+        showError("该申请已被其他管理员修改，请刷新后重试");
+        fetchApplications();
+        return;
+      }
       showError(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSavingNotes(false);
@@ -286,10 +355,20 @@ function AdminApplicationsContent() {
 
     setDeleting(true);
     try {
-      await apiDelete(`/api/admin/applications/${deleteTarget.id}`);
+      const runDelete = () => apiDelete(`/api/admin/applications/${deleteTarget.id}`);
+      try {
+        await runDelete();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        await runDelete();
+      }
       success("申请已删除");
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       setDeleteTarget(null);
+      // 分类夹计数会因删除而变化
+      fetchFolders();
       // 删除本页最后一条时回退一页
       if (applications.length === 1 && page > 1) {
         update({ page: String(page - 1) }, { resetPage: false });
@@ -303,31 +382,96 @@ function AdminApplicationsContent() {
     }
   };
 
+  const reloadDetail = async (id: string) => {
+    const isLatest = takeLatestDetail();
+    try {
+      const detail = await apiGet<Application>(`/api/admin/applications/${id}`);
+      if (!isLatest() || detailIdRef.current !== id) return;
+      setDetailApplication(detail);
+      setEditingNotes(detail.notes ?? "");
+    } catch {
+      // 静默失败：下一次打开详情会重新拉取
+    }
+  };
+
   const autoMarkReviewed = async (application: Application) => {
     try {
-      await apiPatch(`/api/admin/applications/${application.id}`, { status: "reviewed" });
+      const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
+        status: "reviewed",
+        expectedStatus: application.status,
+      });
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       setDetailApplication((prev) =>
-        prev && prev.id === application.id ? { ...prev, status: "reviewed" } : prev
+        prev && prev.id === application.id
+          ? { ...prev, status: "reviewed", updatedAt: updated.updatedAt ?? prev.updatedAt }
+          : prev
       );
       fetchApplications();
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "STATUS_CONFLICT") {
+        // 其他管理员已改状态：不要覆盖，拉取最新详情
+        showError("该申请状态已被其他管理员更新");
+        fetchApplications();
+        await reloadDetail(application.id);
+      }
       // 自动标记失败不打断查看流程
     }
   };
 
-  // 查看详情
-  const viewDetail = (application: Application) => {
+  const closeDetail = () => {
+    // 使仍在飞行中的详情请求失效，避免关闭后又被写回
+    takeLatestDetail();
+    detailIdRef.current = null;
+    setDetailApplication(null);
+    setDetailLoading(false);
+  };
+
+  // 查看详情：列表只返回脱敏字段，详情单独请求（同时触发 application_detail_view 审计）
+  const viewDetail = async (application: Application) => {
+    detailIdRef.current = application.id;
     setDetailApplication(application);
-    setEditingNotes(application.notes || "");
-    // 自动标记为已查看（需要 applications:write，异步更新详情状态）
-    if (application.status === "pending" && canWrite) {
-      void autoMarkReviewed(application);
+    setDetailLoading(true);
+    setEditingNotes("");
+    const isLatest = takeLatestDetail();
+    try {
+      const detail = await apiGet<Application>(`/api/admin/applications/${application.id}`);
+      if (!isLatest()) return;
+      setDetailApplication(detail);
+      setEditingNotes(detail.notes ?? "");
+      // 自动标记为已查看（需要 applications:write，异步更新详情状态）
+      if (detail.status === "pending" && canWrite) {
+        void autoMarkReviewed(detail);
+      }
+    } catch (err) {
+      if (!isLatest()) return;
+      closeDetail();
+      showError(err instanceof ApiError ? err.message : "获取详情失败");
+    } finally {
+      if (isLatest()) setDetailLoading(false);
     }
   };
 
-  // 下载简历
-  const downloadResume = (application: Application) => {
-    window.open(`/api/admin/applications/${application.id}/resume`, "_blank", "noopener");
+  // 下载简历：优先 fetch+blob（能提示 409/401），OSS 跨域失败时回退新标签页
+  const downloadResume = async (application: Application) => {
+    const url = `/api/admin/applications/${application.id}/resume`;
+    setDownloadingId(application.id);
+    try {
+      await downloadFromUrl(url, application.resumeFileName ?? "resume.pdf");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        showError(err.message);
+      } else {
+        // OSS 签名地址跨域时 fetch 可能被 CORS 拦截；回退浏览器直接下载
+        // 用 <a> 而不是 window.open，避免异步回调里被弹窗拦截
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.target = "_blank";
+        anchor.rel = "noopener";
+        anchor.click();
+      }
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   // 打开分类夹编辑弹窗
@@ -378,6 +522,9 @@ function AdminApplicationsContent() {
       fetchFolders();
       if (folderFilter === deleteFolderTarget.id) {
         update({ folderId: null }, { replace: true });
+      } else {
+        // 该分类下的申请已变为未分类，刷新当前列表避免展示旧分类
+        fetchApplications();
       }
     } catch {
       showError("删除失败");
@@ -389,7 +536,9 @@ function AdminApplicationsContent() {
   // 更新申请的分类
   const updateApplicationFolder = async (application: Application, folderId: string | null) => {
     try {
-      await apiPatch(`/api/admin/applications/${application.id}`, { folderId });
+      const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
+        folderId,
+      });
       success("分类已更新");
       fetchApplications();
       fetchFolders();
@@ -401,13 +550,18 @@ function AdminApplicationsContent() {
                 ...prev,
                 folderId,
                 folder: updatedFolder ? { id: updatedFolder.id, name: updatedFolder.name } : null,
+                updatedAt: updated.updatedAt ?? prev.updatedAt,
               }
             : prev
         );
       }
-    } catch {
-      showError("更新失败");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "更新失败");
     }
+  };
+
+  const refreshAll = async () => {
+    await Promise.all([fetchApplications(), fetchFolders(), fetchJobs()]);
   };
 
   // 表格列定义
@@ -492,15 +646,16 @@ function AdminApplicationsContent() {
           <Tooltip content="查看详情" side="top">
             <IconButton
               label={`查看 ${application.name} 的简历`}
-              onClick={() => viewDetail(application)}
+              onClick={() => void viewDetail(application)}
             >
               <Eye className="h-4 w-4" />
             </IconButton>
           </Tooltip>
-          <Tooltip content="下载简历" side="top">
+          <Tooltip content={application.hasResume ? "下载简历" : "简历文件不存在"} side="top">
             <IconButton
               label={`下载 ${application.name} 的简历`}
-              onClick={() => downloadResume(application)}
+              disabled={!application.hasResume || downloadingId === application.id}
+              onClick={() => void downloadResume(application)}
             >
               <Download className="h-4 w-4" />
             </IconButton>
@@ -535,11 +690,24 @@ function AdminApplicationsContent() {
           </>
         }
         actions={
-          canWrite ? (
-            <Button leftIcon={<FolderPlus className="h-4 w-4" />} onClick={() => openFolderModal()}>
-              新建分类
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+              onClick={() => void refreshAll()}
+              loading={loading}
+            >
+              刷新
             </Button>
-          ) : undefined
+            {canWrite && (
+              <Button
+                leftIcon={<FolderPlus className="h-4 w-4" />}
+                onClick={() => openFolderModal()}
+              >
+                新建分类
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -748,15 +916,19 @@ function AdminApplicationsContent() {
                     <Tooltip content="查看详情" side="top">
                       <IconButton
                         label={`查看 ${application.name} 的简历`}
-                        onClick={() => viewDetail(application)}
+                        onClick={() => void viewDetail(application)}
                       >
                         <Eye className="h-4 w-4" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip content="下载简历" side="top">
+                    <Tooltip
+                      content={application.hasResume ? "下载简历" : "简历文件不存在"}
+                      side="top"
+                    >
                       <IconButton
                         label={`下载 ${application.name} 的简历`}
-                        onClick={() => downloadResume(application)}
+                        disabled={!application.hasResume || downloadingId === application.id}
+                        onClick={() => void downloadResume(application)}
                       >
                         <Download className="h-4 w-4" />
                       </IconButton>
@@ -795,14 +967,19 @@ function AdminApplicationsContent() {
       {/* 详情弹窗 */}
       <Modal
         open={!!detailApplication}
-        onClose={() => setDetailApplication(null)}
+        onClose={closeDetail}
         title="简历详情"
         size="lg"
         mobileFullScreen
         closeOnBackdrop={false}
         closeGuard={() => !savingNotes && confirmCloseNotes()}
       >
-        {detailApplication && (
+        {detailApplication && detailLoading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-brand-charcoal/65">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            正在加载详情...
+          </div>
+        ) : detailApplication ? (
           <div className="space-y-6">
             {/* 申请人信息 */}
             <div className="flex items-start gap-4">
@@ -846,6 +1023,12 @@ function AdminApplicationsContent() {
                     .join(" · ")}
                 </p>
               )}
+              {detailApplication.jobTitleSnapshot &&
+                detailApplication.jobTitleSnapshot !== detailApplication.job.title && (
+                  <p className="mt-1 text-sm text-brand-charcoal/65">
+                    投递时职位名称：{detailApplication.jobTitleSnapshot}
+                  </p>
+                )}
             </div>
 
             {/* 申请时间 */}
@@ -856,13 +1039,33 @@ function AdminApplicationsContent() {
 
             {/* 简历下载 */}
             <div>
-              <Button
-                variant="outline"
-                leftIcon={<Download className="h-4 w-4" />}
-                onClick={() => downloadResume(detailApplication)}
-              >
-                下载简历
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="outline"
+                  leftIcon={<Download className="h-4 w-4" />}
+                  onClick={() => void downloadResume(detailApplication)}
+                  loading={downloadingId === detailApplication.id}
+                  disabled={!detailApplication.hasResume || downloadingId === detailApplication.id}
+                >
+                  下载简历
+                </Button>
+                {detailApplication.resumeFileName && (
+                  <span
+                    className="max-w-full truncate text-sm text-brand-charcoal/65"
+                    title={detailApplication.resumeFileName}
+                  >
+                    {detailApplication.resumeFileName}
+                  </span>
+                )}
+                {formatFileSize(detailApplication.resumeSize) && (
+                  <span className="text-sm text-brand-charcoal/65">
+                    {formatFileSize(detailApplication.resumeSize)}
+                  </span>
+                )}
+              </div>
+              {!detailApplication.hasResume && (
+                <p className="mt-2 text-sm text-amber-600">简历文件不存在或已被清理。</p>
+              )}
             </div>
 
             {/* 状态更新 */}
@@ -946,7 +1149,7 @@ function AdminApplicationsContent() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </Modal>
 
       {/* 删除确认 */}
@@ -1015,6 +1218,8 @@ function AdminApplicationsContent() {
         loading={deletingFolder}
         type="danger"
       />
+
+      {totpModal}
     </div>
   );
 }

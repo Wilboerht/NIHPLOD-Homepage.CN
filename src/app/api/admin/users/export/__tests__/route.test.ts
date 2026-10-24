@@ -26,6 +26,10 @@ vi.mock("@/lib/audit", () => ({
   beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
   finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
+
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("@/lib/advisor-internal", () => ({ advisorRequest: vi.fn() }));
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },

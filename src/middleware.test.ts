@@ -80,4 +80,14 @@ describe("middleware", () => {
 
     expect(res.status).toBe(401);
   });
+
+  it("历史公开简历目录返回 410 且不缓存", async () => {
+    const res = await middleware(
+      new NextRequest("https://nihplod.cn/uploads/resumes/legacy.pdf")
+    );
+
+    expect(res.status).toBe(410);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  });
 });

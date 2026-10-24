@@ -4,7 +4,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 创建分类夹 Schema
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     const folders = await prisma.applicationFolder.findMany({
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-write", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     if (!validateCSRFToken(request)) {
@@ -110,22 +110,46 @@ export async function POST(request: NextRequest) {
       _max: { order: true },
     });
 
-    const folder = await prisma.applicationFolder.create({
-      data: {
-        name: validated.name,
-        description: validated.description || null,
-        order: (maxOrder._max.order || 0) + 1,
-      },
-    });
-
-    await createAuditLog({
+    const auditDetail = {
+      name: validated.name,
+      hasDescription: Boolean(validated.description),
+    };
+    const auditId = await beginAuditLog({
       action: "create_application_folder",
       targetType: "application_folder",
-      targetId: folder.id,
-      detail: { name: validated.name },
+      detail: auditDetail,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
       adminId: admin.id,
       request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    const folder = await prisma.applicationFolder
+      .create({
+        data: {
+          name: validated.name,
+          description: validated.description || null,
+          order: (maxOrder._max.order || 0) + 1,
+        },
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", auditDetail);
+        throw error;
+      });
+
+    await finishAuditLog(auditId, "SUCCESS", auditDetail, folder.id);
 
     return NextResponse.json({
       success: true,

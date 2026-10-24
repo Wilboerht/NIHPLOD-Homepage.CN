@@ -13,7 +13,7 @@ import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
@@ -24,6 +24,7 @@ import { useRowSelection } from "@/hooks/useRowSelection";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
 function maskPhone(phone: string): string {
   return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
@@ -59,7 +60,8 @@ function OAuthConsentsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
+    const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("sso:write");
   const [consents, setConsents] = useState<Consent[]>([]);
   const [total, setTotal] = useState(0);
@@ -186,13 +188,22 @@ function OAuthConsentsPage() {
 
   const handleRevoke = async () => {
     if (!revokeTarget) return;
-    setRevoking(true);
-    try {
-      await apiPost("/api/admin/oauth/consents", {
-        userId: revokeTarget.userId,
-        clientId: revokeTarget.clientId,
-      });
-      toast.success("授权已撤销");
+      setRevoking(true);
+      try {
+        const submit = () =>
+          apiPost("/api/admin/oauth/consents", {
+            userId: revokeTarget.userId,
+            clientId: revokeTarget.clientId,
+          });
+        try {
+          await submit();
+        } catch (err) {
+          if (!isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return;
+          await submit();
+        }
+        toast.success("授权已撤销");
       setShowRevoke(false);
       // 撤销的是本页最后一条时回退一页
       if (consents.length === 1 && page > 1) {
@@ -224,14 +235,25 @@ function OAuthConsentsPage() {
         return;
       }
 
-      let revokedCount = 0;
-      for (const [userId, clientIds] of byUser) {
-        const res = await apiPost<{ revokedCount: number; revokedClients: number }>(
-          "/api/admin/oauth/consents",
-          { userId, clientIds }
-        );
-        revokedCount += res.revokedClients ?? 0;
-      }
+        let revokedCount = 0;
+        for (const [userId, clientIds] of byUser) {
+          const submit = () =>
+            apiPost<{ revokedCount: number; revokedClients: number }>(
+              "/api/admin/oauth/consents",
+              { userId, clientIds }
+            );
+
+          let res: { revokedCount: number; revokedClients: number };
+          try {
+            res = await submit();
+          } catch (err) {
+            if (!isTotpRequired(err)) throw err;
+            const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+            if (!verified) return;
+            res = await submit();
+          }
+          revokedCount += res.revokedClients ?? 0;
+        }
 
       toast.success(`已撤销 ${byUser.size} 位用户的 ${revokedCount} 条授权`);
       selection.clear();
@@ -670,6 +692,7 @@ function OAuthConsentsPage() {
         confirmText="确定撤销"
         loading={batchRevoking}
       />
+      {totpModal}
     </div>
   );
 }

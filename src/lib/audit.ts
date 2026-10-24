@@ -143,7 +143,16 @@ export type AuditAction =
   | "audit_retention_request"
   | "audit_retention_execute"
   | "audit_legal_hold_create"
-  | "audit_legal_hold_release";
+  | "audit_legal_hold_release"
+  | "admin_approval_requested"
+  | "admin_approval_approved"
+  | "admin_approval_rejected"
+  | "admin_approval_cancelled"
+  | "admin_approval_expired"
+  | "admin_approval_retried"
+  | "admin_approval_executed"
+  | "admin_approval_execution_failed"
+  | "admin_approval_stale";
 
 export type AuditTargetType =
   | "order"
@@ -295,6 +304,15 @@ export const AUDIT_ACTIONS = [
   "audit_retention_execute",
   "audit_legal_hold_create",
   "audit_legal_hold_release",
+  "admin_approval_requested",
+  "admin_approval_approved",
+  "admin_approval_rejected",
+  "admin_approval_cancelled",
+  "admin_approval_expired",
+  "admin_approval_retried",
+  "admin_approval_executed",
+  "admin_approval_execution_failed",
+  "admin_approval_stale",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [

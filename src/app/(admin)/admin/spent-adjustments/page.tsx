@@ -38,6 +38,8 @@ import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
+import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import {
   formatDateNumeric as formatDate,
@@ -123,10 +125,12 @@ function AdminSpentAdjustmentsContent() {
   const { success, error: showError } = useToast();
 
   // 权限：Excel 导入/撤销导入需要 spent:import（与 API 层一致）
-  const { can: canAdmin } = useAdminPermissions();
+  const { can: canAdmin, role } = useAdminPermissions();
+  const isOwnerActor = role === "owner";
   const canImport = canAdmin("spent:import");
   const canReadSpent = canAdmin("spent:read");
   const canReview = canAdmin("spent:review");
+  const canRequestApproval = canAdmin("approvals:request");
   const { requireTotp, totpModal } = useTotpConfirm();
 
   const isReviewDirty =
@@ -654,6 +658,26 @@ function AdminSpentAdjustmentsContent() {
               >
                 {decision === "approve" ? "确认通过并入账" : "确认驳回"}
               </Button>
+              {!isOwnerActor &&
+                canRequestApproval &&
+                (detail.amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove && (
+                  <ApprovalRequestAction
+                    policyKey="spent.review.approve"
+                    initialValues={{
+                      applicationId: detail.id,
+                      reviewAmount: detail.amountClaimed ?? undefined,
+                    }}
+                    label="申请通过审批"
+                  />
+                )}
+            </div>
+          ) : detail?.status === "APPROVED" && !isOwnerActor && canRequestApproval ? (
+            <div className="flex justify-end">
+              <ApprovalRequestAction
+                policyKey="spent.review.undo"
+                initialValues={{ applicationId: detail.id }}
+                label="申请撤销审核"
+              />
             </div>
           ) : detail?.status === "APPROVED" && canReview ? (
             <div className="flex justify-end">
@@ -662,9 +686,31 @@ function AdminSpentAdjustmentsContent() {
                 撤销审核
               </Button>
             </div>
-          ) : undefined
-        }
-      >
+            ) : detail &&
+              canRequestApproval &&
+              detail.status === "PENDING" &&
+              (detail.amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove ? (
+              <div className="flex justify-end">
+                <ApprovalRequestAction
+                  policyKey="spent.review.approve"
+                  initialValues={{
+                    applicationId: detail.id,
+                    reviewAmount: detail.amountClaimed ?? undefined,
+                  }}
+                  label="申请通过审批"
+                />
+              </div>
+            ) : detail && canRequestApproval && detail.status === "APPROVED" ? (
+              <div className="flex justify-end">
+                <ApprovalRequestAction
+                  policyKey="spent.review.undo"
+                  initialValues={{ applicationId: detail.id }}
+                  label="申请撤销审核"
+                />
+              </div>
+            ) : undefined
+          }
+        >
         {detail && (
           <div className="space-y-4">
             {/* 申请信息 */}
@@ -863,7 +909,7 @@ function AdminSpentAdjustmentsContent() {
                 )}
               </div>
             )}
-            {!canReview && (
+            {!canReview && !canRequestApproval && (
               <div className="mt-6 border-t border-brand-charcoal/10 pt-4 text-xs text-brand-charcoal/65">
                 只读查看（无审核权限）
               </div>

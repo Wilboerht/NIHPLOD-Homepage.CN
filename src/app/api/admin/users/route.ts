@@ -11,6 +11,8 @@ import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { buildUserWhere, userListQuerySchema } from "@/lib/user-query";
 
 // 强制动态渲染，禁止静态预渲染
@@ -147,15 +149,18 @@ export async function POST(request: NextRequest) {
       return csrfForbiddenResponse();
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
+      const rateLimitResponse = await checkAdminRateLimit(request);
+      if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
-    const parsed = z
-      .object({
-        ids: z.array(z.string().min(1)).min(1).max(200),
-        status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]),
-      })
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const body = await request.json();
+      const parsed = z
+        .object({
+          ids: z.array(z.string().min(1)).min(1).max(200),
+          status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]),
+        })
       .safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -165,6 +170,20 @@ export async function POST(request: NextRequest) {
     }
 
     const { ids, status } = parsed.data;
+
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "该操作需要 owner 审批，请前往审批中心提交申请",
+            details: { policyKey: "user.status" },
+          },
+        },
+        { status: 403 }
+      );
+    }
 
     // 批量与单个端点共用同一套级联逻辑（cascadeUserStatusChange）：
     // 冻结/封禁时撤销 Refresh Token + access token 黑名单 + OAuth 会话 + backchannel logout + webhook；

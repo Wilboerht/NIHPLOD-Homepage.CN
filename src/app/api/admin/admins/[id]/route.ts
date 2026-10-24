@@ -9,6 +9,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 
@@ -34,6 +35,20 @@ export const DELETE = withAuth(
       const { id } = await params;
       if (!validateCUID(id)) {
         return invalidIdResponse();
+      }
+
+      if (isAdminApprovalEnforced() && admin.role !== "owner") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "APPROVAL_REQUIRED",
+              message: "该操作需要 owner 审批，请前往审批中心提交申请",
+              details: { policyKey: "admin.delete" },
+            },
+          },
+          { status: 403 }
+        );
       }
 
       const stepUpResponse = await requireAdminStepUp(request, admin);

@@ -25,7 +25,7 @@ import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
-import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api-client";
 import {
   formatDateTime as formatDate,
   formatDateTimeSeconds as formatFullDateTime,
@@ -38,6 +38,7 @@ import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
 function maskForList(phone: string | null): string {
   if (!phone || phone.length < 7) return phone || "";
@@ -77,7 +78,8 @@ function OAuthSessionsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
+    const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("sso:write");
   const canReadClients = canAdmin("sso:clients:read");
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -205,10 +207,19 @@ function OAuthSessionsPage() {
   const handleTerminate = async () => {
     if (!terminateTarget) return;
     setTerminating(true);
-    try {
-      await apiPost("/api/admin/oauth/sessions", {
-        sessionId: terminateTarget.id,
-      });
+      try {
+        const submit = () =>
+          apiPost("/api/admin/oauth/sessions", {
+            sessionId: terminateTarget.id,
+          });
+        try {
+          await submit();
+        } catch (err) {
+          if (!isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return;
+          await submit();
+        }
       toast.success("会话已终止");
       setShowTerminate(false);
       fetchSessions();
@@ -224,9 +235,17 @@ function OAuthSessionsPage() {
       toast.error("请输入 TERMINATE ALL 以确认批量终止");
       return;
     }
-    setBatchTerminating(true);
-    try {
-      await apiDelete("/api/admin/oauth/sessions", { confirm: true });
+      setBatchTerminating(true);
+      try {
+        const submit = () => apiDelete("/api/admin/oauth/sessions", { confirm: true });
+        try {
+          await submit();
+        } catch (err) {
+          if (!isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return;
+          await submit();
+        }
       toast.success("全部会话已终止");
       setShowBatchTerminate(false);
       setBatchConfirmText("");
@@ -250,13 +269,24 @@ function OAuthSessionsPage() {
       toast.error("请输入用户 ID");
       return;
     }
-    setUserTerminating(true);
-    try {
-      const data = await apiPost<{ terminatedCount: number }>("/api/admin/oauth/sessions", {
-        userId,
-        ...(userTerminateClientId ? { clientId: userTerminateClientId } : {}),
-      });
-      toast.success(`已终止该用户 ${data.terminatedCount} 个活跃会话`);
+      setUserTerminating(true);
+      try {
+        const submit = () =>
+          apiPost<{ terminatedCount: number }>("/api/admin/oauth/sessions", {
+            userId,
+            ...(userTerminateClientId ? { clientId: userTerminateClientId } : {}),
+          });
+
+        let data: { terminatedCount: number };
+        try {
+          data = await submit();
+        } catch (err) {
+          if (!isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return;
+          data = await submit();
+        }
+        toast.success(`已终止该用户 ${data.terminatedCount} 个活跃会话`);
       setShowUserTerminateConfirm(false);
       setShowUserTerminate(false);
       setUserTerminateId("");
@@ -808,6 +838,7 @@ function OAuthSessionsPage() {
           </div>
         )}
       </Modal>
+      {totpModal}
     </div>
   );
 }

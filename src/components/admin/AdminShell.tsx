@@ -25,6 +25,7 @@ interface NavCounts {
   spentAdjustments: number;
   pointRedemptions: number;
   applications: number;
+  approvals: number;
 }
 
 const EMPTY_NAV_COUNTS: NavCounts = {
@@ -33,6 +34,7 @@ const EMPTY_NAV_COUNTS: NavCounts = {
   spentAdjustments: 0,
   pointRedemptions: 0,
   applications: 0,
+  approvals: 0,
 };
 
 /**
@@ -109,7 +111,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
       permissionList.includes("users:read") ||
       permissionList.includes("spent:read") ||
       permissionList.includes("redemptions:read") ||
-      permissionList.includes("applications:read");
+      permissionList.includes("applications:read") ||
+      permissionList.includes("approvals:request") ||
+      permissionList.includes("approvals:review");
     if (!canReadAny) return;
 
     let cancelled = false;
@@ -389,7 +393,9 @@ function SidebarContent({
                             ? navCounts.pointRedemptions
                             : item.href === "/admin/applications"
                               ? navCounts.applications
-                              : item.badge;
+                              : item.href === "/admin/approvals"
+                                ? navCounts.approvals
+                                : item.badge;
                   const hasPending = typeof count === "number" && count > 0;
                   const pendingTitle =
                     typeof count === "number" ? `${item.title}（${count} 条待处理）` : item.title;

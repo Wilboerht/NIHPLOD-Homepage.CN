@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { deleteUploadedFile } from "@/lib/upload";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 
 // 批量操作 Schema
@@ -53,12 +54,16 @@ export async function POST(request: NextRequest) {
     const { ids, action } = parsed.data;
 
     // 批量删除为高危操作：需要 products:batch-delete 权限（默认仅 owner）
-    if (action === "delete" && !hasAdminPermission(admin, "products:batch-delete")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品批量删除" } },
-        { status: 403 }
-      );
-    }
+      if (action === "delete" && !hasAdminPermission(admin, "products:batch-delete")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品批量删除" } },
+          { status: 403 }
+        );
+      }
+      if (action === "delete") {
+        const stepUpResponse = await requireAdminStepUp(request, admin);
+        if (stepUpResponse) return stepUpResponse;
+      }
     // 批量发布/下架：需要产品编辑权限
     if (action !== "delete" && !hasAdminPermission(admin, "products:write")) {
       return NextResponse.json(

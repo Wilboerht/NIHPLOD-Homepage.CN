@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     const canReadMessages = hasAdminPermission(admin, "messages:read");
@@ -28,27 +28,56 @@ export async function GET(request: NextRequest) {
     const canReadSpent = hasAdminPermission(admin, "spent:read");
     const canReadRedemptions = hasAdminPermission(admin, "redemptions:read");
     const canReadApplications = hasAdminPermission(admin, "applications:read");
+    const canReviewApprovals = hasAdminPermission(admin, "approvals:review");
+    const canRequestApprovals = hasAdminPermission(admin, "approvals:request");
 
-    const [messages, accountDeletions, spentAdjustments, pointRedemptions, applications] =
-      await Promise.all([
-        canReadMessages ? prisma.contactMessage.count({ where: { read: false } }) : 0,
-        canReadUsers
-          ? prisma.accountDeletionRequest.count({ where: { status: "FAILED" } })
-          : 0,
-        canReadSpent
-          ? prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } })
-          : 0,
-        canReadRedemptions
-          ? prisma.pointRedemption.count({ where: { status: "PENDING" } })
-          : 0,
-        canReadApplications
-          ? prisma.jobApplication.count({ where: { status: "pending" } })
-          : 0,
-      ]);
+    const [
+      messages,
+      accountDeletions,
+      spentAdjustments,
+      pointRedemptions,
+      applications,
+      approvals,
+    ] = await Promise.all([
+      canReadMessages ? prisma.contactMessage.count({ where: { read: false } }) : 0,
+      canReadUsers
+        ? prisma.accountDeletionRequest.count({ where: { status: "FAILED" } })
+        : 0,
+      canReadSpent
+        ? prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } })
+        : 0,
+      canReadRedemptions
+        ? prisma.pointRedemption.count({ where: { status: "PENDING" } })
+        : 0,
+      canReadApplications
+        ? prisma.jobApplication.count({ where: { status: "pending" } })
+        : 0,
+      canReviewApprovals || canRequestApprovals
+        ? prisma.adminApprovalRequest.count({
+            where: canReviewApprovals
+              ? { status: "PENDING", expiresAt: { gt: new Date() } }
+              : {
+                  requesterId: admin.id,
+                  expiresAt: { gt: new Date() },
+                  OR: [
+                    { status: "PENDING" },
+                    { status: "APPROVED", executionMode: "REQUESTER" },
+                  ],
+                },
+          })
+        : 0,
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: { messages, accountDeletions, spentAdjustments, pointRedemptions, applications },
+      data: {
+        messages,
+        accountDeletions,
+        spentAdjustments,
+        pointRedemptions,
+        applications,
+        approvals,
+      },
     });
   } catch (error) {
     apiConsole.error("[AdminNavCounts] 查询失败:", error);

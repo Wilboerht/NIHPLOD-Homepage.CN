@@ -122,16 +122,20 @@ model Job {
 // ============================================
 
 model JobApplication {
-  id         String   @id @default(cuid())
-  jobId      String // 申请的职位ID
-  name       String // 申请人姓名
-  phone      String // 手机号
-  resumePath String // 简历文件路径
-  status     String   @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
-  notes      String?  @db.Text // 备注
-  folderId   String? // 分类夹ID（可选）
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
+  id               String    @id @default(cuid())
+  jobId            String // 申请的职位ID
+  name             String // 申请人姓名
+  phone            String // 手机号
+  resumePath       String // 简历文件路径（含存储后端前缀）
+  resumeFileName   String? // 候选人上传时的原始文件名（仅展示/下载）
+  resumeSize       Int? // 简历字节数
+  jobTitleSnapshot String? // 投递时的职位标题快照
+  consentAt        DateTime? // 隐私政策同意时间
+  status           String    @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
+  notes            String?   @db.Text // 备注
+  folderId         String? // 分类夹ID（可选）
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now()) @updatedAt
 
   job    Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
   folder ApplicationFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
@@ -140,6 +144,8 @@ model JobApplication {
   @@index([status, createdAt(sort: Desc)])
   @@index([folderId])
   @@index([createdAt(sort: Desc)])
+  @@index([name])
+  @@index([phone])
 }
 
 // ============================================
@@ -1236,6 +1242,68 @@ model AdminTotpRecovery {
 
   @@index([adminId, expiresAt])
   @@index([usedAt])
+  @@index([expiresAt])
+}
+
+// ============================================
+// Owner 审批流
+// ============================================
+
+enum AdminApprovalStatus {
+  PENDING
+  APPROVED
+  EXECUTING
+  REJECTED
+  CANCELLED
+  EXPIRED
+  EXECUTED
+  EXECUTION_FAILED
+  STALE
+}
+
+enum AdminApprovalExecutionMode {
+  AUTO
+  REQUESTER
+}
+
+model AdminApprovalRequest {
+  id            String                     @id @default(cuid())
+  policyKey     String
+  action        String
+  executionMode AdminApprovalExecutionMode
+
+  targetType     String
+  targetId       String?
+  targetLabel    String?
+  targetSnapshot Json?
+  payload        Json
+  payloadHash    String
+  reason         String  @db.Text
+
+  requesterId    String
+  requesterEmail String?
+  requesterName  String?
+  requesterRole  String
+
+  status                 AdminApprovalStatus @default(PENDING)
+  approverId             String?
+  approverEmail          String?
+  approverName           String?
+  approvedAt             DateTime?
+  approvalTotpVerifiedAt DateTime?
+  decisionNote           String?             @db.Text
+
+  executionResult Json?
+  executedAt      DateTime?
+  error           String?   @db.Text
+  expiresAt       DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([requesterId, createdAt(sort: Desc)])
+  @@index([policyKey, createdAt(sort: Desc)])
   @@index([expiresAt])
 }
 

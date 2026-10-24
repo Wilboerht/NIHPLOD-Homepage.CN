@@ -978,7 +978,7 @@ describe("管理端 API 集成测试", () => {
     it("无 users:sensitive:read 时 PATCH 响应手机号应脱敏", async () => {
       const req = createRequest("/api/admin/users/user-1", {
         method: "PATCH",
-        body: { status: "BANNED" },
+        body: { birthday: "1990-01-01" },
       });
       mockAdminAuth(
         {
@@ -994,11 +994,15 @@ describe("管理端 API 集成测试", () => {
         id: "user-1",
         phone: "13800138000",
         status: "ACTIVE",
+        birthday: null,
+        birthdayLocked: false,
       });
       mockPrisma.user.update.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
-        status: "BANNED",
+        status: "ACTIVE",
+        birthday: new Date("1990-01-01T00:00:00.000Z"),
+        birthdayLocked: true,
       });
       mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.oAuthSession.findMany.mockResolvedValue([]);

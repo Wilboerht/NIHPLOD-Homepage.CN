@@ -288,10 +288,14 @@ export function withRole<T extends NextRequest, C = unknown, R extends Response 
  */
 export async function checkAdminRateLimit(
   request: NextRequest,
-  key: string = "admin-write"
+  key: string = "admin-write",
+  subject?: string
 ): Promise<NextResponse | null> {
   const ip = getClientIP(request);
-  const result = await rateLimit(`${key}:${ip}`, "default", {
+  // 有管理员身份时按 adminId 分桶，避免办公室 NAT 下多个 HR 共享同一个 IP 桶；
+  // 无身份时（登录/SSO 等）仍按 IP。
+  const identifier = subject ? `${key}:admin:${subject}` : `${key}:${ip}`;
+  const result = await rateLimit(identifier, "default", {
     maxRequests: 30,
     windowMs: 60 * 1000,
   });

@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth } from "@/lib/auth";
 import { rateLimit } from "@/lib/ratelimit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
@@ -112,14 +113,17 @@ export async function GET(request: NextRequest) {
         ? { maxRequests: 30, windowMs: 60 * 1000 }
         : { maxRequests: 5, windowMs: 10 * 60 * 1000 }
     );
-    if (!limit.success) {
-      return NextResponse.json(
-        { success: false, error: { code: "RATE_LIMITED", message: "导出过于频繁，请稍后再试" } },
-        { status: 429, headers: NO_STORE_HEADERS }
-      );
-    }
+      if (!limit.success) {
+        return NextResponse.json(
+          { success: false, error: { code: "RATE_LIMITED", message: "导出过于频繁，请稍后再试" } },
+          { status: 429, headers: NO_STORE_HEADERS }
+        );
+      }
 
-    const params = userListQuerySchema.parse({
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const params = userListQuerySchema.parse({
       page: searchParams.get("page"),
       pageSize: searchParams.get("pageSize"),
       search: searchParams.get("search"),

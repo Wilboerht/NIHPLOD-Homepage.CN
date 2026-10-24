@@ -14,6 +14,8 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { adjustPoints, getPointBalanceView } from "@/lib/points-ledger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { isPointsAdjustApprovalRequired } from "@/lib/admin-approval-policy";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -168,6 +170,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
     const { amount, note, requestId, totpCode } = parsed.data;
+
+    if (
+      isAdminApprovalEnforced() &&
+      admin.role !== "owner" &&
+      isPointsAdjustApprovalRequired(amount)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "该操作需要 owner 审批，请前往审批中心提交申请",
+            details: { policyKey: "points.adjust" },
+          },
+        },
+        { status: 403 }
+      );
+    }
 
     // 资金类操作：二次验证（TOTP / 备用码）
     const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode, {

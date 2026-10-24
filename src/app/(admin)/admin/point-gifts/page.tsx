@@ -23,6 +23,8 @@ import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
+import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 
@@ -69,12 +71,14 @@ const STATUS_LABELS: Record<string, string> = {
 function AdminPointGiftsContent() {
   const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
-  const { can: canAdmin } = useAdminPermissions();
+  const { can: canAdmin, role } = useAdminPermissions();
+  const isOwnerActor = role === "owner";
   const canGiftWrite = canAdmin("gifts:write");
   const canGiftRead = canAdmin("gifts:read");
   const canRedeemRead = canAdmin("redemptions:read");
   const canFulfill = canAdmin("redemptions:fulfill");
   const canCancelRedemption = canAdmin("redemptions:cancel");
+  const canRequestApproval = canAdmin("approvals:request");
   const { requireTotp, totpModal } = useTotpConfirm();
 
   const productPage = getNumber("productPage", 1);
@@ -901,7 +905,19 @@ function AdminPointGiftsContent() {
                                 标记履约
                               </Button>
                             )}
-                            {canCancelRedemption && (
+                              {!isOwnerActor &&
+                                canRequestApproval &&
+                                r.status === "PENDING" &&
+                                r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
+                                  <ApprovalRequestAction
+                                    policyKey="redemption.cancel"
+                                    initialValues={{ redemptionId: r.id }}
+                                    label="申请取消退分"
+                                  />
+                                )}
+                              {canCancelRedemption &&
+                                (isOwnerActor ||
+                                  r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -911,7 +927,7 @@ function AdminPointGiftsContent() {
                                 取消退分
                               </Button>
                             )}
-                            {!canFulfill && !canCancelRedemption && (
+                            {!canFulfill && !canCancelRedemption && !canRequestApproval && (
                               <span className="text-xs text-brand-charcoal/65">只读</span>
                             )}
                           </>
@@ -1037,7 +1053,19 @@ function AdminPointGiftsContent() {
                                   标记履约
                                 </Button>
                               )}
-                              {canCancelRedemption && (
+                            {!isOwnerActor &&
+                              canRequestApproval &&
+                              r.status === "PENDING" &&
+                              r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
+                                <ApprovalRequestAction
+                                  policyKey="redemption.cancel"
+                                  initialValues={{ redemptionId: r.id }}
+                                  label="申请取消退分"
+                                />
+                              )}
+                            {canCancelRedemption &&
+                              (isOwnerActor ||
+                                r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1047,7 +1075,7 @@ function AdminPointGiftsContent() {
                                   取消退分
                                 </Button>
                               )}
-                              {!canFulfill && !canCancelRedemption && (
+                              {!canFulfill && !canCancelRedemption && !canRequestApproval && (
                                 <span className="text-xs text-brand-charcoal/65">只读</span>
                               )}
                             </>

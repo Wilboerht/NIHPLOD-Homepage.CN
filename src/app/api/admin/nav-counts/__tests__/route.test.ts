@@ -8,6 +8,7 @@ const { prismaMock, hasPermissionMock } = vi.hoisted(() => ({
     spentAdjustmentApplication: { count: vi.fn() },
     pointRedemption: { count: vi.fn() },
     jobApplication: { count: vi.fn() },
+    adminApprovalRequest: { count: vi.fn() },
   },
   hasPermissionMock: vi.fn(),
 }));
@@ -39,6 +40,7 @@ describe("GET /api/admin/nav-counts", () => {
     prismaMock.spentAdjustmentApplication.count.mockResolvedValue(5);
     prismaMock.pointRedemption.count.mockResolvedValue(4);
     prismaMock.jobApplication.count.mockResolvedValue(6);
+    prismaMock.adminApprovalRequest.count.mockResolvedValue(1);
     hasPermissionMock.mockReturnValue(true);
   });
 
@@ -53,6 +55,7 @@ describe("GET /api/admin/nav-counts", () => {
       spentAdjustments: 5,
       pointRedemptions: 4,
       applications: 6,
+      approvals: 1,
     });
     expect(prismaMock.accountDeletionRequest.count).toHaveBeenCalledWith({
       where: { status: "FAILED" },
@@ -65,6 +68,9 @@ describe("GET /api/admin/nav-counts", () => {
     });
     expect(prismaMock.jobApplication.count).toHaveBeenCalledWith({
       where: { status: "pending" },
+    });
+    expect(prismaMock.adminApprovalRequest.count).toHaveBeenCalledWith({
+      where: { status: "PENDING", expiresAt: { gt: expect.any(Date) } },
     });
   });
 
@@ -82,10 +88,12 @@ describe("GET /api/admin/nav-counts", () => {
       spentAdjustments: 0,
       pointRedemptions: 0,
       applications: 0,
+      approvals: 0,
     });
     expect(prismaMock.accountDeletionRequest.count).not.toHaveBeenCalled();
     expect(prismaMock.spentAdjustmentApplication.count).not.toHaveBeenCalled();
     expect(prismaMock.pointRedemption.count).not.toHaveBeenCalled();
     expect(prismaMock.jobApplication.count).not.toHaveBeenCalled();
+    expect(prismaMock.adminApprovalRequest.count).not.toHaveBeenCalled();
   });
 });

@@ -86,6 +86,10 @@ vi.mock("@/lib/audit", () => ({
   finishAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: (...args: unknown[]) => mockRecordSsoEvent(...args),
 }));

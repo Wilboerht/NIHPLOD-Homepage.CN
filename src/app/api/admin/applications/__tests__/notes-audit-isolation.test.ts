@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 const { prismaMock, auditMock } = vi.hoisted(() => {
   const prisma = {
     applicationFolder: { findUnique: vi.fn() },
-    jobApplication: { update: vi.fn() },
+    jobApplication: { updateMany: vi.fn(), findUnique: vi.fn() },
   };
   return {
     prismaMock: prisma,
@@ -57,7 +57,8 @@ describe("PATCH /api/admin/applications/[id] 候选人备注审计隔离", () =>
     vi.clearAllMocks();
     auditMock.beginAuditLog.mockResolvedValue("audit-1");
     auditMock.finishAuditLog.mockResolvedValue(true);
-    prismaMock.jobApplication.update.mockResolvedValue({ id: "app-1" });
+    prismaMock.jobApplication.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.jobApplication.findUnique.mockResolvedValue({ id: "app-1" });
   });
 
   it("备注原文不进入审计 detail，只记录变更标记与长度", async () => {

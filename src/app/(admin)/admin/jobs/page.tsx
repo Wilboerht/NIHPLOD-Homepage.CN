@@ -25,6 +25,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useRowSelection } from "@/hooks/useRowSelection";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
 interface Job {
   id: string;
@@ -55,6 +56,7 @@ export default function AdminJobsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
 
   // 状态
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -188,11 +190,19 @@ export default function AdminJobsPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
 
-    setDeleting(true);
-    try {
-      await apiDelete(`/api/admin/jobs/${deleteTarget.id}`);
-      success("职位已删除");
-      setDeleteTarget(null);
+      setDeleting(true);
+      try {
+        const runDelete = () => apiDelete(`/api/admin/jobs/${deleteTarget.id}`);
+        try {
+          await runDelete();
+        } catch (err) {
+          if (!isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return;
+          await runDelete();
+        }
+        success("职位已删除");
+        setDeleteTarget(null);
       // 删光当前页最后一条时回退一页
       if (jobs.length === 1 && page > 1) {
         updateParams({ page: String(page - 1) });
@@ -213,13 +223,24 @@ export default function AdminJobsPage() {
     if (selection.selectedCount === 0) return false;
     setBatchActionLoading(action);
 
-    try {
-      const data = await apiPost<{ message: string }>("/api/admin/jobs/batch", {
-        ids: Array.from(selection.selectedIds),
-        action,
-      });
+      try {
+        const submit = () =>
+          apiPost<{ message: string }>("/api/admin/jobs/batch", {
+            ids: Array.from(selection.selectedIds),
+            action,
+          });
 
-      success(data.message);
+        let data: { message: string };
+        try {
+          data = await submit();
+        } catch (err) {
+          if (action !== "delete" || !isTotpRequired(err)) throw err;
+          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+          if (!verified) return false;
+          data = await submit();
+        }
+
+        success(data.message);
       // 批量删光当前页时回退一页
       const deletesWholePage =
         action === "delete" &&
@@ -661,6 +682,7 @@ export default function AdminJobsPage() {
           loading={batchActionLoading === "delete"}
           type="danger"
         />
+        {totpModal}
       </div>
     </RequirePermission>
   );

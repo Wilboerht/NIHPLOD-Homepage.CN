@@ -208,8 +208,12 @@ export function apiGet<T = unknown>(
 /**
  * 便捷方法：POST 请求
  */
-export function apiPost<T = unknown>(path: string, body?: unknown): Promise<T> {
-  return apiRequest<T>(path, { method: "POST", body });
+export function apiPost<T = unknown>(
+  path: string,
+  body?: unknown,
+  options?: { timeoutMs?: number }
+): Promise<T> {
+  return apiRequest<T>(path, { method: "POST", body, ...options });
 }
 
 /**

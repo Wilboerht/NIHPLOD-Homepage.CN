@@ -70,7 +70,7 @@ function createRequest(): NextRequest {
 describe("POST /api/admin/spent-adjustments/[id]/undo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockVerifyAuth.mockResolvedValue({ id: "admin-1", role: "admin" });
+    mockVerifyAuth.mockResolvedValue({ id: "admin-1", role: "owner" });
     mockValidateCSRF.mockReturnValue(true);
     mockUndo.mockResolvedValue({ ok: true, status: "PENDING" });
   });

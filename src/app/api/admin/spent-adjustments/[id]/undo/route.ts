@@ -15,6 +15,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { undoApplication, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
 
 const undoBodySchema = z
@@ -58,6 +59,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
         { status: 400 }
+      );
+    }
+
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "该操作需要 owner 审批，请前往审批中心提交申请",
+            details: { policyKey: "spent.review.undo" },
+          },
+        },
+        { status: 403 }
       );
     }
 

@@ -18,6 +18,7 @@ import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
 interface TaskLastRun {
   startedAt: string;
@@ -66,7 +67,8 @@ export default function AdminCronTasksPage() {
 
 function AdminCronTasksContent() {
   const { success, error: showError } = useToast();
-  const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
+    const { can: canAdmin } = useAdminPermissions();
   const canRun = canAdmin("cron:run");
   const [tasks, setTasks] = useState<CronTask[]>([]);
   const [recentRuns, setRecentRuns] = useState<CronRun[]>([]);
@@ -102,13 +104,24 @@ function AdminCronTasksContent() {
 
   const handleTrigger = async () => {
     if (!triggerTarget) return;
-    setTriggering(true);
-    try {
-      const data = await apiPost<{ message: string }>("/api/admin/cron-tasks", {
-        taskName: triggerTarget.name,
-      });
-      success(data.message);
-      setTriggerTarget(null);
+      setTriggering(true);
+      try {
+        const submit = () =>
+          apiPost<{ message: string }>("/api/admin/cron-tasks", {
+            taskName: triggerTarget.name,
+          });
+
+        let data: { message: string };
+        try {
+          data = await submit();
+        } catch (e) {
+          if (!isTotpRequired(e)) throw e;
+          const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+          if (!verified) return;
+          data = await submit();
+        }
+        success(data.message);
+        setTriggerTarget(null);
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "任务执行失败");
     } finally {
@@ -388,6 +401,7 @@ function AdminCronTasksContent() {
         confirmText="确认执行"
         loading={triggering}
       />
+      {totpModal}
     </div>
   );
 }

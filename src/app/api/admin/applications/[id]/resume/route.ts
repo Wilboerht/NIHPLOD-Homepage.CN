@@ -6,7 +6,10 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { createAuditLogStrict } from "@/lib/audit";
-import { resolveResumeDownload } from "@/lib/resume-files";
+import {
+  contentDispositionAttachment,
+  resolveResumeDownload,
+} from "@/lib/resume-files";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const application = await prisma.jobApplication.findUnique({
       where: { id },
-      select: { resumePath: true },
+      select: { resumePath: true, resumeFileName: true },
     });
     if (!application?.resumePath) {
       return NextResponse.json(
@@ -52,7 +55,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const download = await resolveResumeDownload(application.resumePath);
+    const download = await resolveResumeDownload(
+      application.resumePath,
+      application.resumeFileName ?? "resume.pdf"
+    );
     if (!download) {
       return NextResponse.json(
         {
@@ -91,7 +97,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         ...NO_STORE_HEADERS,
         "Content-Type": "application/pdf",
         "Content-Length": String(fileStat.size),
-        "Content-Disposition": `attachment; filename="${download.filename}"`,
+        "Content-Disposition": contentDispositionAttachment(download.filename),
       },
     });
   } catch (error) {

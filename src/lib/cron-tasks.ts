@@ -30,6 +30,7 @@ import { cleanupExpiredAdminTotpRecoveries } from "./admin-totp-recovery";
 import { anchorMissingAuditDays } from "./audit-integrity";
 import { archiveAuditDay } from "./audit-archive";
 import { expireAuditExportJobs, processAuditExportJobs } from "./audit-export";
+import { expirePendingApprovals } from "./admin-approval";
 import { reapStalePendingAuditLogs } from "./audit";
 import {
   scanAuditAlerts,
@@ -539,6 +540,21 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 复测提醒任务失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Expire Pending Admin Approvals",
+    cronExpression: "*/10 * * * *",
+    handler: async () => {
+      try {
+        const count = await expirePendingApprovals();
+        if (count > 0) {
+          apiConsole.info(`[Cron] 过期/超时 Owner 审批: ${count} 条`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 过期 Owner 审批申请清理失败:", error);
         throw error;
       }
     },

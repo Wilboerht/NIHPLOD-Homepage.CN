@@ -119,6 +119,15 @@ const SECURITY_ACTIONS = new Set([
   "account_deletion_cancel",
   "account_deletion_execute",
   "account_deletion_retry",
+  "admin_approval_requested",
+  "admin_approval_approved",
+  "admin_approval_rejected",
+  "admin_approval_cancelled",
+  "admin_approval_expired",
+  "admin_approval_retried",
+  "admin_approval_executed",
+  "admin_approval_execution_failed",
+  "admin_approval_stale",
 ]);
 
 const CONTENT_ACTIONS = new Set([
@@ -149,6 +158,7 @@ const CONTENT_ACTIONS = new Set([
 ]);
 
 const CRITICAL_ACTIONS = new Set([
+  "create_admin",
   "delete_admin",
   "update_admin",
   "break_glass_view",
@@ -195,6 +205,11 @@ const HIGH_ACTIONS = new Set([
   "user_status_change",
   "admin_totp_backup_regenerate",
   "webhook_failure_delete",
+  "admin_approval_approved",
+  "admin_approval_retried",
+  "admin_approval_executed",
+  "admin_approval_execution_failed",
+  "admin_approval_stale",
 ]);
 
 const MEDIUM_ACTIONS = new Set([
@@ -219,6 +234,9 @@ const MEDIUM_ACTIONS = new Set([
   "refresh_token_reuse_detected",
   "webhook_failure_retry",
   "sso_audit_export",
+  "admin_approval_requested",
+  "admin_approval_rejected",
+  "admin_approval_cancelled",
 ]);
 
 const REASON_REQUIRED_ACTIONS = new Set([

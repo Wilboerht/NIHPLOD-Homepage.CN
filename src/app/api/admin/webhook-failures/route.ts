@@ -17,6 +17,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { retryWebhookFailureById } from "@/lib/profile-webhook";
 import { retryBackchannelFailureById } from "@/lib/backchannel-logout";
 
@@ -173,6 +174,9 @@ export async function POST(request: NextRequest) {
     if (!validateCUID(id)) return invalidIdResponse();
 
     if (action === "delete") {
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
       const auditId = await beginAuditLog({
         action: "webhook_failure_delete",
         targetType: "system",

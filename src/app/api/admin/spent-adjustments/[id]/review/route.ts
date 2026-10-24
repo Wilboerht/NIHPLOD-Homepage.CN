@@ -17,6 +17,8 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { isSpentReviewApprovalRequired } from "@/lib/admin-approval-policy";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { reviewApplication, MAX_REVIEW_AMOUNT, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
 
 const reviewSchema = z
@@ -88,6 +90,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const { decision, reviewAmount, reviewNote, totpCode } = parsed.data;
+
+    if (
+      isAdminApprovalEnforced() &&
+      admin.role !== "owner" &&
+      decision === "approve" &&
+      isSpentReviewApprovalRequired(reviewAmount ?? 0)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "该操作需要 owner 审批，请前往审批中心提交申请",
+            details: { policyKey: "spent.review.approve" },
+          },
+        },
+        { status: 403 }
+      );
+    }
 
     // 资金类操作：二次验证（TOTP / 备用码）
     const totpResponse = await requireMoneyOperationTotp(admin.id, totpCode, {

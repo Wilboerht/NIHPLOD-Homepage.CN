@@ -82,6 +82,60 @@ function validateSmsConfig(): void {
   }
 }
 
+/**
+ * 生产环境运行时配置校验。
+ *
+ * 这些配置缺失时，代码会在请求期 fail-closed（getClientIP/rateLimit 直接抛错），
+ * 表现为所有限流接口 500。这里提前到启动阶段失败，给出可操作的修复提示。
+ */
+function validateProductionRuntimeConfig(): void {
+  if (!isProduction()) return;
+
+  if (process.env.TRUST_PROXY !== "true") {
+    throw new Error(
+      "[Server] 生产环境必须设置 TRUST_PROXY=true（Nginx/ALB 后）并配置 TRUST_PROXY_HOPS，否则获取客户端 IP 会直接抛错，所有限流接口将 500。"
+    );
+  }
+
+  const hopsRaw = process.env.TRUST_PROXY_HOPS;
+  if (hopsRaw === undefined || hopsRaw === "" || !/^\d+$/.test(hopsRaw)) {
+    apiConsole.warn(
+      "[Server] ⚠️ TRUST_PROXY_HOPS 未设置或非法，当前按 0（取 X-Forwarded-For 最后一段）处理。请按实际反代层数配置（例如 Nginx 一层填 1）。"
+    );
+  }
+
+  const rateLimitStorage = process.env.RATE_LIMIT_STORAGE;
+  if (rateLimitStorage !== "database" && rateLimitStorage !== "memory") {
+    throw new Error(
+      "[Server] 生产环境必须设置 RATE_LIMIT_STORAGE=database（多实例）或 memory（显式单实例），否则 rateLimit 会直接抛错，投递/管理端接口将 500。"
+    );
+  }
+  if (rateLimitStorage === "memory") {
+    apiConsole.warn(
+      "[Server] ⚠️ RATE_LIMIT_STORAGE=memory 仅适用于单实例部署；多实例部署请改为 database，否则限流可被绕过。"
+    );
+  }
+
+  if (!process.env.ALI_OSS_PRIVATE_BUCKET && process.env.ALLOW_LOCAL_RESUME_STORAGE !== "true") {
+    apiConsole.error(
+      "[Server] ❌ 未配置 ALI_OSS_PRIVATE_BUCKET，且 ALLOW_LOCAL_RESUME_STORAGE 未开启：简历上传将返回 503（含 PII 的文件不允许落公开存储）。"
+    );
+  } else if (process.env.ALI_OSS_PRIVATE_BUCKET) {
+    const missingOssConfig = ["ALI_OSS_REGION", "ALI_OSS_ACCESS_KEY_ID", "ALI_OSS_ACCESS_KEY_SECRET"].filter(
+      (name) => !process.env[name]
+    );
+    if (missingOssConfig.length > 0) {
+      apiConsole.error(
+        `[Server] ❌ 已配置 ALI_OSS_PRIVATE_BUCKET，但缺少 ${missingOssConfig.join(", ")}：私有 OSS 客户端无法初始化，简历上传将 503。`
+      );
+    }
+  } else if (process.env.ALLOW_LOCAL_RESUME_STORAGE === "true") {
+    apiConsole.warn(
+      "[Server] ⚠️ ALLOW_LOCAL_RESUME_STORAGE=true：简历将写入服务器本地 private/ 目录。请确认使用持久卷、已纳入备份，且非多实例部署。"
+    );
+  }
+}
+
 export async function initializeApp(): Promise<void> {
   // 构建阶段跳过初始化（防止 worker 进程重复执行）
   if (process.env.NEXT_PHASE === "phase-production-build") {
@@ -106,6 +160,8 @@ export async function initializeApp(): Promise<void> {
     if (isProduction()) {
       validateRS256Keys();
       apiConsole.info("✅ RS256 密钥配置已就绪");
+      validateProductionRuntimeConfig();
+      apiConsole.info("✅ 生产运行时配置已校验");
     }
 
     // 初始化定时任务

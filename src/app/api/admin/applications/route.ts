@@ -6,8 +6,13 @@ import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLogStrict } from "@/lib/audit";
+import { cuidSchema } from "@/lib/validation";
 
-const folderIdSchema = z.union([z.literal("uncategorized"), z.string().cuid()]);
+const folderIdSchema = z.union([z.literal("uncategorized"), cuidSchema]);
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, private",
+} as const;
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
@@ -18,7 +23,7 @@ const querySchema = z.object({
   ),
   jobId: z.preprocess(
     (val) => (val === null || val === "" ? undefined : val),
-    z.string().cuid().optional()
+    cuidSchema.optional()
   ),
   folderId: z.preprocess(
     (val) => (val === null || val === "" ? undefined : val),
@@ -52,7 +57,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-read", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);
@@ -98,7 +103,16 @@ export async function GET(request: NextRequest) {
     const [applications, total, pendingCount] = await Promise.all([
       prisma.jobApplication.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          jobId: true,
+          name: true,
+          phone: true,
+          resumePath: true,
+          status: true,
+          folderId: true,
+          createdAt: true,
+          updatedAt: true,
           job: {
             select: {
               id: true,
@@ -146,19 +160,25 @@ export async function GET(request: NextRequest) {
       request,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        items: applications,
-        pagination: {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize),
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          items: applications.map(({ resumePath, ...application }) => ({
+            ...application,
+            hasResume: Boolean(resumePath),
+          })),
+          pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize),
+          },
+          pendingCount,
         },
-        pendingCount,
       },
-    });
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

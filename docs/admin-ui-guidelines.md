@@ -75,6 +75,29 @@
 - 管理端次级文字最低使用 `text-brand-charcoal/65`（白底对比度约 5.06:1），更弱层级用 `/70`。
 - 禁止在正文、表头、说明、占位符使用 `/25`、`/30`、`/40`、`/50`、`/60` 的 `text-brand-charcoal`；纯装饰图标除外。
 
+## Owner 治理与审批流
+
+- owner 首屏顺序：Owner 治理 → 安全与资金监控 → 业务待办 → 概览 → 最近动态。
+- Owner 治理卡仅 `role === "owner"` 可见，展示待审批、已通过待执行、owner 专属操作、owner 级权限持有人与保护规则。
+- 审批流：非 owner 达到阈值的操作只能发起申请；owner 审批必须使用一次性 TOTP，不能复用 step-up 缓存。
+- AUTO 模式审批通过后立即执行；REQUESTER 模式由申请人在审批中心执行，一次性密钥只返回一次，禁止写入数据库、审计、通知或页面缓存。
+- 执行失败可由 owner（AUTO）或申请人（REQUESTER）使用 fresh TOTP 重试；EXECUTING 超过 30 分钟由 cron 回收为执行失败。
+- 审批详情不得展示原始密钥；目标手机号/IP 按现有规则脱敏。
+- 审批申请与执行必须写审计，业务动作保留原 audit action，并补充 `approvalId` / `requesterId` / `approverId`。
+
+## 高风险操作 step-up 补充
+
+以下操作服务端必须调用 `requireAdminStepUp`：
+
+- 用户状态/生日修改（单个与批量）
+- 用户外部身份解绑
+- 用户数据导出
+- 高德密钥查看
+- OAuth Client 创建、普通更新、SSO 授权撤销、SSO 会话终止
+- 产品/职位单条删除与批量删除
+- 定时任务手动执行
+- Webhook 失败记录删除
+
 ## 验证
 
 ```bash

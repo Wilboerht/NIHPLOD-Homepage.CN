@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { MapPin, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, MapPin, Search } from "lucide-react";
+import { apiGet, ApiError } from "@/lib/api-client";
 
 export interface AmapLocationPickerProps {
   value: string;
@@ -11,9 +12,19 @@ export interface AmapLocationPickerProps {
   error?: string;
 }
 
+interface AmapTip {
+  name: string;
+  district: string;
+  address: string;
+  lng: number;
+  lat: number;
+}
+
 /**
- * 高德地图地址选择器组件
- * 提供地点搜索建议、自动补全和坐标返回
+ * 高德地图地址选择器。
+ *
+ * 搜索建议走服务端代理 /api/admin/amap/search，浏览器不接触 AMAP_KEY / AMAP_SECRET。
+ * 服务端未配置 AMAP_WEB_SERVICE_KEY 时降级为纯文本输入 + 手动经纬度。
  */
 export function AmapLocationPicker({
   value,
@@ -21,134 +32,76 @@ export function AmapLocationPicker({
   onCoordsChange,
   error,
 }: AmapLocationPickerProps) {
-  const [suggestions, setSuggestions] = useState<AMap.Tip[]>([]);
+  const [suggestions, setSuggestions] = useState<AmapTip[]>([]);
   const [open, setOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [loading, setLoading] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const autoCompleteRef = useRef<AMap.Autocomplete | null>(null);
-  // 搜索防抖与过期响应丢弃
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchSeqRef = useRef(0);
 
-  // Amap 密钥从服务端 API 获取，不通过 NEXT_PUBLIC_ 编入客户端 bundle
-  const [amapKey, setAmapKey] = useState("");
-  const [amapSecret, setAmapSecret] = useState("");
-  // 非超级管理员（403）或无密钥配置时降级为纯文本输入 + 手动经纬度
-  const [amapUnavailable, setAmapUnavailable] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/admin/amap-config", { credentials: "include" })
-      .then((r) => {
-        if (!r.ok) throw new Error(`http_${r.status}`);
-        return r.json();
-      })
-      .then((d) => {
-        if (d?.data?.key && d?.data?.secret) {
-          setAmapKey(d.data.key);
-          setAmapSecret(d.data.secret);
-        } else {
-          setAmapUnavailable(true);
-        }
-      })
-      .catch(() => setAmapUnavailable(true));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || window.AMap) return;
-    if (!amapKey || !amapSecret) return;
-
-    // 防止重复插入脚本
-    const existing = document.querySelector('script[src*="webapi.amap.com"]');
-    if (existing) return;
-
-    // 配置安全密钥
-    window._AMapSecurityConfig = {
-      securityJsCode: amapSecret,
-    };
-
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}&plugin=AMap.Autocomplete,AMap.PlaceSearch,AMap.Geocoder`;
-    document.head.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, [amapKey, amapSecret]);
-
-  // 搜索建议逻辑（地图不可用时仅回填文本，不查询建议）
-  const handleSearch = (keyword: string) => {
-    onChange(keyword);
-    // 手动改动文本后原坐标不再对应当前地址，先清空避免保存旧坐标
-    onCoordsChange(null, null);
-
-    const amap = window.AMap;
-    if (amapUnavailable || !amap) {
-      return;
-    }
-
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    const seq = ++searchSeqRef.current;
-
-    if (!keyword.trim()) {
+  const search = async (keyword: string) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) {
       setSuggestions([]);
       setOpen(false);
       setSelectedIndex(-1);
       return;
     }
 
-    // 防抖 300ms，避免每次击键都请求并丢弃过期响应
-    searchDebounceRef.current = setTimeout(() => {
-      amap.plugin(["AMap.Autocomplete"], () => {
-        if (seq !== searchSeqRef.current) return;
-        if (!autoCompleteRef.current) {
-          autoCompleteRef.current = new amap.Autocomplete({
-            city: "上海",
-          });
-        }
-
-        autoCompleteRef.current.search(
-          keyword,
-          (status: string, result: AMap.AutocompleteResult) => {
-            if (seq !== searchSeqRef.current) return;
-            if (status === "complete" && result.tips) {
-              setSuggestions(result.tips.filter((t) => t.location));
-              setOpen(true);
-            } else {
-              setSuggestions([]);
-            }
-          }
-        );
+    const seq = ++searchSeqRef.current;
+    setLoading(true);
+    try {
+      const data = await apiGet<{ tips: AmapTip[] }>("/api/admin/amap/search", {
+        keyword: trimmed,
       });
+      if (seq !== searchSeqRef.current) return;
+      const tips = data.tips ?? [];
+      setSuggestions(tips);
+      setOpen(tips.length > 0);
+      setUnavailable(false);
+    } catch (error) {
+      if (seq !== searchSeqRef.current) return;
+      if (error instanceof ApiError && error.status === 503) {
+        setUnavailable(true);
+      }
+      setSuggestions([]);
+      setOpen(false);
+    } finally {
+      if (seq === searchSeqRef.current) setLoading(false);
+    }
+  };
+
+  const handleSearch = (keyword: string) => {
+    onChange(keyword);
+    // 手动改动文本后原坐标不再对应当前地址，先清空避免保存旧坐标
+    onCoordsChange(null, null);
+
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      void search(keyword);
     }, 300);
   };
 
-  // 卸载时清理防抖定时器
+  const selectSuggestion = (tip: AmapTip) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchSeqRef.current += 1;
+    onChange(`${tip.district}${tip.name}`);
+    onCoordsChange(tip.lng, tip.lat);
+    setOpen(false);
+    setSelectedIndex(-1);
+  };
+
   useEffect(() => {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     };
   }, []);
 
-  const selectSuggestion = (tip: AMap.Tip) => {
-    const fullLocation = `${tip.district}${tip.name}`;
-    // 先取消进行中的防抖搜索，避免建议列表在选中后又被旧响应覆盖
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchSeqRef.current += 1;
-    onChange(fullLocation);
-    if (tip.location) {
-      onCoordsChange(tip.location.lng, tip.location.lat);
-    }
-    setOpen(false);
-    setSelectedIndex(-1);
-  };
-
-  // 点击外部关闭
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+    function handleClick(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     }
@@ -178,46 +131,50 @@ export function AmapLocationPicker({
           }
           value={value}
           placeholder={
-            amapUnavailable ? "填写工作地点，如：上海市普陀区信泰中心广场" : "搜索工作地点，如：信泰中心广场"
+            unavailable
+              ? "地点搜索暂不可用，可直接填写工作地点"
+              : "搜索工作地点，如：信泰中心广场"
           }
           onFocus={() => {
             if (suggestions.length > 0) setOpen(true);
           }}
-          onChange={(e) => handleSearch(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(event) => handleSearch(event.target.value)}
+          onKeyDown={(event) => {
             if (!open || suggestions.length === 0) return;
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
               setSelectedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
               setSelectedIndex((prev) => Math.max(prev - 1, 0));
-            } else if (e.key === "Enter") {
-              e.preventDefault();
+            } else if (event.key === "Enter") {
+              event.preventDefault();
               if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
                 selectSuggestion(suggestions[selectedIndex]);
               }
-            } else if (e.key === "Escape") {
+            } else if (event.key === "Escape") {
               setOpen(false);
               setSelectedIndex(-1);
             }
           }}
           autoComplete="off"
-          className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none transition-colors focus:ring-1 ${
+          className={`h-10 w-full rounded-lg border pl-9 pr-9 text-sm outline-none transition-colors focus:ring-1 ${
             error
               ? "border-red-400 focus:border-red-400 focus:ring-red-400"
               : "border-brand-charcoal/15 focus:border-brand-primary focus:ring-brand-primary"
           }`}
         />
+        {loading && (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-brand-charcoal/50" />
+        )}
       </div>
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-      {amapUnavailable && !error && (
+      {unavailable && !error && (
         <p className="mt-1 text-xs text-brand-charcoal/65">
-          地图搜索仅超级管理员可用，可直接填写地点，并在下方手动录入经纬度（选填）
+          地点搜索由服务端代理，当前未配置 AMAP_WEB_SERVICE_KEY；可直接填写地点，并手动录入经纬度（选填）。
         </p>
       )}
 
-      {/* 下拉建议列表 */}
       {open && suggestions.length > 0 && (
         <ul
           id="amap-suggestion-list"
@@ -226,12 +183,12 @@ export function AmapLocationPicker({
         >
           {suggestions.map((tip, index) => (
             <li
-              key={index}
+              key={`${tip.name}-${tip.lng}-${tip.lat}-${index}`}
               id={`amap-option-${index}`}
               role="option"
               aria-selected={index === selectedIndex}
-              onMouseDown={(e) => {
-                e.preventDefault();
+              onMouseDown={(event) => {
+                event.preventDefault();
                 selectSuggestion(tip);
               }}
               onMouseEnter={() => setSelectedIndex(index)}

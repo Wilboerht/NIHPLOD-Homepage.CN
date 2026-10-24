@@ -48,6 +48,10 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/profile-webhook", () => ({
   retryWebhookFailureById: vi.fn(),
 }));

@@ -14,6 +14,9 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { isRedemptionCancelApprovalRequired } from "@/lib/admin-approval-policy";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
+import { prisma } from "@/lib/prisma";
 import { cancelRedemption } from "@/lib/point-gifts";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +64,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
         { status: 400 }
       );
+    }
+
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      const redemption = await prisma.pointRedemption.findUnique({
+        where: { id },
+        select: { points: true },
+      });
+      if (redemption && isRedemptionCancelApprovalRequired(redemption.points)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "APPROVAL_REQUIRED",
+              message: "该操作需要 owner 审批，请前往审批中心提交申请",
+              details: { policyKey: "redemption.cancel" },
+            },
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // 资金类操作：二次验证（TOTP / 备用码）

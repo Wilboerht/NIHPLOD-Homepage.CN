@@ -39,9 +39,12 @@ export const metadata: Metadata = {
 
 import Script from "next/script";
 import { getNonce } from "@/lib/nonce";
+import { getPublicAmapConfig } from "@/lib/amap-public";
 
 // 高德地图 Key 从环境变量读取（服务端环境变量，不会暴露到客户端 JS bundle）
-const AMAP_KEY = process.env.AMAP_KEY;
+const publicAmap = getPublicAmapConfig();
+const AMAP_KEY = publicAmap.key;
+const AMAP_ENABLED = Boolean(publicAmap.key && publicAmap.secret);
 
 async function getJobs(): Promise<Job[]> {
   try {
@@ -83,25 +86,30 @@ export default async function CareersPage() {
         <JobPostingJsonLd key={job.id} job={job} />
       ))}
       {/* 预加载高德地图配置 */}
-      <Script
-        id="amap-security-config"
-        strategy="afterInteractive"
-        nonce={nonce}
-        dangerouslySetInnerHTML={{
-          __html: `
-            window._AMapSecurityConfig = {
-              securityJsCode: '${(process.env.AMAP_SECRET || "").replace(/'/g, "\\'")}'
-            };
-          `,
-        }}
-      />
-      {/* 预加载高德地图脚本 */}
-      <Script
-        src={`https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geocoder`}
-        strategy="afterInteractive"
-        nonce={nonce}
-      />
-      <CareersContent jobs={jobs} content={undefined} />
+      {AMAP_ENABLED && (
+        <>
+          <Script
+            id="amap-security-config"
+            strategy="afterInteractive"
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `
+              window._AMapSecurityConfig = {
+                securityJsCode: '${(publicAmap.secret || "").replace(/'/g, "\\'")}'
+              };
+            `,
+            }}
+          />
+          {/* 预加载高德地图脚本 */}
+          <Script
+            src={`https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geocoder`}
+            strategy="afterInteractive"
+            nonce={nonce}
+          />
+        </>
+      )}
+
+      <CareersContent jobs={jobs} content={undefined} amapEnabled={AMAP_ENABLED} />
     </>
   );
 }

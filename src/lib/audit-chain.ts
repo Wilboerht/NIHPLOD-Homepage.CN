@@ -113,7 +113,11 @@ export async function prepareAuditChain(
   tx: ChainClient,
   envelope: Omit<AuditChainEnvelope, "chainSeq" | "prevHash">
 ): Promise<Pick<AuditChainEnvelope, "chainSeq" | "prevHash"> & { entryHash: string }> {
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('AuditLog:chain'))`;
+  // pg_advisory_xact_lock 返回 void；用常量包一层，避免 Prisma 反序列化 void 失败。
+  await tx.$queryRaw`
+    SELECT 1 AS locked
+    FROM (SELECT pg_advisory_xact_lock(hashtext('AuditLog:chain'))) AS audit_chain_lock
+  `;
   const last = await tx.auditLog.findFirst({
     where: { chainSeq: { not: null } },
     orderBy: { chainSeq: "desc" },

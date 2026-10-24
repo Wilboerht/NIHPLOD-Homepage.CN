@@ -52,6 +52,7 @@ interface CareersPageContent {
 interface CareersContentProps {
   jobs: Job[];
   content?: CareersPageContent;
+  amapEnabled?: boolean;
 }
 
 // ============================================
@@ -89,7 +90,7 @@ function normalizeJobHtml(html: string): string {
 // Main Component
 // ============================================
 
-export function CareersContent({ jobs, content }: CareersContentProps) {
+export function CareersContent({ jobs, content, amapEnabled = true }: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -420,7 +421,12 @@ export function CareersContent({ jobs, content }: CareersContentProps) {
       {/* Job Detail Modal */}
       <AnimatePresence>
         {selectedJob && (
-          <JobModal job={selectedJob} onClose={() => setSelectedJob(null)} submitTip={submitTip} />
+          <JobModal
+            job={selectedJob}
+            onClose={() => setSelectedJob(null)}
+            submitTip={submitTip}
+            amapEnabled={amapEnabled}
+          />
         )}
       </AnimatePresence>
 
@@ -525,13 +531,16 @@ function JobModal({
   job,
   onClose,
   submitTip,
+  amapEnabled,
 }: {
   job: Job;
   onClose: () => void;
   submitTip?: { title: string; content: string };
+  amapEnabled?: boolean;
 }) {
   const [formData, setFormData] = useState({ name: "", phone: "" });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [consent, setConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -540,10 +549,12 @@ function JobModal({
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const honeypotRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const typeInfo = jobTypeMap[job.type] || { label: job.type, color: "bg-gray-100 text-gray-700" };
 
   const PHONE_REGEX = /^1[3-9]\d{9}$/;
+  const MAX_RESUME_SIZE = 10 * 1024 * 1024;
 
   const validateField = (name: string, value: string): string | null => {
     if (name === "name") {
@@ -556,6 +567,28 @@ function JobModal({
     return null;
   };
 
+  const handleResumeChange = (file: File | null) => {
+    if (!file) {
+      setResumeFile(null);
+      setFieldErrors((prev) => ({ ...prev, resume: "" }));
+      return;
+    }
+    if (file.size > MAX_RESUME_SIZE) {
+      setResumeFile(null);
+      setFieldErrors((prev) => ({ ...prev, resume: "简历文件大小不能超过 10MB" }));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (!/\.pdf$/i.test(file.name)) {
+      setResumeFile(null);
+      setFieldErrors((prev) => ({ ...prev, resume: "仅支持 PDF 格式的简历" }));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setResumeFile(file);
+    setFieldErrors((prev) => ({ ...prev, resume: "" }));
+  };
+
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
@@ -564,6 +597,7 @@ function JobModal({
   }, []);
 
   useEffect(() => {
+    if (!amapEnabled) return;
     let retryCount = 0;
     const maxRetries = 20;
 
@@ -633,7 +667,7 @@ function JobModal({
     // 延迟地图初始化，等模态框动画完成后再加载，避免主线程争抢导致卡顿
     const timer = setTimeout(tryInitMap, 400);
     return () => clearTimeout(timer);
-  }, [job.id, job.location, job.longitude, job.latitude]);
+  }, [job.id, job.location, job.longitude, job.latitude, amapEnabled]);
 
   // 弹窗打开时锁定背景滚动，关闭时恢复
   useEffect(() => {
@@ -645,9 +679,16 @@ function JobModal({
   }, []);
 
   // 焦点陷阱 + Escape 关闭
+  const isFormDirty = Boolean(formData.name || formData.phone || resumeFile || consent);
+  const requestClose = () => {
+    if (isSubmitting) return;
+    if (isFormDirty && !window.confirm("表单尚未提交，确定要关闭吗？")) return;
+    onClose();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      onClose();
+      requestClose();
       return;
     }
     if (e.key === "Tab") {
@@ -681,6 +722,7 @@ function JobModal({
     if (nameErr) errors.name = nameErr;
     if (phoneErr) errors.phone = phoneErr;
     if (!resumeFile) errors.resume = "请上传简历";
+    if (!consent) errors.consent = "请阅读并同意隐私政策";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -692,16 +734,21 @@ function JobModal({
       if (!resumeFile) return;
       const data = new FormData();
       data.append("jobId", job.id);
-      data.append("jobTitle", job.title);
       data.append("name", formData.name);
       data.append("phone", formData.phone);
+      data.append("consent", "true");
+      data.append("website", honeypotRef.current?.value ?? "");
       data.append("resume", resumeFile);
 
-      await apiPost("/api/careers/apply", data);
+      await apiPost("/api/careers/apply", data, { timeoutMs: 120_000 });
       setSubmitStatus("success");
       setFormData({ name: "", phone: "" });
       setResumeFile(null);
+      setConsent(false);
+      setFieldErrors({});
+      setErrorMessage(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (honeypotRef.current) honeypotRef.current.value = "";
     } catch (err) {
       setSubmitStatus("error");
       if (err instanceof ApiError) {
@@ -739,7 +786,7 @@ function JobModal({
       className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:p-4"
       onKeyDown={handleKeyDown}
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={requestClose} />
       <m.div
         initial={isDesktop ? { opacity: 0 } : { opacity: 0, y: "100%" }}
         animate={isDesktop ? { opacity: 1 } : { opacity: 1, y: 0 }}
@@ -766,7 +813,8 @@ function JobModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={requestClose}
+            aria-label="关闭"
             className="rounded-full p-2 transition-colors hover:bg-zinc-100"
           >
             <X className="h-5 w-5" />
@@ -776,9 +824,9 @@ function JobModal({
         {/* Body */}
         <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
           {/* Map */}
-          {job.location && (
-            <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
-          )}
+            {amapEnabled && job.location && (
+              <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
+            )}
 
           {/* Description */}
           <div>
@@ -832,6 +880,9 @@ function JobModal({
                     <input
                       type="text"
                       value={formData.name}
+                      maxLength={50}
+                      autoComplete="name"
+                      aria-invalid={Boolean(fieldErrors.name)}
                       onChange={(e) => {
                         setFormData((d) => ({ ...d, name: e.target.value }));
                         setFieldErrors((prev) => ({ ...prev, name: "" }));
@@ -854,6 +905,10 @@ function JobModal({
                     <input
                       type="tel"
                       value={formData.phone}
+                      maxLength={11}
+                      inputMode="tel"
+                      autoComplete="tel"
+                      aria-invalid={Boolean(fieldErrors.phone)}
                       onChange={(e) => {
                         setFormData((d) => ({ ...d, phone: e.target.value }));
                         setFieldErrors((prev) => ({ ...prev, phone: "" }));
@@ -878,14 +933,23 @@ function JobModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf"
-                    onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                    accept=".pdf,application/pdf"
+                    onChange={(e) => handleResumeChange(e.target.files?.[0] ?? null)}
                     className="hidden"
                   />
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={resumeFile ? `已选择简历 ${resumeFile.name}` : "上传简历 PDF"}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-[14px] font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-brand-charcoal"
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-dashed border-zinc-300 px-4 py-4 text-[14px] font-light text-brand-charcoal/70 transition-colors hover:border-[#00263E]/40 hover:text-brand-charcoal focus:outline-none focus:ring-2 focus:ring-[#00263E]/20"
                   >
                     {resumeFile ? (
                       <>
@@ -896,8 +960,10 @@ function JobModal({
                         <button
                           type="button"
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             setResumeFile(null);
+                            setFieldErrors((prev) => ({ ...prev, resume: "" }));
                             if (fileInputRef.current) fileInputRef.current.value = "";
                           }}
                           className="ml-auto shrink-0 rounded-full p-0.5 transition-colors hover:bg-zinc-200"
@@ -912,10 +978,71 @@ function JobModal({
                         <span>上传简历 (PDF)</span>
                       </>
                     )}
-                  </button>
+                  </div>
+                  <p className="mt-1 text-xs font-light text-brand-charcoal/50">
+                    仅支持 PDF，文件大小不超过 10MB
+                  </p>
+                  {fieldErrors.resume && (
+                    <p className="mt-1 text-xs text-red-500" role="alert">
+                      {fieldErrors.resume}
+                    </p>
+                  )}
                 </div>
 
-                {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
+                {/* 蜜罐字段：真实用户不可见，机器人填充后服务端静默丢弃 */}
+                <div
+                  className="pointer-events-none absolute -left-[9999px] top-auto h-px w-px overflow-hidden"
+                  aria-hidden="true"
+                >
+                  <label htmlFor="apply-website">Website</label>
+                  <input
+                    ref={honeypotRef}
+                    id="apply-website"
+                    name="website"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    defaultValue=""
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-start gap-2 text-[13px] font-light leading-5 text-brand-charcoal/70">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(e) => {
+                        setConsent(e.target.checked);
+                        setFieldErrors((prev) => ({ ...prev, consent: "" }));
+                      }}
+                      aria-invalid={Boolean(fieldErrors.consent)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-[#00263E] focus:ring-[#00263E]/30"
+                    />
+                    <span>
+                      我已阅读并同意{" "}
+                      <Link
+                        href="/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-brand-charcoal"
+                      >
+                        《隐私政策》
+                      </Link>
+                      ，同意公司为招聘目的处理我的姓名、电话和简历信息。
+                    </span>
+                  </label>
+                  {fieldErrors.consent && (
+                    <p className="mt-1 text-xs text-red-500" role="alert">
+                      {fieldErrors.consent}
+                    </p>
+                  )}
+                </div>
+
+                {errorMessage && (
+                  <p className="text-sm text-red-500" role="alert">
+                    {errorMessage}
+                  </p>
+                )}
 
                 <button
                   type="submit"

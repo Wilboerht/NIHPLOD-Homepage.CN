@@ -19,6 +19,7 @@ import { changeUserStatus } from "@/lib/user-status";
 import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { hashIdentifier } from "@/lib/auth-security";
 import { executeAccountDeletion, DELETION_STATUS, DELETION_LEASE_MS } from "@/lib/account-deletion";
 
@@ -446,18 +447,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { status: 401 }
       );
     }
-    if (!hasAdminPermission(admin, "users:write")) {
-      return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户状态/生日变更" } },
-        { status: 403 }
-      );
-    }
-    const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
+      if (!hasAdminPermission(admin, "users:write")) {
+        return NextResponse.json(
+          { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户状态/生日变更" } },
+          { status: 403 }
+        );
+      }
+      const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
 
-    const rateLimitResponse = await checkAdminRateLimit(request);
-    if (rateLimitResponse) return rateLimitResponse;
+      const rateLimitResponse = await checkAdminRateLimit(request);
+      if (rateLimitResponse) return rateLimitResponse;
 
-    const { id } = await context.params;
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
+      const { id } = await context.params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
@@ -499,6 +503,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           error: { code: "USER_DELETED", message: "该用户已注销，状态不可恢复或修改" },
         },
         { status: 409 }
+      );
+    }
+
+    if (
+      isAdminApprovalEnforced() &&
+      admin.role !== "owner" &&
+      status !== undefined &&
+      status !== user.status
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "该操作需要 owner 审批，请前往审批中心提交申请",
+            details: { policyKey: "user.status" },
+          },
+        },
+        { status: 403 }
       );
     }
 
@@ -707,6 +730,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "该操作需要 owner 审批，请前往审批中心提交申请",
+            details: { policyKey: "user.delete" },
+          },
+        },
+        { status: 403 }
+      );
+    }
 
     const { id } = await context.params;
     if (!validateCUID(id)) {

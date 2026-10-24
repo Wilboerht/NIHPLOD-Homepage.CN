@@ -18,6 +18,7 @@ import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { cn } from "@/lib/utils";
 
 type Kind = "webhook" | "backchannel";
@@ -78,7 +79,8 @@ export default function AdminWebhookFailuresPage() {
 function AdminWebhookFailuresContent() {
   const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
-  const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
+    const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("webhooks:write");
   const kind: Kind = get("kind", "webhook") === "backchannel" ? "backchannel" : "webhook";
   const page = getNumber("page", 1);
@@ -152,14 +154,25 @@ function AdminWebhookFailuresContent() {
   };
 
   const handleDrop = async (item: FailureItem) => {
-    setActioningId(item.id);
-    try {
-      const data = await apiPost<{ message: string }>("/api/admin/webhook-failures", {
-        kind,
-        id: item.id,
-        action: "delete",
-      });
-      success(data.message);
+      setActioningId(item.id);
+      try {
+        const submit = () =>
+          apiPost<{ message: string }>("/api/admin/webhook-failures", {
+            kind,
+            id: item.id,
+            action: "delete",
+          });
+
+        let data: { message: string };
+        try {
+          data = await submit();
+        } catch (e) {
+          if (!isTotpRequired(e)) throw e;
+          const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+          if (!verified) return;
+          data = await submit();
+        }
+        success(data.message);
       if (items.length === 1 && page > 1) {
         update({ page: String(page - 1) }, { resetPage: false });
       } else {
@@ -442,6 +455,7 @@ function AdminWebhookFailuresContent() {
         type="danger"
         loading={actioningId === dropTarget?.id}
       />
+      {totpModal}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,9 @@ export async function DELETE(
 
     const rateLimitResponse = await checkAdminRateLimit(request, "user:identity-unbind");
     if (rateLimitResponse) return rateLimitResponse;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const { id, identityId } = await params;
     if (!validateCUID(id) || !validateCUID(identityId)) {

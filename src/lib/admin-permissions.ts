@@ -11,6 +11,9 @@
 export const ADMIN_PERMISSIONS = [
   "dashboard:read",
 
+  "approvals:request",
+  "approvals:review",
+
   "users:read",
   "users:sensitive:read",
   "users:write",
@@ -105,6 +108,7 @@ export const ROLE_LABELS: Record<AdminRoleValue, string> = {
 /** 权限分组（管理端权限编辑器展示用） */
 export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] }[] = [
   { group: "仪表盘", permissions: ["dashboard:read"] },
+  { group: "审批", permissions: ["approvals:request", "approvals:review"] },
   {
     group: "用户",
     permissions: [
@@ -190,6 +194,8 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
 
 export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "dashboard:read": "仪表盘查看",
+  "approvals:request": "发起审批申请",
+  "approvals:review": "审批申请（默认仅 owner）",
   "users:read": "用户查看",
   "users:sensitive:read": "查看完整手机号（敏感，写审计）",
   "users:write": "用户状态/生日/解绑",
@@ -275,6 +281,7 @@ export const ROLE_TEMPLATES: Record<
 > = {
   admin: [
     "dashboard:read",
+    "approvals:request",
     "users:read",
     "users:sensitive:read",
     "products:read",
@@ -306,6 +313,7 @@ export const ROLE_TEMPLATES: Record<
   ],
   ops: [
     "dashboard:read",
+    "approvals:request",
     "users:read",
     "products:read",
     "products:write",
@@ -329,6 +337,7 @@ export const ROLE_TEMPLATES: Record<
   ],
   support: [
     "dashboard:read",
+    "approvals:request",
     "users:read",
     "users:sensitive:read",
     "messages:read",
@@ -342,6 +351,7 @@ export const ROLE_TEMPLATES: Record<
   ],
   hr: [
     "dashboard:read",
+    "approvals:request",
     "jobs:read",
     "jobs:write",
     "jobs:delete",
@@ -351,6 +361,7 @@ export const ROLE_TEMPLATES: Record<
   ],
   finance: [
     "dashboard:read",
+    "approvals:request",
     "users:read",
     "spent:read",
     "spent:import",
