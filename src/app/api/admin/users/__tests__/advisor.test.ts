@@ -27,6 +27,10 @@ vi.mock("@/lib/advisor-internal", () => ({
   advisorRequest: mocks.advisorRequest,
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/audit", () => ({
   createAuditLog: mocks.createAuditLog,
   beginAuditLog: mocks.beginAuditLog,

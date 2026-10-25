@@ -43,6 +43,12 @@ import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { checkUserStatus } from "@/lib/auth";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 
@@ -136,7 +142,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -390,6 +396,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[MiniprogramLogin] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器内部错误" } },

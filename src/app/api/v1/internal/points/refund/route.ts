@@ -35,6 +35,7 @@ import { getPointBalanceView, refundRedeemPoints, withPointTxRetry } from "@/lib
 import { auditInternalPoints } from "@/lib/internal-points-audit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { readInternalApiBody } from "@/lib/request-body";
 
 // 本端点允许的 project 白名单：兑换撤销退分仅对商城开放
 const ALLOWED_PROJECTS = ["mall"] as const;
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 读取 body 并校验签名
-    const bodyText = await request.text();
+    const bodyText = await readInternalApiBody(request);
     const bodyHash = await hashRequestBody(bodyText);
     const path = "/api/v1/internal/points/refund";
 

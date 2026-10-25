@@ -159,7 +159,9 @@ export function canonicalizeQuery(search: string): string {
 
 /** 旧版签名（不绑定 query）的过渡期开关；子站全部升级后可设为 false 强制新格式 */
 function isLegacySignatureAllowed(): boolean {
-  return process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE !== "false";
+  // 安全默认：仅显式设置 true 才接受旧格式（不绑定 query）签名。
+  // 过渡期需要兼容旧子站时，部署环境临时设置 INTERNAL_API_ALLOW_LEGACY_SIGNATURE=true。
+  return process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE === "true";
 }
 
 let legacySignatureWarned = false;
@@ -196,12 +198,11 @@ export function generateInternalApiSignature(
 /**
  * 出站方向：官网调用子站内部接口（如 advisor 的 /api/internal/*）时生成 HMAC 签名请求头。
  *
- * 签名算法（新格式，推荐）：HMAC-SHA256(secret, "METHOD|path|query|timestamp|nonce|bodySha256")，
+ * 签名算法（新格式）：HMAC-SHA256(secret, "METHOD|path|query|timestamp|nonce|bodySha256")，
  * query 为 canonicalizeQuery 结果（无 query 时为空串）。
- * 默认仍使用旧格式（不绑定 query）以兼容未升级的子站；先让子站支持双验签，
- * 再将 `INTERNAL_API_SIGN_QUERY=true` 打开切换到新格式。
+ * 默认签新格式；仅在对方尚未升级时设置 `INTERNAL_API_SIGN_QUERY=false` 临时回退旧格式。
  * 敏感端点（如账号注销数据清除）可传 `forceQueryBinding: true` 强制新格式，
- * 独立于全局开关——子站验签侧两种格式均支持，无需等待全局切换。
+ * 独立于全局开关。
  *
  * @returns 签名请求头；INTERNAL_API_KEYS 中未配置该项目密钥时返回 null（调用方决定回退策略）
  */
@@ -220,7 +221,7 @@ export function createSignedInternalRequestHeaders(
   const nonce = randomBytes(16).toString("hex");
   const bodyHash = createHash("sha256").update(bodyText).digest("hex");
   const useQueryBinding =
-    options?.forceQueryBinding === true || process.env.INTERNAL_API_SIGN_QUERY === "true";
+    options?.forceQueryBinding === true || process.env.INTERNAL_API_SIGN_QUERY !== "false";
   const signature = generateInternalApiSignature(
     config.secret,
     method,
@@ -242,15 +243,14 @@ export function createSignedInternalRequestHeaders(
 /**
  * 验证内部 API 请求签名
  *
- * 支持双验签过渡：优先校验新格式（绑定 canonical query，含空 query 的路径）；
- * 当 `INTERNAL_API_ALLOW_LEGACY_SIGNATURE !== "false"`（默认）时，同时接受旧格式，
- * 以保证未升级的子站在过渡期内可用（接受旧格式时会输出一次告警）。
+ * 优先校验新格式（绑定 canonical query，含空 query 的路径）。
+ * 旧格式默认拒绝；仅在显式设置 `INTERNAL_API_ALLOW_LEGACY_SIGNATURE=true` 时
+ * 为未升级子站临时放行（会输出告警）。
  *
  * 支持 secret 轮换宽限：命中条目的 previousSecrets 中任一历史 secret 的签名同样视为通过，
  * 便于「先更新官网、后更新子站」的滚动轮换；两种签名格式对全部候选 secret 都会尝试。
  *
- * @param options.query - canonicalizeQuery 结果；路由应始终传入（无 query 传 ""），
- *   否则新格式按空 query 校验、仍会回退旧格式。
+ * @param options.query - canonicalizeQuery 结果；路由应始终传入（无 query 传 ""）。
  * @returns 验证通过时返回项目配置，否则返回 null
  */
 export function verifyInternalApiSignature(

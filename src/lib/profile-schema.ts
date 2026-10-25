@@ -62,6 +62,9 @@ const ALLOWED_AVATAR_HOSTS = (() => {
       // 配置值非法时忽略（启动校验已兜底）
     }
   };
+  // 官方主域始终允许，避免部署环境变量缺失/测试环境误配导致自有头像被拒。
+  hosts.add("nihplod.cn");
+  hosts.add("www.nihplod.cn");
   addUrl(process.env.NEXT_PUBLIC_APP_URL);
   addUrl(process.env.NEXT_PUBLIC_BASE_URL);
   addUrl(process.env.NEXT_PUBLIC_WWW_URL);

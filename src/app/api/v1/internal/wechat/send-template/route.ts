@@ -34,6 +34,7 @@ import { sendWechatTemplateMessage } from "@/lib/wechat-template";
 import { notifySkinReportReady } from "@/lib/miniprogram-notify";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { readInternalApiBody } from "@/lib/request-body";
 
 // 本端点允许的 project 白名单：测肤报告模板消息仅对测肤子站开放
 const ALLOWED_PROJECTS = ["advisor"] as const;
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 读取 body 并校验签名（nonce 在验签通过后才消费，避免签名错误的请求烧掉 nonce）
-    const bodyText = await request.text();
+    const bodyText = await readInternalApiBody(request);
     const bodyHash = await hashRequestBody(bodyText);
     const path = "/api/v1/internal/wechat/send-template";
 

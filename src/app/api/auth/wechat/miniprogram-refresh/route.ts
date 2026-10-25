@@ -30,6 +30,12 @@ import {
 import { checkUserStatus } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 
@@ -61,8 +67,9 @@ export async function POST(request: NextRequest) {
     // 2. 解析 body
     let body: unknown;
     try {
-      body = await request.json();
-    } catch {
+      body = await readJsonBody(request, BODY_LIMITS.authJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
         { status: 400 }
@@ -208,6 +215,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[MiniprogramRefresh] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器内部错误" } },

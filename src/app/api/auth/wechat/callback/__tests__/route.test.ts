@@ -133,7 +133,8 @@ describe("GET /api/auth/wechat/callback 子站 exchange token 重定向", () => 
     const location = new URL(res.headers.get("location")!);
     expect(location.origin).toBe(SUBSITE);
     expect(location.searchParams.get("wechat_auth")).toBe("success");
-    expect(location.searchParams.get("wechat_exchange_token")).toBe("exchange-token");
+    const hash = new URLSearchParams(location.hash.slice(1));
+    expect(hash.get("wechat_exchange_token")).toBe("exchange-token");
     // 关键断言：禁止通过 Referer 向子站第三方资源泄露含 token 的 URL
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
   });
@@ -147,7 +148,8 @@ describe("GET /api/auth/wechat/callback 子站 exchange token 重定向", () => 
     const location = new URL(res.headers.get("location")!);
     expect(location.origin).toBe(SUBSITE);
     expect(location.searchParams.get("wechat_auth")).toBe("binding_required");
-    expect(location.searchParams.get("wechat_exchange_token")).toBe("exchange-token");
+    const hash = new URLSearchParams(location.hash.slice(1));
+    expect(hash.get("wechat_exchange_token")).toBe("exchange-token");
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
   });
 

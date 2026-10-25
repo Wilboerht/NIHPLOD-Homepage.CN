@@ -14,6 +14,11 @@ vi.mock("@/lib/sso-audit", () => ({
   recordSsoEvent: (...args: unknown[]) => mockRecordSsoEvent(...args),
 }));
 
+// 单元测试不解析真实 DNS；出站防护本身由 outbound-http 的测试覆盖。
+vi.mock("@/lib/outbound-http", () => ({
+  postPublicHttps: (...args: unknown[]) => globalFetch(...args),
+}));
+
 import {
   dispatchStatusChangeWebhook,
   getStatusChangeWebhookTargets,

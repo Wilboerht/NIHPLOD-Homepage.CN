@@ -14,6 +14,12 @@ import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { refreshUserSession, type RefreshUserSessionResult } from "@/lib/session-refresh";
 import { extractDeviceInfo } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
@@ -635,8 +641,9 @@ export async function POST(request: NextRequest) {
     // 解析 body（JSON 解析失败按 invalid_request 400 处理，而非 500）
     let body: Record<string, unknown>;
     try {
-      body = await request.json();
-    } catch {
+      body = await readJsonBody<Record<string, unknown>>(request, BODY_LIMITS.oauthJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
       return noStoreJson(
         { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
         { status: 400 }
@@ -895,6 +902,7 @@ export async function POST(request: NextRequest) {
 
     return respondWithRedirect(redirectUrl);
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth Authorize POST] 异常:", error);
     return noStoreJson(
       { error: "server_error", error_description: "服务器内部错误" },

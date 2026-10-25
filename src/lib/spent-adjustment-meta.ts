@@ -61,7 +61,8 @@ export const SPENT_STATUS_LABELS: Record<SpentAdjustmentStatus, string> = {
  * - 其余值视为私有 bucket 的 objectName，需经鉴权签名端点访问。
  */
 export function isDirectImageUrl(value: string): boolean {
-  return /^https?:\/\//.test(value) || value.startsWith("/");
+  // 只允许站内相对路径；拒绝 https:// 外链和协议相对 //（浏览器会当作跨站 URL）。
+  return value.startsWith("/") && !value.startsWith("//") && !value.includes("\\");
 }
 
 /** 私有凭证对象名前缀（与 spent-adjustment-files.ts 的 OBJECT_PREFIX 一致） */
@@ -73,8 +74,9 @@ const SPENT_PROOF_OBJECT_PREFIX = "spent-adjustments/";
  * objectName 的归属由读取端（resolveSpentProofImage）按 userId 前缀/申请记录权威校验。
  */
 export function isValidSpentProofImageRef(value: string): boolean {
-  if (value.includes("..")) return false;
-  return isDirectImageUrl(value) || value.startsWith(SPENT_PROOF_OBJECT_PREFIX);
+  if (value.includes("..") || value.includes("\\")) return false;
+  if (isDirectImageUrl(value)) return value.startsWith("/uploads/");
+  return value.startsWith(SPENT_PROOF_OBJECT_PREFIX);
 }
 
 /**

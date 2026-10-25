@@ -21,6 +21,12 @@ import { maskPhone } from "@/lib/mask-phone";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBodyOrDefault,
+} from "@/lib/request-body";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { isActiveAccount } from "@/lib/oauth-user-guard";
 import { resolveSsoAvatar } from "@/lib/default-avatar";
@@ -180,7 +186,7 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
     }
 
     // 请求体校验（与主站自用 PUT /api/user/profile 共用 schema）
-    const body = await request.json().catch(() => undefined);
+    const body = await readJsonBodyOrDefault(request, BODY_LIMITS.authJson, undefined);
     const result = updateProfileSchema.safeParse(body);
     if (!result.success) {
       return resJson(
@@ -337,6 +343,7 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
     }
     return resJson(response);
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth UserInfo PATCH] 异常:", error);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },

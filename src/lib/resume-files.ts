@@ -8,6 +8,7 @@ import {
   uploadToPrivateOSS,
 } from "@/lib/ali-oss";
 import { validateFileBuffer } from "@/lib/upload";
+import { inspectPdfSafety } from "@/lib/pdf-safety";
 
 /**
  * 简历私有存储
@@ -126,6 +127,11 @@ export async function uploadResumeFile(buffer: Buffer): Promise<{ key: string }>
   const typeCheck = await validateFileBuffer(buffer);
   if (!typeCheck.valid || typeCheck.detectedType !== "application/pdf") {
     throw new Error("INVALID_RESUME_FILE");
+  }
+
+  const safety = inspectPdfSafety(buffer);
+  if (!safety.safe) {
+    throw new Error(`UNSAFE_RESUME_PDF: ${safety.reason ?? "文件包含受限内容"}`);
   }
 
   const objectName = `${OBJECT_PREFIX}${randomUUID()}.pdf`;

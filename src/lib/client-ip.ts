@@ -18,12 +18,54 @@
  */
 
 import crypto from "crypto";
+import { isIP } from "node:net";
 
 export interface ClientIPOptions {
   /** 是否信任代理头，默认根据环境变量判断 */
   trustProxy?: boolean;
   /** 反向代理层数，默认读取 TRUST_PROXY_HOPS 环境变量 */
   hops?: number;
+}
+
+/**
+ * 限流 key 使用的 IP 归一化：
+ * - IPv4 原样
+ * - IPv4-mapped IPv6（::ffff:1.2.3.4）还原为 IPv4
+ * - IPv6 归一到 /64（同一用户通常可轮换 2^64 个地址，按 /128 限流可被轻易绕过）
+ */
+export function normalizeRateLimitIdentifier(identifier: string): string {
+  // 复合 key：sms-ip:<ip> / wechat-ip-<ip> 也必须按 IPv6 /64 归一，否则可轮换地址绕过日上限
+  if (identifier.startsWith("sms-ip:")) {
+    return `sms-ip:${normalizeRateLimitIdentifier(identifier.slice("sms-ip:".length))}`;
+  }
+  if (identifier.startsWith("wechat-ip-")) {
+    return `wechat-ip-${normalizeRateLimitIdentifier(identifier.slice("wechat-ip-".length))}`;
+  }
+
+  const value = identifier.trim();
+  const version = isIP(value);
+
+  if (version === 4) return value;
+
+  if (version === 6) {
+    // IPv6 十六进制大小写不敏感；统一小写，避免大小写轮换绕过同一 /64 限流桶。
+    const normalized = value.toLowerCase();
+    const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(normalized);
+    if (mapped && isIP(mapped[1]) === 4) return mapped[1];
+
+    const halves = normalized.split("::");
+    const head = halves[0] ? halves[0].split(":") : [];
+    const tail = halves.length > 1 && halves[1] ? halves[1].split(":") : [];
+    const missing = 8 - (head.length + tail.length);
+    const groups = [
+      ...head,
+      ...Array.from({ length: Math.max(0, missing) }, () => "0"),
+      ...tail,
+    ].map((group) => group.replace(/^0+/, "") || "0");
+    return `${groups.slice(0, 4).join(":")}::/64`;
+  }
+
+  return identifier;
 }
 
 /**

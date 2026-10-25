@@ -124,17 +124,17 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
     mockUserUpdate.mockResolvedValue({
       ...NEW_USER,
       nickname: "旧昵称",
-      avatar: "https://cdn.example.com/new.png",
+      avatar: "https://nihplod.cn/new.png",
     });
 
     const res = await PUT(
-      putRequest({ avatar: "https://cdn.example.com/new.png" })
+      putRequest({ avatar: "https://nihplod.cn/new.png" })
     );
 
     expect(res.status).toBe(200);
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith(
       "user-1",
-      expect.objectContaining({ avatar: "https://cdn.example.com/new.png" })
+      expect.objectContaining({ avatar: "https://nihplod.cn/new.png" })
     );
   });
 

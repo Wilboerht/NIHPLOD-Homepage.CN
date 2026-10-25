@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getIssuer } from "@/lib/oauth-constants";
+import { getBodyLimitForPath, hasRequestBody } from "@/lib/body-limits";
 
 const AUTH_COOKIE_NAME = "__Host-admin_token";
 const CSRF_COOKIE_NAME = "__Host-csrf_token";
@@ -129,6 +130,21 @@ function isEmbeddablePath(pathname: string): boolean {
   return EMBEDDABLE_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+function getOssImageOrigin(): string | null {
+  const publicDomain = process.env.ALI_OSS_PUBLIC_DOMAIN;
+  if (publicDomain) {
+    try {
+      return new URL(publicDomain).origin;
+    } catch {
+      // 配置非法时忽略，避免破坏整条 CSP
+    }
+  }
+  const bucket = process.env.ALI_OSS_BUCKET;
+  const region = process.env.ALI_OSS_REGION;
+  if (bucket && region) return `https://${bucket}.${region}.aliyuncs.com`;
+  return null;
+}
+
 function buildCspHeader(nonce: string, pathname: string): string {
   const isDev = process.env.NODE_ENV !== "production";
 
@@ -158,7 +174,14 @@ function buildCspHeader(nonce: string, pathname: string): string {
     // 完全移除需逐步重构，当前作为已知债务保留并单独标注
     "style-src 'self' 'unsafe-inline' https://*.amap.com",
     // 注意：CSP 通配符只支持单 *（** 为无效源，浏览器会忽略整条规则）
-    "img-src 'self' data: blob: https://*.nihplod.cn https://*.aliyuncs.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
+    // 不再允许任意的 *.aliyuncs.com：只放行自有 OSS 公网域名，防止攻击者用其他 Bucket 做追踪像素。
+    [
+      "img-src 'self' data: blob: https://*.nihplod.cn",
+      getOssImageOrigin(),
+      "https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://www.googletagmanager.com https://hm.baidu.com",
+    ]
+      .filter(Boolean)
+      .join(" "),
     "font-src 'self'",
     "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
     "worker-src 'self' blob:",
@@ -227,6 +250,25 @@ export async function middleware(request: NextRequest) {
   // 对静态资源直接放行，不附加 CSP 或认证逻辑
   if (isStaticPath(pathname)) {
     return NextResponse.next();
+  }
+
+  // 请求体大小前置检查（Content-Length 快速拒绝）。
+  // chunked 请求没有 Content-Length，由 route 层的 request-body helper 兜底。
+  if (pathname.startsWith("/api/") && hasRequestBody(method)) {
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    const limit = getBodyLimitForPath(pathname);
+    if (Number.isFinite(contentLength) && contentLength > limit) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PAYLOAD_TOO_LARGE",
+            message: `请求体超过上限（${limit} 字节）`,
+          },
+        },
+        { status: 413, headers: { "Cache-Control": "no-store" } }
+      );
+    }
   }
 
   // CORS 预检：OAuth 路径的 OPTIONS 由各 route handler 自行处理

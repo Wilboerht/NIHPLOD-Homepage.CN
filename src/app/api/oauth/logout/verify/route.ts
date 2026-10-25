@@ -11,6 +11,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyLogoutToken } from "@/lib/jwt";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+  readJsonBody,
+} from "@/lib/request-body";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 
@@ -35,15 +42,16 @@ export async function POST(request: NextRequest) {
 
     if (contentType.includes("application/json")) {
       try {
-        body = await request.json();
-      } catch {
+        body = await readJsonBody<Record<string, string>>(request, BODY_LIMITS.oauthJson);
+      } catch (error) {
+        if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
         return NextResponse.json(
           { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
           { status: 400 }
         );
       }
     } else {
-      const formData = await request.formData();
+      const formData = await readFormDataBody(request, BODY_LIMITS.oauthJson);
       body = {};
       formData.forEach((v, k) => {
         body[k] = v.toString();
@@ -168,6 +176,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth Logout Verify] 异常:", error);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },

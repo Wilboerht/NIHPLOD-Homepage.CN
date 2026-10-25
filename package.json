@@ -70,9 +70,9 @@
     "sharp": "0.35.5",
     "tailwind-merge": "^3.4.0",
     "tencentcloud-sdk-nodejs": "^4.1.180",
-    "undici": "7.29.1",
+    "undici": "^7.30.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^4.1.13",
+    "zod": "^4.6.7",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

@@ -15,6 +15,8 @@ type ConflictSource = "IMPORT" | "ADJUSTMENT" | "MALL_SYNC";
 
 export interface SpentOrderConflictItem {
   userId: string;
+  /** 跨用户冲突时返回全部涉及的 userId（单用户冲突时也可只含一个） */
+  userIds?: string[];
   orderNo: string;
   sources: ConflictSource[];
   importRowId?: string;
@@ -84,22 +86,11 @@ export async function findSpentOrderConflicts(
       })
     : Promise.resolve([]));
 
-  if (imports.length === 0 && mallRecords.length === 0) {
-    return { since: cutoff.toISOString(), count: 0, items: [], truncated: false };
-  }
-
-  const userIds = [
-    ...new Set(
-      [...imports.map((row) => row.userId), ...mallRecords.map((row) => row.userId)].filter(
-        (id): id is string => !!id
-      )
-    ),
-  ];
   const applications = await prisma.spentAdjustmentApplication.findMany({
     where: {
-      userId: { in: userIds },
       status: "APPROVED",
       orderNo: { not: "" },
+      reviewedAt: { gte: cutoff },
     },
     select: {
       id: true,
@@ -112,61 +103,69 @@ export async function findSpentOrderConflicts(
     },
   });
 
-  const importByOrder = new Map<string, (typeof imports)[number]>();
+  if (imports.length === 0 && mallRecords.length === 0 && applications.length === 0) {
+    return { since: cutoff.toISOString(), count: 0, items: [], truncated: false };
+  }
+
+  type ConflictBucket = {
+    users: Set<string>;
+    imported?: (typeof imports)[number];
+    application?: (typeof applications)[number];
+    mall?: (typeof mallRecords)[number];
+  };
+
+  const buckets = new Map<string, ConflictBucket>();
+  const getBucket = (orderNoKey: string): ConflictBucket => {
+    let bucket = buckets.get(orderNoKey);
+    if (!bucket) {
+      bucket = { users: new Set<string>() };
+      buckets.set(orderNoKey, bucket);
+    }
+    return bucket;
+  };
+
   for (const row of imports) {
     if (!row.userId || !row.orderNo) continue;
-    const key = `${row.userId}:${normalizeOrderNo(row.orderNo)}`;
-    if (!importByOrder.has(key)) importByOrder.set(key, row);
+    const bucket = getBucket(normalizeOrderNo(row.orderNo));
+    bucket.users.add(row.userId);
+    bucket.imported ??= row;
   }
 
-  const applicationByOrder = new Map<string, (typeof applications)[number]>();
   for (const application of applications) {
-    const key = `${application.userId}:${normalizeOrderNo(application.orderNo)}`;
-    if (!applicationByOrder.has(key)) applicationByOrder.set(key, application);
+    if (!application.userId || !application.orderNo) continue;
+    const bucket = getBucket(normalizeOrderNo(application.orderNo));
+    bucket.users.add(application.userId);
+    bucket.application ??= application;
   }
 
-  const mallByOrder = new Map<
-    string,
-    {
-      userId: string;
-      orderNo: string | null;
-      reference: string;
-      spentDelta: number;
-      createdAt: Date;
-    }
-  >();
   for (const record of mallRecords) {
     if (!record.orderNoKey) continue;
-    const key = `${record.userId}:${record.orderNoKey}`;
-    if (!mallByOrder.has(key)) mallByOrder.set(key, record);
+    const bucket = getBucket(record.orderNoKey);
+    bucket.users.add(record.userId);
+    bucket.mall ??= record;
   }
 
-  const keys = new Set([
-    ...importByOrder.keys(),
-    ...applicationByOrder.keys(),
-    ...mallByOrder.keys(),
-  ]);
   const allConflicts: SpentOrderConflictItem[] = [];
 
-  for (const key of keys) {
-    const imported = importByOrder.get(key);
-    const application = applicationByOrder.get(key);
-    const mall = mallByOrder.get(key);
+  for (const [orderNoKey, bucket] of buckets) {
+    const imported = bucket.imported;
+    const application = bucket.application;
+    const mall = bucket.mall;
     const sources: ConflictSource[] = [];
     if (imported) sources.push("IMPORT");
     if (application) sources.push("ADJUSTMENT");
     if (mall) sources.push("MALL_SYNC");
-    if (sources.length < 2) continue;
 
-    const userId = key.slice(0, key.indexOf(":"));
-    const orderNo =
-      imported?.orderNo ??
-      application?.orderNo ??
-      mall?.orderNo ??
-      key.slice(key.indexOf(":") + 1);
+    // 同一来源但跨用户同样是 P2 漏洞（例如两个用户各自导入同一订单号）。
+    const crossUser = bucket.users.size > 1;
+    if (sources.length < 2 && !crossUser) continue;
+
+    const userId = imported?.userId ?? application?.userId ?? mall?.userId ?? "";
+    const orderNo = imported?.orderNo ?? application?.orderNo ?? mall?.orderNo ?? orderNoKey;
 
     allConflicts.push({
       userId,
+      userIds: [...bucket.users],
       orderNo,
       sources,
       ...(imported

@@ -19,6 +19,13 @@ import { verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { verifyOAuthAccessToken } from "@/lib/jwt";
 import { getIssuer } from "@/lib/oauth-constants";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+  readJsonBody,
+} from "@/lib/request-body";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { apiConsole } from "@/lib/logger";
 
@@ -46,15 +53,16 @@ export async function POST(request: NextRequest) {
 
     if (contentType.includes("application/json")) {
       try {
-        body = await request.json();
-      } catch {
+        body = await readJsonBody<Record<string, string>>(request, BODY_LIMITS.oauthJson);
+      } catch (error) {
+        if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
         return resJson(
           { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
           400
         );
       }
     } else {
-      const formData = await request.formData();
+      const formData = await readFormDataBody(request, BODY_LIMITS.oauthJson);
       body = {};
       formData.forEach((v, k) => {
         body[k] = v.toString();
@@ -149,6 +157,7 @@ export async function POST(request: NextRequest) {
       iss: getIssuer(),
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth Introspect] 异常:", error);
     const corsHeaders = await getOAuthCorsHeaders(request);
     return NextResponse.json(

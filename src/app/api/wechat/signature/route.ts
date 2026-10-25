@@ -72,9 +72,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 域名白名单校验
+    // 域名白名单校验：比较 origin，避免 https://nihplod.cn.evil.com 之类前缀绕过
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
-    if (!url.startsWith(baseUrl)) {
+    let parsedUrl: URL;
+    let baseOrigin: string;
+    try {
+      parsedUrl = new URL(url);
+      baseOrigin = new URL(baseUrl).origin;
+    } catch {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_URL", message: "无效的 URL 格式" } },
+        { status: 400 }
+      );
+    }
+    if (parsedUrl.origin !== baseOrigin || parsedUrl.username || parsedUrl.password) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_URL", message: "只能为官方域名生成签名" } },
         { status: 400 }

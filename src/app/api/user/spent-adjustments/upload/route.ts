@@ -13,6 +13,12 @@ import { withUserAuth } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { rateLimit } from "@/lib/ratelimit";
 import { uploadSpentProofFile, isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+} from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +44,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
-    const formData = await request.formData();
+    const formData = await readFormDataBody(request, BODY_LIMITS.imageUpload);
     const file = formData.get("file") as File | null;
 
     if (!file) {
@@ -61,6 +67,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       data: { url: result.url, private: result.private },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[SpentAdjustment] 凭证上传失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "上传失败，请稍后重试" } },

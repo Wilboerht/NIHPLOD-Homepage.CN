@@ -59,6 +59,27 @@ function validateSecret(name: string, value: string | undefined): void {
   }
 }
 
+/** 可选密钥：未配置时跳过；配置了但过短则启动失败（防止弱密钥被爆破）。 */
+function validateOptionalSecret(name: string, value: string | undefined): void {
+  if (!value) return;
+  if (value.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `[Server] ${name} 长度必须不少于 ${MIN_SECRET_LENGTH} 个字符，当前 ${value.length} 个字符`
+    );
+  }
+}
+
+/**
+ * 共享密钥启动校验：这些密钥用于限流绕过/定时任务/内部旁路，弱值等于没有保护。
+ * 未配置是合法的（功能未启用），但一旦配置必须达到最小长度。
+ */
+function validateSharedSecrets(): void {
+  validateOptionalSecret("CRON_SECRET", process.env.CRON_SECRET);
+  validateOptionalSecret("SUBSITE_PROXY_KEY", process.env.SUBSITE_PROXY_KEY);
+  validateOptionalSecret("SSO_WEBHOOK_SECRET", process.env.SSO_WEBHOOK_SECRET);
+  validateOptionalSecret("ADVISOR_INTERNAL_SECRET", process.env.ADVISOR_INTERNAL_SECRET);
+}
+
 /**
  * 短信服务启动校验：
  * 1. SMS_CODE_HMAC_KEY 所有环境强制校验（存在性 + 最小长度），与 jwt.ts 的
@@ -152,6 +173,10 @@ export async function initializeApp(): Promise<void> {
   apiConsole.info("========================================\n");
 
   try {
+    // 共享密钥校验（长度不足时拒绝启动）
+    validateSharedSecrets();
+    apiConsole.info("✅ 共享密钥配置已就绪");
+
     // 短信配置校验（所有环境校验 HMAC 密钥；生产环境额外校验 SMS_PROVIDER）
     validateSmsConfig();
     apiConsole.info("✅ 短信服务配置已就绪");

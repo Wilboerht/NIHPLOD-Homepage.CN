@@ -38,7 +38,11 @@ vi.mock("@/lib/logger", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import { generateInternalApiSignature, hashRequestBody } from "@/lib/internal-api";
+import {
+  canonicalizeQuery,
+  generateInternalApiSignature,
+  hashRequestBody,
+} from "@/lib/internal-api";
 import { GET } from "@/app/api/v1/internal/points/balance/route";
 
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
@@ -58,7 +62,16 @@ function createSignedRequest(
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = `test-nonce-${++nonceCounter}`;
   const bodyHash = hashRequestBody("");
-  let signature = generateInternalApiSignature(SECRET, "GET", PATH, timestamp, nonce, bodyHash);
+  const query = canonicalizeQuery(new URLSearchParams(params).toString());
+  let signature = generateInternalApiSignature(
+    SECRET,
+    "GET",
+    PATH,
+    timestamp,
+    nonce,
+    bodyHash,
+    query
+  );
   if (options?.badSignature) {
     signature = signature.replace(/.$/, signature.endsWith("0") ? "1" : "0");
   }

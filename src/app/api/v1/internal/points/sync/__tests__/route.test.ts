@@ -71,7 +71,7 @@ function createSignedRequest(body: unknown, options?: { badSignature?: boolean }
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = `test-nonce-${++nonceCounter}`;
   const bodyHash = hashRequestBody(bodyText);
-  let signature = generateInternalApiSignature(SECRET, "POST", PATH, timestamp, nonce, bodyHash);
+  let signature = generateInternalApiSignature(SECRET, "POST", PATH, timestamp, nonce, bodyHash, "");
   if (options?.badSignature) {
     signature = signature.replace(/.$/, signature.endsWith("0") ? "1" : "0");
   }

@@ -12,7 +12,7 @@ import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import type { AdminJWTPayload } from "@/types/auth";
 
-export const ADMIN_STEP_UP_COOKIE_NAME = "nihplod_admin_step_up";
+export const ADMIN_STEP_UP_COOKIE_NAME = "__Host-nihplod_admin_step_up";
 export const ADMIN_STEP_UP_SCOPE = "sensitive";
 
 function parseTtlSeconds(): number {
@@ -27,7 +27,7 @@ export const ADMIN_STEP_UP_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: "strict" as const,
-  path: "/api/admin",
+  path: "/",
   maxAge: ADMIN_STEP_UP_TTL_SECONDS,
 };
 

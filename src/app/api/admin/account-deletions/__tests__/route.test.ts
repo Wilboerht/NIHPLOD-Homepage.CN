@@ -24,6 +24,10 @@ vi.mock("@/lib/auth", () => ({
   checkAdminRateLimit: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/ratelimit", () => ({
   rateLimit: vi.fn().mockResolvedValue({ success: true }),
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),

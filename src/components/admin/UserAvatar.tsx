@@ -17,9 +17,21 @@ interface UserAvatarProps {
   className?: string;
 }
 
-/** 头像属于可渲染地址：站内相对路径或 http(s) 外链 */
+/** 头像只允许站内路径、官网域名或 OSS 域名；拒绝任意外链（防追踪像素/不可信内容） */
 function isRenderableAvatar(src: string | null | undefined): src is string {
-  return !!src && (src.startsWith("/") || /^https?:\/\//i.test(src));
+  if (!src) return false;
+  if (src.startsWith("/") && !src.startsWith("//") && !src.includes("\\")) return true;
+  try {
+    const url = new URL(src);
+    if (url.protocol !== "https:") return false;
+    return (
+      url.hostname === "nihplod.cn" ||
+      url.hostname.endsWith(".nihplod.cn") ||
+      url.hostname.endsWith(".aliyuncs.com")
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -97,9 +97,12 @@ export async function GET(request: NextRequest) {
         { status: 401, headers: NO_STORE_HEADERS }
       );
     }
-    if (!hasAdminPermission(admin, "users:read")) {
+    if (
+      !hasAdminPermission(admin, "users:read") ||
+      !hasAdminPermission(admin, "users:export")
+    ) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户查看" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户数据导出" } },
         { status: 403, headers: NO_STORE_HEADERS }
       );
     }

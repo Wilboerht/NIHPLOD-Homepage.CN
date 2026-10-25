@@ -26,6 +26,12 @@ import {
   extractDeviceInfo,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCaptchaToken } from "@/lib/captcha";
@@ -77,7 +83,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     // 参数验证
     const result = loginSchema.safeParse(body);
@@ -266,6 +272,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[LoginPassword] 异常:", error);
     return NextResponse.json(
       {

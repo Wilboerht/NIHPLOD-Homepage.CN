@@ -5,9 +5,9 @@
  * （子站是护肤档案的唯一数据源）；会员中心测肤用量也复用本模块。
  *
  * 鉴权：
- * - 优先 HMAC 签名（INTERNAL_API_KEYS 的 advisor 条目）。默认签旧格式（仅 pathname），
- *   子站支持 query 绑定后设置 INTERNAL_API_SIGN_QUERY=true 切换到
- *   `METHOD|path|query|...` 新格式（防 query 篡改）；
+ * - 优先 HMAC 签名（INTERNAL_API_KEYS 的 advisor 条目）。默认签
+ *   `METHOD|path|query|...` 新格式（防 query 篡改）；对方未升级时可临时设置
+ *   INTERNAL_API_SIGN_QUERY=false 回退旧格式；
  * - 未配置时回退旧版 Bearer（ADVISOR_INTERNAL_SECRET）；
  * - 两者都未配置时返回 NOT_CONFIGURED（只读场景由 advisorJson 降级为 null）。
  *
@@ -43,7 +43,7 @@ export type AdvisorMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 export interface AdvisorRequestOptions {
   method?: AdvisorMethod;
-  /** 查询参数（默认签名不含 query；开启 INTERNAL_API_SIGN_QUERY=true 或 signQuery 后参与签名） */
+  /** 查询参数（默认参与 query 绑定签名；对方未升级时可关闭全局开关回退） */
   query?: Record<string, string | number | boolean | null | undefined>;
   /** 请求体（JSON 序列化后参与签名） */
   body?: unknown;

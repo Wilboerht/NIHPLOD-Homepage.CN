@@ -13,6 +13,12 @@ import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-reso
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
 import { uploadSpentProofFile, isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 import { rateLimit } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+} from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
       return resJson({ success: false, error: { code: "FILE_TOO_LARGE", message: "文件过大" } }, 413);
     }
 
-    const formData = await request.formData();
+    const formData = await readFormDataBody(request, BODY_LIMITS.imageUpload);
     const file = formData.get("file") as File | null;
     if (!file) {
       return resJson({ success: false, error: { code: "NO_FILE", message: "请选择要上传的图片" } }, 400);
@@ -85,6 +91,7 @@ export async function POST(request: NextRequest) {
 
     return resJson({ success: true, data: { url: result.url, private: result.private } });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth SpentAdjustments] 凭证上传失败:", error);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },

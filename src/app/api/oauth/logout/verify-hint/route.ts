@@ -15,6 +15,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, verifyUserToken } from "@/lib/jwt";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
 
@@ -88,8 +94,9 @@ export async function POST(request: NextRequest) {
   // id_token 是凭证：POST body 传递，避免经 query 进入浏览器历史/服务器日志
   let body: { id_token_hint?: string; client_id?: string };
   try {
-    body = await request.json();
-  } catch {
+    body = await readJsonBody(request, BODY_LIMITS.oauthJson);
+  } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     return NextResponse.json({ valid: false });
   }
   return handleVerifyHint(request, body.id_token_hint ?? null, body.client_id || undefined);

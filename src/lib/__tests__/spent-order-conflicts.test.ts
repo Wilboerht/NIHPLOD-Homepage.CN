@@ -20,6 +20,7 @@ describe("findSpentOrderConflicts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mallRecords.mockResolvedValue([]);
+    mocks.applications.mockResolvedValue([]);
   });
 
   it("无导入行时返回空结果", async () => {
@@ -27,7 +28,6 @@ describe("findSpentOrderConflicts", () => {
     const result = await findSpentOrderConflicts();
     expect(result.count).toBe(0);
     expect(result.items).toEqual([]);
-    expect(mocks.applications).not.toHaveBeenCalled();
   });
 
   it("按用户+订单号忽略大小写匹配，并返回冲突摘要", async () => {
@@ -103,6 +103,38 @@ describe("findSpentOrderConflicts", () => {
       sources: ["ADJUSTMENT", "MALL_SYNC"],
       mallReference: "mall-ref-1",
       mallAmount: 300,
+    });
+  });
+
+  it("同一订单号出现在不同用户时也识别为跨用户冲突", async () => {
+    mocks.importRows.mockResolvedValue([
+      {
+        id: "import-row-1",
+        batchId: "batch-1",
+        userId: "user-1",
+        orderNo: "DUP-001",
+        amount: 100,
+        appliedDelta: 100,
+        createdAt: new Date("2026-10-01T10:00:00Z"),
+      },
+      {
+        id: "import-row-2",
+        batchId: "batch-2",
+        userId: "user-2",
+        orderNo: "dup-001",
+        amount: 200,
+        appliedDelta: 200,
+        createdAt: new Date("2026-10-02T10:00:00Z"),
+      },
+    ]);
+
+    const result = await findSpentOrderConflicts();
+
+    expect(result.count).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      orderNo: "DUP-001",
+      sources: ["IMPORT"],
+      userIds: ["user-1", "user-2"],
     });
   });
 

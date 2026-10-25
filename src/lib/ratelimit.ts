@@ -5,6 +5,7 @@
 import { LRUCache } from "lru-cache";
 import { rateLimitDB, cleanupRateLimitRecords } from "./ratelimit-db";
 export { getClientIP } from "./client-ip";
+import { normalizeRateLimitIdentifier } from "./client-ip";
 
 /** 速率限制配置 */
 export interface RateLimitOptions {
@@ -12,7 +13,35 @@ export interface RateLimitOptions {
   maxRequests: number;
   /** 时间窗口（毫秒） */
   windowMs: number;
+  /**
+   * 数据库存储故障时的行为：
+   * - memory：降级为单实例内存（仅适合低风险端点）
+   * - fail_closed：直接拒绝（安全敏感端点，防止多实例限流被绕过）
+   */
+  storageFailureMode?: "memory" | "fail_closed";
 }
+
+/** 安全敏感端点：DB 限流故障时 fail-closed，不能静默退化为单实例内存。 */
+const FAIL_CLOSED_RATE_LIMIT_TYPES = new Set<string>([
+  "login",
+  "admin-login",
+  "admin-totp",
+  "refresh",
+  "reset-password",
+  "oauth-token",
+  "oauth-authorize",
+  "oauth-introspect",
+  "oauth-revoke",
+  "wechat-callback",
+  "douyin-callback",
+  "wechat-bind",
+  "miniprogram-login",
+  "sms-daily-phone",
+  "sms-daily-ip",
+  "account-deletion",
+  "account-deletion-code",
+  "account-deletion-cancel",
+]);
 
 /** 速率限制结果 */
 export interface RateLimitResult {
@@ -121,6 +150,8 @@ export const RATE_LIMIT_PRESETS = {
   "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 换绑手机号限制 - 每 15 分钟 5 次（用户级，防枚举/防滥用） */
   "phone-rebind": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** OAuth 注销二次验证码 - 每小时 5 次（用户级） */
+  "account-deletion-code": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
   /** 账号注销申请 - 每天 3 次（用户级，防恶意注销/滥用） */
   "account-deletion": { maxRequests: 3, windowMs: 24 * 60 * 60 * 1000 },
   /** 账号注销撤回 - 每天 5 次（用户级，独立桶，不消耗申请额度） */
@@ -182,13 +213,20 @@ export async function rateLimit(
   const preset = RATE_LIMIT_PRESETS[type] || DEFAULT_OPTIONS;
   const opts: RateLimitOptions = { ...preset, ...options };
 
+  const normalizedIdentifier = normalizeRateLimitIdentifier(identifier);
+
   // 数据库模式：支持多实例部署
   if (process.env.RATE_LIMIT_STORAGE === "database") {
-    return rateLimitDB(`${type}:${identifier}`, opts);
+    return rateLimitDB(`${type}:${normalizedIdentifier}`, {
+      ...opts,
+      storageFailureMode:
+        opts.storageFailureMode ??
+        (FAIL_CLOSED_RATE_LIMIT_TYPES.has(type) ? "fail_closed" : "memory"),
+    });
   }
 
   const now = Date.now();
-  const cacheKey = `${type}:${identifier}`;
+  const cacheKey = `${type}:${normalizedIdentifier}`;
 
   return withMutex(cacheKey, () => {
     // 获取或创建请求记录

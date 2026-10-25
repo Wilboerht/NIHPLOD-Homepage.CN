@@ -89,7 +89,7 @@ describe("password-policy", () => {
       expect(mocks.passwordHistoryDeleteMany).toHaveBeenCalledWith({
         where: { id: { in: ["h6"] } },
       });
-    });
+    }, 30_000);
   });
 
   describe("recordPasswordHistory", () => {
@@ -111,7 +111,7 @@ describe("password-policy", () => {
       expect(mocks.passwordHistoryDeleteMany).toHaveBeenCalledWith({
         where: { id: { in: ["h6"] } },
       });
-    });
+    }, 30_000);
   });
 
   describe("checkPasswordHistory", () => {

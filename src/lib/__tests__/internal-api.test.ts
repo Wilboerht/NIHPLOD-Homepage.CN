@@ -59,7 +59,8 @@ describe("internal-api", () => {
         "/api/v1/internal/wechat/send-template",
         timestamp,
         nonce,
-        bodyHash
+        bodyHash,
+        ""
       );
 
       const config = verifyInternalApiSignature(
@@ -69,7 +70,8 @@ describe("internal-api", () => {
         "/api/v1/internal/wechat/send-template",
         timestamp,
         nonce,
-        bodyHash
+        bodyHash,
+        { query: "" }
       );
 
       expect(config).not.toBeNull();
@@ -182,7 +184,7 @@ describe("internal-api", () => {
       ).toBeNull();
     });
 
-    it("默认放行旧格式（过渡期兼容），设置 INTERNAL_API_ALLOW_LEGACY_SIGNATURE=false 后拒绝", async () => {
+    it("默认拒绝旧格式；显式 INTERNAL_API_ALLOW_LEGACY_SIGNATURE=true 才放行过渡", async () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const nonce = "nonce-query-3";
       const bodyHash = await hashRequestBody("");
@@ -195,19 +197,19 @@ describe("internal-api", () => {
         bodyHash
       );
 
-      // 默认（未显式关闭）接受旧格式，保证未升级子站可用
-      expect(
-        verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query: "",
-        })
-      ).not.toBeNull();
-
-      process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE = "false";
+      // 安全默认：旧格式不绑定 query，默认拒绝
       expect(
         verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
           query: "",
         })
       ).toBeNull();
+
+      process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE = "true";
+      expect(
+        verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
+          query: "",
+        })
+      ).not.toBeNull();
     });
 
     it("INTERNAL_API_SIGN_QUERY=true 时出站签名绑定 query，可被新格式校验通过", async () => {
@@ -320,7 +322,15 @@ describe("internal-api", () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const nonce = "nonce-rotation-1";
       const bodyHash = await hashRequestBody("");
-      const signature = generateInternalApiSignature(OLD_SECRET, "GET", PATH, timestamp, nonce, bodyHash);
+      const signature = generateInternalApiSignature(
+        OLD_SECRET,
+        "GET",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash,
+        ""
+      );
 
       const config = verifyInternalApiSignature(
         "advisor-key",

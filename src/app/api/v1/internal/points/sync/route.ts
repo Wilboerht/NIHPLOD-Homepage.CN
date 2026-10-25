@@ -37,6 +37,7 @@ import { auditInternalPoints, auditInternalPointsFailure } from "@/lib/internal-
 import { getUtc8DayStart } from "@/lib/timezone";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
+import { readInternalApiBody } from "@/lib/request-body";
 
 // 本端点允许的 project 白名单：消费额同步仅对商城开放
 const ALLOWED_PROJECTS = ["mall"] as const;
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 读取 body 并校验签名（nonce 在验签通过后才消费，避免签名错误的请求烧掉 nonce）
-    const bodyText = await request.text();
+    const bodyText = await readInternalApiBody(request);
     const bodyHash = await hashRequestBody(bodyText);
     const path = "/api/v1/internal/points/sync";
 

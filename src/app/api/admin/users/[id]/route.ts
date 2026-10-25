@@ -372,6 +372,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const rateLimitResponse = await checkAdminRateLimit(request, "user:read");
     if (rateLimitResponse) return rateLimitResponse;
 
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
+
     const { id } = await context.params;
     if (!validateCUID(id)) {
       return invalidIdResponse();

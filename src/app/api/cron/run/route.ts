@@ -18,6 +18,9 @@ import { timingSafeEqual } from "crypto";
 import { runCleanupCronTasks, runCronTask } from "@/lib/cron-tasks";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import { readTextBody } from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +65,18 @@ function alreadyRunningResponse() {
 }
 
 export async function POST(request: NextRequest) {
+  // IP 级限流：即使 secret 很强，也避免端点被无限尝试/滥用
+  const limit = await rateLimit(getClientIP(request), "default", {
+    maxRequests: 60,
+    windowMs: 60 * 1000,
+  });
+  if (!limit.success) {
+    return NextResponse.json(
+      { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁" } },
+      { status: 429 }
+    );
+  }
+
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
@@ -89,7 +104,7 @@ export async function POST(request: NextRequest) {
 
   // 可选 body：{ taskName } 仅触发指定任务
   let taskName: string | undefined;
-  const bodyText = await request.text();
+  const bodyText = await readTextBody(request, BODY_LIMITS.cron);
   if (bodyText) {
     try {
       const body = JSON.parse(bodyText) as { taskName?: unknown };

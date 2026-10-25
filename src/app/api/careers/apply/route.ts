@@ -8,6 +8,11 @@ import {
 } from "@/lib/resume-files";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+} from "@/lib/request-body";
 import { fileTypeFromBuffer } from "file-type";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -73,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (process.env.NODE_ENV === "development") apiConsole.debug("🚀 [Apply API] Received request");
-    const formData = await request.formData();
+    const formData = await readFormDataBody(request, MAX_RESUME_MULTIPART_BYTES);
     if (process.env.NODE_ENV === "development") apiConsole.debug("📄 [Apply API] FormData parsed");
 
     // 获取表单字段
@@ -190,6 +195,20 @@ export async function POST(request: NextRequest) {
         apiConsole.debug("❌ [Apply API] Private resume upload failed:", uploadError);
       const storageNotConfigured =
         uploadError instanceof Error && uploadError.message === "RESUME_STORAGE_NOT_CONFIGURED";
+      const unsafePdf =
+        uploadError instanceof Error && uploadError.message.startsWith("UNSAFE_RESUME_PDF");
+      if (unsafePdf) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "UNSAFE_FILE",
+              message: uploadError.message.replace("UNSAFE_RESUME_PDF: ", ""),
+            },
+          },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         {
           success: false,
@@ -265,6 +284,7 @@ export async function POST(request: NextRequest) {
       message: "简历投递成功！我们会尽快与您联系。",
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("💥 [Apply API] Error:", error);
 
     return NextResponse.json(

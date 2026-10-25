@@ -188,9 +188,10 @@ export interface OAuthAccessTokenPayload extends JWTPayload {
  * C端用户 Cookie 配置
  */
 export const USER_COOKIE_NAME = "__Host-user_token";
-// 非 __Host- 前缀——__Host- 强制 Path=/，与收窄到 /api 冲突；改名是有意的一次性
-// breaking change（旧 Cookie 成为孤儿，用户最多重新登录一次）
-export const USER_REFRESH_COOKIE_NAME = "nihplod_user_refresh";
+// 使用 __Host- 前缀，禁止子域通过 Domain=.nihplod.cn 覆盖刷新令牌 Cookie。
+// __Host- 强制 Path=/、Secure 且不能带 Domain；这会使旧 Cookie 成为孤儿，
+// 用户最多重新登录一次（有意的一次性 breaking change）。
+export const USER_REFRESH_COOKIE_NAME = "__Host-nihplod_user_refresh";
 
 // Access Token Cookie：8 小时，与 JWT 过期时间一致
 // 使用 Lax 而非 Strict：微信/支付宝内嵌浏览器作为第三方上下文会拦截 Strict Cookie，
@@ -209,13 +210,12 @@ export const USER_ACCESS_COOKIE_OPTIONS = {
   maxAge: 8 * 60 * 60, // 8 小时（秒）
 };
 
-// Refresh Token Cookie：30 天；Path 收窄到 /api（浏览器仅在访问 /api 时携带，
-// 降低 Cookie 在前端路由下的暴露面）。sameSite 保持 lax：OAuth authorize 的
-// 透明刷新依赖跨站顶级 GET 导航携带该 Cookie。
+// Refresh Token Cookie：30 天；__Host- 前缀要求 Path=/ 且不带 Domain。
+// sameSite 保持 lax：OAuth authorize 的透明刷新依赖跨站顶级 GET 导航携带该 Cookie。
 export const USER_REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: "lax" as const,
-  path: "/api",
+  path: "/",
   maxAge: 30 * 24 * 60 * 60, // 30 天（秒）
 };

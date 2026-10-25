@@ -18,13 +18,18 @@ import {
   USER_REFRESH_COOKIE_NAME,
 } from "@/types/auth";
 import {
-  checkAccountLockout,
   recordLoginAttempt,
   saveRefreshToken,
   clearLoginAttempts,
   extractDeviceInfo,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     // 参数验证
     const result = loginSchema.safeParse(body);
@@ -81,20 +86,10 @@ export async function POST(request: NextRequest) {
 
     const { phone, code } = result.data;
 
-    // 2. 检查账户是否被锁定（防爆破）
-    const { locked, remainingMinutes } = await checkAccountLockout(phone);
-    if (locked) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "ACCOUNT_LOCKED",
-            message: `账户已被锁定，请在 ${remainingMinutes} 分钟后重试`,
-          },
-        },
-        { status: 429 }
-      );
-    }
+    // 注意：短信登录不检查密码失败锁定。
+    // 短信验证码本身是一次性凭证，已有单码 attempts + IP/手机号限流；
+    // 若共用密码锁定，攻击者可仅凭手机号用错误密码锁死受害者所有登录方式（锁号 DoS）。
+    // 密码登录仍保留账户锁定，短信登录成功后 clearLoginAttempts 会解除密码锁定。
 
     // 3. 查找验证码
     // attempts 上限兜底：达到 SMS_CODE_MAX_ATTEMPTS 的码视同无效（正常已被作废标记 used）
@@ -303,6 +298,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[Login] 异常:", error);
     return NextResponse.json(
       {

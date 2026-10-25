@@ -3,6 +3,12 @@ import { verifyAuth } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+} from "@/lib/request-body";
 import {
   processAndSaveImage,
   uploadFile,
@@ -47,8 +53,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取表单数据
-    const formData = await request.formData();
+    // 获取表单数据（有硬上限，chunked 请求也受控）
+    const formData = await readFormDataBody(request, BODY_LIMITS.imageUpload);
     const file = formData.get("file") as File | null;
     const folder = (formData.get("folder") as string) || "images";
 
@@ -119,6 +125,7 @@ export async function POST(request: NextRequest) {
       data: result,
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[Upload] 上传失败:", error);
     const isDev = process.env.NODE_ENV === "development";
     return NextResponse.json(

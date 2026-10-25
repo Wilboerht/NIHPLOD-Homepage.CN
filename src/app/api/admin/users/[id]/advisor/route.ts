@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { advisorRequest } from "@/lib/advisor-internal";
 import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
@@ -202,6 +203,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "advisor-user:write");
     if (rateLimitResponse) return rateLimitResponse;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const { id } = await context.params;
     if (!validateCUID(id)) return invalidIdResponse();

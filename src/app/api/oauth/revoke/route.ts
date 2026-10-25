@@ -21,6 +21,13 @@ import { verifyRefreshToken, verifyOAuthAccessToken } from "@/lib/jwt";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { revokeAccessToken } from "@/lib/token-blacklist";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+  readJsonBody,
+} from "@/lib/request-body";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -50,15 +57,16 @@ export async function POST(request: NextRequest) {
 
     if (contentType.includes("application/json")) {
       try {
-        body = await request.json();
-      } catch {
+        body = await readJsonBody<Record<string, string>>(request, BODY_LIMITS.oauthJson);
+      } catch (error) {
+        if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
         return resJson(
           { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
           400
         );
       }
     } else {
-      const formData = await request.formData();
+      const formData = await readFormDataBody(request, BODY_LIMITS.oauthJson);
       body = {};
       formData.forEach((v, k) => {
         body[k] = v.toString();
@@ -207,6 +215,7 @@ export async function POST(request: NextRequest) {
     // RFC 7009: 无论 token 是否有效，总是返回 200
     return resJson({});
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth Revoke] 未预期异常:", {
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack?.split("\n").slice(0, 3).join("\n") : undefined,

@@ -90,7 +90,17 @@ export async function rateLimitDB(
       limit: options.maxRequests,
     };
   } catch (error) {
-    // DB 不可用：降级为单实例内存限流（多实例下额度会放大，记录告警）
+    if (options.storageFailureMode === "fail_closed") {
+      // 安全敏感端点：DB 故障时 fail-closed，避免多实例下限流额度被放大。
+      console.error("[RateLimitDB] 数据库异常，安全端点拒绝请求（fail-closed）:", error);
+      return {
+        success: false,
+        remaining: 0,
+        reset: Date.now() + Math.min(options.windowMs, 60_000),
+        limit: options.maxRequests,
+      };
+    }
+    // 低风险端点：降级为单实例内存限流（多实例下额度会放大，记录告警）
     console.error("[RateLimitDB] 数据库异常，降级到内存限流:", error);
     return fallbackRateLimit(identifier, options);
   }

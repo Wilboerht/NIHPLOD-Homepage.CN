@@ -20,6 +20,12 @@ import {
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBodyOrDefault,
+} from "@/lib/request-body";
 import { validateCSRFToken, csrfForbiddenResponse, CSRF_COOKIE_NAME } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
@@ -38,7 +44,12 @@ export async function POST(request: NextRequest) {
     const user = await verifyUserAuth(request);
 
     if (user) {
-      const body = await request.json().catch(() => ({}));
+      // body 只读取一次：下方 refresh token 撤销路径复用同一对象（重复读取会导致第二次为空）。
+      const body = await readJsonBodyOrDefault<Record<string, unknown>>(
+        request,
+        BODY_LIMITS.authJson,
+        {}
+      );
       const allDevices = body.allDevices === true;
       // RP-Initiated Logout 由 /logout 页携带发起方 clientId：主站会话多为内部登录
       // （refresh token 无 clientId），以其兜底闭环撤销该 client 的 OAuth 会话。
@@ -119,6 +130,11 @@ export async function POST(request: NextRequest) {
       // 任何失败都不阻断后续清 Cookie，保持登出幂等。
       const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
       if (refreshToken) {
+        const body = await readJsonBodyOrDefault<Record<string, unknown>>(
+          request,
+          BODY_LIMITS.authJson,
+          {}
+        );
         try {
           const refreshPayload = await verifyRefreshToken(refreshToken);
           if (refreshPayload) {
@@ -133,7 +149,6 @@ export async function POST(request: NextRequest) {
               await revokeRefreshToken(refreshPayload.id, refreshToken, undefined, "logout");
               // 关联 OAuthSession 一并撤销（与已认证路径的单设备登出口径一致）；
               // 主站内部登录会话（clientId=null）以发起方 clientId 兜底，保证登出闭环
-              const body = await request.json().catch(() => ({}));
               const requestedClientId =
                 typeof body.clientId === "string" && body.clientId ? body.clientId : null;
               const targetClientId = refreshRecord.clientId ?? requestedClientId;
@@ -178,6 +193,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[Logout] 异常:", error);
     return NextResponse.json(
       {

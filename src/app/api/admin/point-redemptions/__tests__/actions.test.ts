@@ -24,6 +24,7 @@ vi.mock("@/lib/validation", () => ({
 
 vi.mock("@/lib/admin-totp", () => ({
   requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/lib/audit", () => ({

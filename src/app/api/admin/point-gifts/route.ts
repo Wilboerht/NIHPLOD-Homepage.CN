@@ -11,6 +11,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -145,6 +146,9 @@ export async function PATCH(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "point-gifts:write");
     if (rateLimitResponse) return rateLimitResponse;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);

@@ -83,12 +83,15 @@ export const dynamic = "force-dynamic";
 
 /**
  * 子站 exchange token 传输方式：
- * - query（默认，兼容现有子站）：`?wechat_exchange_token=...`（会进入浏览器历史/日志）；
- * - fragment（推荐，需子站改造）：`#wechat_exchange_token=...`（不随请求发送、不进服务器日志）。
- * 通过 WECHAT_EXCHANGE_TOKEN_TRANSPORT=fragment 切换；子站需从 location.hash 读取。
+ * - fragment（默认）：`#wechat_exchange_token=...`（不随请求发送、不进服务器日志）；
+ *   子站需从 location.hash 读取并转交本站回调。
+ * - query（仅兼容未升级子站）：`?wechat_exchange_token=...`（会进入浏览器历史/日志）。
+ * 通过 WECHAT_EXCHANGE_TOKEN_TRANSPORT=query 临时回退。
  */
 function isFragmentTransport(): boolean {
-  return (process.env.WECHAT_EXCHANGE_TOKEN_TRANSPORT || "query").toLowerCase() === "fragment";
+  // 安全默认：一次性 exchange token 放 fragment，避免进入 URL query/日志/Referer。
+  // 兼容未升级子站时可显式设置 WECHAT_EXCHANGE_TOKEN_TRANSPORT=query。
+  return (process.env.WECHAT_EXCHANGE_TOKEN_TRANSPORT || "fragment").toLowerCase() !== "query";
 }
 
 /**

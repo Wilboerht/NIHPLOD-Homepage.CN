@@ -12,6 +12,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { updateRedemptionWaybill } from "@/lib/point-gifts";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const rateLimitResponse = await checkAdminRateLimit(request, "point-redemptions:write");
     if (rateLimitResponse) return rateLimitResponse;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const { id } = await params;
     if (!validateCUID(id)) {

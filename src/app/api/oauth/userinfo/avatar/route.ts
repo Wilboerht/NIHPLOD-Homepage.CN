@@ -17,6 +17,12 @@ import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
 import { rateLimit } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+} from "@/lib/request-body";
 import { processAndSaveImage, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
 
@@ -86,7 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
+    const formData = await readFormDataBody(request, BODY_LIMITS.imageUpload);
     const file = formData.get("file") as File | null;
     if (!file) {
       return resJson(
@@ -135,6 +141,7 @@ export async function POST(request: NextRequest) {
 
     return resJson({ success: true, data: { url } });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[OAuth UserInfo] 头像上传失败:", error);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },

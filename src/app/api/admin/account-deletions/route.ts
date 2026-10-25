@@ -17,6 +17,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { maskPhone } from "@/lib/mask-phone";
 import {
   executeAccountDeletion,
@@ -167,6 +168,9 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const body = await request.json();
     const parsed = retrySchema.safeParse(body);

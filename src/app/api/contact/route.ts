@@ -3,6 +3,12 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
@@ -34,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (!limitResult.success) {
       return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
     }
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     // 验证表单数据
     const result = ContactFormSchema.safeParse(body);
@@ -99,6 +105,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: "感谢您的留言，我们会尽快回复！" });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("Contact form error:", error);
     return NextResponse.json({ error: "提交失败，请稍后重试" }, { status: 500 });
   }

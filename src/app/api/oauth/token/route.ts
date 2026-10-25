@@ -35,6 +35,13 @@ import {
   saveRefreshToken,
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+  readJsonBody,
+} from "@/lib/request-body";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { recordLoginAttempt } from "@/lib/auth-security";
@@ -76,36 +83,33 @@ export async function POST(request: NextRequest) {
   try {
     const ip = getClientIP(request);
 
-    // 读取 body（支持 JSON 和 form-urlencoded）— 提前解析以满足 client 级限流需要
-    const contentType = request.headers.get("content-type") || "";
-    let body: Record<string, string>;
-
-    if (contentType.includes("application/json")) {
-      try {
-        body = await request.json();
-      } catch {
-        return resJson(
-          { error: "invalid_request", error_description: "请求体不是合法的 JSON" },
-          400
-        );
-      }
-    } else {
-      const formData = await request.formData();
-      body = {};
-      formData.forEach((v, k) => {
-        body[k] = v.toString();
-      });
-    }
-
-    // 限流（未认证阶段）：仅 IP 级。
-    // 设计理由：client_id 是公开信息，若在认证前就计入 client 级限流桶，
-    // 攻击者可用受害 client 的公开 client_id 从任意来源打满其全局配额，
-    // 造成针对该子项目的定向 DoS（合法流量被 429）。因此 client 级桶延后到
-    // 认证成功后才计数（见下文）；client_secret 暴力破解的限速由 IP 桶承担
-    // （60 次/分钟/IP，叠加 bcrypt cost 12 的计算摩擦，防护能力不下降）。
+    // 限流（未认证阶段）：仅 IP 级，必须在读取 body 之前执行，避免超大请求体
+    // 先被完整缓冲进内存。client 级桶在认证成功后计数（见下文）。
     const limitResult = await rateLimit(ip, "oauth-token");
     if (!limitResult.success) {
       return resJson({ error: "rate_limited", error_description: "请求过于频繁" }, 429);
+    }
+
+    // 读取 body（有硬上限；Content-Length 由 middleware 预检，chunked 由此兜底）
+    const contentType = request.headers.get("content-type") || "";
+    let body: Record<string, string>;
+
+    try {
+      if (contentType.includes("application/json")) {
+        body = await readJsonBody<Record<string, string>>(request, BODY_LIMITS.oauthJson);
+      } else {
+        const formData = await readFormDataBody(request, BODY_LIMITS.oauthJson);
+        body = {};
+        formData.forEach((v, k) => {
+          body[k] = v.toString();
+        });
+      }
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+      return resJson(
+        { error: "invalid_request", error_description: "请求体格式错误" },
+        400
+      );
     }
 
     const grant_type = body.grant_type;

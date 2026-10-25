@@ -21,6 +21,12 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 
 /**
  * 微信绑定表单
@@ -60,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     const result = bindSchema.safeParse(body);
     if (!result.success) {
@@ -270,6 +276,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[WechatBind] Error:", error);
     return NextResponse.json(
       {

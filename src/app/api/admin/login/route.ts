@@ -8,6 +8,12 @@ import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
 import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -215,9 +221,36 @@ export async function POST(request: NextRequest) {
       return csrfForbiddenResponse();
     }
 
-    const body = await request.json();
+    // 1. IP 级速率限制（管理后台专用桶，避免与 C 端 login 共享被用户爆破影响）
+    // 必须在读取 body 之前执行，避免超大请求体先被完整缓冲。
+    const ip = getClientIP(request);
+    const limitResult = await rateLimit(ip, "admin-login");
+    if (!limitResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "登录尝试过于频繁，请稍后再试",
+          },
+        },
+        { status: 429 }
+      );
+    }
 
-    // 1. 先验证请求数据格式
+    // 2. 读取 body（有硬上限）
+    let body: unknown;
+    try {
+      body = await readJsonBody(request, BODY_LIMITS.authJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+      return NextResponse.json(
+        { success: false, error: { code: "VALIDATION_ERROR", message: "请求数据格式错误" } },
+        { status: 400 }
+      );
+    }
+
+    // 3. 验证请求数据格式
     const result = AdminLoginSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
@@ -235,23 +268,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password, totpCode } = result.data;
 
-    // 2. IP 级速率限制（管理后台专用桶，避免与 C 端 login 共享被用户爆破影响）
-    const ip = getClientIP(request);
-    const limitResult = await rateLimit(ip, "admin-login");
-    if (!limitResult.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "RATE_LIMITED",
-            message: "登录尝试过于频繁，请稍后再试",
-          },
-        },
-        { status: 429 }
-      );
-    }
-
-    // 3. 账户级防爆破检查（基于 email，持久化到数据库）
+    // 4. 账户级防爆破检查（基于 email，持久化到数据库）
     const lockout = await checkAdminLockout(email);
     if (lockout.locked) {
       return NextResponse.json(

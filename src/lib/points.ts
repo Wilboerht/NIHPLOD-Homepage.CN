@@ -23,8 +23,9 @@ import {
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
 import {
-  SpentOrderConflictError,
+  claimSpentOrder,
   normalizeOptionalOrderNo,
+  SpentOrderConflictError,
 } from "@/lib/spent-order";
 import type { SpentOrderSource } from "@/generated/prisma/client";
 
@@ -100,26 +101,12 @@ export async function applyExternalSpentSync(params: {
       }
 
       if (spentDelta > 0 && normalizedOrder.orderNoKey) {
-        const existingClaim = await tx.spentOrderClaim.findUnique({
-          where: {
-            userId_orderNoKey: { userId, orderNoKey: normalizedOrder.orderNoKey },
-          },
-          select: { source: true },
-        });
-        if (existingClaim) {
-          throw new SpentOrderConflictError(
-            normalizedOrder.orderNoKey,
-            existingClaim.source
-          );
-        }
-        await tx.spentOrderClaim.create({
-          data: {
-            userId,
-            orderNo: normalizedOrder.orderNo as string,
-            orderNoKey: normalizedOrder.orderNoKey,
-            source,
-            reference,
-          },
+        await claimSpentOrder(tx, {
+          userId,
+          orderNo: normalizedOrder.orderNo as string,
+          orderNoKey: normalizedOrder.orderNoKey,
+          source,
+          reference,
         });
       }
 
@@ -276,9 +263,7 @@ export async function applyExternalSpentSync(params: {
       }
       if (normalizedOrder.orderNoKey) {
         const claim = await prisma.spentOrderClaim?.findUnique({
-          where: {
-            userId_orderNoKey: { userId, orderNoKey: normalizedOrder.orderNoKey },
-          },
+          where: { orderNoKey: normalizedOrder.orderNoKey },
           select: { source: true },
         });
         if (claim) {

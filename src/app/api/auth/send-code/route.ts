@@ -13,6 +13,12 @@ import {
 } from "@/lib/sms";
 import { z } from "zod";
 import { rateLimit, getClientIP as getClientIPFromRateLimit } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { getSubsiteProxiedClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
@@ -97,7 +103,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     // 参数验证
     const result = sendCodeSchema.safeParse(body);
@@ -371,6 +377,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     // 并发请求导致的唯一约束冲突 → 返回友好提示（并发请求中只有一个能成功）
     if (
       error &&

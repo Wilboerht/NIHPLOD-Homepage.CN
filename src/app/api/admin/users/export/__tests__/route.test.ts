@@ -43,7 +43,13 @@ import { advisorRequest } from "@/lib/advisor-internal";
 
 const NOW = new Date("2024-01-02T03:04:05.000Z");
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
-const FINANCE = { id: "admin-2", email: "finance@test.com", name: "Finance", role: "finance" };
+const FINANCE = {
+  id: "admin-2",
+  email: "finance@test.com",
+  name: "Finance",
+  role: "finance",
+  permissionOverrides: ["users:export"],
+};
 
 const USER = {
   id: "user-1",
@@ -423,7 +429,7 @@ describe("GET /api/admin/users/export", () => {
   it("测肤权限不足时拒绝请求", async () => {
     vi.mocked(verifyAuth).mockResolvedValue({
       ...FINANCE,
-      permissionOverrides: ["!advisor:users:read"],
+      permissionOverrides: ["users:export", "!advisor:users:read"],
     } as never);
     const res = await GET(createRequest("?include=advisorSessions"));
     expect(res.status).toBe(403);
@@ -434,7 +440,7 @@ describe("GET /api/admin/users/export", () => {
   it("无测肤权限时默认范围自动排除测肤文件", async () => {
     vi.mocked(verifyAuth).mockResolvedValue({
       ...FINANCE,
-      permissionOverrides: ["!advisor:users:read"],
+      permissionOverrides: ["users:export", "!advisor:users:read"],
     } as never);
     const res = await GET(createRequest());
     expect(res.status).toBe(200);

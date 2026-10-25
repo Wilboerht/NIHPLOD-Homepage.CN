@@ -12,6 +12,12 @@ import { maskPhone } from "@/lib/mask-phone";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBody,
+} from "@/lib/request-body";
 import { recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     // 参数验证
     const result = resetPasswordSchema.safeParse(body);
@@ -287,6 +293,7 @@ export async function POST(request: NextRequest) {
       data: { message: "密码重置成功，请使用新密码登录" },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[ResetPassword] 异常:", error);
     return NextResponse.json(
       {

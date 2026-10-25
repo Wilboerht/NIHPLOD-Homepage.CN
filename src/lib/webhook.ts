@@ -8,6 +8,7 @@ import { createHmac } from "crypto";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
+import { postPublicHttps } from "@/lib/outbound-http";
 import type { UserStatus } from "@/generated/prisma/client";
 
 // 状态值约定（与商城侧 zod 校验对齐）：发送 User.status 原始大写枚举 ACTIVE/SUSPENDED/BANNED；
@@ -106,12 +107,11 @@ async function sendWebhook(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const response = await fetch(target.url, {
+      // 复用统一出站防护：HTTPS + DNS pin + 禁止重定向 + 响应体上限
+      const response = await postPublicHttps(target.url, {
         method: "POST",
         headers,
         body,
-        // 禁止跟随重定向：防目标 302 到内网（SSRF 绕过主机校验）
-        redirect: "manual",
         signal: AbortSignal.timeout(10000),
       });
 

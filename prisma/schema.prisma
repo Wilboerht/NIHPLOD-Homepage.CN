@@ -920,7 +920,8 @@ model SpentOrderClaim {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, orderNoKey])
+  @@unique([orderNoKey])
+  @@index([userId])
   @@index([reference])
   @@index([source, createdAt(sort: Desc)])
 }

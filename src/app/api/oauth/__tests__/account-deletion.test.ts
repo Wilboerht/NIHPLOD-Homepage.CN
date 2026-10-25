@@ -48,6 +48,11 @@ vi.mock("@/lib/auth-logger", () => ({
 vi.mock("@/lib/auth-security", () => ({
   hashIdentifier: (s: string) => `hmac-${s}`,
 }));
+vi.mock("@/lib/sms", () => ({
+  verifyCode: vi.fn().mockReturnValue(true),
+  recordSmsCodeFailure: vi.fn(),
+  SMS_CODE_MAX_ATTEMPTS: 5,
+}));
 
 // === Mock prisma ===
 const prismaMock = vi.hoisted(() => ({
@@ -60,6 +65,7 @@ const prismaMock = vi.hoisted(() => ({
   },
   pointRedemption: { count: vi.fn() },
   pointBalance: { findUnique: vi.fn() },
+  smsCode: { findFirst: vi.fn(), updateMany: vi.fn() },
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
@@ -105,6 +111,12 @@ describe("/api/oauth/account/deletion", () => {
     prismaMock.accountDeletionRequest.create.mockResolvedValue(pendingRequest);
     prismaMock.pointRedemption.count.mockResolvedValue(0);
     prismaMock.pointBalance.findUnique.mockResolvedValue(null);
+    prismaMock.smsCode.findFirst.mockResolvedValue({
+      id: "sms-1",
+      codeHash: "hash",
+      attempts: 0,
+    });
+    prismaMock.smsCode.updateMany.mockResolvedValue({ count: 1 });
   });
 
   it("缺少 Authorization 返回 401", async () => {
@@ -171,7 +183,7 @@ describe("/api/oauth/account/deletion", () => {
       scope: "openid profile profile:write",
     });
     const before = Date.now();
-    const res = await POST(makeRequest("POST", { reason: "不再需要" }));
+    const res = await POST(makeRequest("POST", { reason: "不再需要", smsCode: "123456" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);

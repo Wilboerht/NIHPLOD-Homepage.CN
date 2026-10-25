@@ -15,6 +15,7 @@ export const ADMIN_PERMISSIONS = [
   "approvals:review",
 
   "users:read",
+  "users:export",
   "users:sensitive:read",
   "users:write",
   "users:delete",
@@ -113,6 +114,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
     group: "用户",
     permissions: [
       "users:read",
+      "users:export",
       "users:sensitive:read",
       "users:write",
       "users:delete",
@@ -197,6 +199,7 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "approvals:request": "发起审批申请",
   "approvals:review": "审批申请（默认仅 owner）",
   "users:read": "用户查看",
+  "users:export": "批量导出用户数据（含 PII，默认仅 owner）",
   "users:sensitive:read": "查看完整手机号（敏感，写审计）",
   "users:write": "用户状态/生日/解绑",
   "users:delete": "用户删除（GDPR 匿名化）",

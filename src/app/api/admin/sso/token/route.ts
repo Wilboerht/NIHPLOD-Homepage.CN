@@ -13,6 +13,13 @@ import { verifyPKCE } from "@/lib/oauth-code";
 import { prisma } from "@/lib/prisma";
 import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+  readJsonBody,
+} from "@/lib/request-body";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -35,10 +42,10 @@ function jsonError(code: string, message: string, status: number): NextResponse 
 async function parseBody(request: NextRequest): Promise<unknown> {
   const contentType = request.headers.get("content-type") || "";
   if (contentType.includes("application/x-www-form-urlencoded")) {
-    const form = await request.formData();
+    const form = await readFormDataBody(request, BODY_LIMITS.authJson);
     return Object.fromEntries(form.entries());
   }
-  return request.json();
+  return readJsonBody(request, BODY_LIMITS.authJson);
 }
 
 // POST /api/admin/sso/token
@@ -68,8 +75,9 @@ export async function POST(request: NextRequest) {
   let parsed;
   try {
     parsed = tokenSchema.safeParse(await parseBody(request));
-  } catch {
-    return jsonError("INVALID_REQUEST", "请求格式错误", 400);
+  } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+    return jsonError("INVALID_REQUEST", "请求体格式错误", 400);
   }
   if (!parsed.success) {
     return jsonError("INVALID_REQUEST", "请求参数不完整", 400);

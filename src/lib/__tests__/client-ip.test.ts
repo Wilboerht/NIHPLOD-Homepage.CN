@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getClientIP, getSubsiteProxiedClientIP } from "@/lib/client-ip";
+import {
+  getClientIP,
+  getSubsiteProxiedClientIP,
+  normalizeRateLimitIdentifier,
+} from "@/lib/client-ip";
 
 function createRequest(headers: Record<string, string>): Request {
   return new Request("http://localhost", {
@@ -179,5 +183,24 @@ describe("getSubsiteProxiedClientIP（子站 BFF 代理透传 IP）", () => {
     });
 
     expect(getSubsiteProxiedClientIP(request)).toBeNull();
+  });
+});
+
+describe("normalizeRateLimitIdentifier", () => {
+  it("IPv6 大小写归一到同一 /64", () => {
+    expect(normalizeRateLimitIdentifier("2001:DB8:0:0:1::1")).toBe(
+      normalizeRateLimitIdentifier("2001:db8::1")
+    );
+    expect(normalizeRateLimitIdentifier("2001:db8::1")).toBe("2001:db8:0:0::/64");
+  });
+
+  it("IPv4-mapped IPv6 还原为 IPv4", () => {
+    expect(normalizeRateLimitIdentifier("::ffff:1.2.3.4")).toBe("1.2.3.4");
+  });
+
+  it("sms-ip 复合 key 也归一化", () => {
+    expect(normalizeRateLimitIdentifier("sms-ip:2001:DB8::1")).toBe(
+      "sms-ip:2001:db8:0:0::/64"
+    );
   });
 });

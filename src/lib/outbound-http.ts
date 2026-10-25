@@ -103,19 +103,50 @@ export async function postPublicHttps(rawUrl: string, init: RequestInit): Promis
       dispatcher,
     } as RequestInit);
 
-    // 兼容测试/边缘运行时中的轻量 ResponseLike（没有 arrayBuffer 时直接返回）
-    if (typeof response.arrayBuffer !== "function") {
-      return response as Response;
-    }
-
     const contentLength = Number(response.headers.get("content-length") || 0);
     if (contentLength > MAX_RESPONSE_BYTES) {
       throw new Error("OUTBOUND_RESPONSE_TOO_LARGE");
     }
 
-    const body = await response.arrayBuffer();
-    if (body.byteLength > MAX_RESPONSE_BYTES) {
-      throw new Error("OUTBOUND_RESPONSE_TOO_LARGE");
+    // 真实 fetch 一定有流式 body：边读边限流，防止恶意 RP 返回无 Content-Length
+    // 的超大响应体把服务端内存打满。仅对测试/边缘环境的轻量 ResponseLike 回退。
+    if (!response.body) {
+      if (typeof response.arrayBuffer !== "function") return response as Response;
+      const body = await response.arrayBuffer();
+      if (body.byteLength > MAX_RESPONSE_BYTES) {
+        throw new Error("OUTBOUND_RESPONSE_TOO_LARGE");
+      }
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        total += value.byteLength;
+        if (total > MAX_RESPONSE_BYTES) {
+          await reader.cancel().catch(() => {});
+          throw new Error("OUTBOUND_RESPONSE_TOO_LARGE");
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    const body = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      body.set(chunk, offset);
+      offset += chunk.byteLength;
     }
 
     return new Response(body, {

@@ -16,6 +16,12 @@ import {
   signImportPreviewToken,
   IMPORT_MAX_FILE_SIZE,
 } from "@/lib/spent-import";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+} from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +61,9 @@ export async function POST(request: NextRequest) {
 
     let formData: FormData;
     try {
-      formData = await request.formData();
-    } catch {
+      formData = await readFormDataBody(request, BODY_LIMITS.spentImportUpload);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
       return NextResponse.json(
         { success: false, error: { code: "INVALID_FORM", message: "请求格式错误" } },
         { status: 400 }

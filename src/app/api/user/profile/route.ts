@@ -8,9 +8,16 @@ import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { updateProfileSchema } from "@/lib/profile-schema";
+import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { rateLimit } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readFormDataBody,
+  readJsonBody,
+} from "@/lib/request-body";
 import { isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
@@ -91,7 +98,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
   }
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request, BODY_LIMITS.authJson);
     const result = updateProfileSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
@@ -104,6 +111,14 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     }
 
     const { nickname, avatar, birthday, gender } = result.data;
+
+    // 头像只允许自有域名/OSS/站内路径，禁止任意外链（防追踪像素与子站加载风险）
+    if (avatar && !isAllowedAvatarUrl(avatar)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_AVATAR", message: "头像地址不合法" } },
+        { status: 400 }
+      );
+    }
 
     // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
     const previous = await prisma.user.findUnique({
@@ -200,6 +215,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
     return NextResponse.json({ success: true, data: { user } });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[UpdateProfile] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
@@ -245,7 +261,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 获取上传文件
-    const formData = await request.formData();
+    const formData = await readFormDataBody(request, BODY_LIMITS.imageUpload);
     const file = formData.get("file") as File | null;
 
     if (!file) {
@@ -338,6 +354,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("[UploadAvatar] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "头像上传失败" } },

@@ -485,6 +485,7 @@ function AdminUsersContent() {
   // 权限（导航与按钮按权限点收敛，服务端为最终权威）
   const { can: canAdmin, role } = useAdminPermissions();
   const isOwnerActor = role === "owner";
+  const canExportUsers = canAdmin("users:export");
   const canWriteUsers = canAdmin("users:write");
   const canDeleteUsers = canAdmin("users:delete");
   const canSecurityWrite = canAdmin("users:security:write");
@@ -1117,15 +1118,17 @@ function AdminUsersContent() {
         description="管理注册用户"
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              leftIcon={<Download className="h-4 w-4" />}
-              onClick={() => setExportOpen(true)}
-              loading={exporting}
-            >
-              {exporting ? "预检中..." : "导出用户数据"}
-            </Button>
+            {canExportUsers && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Download className="h-4 w-4" />}
+                onClick={() => setExportOpen(true)}
+                loading={exporting}
+              >
+                {exporting ? "预检�?.." : "导出用户数据"}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
