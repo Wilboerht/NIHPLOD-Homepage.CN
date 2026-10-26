@@ -345,6 +345,7 @@ model RefreshToken {
   id            String    @id @default(cuid())
   userId        String
   clientId      String? // OAuth client_id（OAuth 刷新令牌使用）
+  oauthSessionId String? // 关联 OAuthSession.sessionId；历史 token 为空时走保守兼容路径
   token         String    @db.Text // refresh token 的 SHA-256 哈希（不可逆，不落明文）
   expiresAt     DateTime // 过期时间
   revokedAt     DateTime? // 撤销时间（已登出）
@@ -365,6 +366,7 @@ model RefreshToken {
   @@index([token])
   @@index([userId, revokedAt, expiresAt])
   @@index([userId, clientId, revokedAt, expiresAt])
+  @@index([oauthSessionId])
   @@index([expiresAt])
 }
 
@@ -1093,6 +1095,7 @@ model PointRedemption {
   redeemRate  Decimal?              @db.Decimal(4, 2) // 兑换时的兑礼率快照（历史数据为空）
   clientId    String? // OAuth 客户端 ID（会话直兑为空，用于责任追溯）
   status      PointRedemptionStatus @default(PENDING)
+  stockDeducted Boolean @default(false) // 本单是否实际扣减过库存；历史单默认 false，取消时不凭空增库存
   reference   String // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
   recipient   String? // 收货人姓名快照（履约寄送用）
   phone       String? // 收货手机号快照
